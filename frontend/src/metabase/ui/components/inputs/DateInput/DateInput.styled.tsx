@@ -10,6 +10,10 @@ export const getDateInputOverrides =
         calendar: {
           padding: `${theme.spacing.sm} ${theme.spacing.md}`,
         },
+        input: {
+          color: "var(--mb-color-text-primary)",
+          backgroundColor: "var(--mb-color-background)",
+        },
       }),
     },
   });

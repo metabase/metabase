@@ -6,9 +6,8 @@
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.table :as table :refer [Table]]
+   [metabase.models.table :as table]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -41,7 +40,7 @@
     field-name
 
     [:field (id :guard integer?) _]
-    (t2/select-one-fn :name Field :id id)))
+    (t2/select-one-fn :name :model/Field :id id)))
 
 (mu/defn- infer-resulting-dimensions :- DimensionBindings
   [bindings             :- Bindings
@@ -102,7 +101,7 @@
 (mu/defn- ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
   [entity :- SourceEntity]
-  (if (mi/instance-of? Table entity)
+  (if (mi/instance-of? :model/Table entity)
     (u/the-id entity)
     (str "card__" (u/the-id entity))))
 
@@ -153,7 +152,7 @@
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
 (def ^:private Tableset
-  [:sequential (ms/InstanceOf Table)])
+  [:sequential (ms/InstanceOf :model/Table)])
 
 (mu/defn- find-tables-with-domain-entity :- Tableset
   [tableset           :- Tableset

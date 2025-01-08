@@ -632,6 +632,19 @@
               (-> query
                   (lib/replace-clause 0 expr-a 999)))))))
 
+(deftest ^:parallel replace-clause-expression-used-in-breakout-test
+  (let [query    (-> lib.tu/venues-query
+                     (lib/expression "a" (lib/+ (meta/field-metadata :venues :name) 7))
+                     (as-> $q (lib/breakout $q -1 (lib/expression-ref $q -1 "a"))))
+        [before] (lib/breakouts query)
+        [expr]   (lib/expressions query)
+        edited   (lib/replace-clause query -1 expr (lib/with-expression-name expr "b"))]
+    (is (=? [{:lib/expression-name "b"
+              :ident               (lib.options/ident expr)}]
+            (map lib.options/options (lib/expressions edited))))
+    (is (=? [[:expression {:ident (lib.options/ident before)} "b"]]
+            (lib/breakouts edited)))))
+
 (deftest ^:parallel replace-order-by-breakout-col-test
   (testing "issue #30980"
     (testing "Bucketing should keep order-by in sync"

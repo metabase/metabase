@@ -259,7 +259,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       H.assertEChartsTooltipNotContain([SUM_OF_TOTAL, AVG_OF_QUANTITY]);
 
       // Go to the additional tooltip columns setting
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       H.leftSidebar().within(() => {
         cy.findByText("Display").click();
         cy.findByPlaceholderText("Enter metric names").click();
