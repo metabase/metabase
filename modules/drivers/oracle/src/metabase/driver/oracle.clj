@@ -123,7 +123,6 @@
         (assoc :javax.net.ssl.keyStoreType (guess-keystore-type keystore password)
                :javax.net.ssl.keyStore keystore
                :javax.net.ssl.keyStorePassword password)
-        (secret/clean-secret-properties-from-details :oracle)
         (dissoc :ssl-use-keystore :ssl-keystore-value :ssl-keystore-path :ssl-keystore-password-value
                 :ssl-keystore-created-at :ssl-keystore-password-created-at))))
 
