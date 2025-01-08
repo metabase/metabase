@@ -19,13 +19,22 @@
     {
       "name": "Drivers",
       "label": ".Team/Drivers",
-      "members": ["snoe"]
+      "projectUrl": "https://github.com/orgs/metabase/projects/98/views/1",
+      "members": [
+        "snoe",
+        "rileythomp"
+      ]
     },
     {
       "name": "Embedding",
       "label": ".Team/Embedding",
       "projectUrl": "https://github.com/orgs/metabase/projects/88/views/1",
-      "members": ["WiNloSt", "oisincoveney", "npretto", "heypoom"]
+      "members": [
+        "WiNloSt",
+        "oisincoveney",
+        "npretto",
+        "heypoom"
+      ]
     },
     {
       "name": "Workflows",

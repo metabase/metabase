@@ -264,6 +264,22 @@ describe("serializeDateFilter", () => {
         month: 12,
       },
     },
+    {
+      text: "Q1-2020",
+      value: {
+        type: "quarter",
+        year: 2020,
+        quarter: 1,
+      },
+    },
+    {
+      text: "Q4-2020",
+      value: {
+        type: "quarter",
+        year: 2020,
+        quarter: 4,
+      },
+    },
   ])("should serialize and deserialize $text", ({ text, value }) => {
     expect(serializeDateFilter(value)).toEqual(text);
     expect(deserializeDateFilter(text)).toEqual(value);
