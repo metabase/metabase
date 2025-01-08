@@ -24,7 +24,7 @@
                                         (metabase.api.common/openapi-object #'metabase.api.routes/routes)
                                         {:servers [{:url         "http://localhost:3000/api"
                                                     :description "Localhost"}]})]
-    (with-open [w (java.io.FileWriter. "target/doc/index.html")]
+    (with-open [w (java.io.FileWriter. "docs/api.html")]
       (.write w before)
       (json/encode-to openapi-object  w {:pretty true})
       (.write w after)))
