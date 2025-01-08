@@ -63,19 +63,3 @@ export const trackColumnCompareViaPlusModal = (
     question_id: questionId ?? 0,
   });
 };
-
-export const trackColumnCompareViaShortcut = (
-  query: Lib.Query,
-  stageIndex: number,
-  expressions: Lib.ExpressionClause[],
-  questionId?: number,
-) => {
-  trackSchemaEvent("question", {
-    event: "column_compare_via_shortcut",
-    custom_expressions_used: expressions.flatMap(expression =>
-      Lib.functionsUsedByExpression(query, stageIndex, expression),
-    ),
-    database_id: Lib.databaseID(query),
-    question_id: questionId ?? 0,
-  });
-};

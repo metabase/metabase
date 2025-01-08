@@ -1,15 +1,17 @@
-import { useMemo } from "react";
+import { type CSSProperties, useMemo } from "react";
 import { t } from "ttag";
 
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
 import { FieldPicker, type FieldPickerItem } from "../FieldPicker";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
+import { CONTAINER_PADDING } from "../NotebookCell/constants";
 import { NotebookDataPicker } from "../NotebookDataPicker";
 
-import { DataStepIconButton } from "./DataStep.styled";
+import S from "./DataStep.module.css";
 
 export const DataStep = ({
   query,
@@ -93,12 +95,18 @@ function DataFieldPopover({
     <Popover position="bottom-start">
       <Popover.Target>
         <Tooltip label={t`Pick columns`}>
-          <DataStepIconButton
+          <IconButtonWrapper
+            className={S.DataStepIconButton}
+            style={
+              {
+                "--notebook-cell-container-padding": CONTAINER_PADDING,
+              } as CSSProperties
+            }
             aria-label={t`Pick columns`}
             data-testid="fields-picker"
           >
             <Icon name="chevrondown" />
-          </DataStepIconButton>
+          </IconButtonWrapper>
         </Tooltip>
       </Popover.Target>
       <Popover.Dropdown>

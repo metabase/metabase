@@ -3,7 +3,6 @@
    [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models.query-cache :refer [QueryCache]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.date-2 :as u.date]
@@ -92,7 +91,7 @@
   {:pre [(number? max-age-seconds)]}
   (log/trace "Purging old cache entries.")
   (try
-    (t2/delete! (t2/table-name QueryCache)
+    (t2/delete! (t2/table-name :model/QueryCache)
                 :updated_at [:<= (seconds-ago max-age-seconds)])
     (catch Throwable e
       (log/error e "Error purging old cache entries")))

@@ -2,6 +2,10 @@
   overflow: auto;
 }
 
+.overflowYAuto {
+  overflow-y: auto;
+}
+
 .overflowHidden {
   overflow: hidden;
 }

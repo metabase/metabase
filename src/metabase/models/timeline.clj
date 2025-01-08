@@ -7,11 +7,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def Timeline
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the symbols in our codebase."
-  :model/Timeline)
-
 (methodical/defmethod t2/table-name :model/Timeline  [_model] :timeline)
 
 (doto :model/Timeline
@@ -35,7 +30,7 @@
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id {:keys [timeline/events? timeline/archived?] :as options}]
-  (cond-> (t2/hydrate (t2/select Timeline
+  (cond-> (t2/hydrate (t2/select :model/Timeline
                                  :collection_id collection-id
                                  :archived (boolean archived?))
                       :creator

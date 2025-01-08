@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
@@ -809,7 +808,7 @@
     (mt/with-report-timezone-id! "UTC"
       (mt/dataset times-mixed
         (testing "nested custom expression should works"
-          (t2.with-temp/with-temp [Card
+          (t2.with-temp/with-temp [:model/Card
                                    card
                                    {:dataset_query
                                     (mt/mbql-query
