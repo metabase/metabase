@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
-import { Menu, Stack, Text, rem } from "metabase/ui";
+import { Menu, Popover, Stack, Text, rem } from "metabase/ui";
 import type {
   DatasetColumn,
   SmartScalarComparison,
@@ -144,44 +144,75 @@ export function ComparisonPicker({
   };
 
   return (
-    <Menu
-      opened={open}
-      onChange={handleMenuStateChange}
-      position="bottom-start"
-      shadow="sm"
-      closeOnItemClick={false}
-    >
-      <Menu.Target>
-        <ComparisonPickerButton
-          disabled={isDisabled}
-          leftIcon={isDraggable && <DragHandleIcon name="grabber" />}
-          rightIcon={
-            isRemovable && (
-              <IconButtonWrapper
-                aria-label={t`Remove`}
-                onClick={handleRemoveClick}
-              >
-                <RemoveIcon name="close" />
-              </IconButtonWrapper>
-            )
-          }
-          px="1rem"
-          fullWidth
-          data-testid="comparisons-widget-button"
-          styles={{
-            label: { flex: 1 },
-            inner: { justifyContent: "space-between" },
-          }}
-        >
-          <DisplayName value={editedValue} option={selectedOption} />
-          <ExpandIcon className={CS.inline} name="chevrondown" size={14} />
-        </ComparisonPickerButton>
-      </Menu.Target>
+    <Stack>
+      <Popover>
+        <Popover.Target>
+          <ComparisonPickerButton
+            disabled={isDisabled}
+            leftIcon={isDraggable && <DragHandleIcon name="grabber" />}
+            rightIcon={
+              isRemovable && (
+                <IconButtonWrapper
+                  aria-label={t`Remove`}
+                  onClick={handleRemoveClick}
+                >
+                  <RemoveIcon name="close" />
+                </IconButtonWrapper>
+              )
+            }
+            px="1rem"
+            fullWidth
+            data-testid="comparisons-widget-button"
+            styles={{
+              label: { flex: 1 },
+              inner: { justifyContent: "space-between" },
+            }}
+          >
+            <DisplayName value={editedValue} option={selectedOption} />
+            <ExpandIcon className={CS.inline} name="chevrondown" size={14} />
+          </ComparisonPickerButton>
+        </Popover.Target>
+        <Popover.Dropdown></Popover.Dropdown>
+      </Popover>
+      <Menu
+        opened={open}
+        onChange={handleMenuStateChange}
+        position="bottom-start"
+        shadow="sm"
+        closeOnItemClick={false}
+      >
+        <Menu.Target>
+          <ComparisonPickerButton
+            disabled={isDisabled}
+            leftIcon={isDraggable && <DragHandleIcon name="grabber" />}
+            rightIcon={
+              isRemovable && (
+                <IconButtonWrapper
+                  aria-label={t`Remove`}
+                  onClick={handleRemoveClick}
+                >
+                  <RemoveIcon name="close" />
+                </IconButtonWrapper>
+              )
+            }
+            px="1rem"
+            fullWidth
+            data-testid="comparisons-widget-button"
+            styles={{
+              label: { flex: 1 },
+              inner: { justifyContent: "space-between" },
+            }}
+          >
+            <DisplayName value={editedValue} option={selectedOption} />
+            <ExpandIcon className={CS.inline} name="chevrondown" size={14} />
+          </ComparisonPickerButton>
+        </Menu.Target>
 
-      <Menu.Dropdown miw={rem(344)}>
-        {renderMenuDropdownContent()}
-      </Menu.Dropdown>
-    </Menu>
+        <Menu.Dropdown miw={rem(344)}>
+          {renderMenuDropdownContent()}
+        </Menu.Dropdown>
+      </Menu>
+    </Stack>
   );
 }
 
