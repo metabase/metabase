@@ -18,6 +18,7 @@
    [metabase.http-client :as client]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -38,7 +39,6 @@
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
-   [metabase.test.util.public-settings :as tu.public-setings]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.log.capture]
@@ -89,7 +89,6 @@
   tu.async/keep-me
   tu.log/keep-me
   tu.misc/keep-me
-  tu.public-setings/keep-me
   tu.thread-local/keep-me
   tu/keep-me
   tx.env/keep-me
@@ -176,6 +175,11 @@
  [metabase.test.util.dynamic-redefs
   dynamic-value
   with-dynamic-redefs]
+
+ [premium-features.test-util
+  with-premium-features
+  with-additional-premium-features
+  assert-has-premium-feature-error]
 
  [perms.test-util
   with-restored-data-perms!
@@ -293,11 +297,6 @@
   object-defaults
   with-clock
   with-single-admin-user]
-
- [tu.public-setings
-  with-premium-features
-  with-additional-premium-features
-  assert-has-premium-feature-error]
 
  [u.random
   random-name

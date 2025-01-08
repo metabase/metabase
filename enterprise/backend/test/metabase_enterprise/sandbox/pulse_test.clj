@@ -10,7 +10,7 @@
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.permissions.util :as perms-util]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor :as qp]
@@ -230,7 +230,7 @@
                                   recipients (-> pulse :channels first :recipients)]
                               (sort (map :id recipients))))]
         (mt/with-test-user :rasta
-          (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
+          (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly false)]
             (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                    (-> (mt/user-http-request :rasta :get 200 "pulse/")
                        recipient-ids)))
@@ -240,7 +240,7 @@
                        vector
                        recipient-ids))))
 
-          (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+          (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
             (is (= [(mt/user->id :rasta)]
                    (-> (mt/user-http-request :rasta :get 200 "pulse/")
                        recipient-ids)))
@@ -262,7 +262,7 @@
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :rasta)}]
 
       (mt/with-test-user :rasta
-        (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+        (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
           ;; Rasta, a sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]}))
@@ -271,7 +271,7 @@
         (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                (->> (api.alert/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort)))
 
-        (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
+        (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly false)]
           ;; Rasta, a non-sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]})
