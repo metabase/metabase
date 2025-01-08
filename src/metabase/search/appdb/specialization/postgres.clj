@@ -29,12 +29,11 @@
   (when (seq entries)
     (t2/query
      ;; The cost of dynamically calculating these keys should be small compared to the IO cost, so unoptimized.
-     (let [update-keys (vec (disj (set (keys (first entries))) :id :model :model_id))
-           excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
+     (let [update-keys (vec (disj (set (keys (first entries))) :id :model :model_id))]
        {:insert-into   table
         :values        entries
         :on-conflict   [:model :model_id]
-        :do-update-set (zipmap update-keys (map excluded-kw update-keys))}))))
+        :do-update-set update-keys}))))
 
 (defn- quote* [s]
   (str "'" (str/replace s "'" "''") "'"))

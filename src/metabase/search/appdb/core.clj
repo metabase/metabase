@@ -6,6 +6,8 @@
    [metabase.public-settings :as public-settings]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as search.scoring]
+   [metabase.search.appdb.specialization.h2 :as specialization.h2]
+   [metabase.search.appdb.specialization.mysql :as specialization.mysql]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
@@ -21,7 +23,9 @@
 
 ;; Register the multimethods for each specialization
 (comment
-  specialization.postgres/keep-me)
+  specialization.postgres/keep-me
+  specialization.mysql/keep-me
+  specialization.h2/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -30,7 +34,7 @@
 
 (def supported-db?
   "All the databases which we have implemented fulltext search for."
-  #{:postgres :h2})
+  #{:postgres :h2 :mysql})
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (and (or (not config/is-prod?)

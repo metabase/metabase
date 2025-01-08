@@ -27,7 +27,7 @@
 
 (defmacro with-fulltext-filtering [& body]
   `(case (mdb/db-type)
-     :postgres
+     (:postgres :mysql)
      (do ~@body)
      :h2
      ;; Fulltext features not supported

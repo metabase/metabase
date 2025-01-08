@@ -33,7 +33,7 @@
 (defonce ^:dynamic ^:private *index-version-id*
   (if config/is-prod?
     (:hash config/mb-version-info)
-    (str (random-uuid))))
+    (u/generate-nano-id)))
 
 (defonce ^:private next-sync-at (atom nil))
 
@@ -78,7 +78,7 @@
 (defn gen-table-name
   "Generate a unique table name to use as a search index table."
   []
-  (keyword (str/replace (str "search_index__" (random-uuid)) #"-" "_")))
+  (keyword (str/replace (str "search_index__" (u/generate-nano-id)) #"-" "_")))
 
 (defn- table-name [kw]
   (cond-> (name kw)
@@ -98,7 +98,7 @@
        (t2/query {:select [:table_name]
                   :from   :information_schema.tables
                   :where  [:and
-                           [:= :table_schema :%current_schema]
+                           [:= :table_schema (if (= (mdb/db-type) :mysql) :%schema :%current_schema)]
                            [:or
                             [:like [:lower :table_name] [:inline "search\\_index\\_\\_%"]]
                             ;; legacy table names

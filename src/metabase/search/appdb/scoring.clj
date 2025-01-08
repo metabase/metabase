@@ -2,8 +2,10 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -16,7 +18,7 @@
 (defn truthy
   "Prefer it when a (potentially nullable) boolean is true."
   [column]
-  [:coalesce [:cast column :integer] [:inline 0]])
+  [:coalesce [:cast column (case (mdb/db-type) :mysql :signed :integer)] [:inline 0]])
 
 (defn equal
   "Prefer it when it matches a specific (non-null) value"
@@ -51,8 +53,10 @@
       [:- ceiling
        [:/
         ;; Use seconds for granularity in the fraction.
-        ;; TODO will probably need to specialize this based on (mdb/db-type)
-        [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]]
+        (case (mdb/db-type)
+          :mysql
+          [[:raw "TIMESTAMPDIFF(second, " (sql/format-expr from-column) ", " (sql/format-expr to-column) ")"]]
+          [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]])
         [:inline (double seconds-in-a-day)]]]
       [:inline 0]]
      ceiling]))
