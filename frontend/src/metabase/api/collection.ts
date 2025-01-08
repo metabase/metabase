@@ -26,18 +26,20 @@ export const collectionApi = Api.injectEndpoints({
      * @deprecated This endpoint is extremely slow on large instances, it should not be used
      * you probably only need a few collections, just fetch those
      */
-    listCollections: builder.query<Collection[], ListCollectionsRequest>({
-      query: params => ({
-        method: "GET",
-        url: `/api/collection`,
-        params,
-      }),
-      providesTags: (collections = []) =>
-        provideCollectionListTags(collections),
-    }),
+    listCollections: builder.query<Collection[], ListCollectionsRequest | void>(
+      {
+        query: params => ({
+          method: "GET",
+          url: `/api/collection`,
+          params,
+        }),
+        providesTags: (collections = []) =>
+          provideCollectionListTags(collections),
+      },
+    ),
     listCollectionsTree: builder.query<
       Collection[],
-      ListCollectionsTreeRequest
+      ListCollectionsTreeRequest | void
     >({
       query: params => ({
         method: "GET",
