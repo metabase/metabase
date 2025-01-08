@@ -26,8 +26,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (comment
   ;; We need this to ensure the engine hierarchy is registered
@@ -364,7 +363,7 @@
           (is (= #{"dashboard" "dataset" "card" "metric" "action"}
                  (get-available-models :q search-term :created_by (mt/user->id :rasta)))))
         (testing "return a subset of model for verified filter"
-          (t2.with-temp/with-temp
+          (mt/with-temp
             [:model/Card       {v-card-id :id}   {:name (format "%s Verified Card" search-term)}
              :model/Card       {v-model-id :id}  {:name (format "%s Verified Model" search-term) :type :model}
              :model/Card       {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
@@ -960,7 +959,7 @@
                    (filter #(and (= (:model %) "pulse")
                                  (= (:id %) pulse-id)))
                    first))]
-      (t2.with-temp/with-temp [:model/Pulse pulse {:name "Electro-Magnetic Pulse"}]
+      (mt/with-temp [:model/Pulse pulse {:name "Electro-Magnetic Pulse"}]
         (testing "Pulses are not searchable"
           (is (= nil (search-for-pulses pulse))))
         (mt/with-temp [:model/Card      card-1 {}
@@ -1142,7 +1141,7 @@
 
 (deftest verified-filter-test
   (let [search-term "Verified filter"]
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Card {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
        :model/Card {_card-id :id}   {:name (format "%s Normal Card" search-term)}
        :model/Card {_model-id :id}  {:name (format "%s Normal Model" search-term) :type :model}
@@ -1229,7 +1228,7 @@
 
 (deftest filter-by-last-edited-at-test
   (let [search-term "last-edited-at-filtering"]
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Card       {card-id :id}   {:name search-term}
        :model/Card       {model-id :id}  {:name search-term :type :model}
        :model/Dashboard  {dash-id :id}   {:name search-term}

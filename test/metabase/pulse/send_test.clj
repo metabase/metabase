@@ -25,8 +25,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.retry :as retry]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -82,8 +81,8 @@
                                                     :channel_type "http"
                                                     :channel_id   chn-id})]
     (if (= pulse-channel :email)
-      (t2.with-temp/with-temp [:model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
-                                                               :pulse_channel_id pc-id}]
+      (mt/with-temp [:model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                     :pulse_channel_id pc-id}]
         (f pulse))
       (f pulse))))
 
@@ -387,8 +386,8 @@
 
       :fixture
       (fn [{:keys [pulse-id]} thunk]
-        (t2.with-temp/with-temp [:model/PulseChannelRecipient _ {:user_id          (mt/user->id :crowberto)
-                                                                 :pulse_channel_id (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id)}]
+        (mt/with-temp [:model/PulseChannelRecipient _ {:user_id          (mt/user->id :crowberto)
+                                                       :pulse_channel_id (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id)}]
           (thunk)))
 
       :assert
@@ -653,17 +652,17 @@
 
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:name                   "Test card"
-                                                        :dataset_query          {:database (mt/id)
-                                                                                 :type     :native
-                                                                                 :native   {:query (str "select count(*) as total_per_day, date as the_day "
-                                                                                                        "from checkins "
-                                                                                                        "group by date")}}
-                                                        :display                :line
-                                                        :visualization_settings {:graph.show_goal  true
-                                                                                 :graph.goal_value 5.9
-                                                                                 :graph.dimensions ["THE_DAY"]
-                                                                                 :graph.metrics    ["TOTAL_PER_DAY"]}}]
+    (mt/with-temp [:model/Card {card-id :id} {:name                   "Test card"
+                                              :dataset_query          {:database (mt/id)
+                                                                       :type     :native
+                                                                       :native   {:query (str "select count(*) as total_per_day, date as the_day "
+                                                                                              "from checkins "
+                                                                                              "group by date")}}
+                                              :display                :line
+                                              :visualization_settings {:graph.show_goal  true
+                                                                       :graph.goal_value 5.9
+                                                                       :graph.dimensions ["THE_DAY"]
+                                                                       :graph.metrics    ["TOTAL_PER_DAY"]}}]
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:alert_condition  "goal"
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]
