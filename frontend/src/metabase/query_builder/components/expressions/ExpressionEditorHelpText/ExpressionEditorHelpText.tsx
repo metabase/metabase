@@ -56,7 +56,6 @@ export const ExpressionEditorHelpTextContent = ({
                 <span key={name}>
                   <Text
                     component="span"
-                    c="m"
                     className={
                       ExpressionEditorHelpTextS.FunctionHelpCodeArgument
                     }
