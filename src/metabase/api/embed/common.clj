@@ -12,6 +12,7 @@
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation :as eid-translation]
+   [metabase.models :as models]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
    [metabase.models.setting :refer [defsetting]]
@@ -27,6 +28,9 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(comment
+  models/keep-me)
 
 (set! *warn-on-reflection* true)
 

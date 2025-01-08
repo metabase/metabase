@@ -2,10 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
    [metabase.models.interface :as mi]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -15,10 +12,11 @@
    [metabase.xrays.test-util.transforms :refer [test-transform-spec with-test-transform-specs!]]
    [metabase.xrays.transforms.core :as tf]
    [metabase.xrays.transforms.specs :as tf.specs]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :each (fn [thunk]
-                      (mt/with-model-cleanup [Card Collection]
+                      (mt/with-model-cleanup [:model/Card :model/Collection]
                         (thunk))))
 
 (def ^:private test-bindings
@@ -51,16 +49,16 @@
   (testing "Can we turn a given entity into a format suitable for a query's `:source_table`?"
     (testing "for a Table"
       (is (= (mt/id :venues)
-             (#'tf/->source-table-reference (t2/select-one Table :id (mt/id :venues))))))
+             (#'tf/->source-table-reference (t2/select-one :model/Table :id (mt/id :venues))))))
 
     (testing "for a Card"
-      (mt/with-temp [Card {card-id :id}]
+      (t2.with-temp/with-temp [:model/Card {card-id :id}]
         (is (= (str "card__" card-id)
-               (#'tf/->source-table-reference (t2/select-one Card :id card-id))))))))
+               (#'tf/->source-table-reference (t2/select-one :model/Card :id card-id))))))))
 
 (deftest tableset-test
   (testing "Can we get a tableset for a given schema?"
-    (is (= (t2/select-pks-set Table :db_id (mt/id))
+    (is (= (t2/select-pks-set :model/Table :db_id (mt/id))
            (set (map u/the-id (#'tf/tableset (mt/id) "PUBLIC")))))))
 
 (deftest find-tables-with-domain-entity-test
@@ -79,7 +77,7 @@
   (testing "Can we extract results from the final bindings?"
     (with-test-transform-specs!
       (is (= [(mt/id :venues)]
-             (map u/the-id (#'tf/resulting-entities {"VenuesEnhanced" {:entity     (t2/select-one Table :id (mt/id :venues))
+             (map u/the-id (#'tf/resulting-entities {"VenuesEnhanced" {:entity     (t2/select-one :model/Table :id (mt/id :venues))
                                                                        :dimensions {"D1" [:field 1 nil]}}}
                                                     (first @tf.specs/transform-specs))))))))
 
@@ -102,7 +100,7 @@
     (with-test-transform-specs!
       (testing "Is the validation of results working?"
         (is (#'tf/validate-results {"VenuesEnhanced" {:entity     (mi/instance
-                                                                   Card
+                                                                   :model/Card
                                                                    {:result_metadata [{:name "AvgPrice"}
                                                                                       {:name "MaxPrice"}
                                                                                       {:name "MinPrice"}]})
@@ -112,7 +110,7 @@
       (testing "... and do we throw if we didn't get what we expected?"
         (is (thrown?
              java.lang.AssertionError
-             (#'tf/validate-results {"VenuesEnhanced" {:entity     (t2/select-one Table :id (mt/id :venues))
+             (#'tf/validate-results {"VenuesEnhanced" {:entity     (t2/select-one :model/Table :id (mt/id :venues))
                                                        :dimensions {"D1" [:field 1 nil]}}}
                                     (first @tf.specs/transform-specs))))))))
 
@@ -136,6 +134,6 @@
     (with-test-transform-specs!
       (with-test-domain-entity-specs!
         (is (= "Test transform"
-               (-> (tf/candidates (t2/select-one Table :id (mt/id :venues)))
+               (-> (tf/candidates (t2/select-one :model/Table :id (mt/id :venues)))
                    first
                    :name)))))))

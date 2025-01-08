@@ -1051,7 +1051,9 @@ describe("should not redirect users to other pages when linking an entity (metab
 
     cy.icon("link").click();
     H.popover().findByText("Link").click();
-    cy.findByTestId("custom-edit-text-link").type(TEST_QUESTION_NAME);
+    cy.findByTestId("custom-edit-text-link")
+      .findByPlaceholderText("https://example.com")
+      .type(TEST_QUESTION_NAME);
     cy.findByTestId("search-results-list").within(() => {
       cy.findByText(TEST_QUESTION_NAME).click();
     });
@@ -1250,7 +1252,7 @@ describe("issue 39863", () => {
   function setDateFilter() {
     cy.findByLabelText("Date filter").click();
     H.popover()
-      .findByText(/Last 12 months/i)
+      .findByText(/Previous 12 months/i)
       .click();
   }
 
@@ -1506,7 +1508,7 @@ describe("issue 42165", () => {
       H.visitDashboard(dashboardId);
 
       H.filterWidget().click();
-      H.popover().findByText("Last 30 Days").click();
+      H.popover().findByText("Previous 30 days").click();
       cy.wait("@dashcardQuery");
 
       H.getDashboardCard(0).findByText("fooBarQuestion").click();
@@ -1552,5 +1554,31 @@ describe("issue 47170", () => {
       cy.findByText("Something’s gone wrong").should("not.exist");
       cy.findByText("Dashboard A").should("be.visible");
     });
+  });
+
+  it("should show legible dark mode colors in fullscreen mode (metabase#51524)", () => {
+    cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+
+    H.dashboardHeader().findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Enter fullscreen").click();
+    H.dashboardHeader().findByLabelText("Nighttime mode").click();
+
+    const primaryTextColor = "color(srgb 1 1 1 / 0.9)";
+
+    cy.findByTestId("dashboard-name-heading").should(
+      "have.css",
+      "color",
+      primaryTextColor,
+    );
+
+    H.getDashboardCard(0)
+      .findByText("37.65")
+      .should("have.css", "color", primaryTextColor);
+
+    cy.findByTestId("sharing-menu-button").should(
+      "have.css",
+      "color",
+      primaryTextColor,
+    );
   });
 });

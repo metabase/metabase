@@ -5,17 +5,17 @@
    [medley.core :as m]
    [metabase-enterprise.audit-app.audit-test :as audit-test]
    [metabase.config :as config]
-   [metabase.models :refer [Collection]]
    [metabase.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest list-collections-instance-analytics-test
   (mt/with-premium-features #{:audit-app}
     (audit-test/with-audit-db-restoration
-      (mt/with-temp [Collection _ {:name "Zippy"}]
+      (t2.with-temp/with-temp [:model/Collection _ {:name "Zippy"}]
         (testing "Instance Analytics Collection should be the last collection."
           (testing "GET /api/collection"
             (is (= "instance-analytics"
@@ -29,7 +29,7 @@
                         :type))))))))
   (mt/with-premium-features #{}
     (audit-test/with-audit-db-restoration
-      (mt/with-temp [Collection _ {:name "Zippy"}]
+      (t2.with-temp/with-temp [:model/Collection _ {:name "Zippy"}]
         (testing "Instance Analytics Collection should not show up when audit-app isn't enabled."
           (testing "GET /api/collection"
             (is (nil?
@@ -47,7 +47,7 @@
   []
   (if-not config/ee-available?
     #{}
-    (let [colls (->> (t2/select Collection :archived false)
+    (let [colls (->> (t2/select :model/Collection :archived false)
                      (sort-by (fn [{coll-type :type coll-name :name coll-id :id}]
                                 [coll-type ((fnil u/lower-case-en "") coll-name) coll-id]))
                      (mapv #(select-keys % [:id :name :location :type])))
@@ -73,14 +73,14 @@
       (mt/with-premium-features #{:audit-app}
         (audit-test/with-audit-db-restoration
           (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
-                crowberto-root (t2/select-one Collection :personal_owner_id admin-user-id)]
-            (mt/with-temp [Collection collection          {}
-                           Collection {collection-id :id} {:name "Collection with Items"}
-                           Collection _                   {:name            "subcollection"
-                                                           :location        (format "/%d/" collection-id)
-                                                           :authority_level "official"}
-                           Collection _                   {:name     "Crowberto's Child Collection"
-                                                           :location (collection/location-path crowberto-root)}]
+                crowberto-root (t2/select-one :model/Collection :personal_owner_id admin-user-id)]
+            (t2.with-temp/with-temp [:model/Collection collection          {}
+                                     :model/Collection {collection-id :id} {:name "Collection with Items"}
+                                     :model/Collection _                   {:name            "subcollection"
+                                                                            :location        (format "/%d/" collection-id)
+                                                                            :authority_level "official"}
+                                     :model/Collection _                   {:name     "Crowberto's Child Collection"
+                                                                            :location (collection/location-path crowberto-root)}]
               (let [public-collection-names  #{"Our analytics"
                                                (:name collection)
                                                "Collection with Items"
@@ -91,7 +91,7 @@
                 (is (= (into #{}
                              (concat (instance-analytics-collection-names)
                                      public-collection-names
-                                     (t2/select-fn-set :name Collection {:where [:and [:= :type nil] [:= :archived false]]})))
+                                     (t2/select-fn-set :name :model/Collection {:where [:and [:= :type nil] [:= :archived false]]})))
                        crowbertos))
                 (is (= (into #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"}
                              (concat (instance-analytics-collection-names) public-collection-names))

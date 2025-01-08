@@ -2,9 +2,9 @@
   "Tests for expression aggregations and for named aggregations."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.card :refer [Card]]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest ^:parallel sum-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
@@ -268,7 +268,7 @@
                                              :source-table $$venues})
                            :type :metric}]
       (testing "check that we can handle Metrics inside expression aggregation clauses"
-        (mt/with-temp [Card {metric-id :id} card-definition]
+        (t2.with-temp/with-temp [:model/Card {metric-id :id} card-definition]
           (is (= [[2 119]
                   [3  40]
                   [4  25]]
@@ -280,7 +280,7 @@
                      :source-table (str "card__" metric-id)}))))))
 
       (testing "check that we can handle Metrics inside an `:aggregation-options` clause"
-        (mt/with-temp [Card {metric-id :id} card-definition]
+        (t2.with-temp/with-temp [:model/Card {metric-id :id} card-definition]
           (is (= {:rows    [[2 118]
                             [3  39]
                             [4  24]]
@@ -295,7 +295,7 @@
                       :source-table (str "card__" metric-id)})))))))
 
       (testing "check that Metrics with a nested aggregation still work inside an `:aggregation-options` clause"
-        (mt/with-temp [Card {metric-id :id} card-definition]
+        (t2.with-temp/with-temp [:model/Card {metric-id :id} card-definition]
           (is (= {:rows    [[2 118]
                             [3  39]
                             [4  24]]

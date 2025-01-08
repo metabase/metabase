@@ -6,9 +6,9 @@
    [metabase.metabot-test :as metabot-test]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [Card]]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest metabot-only-works-on-models-test
   (testing "POST /api/metabot/model/:model-id won't work for a table endpoint"
@@ -24,13 +24,13 @@
   (testing "POST /api/metabot/model/:model-id happy path"
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (mt/with-temp
-          [Card orders-model {:name    "Orders Model"
-                              :dataset_query
-                              {:database (mt/id)
-                               :type     :query
-                               :query    {:source-table (mt/id :orders)}}
-                              :type :model}]
+        (t2.with-temp/with-temp
+          [:model/Card orders-model {:name    "Orders Model"
+                                     :dataset_query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query    {:source-table (mt/id :orders)}}
+                                     :type :model}]
           (let [bot-message (format
                              "You should do ```SELECT COUNT(*) FROM %s``` to do that."
                              (metabot-util/normalize-name (:name orders-model)))
@@ -53,13 +53,13 @@
   (testing "POST /api/metabot/model/:model-id produces a message when no SQL is found"
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (mt/with-temp
-          [Card orders-model {:name    "Orders Model"
-                              :dataset_query
-                              {:database (mt/id)
-                               :type     :query
-                               :query    {:source-table (mt/id :orders)}}
-                              :type :model}]
+        (t2.with-temp/with-temp
+          [:model/Card orders-model {:name    "Orders Model"
+                                     :dataset_query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query    {:source-table (mt/id :orders)}}
+                                     :type :model}]
           (let [bot-message "IDK what to do here"
                 q           "How many orders do I have?"]
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
@@ -74,13 +74,13 @@
   (testing "POST /api/metabot/database/:database-id happy path"
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (mt/with-temp
-          [Card orders-model {:name    "Orders Model"
-                              :dataset_query
-                              {:database (mt/id)
-                               :type     :query
-                               :query    {:source-table (mt/id :orders)}}
-                              :type :model}]
+        (t2.with-temp/with-temp
+          [:model/Card orders-model {:name    "Orders Model"
+                                     :dataset_query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query    {:source-table (mt/id :orders)}}
+                                     :type :model}]
           (let [bot-model-selection (format "The best model is %s" (:id orders-model))
                 bot-sql-response    (format "you should do ```SELECT COUNT(*) FROM %s``` to do that."
                                             (metabot-util/normalize-name (:name orders-model)))
@@ -104,13 +104,13 @@
   (testing "With embeddings, you'll always get _some_ model, unless there aren't any at all."
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (mt/with-temp
-          [Card _orders-model {:name    "Not a model"
-                               :dataset_query
-                               {:database (mt/id)
-                                :type     :query
-                                :query    {:source-table (mt/id :orders)}}
-                               :type :question}]
+        (t2.with-temp/with-temp
+          [:model/Card _orders-model {:name    "Not a model"
+                                      :dataset_query
+                                      {:database (mt/id)
+                                       :type     :query
+                                       :query    {:source-table (mt/id :orders)}}
+                                      :type :question}]
           (let [bot-message "Your prompt needs more details..."
                 q           "A not useful prompt"]
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)
@@ -125,13 +125,13 @@
   (testing "When we can't find sql from the selected model, we return a message"
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (mt/with-temp
-          [Card orders-model {:name    "Orders Model"
-                              :dataset_query
-                              {:database (mt/id)
-                               :type     :query
-                               :query    {:source-table (mt/id :orders)}}
-                              :type :model}]
+        (t2.with-temp/with-temp
+          [:model/Card orders-model {:name    "Orders Model"
+                                     :dataset_query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query    {:source-table (mt/id :orders)}}
+                                     :type :model}]
           (let [bot-message (format
                              "Part 1 is %s but part 2 doesn't return SQL."
                              (:id orders-model))
@@ -149,13 +149,13 @@
   (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
     (testing "Too many requests returns a useful message"
       (mt/dataset test-data
-        (mt/with-temp
-          [Card _ {:name    "Orders Model"
-                   :dataset_query
-                   {:database (mt/id)
-                    :type     :query
-                    :query    {:source-table (mt/id :orders)}}
-                   :type :model}]
+        (t2.with-temp/with-temp
+          [:model/Card _ {:name    "Orders Model"
+                          :dataset_query
+                          {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :orders)}}
+                          :type :model}]
           (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_ _]
                                                                            (throw (ex-info
                                                                                    "Too many requests"
@@ -169,13 +169,13 @@
               (is (true? (str/includes? message "The bot server is under heavy load"))))))))
     (testing "Not having the right API keys set returns a useful message"
       (mt/dataset test-data
-        (mt/with-temp
-          [Card _ {:name    "Orders Model"
-                   :dataset_query
-                   {:database (mt/id)
-                    :type     :query
-                    :query    {:source-table (mt/id :orders)}}
-                   :type :model}]
+        (t2.with-temp/with-temp
+          [:model/Card _ {:name    "Orders Model"
+                          :dataset_query
+                          {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :orders)}}
+                          :type :model}]
           (with-redefs [metabot-client/*create-chat-completion-endpoint* (fn [_ _]
                                                                            (throw (ex-info
                                                                                    "Unauthorized"
@@ -189,12 +189,12 @@
               (is (true? (str/includes? message "Bot credentials are incorrect or not set"))))))))
     (testing "Too many tokens used returns a useful message"
       (mt/dataset test-data
-        (mt/with-temp [Card _ {:name    "Orders Model"
-                               :dataset_query
-                               {:database (mt/id)
-                                :type     :query
-                                :query    {:source-table (mt/id :orders)}}
-                               :type :model}]
+        (mt/with-temp [:model/Card _ {:name    "Orders Model"
+                                      :dataset_query
+                                      {:database (mt/id)
+                                       :type     :query
+                                       :query    {:source-table (mt/id :orders)}}
+                                      :type :model}]
           (let [error-code    "context_length_exceeded"
                 error-message (str/join " "
                                         ["This model's maximum context length is 8192 tokens."
@@ -218,12 +218,12 @@
   (testing "POST /database/:database-id/query"
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (mt/with-temp [Card _orders-model {:name    "Orders Model"
-                                           :dataset_query
-                                           {:database (mt/id)
-                                            :type     :query
-                                            :query    {:source-table (mt/id :orders)}}
-                                           :type :model}]
+        (mt/with-temp [:model/Card _orders-model {:name    "Orders Model"
+                                                  :dataset_query
+                                                  {:database (mt/id)
+                                                   :type     :query
+                                                   :query    {:source-table (mt/id :orders)}}
+                                                  :type :model}]
           (let [bot-message "SELECT COUNT(*) FROM ORDERS;"
                 q           "How many orders do I have?"]
             (with-redefs [metabot-client/*create-chat-completion-endpoint* (metabot-test/test-bot-endpoint-single-message bot-message)

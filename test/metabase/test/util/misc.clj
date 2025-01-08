@@ -5,12 +5,11 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [mb.hawk.init]
-   [metabase.models :refer [PermissionsGroupMembership User]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test.initialize :as initialize]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
-   [toucan2.tools.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,21 +36,21 @@
 
 (defn do-with-single-admin-user
   [attributes thunk]
-  (let [existing-admin-memberships (t2/select PermissionsGroupMembership :group_id (:id (perms-group/admin)))
-        _                          (t2/delete! (t2/table-name PermissionsGroupMembership) :group_id (:id (perms-group/admin)))
-        existing-admin-ids         (t2/select-pks-set User :is_superuser true)
+  (let [existing-admin-memberships (t2/select :model/PermissionsGroupMembership :group_id (:id (perms-group/admin)))
+        _                          (t2/delete! (t2/table-name :model/PermissionsGroupMembership) :group_id (:id (perms-group/admin)))
+        existing-admin-ids         (t2/select-pks-set :model/User :is_superuser true)
         _                          (when (seq existing-admin-ids)
-                                     (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser false}))
-        temp-admin                 (first (t2/insert-returning-instances! User (merge (toucan2.tools.with-temp/with-temp-defaults User)
-                                                                                      attributes
-                                                                                      {:is_superuser true})))]
+                                     (t2/update! (t2/table-name :model/User) {:id [:in existing-admin-ids]} {:is_superuser false}))
+        temp-admin                 (first (t2/insert-returning-instances! :model/User (merge (t2.with-temp/with-temp-defaults :model/User)
+                                                                                             attributes
+                                                                                             {:is_superuser true})))]
     (try
       (thunk temp-admin)
       (finally
-        (t2/delete! User (:id temp-admin))
+        (t2/delete! :model/User (:id temp-admin))
         (when (seq existing-admin-ids)
-          (t2/update! (t2/table-name User) {:id [:in existing-admin-ids]} {:is_superuser true}))
-        (t2/insert! PermissionsGroupMembership existing-admin-memberships)))))
+          (t2/update! (t2/table-name :model/User) {:id [:in existing-admin-ids]} {:is_superuser true}))
+        (t2/insert! :model/PermissionsGroupMembership existing-admin-memberships)))))
 
 (defmacro with-single-admin-user
   "Creates an admin user (with details described in the `options-map`) and (temporarily) removes the administrative
@@ -73,7 +72,7 @@
   application DB. Example usage:
 
     (deftest update-user-first-name-test
-      (mt/with-temp [User user]
+      (t2.with-temp/with-temp [User user]
         (update-user-first-name! user \"Cam\")
         (is (= (merge (mt/object-defaults User)
                       (select-keys user [:id :last_name :created_at :updated_at])
@@ -82,9 +81,8 @@
   (comp
    (memoize
     (fn [toucan-model]
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      (toucan2.tools.with-temp/with-temp [toucan-model x {}
-                                          toucan-model y {}]
+      (t2.with-temp/with-temp [toucan-model x {}
+                               toucan-model y {}]
         (let [[_ _ things-in-both] (data/diff x y)]
           ;; don't include created_at/updated_at even if they're the exactly the same, as might be the case with MySQL
           ;; TIMESTAMP columns (which only have second resolution by default)

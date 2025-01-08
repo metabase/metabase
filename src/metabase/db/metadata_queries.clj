@@ -151,11 +151,13 @@
                              (into {} (for [field text-fields]
                                         [field [(str (gensym "substring"))
                                                 [:substring [:field (u/the-id field) nil]
-                                                 1 truncation-size]]])))]
+                                                 1 truncation-size]]])))
+        expressions        (into {} (vals field->expressions))]
     {:database   (:db_id table)
      :type       :query
      :query      (cond-> {:source-table (u/the-id table)
-                          :expressions  (into {} (vals field->expressions))
+                          :expressions  expressions
+                          :expression-idents (update-vals expressions (fn [_] (u/generate-nano-id)))
                           :fields       (vec (for [field fields]
                                                (if-let [[expression-name _] (get field->expressions field)]
                                                  [:expression expression-name]

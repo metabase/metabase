@@ -4,14 +4,17 @@
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
    [diehard.circuit-breaker :as dh.cb]
+   [mb.hawk.parallel]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
-   [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise defenterprise-schema]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise defenterprise-schema]]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -281,8 +284,8 @@
       (is (nil? (premium-features/token-status))))))
 
 (deftest active-users-count-setting-test
-  (mt/with-temp
-    [User _ {:is_active false}]
+  (t2.with-temp/with-temp
+    [:model/User _ {:is_active false}]
     (testing "returns the number of active users"
       (is (= (t2/count :model/User :is_active true :type :personal)
              (premium-features/active-users-count))))

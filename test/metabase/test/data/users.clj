@@ -5,16 +5,13 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.http-client :as client]
-   [metabase.models.permissions-group :refer [PermissionsGroup]]
-   [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
-   [metabase.models.user :refer [User]]
    [metabase.request.core :as request]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp])
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -68,10 +65,10 @@
              active    true}}]
   {:pre [(string? email) (string? first-name) (string? last-name) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (initialize/initialize-if-needed! :db)
-  (or (t2/select-one User :email email)
+  (or (t2/select-one :model/User :email email)
       (locking create-user-lock
-        (or (t2/select-one User :email email)
-            (first (t2/insert-returning-instances! User
+        (or (t2/select-one :model/User :email email)
+            (first (t2/insert-returning-instances! :model/User
                                                    {:email        email
                                                     :first_name   first-name
                                                     :last_name    last-name
@@ -80,7 +77,7 @@
                                                     :is_qbnewb    true
                                                     :is_active    active}))))))
 
-(mu/defn fetch-user :- (ms/InstanceOf User)
+(mu/defn fetch-user :- (ms/InstanceOf :model/User)
   "Fetch the User object associated with `username`. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
@@ -191,9 +188,8 @@
     (let [user-id (u/the-id user)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      (toucan2.tools.with-temp/with-temp [:model/Session {session-id :id} {:id      (str (random-uuid))
-                                                                           :user_id user-id}]
+      (t2.with-temp/with-temp [:model/Session {session-id :id} {:id      (str (random-uuid))
+                                                                :user_id user-id}]
         (apply the-client session-id args)))))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
@@ -233,10 +229,9 @@
     (u/the-id test-user-name-or-user-id)))
 
 (defn do-with-group-for-user [group test-user-name-or-user-id f]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (toucan2.tools.with-temp/with-temp [PermissionsGroup           group group
-                                      PermissionsGroupMembership _     {:group_id (u/the-id group)
-                                                                        :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
+  (t2.with-temp/with-temp [:model/PermissionsGroup           group group
+                           :model/PermissionsGroupMembership _     {:group_id (u/the-id group)
+                                                                    :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
     (f group)))
 
 (defmacro with-group

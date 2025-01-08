@@ -1,8 +1,10 @@
 import { useState } from "react";
 
+import type {
+  DatePickerUnit,
+  RelativeDatePickerValue,
+} from "metabase/querying/filters/types";
 import { Box, Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
-
-import type { DatePickerUnit, RelativeDatePickerValue } from "../types";
 
 import { CurrentDatePicker } from "./CurrentDatePicker";
 import { DateIntervalPicker } from "./DateIntervalPicker";
@@ -18,9 +20,8 @@ import {
 
 interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
-  canUseRelativeOffsets: boolean;
-  isNew: boolean;
+  availableUnits: DatePickerUnit[];
+  submitButtonLabel: string;
   onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;
 }
@@ -28,8 +29,7 @@ interface RelativeDatePickerProps {
 export function RelativeDatePicker({
   value: initialValue,
   availableUnits,
-  canUseRelativeOffsets,
-  isNew,
+  submitButtonLabel,
   onChange,
   onBack,
 }: RelativeDatePickerProps) {
@@ -70,7 +70,7 @@ export function RelativeDatePicker({
             <DateOffsetIntervalPicker
               value={value}
               availableUnits={availableUnits}
-              isNew={isNew}
+              submitButtonLabel={submitButtonLabel}
               onChange={setValue}
               onSubmit={handleSubmit}
             />
@@ -78,8 +78,7 @@ export function RelativeDatePicker({
             <DateIntervalPicker
               value={value}
               availableUnits={availableUnits}
-              isNew={isNew}
-              canUseRelativeOffsets={canUseRelativeOffsets}
+              submitButtonLabel={submitButtonLabel}
               onChange={setValue}
               onSubmit={handleSubmit}
             />

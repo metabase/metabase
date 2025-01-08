@@ -1,11 +1,11 @@
 (ns metabase.xrays.automagic-dashboards.util-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Card]]
    [metabase.test :as mt]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest ^:parallel ->field-test
   (testing "Demonstrate the stated methods in which ->fields works"
@@ -28,7 +28,7 @@
       (mt/dataset test-data
         (testing "->field checks for a model-based context"
           (let [query (mt/native-query {:query "select * from orders"})]
-            (mt/with-temp [Card card (mt/card-with-source-metadata-for-query query)]
+            (t2.with-temp/with-temp [:model/Card card (mt/card-with-source-metadata-for-query query)]
               (let [root (#'magic/->root card)]
                 (testing "Looking up the field by id or id-field ref works"
                   (is (=? {:id (mt/id :orders :discount)}

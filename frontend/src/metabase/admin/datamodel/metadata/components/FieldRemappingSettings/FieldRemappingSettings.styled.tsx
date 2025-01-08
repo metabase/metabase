@@ -15,7 +15,7 @@ export const FieldMappingContainer = styled.div`
   align-items: center;
 `;
 
-export interface FieldSelectButtonProps {
+interface FieldSelectButtonProps {
   hasError: boolean;
 }
 

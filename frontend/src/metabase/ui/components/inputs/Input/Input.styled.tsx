@@ -83,7 +83,7 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
               ? rem(rightSectionWidth - BORDER_WIDTH)
               : `calc(${rightSectionWidth} - ${BORDER_WIDTH}px)`
             : rem(PADDING - BORDER_WIDTH),
-          borderColor: theme.fn.themeColor("border"),
+          borderColor: "var(--mb-color-border)",
           "&:focus": {
             borderColor: theme.fn.themeColor("brand"),
           },

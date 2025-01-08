@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]
-   [metabase.models.database :refer [Database]]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -10,7 +9,7 @@
    [toucan2.core :as t2]))
 
 (defn- db-dbms-version [db-or-id]
-  (t2/select-one-fn :dbms_version Database :id (u/the-id db-or-id)))
+  (t2/select-one-fn :dbms_version :model/Database :id (u/the-id db-or-id)))
 
 (defn- check-dbms-version [dbms-version]
   (me/humanize (mr/explain [:maybe sync-dbms-ver/DBMSVersion] dbms-version)))
@@ -23,8 +22,8 @@
       (mt/dataset test-data
         (let [db                   (mt/db)
               version-on-load      (db-dbms-version db)
-              _                    (t2/update! Database (u/the-id db) {:dbms_version nil})
-              db                   (t2/select-one Database :id (u/the-id db))
+              _                    (t2/update! :model/Database (u/the-id db) {:dbms_version nil})
+              db                   (t2/select-one :model/Database :id (u/the-id db))
               version-after-update (db-dbms-version db)
               _                    (sync-dbms-ver/sync-dbms-version! db)]
           (testing "On startup is the dbms-version specified?"

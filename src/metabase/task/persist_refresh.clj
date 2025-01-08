@@ -11,8 +11,6 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.email.messages :as messages]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.database :refer [Database]]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.task-history :as task-history]
    [metabase.public-settings :as public-settings]
@@ -56,7 +54,7 @@
   ;; Since this could be long running, double check state just before refreshing
   (when (contains? (persisted-info/refreshable-states) (t2/select-one-fn :state :model/PersistedInfo :id (:id persisted-info)))
     (log/infof "Attempting to refresh persisted model %s." (:card_id persisted-info))
-    (let [card (t2/select-one Card :id (:card_id persisted-info))
+    (let [card (t2/select-one :model/Card :id (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
           _ (t2/update! :model/PersistedInfo (u/the-id persisted-info)
@@ -124,12 +122,12 @@
   "Seam for tests to pass in specific deletables to drop."
   [refresher deletables]
   (when (seq deletables)
-    (let [db-id->db    (m/index-by :id (t2/select Database :id [:in (map :database_id deletables)]))
+    (let [db-id->db    (m/index-by :id (t2/select :model/Database :id [:in (map :database_id deletables)]))
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
                                    (let [current-state (t2/select-one-fn :state :model/PersistedInfo :id (:id persisted-info))
-                                         card-info     (t2/select-one [Card :archived :type]
+                                         card-info     (t2/select-one [:model/Card :archived :type]
                                                                       :id (:card_id persisted-info))]
                                      (if (or (contains? (persisted-info/prunable-states) current-state)
                                              (:archived card-info)
@@ -199,7 +197,7 @@
   [database-id refresher]
   (log/infof "Starting persisted model refresh task for Database %s." database-id)
   (persisted-info/ready-unpersisted-models! database-id)
-  (let [database  (t2/select-one Database :id database-id)
+  (let [database  (t2/select-one :model/Database :id database-id)
         persisted (refreshable-models database-id)
         thunk     (fn []
                     (reduce (partial refresh-with-stats! refresher database)
@@ -214,7 +212,7 @@
   [persisted-info-id refresher]
   (let [persisted-info (t2/select-one :model/PersistedInfo :id persisted-info-id)
         database       (when persisted-info
-                         (t2/select-one Database :id (:database_id persisted-info)))]
+                         (t2/select-one :model/Database :id (:database_id persisted-info)))]
     (if (and persisted-info database)
       (do
         (save-task-history! "persist-refresh" (u/the-id database)
@@ -402,7 +400,7 @@
   "Reschedule refresh for all enabled databases. Removes all existing triggers, and schedules refresh for databases with
   `:persist-models-enabled` in the settings at interval [[public-settings/persisted-model-refresh-cron-schedule]]."
   []
-  (let [dbs-with-persistence (filter (comp :persist-models-enabled :settings) (t2/select Database))
+  (let [dbs-with-persistence (filter (comp :persist-models-enabled :settings) (t2/select :model/Database))
         cron-schedule        (public-settings/persisted-model-refresh-cron-schedule)]
     (unschedule-all-refresh-triggers! refresh-job-key)
     (doseq [db dbs-with-persistence]

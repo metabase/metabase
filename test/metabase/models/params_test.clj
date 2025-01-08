@@ -4,10 +4,10 @@
    [clojure.test :refer :all]
    [metabase.api.public-test :as public-test]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models :refer [Card Field]]
    [metabase.models.params :as params]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest ^:parallel wrap-field-id-if-needed-test
   (doseq [[x expected] {10                                      [:field 10 nil]
@@ -32,12 +32,12 @@
                             :semantic_type      :type/Name
                             :has_field_values   :list
                             :fk_target_field_id nil}}
-           (-> (t2/select-one [Field :name :table_id :semantic_type], :id (mt/id :venues :id))
+           (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :venues :id))
                (t2/hydrate :name_field)
                mt/derecordize))))
 
   (testing "make sure it works for multiple fields efficiently. Should only require one DB call to hydrate many Fields"
-    (let [venues-fields (t2/select Field :table_id (mt/id :venues))]
+    (let [venues-fields (t2/select :model/Field :table_id (mt/id :venues))]
       (t2/with-call-count [call-count]
         (t2/hydrate venues-fields :name_field)
         (is (= 1
@@ -48,7 +48,7 @@
             :table_id      (mt/id :venues)
             :semantic_type :type/Category
             :name_field    nil}
-           (-> (t2/select-one [Field :name :table_id :semantic_type], :id (mt/id :venues :price))
+           (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :venues :price))
                (t2/hydrate :name_field)
                mt/derecordize))))
 
@@ -57,7 +57,7 @@
             :table_id      (mt/id :checkins)
             :semantic_type :type/PK
             :name_field    nil}
-           (-> (t2/select-one [Field :name :table_id :semantic_type], :id (mt/id :checkins :id))
+           (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :checkins :id))
                (t2/hydrate :name_field)
                mt/derecordize)))))
 
@@ -65,14 +65,14 @@
 
 (deftest ^:parallel hydrate-param-fields-for-card-test
   (testing "check that we can hydrate param_fields for a Card"
-    (mt/with-temp [Card card {:dataset_query
-                              {:database (mt/id)
-                               :type     :native
-                               :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
-                                          :template-tags {"name" {:name         "name"
-                                                                  :display_name "Name"
-                                                                  :type         :dimension
-                                                                  :dimension    [:field (mt/id :venues :id) nil]}}}}}]
+    (t2.with-temp/with-temp [:model/Card card {:dataset_query
+                                               {:database (mt/id)
+                                                :type     :native
+                                                :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
+                                                           :template-tags {"name" {:name         "name"
+                                                                                   :display_name "Name"
+                                                                                   :type         :dimension
+                                                                                   :dimension    [:field (mt/id :venues :id) nil]}}}}}]
       (is (= {(mt/id :venues :id) {:id                 (mt/id :venues :id)
                                    :table_id           (mt/id :venues)
                                    :display_name       "ID"
