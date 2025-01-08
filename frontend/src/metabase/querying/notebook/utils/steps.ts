@@ -346,9 +346,7 @@ function hasAggregationWithoutBreakoutOnPrevStage(
     const hasAggregations = Lib.aggregations(query, stageIndex - 1).length > 0;
     const hasBreakouts = Lib.breakouts(query, stageIndex - 1).length > 0;
 
-    if (hasAggregations && !hasBreakouts) {
-      return true;
-    }
+    return hasAggregations && !hasBreakouts;
   }
 
   return false;

@@ -7,7 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import { Box, Flex } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import type {
   NotebookStep as INotebookStep,
@@ -46,15 +46,9 @@ export function NotebookStep({
     useToggle(false);
 
   const actionButtons = useMemo(() => {
-    const { query, stageIndex } = step;
-    const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
-    const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
-
     const actions = [];
     const hasLargeActionButtons =
-      isLastStep &&
-      !(hasAggregations && !hasBreakouts) &&
-      step.actions.some(hasLargeButton);
+      isLastStep && step.actions.some(hasLargeButton);
 
     actions.push(
       ...step.actions.map(action => {
@@ -66,8 +60,8 @@ export function NotebookStep({
             <NotebookActionButton
               key={`actionButton_${title}`}
               className={cx({
-                [cx(CS.mr2, CS.mt2)]: isLastStep,
-                [CS.mr1]: !isLastStep,
+                [cx(CS.mr2, CS.mt2)]: isLastStep && hasLargeActionButtons,
+                [CS.mr1]: !isLastStep || (isLastStep && !hasLargeActionButtons),
               })}
               large={hasLargeActionButtons}
               {...stepUi}
