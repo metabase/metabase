@@ -2,7 +2,6 @@ import * as ML from "cljs/metabase.lib.js";
 import type { CardId, DatasetColumn, RowValue } from "metabase-types/api";
 
 import type {
-  AggregationDrillDetails,
   ClickObjectDataRow,
   ClickObjectDimension,
   ColumnMetadata,
@@ -53,12 +52,6 @@ export function combineColumnDrillDetails(
   drillThru: DrillThru,
 ): FilterDrillDetails {
   return ML.combine_column_drill_details(drillThru);
-}
-
-export function aggregationDrillDetails(
-  drillThru: DrillThru,
-): AggregationDrillDetails {
-  return ML.aggregation_drill_details(drillThru);
 }
 
 export function pivotTypes(drillThru: DrillThru): PivotType[] {

@@ -55,6 +55,9 @@ Fetch a specific Collection's items with the following options:
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything.
 
+  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
+  changed, that should too.
+
 ### PARAMS:
 
 -  **`id`** value must be an integer greater than zero.
@@ -70,6 +73,8 @@ Fetch a specific Collection's items with the following options:
 -  **`sort_direction`** nullable enum of desc, asc.
 
 -  **`official_collections_first`** nullable value must be a valid boolean string ('true' or 'false').
+
+-  **`show_dashboard_questions`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/collection/:id/timelines`
 
@@ -117,6 +122,9 @@ Fetch objects that the current user should see at their root level. As mentioned
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter.
 
+  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
+  changed, that should too.
+
 ### PARAMS:
 
 -  **`models`** nullable vector of enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, metric, card.
@@ -132,6 +140,8 @@ Fetch objects that the current user should see at their root level. As mentioned
 -  **`sort_direction`** nullable enum of desc, asc.
 
 -  **`official_collections_first`** nullable value must be a valid boolean string ('true' or 'false').
+
+-  **`show_dashboard_questions`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/collection/root/timelines`
 
