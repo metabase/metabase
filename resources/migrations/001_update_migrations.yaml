@@ -10525,6 +10525,7 @@ databaseChangeLog:
             constraintName: fk_notification_creator_id
             onDelete: CASCADE
             nullable: true
+            onDelete: CASCADE
 
   - changeSet:
       id: v53.2024-12-12T08:05:00

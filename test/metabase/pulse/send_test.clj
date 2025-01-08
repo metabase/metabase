@@ -119,7 +119,7 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (notification.tu/with-notification-testing-setup
+      (notification.tu/with-notification-testing-setup!
         (mt/with-temp [:model/Card {card-id :id} (merge {:name    pulse.test-util/card-name
                                                          :display (or display :line)}
                                                         card)]
