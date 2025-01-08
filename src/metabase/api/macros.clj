@@ -92,7 +92,7 @@
 (mr/def ::info
   "The info about an individual endpoint that gets stored in the namespace metadata."
   [:map
-   [:f            ::core-fn]
+   [:core-fn      ::core-fn]
    [:base-handler ::handler]
    [:handler      ::handler]
    [:form         ::parsed-args]])
@@ -330,6 +330,9 @@
          (let [body (decode-and-validate-params :body body-schema-5678 body-params-1234)]
            ...))))
 
+  Note that the schema functions are generated only once and reused for better performance.
+  See: [[mr/validator]], [[mr/expaliner]], [[decoder]], and [[encoder]].
+
   This is a drop-in wrapper for a form like
 
     `(defendpoint-core-fn* ~parsed-args)
@@ -470,7 +473,7 @@
   [nmspace
    method :- ::method
    route  :- string?]
-  (:f (find-route nmspace method route)))
+  (:core-fn (find-route nmspace method route)))
 
 (mu/defn- defendpoint-build-ns-handler :- ::handler
   [endpoints :- [:map-of ::unique-key ::info]]
@@ -529,11 +532,13 @@
   (let [parsed (parse-defendpoint-args args)]
     `(let [core-fn#       (defendpoint-core-fn ~parsed)
            base-handler#  (defendpoint-base-handler core-fn#)
-           route-handler# (defendpoint-route-handler ~parsed base-handler#)]
-       (update-ns-endpoints! *ns* ~(defendpoint-unique-key parsed) {:f            core-fn#
-                                                                    :base-handler base-handler#
-                                                                    :handler      route-handler#
-                                                                    :form         ~(quote-parsed-args parsed)}))))
+           route-handler# (defendpoint-route-handler ~parsed base-handler#)
+           info#          {:core-fn      core-fn#
+                           :base-handler base-handler#
+                           :handler      route-handler#
+                           :form         ~(quote-parsed-args parsed)}]
+       (update-ns-endpoints! *ns* ~(defendpoint-unique-key parsed) info#)
+       info#)))
 
 (s/fdef defendpoint
   :args ::defendpoint
