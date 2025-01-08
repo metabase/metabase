@@ -6,12 +6,12 @@
    [metabase.db :as mdb]
    [metabase.http-client :as client]
    [metabase.request.core :as request]
-   [metabase.test :as mt]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -188,8 +188,9 @@
     (let [user-id (u/the-id user)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
-      (mt/with-temp [:model/Session {session-id :id} {:id      (str (random-uuid))
-                                                      :user_id user-id}]
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (t2.with-temp/with-temp [:model/Session {session-id :id} {:id      (str (random-uuid))
+                                                                :user_id user-id}]
         (apply the-client session-id args)))))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
@@ -229,9 +230,10 @@
     (u/the-id test-user-name-or-user-id)))
 
 (defn do-with-group-for-user [group test-user-name-or-user-id f]
-  (mt/with-temp [:model/PermissionsGroup           group group
-                 :model/PermissionsGroupMembership _     {:group_id (u/the-id group)
-                                                          :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (t2.with-temp/with-temp [:model/PermissionsGroup           group group
+                           :model/PermissionsGroupMembership _     {:group_id (u/the-id group)
+                                                                    :user_id  (test-user-name-or-user-id->user-id test-user-name-or-user-id)}]
     (f group)))
 
 (defmacro with-group
