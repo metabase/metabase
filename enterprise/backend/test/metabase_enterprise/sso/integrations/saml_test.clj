@@ -7,8 +7,8 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.ldap]
    [metabase.http-client :as client]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -37,7 +37,7 @@
 (use-fixtures :each disable-api-url-prefix)
 
 (defn- do-with-other-sso-types-disabled! [thunk]
-  (let [current-features (premium-features/*token-features*)]
+  (let [current-features (token-check/*token-features*)]
     ;; The :sso-jwt token is needed to set the jwt-enabled setting
     (mt/test-helpers-set-global-values!
       (mt/with-premium-features #{:sso-jwt}
@@ -55,7 +55,7 @@
 (def ^:private default-idp-cert           (slurp "test_resources/sso/auth0-public-idp.cert"))
 
 (defn call-with-default-saml-config! [f]
-  (let [current-features (premium-features/*token-features*)]
+  (let [current-features (token-check/*token-features*)]
     (mt/with-premium-features #{:sso-saml}
       (mt/with-temporary-setting-values [saml-enabled                       true
                                          saml-identity-provider-uri         default-idp-uri
