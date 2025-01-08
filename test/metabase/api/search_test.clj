@@ -16,8 +16,8 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.permissions.util :as perms-util]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
@@ -757,9 +757,9 @@
                            (search! "rom" :rasta))))))
 
           (testing "Sandboxed users do not see indexed entities in search"
-            (with-redefs [premium-features/impersonated-user? (constantly true)]
+            (with-redefs [perms-util/impersonated-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
-            (with-redefs [premium-features/sandboxed-user? (constantly true)]
+            (with-redefs [perms-util/sandboxed-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (defn- archived-collection [m]

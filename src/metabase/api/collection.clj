@@ -26,7 +26,7 @@
    [metabase.models.pulse :as models.pulse]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.upload :as upload]
    [metabase.util :as u]

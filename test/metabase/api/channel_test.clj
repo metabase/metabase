@@ -4,7 +4,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
