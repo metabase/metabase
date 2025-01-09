@@ -13,7 +13,8 @@
    [metabase.notification.core :as notification]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,30 +38,32 @@
    recipient_id     [:maybe ms/PositiveInt]
    card_id          [:maybe ms/PositiveInt]
    include_inactive [:maybe ms/BooleanValue]}
-  (->> (t2/select :model/Notification
-                  (cond-> {}
-                    creator_id
-                    (sql.helpers/where [:= :notification.creator_id creator_id])
+  (->> (t2/reducible-select :model/Notification
+                            (cond-> {}
+                              creator_id
+                              (sql.helpers/where [:= :notification.creator_id creator_id])
 
-                    card_id
-                    (-> (sql.helpers/left-join
-                         :notification_card
-                         [:and
-                          [:= :notification_card.id :notification.payload_id]
-                          [:= :notification.payload_type "notification/card"]])
-                        (sql.helpers/where [:= :notification_card.card_id card_id]))
+                              card_id
+                              (-> (sql.helpers/left-join
+                                   :notification_card
+                                   [:and
+                                    [:= :notification_card.id :notification.payload_id]
+                                    [:= :notification.payload_type "notification/card"]])
+                                  (sql.helpers/where [:= :notification_card.card_id card_id]))
 
-                    recipient_id
-                    (-> (sql.helpers/left-join
-                         :notification_handler [:= :notification_handler.notification_id :notification.id])
-                        (sql.helpers/left-join
-                         :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
-                        (sql.helpers/where [:= :notification_recipient.user_id recipient_id]))
+                              recipient_id
+                              (-> (sql.helpers/left-join
+                                   :notification_handler [:= :notification_handler.notification_id :notification.id])
+                                  (sql.helpers/left-join
+                                   :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
+                                  (sql.helpers/where [:= :notification_recipient.user_id recipient_id]))
 
-                    (not (true? include_inactive))
-                    (sql.helpers/where [:= :notification.active true])))
-       (filter mi/can-read?)
-       (map models.notification/hydrate-notification)))
+                              (not (true? include_inactive))
+                              (sql.helpers/where [:= :notification.active true])))
+       (into [] (comp
+                 (map t2.realize/realize)
+                 (filter mi/can-read?)))
+       models.notification/hydrate-notification))
 
 (api/defendpoint GET "/:id"
   "Get a notification by id."
@@ -171,17 +174,15 @@
   [id]
   {id ms/PositiveInt}
   (let [notification (get-notification id)]
-    (api/check-403 (models.notification/can-unsubscribe? notification))
-    (when (pos? (models.notification/unsubscribe-user! id api/*current-user-id*))
-      (let [user-email   (:email @api/*current-user*)
-            notification (get-notification id)]
-        (when (card-notification? notification)
-          (u/ignore-exceptions
-            (messages/send-you-unsubscribed-notification-card-email!
-             (update notification :payload t2/hydrate :card)
-             [user-email])))
-        (events/publish-event! :event/notification-unsubscribe {:object {:id id}
-                                                                :user-id api/*current-user-id*})
-        nil))))
+    (api/check-403 (models.notification/current-user-is-recipient? notification))
+    (models.notification/unsubscribe-user! id api/*current-user-id*)
+    (u/prog1 (get-notification id)
+      (when (card-notification? <>)
+        (u/ignore-exceptions
+          (messages/send-you-unsubscribed-notification-card-email!
+           (update <> :payload t2/hydrate :card)
+           [(:email @api/*current-user*)])))
+      (events/publish-event! :event/notification-unsubscribe {:object {:id id}
+                                                                :user-id api/*current-user-id*}))))
 
 (api/define-routes)

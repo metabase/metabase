@@ -225,9 +225,10 @@
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
    notification-handlers k
-   #(t2/select-fn->fn :id identity :model/Channel
-                      :id [:in (map :channel_id notification-handlers)]
-                      :active true)
+   #(when-let [channel-ids (seq (keep :channel_id notification-handlers))]
+      (t2/select-fn->fn :id identity :model/Channel
+                        :id [:in channel-ids]
+                        :active true))
    :channel_id
    {:default nil}))
 
@@ -236,8 +237,9 @@
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
    notification-handlers k
-   #(t2/select-fn->fn :id identity :model/ChannelTemplate
-                      :id [:in (map :template_id notification-handlers)])
+   #(when-let [template-ids (seq (keep :template_id notification-handlers))]
+      (t2/select-fn->fn :id identity :model/ChannelTemplate
+                        :id [:in template-ids]))
    :template_id
    {:default nil}))
 
@@ -449,14 +451,6 @@
      (perms/current-user-has-application-permissions? :subscription))
     (current-user-can-read-payload? instance))))
 
-(defn can-unsubscribe?
-  "Check if the current user can unsubscribe from a notification."
-  [notification]
-  (or
-   (mi/superuser?)
-   (current-user-is-creator? notification)
-   (current-user-is-recipient? notification)))
-
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -479,7 +473,7 @@
                          [:payload ::NotificationCard]]]
     [::mc/default       :any]]])
 
-(mu/defn hydrate-notification :- ::FullyHydratedNotification
+(mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
   [notification-or-notifications]
   (u/prog1 (t2/hydrate notification-or-notifications
@@ -557,10 +551,8 @@
   "Unsubscribe a user from a notification."
   [notification-id user-id]
   (t2/delete! :model/NotificationRecipient
-              {:where [:and
-                       [:= :user_id user-id]
-                       [:exists {:select [1]
-                                 :from [:notification_handler]
-                                 :where [:and
-                                         [:= :notification_handler.id :notification_recipient.notification_handler_id]
-                                         [:= :notification_handler.notification_id notification-id]]}]]}))
+              {:from  [[:notification_recipient :nr]]
+               :join  [[:notification_handler :nh] [:= :nh.id :nr.notification_handler_id]]
+               :where [:and
+                       [:= :nr.user_id user-id]
+                       [:= :nh.notification_id notification-id]]}))

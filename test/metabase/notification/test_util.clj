@@ -46,6 +46,7 @@
   `(binding [notification/*default-options* {:notification/sync? true}]
      ~@body))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-captured-channel-send!
   [thunk]
   (with-send-notification-sync

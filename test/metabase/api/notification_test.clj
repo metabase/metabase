@@ -450,6 +450,8 @@
                                             (mt/user-http-request user-or-id :put expected-status (format "notification/%d" (:id notification))
                                                                   (assoc notification :updated_at (t/offset-date-time))))
               change-notification-creator (fn [user-id]
+                                            ;; :model/Notification prevents updating creator_id, so we need to use table
+                                            ;; name
                                             (t2/update! :notification (:id notification) {:creator_id user-id}))
               move-card-collection        (fn [user-id]
                                             (t2/update! :model/Card (-> notification :payload :card_id)
@@ -857,7 +859,7 @@
                                          (mt/user-http-request :crowberto :put 200
                                                                (format "notification/%d" noti-id)
                                                                (merge notification updates)))))
-              check-email (fn [email expected-bcc expected-subject card-url-tag]
+              check-email (fn [& {:keys [email expected-bcc expected-subject card-url-tag]}]
                             (is (=? {:bcc     expected-bcc
                                      :subject expected-subject
                                      :body    [{card-url-tag true}]}
@@ -868,18 +870,20 @@
               [{noti-id :id :as notification} base-notification]
               (let [[email] (update-notification! noti-id notification {:active false})
                     card-url-tag (make-card-url-tag notification)]
-                (check-email email #{"rasta@metabase.com" "test@metabase.com"}
-                             "You’ve been unsubscribed from an alert"
-                             card-url-tag))))
+                (check-email :email email
+                             :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
+                             :expected-subject "You’ve been unsubscribed from an alert"
+                             :card-url-tag card-url-tag))))
 
           (testing "when notification is unarchived (inactive -> active)"
             (notification.tu/with-card-notification
               [{noti-id :id :as notification} (assoc-in base-notification [:notification :active] false)]
               (let [[email] (update-notification! noti-id notification {:active true})
                     card-url-tag (make-card-url-tag notification)]
-                (check-email email #{"rasta@metabase.com" "test@metabase.com"}
-                             "Crowberto Corv added you to an alert"
-                             card-url-tag))))
+                (check-email :email email
+                             :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
+                             :expected-subject "Crowberto Corv added you to an alert"
+                             :card-url-tag card-url-tag))))
 
           (testing "when recipients are modified"
             (notification.tu/with-card-notification
@@ -898,14 +902,16 @@
                     card-url-tag (make-card-url-tag notification)]
 
                 (testing "sends unsubscribe email to removed recipients"
-                  (check-email removed-email #{"rasta@metabase.com" "test@metabase.com"}
-                               "You’ve been unsubscribed from an alert"
-                               card-url-tag))
+                  (check-email :email removed-email
+                               :expected-bcc #{"rasta@metabase.com" "test@metabase.com"}
+                               :expected-subject "You’ve been unsubscribed from an alert"
+                               :card-url-tag card-url-tag))
 
                 (testing "sends subscription email to new recipients"
-                  (check-email added-email #{"lucky@metabase.com" "new@metabase.com"}
-                               "Crowberto Corv added you to an alert"
-                               card-url-tag)))))
+                  (check-email :email added-email
+                               :expected-bcc #{"lucky@metabase.com" "new@metabase.com"}
+                               :expected-subject "Crowberto Corv added you to an alert"
+                               :card-url-tag card-url-tag)))))
 
           (testing "no emails sent when recipients haven't changed"
             (notification.tu/with-card-notification

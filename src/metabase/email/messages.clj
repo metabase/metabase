@@ -377,18 +377,18 @@
 (def ^:private archived-template           (template-path "alert_archived"))
 
 (defn send-you-unsubscribed-notification-card-email!
-  "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `alert`"
+  "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `notification`"
   [notification unsubscribed-emails]
   (send-email! unsubscribed-emails "You unsubscribed from an alert" you-unsubscribed-template notification true))
 
 (defn send-you-were-removed-notification-card-email!
-  "Send an email to `removed-users` letting them know `admin` has removed them from `alert`"
+  "Send an email to `removed-users` letting them know `admin` has removed them from `notification`"
   [notification removed-emails {:keys [first_name last_name] :as _actor}]
   (let [actor-name (format "%s %s" first_name last_name)]
     (send-email! removed-emails "You’ve been unsubscribed from an alert" removed-template (assoc notification :actor_name actor-name) true)))
 
 (defn send-you-were-added-card-notification-email!
-  "Send an email to `added-users` letting them know `admin-adder` has added them to `alert`"
+  "Send an email to `added-users` letting them know `admin-adder` has added them to `notification`"
   [notification added-user-emails {:keys [first_name last_name] :as _adder}]
   (let [subject (format "%s %s added you to an alert" first_name last_name)]
     (send-email! added-user-emails subject added-template notification true)))
