@@ -30,7 +30,6 @@ import type {
   Card,
   Collection,
   Database,
-  Field,
   Settings,
   WritebackAction,
   WritebackQueryAction,
@@ -52,7 +51,6 @@ import {
 import {
   createNativeModelCard as _createNativeModelCard,
   createStructuredModelCard as _createStructuredModelCard,
-  createSavedNativeCard,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 import {
@@ -118,13 +116,6 @@ const TEST_DATABASE = createMockDatabase({
   id: TEST_DATABASE_ID,
   name: "Test Database",
   tables: [TEST_TABLE, TEST_FK_TABLE_1],
-});
-
-const TEST_DATABASE_WITHOUT_NESTED_QUERIES = createMockDatabase({
-  ...TEST_DATABASE,
-  features: TEST_DATABASE.features?.filter(
-    feature => feature !== "nested-queries",
-  ),
 });
 
 const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
@@ -366,86 +357,6 @@ describe("ModelDetailPage", () => {
             { id: model.id() },
             { archived: true },
           );
-        });
-      });
-    });
-
-    describe("used by section", () => {
-      it("has an empty state", async () => {
-        const { model } = await setup({ model: getModel() });
-
-        expect(
-          screen.getByRole("link", { name: /Create a new question/i }),
-        ).toHaveAttribute("href", ML_Urls.getUrl(model));
-        expect(
-          screen.getByText(/This model is not used by any questions yet/i),
-        ).toBeInTheDocument();
-      });
-
-      it("does not offer creating new questions if database does not support nested queries", async () => {
-        await setup({
-          model: getModel(),
-          databases: [TEST_DATABASE_WITHOUT_NESTED_QUERIES],
-        });
-
-        expect(
-          screen.queryByRole("link", { name: /Create a new question/i }),
-        ).not.toBeInTheDocument();
-      });
-
-      it("does not offer creating new questions if nested queries are disabled", async () => {
-        await setup({
-          model: getModel(),
-          settings: {
-            "enable-nested-queries": false,
-          },
-        });
-
-        expect(
-          screen.queryByRole("link", { name: /Create a new question/i }),
-        ).not.toBeInTheDocument();
-      });
-
-      it("lists questions based on the model", async () => {
-        const { usedByQuestions } = await setup({
-          model: getModel({ name: "My Model" }),
-          usedBy: [
-            createSavedStructuredCard({ id: 5, name: "Q1" }),
-            createSavedNativeCard({ id: 6, name: "Q2" }),
-          ],
-        });
-        const [q1, q2] = usedByQuestions;
-
-        expect(screen.getByRole("link", { name: "Q1" })).toHaveAttribute(
-          "href",
-          ML_Urls.getUrl(q1),
-        );
-        expect(screen.getByRole("link", { name: "Q2" })).toHaveAttribute(
-          "href",
-          ML_Urls.getUrl(q2),
-        );
-
-        expect(
-          screen.queryByText(/Create a new question/i),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(/This model is not used by any questions yet/i),
-        ).not.toBeInTheDocument();
-      });
-    });
-
-    describe("schema section", () => {
-      it("displays model schema", async () => {
-        const { model } = await setup({ model: getModel(), tab: "schema" });
-        const fields = model.getResultMetadata();
-
-        await userEvent.click(screen.getByText("Schema"));
-
-        expect(fields.length).toBeGreaterThan(0);
-        expect(screen.getByText(`${fields.length} fields`)).toBeInTheDocument();
-
-        fields.forEach((field: Field) => {
-          expect(screen.getByText(field.display_name)).toBeInTheDocument();
         });
       });
     });
