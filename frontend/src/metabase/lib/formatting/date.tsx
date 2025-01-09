@@ -26,7 +26,7 @@ const DEFAULT_DATE_FORMATS: DEFAULT_DATE_FORMATS_TYPE = {
   "day-of-week": "dddd",
   "day-of-month": "D",
   "day-of-year": "DDD",
-  "week-of-year": "wo",
+  "week-of-year": "Wo",
   "month-of-year": "MMMM",
   "quarter-of-year": "[Q]Q",
 };
@@ -118,8 +118,8 @@ export const DATE_RANGE_FORMAT_SPECS: {
   const DDDoP = "DDDo [days of the year]";
   const DoS = "Do [day of the month]";
   const DoP = "Do [days of the month]";
-  const woS = "wo [week of the year]";
-  const woP = "wo [weeks of the year]";
+  const WoS = "Wo [week of the year]";
+  const WoP = "Wo [weeks of the year]";
   const mmS = "[minute] :mm";
   const mmP = "[minutes] :mm";
 
@@ -350,7 +350,7 @@ export const DATE_RANGE_FORMAT_SPECS: {
     "week-of-year": [
       {
         same: "week",
-        format: [woS],
+        format: [WoS],
         tests: {
           verbose: {
             output: "20th week of the year",
@@ -360,7 +360,7 @@ export const DATE_RANGE_FORMAT_SPECS: {
       },
       {
         same: null,
-        format: ["wo", woP],
+        format: ["Wo", WoP],
         tests: {
           verbose: {
             output: "34th–40th weeks of the year",
@@ -979,7 +979,7 @@ export function formatRange(
 }
 
 function formatWeek(m: Moment, options: OptionsType = {}) {
-  return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
+  return formatMajorMinor(m.format("Wo"), m.format("gggg"), options);
 }
 
 function formatMajorMinor(
