@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import EntityListLoader, { entityListLoader } from "./EntityListLoader";
+import { entityListLoader } from "./EntityListLoader";
 import { EntityName } from "./EntityName";
 import { entityListLoaderRtkQuery, entityObjectLoader } from "./rtk-query";
 
