@@ -17,6 +17,7 @@ import { isObject } from "metabase-types/guards";
 
 import type {
   EntityDefinition,
+  EntityListQueryResponse,
   EntityQuery,
   EntityQuerySelector,
   EntityType,
@@ -69,10 +70,12 @@ interface Props<Entity, EntityWrapper> {
   reloadInterval?: ReloadInterval | ReloadIntervalSelector<Entity>;
   selectorName?: "getList" | "getListUnfiltered";
   wrapped?: boolean;
-  onLoaded?: (list: Entity[]) => void;
+  onLoaded?: (response: EntityListQueryResponse<Entity[]>) => void;
 }
 
-const transformResponse = (fetched: unknown) => {
+const transformResponse = <Entity extends object>(
+  fetched: EntityListQueryResponse<Entity>,
+) => {
   if (!isObject(fetched) || !fetched.data) {
     return { results: fetched, metadata: {} };
   }

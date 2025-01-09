@@ -99,7 +99,6 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
 const PAGE_SIZE = 20;
 
 type Props = {
-  children: JSX.Element;
   onRefresh: (job: ModelCacheRefreshStatus) => void;
 };
 
@@ -117,7 +116,7 @@ const mapDispatchToProps = {
     PersistedModels.objectActions.refreshCache(job),
 };
 
-function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
+function ModelCacheRefreshJobs({ onRefresh }: Props) {
   const { page, handleNextPage, handlePreviousPage } = usePagination();
 
   const query = {
@@ -126,74 +125,71 @@ function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
   };
 
   return (
-    <>
-      <PersistedModels.ListLoader query={query} keepListWhileLoading>
-        {({ persistedModels, metadata }: PersistedModelsListLoaderProps) => {
-          const hasPagination = metadata.total > PAGE_SIZE;
+    <PersistedModels.ListLoader query={query} keepListWhileLoading>
+      {({ persistedModels, metadata }: PersistedModelsListLoaderProps) => {
+        const hasPagination = metadata.total > PAGE_SIZE;
 
-          const modelCacheInfo = persistedModels.filter(
-            cacheInfo => cacheInfo.state !== "deletable",
-          );
+        const modelCacheInfo = persistedModels.filter(
+          cacheInfo => cacheInfo.state !== "deletable",
+        );
 
-          if (modelCacheInfo.length === 0) {
-            return (
-              <div data-testid="model-cache-logs">
-                <EmptyState
-                  title={t`No results`}
-                  illustrationElement={<img src={NoResults} />}
-                />
-              </div>
-            );
-          }
-
+        if (modelCacheInfo.length === 0) {
           return (
             <div data-testid="model-cache-logs">
-              <table className={cx(AdminS.ContentTable, CS.borderBottom)}>
-                <colgroup>
-                  <col style={{ width: "30%" }} />
-                  <col style={{ width: "40%" }} />
-                  <col />
-                  <col />
-                  <col style={{ width: "5%" }} />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th>{t`Model`}</th>
-                    <th>{t`Status`}</th>
-                    <th>{t`Last run at`}</th>
-                    <th>{t`Created by`}</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {modelCacheInfo.map(job => (
-                    <JobTableItem
-                      key={job.id}
-                      job={job}
-                      onRefresh={() => onRefresh(job)}
-                    />
-                  ))}
-                </tbody>
-              </table>
-              {hasPagination && (
-                <PaginationControlsContainer>
-                  <PaginationControls
-                    showTotal
-                    page={page}
-                    pageSize={PAGE_SIZE}
-                    total={metadata.total}
-                    itemsLength={persistedModels.length}
-                    onNextPage={handleNextPage}
-                    onPreviousPage={handlePreviousPage}
-                  />
-                </PaginationControlsContainer>
-              )}
+              <EmptyState
+                title={t`No results`}
+                illustrationElement={<img src={NoResults} />}
+              />
             </div>
           );
-        }}
-      </PersistedModels.ListLoader>
-      {children}
-    </>
+        }
+
+        return (
+          <div data-testid="model-cache-logs">
+            <table className={cx(AdminS.ContentTable, CS.borderBottom)}>
+              <colgroup>
+                <col style={{ width: "30%" }} />
+                <col style={{ width: "40%" }} />
+                <col />
+                <col />
+                <col style={{ width: "5%" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>{t`Model`}</th>
+                  <th>{t`Status`}</th>
+                  <th>{t`Last run at`}</th>
+                  <th>{t`Created by`}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {modelCacheInfo.map(job => (
+                  <JobTableItem
+                    key={job.id}
+                    job={job}
+                    onRefresh={() => onRefresh(job)}
+                  />
+                ))}
+              </tbody>
+            </table>
+            {hasPagination && (
+              <PaginationControlsContainer>
+                <PaginationControls
+                  showTotal
+                  page={page}
+                  pageSize={PAGE_SIZE}
+                  total={metadata.total}
+                  itemsLength={persistedModels.length}
+                  onNextPage={handleNextPage}
+                  onPreviousPage={handlePreviousPage}
+                />
+              </PaginationControlsContainer>
+            )}
+          </div>
+        );
+      }}
+    </PersistedModels.ListLoader>
   );
 }
 
