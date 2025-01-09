@@ -40,7 +40,7 @@ export function isDatePickerExtractionUnit(
   return units.includes(unit);
 }
 
-export function getPickerValue(
+export function getDatePickerValue(
   query: Lib.Query,
   stageIndex: number,
   filterClause: Lib.FilterClause,
@@ -132,7 +132,7 @@ export function getFilterClause(
     case "relative":
       return getRelativeFilterClause(column, value);
     case "exclude":
-      return getExcludeFilterClause(query, stageIndex, column, value);
+      return getExcludeFilterClause(column, value);
   }
 }
 
@@ -165,8 +165,6 @@ function getRelativeFilterClause(
 }
 
 function getExcludeFilterClause(
-  query: Lib.Query,
-  stageIndex: number,
   column: Lib.ColumnMetadata,
   value: ExcludeDatePickerValue,
 ): Lib.ExpressionClause {
@@ -178,7 +176,7 @@ function getExcludeFilterClause(
   });
 }
 
-export function getPickerOperators(
+export function getDatePickerOperators(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
@@ -188,7 +186,7 @@ export function getPickerOperators(
     .filter(isDatePickerOperator);
 }
 
-export function getPickerUnits(
+export function getDatePickerUnits(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,

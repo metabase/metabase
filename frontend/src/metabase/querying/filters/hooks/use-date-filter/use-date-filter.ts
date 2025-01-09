@@ -2,10 +2,10 @@ import { useMemo } from "react";
 
 import type { DatePickerValue } from "metabase/querying/filters/types";
 import {
+  getDatePickerOperators,
+  getDatePickerUnits,
+  getDatePickerValue,
   getFilterClause,
-  getPickerOperators,
-  getPickerUnits,
-  getPickerValue,
 } from "metabase/querying/filters/utils/dates";
 import type * as Lib from "metabase-lib";
 
@@ -23,15 +23,15 @@ export function useDateFilter({
   filter,
 }: UseDateFilterProps) {
   const value = useMemo(() => {
-    return filter && getPickerValue(query, stageIndex, filter);
+    return filter && getDatePickerValue(query, stageIndex, filter);
   }, [query, stageIndex, filter]);
 
   const availableOperators = useMemo(() => {
-    return getPickerOperators(query, stageIndex, column);
+    return getDatePickerOperators(query, stageIndex, column);
   }, [query, stageIndex, column]);
 
   const availableUnits = useMemo(() => {
-    return getPickerUnits(query, stageIndex, column);
+    return getDatePickerUnits(query, stageIndex, column);
   }, [query, stageIndex, column]);
 
   return {
