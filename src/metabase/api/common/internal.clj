@@ -27,7 +27,7 @@
 ;;; |                                              DOCSTRING GENERATION                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn handle-nonstandard-namespaces
+(defn- handle-nonstandard-namespaces
   "HACK to make sure some enterprise endpoints are consistent with the code.
    The right way to fix this is to move them -- see #22687"
   [name]
