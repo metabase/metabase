@@ -275,7 +275,7 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  describe("loading behavior for both entity IDs and number IDs", () => {
+  describe("loading behavior for both entity IDs and number IDs (metabase#49581)", () => {
     const successTestCases = [
       {
         name: "correct entity ID",
