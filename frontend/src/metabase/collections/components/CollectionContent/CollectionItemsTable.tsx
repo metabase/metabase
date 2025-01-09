@@ -26,7 +26,7 @@ import { PaginationControls } from "metabase/components/PaginationControls";
 import CS from "metabase/css/core/index.css";
 import {
   EntityListLoaderRtkQuery,
-  type EntityQueryResponse,
+  type EntityListQueryResponse,
 } from "metabase/entities/containers/rtk-query";
 import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
@@ -161,7 +161,7 @@ export const CollectionItemsTable = ({
   const showAllItems = isEmbeddingSdk || isRootTrashCollection(collection);
 
   const onSearchListLoaded = (
-    response: EntityQueryResponse<CollectionItem[]>,
+    response: EntityListQueryResponse<CollectionItem[]>,
   ) => {
     if (isWrappedResponse(response)) {
       setTotal(response.total);

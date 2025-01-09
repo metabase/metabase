@@ -73,7 +73,7 @@ export type EntityListOptions = {
 
 export type EntityOptions = EntityObjectOptions | EntityListOptions;
 
-export type EntityQueryResponse<Data> =
+export type EntityListQueryResponse<Data> =
   | Data
   | {
       data: Data;
@@ -104,12 +104,7 @@ export interface EntityDefinition<Entity, EntityWrapper> {
       action?: string;
       transformResponse?: (data: Entity, query: EntityQuery) => unknown;
       useGetQuery: UseQuery<
-        QueryDefinition<
-          unknown,
-          BaseQueryFn,
-          TagType,
-          EntityQueryResponse<Entity>
-        >
+        QueryDefinition<unknown, BaseQueryFn, TagType, Entity>
       >;
     };
     useListQuery: UseQuery<
@@ -117,7 +112,7 @@ export interface EntityDefinition<Entity, EntityWrapper> {
         unknown,
         BaseQueryFn,
         TagType,
-        EntityQueryResponse<Entity[]>
+        EntityListQueryResponse<Entity[]>
       >
     >;
   };
