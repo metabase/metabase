@@ -18,8 +18,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,7 +41,7 @@
   (testing "Sync tasks should get scheduled for a newly created Database"
     (mt/with-temp-scheduler!
       (task/init! ::task.sync-databases/SyncDatabases)
-      (t2.with-temp/with-temp [:model/Database {db-id :id}]
+      (mt/with-temp [:model/Database {db-id :id}]
         (is (=? {:description         (format "sync-and-analyze Database %d" db-id)
                  :key                 (format "metabase.task.sync-and-analyze.trigger.%d" db-id)
                  :misfire-instruction "DO_NOTHING"
@@ -87,14 +86,14 @@
 (deftest driver-supports-actions-and-database-enable-actions-test
   (mt/test-drivers #{:sqlite}
     (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"
-      (t2.with-temp/with-temp [:model/Database database {:engine :sqlite}]
+      (mt/with-temp [:model/Database database {:engine :sqlite}]
         (is (= false (driver.u/supports? :sqlite :actions database)))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
              (t2/update! :model/Database (:id database) {:settings {:database-enable-actions true}})))))
     (testing "Updating the engine when database-enable-actions is true should fail if the engine doesn't support actions"
-      (t2.with-temp/with-temp [:model/Database database {:engine :h2 :settings {:database-enable-actions true}}]
+      (mt/with-temp [:model/Database database {:engine :h2 :settings {:database-enable-actions true}}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
@@ -249,10 +248,10 @@
                                     (is (= exp-val
                                            v)))))))]
           (testing "values for referenced secret IDs are resolved in a new DB"
-            (t2.with-temp/with-temp [:model/Database {:keys [id details] :as database} {:engine  :secret-test-driver
-                                                                                        :name    "Test DB with secrets"
-                                                                                        :details {:host           "localhost"
-                                                                                                  :password-value "new-password"}}]
+            (mt/with-temp [:model/Database {:keys [id details] :as database} {:engine  :secret-test-driver
+                                                                              :name    "Test DB with secrets"
+                                                                              :details {:host           "localhost"
+                                                                                        :password-value "new-password"}}]
               (testing " and saved db-details looks correct"
                 (check-db-fn database {:kind    :password
                                        :source  nil
@@ -272,10 +271,10 @@
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
 
 (deftest user-may-not-update-sample-database-test
-  (t2.with-temp/with-temp [:model/Database {:keys [id] :as _sample-database} {:engine    :h2
-                                                                              :is_sample true
-                                                                              :name      "Sample Database"
-                                                                              :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
+  (mt/with-temp [:model/Database {:keys [id] :as _sample-database} {:engine    :h2
+                                                                    :is_sample true
+                                                                    :name      "Sample Database"
+                                                                    :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
     (testing " updating the engine of a sample database is not allowed"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -289,13 +288,13 @@
 
 (deftest preserve-driver-namespaces-test
   (testing "Make sure databases preserve namespaced driver names"
-    (t2.with-temp/with-temp [:model/Database {db-id :id} {:engine (u/qualified-name ::test)}]
+    (mt/with-temp [:model/Database {db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
              (t2/select-one-fn :engine :model/Database :id db-id))))))
 
 (deftest identity-hash-test
   (testing "Database hashes are composed of the name and engine"
-    (t2.with-temp/with-temp [:model/Database db {:engine :mysql :name "hashmysql"}]
+    (mt/with-temp [:model/Database db {:engine :mysql :name "hashmysql"}]
       (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
              (serdes/identity-hash db)))
       (is (= "b6f1a9e8"

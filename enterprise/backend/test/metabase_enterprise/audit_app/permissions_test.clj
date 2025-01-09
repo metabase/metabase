@@ -15,8 +15,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
@@ -69,8 +68,8 @@
             ;; Nothing should be synced directly from the audit DB, just loaded via serialization, so only the views
             ;; should have metadata present in the app DB in the first place. But in case this changes, we want to
             ;; explicitly block other tables from being queried.
-            (t2.with-temp/with-temp [:model/Table table {:db_id audit/audit-db-id}
-                                     :model/Field _     {:table_id (u/the-id table)}]
+            (mt/with-temp [:model/Table table {:db_id audit/audit-db-id}
+                           :model/Field _     {:table_id (u/the-id table)}]
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
                    #"Audit queries are only allowed on audit views"
@@ -132,8 +131,8 @@
 
 (deftest can-write-false-for-audit-card-content-test
   (install-audit-db-if-needed!)
-  (t2.with-temp/with-temp [:model/Card audit-child-card {:collection_id (:id (audit/default-audit-collection))}
-                           :model/Card root-child-card {:collection_id nil}]
+  (mt/with-temp [:model/Card audit-child-card {:collection_id (:id (audit/default-audit-collection))}
+                 :model/Card root-child-card {:collection_id nil}]
     (is (false? (mi/can-write? audit-child-card)))
     (binding [api/*current-user-permissions-set* (delay #{"/collection/root/"})]
       (is (true? (mi/can-write? root-child-card))))
@@ -153,8 +152,8 @@
 
 (deftest can-write-false-for-audit-dashboard-content-test
   (install-audit-db-if-needed!)
-  (t2.with-temp/with-temp [:model/Dashboard audit-child-dashboard {:collection_id (:id (audit/default-audit-collection))}
-                           :model/Dashboard root-child-dashboard {:collection_id nil}]
+  (mt/with-temp [:model/Dashboard audit-child-dashboard {:collection_id (:id (audit/default-audit-collection))}
+                 :model/Dashboard root-child-dashboard {:collection_id nil}]
     (is (false? (mi/can-write? audit-child-dashboard)))
     (binding [api/*current-user-permissions-set* (delay #{"/collection/root/"})]
       (is (true? (mi/can-write? root-child-dashboard))))

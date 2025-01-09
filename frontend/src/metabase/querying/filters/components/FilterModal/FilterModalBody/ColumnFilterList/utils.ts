@@ -14,8 +14,13 @@ function isCategoryAndNotNameOrAddress(column: Lib.ColumnMetadata) {
   );
 }
 
-function isNumberAndNotCoordinate(column: Lib.ColumnMetadata) {
-  return Lib.isNumber(column) && !Lib.isCoordinate(column);
+function isNumberAndNotKeyOrCoordinate(column: Lib.ColumnMetadata) {
+  return (
+    Lib.isNumeric(column) &&
+    !Lib.isPrimaryKey(column) &&
+    !Lib.isForeignKey(column) &&
+    !Lib.isCoordinate(column)
+  );
 }
 
 function isShortText(column: Lib.ColumnMetadata) {
@@ -37,7 +42,7 @@ const PRIORITIES = [
   Lib.isState,
   Lib.isZipCode,
   Lib.isCountry,
-  isNumberAndNotCoordinate,
+  isNumberAndNotKeyOrCoordinate,
   isShortText,
   Lib.isPrimaryKey,
   Lib.isLatitude,

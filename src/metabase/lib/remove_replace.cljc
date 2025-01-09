@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [clojure.walk :as walk]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.equality :as lib.equality]
@@ -342,7 +341,7 @@
     (let [t (lib.metadata.calculation/type-of query stage-number expression)]
       (lib.options/update-options expression assoc :effective-type t))))
 
-(def ^:private expression-validator (mc/validator :metabase.lib.schema.expression/expression))
+(def ^:private expression-validator (mr/validator :metabase.lib.schema.expression/expression))
 
 (defn- expression-replacement?
   "Returns if `an-expression` and `new-expression` are both expressions."

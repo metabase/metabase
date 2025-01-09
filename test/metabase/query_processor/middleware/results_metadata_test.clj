@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.analyze.query-results :as qr]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -17,8 +16,8 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (defn- card-metadata [card]
   (t2/select-one-fn :result_metadata :model/Card :id (u/the-id card)))
@@ -88,7 +87,7 @@
 
 (deftest save-result-metadata-test
   (testing "test that Card result metadata is saved after running a Card"
-    (t2.with-temp/with-temp [:model/Card card]
+    (mt/with-temp [:model/Card card]
       (let [result (qp/process-query
                     (qp/userland-query
                      (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
@@ -105,8 +104,8 @@
 
 (deftest save-result-metadata-test-2
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
-    (t2.with-temp/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
-                                               :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
+    (mt/with-temp [:model/Card card {:dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
+                                     :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]
       (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
              (card-metadata card)))
       (let [result (qp/process-query
@@ -193,7 +192,7 @@
 
 (deftest card-with-datetime-breakout-by-year-test
   (testing "make sure that a Card where a DateTime column is broken out by year works the way we'd expect"
-    (t2.with-temp/with-temp [:model/Card card]
+    (mt/with-temp [:model/Card card]
       (qp/process-query
        (qp/userland-query
         (merge (mt/mbql-query checkins
@@ -237,14 +236,14 @@
     (testing "MBQL queries should come back with valid results metadata"
       (let [metadata (results-metadata (mt/query venues))]
         (is (seq metadata))
-        (is (not (me/humanize (mc/validate qr/ResultsMetadata metadata))))))))
+        (is (not (me/humanize (mr/explain qr/ResultsMetadata metadata))))))))
 
 (deftest ^:parallel valid-results-metadata-test-2
   (mt/test-drivers (mt/normal-drivers)
     (testing "Native queries should come back with valid results metadata (#12265)"
       (let [metadata (-> (mt/mbql-query venues) qp.compile/compile mt/native-query results-metadata)]
         (is (seq metadata))
-        (is (not (me/humanize (mc/validate qr/ResultsMetadata metadata))))))))
+        (is (not (me/humanize (mr/explain qr/ResultsMetadata metadata))))))))
 
 (deftest ^:parallel native-query-datetime-metadata-test
   (testing "Make sure base types inferred by the `annotate` middleware come back with the results metadata"

@@ -22,8 +22,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
    (metabase.driver.common.parameters ReferencedCardQuery)))
@@ -531,8 +530,8 @@
 
 (deftest snippet-happy-path-test
   (testing "Snippet parsing should work correctly for a valid Snippet"
-    (t2.with-temp/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
-                                                                         :content "venues WHERE price = 4"}]
+    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
+                                                               :content "venues WHERE price = 4"}]
       (let [expected {"expensive-venues" (params/map->ReferencedQuerySnippet {:snippet-id snippet-id
                                                                               :content    "venues WHERE price = 4"})}]
         (is (= expected

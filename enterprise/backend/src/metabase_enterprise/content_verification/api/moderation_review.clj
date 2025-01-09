@@ -1,4 +1,5 @@
-(ns metabase-enterprise.content-verification.api.review
+(ns metabase-enterprise.content-verification.api.moderation-review
+  "`api/ee/moderation-review` routes."
   (:require
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
@@ -7,6 +8,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new `ModerationReview`."
   [:as {{:keys [text moderated_item_id moderated_item_type status]} :body}]

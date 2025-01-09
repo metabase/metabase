@@ -1,7 +1,7 @@
 (ns metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   (:require
    [metabase.db.query :as mdb.query]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]

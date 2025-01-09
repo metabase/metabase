@@ -1,7 +1,7 @@
 (ns metabase-enterprise.models
   (:require
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]))
 
 (defenterprise resolve-enterprise-model
