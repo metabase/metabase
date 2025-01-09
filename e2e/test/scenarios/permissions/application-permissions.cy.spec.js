@@ -60,7 +60,7 @@ H.describeEE("scenarios > admin > permissions > application", () => {
       it("revokes ability to create subscriptions and alerts and manage them", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-        H.notificationsMenuButton().should("not.exist");
+        H.dashboardSubscriptionsButton().should("not.exist");
 
         H.visitQuestion(ORDERS_QUESTION_ID);
         H.tableInteractive().should("be.visible");
@@ -81,13 +81,13 @@ H.describeEE("scenarios > admin > permissions > application", () => {
 
         cy.log("Create a dashboard subscription");
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.openNotificationsMenu(/subscriptions/i);
+        H.openDashboardSubscriptions();
         H.sidebar().findByText("Email this dashboard").should("exist");
 
         cy.log("Create a question alert");
         H.visitQuestion(ORDERS_QUESTION_ID);
-        H.openNotificationsMenu(/subscriptions/i);
-        H.modal().findByText("Let's set up your alert").should("be.visible");
+        H.openQuestionAlerts();
+        H.modal().findByText("The wide world of alerts").should("be.visible");
       });
     });
   });

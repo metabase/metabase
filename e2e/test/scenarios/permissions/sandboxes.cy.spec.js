@@ -1109,7 +1109,7 @@ H.describeEE("formatting > sandboxes", () => {
 
       cy.signInAsSandboxedUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openNotificationsMenu("Subscriptions");
+      H.openDashboardSubscriptions();
 
       // should forward to email since that is the only one setup
       H.sidebar().findByText("Email this dashboard").should("exist");
@@ -1226,7 +1226,7 @@ H.describeEE("formatting > sandboxes", () => {
           columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
         });
 
-        H.openNotificationsMenu("Subscriptions");
+        H.openDashboardSubscriptions();
 
         H.sidebar()
           .findByPlaceholderText("Enter user names or email addresses")

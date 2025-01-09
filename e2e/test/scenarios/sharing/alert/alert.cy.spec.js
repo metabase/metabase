@@ -15,7 +15,7 @@ describe("scenarios > alert", () => {
   describe("with nothing set", () => {
     it("should prompt you to add email/slack credentials", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openNotificationsMenu("Create subscriptions");
+      H.openQuestionAlerts(); // "Create an alert"
 
       H.modal()
         .first()
@@ -46,7 +46,7 @@ describe("scenarios > alert", () => {
       cy.signInAsNormalUser();
 
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openNotificationsMenu("Create subscriptions");
+      H.openQuestionAlerts(); // "Create an alert"
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
@@ -70,7 +70,7 @@ describe("scenarios > alert", () => {
 
     it("should be able to create and delete alerts with webhooks enabled", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openNotificationsMenu("Create subscriptions");
+      H.openQuestionAlerts(); // "Create an alert"
 
       //Disable Email
       H.toggleAlertChannel("Email");
@@ -79,7 +79,7 @@ describe("scenarios > alert", () => {
 
       cy.findByRole("button", { name: "Done" }).click();
 
-      H.openNotificationsMenu("Edit subscriptions");
+      H.openQuestionAlerts(); // "Edit alerts"
 
       H.modal().within(() => {
         cy.findByText("You set up an alert").should("be.visible");
@@ -131,10 +131,10 @@ describe("scenarios > alert", () => {
       { visitQuestion: true },
     );
 
-    H.openNotificationsMenu("Create subscriptions");
+    H.openQuestionAlerts(); // "Create an alert"
     H.modal().button("Done").click();
 
-    H.openNotificationsMenu("Edit subscriptions");
+    H.openQuestionAlerts(); // "Edit an alert"
     H.modal().findByText("You set up an alert").should("be.visible");
   });
 });
@@ -168,7 +168,7 @@ H.describeEE(
     it("should validate approved email domains for a question alert", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.openNotificationsMenu("Create subscriptions");
+      H.openQuestionAlerts(); // "Create an alert"
 
       H.modal()
         .findByRole("heading", { name: "Email" })
@@ -182,7 +182,7 @@ H.describeEE(
 
     it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openNotificationsMenu("Subscriptions");
+      H.openDashboardSubscriptions();
 
       cy.findByRole("heading", { name: "Email it" }).click();
 

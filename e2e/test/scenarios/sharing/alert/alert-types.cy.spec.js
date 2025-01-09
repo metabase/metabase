@@ -56,7 +56,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       it(`should be supported for ${questionType}`, () => {
         H.visitQuestion(questionId);
 
-        H.openNotificationsMenu("Create subscriptions");
+        H.openQuestionAlerts(); // "Create an alert"
         cy.wait("@channel");
 
         H.modal()
@@ -88,7 +88,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       H.visitQuestion(timeSeriesQuestionId);
       cy.findByTestId("chart-container").should("contain", "Goal");
 
-      H.openNotificationsMenu("Create alerts");
+      H.openQuestionAlerts(); // "Create an alert"
       cy.wait("@channel");
 
       cy.findByTestId("alert-create").within(() => {
@@ -108,7 +108,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
     it("should not be possible to create goal based alert for a multi-series question", () => {
       cy.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
 
-      H.openNotificationsMenu("Create subscriptions");
+      H.openQuestionAlerts(); // "Create an alert"
       cy.wait("@channel");
 
       // *** The warning below is not showing when we try to make an alert (Issue #???)

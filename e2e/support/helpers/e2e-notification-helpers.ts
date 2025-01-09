@@ -30,6 +30,15 @@ export const notificationsMenuButton = () =>
   cy.findByTestId("notifications-menu-button");
 export const notificationsMenu = () => cy.findByTestId("notifications-menu");
 
+export const dashboardSubscriptionsButton = () =>
+  cy.findByTestId("dashboard-subscription-menu-item");
+export const openDashboardSubscriptions = () =>
+  dashboardSubscriptionsButton().click();
+
+export const openQuestionAlerts = () => {
+  cy.findByTestId("notifications-menu-button").click();
+};
+
 export const openNotificationsMenu = (menuItemText?: string) => {
   notificationsMenuButton().click();
   if (menuItemText) {
