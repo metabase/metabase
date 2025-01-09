@@ -5,7 +5,6 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -364,6 +363,8 @@
                    form)))
              form))]
     (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
+      ;; "key" is an old unused value
+      true                                 (m/update-existing :table.columns (fn [cols] (mapv #(dissoc % :key) cols)))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
       true                                 normalize-mbql-clauses
       ;; exclude graph.metrics from normalization as it may start with
@@ -402,7 +403,7 @@
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
-  (let [validator (mc/validator u.cron/CronScheduleString)]
+  (let [validator (mr/validator u.cron/CronScheduleString)]
     (partial mu/validate-throw validator)))
 
 (def transform-cron-string

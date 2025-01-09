@@ -57,7 +57,11 @@ export const NodeRoot = styled(TreeNode.Root)<{
     ${ExpandToggleButton} {
       color: var(--mb-color-brand);
     }
+  }
 
+  &:hover,
+  &:focus,
+  &:focus-within {
     ${SidebarIcon} {
       ${props => props.hasDefaultIconStyle && activeColorCSS};
     }
@@ -68,7 +72,7 @@ NodeRoot.defaultProps = {
   hasDefaultIconStyle: true,
 };
 
-export const collectionDragAndDropHoverStyle = css`
+const collectionDragAndDropHoverStyle = css`
   color: var(--mb-color-text-white);
   background-color: var(--mb-color-brand);
 `;

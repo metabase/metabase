@@ -3,12 +3,14 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
-   [malli.core :as mc]
    [malli.json-schema :as mjs]
+   [medley.core :as m]
+   [metabase.api.macros :as api.macros]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
-  (:import [clojure.lang PersistentVector]))
+  (:import
+   (clojure.lang PersistentVector)))
 
 (set! *warn-on-reflection* true)
 
@@ -16,97 +18,114 @@
 
 ;;; Helpers
 
-(defn- fix-locations
-  "Fixes all {:$ref ....} locations - could be in properties, or in allOf/anyOf with arbitrary nesting."
-  [schema]
-  (walk/postwalk (fn [x]
-                   (cond-> x
-                     (:$ref x) (update :$ref str/replace "#/definitions/" "#/components/schemas/")))
-                 schema))
-
-(defn- json-schema-transform [malli-schema]
-  (let [jss         (mjs/transform malli-schema)
-        definitions (update-vals (:definitions jss) fix-locations)]
+(defn- mjs-collect-definitions
+  "We transform json-schema in a few different places, but we need to collect all defitions in a single one."
+  [malli-schema]
+  (let [jss         (mjs/transform malli-schema {::mjs/definitions-path "#/components/schemas/"})]
     (when *definitions*
-      (swap! *definitions* merge definitions))
-    (-> jss
-        (dissoc :definitions)
-        (update :properties fix-locations))))
+      (swap! *definitions* merge (:definitions jss)))
+    (dissoc jss :definitions)))
 
-(defn- fix-type
-  "Change type of params to make it more understandable to Rapidoc."
-  [{:keys [schema] :as param}]
-  ;; TODO: figure out how to teach rapidoc `[:or [:enum "all"] nat-int?]`
-  (cond
-    (and (:oneOf schema)
-         (= (second (:oneOf schema)) {:type "null"}))
-    (let [real-schema (merge (first (:oneOf schema))
-                             (select-keys schema [:description :default]))]
-      (recur
-       (assoc param :required false :schema real-schema)))
+(defn- merge-required [schema]
+  (let [optional? (set (keep (fn [[k v]] (when (:optional v) k))
+                             (:properties schema)))]
+    (-> schema
+        (m/update-existing :required #(vec (remove optional? %)))
+        (m/update-existing :properties #(update-vals % (fn [v] (dissoc v :optional)))))))
 
-    (= (:enum schema) (mc/children ms/BooleanValue))
-    (assoc param :schema (-> (dissoc schema :enum) (assoc :type "boolean")))
+(def ^:private file-schema (mjs/transform ms/File))
 
-    (= (:enum schema) (mc/children ms/MaybeBooleanValue))
-    (assoc param
-           :schema (-> (dissoc schema :enum) (assoc :type "boolean"))
-           :required false)
+(mu/defn- fix-json-schema :- [:map
+                              [:description {:optional true} [:maybe string?]]]
+  "Clean-up JSON schema to make it more understandable for OpenAPI tools.
 
-    :else
-    param))
+  Returns a new schema WITH an indicator if it's *NOT* required.
 
-(let [file-schema (json-schema-transform ms/File)]
-  ;; TODO: unify this with `fix-type` somehow, but `:required` is making this hard
-  (defn- fix-schema
-    "Change type of request body to make it more understandable to Rapidoc."
-    [{:keys [required] :as schema}]
-    (let [not-required (atom #{})]
-      (-> schema
-          (update :properties (fn [props]
-                                (into {}
-                                      (for [[k v] props]
-                                        [k
-                                         (cond
-                                           (and (:oneOf v)
-                                                (= (second (:oneOf v)) {:type "null"}))
-                                           (do
-                                             (swap! not-required conj k)
-                                             (merge (first (:oneOf v))
-                                                    (select-keys v [:description :default])))
+  NOTE: maybe instead of fixing it up later we should re-work Malli's json-schema transformation into a way we want it
+  to be?"
+  [schema]
+  (let [schema (m/update-existing schema :description str)]
+    (cond
+      ;; we're using `[:maybe ...]` a lot, and it generates `{:oneOf [... {:type "null"}]}`
+      ;; it needs to be cleaned up to be presented in OpenAPI viewers
+      (and (:oneOf schema)
+           (= (second (:oneOf schema)) {:type "null"}))
+      (recur (merge (first (:oneOf schema))
+                    (when-let [description (:description schema)]
+                      {:description (str description)})
+                    (select-keys schema [:default])
+                    {:optional true}))
 
-                                           (= (select-keys v (keys file-schema)) file-schema)
-                                           ;; I got this from StackOverflow and docs are not in agreement, but RapiDoc
-                                           ;; shows file input, so... :)
-                                           (merge {:type "string" :format "binary"}
-                                                  (select-keys v [:description :default]))
+      ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema gets converted into an empty object
+      (:allOf schema)
+      (cond
+        (= {} (first (:allOf schema)))  (recur (merge (second (:allOf schema))
+                                                      (select-keys schema [:description :default])))
+        (= {} (second (:allOf schema))) (recur (merge (first (:allOf schema))
+                                                      (select-keys schema [:description :default])))
+        :else                           (update schema :allOf (partial mapv fix-json-schema)))
 
-                                           (= (:enum v) ["true" "false" true false])
-                                           (-> (dissoc v :enum) (assoc :type "boolean"))
+      (= (select-keys schema (keys file-schema)) file-schema)
+      ;; I got this from StackOverflow and docs are not in agreement, but RapiDoc
+      ;; shows file input, so... :)
+      (merge {:type "string" :format "binary"}
+             (select-keys schema [:description :default]))
 
-                                           :else
-                                           v)]))))
-          (assoc :required (vec (remove @not-required required)))))))
+      (:properties schema)
+      (merge-required
+       (update schema :properties #(update-vals % fix-json-schema)))
+
+      (= (:type schema) "array")
+      (update schema :items fix-json-schema)
+
+      :else
+      schema)))
 
 (defn- path->openapi [path]
   (str/replace path #":([^/]+)" "{$1}"))
 
 ;;; OpenAPI generation
 
-(defn- collect-routes
+(defn- first-if-vec [x]
+  (if (vector? x) (first x) x))
+
+(defn- collect-defendpoint-1-routes [walk {:keys [prefix tag]} handler-var]
+  (let [tag  (or (not-empty tag) (some-> (not-empty prefix) (subs 1)))
+        path (str prefix (-> handler-var meta :path first-if-vec))]
+    (cons {:path  (path->openapi path)
+           :tag   tag
+           :route handler-var}
+          (when-let [routes (-> handler-var meta :routes not-empty)]
+            (mapcat (partial walk {:prefix path :tag tag})
+                    routes)))))
+
+(defn- collect-defendpoint-2-routes [{:keys [prefix tag]} ns-symb]
+  (for [route (vals (-> ns-symb the-ns meta :api/endpoints))]
+    {:path                     (path->openapi (str prefix (get-in route [:form :route :path])))
+     :tag                      (or (not-empty tag) (some-> (not-empty prefix) (subs 1)))
+     :defendpoint-2-definition (:form route)}))
+
+(mu/defn- collect-routes :- [:sequential
+                             [:or
+                              ;; defendpoint 1 handler var
+                              [:map
+                               [:path string?]
+                               [:route (ms/InstanceOfClass clojure.lang.Var)]]
+                              ;; defendpoint 2 parsed args
+                              [:map
+                               [:path string?]
+                               [:defendpoint-2-definition ::api.macros/parsed-args]]]]
   "Collect routes with schemas with their full paths."
   [root]
-  (let [first-if-vec #(if (vector? %) (first %) %)
-        walk         (fn walk [{:keys [prefix tag]} route]
-                       (let [tag  (or (not-empty tag) (some-> (not-empty prefix) (subs 1)))
-                             path (str prefix (-> route meta :path first-if-vec))]
-                         (cons {:path  (path->openapi path)
-                                :tag   tag
-                                :route route}
-                               (when (-> route meta :routes)
-                                 (mapcat (partial walk {:prefix path :tag tag}) (-> route meta :routes))))))]
+  (letfn [(walk [context handler]
+            (concat
+             (when-let [ns-symb (:api/defendpoint-2-namespace (meta handler))]
+               (collect-defendpoint-2-routes context ns-symb))
+             (collect-defendpoint-1-routes walk context handler)))]
     (->> (walk {:prefix ""} root)
-         (filter #(-> % :route meta :schema)))))
+         (filter #(or
+                   (-> % :route meta :schema) ; defendpoint 1 handler
+                   (:defendpoint-2-definition %))))))
 
 (defn- compojure-query-params
   "This function is not trying to parse whole compojure syntax, just get the names of query parameters out"
@@ -142,44 +161,87 @@
                          (apply merge))]
         (update-keys renames keyword)))))
 
+(defn- schema->params*
+  [schema in-fn renames]
+  (let [{:keys [properties required]} (mjs-collect-definitions schema)
+        required                      (set required)]
+    (for [[k param-schema] properties
+          :let             [k (get renames k k)]
+          :when            (in-fn k)
+          :let             [schema    (fix-json-schema param-schema)
+                            ;; if schema does not indicate it's optional, it's not :)
+                            optional? (:optional schema)]]
+      (cond-> {:in          (in-fn k)
+               :name        k
+               :required    (and (contains? required k) (not optional?))
+               :schema      (dissoc schema :optional :description)}
+        (:description schema) (assoc :description (str (:description schema)))))))
+
 (defn- schema->params
   "https://spec.openapis.org/oas/latest.html#parameter-object"
   [full-path args schema]
-  (let [{:keys [properties required]} (json-schema-transform schema)
-        required                      (set required)
-        in-path?                      (set (map (comp keyword second) (re-seq #"\{([^}]+)\}" full-path)))
-        in-query?                     (set (compojure-query-params args))
-        renames                       (compojure-renames args)]
-    (for [[k param-schema] properties
-          :let             [k (get renames k k)]
-          :when            (or (in-path? k) (in-query? k))]
-      (fix-type
-       (cond-> {:in          (if (in-path? k) :path :query)
-                :name        k
-                :required    (contains? required k)
-                :schema      (dissoc param-schema :description)}
-         (:description param-schema) (assoc :description (:description param-schema)))))))
+  (let [in-path?  (set (map (comp keyword second) (re-seq #"\{([^}]+)\}" full-path)))
+        in-query? (set (compojure-query-params args))
+        in-fn     (fn [k]
+                    (cond
+                      (in-path? k)  :path
+                      (in-query? k) :query))
+        renames   (some-> args compojure-renames)]
+    (schema->params* schema in-fn renames)))
 
-(defn- defendpoint->path-item
-  "Generate OpenAPI desc for a single handler
+(mu/defn- defendpoint->path-item
+  "Generate OpenAPI desc for a single legacy `defendpoint` handler
 
   https://spec.openapis.org/oas/latest.html#path-item-object"
-  [tag full-path handler-var]
+  [tag
+   full-path   :- string?
+   handler-var :- (ms/InstanceOfClass clojure.lang.Var)]
   (let [{:keys [method] :as data} (meta handler-var)
         params                    (schema->params full-path (:args data) (:schema data))
         non-body-param?           (set (map :name params))
         body-params               (when (not= method :get)
                                     (remove #(non-body-param? (first %)) (rest (:schema data))))
         body-schema               (when (seq body-params)
-                                    (fix-schema
-                                     (json-schema-transform (into [:map] body-params))))
+                                    (fix-json-schema
+                                     (mjs-collect-definitions (into [:map] body-params))))
         ctype                     (if (:multipart (meta handler-var))
                                     "multipart/form-data"
                                     "application/json")]
     ;; summary is the string in the sidebar of Scalar
     {method (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
-                     :description (or (:orig-doc data)
-                                      (:doc data))
+                     :description (some-> (or (:orig-doc data)
+                                              (:doc data))
+                                          str)
+                     :parameters params}
+              tag         (assoc :tags [tag])
+              body-schema (assoc :requestBody {:content {ctype {:schema body-schema}}}))}))
+
+(mu/defn- defendpoint-2->path-item
+  "Generate OpenAPI desc for `defendpoint` 2.0 ([[metabase.api.macros/defendpoint]]) handler.
+
+  https://spec.openapis.org/oas/latest.html#path-item-object"
+  [tag
+   full-path :- string?
+   form      :- ::api.macros/parsed-args]
+  (let [method                    (:method form)
+        route-params              (when-let [schema (get-in form [:params :route :schema])]
+                                    (schema->params* schema (constantly :path) nil))
+        query-params              (when-let [schema (get-in form [:params :query :schema])]
+                                    (schema->params* schema (constantly :query) nil))
+        params                    (concat
+                                   (for [param route-params]
+                                     (assoc param :in :path))
+                                   query-params)
+        body-schema               (some-> (get-in form [:params :body :schema])
+                                          mjs-collect-definitions
+                                          fix-json-schema)
+        ;; multipart is not yet implemented for defendpoint 2 but this is a placeholder until it is I guess
+        ctype                     (if (get-in form [:metadata :multipart])
+                                    "multipart/form-data"
+                                    "application/json")]
+    ;; summary is the string in the sidebar of Scalar
+    {method (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
+                     :description (some-> (:docstr form) str)
                      :parameters params}
               tag         (assoc :tags [tag])
               body-schema (assoc :requestBody {:content {ctype {:schema body-schema}}}))}))
@@ -194,19 +256,29 @@
     (let [paths (reduce (fn [acc [k v]]
                           (merge-with into acc {k v}))
                         {}
-                        (for [{:keys [path tag route]} (collect-routes root)]
+                        (for [{:keys [path tag route defendpoint-2-definition]} (collect-routes root)]
                           (try
-                            [path (defendpoint->path-item tag path route)]
+                            [path (if defendpoint-2-definition
+                                    (defendpoint-2->path-item tag path defendpoint-2-definition)
+                                    (defendpoint->path-item tag path route))]
                             (catch Exception e
                               (throw (ex-info (str "Exception at " path) {} e))))))]
       {:paths      paths
-       :components {:schemas @*definitions*}})))
+       :components {:schemas (update-vals @*definitions* fix-json-schema)}})))
 
 (comment
   ;; See what is the result of generation, could be helpful debugging what's wrong with display in rapidoc
   ;; `resolve` is to appease clj-kondo which will complain for #'
   (defendpoint->path-item nil "/path" (resolve 'metabase-enterprise.serialization.api/POST_export))
+
+  (collect-routes (requiring-resolve 'metabase.api.timeline/routes))
+
+  (openapi-object (requiring-resolve 'metabase.api.timeline/routes))
+
+  (get-in (openapi-object (requiring-resolve 'metabase.api.routes/routes)) [:paths "/timeline/"])
+
   (openapi-object (resolve 'metabase.api.pulse/routes))
+
   (->> (openapi-object (resolve 'metabase.api.routes/routes))
        :paths
        (map #(second (str/split (key %) #"/")))

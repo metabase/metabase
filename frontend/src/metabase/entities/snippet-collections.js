@@ -6,6 +6,7 @@ import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import NormalCollections, {
   getExpandedCollectionsById,
+  useListQuery as useListCollectionsQuery,
 } from "metabase/entities/collections";
 import { createEntity, undo } from "metabase/lib/entities";
 import { SnippetCollectionSchema } from "metabase/schema";
@@ -24,6 +25,7 @@ const SnippetCollections = createEntity({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
+    useListQuery,
   },
 
   api: _.mapObject(
@@ -72,7 +74,7 @@ const SnippetCollections = createEntity({
   },
 });
 
-const useGetQuery = query => {
+const useGetQuery = (query, options) => {
   return useGetCollectionQuery(
     query === skipToken
       ? skipToken
@@ -80,7 +82,12 @@ const useGetQuery = query => {
           namespace: "snippets",
           ...query,
         },
+    options,
   );
 };
+
+function useListQuery(query, options) {
+  return useListCollectionsQuery({ ...query, namespace: "snippets" }, options);
+}
 
 export default SnippetCollections;

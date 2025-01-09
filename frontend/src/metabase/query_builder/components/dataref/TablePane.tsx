@@ -4,7 +4,7 @@ import _ from "underscore";
 import {
   Description,
   EmptyDescription,
-} from "metabase/components/MetadataInfo/MetadataInfo.styled";
+} from "metabase/components/MetadataInfo/MetadataInfo";
 import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";

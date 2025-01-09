@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -12,7 +11,8 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -109,21 +109,12 @@
          :drill-thru/pivot
          (log/warn "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)")
 
-         ;; Expected to throw - not intended that drill-thru should be called directly for these drills.
-         :drill-thru/compare-aggregations
-         (testing (str "\ndrill =\n" (u/pprint-to-str drill)
-                       "throws when [drill-thru] called")
-           (is (thrown-with-msg?
-                #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
-                #"Do not call drill-thru for "
-                (apply lib/drill-thru query -1 nil drill args))))
-
          (testing (str "\nquery =\n" (u/pprint-to-str query)
                        "\ndrill =\n" (u/pprint-to-str drill)
                        "\nargs =\n" (u/pprint-to-str args))
            (try
              (let [query' (apply lib/drill-thru query -1 nil drill args)]
-               (is (not (me/humanize (mc/validate ::lib.schema/query query'))))
+               (is (not (me/humanize (mr/explain ::lib.schema/query query'))))
                (when (< (inc depth) test-drill-applications-max-depth)
                  (testing (str "\n\nDEPTH = " (inc depth) "\n\nquery =\n" (u/pprint-to-str query'))
                    (test-drill-applications query' context (inc depth)))))
@@ -221,7 +212,7 @@
                   :type         :drill-thru/column-extract
                   :query        orders-query
                   :stage-number -1
-                  :extractions  (partial mc/validate [:sequential [:map [:tag keyword?]]])}]
+                  :extractions  (partial mr/validate [:sequential [:map [:tag keyword?]]])}]
                 (lib/available-drill-thrus orders-query -1 context)))
         (test-drill-applications orders-query context)))))
 
@@ -520,9 +511,7 @@
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
                    {:type   :drill-thru/sort
-                    :column {:name "count"}}
-                   {:type   :drill-thru/compare-aggregations
-                    :aggregation [:count {}]}]
+                    :column {:name "count"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))
     (testing "Drills for max(discount) aggregation"
@@ -538,9 +527,7 @@
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
                    {:type   :drill-thru/sort
-                    :column {:display-name "Max of Discount"}}
-                   {:type   :drill-thru/compare-aggregations
-                    :aggregation [:max {} [:field {} (meta/id :orders :discount)]]}]
+                    :column {:display-name "Max of Discount"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))))
 
@@ -723,7 +710,7 @@
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}
                   {:type        :drill-thru/column-extract
-                   :extractions (partial mc/validate [:sequential [:map
+                   :extractions (partial mr/validate [:sequential [:map
                                                                    [:tag          keyword?]
                                                                    [:display-name string?]]])}]}))
 

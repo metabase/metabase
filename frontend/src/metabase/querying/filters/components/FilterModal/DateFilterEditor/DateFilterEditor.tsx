@@ -5,19 +5,19 @@ import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
+import type {
+  DatePickerOperator,
+  DatePickerUnit,
+  DatePickerValue,
+  ShortcutOption,
+} from "metabase/querying/filters/types";
 import { Button, Flex, Grid, Icon, Popover } from "metabase/ui";
 
-import {
-  DatePicker,
-  type DatePickerOperator,
-  type DatePickerUnit,
-  type DatePickerValue,
-  type ShortcutOption,
-} from "../../DatePicker";
+import { DatePicker } from "../../DatePicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";
 
-import { ClearIcon } from "./DateFilterEditor.styled";
+import S from "./DateFilterEditor.module.css";
 import { SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
 
@@ -102,8 +102,8 @@ export function DateFilterEditor({
 interface DateFilterPopoverProps {
   title: string | undefined;
   value: DatePickerValue | undefined;
-  availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
+  availableOperators: DatePickerOperator[];
+  availableUnits: DatePickerUnit[];
   isExpanded: boolean;
   onChange: (value: DatePickerValue | undefined) => void;
 }
@@ -139,7 +139,7 @@ function DateFilterPopover({
             variant="outline"
             rightIcon={
               <IconButtonWrapper aria-label={t`Clear`} onClick={handleClear}>
-                <ClearIcon name="close" size={12} />
+                <Icon className={S.ClearIcon} name="close" size={12} />
               </IconButtonWrapper>
             }
             onClick={handleOpen}
@@ -160,7 +160,7 @@ function DateFilterPopover({
           availableOperators={availableOperators}
           availableShortcuts={isExpanded ? undefined : SECONDARY_SHORTCUTS}
           availableUnits={availableUnits}
-          canUseRelativeOffsets
+          submitButtonLabel={value ? t`Update filter` : t`Add filter`}
           onChange={handleChange}
         />
       </Popover.Dropdown>

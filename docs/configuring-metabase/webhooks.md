@@ -4,9 +4,9 @@ title: Webhooks
 
 # Webhooks
 
-Admins can set up webhooks so that people can send [alerts](../questions/sharing/alerts.md) to a particular URL. Which means you can set up an alert to send the results of a question to an endpoint of your choice: to your app, a third-party service, or wherever.
+Admins can set up webhooks so that people can send [alerts](../questions/alerts.md) to a particular URL. Which means you can set up an alert to send the results of a question to an endpoint of your choice: to your app, a third-party service, or wherever.
 
-For now, webhooks are only available for [alerts](../questions/sharing/alerts.md); you can't select a webhook as the recipient of a [dashboard subscription](../dashboards/subscriptions.md).
+For now, webhooks are only available for [alerts](../questions/alerts.md); you can't select a webhook as the recipient of a [dashboard subscription](../dashboards/subscriptions.md).
 
 ## Creating a webhook
 
@@ -117,4 +117,4 @@ Here's an example payload for an alert (we truncated the PNG encoding because it
 
 ## Further reading
 
-- [Alerts](../questions/sharing/alerts.md)
+- [Alerts](../questions/alerts.md)

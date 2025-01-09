@@ -6,5 +6,12 @@ export const getTextInputOverrides =
       defaultProps: {
         size: "md",
       },
+      styles: () => ({
+        input: {
+          color: "var(--mb-color-text-primary)",
+          background: "var(--mb-color-background)",
+          borderColor: "var(--mb-color-border)",
+        },
+      }),
     },
   });

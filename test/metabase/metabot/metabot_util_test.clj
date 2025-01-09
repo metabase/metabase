@@ -8,13 +8,11 @@
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [Card Database Table]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel normalize-name-test
   (testing "Testing basic examples of how normalize-name should work"
@@ -57,11 +55,11 @@
 (deftest denormalize-field-cardinality-test
   (testing "Ensure enum-cardinality-threshold is respected in model denormalization"
     (mt/dataset test-data
-      (mt/with-temp [Card model {:dataset_query
-                                 {:database (mt/id)
-                                  :type     :query
-                                  :query    {:source-table (mt/id :people)}}
-                                 :type :model}]
+      (mt/with-temp [:model/Card model {:dataset_query
+                                        {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (mt/id :people)}}
+                                        :type :model}]
         (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
           (let [{:keys [result_metadata]} (metabot-util/denormalize-model model)]
             (is (zero? (count (filter :possible_values result_metadata))))))
@@ -75,11 +73,11 @@
 (deftest ^:parallel denormalize-model-test
   (testing "Basic denormalized model test"
     (mt/dataset test-data
-      (mt/with-temp [Card model {:dataset_query
-                                 {:database (mt/id)
-                                  :type     :query
-                                  :query    {:source-table (mt/id :people)}}
-                                 :type :model}]
+      (mt/with-temp [:model/Card model {:dataset_query
+                                        {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (mt/id :people)}}
+                                        :type :model}]
         (let [{:keys [create_table_ddl inner_query sql_name result_metadata]} (metabot-util/denormalize-model model)]
           (is (string? create_table_ddl))
           (is (string? sql_name))
@@ -98,15 +96,15 @@
 (deftest ^:parallel denormalize-database-test
   (testing "Basic denormalized database test"
     (mt/dataset test-data
-      (mt/with-temp [Card _ {:dataset_query
-                             {:database (mt/id)
-                              :type     :query
-                              :query    {:source-table (mt/id :orders)}}
-                             :type :model}]
-        (let [database (t2/select-one Database :id (mt/id))
+      (mt/with-temp [:model/Card _ {:dataset_query
+                                    {:database (mt/id)
+                                     :type     :query
+                                     :query    {:source-table (mt/id :orders)}}
+                                    :type :model}]
+        (let [database (t2/select-one :model/Database :id (mt/id))
               {:keys [models sql_name model_json_summary]} (metabot-util/denormalize-database database)]
           (is (=
-               (count (t2/select Card :database_id (mt/id) :type :model))
+               (count (t2/select :model/Card :database_id (mt/id) :type :model))
                (count models)))
           (is (string? model_json_summary))
           (is (string? sql_name)))))))
@@ -162,11 +160,11 @@
   (testing "Ensure the generated sql (including creating a CTE and querying from it) is valid (i.e. produces a result)."
     (mt/test-drivers #{:h2 :postgres :redshift}
       (mt/dataset test-data
-        (mt/with-temp [Card {model-name :name :as model} {:dataset_query
-                                                          {:database (mt/id)
-                                                           :type     :query
-                                                           :query    {:source-table (mt/id :people)}}
-                                                          :type :model}]
+        (mt/with-temp [:model/Card {model-name :name :as model} {:dataset_query
+                                                                 {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (mt/id :people)}}
+                                                                 :type :model}]
           (let [{:keys [inner_query] :as denormalized-model} (metabot-util/denormalize-model model)
                 sql     (metabot-util/bot-sql->final-sql
                          denormalized-model
@@ -184,13 +182,13 @@
   (testing "Ensure that a dataset-based query contains expected AS aliases"
     (mt/dataset test-data
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
-        (t2.with-temp/with-temp
-          [Card orders-model {:name    "Orders Model"
-                              :dataset_query
-                              {:database (mt/id)
-                               :type     :query
-                               :query    {:source-table (mt/id :orders)}}
-                              :type :model}]
+        (mt/with-temp
+          [:model/Card orders-model {:name    "Orders Model"
+                                     :dataset_query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query    {:source-table (mt/id :orders)}}
+                                     :type :model}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= 9 (count (re-seq #"\s+AS\s+" column_aliases))))
             (is (= 10 (count (re-seq #"\s+AS\s+" inner_query))))
@@ -213,11 +211,11 @@
     (mt/dataset test-data
       (let [q               (mt/native-query {:query "SELECT * FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
-        (t2.with-temp/with-temp
-          [Card orders-model {:name            "Orders Model"
-                              :dataset_query   q
-                              :result_metadata result-metadata
-                              :type            :model}]
+        (mt/with-temp
+          [:model/Card orders-model {:name            "Orders Model"
+                                     :dataset_query   q
+                                     :result_metadata result-metadata
+                                     :type            :model}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= (mdb.query/format-sql
                     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
@@ -242,11 +240,11 @@
     (mt/dataset test-data
       (let [q               (mt/native-query {:query "SELECT TOTAL, QUANTITY, TAX, CREATED_AT FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
-        (t2.with-temp/with-temp
-          [Card orders-model {:name            "Orders Model"
-                              :dataset_query   q
-                              :result_metadata result-metadata
-                              :type            :model}]
+        (mt/with-temp
+          [:model/Card orders-model {:name            "Orders Model"
+                                     :dataset_query   q
+                                     :result_metadata result-metadata
+                                     :type            :model}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= (mdb.query/format-sql
                     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
@@ -266,11 +264,11 @@
     (mt/dataset test-data
       (let [q               (mt/native-query {:query "SELECT TOTAL AS X, QUANTITY AS X FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
-        (t2.with-temp/with-temp
-          [Card orders-model {:name            "Orders Model"
-                              :dataset_query   q
-                              :result_metadata result-metadata
-                              :type            :model}]
+        (mt/with-temp
+          [:model/Card orders-model {:name            "Orders Model"
+                                     :dataset_query   q
+                                     :result_metadata result-metadata
+                                     :type            :model}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= (mdb.query/format-sql
                     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
@@ -285,17 +283,17 @@
 (deftest ^:parallel inner-query-with-joins-test
   (testing "Models with joins work"
     (mt/dataset test-data
-      (t2.with-temp/with-temp
-        [Card joined-model {:type        :model
-                            :database_id (mt/id)
-                            :query_type  :query
-                            :dataset_query
-                            (mt/mbql-query orders
-                              {:fields [$total &products.products.category]
-                               :joins  [{:source-table $$products
-                                         :condition    [:= $product_id &products.products.id]
-                                         :strategy     :left-join
-                                         :alias        "products"}]})}]
+      (mt/with-temp
+        [:model/Card joined-model {:type        :model
+                                   :database_id (mt/id)
+                                   :query_type  :query
+                                   :dataset_query
+                                   (mt/mbql-query orders
+                                     {:fields [$total &products.products.category]
+                                      :joins  [{:source-table $$products
+                                                :condition    [:= $product_id &products.products.id]
+                                                :strategy     :left-join
+                                                :alias        "products"}]})}]
         (let [{:keys [column_aliases create_table_ddl sql_name]} (metabot-util/denormalize-model joined-model)]
           (is (= "\"TOTAL\" AS TOTAL, \"products__CATEGORY\" AS PRODUCTS_CATEGORY"
                  column_aliases))
@@ -310,17 +308,17 @@
 (deftest ^:parallel inner-query-with-joins-test-2
   (testing "A model with joins on the same table will produce distinct aliases"
     (mt/dataset test-data
-      (t2.with-temp/with-temp
-        [Card joined-model {:type        :model
-                            :database_id (mt/id)
-                            :query_type  :query
-                            :dataset_query
-                            (mt/mbql-query products
-                              {:fields [$id $category &self.products.category]
-                               :joins  [{:source-table $$products
-                                         :condition    [:= $id &self.products.id]
-                                         :strategy     :left-join
-                                         :alias        "self"}]})}]
+      (mt/with-temp
+        [:model/Card joined-model {:type        :model
+                                   :database_id (mt/id)
+                                   :query_type  :query
+                                   :dataset_query
+                                   (mt/mbql-query products
+                                     {:fields [$id $category &self.products.category]
+                                      :joins  [{:source-table $$products
+                                                :condition    [:= $id &self.products.id]
+                                                :strategy     :left-join
+                                                :alias        "self"}]})}]
         (let [{:keys [column_aliases create_table_ddl sql_name]} (metabot-util/denormalize-model joined-model)]
           (is (= "\"ID\" AS ID, \"CATEGORY\" AS CATEGORY, \"self__CATEGORY\" AS SELF_CATEGORY"
                  column_aliases))
@@ -337,14 +335,14 @@
 (deftest ^:parallel inner-query-with-aggregations-test
   (testing "A model with aggregations will produce column names only (no AS aliases)"
     (mt/dataset test-data
-      (t2.with-temp/with-temp
-        [Card aggregated-model {:type        :model
-                                :database_id (mt/id)
-                                :query_type  :query
-                                :dataset_query
-                                (mt/mbql-query orders
-                                  {:aggregation [[:sum $total]]
-                                   :breakout    [$user_id]})}]
+      (mt/with-temp
+        [:model/Card aggregated-model {:type        :model
+                                       :database_id (mt/id)
+                                       :query_type  :query
+                                       :dataset_query
+                                       (mt/mbql-query orders
+                                         {:aggregation [[:sum $total]]
+                                          :breakout    [$user_id]})}]
         (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model aggregated-model)]
           (is (= (mdb.query/format-sql
                   (format "SELECT USER_ID, SUM_OF_TOTAL FROM {{#%s}} AS INNER_QUERY" (:id aggregated-model)))
@@ -358,13 +356,13 @@
   (testing "When column names collide, each conflict is disambiguated with an _X postfix"
     (mt/dataset test-data
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
-        (t2.with-temp/with-temp
-          [Card orders-model {:name    "Orders Model"
-                              :dataset_query
-                              {:database (mt/id)
-                               :type     :query
-                               :query    {:source-table (mt/id :orders)}}
-                              :type :model}]
+        (mt/with-temp
+          [:model/Card orders-model {:name    "Orders Model"
+                                     :dataset_query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query    {:source-table (mt/id :orders)}}
+                                     :type :model}]
           (let [orders-model (update orders-model :result_metadata
                                      (fn [v]
                                        (map #(assoc % :display_name "ABC") v)))
@@ -377,21 +375,21 @@
   (testing "Models with name collisions across joins are also correctly disambiguated"
     (mt/dataset test-data
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 10]
-        (t2.with-temp/with-temp
-          [Card model {:type        :model
-                       :database_id (mt/id)
-                       :query_type  :query
-                       :dataset_query
-                       (mt/mbql-query orders
-                         {:fields [$total &products.products.category &self.products.category]
-                          :joins  [{:source-table $$products
-                                    :condition    [:= $product_id &products.products.id]
-                                    :strategy     :left-join
-                                    :alias        "products"}
-                                   {:source-table $$products
-                                    :condition    [:= $id &self.products.id]
-                                    :strategy     :left-join
-                                    :alias        "self"}]})}]
+        (mt/with-temp
+          [:model/Card model {:type        :model
+                              :database_id (mt/id)
+                              :query_type  :query
+                              :dataset_query
+                              (mt/mbql-query orders
+                                {:fields [$total &products.products.category &self.products.category]
+                                 :joins  [{:source-table $$products
+                                           :condition    [:= $product_id &products.products.id]
+                                           :strategy     :left-join
+                                           :alias        "products"}
+                                          {:source-table $$products
+                                           :condition    [:= $id &self.products.id]
+                                           :strategy     :left-join
+                                           :alias        "self"}]})}]
           (let [model (update model :result_metadata
                               (fn [v]
                                 (map #(assoc % :display_name "FOO") v)))
@@ -509,7 +507,7 @@
       (let [max-tokens 5000]
         (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 100]
           (binding [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
-            (let [{:keys [tokens]} (metabot-util/create-table-embedding (t2/select-one Table :id (mt/id :people)))]
+            (let [{:keys [tokens]} (metabot-util/create-table-embedding (t2/select-one :model/Table :id (mt/id :people)))]
               (is (<= 800 tokens max-tokens))
               tokens)))))))
 
@@ -519,7 +517,7 @@
       (let [max-tokens 500]
         (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 100]
           (binding [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
-            (let [{:keys [tokens]} (metabot-util/create-table-embedding (t2/select-one Table :id (mt/id :people)))]
+            (let [{:keys [tokens]} (metabot-util/create-table-embedding (t2/select-one :model/Table :id (mt/id :people)))]
               (is (<= 400 tokens max-tokens)))))))))
 
 (deftest create-table-embedding-test-3
@@ -528,5 +526,5 @@
       (let [max-tokens 1]
         (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 100]
           (binding [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
-            (let [response (metabot-util/create-table-embedding (t2/select-one Table :id (mt/id :people)))]
+            (let [response (metabot-util/create-table-embedding (t2/select-one :model/Table :id (mt/id :people)))]
               (is (nil? response)))))))))

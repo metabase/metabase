@@ -271,10 +271,10 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
           this.props.triggerElement || (
             <SelectButton
               ref={this.selectButtonRef}
-              className={CS.flexFull}
               hasValue={selectedNames.length > 0}
               disabled={disabled}
               {...buttonProps}
+              className={CS.flexFull}
             >
               {this.props.buttonText
                 ? this.props.buttonText

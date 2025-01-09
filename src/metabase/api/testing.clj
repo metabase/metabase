@@ -43,6 +43,7 @@
     (jdbc/query {:datasource (mdb/app-db)} ["SCRIPT TO ?" path]))
   :ok)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/snapshot/:name"
   "Snapshot the database for testing purposes."
   [name]
@@ -114,6 +115,7 @@
           (mdb/migrate! (mdb/app-db) :up)))))
   :ok)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/restore/:name"
   "Restore a database snapshot for testing purposes."
   [name]
@@ -121,6 +123,7 @@
   (restore-snapshot! name)
   nil)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/echo"
   "Simple echo hander. Fails when you POST {\"fail\": true}."
   [fail :as {:keys [body]}]
@@ -131,6 +134,7 @@
     {:status 200
      :body body}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/set-time"
   "Make java-time see world at exact time."
   [:as {{:keys [time add-ms]} :body}]
@@ -146,6 +150,7 @@
     {:result (if clock :set :reset)
      :time   (t/instant)}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/echo"
   "Simple echo hander. Fails when you GET {\"fail\": true}."
   [fail body]
@@ -157,6 +162,7 @@
     {:status 200
      :body (json/decode+kw body)}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/mark-stale"
   "Mark the card or dashboard as stale"
   [:as {{:keys [id model date-str]} :body}]
@@ -175,6 +181,7 @@
       "card"      (t2/update! :model/Card :id id {:last_used_at date})
       "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/stats"
   "Triggers a send of instance usage stats"
   []

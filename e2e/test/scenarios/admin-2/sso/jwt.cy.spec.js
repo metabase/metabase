@@ -19,7 +19,22 @@ H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
   it("should allow to save and enable jwt", () => {
     cy.visit("/admin/settings/authentication/jwt");
 
-    enterJwtSettings();
+    H.typeAndBlurUsingLabel(
+      /JWT Identity Provider URI/,
+      "https://example.test",
+    );
+    cy.button("Generate key").click();
+    cy.button("Save and enable").click();
+    cy.wait("@updateSettings");
+    cy.findAllByRole("link", { name: "Authentication" }).first().click();
+
+    getJwtCard().findByText("Active").should("exist");
+  });
+
+  it("should allow to save jwt settings without a JWT URI", () => {
+    cy.visit("/admin/settings/authentication/jwt");
+
+    cy.button("Generate key").click();
     cy.button("Save and enable").click();
     cy.wait("@updateSettings");
     cy.findAllByRole("link", { name: "Authentication" }).first().click();
@@ -106,9 +121,4 @@ H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
 
 const getJwtCard = () => {
   return cy.findByText("JWT").parent().parent();
-};
-
-const enterJwtSettings = () => {
-  H.typeAndBlurUsingLabel(/JWT Identity Provider URI/, "https://example.test");
-  cy.button("Generate key").click();
 };

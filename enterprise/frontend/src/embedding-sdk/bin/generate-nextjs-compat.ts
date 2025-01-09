@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import fs from "fs";
 
 import path from "path";
@@ -51,11 +50,10 @@ const COMPONENTS_TO_EXPORT: ComponentDefinition[] = [
 
 // END OF CONFIGURATION
 
-// eslint-disable-next-line no-literal-metabase-strings -- it's code
 const MetabaseProviderCode = `
 const MetabaseProvider = ({
-  config,
   children,
+  ...providerProps,
 }) => {
   const Provider = dynamic(
     () =>
@@ -70,7 +68,7 @@ const MetabaseProvider = ({
     }
   );
 
-  return React.createElement(Provider, { config }, children);
+  return React.createElement(Provider, providerProps, children);
 };
 `;
 
@@ -148,24 +146,23 @@ const generateAllComponents = (type: "cjs" | "js") => {
 // nextjs-no-ssr.{cjs,js} => file marked as "use client" that re-exports the components wrapped in dynamic import with no ssr
 
 // we need to re-export these helpers so they can be used without importing the entire bundle, that will make next crash because window is undefined
-const defineEmbeddingSdkConfig = "config => config";
-const defineEmbeddingSdkTheme = "theme => theme";
+const defineMetabaseAuthConfig = "authConfig => authConfig";
+const defineMetabaseTheme = "theme => theme";
 
 const nextjs_cjs = `
-module.exports.defineEmbeddingSdkConfig = ${defineEmbeddingSdkConfig};
-module.exports.defineEmbeddingSdkTheme = ${defineEmbeddingSdkTheme};
+module.exports.defineMetabaseAuthConfig = ${defineMetabaseAuthConfig};
+module.exports.defineMetabaseTheme = ${defineMetabaseTheme};
 
 module.exports = { ...module.exports, ...require("./nextjs-no-ssr.cjs") };
 `;
 
 const nextjs_js = `
-export const defineEmbeddingSdkConfig = ${defineEmbeddingSdkConfig};
-export const defineEmbeddingSdkTheme = ${defineEmbeddingSdkTheme};
+export const defineMetabaseAuthConfig = ${defineMetabaseAuthConfig};
+export const defineMetabaseTheme = ${defineMetabaseTheme};
 
 export * from "./nextjs-no-ssr.js";
 `;
 
-// eslint-disable-next-line no-literal-metabase-strings -- it's code
 const nextjs_no_ssr_cjs = `"use client";
 
 const React = require("react");
@@ -179,7 +176,6 @@ module.exports.MetabaseProvider = MetabaseProvider;
 ${generateAllComponents("cjs")}
 `;
 
-// eslint-disable-next-line no-literal-metabase-strings -- it's code
 const nextjs_no_ssr_js = `"use client";
 
 import dynamic from "next/dynamic";

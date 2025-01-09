@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
@@ -15,8 +16,6 @@ import {
   TriggerButton,
   TriggerIcon,
 } from "./BaseBucketPickerPopover.styled";
-
-export const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
 
 type NoBucket = null;
 
@@ -37,10 +36,15 @@ export interface BaseBucketPickerPopoverProps {
   hasArrowIcon?: boolean;
   hasChevronDown?: boolean;
   color?: ColorName;
+  initiallyVisibleItemsCount: number;
   checkBucketIsSelected: (item: BucketListItem) => boolean;
   renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => ReactNode;
   onSelect: (column: Lib.Bucket | NoBucket) => void;
   className?: string;
+  classNames?: {
+    root?: string;
+    chevronDown?: string;
+  };
 }
 
 function _BaseBucketPickerPopover({
@@ -52,15 +56,22 @@ function _BaseBucketPickerPopover({
   triggerLabel,
   hasArrowIcon = true,
   color = "brand",
+  initiallyVisibleItemsCount,
   checkBucketIsSelected,
   renderTriggerContent,
   onSelect,
   hasChevronDown,
   className,
+  classNames = {},
 }: BaseBucketPickerPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
   const [isExpanded, setIsExpanded] = useState(
-    isInitiallyExpanded(items, selectedBucket, checkBucketIsSelected),
+    isInitiallyExpanded(
+      items,
+      selectedBucket,
+      initiallyVisibleItemsCount,
+      checkBucketIsSelected,
+    ),
   );
 
   const defaultBucket = useMemo(
@@ -77,28 +88,34 @@ function _BaseBucketPickerPopover({
     const nextState = isInitiallyExpanded(
       items,
       selectedBucket,
+      initiallyVisibleItemsCount,
       checkBucketIsSelected,
     );
     setIsExpanded(nextState);
     setIsOpened(false);
-  }, [items, selectedBucket, checkBucketIsSelected]);
+  }, [
+    items,
+    selectedBucket,
+    initiallyVisibleItemsCount,
+    checkBucketIsSelected,
+  ]);
 
   const triggerContentBucket = isEditing ? selectedBucket : defaultBucket;
   const triggerContentBucketDisplayInfo = triggerContentBucket
     ? Lib.displayInfo(query, stageIndex, triggerContentBucket)
     : undefined;
 
-  const canExpand = items.length > INITIALLY_VISIBLE_ITEMS_COUNT;
+  const canExpand = items.length > initiallyVisibleItemsCount;
   const hasMoreButton = canExpand && !isExpanded;
   const visibleItems = hasMoreButton
-    ? items.slice(0, INITIALLY_VISIBLE_ITEMS_COUNT)
+    ? items.slice(0, initiallyVisibleItemsCount)
     : items;
 
   return (
     <Popover opened={isOpened} position="right" onClose={handlePopoverClose}>
       <Popover.Target>
         <TriggerButton
-          className={className}
+          className={cx(classNames.root, className)}
           aria-label={triggerLabel}
           data-testid="dimension-list-item-binning"
           onClick={event => {
@@ -119,7 +136,12 @@ function _BaseBucketPickerPopover({
           {hasArrowIcon && !hasChevronDown && (
             <TriggerIcon name="chevronright" />
           )}
-          {hasChevronDown && <ChevronDown name="chevrondown" />}
+          {hasChevronDown && (
+            <ChevronDown
+              className={classNames.chevronDown}
+              name="chevrondown"
+            />
+          )}
         </TriggerButton>
       </Popover.Target>
       <Popover.Dropdown>
@@ -160,16 +182,17 @@ function _BaseBucketPickerPopover({
 function isInitiallyExpanded(
   items: BucketListItem[],
   selectedBucket: Lib.Bucket | NoBucket,
+  initiallyVisibleItemsCount: number,
   checkBucketIsSelected: (item: BucketListItem) => boolean,
 ) {
-  const canExpand = items.length > INITIALLY_VISIBLE_ITEMS_COUNT;
+  const canExpand = items.length > initiallyVisibleItemsCount;
   if (!canExpand || !selectedBucket) {
     return false;
   }
 
   return (
     items.findIndex(item => checkBucketIsSelected(item)) >=
-    INITIALLY_VISIBLE_ITEMS_COUNT
+    initiallyVisibleItemsCount
   );
 }
 
