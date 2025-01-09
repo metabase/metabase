@@ -520,7 +520,8 @@ export const tableColumnSettings = {
     section: t`Columns`,
     // title: t`Columns`,
     widget: ChartSettingTableColumns,
-    getHidden: (series, vizSettings) => vizSettings["table.pivot"],
+    getHidden: (series, vizSettings) =>
+      vizSettings["table.pivot"] || vizSettings["table.transpose"],
     getValue: ([{ data }], vizSettings) => {
       const { cols } = data;
       const settings = vizSettings["table.columns"] ?? [];

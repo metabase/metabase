@@ -87,20 +87,39 @@ class Table extends Component<TableProps, TableState> {
       title: t`Pivot table`,
       widget: "toggle",
       inline: true,
-      getHidden: ([{ data }]: Series) => data && data.cols.length !== 3,
-      getDefault: ([{ card, data }]: Series) => {
+      getHidden: ([{ data }]: Series, settings: VisualizationSettings) => {
+        return (data && data.cols.length !== 3) || settings["table.transpose"];
+      },
+      getDefault: (
+        [{ card, data }]: Series,
+        settings: VisualizationSettings,
+      ) => {
         if (
           !data ||
           data.cols.length !== 3 ||
           isNative(card) ||
           data.cols.filter(isMetric).length !== 1 ||
-          data.cols.filter(isDimension).length !== 2
+          data.cols.filter(isDimension).length !== 2 ||
+          settings["table.transpose"]
         ) {
           return false;
         }
 
         return getDefaultPivotColumn(data.cols, data.rows) != null;
       },
+      getValue: (series: Series, settings: VisualizationSettings) => {
+        if (settings["table.transpose"]) {
+          return false;
+        }
+        return Table.isPivoted(series, settings);
+      },
+      readDependencies: ["table.transpose"],
+    },
+    "table.transpose": {
+      section: t`Columns`,
+      title: t`Transpose`,
+      widget: "toggle",
+      inline: true,
     },
     "table.pivot_column": {
       section: t`Columns`,
@@ -340,6 +359,8 @@ class Table extends Component<TableProps, TableState> {
         data: DataGrid.pivot(data, normalIndex, pivotIndex, cellIndex),
         question,
       });
+    } else if (settings["table.transpose"]) {
+      this.setState({ data: DataGrid.transpose(data), question });
     } else {
       const { cols, rows, results_timezone } = data;
       const columnSettings = settings["table.columns"] ?? [];

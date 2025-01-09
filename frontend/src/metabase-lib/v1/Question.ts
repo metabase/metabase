@@ -811,6 +811,10 @@ class Question {
   }
 
   query(): Query {
+    if (!this._card.dataset_query) {
+      return null;
+    }
+
     if (this._legacyQuery() instanceof InternalQuery) {
       throw new Error("Internal query is not supported by MLv2");
     }

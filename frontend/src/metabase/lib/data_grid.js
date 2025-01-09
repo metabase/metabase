@@ -5,6 +5,7 @@ import _ from "underscore";
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
+import { isCategory, isDimension } from "metabase-lib/v1/types/utils/isa";
 
 export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
@@ -678,4 +679,55 @@ class SortState {
       }
     }
   }
+}
+
+export function transpose(data) {
+  const dimensionColIndex = data.cols.findIndex(
+    col => isDimension(col) && isCategory(col),
+  );
+  const dimension = data.cols[dimensionColIndex];
+  if (!dimension) {
+    throw new Error(t`No category dimension found`);
+  }
+
+  const cols = [
+    {
+      name: "_GROUP",
+      display_name: "",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      semantic_type: null,
+      source: "artificial",
+    },
+  ];
+
+  const dimensionColIndexByName = {};
+  data.rows.forEach(row => {
+    const name = row[dimensionColIndex];
+    cols.push({
+      ...dimension,
+      name,
+      display_name: name,
+      _dimension: {
+        column: dimension,
+        value: name,
+      },
+    });
+    dimensionColIndexByName[name] = cols.length - 1;
+  });
+
+  const rows = [];
+
+  data.cols.forEach((col, colIndex) => {
+    if (colIndex === dimensionColIndex) {
+      return;
+    }
+    rows.push([col.display_name, ...data.rows.map(row => row[colIndex])]);
+  });
+
+  return {
+    cols,
+    rows,
+    results_timezone: data.results_timezone,
+  };
 }
