@@ -2,7 +2,7 @@ import { c, msgid } from "ttag";
 
 import { SidesheetCard } from "metabase/common/components/Sidesheet";
 import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import { Box, Group } from "metabase/ui";
+import { Box, Group, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -12,34 +12,31 @@ export const SidesheetCardWithFields = ({
   question: Question;
 }) => {
   const query = question.query();
-  // FIXME: I'm not sure that visibleColumns is what we want here
-  const columns = Lib.visibleColumns(query, -1);
-
+  const columns = Lib.returnedColumns(query, -1);
   const columnCount = columns.length;
 
   const title = c("{0} is the number of fields").ngettext(
     msgid`${columnCount} field`,
-    msgid`${columnCount} fields`,
+    `${columnCount} fields`,
     columnCount,
   );
 
   return (
-    <SidesheetCard
-      title={<Box pb="sm">{title}</Box>}
-      stackProps={{ spacing: "md" }}
-    >
-      {columns.map(columnMetadata => {
-        const columnDisplayInfo = Lib.displayInfo(query, -1, columnMetadata);
+    <SidesheetCard title={<Box pb="sm">{title}</Box>}>
+      <Stack spacing="md">
+        {columns.map(columnMetadata => {
+          const columnDisplayInfo = Lib.displayInfo(query, -1, columnMetadata);
 
-        return (
-          <Column
-            query={query}
-            columnMetadata={columnMetadata}
-            columnDisplayInfo={columnDisplayInfo}
-            key={columnDisplayInfo.name}
-          />
-        );
-      })}
+          return (
+            <Column
+              query={query}
+              columnMetadata={columnMetadata}
+              columnDisplayInfo={columnDisplayInfo}
+              key={columnDisplayInfo.name}
+            />
+          );
+        })}
+      </Stack>
     </SidesheetCard>
   );
 };
