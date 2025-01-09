@@ -490,6 +490,7 @@
 
 (def ^:private CollectionVisibilityConfig
   [:map
+   [:cte-name {:optional true} [:maybe :keyword]]
    [:include-trash-collection? {:optional true} :boolean]
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
    [:archive-operation-id {:optional true} [:maybe :string]]
@@ -502,7 +503,8 @@
    [:is-superuser?   :boolean]])
 
 (def ^:private default-visibility-config
-  {:include-archived-items :exclude
+  {:cte-name nil
+   :include-archived-items :exclude
    :include-trash-collection? false
    :effective-child-of nil
    :archive-operation-id nil
@@ -533,7 +535,7 @@
    ;; cache the results for 10 seconds. This is a bit arbitrary but should be long enough to cover ~all requests.
    :ttl/threshold (* 10 1000)))
 
-(defn- should-display-root-collection?
+(defn should-display-root-collection?
   "Should this user be shown the root collection, given the `visibility-config` passed?"
   ([visibility-config]
    (should-display-root-collection?
@@ -565,7 +567,7 @@
 
   ([visibility-config :- CollectionVisibilityConfig
     {:keys [current-user-id is-superuser?]} :- UserScope]
-   {:select [:id]
+   {:select :id
     ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
     ;; that's all of them. For regular users, it's:
     ;; a) the collections they have permission in the DB for,
@@ -636,20 +638,23 @@
                                            [:not= :c2.id (u/the-id parent-coll)])]}]]]))]}))
 
 (mu/defn visible-collection-filter-clause
-  "Given a `CollectionVisibilityConfig`, return a honeysql filter clause ready for use in queries."
+  "Given a `CollectionVisibilityConfig`, return a HoneySQL filter clause ready for use in queries. Takes an optional
+  `cte-name` in the visibility config which is used as the source for collection IDs if provided; otherwise, we filter
+  based on the results of `visible-collection-query` above."
   ([]
    (visible-collection-filter-clause :collection_id))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]]
    (visible-collection-filter-clause collection-id-field {}))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig]
-   (visible-collection-filter-clause collection-id-field visibility-config
+   (visible-collection-filter-clause collection-id-field
+                                     visibility-config
                                      {:current-user-id api/*current-user-id*
                                       :is-superuser?   api/*is-superuser?*}))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig
     user-scope :- UserScope]
-   (let [visibility-config (merge default-visibility-config visibility-config)]
+   (let [{:keys [cte-name] :as visibility-config} (merge default-visibility-config visibility-config)]
      ;; This giant query looks scary, but it's actually only moderately terrifying! Let's walk through it step by
      ;; step. What we're doing here is adding a filter clause to a surrounding query, to make sure that
      ;; `collection-id-field` matches the criteria passed by the user. The criteria we use are:
@@ -669,7 +674,11 @@
       (when (should-display-root-collection? user-scope visibility-config)
         [:= collection-id-field nil])
       ;; the non-root collections are here. We're saying "let this row through if..."
-      [:in collection-id-field (visible-collection-query visibility-config user-scope)]])))
+      [:in
+       collection-id-field
+       (if cte-name
+         {:select :id :from cte-name}
+         (visible-collection-query visibility-config user-scope))]])))
 
 (def ^{:arglists '([visibility-config])} visible-collection-ids*
   "Impl for `visible-collection-ids`, caches for the lifetime of the request, maximum 10 seconds."
