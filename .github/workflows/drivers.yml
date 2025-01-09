@@ -1052,6 +1052,10 @@ jobs:
           -  "be-tests-mysql-latest-ee (2)"
           -  "be-tests-mysql-latest-ee (3)"
     name: ${{ matrix.job }}
+    runs-on: ubuntu-22.04
+    steps:
+      - run: >-
+          echo 'Skipping job due to conditional filtering'
 
   #
   # Moving forward we should be able to make just the single 'be-drivers' job be required, as this job will wait for
