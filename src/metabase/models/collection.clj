@@ -589,7 +589,7 @@
         [:= collection-id-field nil])
       ;; the non-root collections are here. We're saying "let this row through if..."
       [:in collection-id-field
-       {:select :id
+       {:select [:id]
         ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
         ;; that's all of them. For regular users, it's:
         ;; a) the collections they have permission in the DB for,
@@ -597,7 +597,7 @@
         ;; c) their personal collection and its descendants
         :from [(if is-superuser?
                  [:collection :c]
-                 [{:union-all (keep identity [{:select [:c.*]
+                 [{:union-all (keep identity [{:select [:c.id :c.location]
                                                :from   [[:collection :c]]
                                                :join   [[:permissions :p]
                                                         [:= :c.id :p.collection_id]
@@ -610,12 +610,12 @@
                                                          [:= :p.perm_value "read-and-write"]
                                                          (when (= :read (:permission-level visibility-config))
                                                            [:= :p.perm_value "read"])]]}
-                                              {:select [[:c.*]]
+                                              {:select [:c.id :c.location]
                                                :from   [[:collection :c]]
                                                :where  [:= :type "trash"]}
                                               (when-let [personal-collection-and-descendant-ids
                                                          (seq (user->personal-collection-and-descendant-ids current-user-id))]
-                                                {:select [:c.*]
+                                                {:select [:c.id :c.location]
                                                  :from   [[:collection :c]]
                                                  :where  [:in :id personal-collection-and-descendant-ids]})])}
                   :c])]
