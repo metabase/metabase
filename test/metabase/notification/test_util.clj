@@ -47,7 +47,7 @@
      ~@body))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defn do-with-captured-channel-send
+(defn do-with-captured-channel-send!
   [thunk]
   (with-send-notification-sync
     (let [channel-messages (atom {})]
@@ -56,7 +56,7 @@
         (thunk)
         @channel-messages))))
 
-(defmacro with-captured-channel-send
+(defmacro with-captured-channel-send!
   "Macro that captures all messages sent to channels in the body of the macro.
   Returns a map of channel-type -> messages sent to that channel.
 
@@ -67,7 +67,7 @@
   @captured-messages
   ;; => {:channel/email [{:say :hi} {:say :xin-chao}]}"
   [& body]
-  `(do-with-captured-channel-send
+  `(do-with-captured-channel-send!
     (fn []
       ~@body)))
 
@@ -191,7 +191,7 @@
   "Test sending a notification with the given channel-type->assert-fn map."
   [notification channel-type->assert-fn]
   (with-channel-fixtures (keys channel-type->assert-fn)
-    (let [channel-type->captured-message (with-captured-channel-send
+    (let [channel-type->captured-message (with-captured-channel-send!
                                            (notification/send-notification! notification))]
 
       (doseq [[channel-type assert-fn] channel-type->assert-fn]

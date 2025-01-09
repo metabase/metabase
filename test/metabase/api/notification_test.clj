@@ -269,7 +269,7 @@
                    :channel/slack [{:attachments (mt/malli=? some?)
                                     :channel-id  "#general"}]
                    :channel/http [{:body (mt/malli=? some?)}]}
-                  (notification.tu/with-captured-channel-send
+                  (notification.tu/with-captured-channel-send!
                     (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification)))))))
 
         (testing "select handlers"
@@ -277,7 +277,7 @@
                                  (filter (comp #{:channel/slack :channel/http} :channel_type))
                                  (map :id))]
             (is (=? #{:channel/slack :channel/http}
-                    (set (keys (notification.tu/with-captured-channel-send
+                    (set (keys (notification.tu/with-captured-channel-send!
                                  (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification))
                                                        {:handler_ids handler-ids}))))))))))))
 
@@ -311,7 +311,7 @@
                    :channel/slack [{:attachments (mt/malli=? some?)
                                     :channel-id  "#general"}]
                    :channel/http  [{:body (mt/malli=? some?)}]}
-                  (notification.tu/with-captured-channel-send
+                  (notification.tu/with-captured-channel-send!
                     (mt/user-http-request :crowberto :post 204 "notification/send" (strip-keys notification [:id :created_at :updated_at]))))))))))
 
 ;; Permission tests
