@@ -89,7 +89,7 @@ function setup({
       showClickBehaviorSidebar={jest.fn()}
       onChangeLocation={jest.fn()}
       downloadsEnabled
-      shouldAutoScrollTo={false}
+      autoScroll={false}
     />,
     {
       storeInitialState: {

@@ -35,7 +35,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // should take you to the edit dashboard screen + url has hash param to auto-scroll
       cy.url().should("include", "/dashboard/");
-      cy.location("hash").should("match", /scrollTo=\d+/);
+      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
       H.dashboardCards().findByText("Orders with a discount");
       cy.findByTestId("edit-bar").findByText("You're editing this dashboard.");
 
@@ -198,7 +198,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // its in the new dash + url has hash param to auto-scroll
       cy.url().should("include", "/dashboard/");
-      cy.location("hash").should("match", /scrollTo=\d+/);
+      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
       H.undoToast().findByText("Orders in a dashboard");
       H.dashboardCards().findByText("Total Orders").should("be.visible");
 

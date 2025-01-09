@@ -555,7 +555,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
         downloadsEnabled={downloadsEnabled}
-        shouldAutoScrollTo={shouldAutoScrollTo}
+        autoScroll={shouldAutoScrollTo}
       />
     );
   }
