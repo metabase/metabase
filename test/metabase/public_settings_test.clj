@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.models.setting :as setting]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.i18n :as i18n :refer [tru]]))

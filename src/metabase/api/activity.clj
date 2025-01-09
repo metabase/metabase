@@ -108,12 +108,14 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint ^:deprecated GET "/recent_views"
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   []
   {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/recents"
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
   Allows for filtering by context: views or selections"
@@ -122,6 +124,7 @@
   (when-not (seq context) (throw (ex-info "context is required." {})))
   (recent-views/get-recents *current-user-id* context))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/recents"
   "Adds a model to the list of recently selected items."
   [:as {{:keys [model model_id context]} :body}]
@@ -135,6 +138,7 @@
     (api/read-check (t2/select-one model-type :id model-id))
     (recent-views/update-users-recent-views! *current-user-id* model-type model-id context)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
    in the last 24 hours."
@@ -231,6 +235,7 @@
                    (assoc :timestamp (:max_ts % ""))
                    recent-views/fill-recent-view-info)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/popular_items"
   "Get the list of 5 popular things on the instance. Query takes 8 and limits to 5 so that if it finds anything
   archived, deleted, etc it can usually still get 5. "

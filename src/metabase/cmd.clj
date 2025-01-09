@@ -145,13 +145,6 @@
   (println "Language:"        (System/getProperty "user.language"))
   (println "File encoding:"   (System/getProperty "file.encoding")))
 
-(defn ^:command api-documentation
-  "Generate a markdown file containing documentation for all API endpoints. This is written to a file called
-  `docs/api-documentation.md`."
-  []
-  (classloader/require 'metabase.cmd.endpoint-dox)
-  ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
-
 (defn ^:command environment-variables-documentation
   "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase.
   The command only includes environment variables registered as defsettings.

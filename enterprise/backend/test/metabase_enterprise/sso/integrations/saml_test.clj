@@ -7,8 +7,8 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.ldap]
    [metabase.http-client :as client]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -16,8 +16,7 @@
    [ring.util.codec :as codec]
    [saml20-clj.core :as saml]
    [saml20-clj.encode-decode :as encode-decode]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.net URL)
    (java.nio.charset StandardCharsets)
@@ -38,7 +37,7 @@
 (use-fixtures :each disable-api-url-prefix)
 
 (defn- do-with-other-sso-types-disabled! [thunk]
-  (let [current-features (premium-features/*token-features*)]
+  (let [current-features (token-check/*token-features*)]
     ;; The :sso-jwt token is needed to set the jwt-enabled setting
     (mt/test-helpers-set-global-values!
       (mt/with-premium-features #{:sso-jwt}
@@ -56,7 +55,7 @@
 (def ^:private default-idp-cert           (slurp "test_resources/sso/auth0-public-idp.cert"))
 
 (defn call-with-default-saml-config! [f]
-  (let [current-features (premium-features/*token-features*)]
+  (let [current-features (token-check/*token-features*)]
     (mt/with-premium-features #{:sso-saml}
       (mt/with-temporary-setting-values [saml-enabled                       true
                                          saml-identity-provider-uri         default-idp-uri
@@ -568,7 +567,7 @@
       (with-saml-default-setup!
         (do-with-some-validators-disabled!
          (fn []
-           (t2.with-temp/with-temp [:model/PermissionsGroup group-1 {:name (str ::group-1)}]
+           (mt/with-temp [:model/PermissionsGroup group-1 {:name (str ::group-1)}]
              (mt/with-temporary-setting-values [saml-group-sync      true
                                                 saml-group-mappings  {"group_1" [(u/the-id group-1)]}
                                                 saml-attribute-group "GroupMembership"]

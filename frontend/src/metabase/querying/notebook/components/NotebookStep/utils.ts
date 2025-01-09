@@ -26,7 +26,7 @@ type StepUIItem = {
   title: string;
   icon?: IconName;
   priority?: number;
-  transparent?: boolean;
+  secondary?: boolean;
   compact?: boolean;
   color: () => string;
   Step: ComponentType<NotebookStepProps>;
@@ -44,6 +44,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     title: t`Join data`,
     icon: "join_left_outer",
     priority: 1,
+    compact: true,
     color: () => color("brand"),
     Step: JoinStep,
     StepHeader: NotebookStepHeader,
@@ -51,7 +52,8 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
   expression: {
     title: t`Custom column`,
     icon: "add_data",
-    transparent: true,
+    compact: true,
+    secondary: true,
     color: () => color("bg-dark"),
     Step: ExpressionStep,
     StepHeader: NotebookStepHeader,
@@ -92,7 +94,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     title: t`Sort`,
     icon: "sort",
     compact: true,
-    transparent: true,
+    secondary: true,
     color: () => color("bg-dark"),
     Step: SortStep,
     StepHeader: NotebookStepHeader,
@@ -101,7 +103,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     title: t`Row limit`,
     icon: "list",
     compact: true,
-    transparent: true,
+    secondary: true,
     color: () => color("bg-dark"),
     Step: LimitStep,
     StepHeader: NotebookStepHeader,

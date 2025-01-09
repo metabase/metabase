@@ -423,7 +423,7 @@
     "test-cypress": "yarn build && ./bin/build-for-test && yarn test-cypress-run",
     "test-cypress-open": "./bin/build-for-test && CYPRESS_FE_HEALTHCHECK=false yarn test-cypress-run --e2e --open",
     "test-cypress-open-no-backend": "E2E_HOST='http://localhost:3000' yarn test-cypress-run --e2e --open",
-    "test-cypress-open-qa": "yarn test-qa-dbs:up && QA_DB_ENABLED=true TZ='US/Pacific' yarn test-cypress-open",
+    "test-cypress-open-qa": "rm -f e2e/support/cypress_sample_instance_data.json && yarn test-qa-dbs:up && QA_DB_ENABLED=true TZ='US/Pacific' yarn test-cypress-open",
     "test-cypress-open-component-sdk": "yarn build-embedding-sdk && ./bin/build-for-test && CYPRESS_FE_HEALTHCHECK=false yarn test-cypress-run-component-sdk --open",
     "test-cypress-run": "node ./e2e/runner/run_cypress_tests.js",
     "test-cypress-run-component-sdk": "CYPRESS_IS_EMBEDDING_SDK=true NODE_OPTIONS=--max-old-space-size=8196 yarn test-cypress-run --component --config-file='e2e/support/cypress-embedding-sdk-component-test.config.js'",
