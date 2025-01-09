@@ -107,7 +107,7 @@
 
 (def accidentally-a-function :wut-up)
 
-(def also-accidentally-a-function #{:wut-up})
+(def also-accidentally-a-function [:wut-up])
 
 (deftest ^:parallel with-dynamic-redefs-non-function
   (testing "It is an error to redefine a non-function"
@@ -126,7 +126,7 @@
          AssertionError
          #"Cannot proxy collections"
          (mt/with-dynamic-redefs [also-accidentally-a-function #{:butter-cup}]
-           (is (= #{:butter-cup} also-accidentally-a-function)))))))
+           (is (= [:butter-cup] also-accidentally-a-function)))))))
 
 (defn mock-me-inner []
   :mock/original)
