@@ -1,99 +1,48 @@
 import { t } from "ttag";
 
-import TabContent from "metabase/core/components/TabContent";
-import TabLink from "metabase/core/components/TabLink";
-import * as Urls from "metabase/lib/urls";
+import { Stack, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
 import type { CollectionId } from "metabase-types/api";
 
 import ModelActionDetails from "./ModelActionDetails";
 import ModelDetailHeader from "./ModelDetailHeader";
-import {
-  ModelMain,
-  RootLayout,
-  TabPanel,
-  TabPanelContent,
-  TabRow,
-} from "./ModelDetailPage.styled";
-import ModelInfoSidePanel from "./ModelInfoSidePanel";
-import { ModelUsageDetails } from "./ModelUsageDetails";
+import { ModelMain, RootLayout } from "./ModelDetailPage.styled";
 
 interface Props {
   model: Question;
-  mainTable?: Table | null;
-  tab: string;
   hasDataPermissions: boolean;
-  hasActionsTab: boolean;
-  hasNestedQueriesEnabled: boolean;
-  supportsNestedQueries: boolean;
   onChangeName: (name?: string) => void;
-  onChangeDescription: (description?: string | null) => void;
   onChangeCollection: ({ id }: { id: CollectionId }) => void;
+  shouldShowActionsUI: boolean;
 }
 
 function ModelDetailPage({
   model,
-  tab,
-  mainTable,
   hasDataPermissions,
-  hasActionsTab,
-  hasNestedQueriesEnabled,
-  supportsNestedQueries,
+  shouldShowActionsUI,
   onChangeName,
-  onChangeDescription,
   onChangeCollection,
 }: Props) {
-  const modelCard = model.card();
-
   return (
     <RootLayout>
       <ModelMain>
-        <ModelDetailHeader
-          model={model}
-          hasEditDefinitionLink={hasDataPermissions}
-          onChangeName={onChangeName}
-          onChangeCollection={onChangeCollection}
-        />
-        <TabContent value={tab}>
-          <TabRow>
-            <TabLink
-              value="usage"
-              to={Urls.modelDetail(modelCard, "usage")}
-            >{t`Used by`}</TabLink>
-            {hasActionsTab && (
-              <TabLink
-                value="actions"
-                to={Urls.modelDetail(modelCard, "actions")}
-              >{t`Actions`}</TabLink>
-            )}
-          </TabRow>
-          <TabPanel value="usage">
-            <TabPanelContent>
-              <ModelUsageDetails
-                model={model}
-                hasNewQuestionLink={
-                  hasDataPermissions &&
-                  supportsNestedQueries &&
-                  hasNestedQueriesEnabled
-                }
-              />
-            </TabPanelContent>
-          </TabPanel>
-          {hasActionsTab && (
-            <TabPanel value="actions">
-              <TabPanelContent>
-                <ModelActionDetails model={model} />
-              </TabPanelContent>
-            </TabPanel>
+        <Stack spacing="xl">
+          <ModelDetailHeader
+            model={model}
+            hasEditDefinitionLink={hasDataPermissions}
+            onChangeName={onChangeName}
+            onChangeCollection={onChangeCollection}
+          />
+          {shouldShowActionsUI ? (
+            <Stack spacing="sm">
+              <Title order={3}>Actions</Title>
+              <ModelActionDetails model={model} />
+            </Stack>
+          ) : (
+            <>{t`Actions are not enabled for this model.`}</>
           )}
-        </TabContent>
+        </Stack>
       </ModelMain>
-      <ModelInfoSidePanel
-        model={model}
-        mainTable={mainTable}
-        onChangeDescription={onChangeDescription}
-      />
     </RootLayout>
   );
 }
