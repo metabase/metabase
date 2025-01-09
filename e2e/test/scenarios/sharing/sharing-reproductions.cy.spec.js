@@ -947,7 +947,7 @@ describe("issue 17547", () => {
   it("editing an alert should not delete it (metabase#17547)", () => {
     H.openQuestionAlerts(); // "Edit alerts"
 
-    H.modal().within(() => {
+    H.popover().within(() => {
       cy.findByText("Daily, 12:00 PM");
       cy.findByText("Edit").click();
     });
@@ -959,7 +959,7 @@ describe("issue 17547", () => {
     cy.wait("@alertQuery");
 
     H.openQuestionAlerts(); // "Edit subscriptions"
-    H.modal().within(() => {
+    H.popover().within(() => {
       cy.findByText("Daily, 12:00 AM");
     });
   });
@@ -976,7 +976,7 @@ describe("issue 16108", () => {
     cy.icon("download").realHover();
     H.tooltip().findByText("Download full results");
     H.notificationsMenuButton().realHover();
-    H.tooltip().findByText("Notifications");
+    H.tooltip().findByText("Create an alert").should("be.visible");
   });
 });
 
