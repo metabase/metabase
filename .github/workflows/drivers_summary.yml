@@ -2,10 +2,9 @@ name: Driver Tests (Summary)
 
 on:
   workflow_run:
-    workflows:
-      - Driver Tests
-    types: completed
-
+    workflows: [Driver Tests]
+    types:
+      - completed
 
 jobs:
   #
@@ -16,9 +15,33 @@ jobs:
     runs-on: ubuntu-22.04
     name: Wait for all driver tests to pass
     steps:
-      - if: github.event.workflow_run.conclusion == 'success'
-        run: >-
-          echo 'All driver tests have passed (or have been skipped). Cam is very proud of you.'
-      - if: github.event.workflow_run.conclusion == 'failure'
-        run: >-
-          echo 'Driver tests have failed.'
+      - if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        run: |
+          echo ""
+          echo "        _------.        "
+          echo "       /  ,     \_      "
+          echo "     /   /  /{}\ |o\_   "
+          echo "    /    \  `--' /-' \  "
+          echo "   |      \      \    | "
+          echo "  |              |`-, | "
+          echo "  /              /__/)/ "
+          echo " |              |       "
+          echo ""
+          echo "All driver tests have passed (or have been skipped). Cam is very proud of you."
+      - if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+        run: |
+          echo ""
+          echo "       .::::::::::.                          .::::::::::.       "
+          echo "     .::::''''''::::.                      .::::''''''::::.     "
+          echo "   .:::'          `::::....          ....::::'          `:::.   "
+          echo "  .::'             `:::::::|        |:::::::'             `::.  "
+          echo " .::|               |::::::|_ ___ __|::::::|               |::. "
+          echo " `--'               |::::::|_()__()_|::::::|               `--' "
+          echo "  :::               |::-o::|        |::o-::|               :::  "
+          echo "  `::.             .|::::::|        |::::::|.             .::'  "
+          echo "   `:::.          .::\-----'        `-----/::.          .:::'   "
+          echo "     `::::......::::'                      `::::......::::'     "
+          echo "       `::::::::::'                          `::::::::::'       "
+          echo ""
+          echo "Driver tests have failed. You have been sentenced to MetaJail."
+          exit 1
