@@ -321,7 +321,6 @@
   ;; as some default values differ between dev and prod
   ;;
   ;;    clojure -M:ee:doc api-documentation
-  ;;    clojure -M:ee:doc api-documentation-2
   :doc
   {:main-opts ["-m" "metabase.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"
