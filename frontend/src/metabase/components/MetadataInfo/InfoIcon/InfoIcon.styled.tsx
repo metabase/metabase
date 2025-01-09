@@ -20,14 +20,11 @@ export const PopoverDefaultIcon = styled(Icon)`
 `;
 
 export const HoverParent = styled.div`
-  &:hover,
-  &:focus,
-  &:focus-within {
-    ${PopoverHoverTarget} {
-      display: block;
-    }
-    ${PopoverDefaultIcon} {
-      display: none;
-    }
+  &:hover ${PopoverHoverTarget} {
+    display: block;
+  }
+
+  &:hover ${PopoverDefaultIcon} {
+    display: none;
   }
 `;
