@@ -9,7 +9,7 @@ import type {
 import {
   isDatePickerOperator,
   isDatePickerUnit,
-} from "metabase/querying/filters/utils";
+} from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 
 export function getPickerValue(

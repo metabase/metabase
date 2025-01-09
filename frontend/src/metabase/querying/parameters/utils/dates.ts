@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 
 import type { DateFilterValue } from "metabase/querying/filters/types";
-import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils";
+import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils/dates";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
