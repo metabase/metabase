@@ -35,7 +35,7 @@
      ~@body))
 
 (defmacro with-legacy-search
-  "Create a temporary index table for the duration of the body."
+  "Ensure legacy search, which doesn't require an index, is used."
   [& body]
   `(mt/with-dynamic-redefs [search.impl/default-engine (constantly :search.engine/in-place)]
      ~@body))
