@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { connect } from "react-redux";
 
+import { connect } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { AlertEditChannels } from "./AlertEditChannels";

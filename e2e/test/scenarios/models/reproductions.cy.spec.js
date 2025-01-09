@@ -1334,7 +1334,7 @@ describe("issue 31663", () => {
 
     H.main().findByText("Orders Model").click();
     cy.wait("@dataset");
-    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByLabelText("Move, trash, and more…").click();
     H.popover().findByText("Edit metadata").click();
 
     cy.findByTestId("TableInteractive-root").findByText("Product ID").click();
@@ -1521,7 +1521,7 @@ describe("issue 32483", () => {
 
 describe("issue 32963", () => {
   function assertLineChart() {
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     H.leftSidebar().within(() => {
       cy.findByTestId("Line-container").should(
         "have.attr",

@@ -4,11 +4,11 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [compojure.core :refer [GET]]
-   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [ring.util.response :as response])
@@ -36,7 +36,7 @@
                      [:region_name                  [:maybe :string]]
                      [:builtin     {:optional true} :boolean]]])
 
-(def ^:private CustomGeoJSONValidator (mc/validator CustomGeoJSON))
+(def ^:private CustomGeoJSONValidator (mr/validator CustomGeoJSON))
 
 (defsetting default-maps-enabled
   (deferred-tru "Whether or not the default GeoJSON maps are enabled.")

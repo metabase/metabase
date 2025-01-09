@@ -9,7 +9,6 @@
   (:require
    [medley.core :as m]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.field :refer [Field]]
    [metabase.models.humanization :as humanization]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.common :as common]
@@ -32,7 +31,7 @@
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
-    (t2/select     Field
+    (t2/select     :model/Field
                    :table_id    (u/the-id table)
                    :%lower.name [:in (map common/canonical-name new-field-metadatas)]
                    :parent_id   parent-id
@@ -45,7 +44,7 @@
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
-    (t2/insert-returning-pks! Field
+    (t2/insert-returning-pks! :model/Field
                               (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
                                             database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
                                      field-name :name :as field} new-field-metadatas]
@@ -90,7 +89,7 @@
   (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
-      (t2/update! Field {:id [:in (map u/the-id fields-to-reactivate)]}
+      (t2/update! :model/Field {:id [:in (map u/the-id fields-to-reactivate)]}
                   {:active true}))
     (let [reactivated?  (comp (set (map common/canonical-name fields-to-reactivate))
                               common/canonical-name)
@@ -98,7 +97,7 @@
           new-field-ids (insert-new-fields! table (remove reactivated? new-field-metadatas) parent-id)]
       ;; now return the newly created or reactivated Fields
       (when-let [new-and-updated-fields (seq (map u/the-id (concat fields-to-reactivate new-field-ids)))]
-        (t2/select Field :id [:in new-and-updated-fields])))))
+        (t2/select :model/Field :id [:in new-and-updated-fields])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                          SYNCING INSTANCES OF 'ACTIVE' FIELDS (FIELDS IN DB METADATA)                          |
@@ -149,7 +148,7 @@
   [table          :- i/TableInstance
    metabase-field :- common/TableMetadataFieldWithID]
   (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field))
-  (when (pos? (t2/update! Field (u/the-id metabase-field) {:active false}))
+  (when (pos? (t2/update! :model/Field (u/the-id metabase-field) {:active false}))
     1))
 
 (mu/defn- retire-fields! :- ms/IntGreaterThanOrEqualToZero

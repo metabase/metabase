@@ -2,7 +2,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, createRef, forwardRef } from "react";
-import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
@@ -20,6 +19,7 @@ import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
+import { connect } from "metabase/lib/redux";
 import { setUIControls, zoomInRow } from "metabase/query_builder/actions";
 import {
   getIsShowingRawTable,

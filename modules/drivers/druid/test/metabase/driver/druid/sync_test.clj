@@ -1,17 +1,16 @@
 (ns ^:mb/driver-tests metabase.driver.druid.sync-test
   (:require
    [clojure.test :refer :all]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.driver :as driver]
    [metabase.driver.druid.client :as druid.client]
    [metabase.driver.druid.sync :as druid.sync]
-   [metabase.models.database :refer [Database]]
    [metabase.models.secret :as secret]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel sync-test
@@ -40,10 +39,10 @@
                    (update :fields (partial sort-by :database-position)))))))))
 
 (defn- db-dbms-version [db-or-id]
-  (t2/select-one-fn :dbms_version Database :id (u/the-id db-or-id)))
+  (t2/select-one-fn :dbms_version :model/Database :id (u/the-id db-or-id)))
 
 (defn- check-dbms-version [dbms-version]
-  (me/humanize (mc/validate sync-dbms-ver/DBMSVersion dbms-version)))
+  (me/humanize (mr/explain sync-dbms-ver/DBMSVersion dbms-version)))
 
 (deftest dbms-version-test
   (mt/test-driver :druid
@@ -53,8 +52,8 @@
       (tqpt/with-flattened-dbdef
         (let [db                   (mt/db)
               version-on-load      (db-dbms-version db)
-              _                    (t2/update! Database (u/the-id db) {:dbms_version nil})
-              db                   (t2/select-one Database :id (u/the-id db))
+              _                    (t2/update! :model/Database (u/the-id db) {:dbms_version nil})
+              db                   (t2/select-one :model/Database :id (u/the-id db))
               version-after-update (db-dbms-version db)
               _                    (sync-dbms-ver/sync-dbms-version! db)]
           (testing "On startup is the dbms-version specified?"

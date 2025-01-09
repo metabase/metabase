@@ -6,12 +6,11 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest sandbox-caching-test
   (testing "`sandboxed-user?` and `enforced-sandboxes-for-tables` use the cache"
-    (t2.with-temp/with-temp [:model/User user {}]
+    (mt/with-temp [:model/User user {}]
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
         ;; retrieve the cache now (and realize its values) so it doesn't get included in call count
         (doall @data-perms/*sandboxes-for-user*)
@@ -29,12 +28,12 @@
 
 (deftest enforce-sandbox?-test
   (testing "If a user is in a single group with a sandbox, the sandbox should be enforced"
-    (t2.with-temp/with-temp [:model/User user {}]
+    (mt/with-temp [:model/User user {}]
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
         (is (mt.api.u/sandboxed-user?)))))
 
   (testing "If a user is in another group with view data access, the sandbox should not be enforced"
-    (t2.with-temp/with-temp [:model/User user {}]
+    (mt/with-temp [:model/User user {}]
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
         (mt/with-full-data-perms-for-all-users!
           (is (not (mt.api.u/sandboxed-user?)))))))
@@ -42,14 +41,14 @@
   (testing "If a user is in another group with another sandbox defined on the table, the user should be considered sandbox"
     ;; This (conflicting sandboxes) is an invalid state for the QP but `enforce-sandbox?` should return true in order
     ;; to fail closed
-    (t2.with-temp/with-temp [:model/User user {}]
+    (mt/with-temp [:model/User user {}]
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
         (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
           (is (mt.api.u/sandboxed-user?))))))
 
   (testing "If a user is in two groups with conflicting sandboxes, *and* a third group that grants full access to the table,
            neither sandbox is enforced"
-    (t2.with-temp/with-temp [:model/User user {}]
+    (mt/with-temp [:model/User user {}]
       (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
         (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
           (mt/with-full-data-perms-for-all-users!

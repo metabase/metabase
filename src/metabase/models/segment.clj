@@ -29,11 +29,6 @@
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
-(def Segment
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/Segment)
-
 (methodical/defmethod t2/table-name :model/Segment [_model] :segment)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :segment] [_original-model _k] :model/Segment)
 
@@ -63,10 +58,10 @@
   (u/prog1 (t2/changes segment)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? <> :creator_id)
-      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id Segment :id id))
+      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id :model/Segment :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment.")))))))
 
-(defmethod mi/perms-objects-set Segment
+(defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
   (let [table (or (:table segment)
                   (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
@@ -120,7 +115,7 @@
       [table-id :- ::lib.schema.id/table]
       (-> table-id table-id->db-id db-id->metadata-provider))))
 
-(methodical/defmethod t2.hydrate/batched-hydrate [Segment :definition_description]
+(methodical/defmethod t2.hydrate/batched-hydrate [:model/Segment :definition_description]
   [_model _key segments]
   (let [table-id->warmed-metadata-provider (segments->table-id->warmed-metadata-provider segments)]
     (for [segment segments
@@ -129,11 +124,11 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defmethod revision/serialize-instance Segment
+(defmethod revision/serialize-instance :model/Segment
   [_model _id instance]
   (dissoc instance :created_at :updated_at))
 
-(defmethod revision/diff-map Segment
+(defmethod revision/diff-map :model/Segment
   [model segment1 segment2]
   (if-not segment1
     ;; this is the first version of the segment
@@ -152,7 +147,7 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/hash-fields Segment
+(defmethod serdes/hash-fields :model/Segment
   [_segment]
   [:name (serdes/hydrated-hash :table) :created_at])
 

@@ -79,7 +79,7 @@ describe("issue 45255", () => {
   });
 
   it("should work on native queries with null dimension values (metabase#45255)", () => {
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // Has (empty) in the settings sidebar
     H.sidebar().findByText("(empty)");
@@ -162,9 +162,12 @@ describe("issue 49529", () => {
 
     H.visitQuestionAdhoc(question);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
-    cy.findAllByTestId("select-button").eq(0).as("dimensionSelect").click();
+    cy.findAllByTestId("chart-setting-select")
+      .eq(0)
+      .as("dimensionSelect")
+      .click();
     H.popover().findByText("ID").click();
 
     H.leftSidebar().findByText("Add series breakout").click();

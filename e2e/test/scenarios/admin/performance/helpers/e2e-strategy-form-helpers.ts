@@ -51,6 +51,34 @@ export const dontCacheResultsRadioButton = () =>
 export const useDefaultRadioButton = () =>
   cacheStrategyRadioButton(/Use default/);
 
+export const preemptiveCachingSwitch = () =>
+  cy.findByTestId("preemptive-caching-switch");
+export const enablePreemptiveCaching = () =>
+  preemptiveCachingSwitch().within(() => {
+    cy.findByRole("switch").should("not.be.checked");
+    cy.findByRole("switch").next("label").click();
+    cy.findByRole("switch").should("be.checked");
+  });
+export const disablePreemptiveCaching = () =>
+  preemptiveCachingSwitch().within(() => {
+    cy.findByRole("switch").should("be.checked");
+    cy.findByRole("switch").next("label").click();
+    cy.findByRole("switch").should("not.be.checked");
+  });
+export const checkPreemptiveCachingEnabled = () =>
+  preemptiveCachingSwitch().within(() => {
+    cy.findByRole("switch").should("be.checked");
+  });
+export const checkPreemptiveCachingDisabled = () =>
+  preemptiveCachingSwitch().within(() => {
+    cy.findByRole("switch").should("not.be.checked");
+  });
+
+export const dashboardAndQuestionsTable = () =>
+  cy.findByRole("table", {
+    name: /Here are the dashboards and questions/,
+  });
+
 export const formLauncher = (
   itemName: string,
   preface:
@@ -109,7 +137,14 @@ export const openSidebarCacheStrategyForm = (
   openSidebar(type);
   cy.wait("@getCacheConfig");
   cy.findByLabelText("When to get new results").click();
+  return cacheStrategySidesheet();
 };
+
+export const cacheStrategySidesheet = () =>
+  cy.findByRole("dialog", { name: /Caching settings/ }).should("be.visible");
+
+export const questionSettingsSidesheet = () =>
+  cy.findByRole("dialog", { name: /Question settings/ }).should("be.visible");
 
 export const cancelConfirmationModal = () => {
   modal().within(() => {

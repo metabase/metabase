@@ -170,6 +170,10 @@ export const getSearchInputPlaceholder = <
     return t`Search this schema or everywhere…`;
   }
 
+  if (folder?.model === "dashboard") {
+    return t`Search this dashboard or everywhere…`;
+  }
+
   return t`Search…`;
 };
 

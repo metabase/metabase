@@ -12,6 +12,7 @@
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation :as eid-translation]
+   [metabase.models :as models]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
    [metabase.models.setting :refer [defsetting]]
@@ -20,13 +21,16 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
-   [metabase.util.i18n
-    :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(comment
+  models/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -357,21 +361,21 @@
             [entity-id (if-let [id (get eid->id entity-id)]
                          {:id id :type api-name :status :ok}
                          ;; handle errors
-                         (if (mc/validate EntityId entity-id)
+                         (if (mr/validate EntityId entity-id)
                            {:type api-name
                             :status :not-found}
                            {:type api-name
                             :status :invalid-format
-                            :reason (me/humanize (mc/explain EntityId entity-id))}))])
+                            :reason (me/humanize (mr/explain EntityId entity-id))}))])
           eids)))
 
 (defn model->entity-ids->ids
   "Given a map of model names to a sequence of entity-ids for each, return a map from entity-id -> id."
   [model-key->entity-ids]
-  (when-not (mc/validate ModelToEntityIds model-key->entity-ids)
+  (when-not (mr/validate ModelToEntityIds model-key->entity-ids)
     (throw (ex-info "Invalid format." {:explanation (me/humanize
                                                      (me/with-spell-checking
-                                                       (mc/explain ModelToEntityIds model-key->entity-ids)))
+                                                       (mr/explain ModelToEntityIds model-key->entity-ids)))
                                        :allowed-models (sort (keys api-name->model))
                                        :status-code 400})))
   (u/prog1 (into {}

@@ -3,17 +3,18 @@
    [clojure.string :as str]
    [compojure.core :refer [GET]]
    [java-time.api :as t]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.permissions.util :as perms-util]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.request.core :as request]
-   ;; Allowing search.config to be accessed for developer API to set weights
+   [metabase.request.core :as request] ;; Allowing search.config to be accessed for developer API to set weights
    ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
 
@@ -46,6 +47,7 @@
                 raise)))
    (meta handler)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/re-init"
   "This will blow away any search indexes, re-create, and re-populate them."
   []
@@ -54,6 +56,7 @@
     {:message (search/init-index! {:force-reset? true})}
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/force-reindex"
   "This will trigger an immediate reindexing, if we are using search index."
   []
@@ -80,6 +83,7 @@
     (public-settings/experimental-search-weight-overrides!
      (merge-with merge (public-settings/experimental-search-weight-overrides) {context overrides}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/weights"
   "Return the current weights being used to rank the search results"
   [:as {overrides :params}]
@@ -90,6 +94,7 @@
       (set-weights! context overrides))
     (search.config/weights context)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Search for items in Metabase.
   For the list of supported models, check [[metabase.search.config/all-models]].
@@ -133,31 +138,38 @@
    calculate_available_models          [:maybe true?]
    include_dashboard_questions         [:maybe :boolean]}
   (api/check-valid-page-params (request/limit) (request/offset))
-  (search/search
-   (search/search-context
-    {:archived                            archived
-     :context                             context
-     :created-at                          created_at
-     :created-by                          (set created_by)
-     :current-user-id                     api/*current-user-id*
-     :is-impersonated-user?               (premium-features/impersonated-user?)
-     :is-sandboxed-user?                  (premium-features/sandboxed-user?)
-     :is-superuser?                       api/*is-superuser?*
-     :current-user-perms                  @api/*current-user-permissions-set*
-     :filter-items-in-personal-collection filter_items_in_personal_collection
-     :last-edited-at                      last_edited_at
-     :last-edited-by                      (set last_edited_by)
-     :limit                               (request/limit)
-     :model-ancestors?                    model_ancestors
-     :models                              (not-empty (set models))
-     :offset                              (request/offset)
-     :search-engine                       search_engine
-     :search-native-query                 search_native_query
-     :search-string                       q
-     :table-db-id                         table_db_id
-     :verified                            verified
-     :ids                                 (set ids)
-     :calculate-available-models?         calculate_available_models
-     :include-dashboard-questions?        include_dashboard_questions})))
+  (try
+    (u/prog1 (search/search
+              (search/search-context
+               {:archived                            archived
+                :context                             context
+                :created-at                          created_at
+                :created-by                          (set created_by)
+                :current-user-id                     api/*current-user-id*
+                :is-impersonated-user?               (perms-util/impersonated-user?)
+                :is-sandboxed-user?                  (perms-util/sandboxed-user?)
+                :is-superuser?                       api/*is-superuser?*
+                :current-user-perms                  @api/*current-user-permissions-set*
+                :filter-items-in-personal-collection filter_items_in_personal_collection
+                :last-edited-at                      last_edited_at
+                :last-edited-by                      (set last_edited_by)
+                :limit                               (request/limit)
+                :model-ancestors?                    model_ancestors
+                :models                              (not-empty (set models))
+                :offset                              (request/offset)
+                :search-engine                       search_engine
+                :search-native-query                 search_native_query
+                :search-string                       q
+                :table-db-id                         table_db_id
+                :verified                            verified
+                :ids                                 (set ids)
+                :calculate-available-models?         calculate_available_models
+                :include-dashboard-questions?        include_dashboard_questions}))
+      (prometheus/inc! :metabase-search/response-ok))
+    (catch Exception e
+      (let [status-code (:status-code (ex-data e))]
+        (when (or (not status-code) (= 5 (quot status-code 100)))
+          (prometheus/inc! :metabase-search/response-error)))
+      (throw e))))
 
 (api/define-routes +engine-cookie)

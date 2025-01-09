@@ -8,7 +8,6 @@
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
@@ -21,8 +20,7 @@
     (when (seq missing)
       (log/infof "Backfilling entity_id for %s rows of %s" (pr-str (count missing)) (name model))
       (doseq [entity missing
-              :let [hashed (serdes/identity-hash entity)
-                    eid    (u/generate-nano-id hashed)]]
+              :let [eid (serdes/backfill-entity-id entity)]]
         (t2/update! model (get entity pk) {:entity_id eid})))))
 
 (defn has-entity-id?

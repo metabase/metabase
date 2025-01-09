@@ -4,16 +4,23 @@ import fetchMock from "fetch-mock";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { checkNotNull } from "metabase/lib/types";
-import type { Collection, CollectionItem, Dashboard } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionItem,
+  Dashboard,
+  Database,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
+  createMockDatabase,
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -28,6 +35,22 @@ const CURRENT_USER = createMockUser({
   id: 1,
   personal_collection_id: 100,
   is_superuser: true,
+});
+
+const DB_WITH_ONLY_DATA_ACCESS = createMockDatabase({
+  id: 1,
+  native_permissions: "none",
+});
+
+const DB_WITH_NATIVE_WRITE_ACCESS = createMockDatabase({
+  id: 1,
+  native_permissions: "write",
+});
+
+const DB_WITH_NO_WRITE_ACCESS = createMockDatabase({
+  id: 1,
+  is_saved_questions: true,
+  native_permissions: "none",
 });
 
 const COLLECTION = createMockCollection({
@@ -77,18 +100,21 @@ const COLLECTIONS = [
 ];
 
 interface SetupOpts {
+  databases?: Database[];
   collections: Collection[];
   collectionItems?: CollectionItem[];
   dashboard?: Dashboard;
 }
 
 async function setup({
+  databases = [],
   collections,
   collectionItems = [],
   dashboard = createMockDashboard({
     collection: ROOT_COLLECTION,
   }),
 }: SetupOpts) {
+  setupDatabasesEndpoints(databases);
   setupCollectionsEndpoints({
     collections,
   });
@@ -396,6 +422,37 @@ describe("AddCardSideBar", () => {
       expect(
         urlObject.searchParams.get("filter_items_in_personal_collection"),
       ).toEqual(null);
+    });
+  });
+
+  describe("new buttons", () => {
+    it("displays the 'New Question' button if the user has data access", async () => {
+      await setup({
+        collections: COLLECTIONS,
+        databases: [DB_WITH_ONLY_DATA_ACCESS],
+      });
+      expect(await screen.findByText("New Question")).toBeInTheDocument();
+      expect(screen.queryByText("New SQL query")).not.toBeInTheDocument();
+    });
+
+    it("displays the 'New Question' and 'New SQL query' button if the user has native write access", async () => {
+      await setup({
+        collections: COLLECTIONS,
+        databases: [DB_WITH_NATIVE_WRITE_ACCESS],
+      });
+      expect(await screen.findByTestId("new-button-bar")).toBeInTheDocument();
+      expect(await screen.findByText("New Question")).toBeInTheDocument();
+      expect(await screen.findByText("New SQL query")).toBeInTheDocument();
+    });
+
+    it("does not display any buttons if the user has no access to either", async () => {
+      await setup({
+        collections: COLLECTIONS,
+        databases: [DB_WITH_NO_WRITE_ACCESS],
+      });
+      expect(await screen.findByPlaceholderText(/Search/)).toBeInTheDocument();
+      expect(screen.queryByText("New Question")).not.toBeInTheDocument();
+      expect(screen.queryByText("New SQL query")).not.toBeInTheDocument();
     });
   });
 });

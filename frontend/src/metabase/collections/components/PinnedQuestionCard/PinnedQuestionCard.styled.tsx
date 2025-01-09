@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 
+import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import Link from "metabase/core/components/Link";
 import { LegendLabel } from "metabase/visualizations/components/legend/LegendCaption.styled";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
@@ -22,11 +23,14 @@ export const CardPreviewSkeleton = styled(ChartSkeleton)`
   padding: 0.5rem 1rem;
 `;
 
-export interface CardRootProps {
+interface CardRootProps {
   isPreview?: boolean;
 }
 
-export const CardRoot = styled(Link)<CardRootProps>`
+export const CardRoot = styled(
+  Link,
+  doNotForwardProps("isPreview"),
+)<CardRootProps>`
   position: relative;
   display: block;
   overflow: hidden;

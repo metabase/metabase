@@ -7,6 +7,7 @@ import {
   NORMAL_PERSONAL_COLLECTION_ID,
   NO_COLLECTION_PERSONAL_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type { DashboardCard } from "metabase-types/api";
@@ -353,6 +354,22 @@ describe("scenarios > organization > entity picker", () => {
           H.getNotebookStep("data").findByText(sourceName).should("be.visible");
           H.visualize();
         });
+
+        cy.log("scope search in a dashboard");
+        H.startNewQuestion();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Collections").click();
+          H.entityPickerModalItem(1, "Orders in a dashboard").click();
+          enterSearchText({
+            text: "Orders",
+            placeholder: "Search this dashboard or everywhere…",
+          });
+          cy.findByText("Orders Dashboard question 2").click();
+        });
+        H.getNotebookStep("data")
+          .findByText("Orders Dashboard question 2")
+          .should("be.visible");
+        H.visualize();
       });
 
       it("should select a card from global search results", () => {
@@ -391,6 +408,22 @@ describe("scenarios > organization > entity picker", () => {
           H.getNotebookStep("data").findByText(sourceName).should("be.visible");
           H.visualize();
         });
+
+        cy.log("should find dashboard questions in global search");
+        H.startNewQuestion();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Collections").click();
+          enterSearchText({
+            text: "Dashboard question 1",
+            placeholder: "Search this collection or everywhere…",
+          });
+          selectGlobalSearchTab();
+          cy.findByText("Orders Dashboard question 1").click();
+        });
+        H.getNotebookStep("data")
+          .findByText("Orders Dashboard question 1")
+          .should("be.visible");
+        H.visualize();
       });
 
       it("should search for cards for a normal user", () => {
@@ -747,28 +780,32 @@ describe("scenarios > organization > entity picker", () => {
       });
     });
 
-    it("should show dashboards in personal collections when apropriate, even if there are no sub collections", () => {
-      cy.signInAsAdmin();
-      H.createDashboard({
-        collection_id: ADMIN_PERSONAL_COLLECTION_ID,
-      });
+    it(
+      "should show dashboards in personal collections when apropriate, even if there are no sub collections",
+      { tags: "@flaky" },
+      () => {
+        cy.signInAsAdmin();
+        H.createDashboard({
+          collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+        });
 
-      H.openTable({ table: ORDERS_ID });
-      cy.button("Save").click();
-      H.modal().findByLabelText("Where do you want to save this?").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
-        H.entityPickerModalItem(
-          0,
-          "Bobby Tables's Personal Collection",
-        ).click();
-        H.entityPickerModalItem(1, "Test Dashboard").should("exist").click();
-        cy.button("Select this dashboard").click();
-      });
-      H.modal()
-        .findByLabelText("Where do you want to save this?")
-        .should("contain.text", "Test Dashboard");
-    });
+        H.openTable({ table: ORDERS_ID });
+        cy.button("Save").click();
+        H.modal().findByLabelText("Where do you want to save this?").click();
+        H.entityPickerModal().within(() => {
+          H.entityPickerModalTab("Browse").click();
+          H.entityPickerModalItem(
+            0,
+            "Bobby Tables's Personal Collection",
+          ).click();
+          H.entityPickerModalItem(1, "Test Dashboard").should("exist").click();
+          cy.button("Select this dashboard").click();
+        });
+        H.modal()
+          .findByLabelText("Where do you want to save this?")
+          .should("contain.text", "Test Dashboard");
+      },
+    );
   });
 
   describe("dashboard picker", () => {
@@ -1003,6 +1040,14 @@ function createTestCards() {
           collection_id: id,
         });
       });
+    });
+  });
+
+  suffixes.forEach(suffix => {
+    H.createQuestion({
+      ...cardDetails,
+      name: `Orders Dashboard question ${suffix}`,
+      dashboard_id: ORDERS_DASHBOARD_ID,
     });
   });
 }

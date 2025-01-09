@@ -69,11 +69,14 @@ Metabase's reference documentation.
 ### Questions
 
 - [Questions overview](./questions/start.md)
+- [Alerts](./questions/alerts.md)
+- [Exporting data](./questions/exporting-results.md)
 
 #### Query builder
 
-- [Asking questions](./questions/query-builder/introduction.md)
-- [Visualizing data](./questions/sharing/visualizing-results.md)
+- [The query editor](./questions/query-builder/editor.md)
+- [Filtering](./questions/query-builder/filters.md)
+- [Summarizing and grouping](./questions/query-builder/summarizing-and-grouping.md)
 - [Custom expressions](./questions/query-builder/expressions.md)
 - [List of expressions](./questions/query-builder/expressions-list.md)
 - [Joining data](./questions/query-builder/join.md)
@@ -86,12 +89,25 @@ Metabase's reference documentation.
 - [SQL snippets](./questions/native-editor/sql-snippets.md)
 - [SQL snippet folder permissions](./permissions/snippets.md)
 
-#### Sharing
+#### Visualizing data
 
-- [Sharing answers](./questions/sharing/answers.md)
-- [Alerts](./questions/sharing/alerts.md)
-- [Public sharing](./questions/sharing/public-links.md)
-- [Exporting data](./questions/sharing/exporting-results.md)
+- [Visualizing data](./questions/visualizations/visualizing-results.md)
+- [Combo charts](./questions/visualizations/combo-chart.md)
+- [Detail](./questions/visualizations/detail.md)
+- [Funnel charts](./questions/visualizations/detail.md)
+- [Gauge charts](./questions/visualizations/gauge.md)
+- [Line, bar, and area charts](./questions/visualizations/line-bar-and-area-charts.md)
+- [Maps](./questions/visualizations/map.md)
+- [Numbers](./questions/visualizations/numbers.md)
+- [Pie or donut charts](./questions/visualizations/pie-or-donut-chart.md)
+- [Pivot table](./questions/visualizations/pivot-table.md)
+- [Progress bar](./questions/visualizations/progress-bar.md)
+- [Sankey chart](./questions/visualizations/sankey.md)
+- [Scatterplot or bubble chart](./questions/visualizations/scatterplot-or-bubble-chart.md)
+- [Table](./questions/visualizations/table.md)
+- [Tooltips](./questions/visualizations/tooltips.md)
+- [Trend](./questions/visualizations/trend.md)
+- [Waterfall chart](./questions/visualizations/waterfall-chart.md)
 
 ### Dashboards
 
@@ -141,7 +157,8 @@ Metabase's reference documentation.
 - [Managing people and groups](./people-and-groups/managing.md)
 - [Password complexity](./people-and-groups/changing-password-complexity.md)
 - [Session expiration](./people-and-groups/changing-session-expiration.md)
-- [Google Sign-In or LDAP](./people-and-groups/google-and-ldap.md)
+- [Google Sign-In](./people-and-groups/google-sign-in.md)
+- [LDAP](./people-and-groups/ldap.md)
 - [API keys](./people-and-groups/api-keys.md)
 
 #### Paid SSO options
@@ -207,7 +224,7 @@ Metabase's reference documentation.
 ### Metabase API
 
 - [Metabase API documentation](./api-documentation.md)
-- [API tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//metabase-api)
+- [API tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api)
 
 ### Troubleshooting
 
@@ -263,7 +280,7 @@ We tweet stuff.
 
 Follow us on GitHub.
 
-### [List of releases](./releases.md)
+### [List of releases](https://github.com/metabase/metabase/releases)
 
 A list of all Metabase releases, including both the Enterprise Edition and the Open Source Edition.
 

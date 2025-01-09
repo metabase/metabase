@@ -3,10 +3,9 @@ import { useMemo, useRef, useState } from "react";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { getGroupItems, hasFilters, removeFilters } from "../../utils";
-
 import { SEARCH_KEY } from "./constants";
-import { isSearchActive, searchGroupItems } from "./utils";
+import { getGroupItems, hasFilters, removeFilters } from "./utils/filters";
+import { isSearchActive, searchGroupItems } from "./utils/search";
 
 export const useFilterModal = (
   question: Question,

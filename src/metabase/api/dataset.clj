@@ -12,11 +12,8 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.database :refer [Database]]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.models.table :refer [Table]]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -44,7 +41,7 @@
   [outer-query]
   (when-let [source-card-id (qp.util/query->source-card-id outer-query)]
     (log/infof "Source query for this query is Card %s" (pr-str source-card-id))
-    (api/read-check Card source-card-id)
+    (api/read-check :model/Card source-card-id)
     source-card-id))
 
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
@@ -59,16 +56,16 @@
       (when-not database
         (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                         {:status-code 400, :query query})))
-      (api/read-check Database database))
+      (api/read-check :model/Database database))
     ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (get-in query [:query :source-table])]
       (when (int? table-id)
-        (events/publish-event! :event/table-read {:object  (t2/select-one Table :id table-id)
+        (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
                                                   :user-id api/*current-user-id*})))
     ;; add sensible constraints for results limits on our query
     (let [source-card-id (query->source-card-id query)
           source-card    (when source-card-id
-                           (t2/select-one [Card :result_metadata :type] :id source-card-id))
+                           (t2/select-one [:model/Card :result_metadata :type] :id source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
@@ -83,6 +80,7 @@
                                       rff)
             (qp/process-query (update query :info merge info) rff)))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
@@ -127,6 +125,7 @@
     json-key
     (keyword json-key)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
   [export-format :as {{:keys [query visualization_settings pivot_results format_rows]
@@ -158,12 +157,14 @@
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/query_metadata"
   "Get all of the required query metadata for an ad-hoc query."
   [:as {{:keys [database] :as query} :body}]
   {database ms/PositiveInt}
   (api.query-metadata/batch-fetch-query-metadata [query]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
   [:as {{:keys [database pretty] :as query} :body}]
@@ -177,13 +178,14 @@
       (cond-> compiled
         (not (false? pretty)) (update :query prettify)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
   [:as {{:keys [database] :as query} :body}]
   {database [:maybe ms/PositiveInt]}
   (when-not database
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
-  (api/read-check Database database)
+  (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [rff :api]
@@ -217,6 +219,7 @@
    parameter query
    (fn [] (parameter-field-values field-ids query))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
   [:as {{:keys [parameter field_ids]} :body}]
@@ -224,6 +227,7 @@
    field_ids [:maybe [:sequential ms/PositiveInt]]}
   (parameter-values parameter field_ids nil))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
   [query :as {{:keys [parameter field_ids]} :body}]
