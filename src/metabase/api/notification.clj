@@ -59,7 +59,7 @@
                     (not (true? include_inactive))
                     (sql.helpers/where [:= :notification.active true])))
        (filter mi/can-read?)
-       (map models.notification/hydrate-notification)))
+       models.notification/hydrate-notification))
 
 (api/defendpoint GET "/:id"
   "Get a notification by id."
@@ -166,7 +166,7 @@
   [id]
   {id ms/PositiveInt}
   (let [notification (get-notification id)]
-    (api/check-403 (models.notification/can-unsubscribe? notification))
+    (api/check-403 (models.notification/current-user-is-recipient? notification))
     (models.notification/unsubscribe-user! id api/*current-user-id*)
     (u/prog1 (get-notification id)
       (when (card-notification? <>)
