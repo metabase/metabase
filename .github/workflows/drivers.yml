@@ -256,7 +256,7 @@ jobs:
       # the configured MySQL instance, but there is one particular test (mysql-connect-with-ssl-and-pem-cert-test)
       # that overrides the MB_MYSQL_TEST_* values with them
       # the MYSQL_RDS_SSL_INSTANCE vars are defined as secrets and can be altered
-      MB_MYSQL_SSL_TEST_SSL: ${{ matrix.env.enable-ssl-tests }}
+      MB_MYSQL_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
       MB_MYSQL_SSL_TEST_HOST: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_HOST }}
       MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS: 'verifyServerCertificate=true'
       # the contents of the ./resources/certificates/rds-combined-ca-bundle.pem file
