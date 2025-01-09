@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupAlertsEndpoints,
   setupCardCreateEndpoint,
   setupCardEndpoints,
   setupCardQueryEndpoints,
@@ -526,6 +527,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
           databases: [TEST_DB],
         }),
       );
+      setupAlertsEndpoints(TEST_NATIVE_CARD, []);
 
       await userEvent.click(screen.getByText("New"));
       await userEvent.click(

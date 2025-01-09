@@ -3,7 +3,10 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { setupBookmarksEndpoints } from "__support__/server-mocks";
+import {
+  setupBookmarksEndpoints,
+  setupNotificationChannelsEndpoints,
+} from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
@@ -68,8 +71,8 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     tooltip: "Edit dashboard",
   },
   [DASHBOARD_ACTION.DASHBOARD_NOTIFICATIONS]: {
-    icon: "alert",
-    tooltip: "Notifications",
+    icon: "subscription",
+    tooltip: "Subscriptions",
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     icon: "clock",
@@ -122,6 +125,10 @@ const setup = ({
   isAdmin: boolean;
 }>) => {
   setupBookmarksEndpoints([]);
+  setupNotificationChannelsEndpoints({
+    slack: { configured: false },
+    email: { configured: false },
+  } as any);
 
   const MOCK_DATABASE = createMockDatabase({
     settings: {
@@ -314,8 +321,9 @@ describe("DashboardHeaderButtonRow", () => {
 
     it("should show notifications button", () => {
       setup({ isEditing: false });
+
       expect(
-        screen.getByTestId("notifications-menu-button"),
+        screen.getByTestId("dashboard-subscription-menu-item"),
       ).toBeInTheDocument();
     });
 
