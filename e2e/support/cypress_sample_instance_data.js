@@ -139,5 +139,3 @@ export const NOSQL_GROUP_ID = _.findWhere(SAMPLE_INSTANCE_DATA.groups, {
 export const READONLY_GROUP_ID = _.findWhere(SAMPLE_INSTANCE_DATA.groups, {
   name: "readonly",
 }).id;
-
-export const LOGIN_CACHE = SAMPLE_INSTANCE_DATA.loginCache;
