@@ -303,7 +303,7 @@ describe("parameters/utils/mbql", () => {
       });
       const [filter] = Lib.filters(newQuery, -1);
       expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
-        displayName: "Created At is on 01-01-2020",
+        displayName: "Created At is on Jan 1, 2020",
       });
     });
 

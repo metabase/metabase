@@ -209,6 +209,10 @@ function isFieldFilterParameterConveratableToMBQL(parameter) {
 }
 
 function getParameterTargetColumn(query, stageIndex, parameter) {
+  if (!isFieldFilterParameterConveratableToMBQL(parameter)) {
+    return;
+  }
+
   const columns = Lib.filterableColumns(query, stageIndex);
   const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
@@ -217,7 +221,7 @@ function getParameterTargetColumn(query, stageIndex, parameter) {
     [parameter.target[1]],
   );
   if (columnIndex < 0) {
-    return null;
+    return;
   }
 
   return columns[columnIndex];
@@ -225,9 +229,6 @@ function getParameterTargetColumn(query, stageIndex, parameter) {
 
 /** compiles a parameter with value to legacy MBQL */
 function filterParameterToMBQL(query, stageIndex, parameter, column) {
-  if (!isFieldFilterParameterConveratableToMBQL(parameter)) {
-    return;
-  }
   // date parameters are handled in `filterParameterToClause`
   if (isDateParameter(parameter)) {
     return;
@@ -273,7 +274,7 @@ export function applyFilterParameter(query, stageIndex, parameter) {
     const filter = Lib.expressionClauseForLegacyExpression(
       query,
       stageIndex,
-      clause,
+      mbql,
     );
     return Lib.filter(query, stageIndex, filter);
   }
