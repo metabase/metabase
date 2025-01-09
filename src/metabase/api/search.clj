@@ -47,6 +47,7 @@
                 raise)))
    (meta handler)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/re-init"
   "This will blow away any search indexes, re-create, and re-populate them."
   []
@@ -55,6 +56,7 @@
     {:message (search/init-index! {:force-reset? true})}
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/force-reindex"
   "This will trigger an immediate reindexing, if we are using search index."
   []
@@ -81,6 +83,7 @@
     (public-settings/experimental-search-weight-overrides!
      (merge-with merge (public-settings/experimental-search-weight-overrides) {context overrides}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/weights"
   "Return the current weights being used to rank the search results"
   [:as {overrides :params}]
@@ -91,6 +94,7 @@
       (set-weights! context overrides))
     (search.config/weights context)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Search for items in Metabase.
   For the list of supported models, check [[metabase.search.config/all-models]].

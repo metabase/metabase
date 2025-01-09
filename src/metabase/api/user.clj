@@ -164,6 +164,7 @@
   [clauses]
   (dissoc clauses :order-by :limit :offset))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Fetch a list of `Users` for admins or group managers.
   By default returns only active users for admins and only active users within groups that the group manager is managing for group managers.
@@ -233,6 +234,7 @@
                            :where [:and [:= :permissions_group_membership.user_id user-id]
                                    [:not= :permissions_group_membership.group_id (:id (perms-group/all-users))]]}]})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/recipients"
   "Fetch a list of `Users`. Returns only active users. Meant for non-admins unlike GET /api/user.
 
@@ -327,6 +329,7 @@
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
@@ -338,6 +341,7 @@
       maybe-add-sso-source
       add-custom-homepage-info))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [id]
@@ -353,6 +357,7 @@
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
   [:as {{:keys [first_name last_name email user_group_memberships login_attributes] :as body} :body}]
@@ -403,6 +408,7 @@
    (= (get user name-key) new-name)
    (not sso_source)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
@@ -474,6 +480,7 @@
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id/reactivate"
   "Reactivate user at `:id`"
   [id]
@@ -494,6 +501,7 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id/password"
   "Update a user's password."
   [id :as {{:keys [password old_password]} :body, :as request}]
@@ -522,6 +530,7 @@
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
@@ -539,6 +548,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [id modal]
