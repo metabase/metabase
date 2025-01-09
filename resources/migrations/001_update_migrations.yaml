@@ -10541,6 +10541,36 @@ databaseChangeLog:
               DELETE FROM notification WHERE internal_id IS NOT NULL;
 
   - changeSet:
+      id: v53.2024-12-12T08:06:00
+      author: qnkhuat
+      comment: Update view v_alerts to read from notification tables
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v2/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v2/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v2/h2-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v1/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v1/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v1/h2-alerts.sql
+
+  - changeSet:
       id: v53.2024-12-27T17:33:54
       author: nvoxland
       comment: Adds encryption-check setting to encryption management
