@@ -5,8 +5,7 @@
    [clojure.string :as str]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.user :as user]
-   [metabase.public-settings.premium-features
-    :refer [defenterprise-schema]]
+   [metabase.premium-features.core :refer [defenterprise-schema]]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

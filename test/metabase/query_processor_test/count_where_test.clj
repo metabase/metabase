@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
@@ -77,9 +76,9 @@
 
 (deftest ^:parallel segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (t2.with-temp/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                              :definition {:source-table (mt/id :venues)
-                                                                           :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
+    (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                    :definition {:source-table (mt/id :venues)
+                                                                 :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
       (is (= 94
              (->> {:aggregation [[:count-where [:segment segment-id]]]}
                   (mt/run-mbql-query venues)
@@ -89,11 +88,11 @@
 
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
-    (t2.with-temp/with-temp [:model/Card {metric-id :id} {:dataset_query (mt/mbql-query venues
-                                                                           {:aggregation [:count-where
-                                                                                          [:< $price 4]]
-                                                                            :source-table $$venues})
-                                                          :type :metric}]
+    (mt/with-temp [:model/Card {metric-id :id} {:dataset_query (mt/mbql-query venues
+                                                                 {:aggregation [:count-where
+                                                                                [:< $price 4]]
+                                                                  :source-table $$venues})
+                                                :type :metric}]
       (is (= 94
              (->> {:aggregation [[:metric metric-id]]
                    :source-table (str "card__" metric-id)}

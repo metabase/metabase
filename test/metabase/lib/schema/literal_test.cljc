@@ -1,14 +1,14 @@
 (ns metabase.lib.schema.literal-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.literal :as literal]))
+   [metabase.lib.schema.literal :as literal]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel integer-literal-test
   (testing "valid schemas"
-    (are [n] (are [schema] (mc/validate schema n)
+    (are [n] (are [schema] (mr/validate schema n)
                ::expression/integer
                ::expression/number
                ::expression/orderable
@@ -20,7 +20,7 @@
                 (biginteger 1)))))
   (testing "invalid schemas"
     (binding [expression/*suppress-expression-type-check?* false]
-      (are [n] (are [schema] (mc/explain schema n)
+      (are [n] (are [schema] (mr/explain schema n)
                  ::expression/boolean
                  ::expression/string
                  ::expression/date
@@ -33,7 +33,7 @@
                   (biginteger 1)))))))
 
 (deftest ^:parallel string-literal-type-of-test
-  (is (mc/validate ::literal/string.datetime "2023-03-08T03:18"))
+  (is (mr/validate ::literal/string.datetime "2023-03-08T03:18"))
   (are [s expected] (= expected
                        (expression/type-of s))
     ""                       :type/Text
@@ -46,14 +46,14 @@
 
 (deftest ^:parallel string-literal-test
   (testing "valid schemas"
-    (are [schema] (mc/validate schema "s")
+    (are [schema] (mr/validate schema "s")
       ::expression/string
       ::expression/orderable
       ::expression/equality-comparable
       ::expression/expression))
   (testing "invalid schemas"
     (binding [expression/*suppress-expression-type-check?* false]
-      (are [schema] (mc/explain schema "s")
+      (are [schema] (mr/explain schema "s")
         ::expression/boolean
         ::expression/integer
         ::expression/number
@@ -63,9 +63,9 @@
         ::expression/temporal))))
 
 (deftest ^:parallel value-test
-  ;; we're using (not (me/humanize (mc/explain ...))) here rather than `(mc/validate ...)` because it makes test
+  ;; we're using (not (me/humanize (mr/explain ...))) here rather than `(mr/validate ...)` because it makes test
   ;; failures much easier to debug.
-  (are [clause schema] (not (me/humanize (mc/explain schema clause)))
+  (are [clause schema] (not (me/humanize (mr/explain schema clause)))
     [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Text} nil]
     :mbql.clause/value
 
@@ -103,21 +103,21 @@
   (testing "invalid :value clauses"
     (testing "not enough args"
       (is (me/humanize
-           (mc/explain :mbql.clause/value
+           (mr/explain :mbql.clause/value
                        [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Text}]))))
     (testing "too many args"
       (is (me/humanize
-           (mc/explain :mbql.clause/value
+           (mr/explain :mbql.clause/value
                        [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Text} 1 2]))))
     (testing "missing `:effective-type`"
       (is (me/humanize
-           (mc/explain :mbql.clause/value
+           (mr/explain :mbql.clause/value
                        [:value {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]))))))
 
 (deftest ^:parallel type-of-value-test
   (binding [expression/*suppress-expression-type-check?* false]
     (testing "should not validate against different type"
-      (are [clause schema] (me/humanize (mc/explain schema clause))
+      (are [clause schema] (me/humanize (mr/explain schema clause))
         [:value {:lib/uuid "00000000-0000-0000-0000-000000000000", :effective-type :type/Text} nil]
         ::expression/number
 

@@ -13,7 +13,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.related :as related]
    [metabase.request.core :as request]
    [metabase.sync :as sync]
@@ -41,6 +41,7 @@
 (defn- fix-schema [table]
   (update table :schema str))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
@@ -50,6 +51,7 @@
                    (map fix-schema))
           tables)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
   [id include_editable_data_model]
@@ -107,6 +109,7 @@
       (sync-unhidden-tables newly-unhidden)
       updated-tables)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
@@ -122,6 +125,7 @@
    field_order             [:maybe FieldOrder]}
   (first (update-tables! [id] body)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/"
   "Update all `Table` in `ids`."
   [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
@@ -390,6 +394,7 @@
   [ids]
   (batch-fetch-query-metadatas* ids))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
@@ -457,6 +462,7 @@
              :schema           (get-in card [:collection :name] (root-collection-schema-name))
              :moderated_status (:moderated_status card)
              :description      (:description card)
+             :entity_id        (:entity_id card)
              :metrics          (:metrics card)
              :type             card-type}
       (and (= card-type :metric)
@@ -535,12 +541,14 @@
               (assoc-dimension-options (-> card :database_id dbs))
               (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?})))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [id]
   {id ms/PositiveInt}
   (first (batch-fetch-card-query-metadatas [id])))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
@@ -548,6 +556,7 @@
   {id ms/PositiveInt}
   []) ; return empty array
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
@@ -562,6 +571,7 @@
        :destination_id (:fk_target_field_id origin-field)
        :destination    (t2/hydrate (t2/select-one :model/Field :id (:fk_target_field_id origin-field)) :table)})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
@@ -579,6 +589,7 @@
          (sync.field-values/update-field-values-for-table! table))))
     {:status :success}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
@@ -589,12 +600,14 @@
     (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
   {:status :success})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
   {id ms/PositiveInt}
   (-> (t2/select-one :model/Table :id id) api/read-check related/related))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id/fields/order"
   "Reorder fields"
   [id :as {field_order :body}]
@@ -621,6 +634,7 @@
                              (tru "There was an error uploading the file"))}})
     (finally (io/delete-file (:file options) :silently))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint ^:multipart POST "/:id/append-csv"
   "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by uploading a CSV file."
   [id :as {raw-params :params}]
@@ -630,6 +644,7 @@
                 :file     (get-in raw-params ["file" :tempfile])
                 :action   ::upload/append}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint ^:multipart POST "/:id/replace-csv"
   "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have been created by uploading a CSV file."
   [id :as {raw-params :params}]

@@ -23,6 +23,7 @@
    [metabase.models.timeline-event :as timeline-event]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
+   [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.task :as task]
@@ -31,7 +32,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
-   [metabase.test.util.public-settings]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -800,6 +800,7 @@
 
 (deftest with-model-cleanup-test
   (testing "Make sure the with-model-cleanup macro actually works as expected"
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (t2.with-temp/with-temp [:model/Card other-card]
       (let [card-count-before (t2/count :model/Card)
             card-name         (u.random/random-name)]
@@ -837,6 +838,7 @@
   `(do-with-verified-cards! ~card-or-ids (fn [] ~@body)))
 
 (deftest with-verified-cards-test
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (t2.with-temp/with-temp
     [:model/Card {card-id :id} {}]
     (with-verified-cards! [card-id]
@@ -965,6 +967,7 @@
     `(do-with-discard-model-updates! ~models (fn [] ~@body))))
 
 (deftest with-discard-model-changes-test
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (t2.with-temp/with-temp
     [:model/Card      {card-id :id :as card} {:name "A Card"}
      :model/Dashboard {dash-id :id :as dash} {:name "A Dashboard"}]
@@ -1049,6 +1052,7 @@
 
   For most use cases see the macro [[with-all-users-permission]]."
   [permission-path f]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (t2.with-temp/with-temp [:model/Permissions _ {:group_id (:id (perms-group/all-users))
                                                  :object permission-path}]
     (f)))
@@ -1057,7 +1061,7 @@
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]
   (let [all-users-group-id  (u/the-id (perms-group/all-users))]
-    (metabase.test.util.public-settings/with-additional-premium-features #{:advanced-permissions}
+    (premium-features.test-util/with-additional-premium-features #{:advanced-permissions}
       (perms.test-util/with-no-data-perms-for-all-users!
         (perms.test-util/with-restored-perms!
           (perms.test-util/with-restored-data-perms!
@@ -1126,6 +1130,7 @@
           ;; remap is integer => fk remap
           (let [remapped (t2/select-one :model/Field :id (u/the-id remap))]
             (fn []
+              #_{:clj-kondo/ignore [:discouraged-var]}
               (t2.with-temp/with-temp [:model/Dimension _ {:field_id                (:id original)
                                                            :name                    (format "%s [external remap]" (:display_name original))
                                                            :type                    :external
@@ -1145,6 +1150,7 @@
                                     (testing (format "With human readable values remapping %s -> %s\n"
                                                      (describe-field original) (pr-str values-map))
                                       (thunk)))]
+                #_{:clj-kondo/ignore [:discouraged-var]}
                 (t2.with-temp/with-temp [:model/Dimension _ {:field_id (:id original)
                                                              :name     (format "%s [internal remap]" (:display_name original))
                                                              :type     :internal}]
@@ -1152,6 +1158,7 @@
                     (with-temp-vals-in-db :model/FieldValues preexisting-id {:values (keys values-map)
                                                                              :human_readable_values (vals values-map)}
                       (testing-thunk))
+                    #_{:clj-kondo/ignore [:discouraged-var]}
                     (t2.with-temp/with-temp [:model/FieldValues _ {:field_id              (:id original)
                                                                    :values                (keys values-map)
                                                                    :human_readable_values (vals values-map)}]
@@ -1351,10 +1358,12 @@
 
 (defn do-with-user-in-groups
   ([f groups-or-ids]
+   #_{:clj-kondo/ignore [:discouraged-var]}
    (t2.with-temp/with-temp [:model/User user]
      (do-with-user-in-groups f user groups-or-ids)))
   ([f user [group-or-id & more]]
    (if group-or-id
+     #_{:clj-kondo/ignore [:discouraged-var]}
      (t2.with-temp/with-temp [:model/PermissionsGroupMembership _ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
        (do-with-user-in-groups f user more))
      (f user))))
@@ -1374,6 +1383,7 @@
   [[& bindings] & body]
   (if (> (count bindings) 2)
     (let [[group-binding group-definition & more] bindings]
+      #_{:clj-kondo/ignore [:discouraged-var]}
       `(t2.with-temp/with-temp [:model/PermissionsGroup ~group-binding ~group-definition]
          (with-user-in-groups ~more ~@body)))
     (let [[user-binding groups-or-ids-to-put-user-in] bindings]

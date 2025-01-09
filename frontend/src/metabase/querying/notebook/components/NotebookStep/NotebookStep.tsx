@@ -135,7 +135,6 @@ export function NotebookStep({
                 icon="play"
                 title={t`Preview`}
                 color={c("text-light")}
-                transparent
                 onClick={openPreview}
                 data-testid="step-preview-button"
               />

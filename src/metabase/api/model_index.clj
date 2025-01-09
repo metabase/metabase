@@ -30,6 +30,7 @@
                      :ref         ref
                      :fields      metadata}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create ModelIndex."
   [:as {{:keys [model_id pk_ref value_ref] :as _model-index} :body}]
@@ -56,6 +57,7 @@
       (model-index/add-values! model-index)
       (t2/select-one :model/ModelIndex :id (:id model-index)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Retrieve list of ModelIndex."
   [model_id]
@@ -67,6 +69,7 @@
                        :status-code 400})))
     (t2/select :model/ModelIndex :model_id model_id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Retrieve ModelIndex."
   [id]
@@ -79,6 +82,7 @@
                        :status-code 400})))
     model-index))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id"
   "Delete ModelIndex."
   [id]

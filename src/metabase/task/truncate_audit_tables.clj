@@ -10,8 +10,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.task-history :as task-history]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features
-    :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.task :as task]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]

@@ -45,6 +45,7 @@
       prompt_template_version
       (update :prompt_template_versions conj prompt_template_version))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/model/:model-id"
   "Ask Metabot to generate a SQL query given a prompt about a given model."
   [model-id :as {{:keys [question]} :body}]
@@ -62,6 +63,7 @@
         dataset (infer-sql-or-throw context question)]
     (add-viz-to-dataset context dataset)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/database/:database-id"
   "Ask Metabot to generate a native question given a prompt about a given database."
   [database-id :as {{:keys [question]} :body}]
@@ -92,6 +94,7 @@
           {:status-code 400
            :message     message}))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/database/:database-id/query"
   "Ask Metabot to generate a SQL query given a prompt about a given database."
   [database-id :as {{:keys [question]} :body}]
@@ -108,6 +111,7 @@
                  :prompt_task :infer_native_sql}]
     (metabot/infer-native-sql-query context)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/feedback"
   "Record feedback on metabot results."
   [:as {feedback :body}]

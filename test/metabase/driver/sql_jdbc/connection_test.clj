@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
@@ -25,8 +26,7 @@
    [metabase.util.ssh :as ssh]
    [metabase.util.ssh-test :as ssh-test]
    [next.jdbc :as next.jdbc]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (org.h2.tools Server)))
 
@@ -70,7 +70,7 @@
            (fn [conn]
              (next.jdbc/execute! conn ["CREATE TABLE birds (name varchar)"])
              (next.jdbc/execute! conn ["INSERT INTO birds values ('rasta'),('lucky')"])
-             (t2.with-temp/with-temp [:model/Database database {:engine :h2, :details connection-details}]
+             (mt/with-temp [:model/Database database {:engine :h2, :details connection-details}]
                (testing "database id is not in our connection map initially"
                  ;; deref'ing a var to get the atom. looks weird
                  (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
@@ -280,6 +280,32 @@
         server (Server/createTcpServer (into-array args))]
     (doto server (.start))))
 
+(defmethod driver/database-supports? [:sql-jdbc ::regular-connection-pooling]
+  [& _args]
+  true)
+
+(defmethod driver/database-supports? [:hive-like ::regular-connection-pooling]
+  [& _args]
+  false)
+
+(deftest test-bad-connection-detail-acquisition
+  (mt/test-drivers (mt/normal-drivers-with-feature ::regular-connection-pooling)
+    (let [original-details (:details (mt/db))]
+      ;; Only test drivers that use a username to log in
+      (when (and (:password original-details) (:user original-details))
+        (mt/with-temp [:model/Database db {:engine (tx/driver), :details original-details}]
+          (mt/with-db db
+            (sync/sync-database! (mt/db))
+            (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1})))))
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (let [new-details (assoc original-details :user "baduser")
+                  start (t/instant)]
+              (t2/update! :model/Database :id (mt/id) {:details new-details})
+              (mt/with-db (assoc db :details new-details)
+                (is (thrown-with-msg? Exception #"Connections could not be acquired from the underlying database!" (mt/rows (mt/run-mbql-query venues {:limit 1}))))
+                ;; Should be around 1 second
+                (is (> 10 (.getSeconds (t/duration start (t/instant)))))))))))))
+
 ;;; TODO Not clear why we're only testing Postgres here, do we support Azure Managed Identity for any other app DB type?
 ;;; Needs a comment please.
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
@@ -302,7 +328,7 @@
                                              (swap! connection-creations inc)
                                              {:access_token (:password db-details)
                                               :expires_in @expires-in})]
-            (t2.with-temp/with-temp [:model/Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
+            (mt/with-temp [:model/Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
               (mt/with-db oauth-db
                 (try
                                 ;; since Metabase is running and using the pool of this DB, the sync might fail
@@ -346,7 +372,7 @@
                                      :tunnel-port ssh-test/ssh-mock-server-with-password-port
                                      :tunnel-user ssh-test/ssh-username
                                      :tunnel-pass ssh-test/ssh-password)]
-        (t2.with-temp/with-temp [:model/Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
+        (mt/with-temp [:model/Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
           (mt/with-db tunneled-db
             (sync/sync-database! (mt/db))
             (is (= [["Polo Lounge"]]
@@ -362,7 +388,7 @@
                                      :tunnel-port ssh-test/ssh-mock-server-with-password-port
                                      :tunnel-user ssh-test/ssh-username
                                      :tunnel-pass ssh-test/ssh-password)]
-        (t2.with-temp/with-temp [:model/Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
+        (mt/with-temp [:model/Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
           (mt/with-db tunneled-db
             (sync/sync-database! (mt/db))
             (letfn [(check-row []
@@ -396,7 +422,7 @@
                        :tunnel-user        ssh-test/ssh-username
                        :tunnel-pass        ssh-test/ssh-password}]
           (try
-            (t2.with-temp/with-temp [:model/Database db {:engine :h2, :details h2-db}]
+            (mt/with-temp [:model/Database db {:engine :h2, :details h2-db}]
               (mt/with-db db
                 (sync/sync-database! db)
                 (is (=? {:cols [{:base_type    :type/Text
@@ -441,7 +467,7 @@
                        :tunnel-user        ssh-test/ssh-username
                        :tunnel-pass        ssh-test/ssh-password}]
           (try
-            (t2.with-temp/with-temp [:model/Database db {:engine :h2, :details h2-db}]
+            (mt/with-temp [:model/Database db {:engine :h2, :details h2-db}]
               (mt/with-db db
                 (sync/sync-database! db)
                 (letfn [(check-data [] (is (=? {:cols [{:base_type    :type/Text

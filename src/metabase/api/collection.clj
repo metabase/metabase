@@ -26,7 +26,7 @@
    [metabase.models.pulse :as models.pulse]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -116,6 +116,7 @@
                           [:%lower.name :asc]]})
     exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
@@ -173,6 +174,7 @@
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
@@ -968,18 +970,21 @@
                   :can_restore
                   :can_delete)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
   [id]
   {id ms/PositiveInt}
   (collection-detail (api/read-check :model/Collection id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
   {}
   (collection-detail (api/read-check (collection/trash-collection))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/root/timelines"
   "Fetch the root Collection's timelines."
   [include archived]
@@ -989,6 +994,7 @@
   (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
                                           :timeline/archived? archived}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   [id include archived]
@@ -999,6 +1005,7 @@
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
@@ -1040,6 +1047,7 @@
 (defn- root-collection [collection-namespace]
   (collection-detail (collection/root-collection-with-ui-details collection-namespace)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/root"
   "Return the 'Root' Collection object with standard details added"
   [namespace]
@@ -1060,6 +1068,7 @@
       #{:collection}
       #{:no_models})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
@@ -1138,6 +1147,7 @@
                {:location (collection/children-location (t2/select-one [:model/Collection :location :id] :id parent_id))})))
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new Collection."
   [:as {{:keys [name description parent_id namespace authority_level] :as body} :body}]
@@ -1210,6 +1220,7 @@
     :parent_id (move-collection! collection-before-update collection-updates)
     :no-op))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
   [id, :as {{:keys [name description archived parent_id authority_level], :as collection-updates} :body}]
@@ -1239,6 +1250,7 @@
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/graph"
   "Fetch a graph of all Collection Permissions."
   [namespace]
@@ -1289,6 +1301,7 @@
     {:revision (c-perm-revision/latest-id)}
     (graph/graph namespace)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph. Will overwrite parts of the graph that
   are present in the request, and leave the rest unchanged.

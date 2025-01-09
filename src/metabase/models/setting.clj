@@ -423,8 +423,8 @@
 (defn- has-feature?
   [feature]
   (u/ignore-exceptions
-    (classloader/require 'metabase.public-settings.premium-features))
-  (let [has-feature?' (resolve 'metabase.public-settings.premium-features/has-feature?)]
+    (classloader/require 'metabase.premium-features.token-check))
+  (let [has-feature?' (resolve 'metabase.premium-features.token-check/has-feature?)]
     (has-feature?' feature)))
 
 (defn has-advanced-setting-access?
@@ -435,7 +435,7 @@
       (do
         (when config/ee-available?
           (classloader/require 'metabase-enterprise.advanced-permissions.common
-                               'metabase.public-settings.premium-features))
+                               'metabase.premium-features.token-check))
         (if-let [current-user-has-application-permissions?
                  (and (has-feature? :advanced-permissions)
                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]

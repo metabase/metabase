@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -17,35 +16,35 @@
   (testing "GET /api/login-history/current"
     (let [session-id (str (random-uuid))
           device-id  "e9b49ec7-bc64-4a83-9b1a-ecd3ae26ba9d"]
-      (t2.with-temp/with-temp [:model/User         user {}
-                               :model/Session      _    {:id session-id, :user_id (u/the-id user)}
-                               :model/LoginHistory _    {:timestamp          #t "2021-03-18T19:52:41.808482Z"
-                                                         :user_id            (u/the-id user)
-                                                         :device_id          device-id
-                                                         :device_description windows-user-agent
-                                                         :ip_address         "185.233.100.23"
-                                                         :session_id         session-id}
-                               :model/LoginHistory _    {:timestamp          #t "2021-03-18T20:04:24.727300Z"
-                                                         :user_id            (u/the-id user)
-                                                         :device_id          device-id
-                                                         :device_description "Apache-HttpClient/4.5.10 (Java/14.0.1)"
-                                                         :ip_address         "127.0.0.1"}
-                               :model/LoginHistory _    {:timestamp          #t "2021-03-18T20:55:50.955232Z"
-                                                         :user_id            (u/the-id user)
-                                                         :device_id          device-id
-                                                         :device_description ios-user-agent
-                                                         :ip_address         "0:0:0:0:0:0:0:1"}
-                               :model/LoginHistory _    {:timestamp          #t "2021-03-18T19:52:20.172351Z"
-                                                         :user_id            (u/the-id user)
-                                                         :device_id          device-id
-                                                         :device_description windows-user-agent
-                                                         :ip_address         "52.206.149.9"}
+      (mt/with-temp [:model/User         user {}
+                     :model/Session      _    {:id session-id, :user_id (u/the-id user)}
+                     :model/LoginHistory _    {:timestamp          #t "2021-03-18T19:52:41.808482Z"
+                                               :user_id            (u/the-id user)
+                                               :device_id          device-id
+                                               :device_description windows-user-agent
+                                               :ip_address         "185.233.100.23"
+                                               :session_id         session-id}
+                     :model/LoginHistory _    {:timestamp          #t "2021-03-18T20:04:24.727300Z"
+                                               :user_id            (u/the-id user)
+                                               :device_id          device-id
+                                               :device_description "Apache-HttpClient/4.5.10 (Java/14.0.1)"
+                                               :ip_address         "127.0.0.1"}
+                     :model/LoginHistory _    {:timestamp          #t "2021-03-18T20:55:50.955232Z"
+                                               :user_id            (u/the-id user)
+                                               :device_id          device-id
+                                               :device_description ios-user-agent
+                                               :ip_address         "0:0:0:0:0:0:0:1"}
+                     :model/LoginHistory _    {:timestamp          #t "2021-03-18T19:52:20.172351Z"
+                                               :user_id            (u/the-id user)
+                                               :device_id          device-id
+                                               :device_description windows-user-agent
+                                               :ip_address         "52.206.149.9"}
                                ;; this one shouldn't show up because it's from a different User
-                               :model/LoginHistory _    {:timestamp          #t "2021-03-17T19:00Z"
-                                                         :user_id            (mt/user->id :rasta)
-                                                         :device_id          device-id
-                                                         :device_description windows-user-agent
-                                                         :ip_address         "52.206.149.9"}]
+                     :model/LoginHistory _    {:timestamp          #t "2021-03-17T19:00Z"
+                                               :user_id            (mt/user->id :rasta)
+                                               :device_id          device-id
+                                               :device_description windows-user-agent
+                                               :ip_address         "52.206.149.9"}]
         ;; GeoJS is having issues. We have safe error handling so we expect either nil or the expected values.
         ;; https://github.com/jloh/geojs/issues/48
         ;; The timestamps will also need to be updated (to be in the TZ, not in Zulu time)
