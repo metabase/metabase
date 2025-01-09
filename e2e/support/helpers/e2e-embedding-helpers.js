@@ -1,5 +1,5 @@
-import { H } from "e2e/support";
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
+import { openDashboardMenu, openQuestionActions } from "e2e/support/helpers";
 import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 /**
@@ -205,9 +205,9 @@ export function openStaticEmbeddingModal({
   confirmSave,
 } = {}) {
   if (context === "dashboard") {
-    H.openDashboardMenu("Embed");
+    openDashboardMenu("Embed");
   } else {
-    H.openQuestionActions("Embed");
+    openQuestionActions("Embed");
   }
 
   if (confirmSave) {
@@ -287,9 +287,9 @@ export function openNewPublicLinkDropdown(resourceType) {
   );
 
   if (resourceType === "dashboard") {
-    H.openDashboardMenu(/public link/i);
+    openDashboardMenu("Public link");
   } else {
-    H.openQuestionActions(/public link/i);
+    openQuestionActions("Public link");
   }
 
   cy.wait("@sharingEnabled").then(

@@ -39,13 +39,6 @@ export const openQuestionAlerts = () => {
   cy.findByTestId("notifications-menu-button").click();
 };
 
-export const openNotificationsMenu = (menuItemText?: string) => {
-  notificationsMenuButton().click();
-  if (menuItemText) {
-    notificationsMenu().findByText(menuItemText).click();
-  }
-};
-
 export const toggleAlertChannel = (channel: string) => {
   cy.findByText(channel).parent().find("input").click({ force: true });
 };

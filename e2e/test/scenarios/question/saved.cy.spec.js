@@ -490,13 +490,11 @@ describe(
       cy.findByLabelText("Create an alert").click();
 
       H.modal().button("Set up an alert").click();
-      H.modal()
-        .first()
-        .within(() => {
-          H.toggleAlertChannel("Email");
-          H.toggleAlertChannel(secondWebhookName);
-          cy.button("Done").should("not.be.disabled").click();
-        });
+      H.modal().within(() => {
+        H.toggleAlertChannel("Email");
+        H.toggleAlertChannel(secondWebhookName);
+        cy.button("Done").should("not.be.disabled").click();
+      });
 
       cy.findByLabelText("Edit alerts").click();
 
@@ -505,32 +503,28 @@ describe(
         cy.findByText("Edit").click();
       });
 
-      H.modal()
-        .first()
-        .within(() => {
-          H.getAlertChannel(secondWebhookName).scrollIntoView();
-          H.getAlertChannel(secondWebhookName)
-            .findByRole("checkbox")
-            .should("be.checked");
-        });
+      H.modal().within(() => {
+        H.getAlertChannel(secondWebhookName).scrollIntoView();
+        H.getAlertChannel(secondWebhookName)
+          .findByRole("checkbox")
+          .should("be.checked");
+      });
     });
 
     it("should allow you to test a webhook", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByTestId("notifications-menu-button").click();
+      H.openQuestionAlerts();
 
       H.modal().button("Set up an alert").click();
-      H.modal()
-        .first()
-        .within(() => {
-          H.getAlertChannel(firstWebhookName).scrollIntoView();
+      H.modal().within(() => {
+        H.getAlertChannel(firstWebhookName).scrollIntoView();
 
-          H.getAlertChannel(firstWebhookName)
-            .findByRole("checkbox")
-            .click({ force: true });
+        H.getAlertChannel(firstWebhookName)
+          .findByRole("checkbox")
+          .click({ force: true });
 
-          H.getAlertChannel(firstWebhookName).button("Send a test").click();
-        });
+        H.getAlertChannel(firstWebhookName).button("Send a test").click();
+      });
 
       cy.visit(H.WEBHOOK_TEST_DASHBOARD);
 

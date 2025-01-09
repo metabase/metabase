@@ -59,12 +59,10 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
         H.openQuestionAlerts(); // "Create an alert"
         cy.wait("@channel");
 
-        H.modal()
-          .first()
-          .within(() => {
-            cy.findByText("Let's set up your alert").should("be.visible");
-            cy.findByText("Done").click();
-          });
+        H.modal().within(() => {
+          cy.findByText("Let's set up your alert").should("be.visible");
+          cy.findByText("Done").click();
+        });
 
         cy.wait("@savedAlert").then(({ response: { body } }) => {
           expect(body.alert_condition).to.equal("rows");
