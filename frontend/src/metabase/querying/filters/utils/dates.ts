@@ -1,15 +1,20 @@
+import dayjs from "dayjs";
+
 import {
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_OPERATORS,
   DATE_PICKER_TRUNCATION_UNITS,
 } from "metabase/querying/filters/constants";
 import type {
+  DateFilterValue,
   DatePickerExtractionUnit,
   DatePickerOperator,
   DatePickerTruncationUnit,
   DatePickerUnit,
   DatePickerValue,
   ExcludeDatePickerValue,
+  MonthYearPickerValue,
+  QuarterYearPickerValue,
   RelativeDatePickerValue,
   SpecificDatePickerValue,
 } from "metabase/querying/filters/types";
@@ -120,9 +125,9 @@ function getExcludeDateValue(
   };
 }
 
-export function getFilterClause(
+export function getDateFilterClause(
   column: Lib.ColumnMetadata,
-  value: DatePickerValue,
+  value: DateFilterValue,
 ): Lib.ExpressionClause {
   switch (value.type) {
     case "specific":
@@ -131,6 +136,10 @@ export function getFilterClause(
       return getRelativeFilterClause(column, value);
     case "exclude":
       return getExcludeFilterClause(column, value);
+    case "month":
+      return getMonthYearFilterClause(column, value);
+    case "quarter":
+      return getQuarterYearFilterClause(column, value);
   }
 }
 
@@ -169,6 +178,47 @@ function getExcludeFilterClause(
     unit: value.unit ?? null,
     column,
     values: value.values,
+  });
+}
+
+function getMonthYearFilterClause(
+  column: Lib.ColumnMetadata,
+  value: MonthYearPickerValue,
+): Lib.ExpressionClause {
+  const startOfMonth = dayjs()
+    .year(value.year)
+    .month(value.month - 1)
+    .startOf("month")
+    .toDate();
+  const endOfMonth = dayjs(startOfMonth).endOf("month").startOf("day").toDate();
+
+  return Lib.specificDateFilterClause({
+    operator: "between",
+    column,
+    values: [startOfMonth, endOfMonth],
+    hasTime: false,
+  });
+}
+
+function getQuarterYearFilterClause(
+  column: Lib.ColumnMetadata,
+  value: QuarterYearPickerValue,
+): Lib.ExpressionClause {
+  const startOfQuarter = dayjs()
+    .year(value.year)
+    .quarter(value.quarter)
+    .startOf("quarter")
+    .toDate();
+  const endOfQuarter = dayjs(startOfQuarter)
+    .endOf("quarter")
+    .startOf("day")
+    .toDate();
+
+  return Lib.specificDateFilterClause({
+    operator: "between",
+    column,
+    values: [startOfQuarter, endOfQuarter],
+    hasTime: false,
   });
 }
 
