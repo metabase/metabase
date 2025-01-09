@@ -567,6 +567,17 @@
 
   ([visibility-config :- CollectionVisibilityConfig
     {:keys [current-user-id is-superuser?]} :- UserScope]
+   ;; This giant query looks scary, but it's actually only moderately terrifying! Let's walk through it step by
+   ;; step. What we're doing here is adding a filter clause to a surrounding query, to make sure that
+   ;; `collection-id-field` matches the criteria passed by the user. The criteria we use are:
+   ;;
+   ;; - your permissions (we don't show you something you don't have the right to see)
+   ;; - the desired permission level you need (if you're looking for stuff you can WRITE, we don't show you stuff you can READ)
+   ;; - trash (you can show/hide the trash)
+   ;; - archived (you can show/hide archived collections or select *only* archived collections)
+   ;; - archive operation id (when we archive a collection and subcollections together, we mark the whole archived
+   ;;   tree so you can look at it in isolation)
+   ;; - effective child (if you're only interested in things that are an effective child of another collection, we can do that)
    {:select :id
     ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
     ;; that's all of them. For regular users, it's:
@@ -655,21 +666,6 @@
     visibility-config :- CollectionVisibilityConfig
     user-scope :- UserScope]
    (let [{:keys [cte-name] :as visibility-config} (merge default-visibility-config visibility-config)]
-     ;; This giant query looks scary, but it's actually only moderately terrifying! Let's walk through it step by
-     ;; step. What we're doing here is adding a filter clause to a surrounding query, to make sure that
-     ;; `collection-id-field` matches the criteria passed by the user. The criteria we use are:
-     ;;
-     ;; - your permissions (we don't show you something you don't have the right to see)
-     ;; - the desired permission level you need (if you're looking for stuff you can WRITE, we don't show you stuff you can READ)
-     ;; - trash (you can show/hide the trash)
-     ;; - archived (you can show/hide archived collections or select *only* archived collections)
-     ;; - archive operation id (when we archive a collection and subcollections together, we mark the whole archived
-     ;;   tree so you can look at it in isolation)
-     ;; - effective child (if you're only interested in things that are an effective child of another collection, we can do that)
-     ;;
-     ;; So first, we check to see if we should include the root collection. That decision is outsourced to
-     ;; `should-display-root-collection?` but it's pretty simple. We can't include the root collection along with the
-     ;; rest because it's not a Real collection.
      [:or
       (when (should-display-root-collection? user-scope visibility-config)
         [:= collection-id-field nil])
