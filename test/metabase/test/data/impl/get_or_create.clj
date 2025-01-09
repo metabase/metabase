@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.tools.with-temp])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
@@ -256,7 +256,7 @@
   (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
         db                 (first (t2/insert-returning-instances! :model/Database
                                                                   (merge
-                                                                   (t2.with-temp/with-temp-defaults :model/Database)
+                                                                   (toucan2.tools.with-temp/with-temp-defaults :model/Database)
                                                                    {:name     (tx/database-display-name-for-driver driver database-name)
                                                                     :engine   driver
                                                                     :details  connection-details

@@ -13,8 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues)
    (org.quartz TriggerKey)))
@@ -92,16 +91,16 @@
 (deftest new-db-jobs-scheduled-test
   (testing "Check that a newly created database automatically gets scheduled"
     (with-scheduler-setup!
-      (t2.with-temp/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
+      (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
         (is (= [sync-job fv-job]
                (current-tasks-for-db database)))))))
 
 (deftest custom-schedule-test
   (testing "Check that a custom schedule is respected when creating a new Database"
     (with-scheduler-setup!
-      (t2.with-temp/with-temp [:model/Database database {:details                     {:let-user-control-scheduling true}
-                                                         :metadata_sync_schedule      "0 30 4,16 * * ? *" ; 4:30 AM and PM daily
-                                                         :cache_field_values_schedule "0 15 10 ? * 6#3"}] ; 10:15 on the 3rd Friday of the Month
+      (mt/with-temp [:model/Database database {:details                     {:let-user-control-scheduling true}
+                                               :metadata_sync_schedule      "0 30 4,16 * * ? *" ; 4:30 AM and PM daily
+                                               :cache_field_values_schedule "0 15 10 ? * 6#3"}] ; 10:15 on the 3rd Friday of the Month
         (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 30 4,16 * * ? *")
                 (assoc-in fv-job   [:triggers 0 :cron-schedule] "0 15 10 ? * 6#3")]
                (current-tasks-for-db database)))))))
@@ -109,7 +108,7 @@
 (deftest unschedule-deleted-database-test
   (testing "Check that a deleted database gets unscheduled"
     (with-scheduler-setup!
-      (t2.with-temp/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
+      (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
         (t2/delete! :model/Database :id (u/the-id database))
         (is (= [(update sync-job :triggers empty)
                 (update fv-job   :triggers empty)]
@@ -118,7 +117,7 @@
 (deftest schedule-change-test
   (testing "Check that changing the schedule column(s) for a DB properly updates the scheduled tasks"
     (with-scheduler-setup!
-      (t2.with-temp/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
+      (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
         (t2/update! :model/Database (u/the-id database)
                     {:metadata_sync_schedule      "0 15 10 ? * MON-FRI"    ; 10:15 AM every weekday
                      :cache_field_values_schedule "0 11 11 11 11 ?"})      ; Every November 11th at 11:11 AM
@@ -129,7 +128,7 @@
 (deftest schedule-changes-only-expected-test
   (testing "Check that changing one schedule doesn't affect the other"
     (with-scheduler-setup!
-      (t2.with-temp/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
+      (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
         (t2/update! :model/Database (u/the-id database)
                     {:cache_field_values_schedule "0 15 10 ? * MON-FRI"})
         (is (= [sync-job
@@ -138,7 +137,7 @@
 
 (deftest schedule-changes-only-expected-test-2
   (with-scheduler-setup!
-    (t2.with-temp/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
+    (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
       (t2/update! :model/Database (u/the-id database)
                   {:metadata_sync_schedule "0 15 10 ? * MON-FRI"})
       (is (= [(assoc-in sync-job [:triggers 0 :cron-schedule] "0 15 10 ? * MON-FRI")
@@ -178,7 +177,7 @@
     (with-scheduler-setup!
       (doseq [sync-fn [#'task.sync-databases/update-field-values! #'task.sync-databases/sync-and-analyze-database!]]
         (testing (str sync-fn)
-          (t2.with-temp/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
+          (mt/with-temp [:model/Database database {:details {:let-user-control-scheduling true}}]
             (let [db-id (:id database)]
               (is (= [sync-job fv-job]
                      (current-tasks-for-db database)))
@@ -203,7 +202,7 @@
                     metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
                     metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
         (with-scheduler-setup
-          (t2.with-temp/with-temp [Database database db-info]
+          (mt/with-temp [Database database db-info]
             ;; deref the promises in parallel so they all get sufficient time to run.
             (into {} (pmap (fn [[k promis]]
                              (let [wait-time-ms (or (get waits k)
