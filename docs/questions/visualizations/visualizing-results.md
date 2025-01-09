@@ -1,11 +1,11 @@
 ---
-title: Visualizing data
+title: Overview of visualization types
 redirect_from:
   - /docs/latest/users-guide/05-visualizing-results
   - /docs/latest/questions/sharing/visualizing-results
 ---
 
-# Visualizing data
+# Overview of visualization types
 
 While tables are useful for looking up information or finding specific numbers, it's usually easier to see trends and make sense of data using charts.
 
