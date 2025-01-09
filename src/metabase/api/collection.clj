@@ -114,7 +114,7 @@
                              [:= :type collection/trash-collection-type] 1
                              :else 2]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
@@ -412,8 +412,8 @@
                     [:u.last_name :last_edit_last_name]
                     [:r.timestamp :last_edit_timestamp]
                     [:mr.status :moderated_status]]
-                    (#{:question :model} card-type)
-                    (conj :c.database_id))
+                   (#{:question :model} card-type)
+                   (conj :c.database_id))
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
                                    [:= :r.model_id :c.id]
@@ -425,12 +425,7 @@
                                              [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :collection_id
-                                                                {:include-archived-items :all
-                                                                 :permission-level (if archived?
-                                                                                     :write
-                                                                                     :read)
-                                                                 :archive-operation-id nil})
+                   [:in :collection_id {:select :id :from :permissioned_collection_ids}]
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
@@ -898,7 +893,7 @@
        (into [])))
 
 (defn- collection-children*
-  [collection models {:keys [sort-info] :as options}]
+  [collection models {:keys [sort-info archived?] :as options}]
   (let [sql-order   (children-sort-clause sort-info (mdb/db-type))
         models      (sort (map keyword models))
         queries     (for [model models
@@ -911,9 +906,23 @@
                       (-> query
                           (update select-clause-type add-missing-columns all-select-columns)
                           (update select-clause-type add-model-ranking model)))
-        total-query {:select [[:%count.* :count]]
+        total-query {:with
+                     [[:permissioned_collection_ids
+                       (collection/visible-collection-query {:include-archived-items :all
+                                                             :archive-operation-id nil
+                                                             :permission-level (if archived?
+                                                                                 :write
+                                                                                 :read)})]]
+                     :select [[:%count.* :count]]
                      :from   [[{:union-all queries} :dummy_alias]]}
-        rows-query  {:select   [:*]
+        rows-query  {:with
+                     [[:permissioned_collection_ids
+                       (collection/visible-collection-query {:include-archived-items :all
+                                                             :archive-operation-id nil
+                                                             :permission-level (if archived?
+                                                                                 :write
+                                                                                 :read)})]]
+                     :select   [:*]
                      :from     [[{:union-all queries} :dummy_alias]]
                      :order-by sql-order}
         ;; We didn't implement collection pagination for snippets namespace for root/items

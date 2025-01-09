@@ -554,6 +554,87 @@
     ;; we're not looking for the children of a collection (root definitely isn't a child!)
     (not (:effective-child-of visibility-config)))))
 
+(declare visible-collection-filter-clause)
+
+(mu/defn visible-collection-query
+  "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
+  ([visibility-config :- CollectionVisibilityConfig]
+   (visible-collection-query visibility-config
+                             {:current-user-id api/*current-user-id*
+                              :is-superuser?   api/*is-superuser?*}))
+
+  ([visibility-config :- CollectionVisibilityConfig
+    {:keys [current-user-id is-superuser?]} :- UserScope]
+   {:select [:id]
+    ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
+    ;; that's all of them. For regular users, it's:
+    ;; a) the collections they have permission in the DB for,
+    ;; b) the trash collection, and
+    ;; c) their personal collection and its descendants
+    :from [(if is-superuser?
+             [:collection :c]
+             [{:union-all (keep identity [{:select [:c.id :c.location]
+                                           :from   [[:collection :c]]
+                                           :join   [[:permissions :p]
+                                                    [:= :c.id :p.collection_id]
+                                                    [:permissions_group :pg] [:= :pg.id :p.group_id]
+                                                    [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
+                                           :where  [:and
+                                                    [:= :pgm.user_id current-user-id]
+                                                    [:= :p.perm_type "perms/collection-access"]
+                                                    [:or
+                                                     [:= :p.perm_value "read-and-write"]
+                                                     (when (= :read (:permission-level visibility-config))
+                                                       [:= :p.perm_value "read"])]]}
+                                          {:select [:c.id :c.location]
+                                           :from   [[:collection :c]]
+                                           :where  [:= :type "trash"]}
+                                          (when-let [personal-collection-and-descendant-ids
+                                                     (seq (user->personal-collection-and-descendant-ids current-user-id))]
+                                            {:select [:c.id :c.location]
+                                             :from   [[:collection :c]]
+                                             :where  [:in :id personal-collection-and-descendant-ids]})])}
+              :c])]
+    ;; The `WHERE` clause is where we apply the other criteria we were given:
+    :where [:and
+            ;; hiding the trash collection when desired...
+            (when-not (:include-trash-collection? visibility-config)
+              [:not= (trash-collection-id) :id])
+
+            ;; hiding archived items when desired...
+            (when (= :exclude (:include-archived-items visibility-config))
+              [:= :archived false])
+
+            ;; (or showing them, if that's what you want)
+            (when (= :only (:include-archived-items visibility-config))
+              [:or
+               [:= :archived true]
+               ;; the trash collection is included when viewing archived-only
+               [:= :id (trash-collection-id)]])
+
+            ;; excluding things outside of the `archive_operation_id` you wanted...
+            (when-let [op-id (:archive-operation-id visibility-config)]
+              [:or
+               [:= :archive_operation_id op-id]
+               ;; the trash collection is part of every `archive_operation`
+               [:= :id (trash-collection-id)]])
+
+            ;; or finally, restricting the result set to effective children of the parent you passed in.
+            (when-let [parent-coll (:effective-child-of visibility-config)]
+              (if (is-trash? parent-coll)
+                [:= :archived_directly true]
+                [:and
+                 ;; an effective child is a descendant of the parent collection
+                 [:like :location (str (children-location parent-coll) "%")]
+                 ;; but NOT a child of any OTHER visible collection.
+                 [:not [:exists {:select 1
+                                 :from [[:collection :c2]]
+                                 :where [:and
+                                         (visible-collection-filter-clause :c2.id (dissoc visibility-config :effective-child-of))
+                                         [:= :c.location [:concat :c2.location :c2.id (h2x/literal "/")]]
+                                         (when-not (collection.root/is-root-collection? parent-coll)
+                                           [:not= :c2.id (u/the-id parent-coll)])]}]]]))]}))
+
 (mu/defn visible-collection-filter-clause
   "Given a `CollectionVisibilityConfig`, return a honeysql filter clause ready for use in queries."
   ([]
@@ -567,7 +648,7 @@
                                       :is-superuser?   api/*is-superuser?*}))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig
-    {:keys [current-user-id is-superuser?] :as user-scope} :- UserScope]
+    user-scope :- UserScope]
    (let [visibility-config (merge default-visibility-config visibility-config)]
      ;; This giant query looks scary, but it's actually only moderately terrifying! Let's walk through it step by
      ;; step. What we're doing here is adding a filter clause to a surrounding query, to make sure that
@@ -588,76 +669,7 @@
       (when (should-display-root-collection? user-scope visibility-config)
         [:= collection-id-field nil])
       ;; the non-root collections are here. We're saying "let this row through if..."
-      [:in collection-id-field
-       {:select [:id]
-        ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
-        ;; that's all of them. For regular users, it's:
-        ;; a) the collections they have permission in the DB for,
-        ;; b) the trash collection, and
-        ;; c) their personal collection and its descendants
-        :from [(if is-superuser?
-                 [:collection :c]
-                 [{:union-all (keep identity [{:select [:c.id :c.location]
-                                               :from   [[:collection :c]]
-                                               :join   [[:permissions :p]
-                                                        [:= :c.id :p.collection_id]
-                                                        [:permissions_group :pg] [:= :pg.id :p.group_id]
-                                                        [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
-                                               :where  [:and
-                                                        [:= :pgm.user_id current-user-id]
-                                                        [:= :p.perm_type "perms/collection-access"]
-                                                        [:or
-                                                         [:= :p.perm_value "read-and-write"]
-                                                         (when (= :read (:permission-level visibility-config))
-                                                           [:= :p.perm_value "read"])]]}
-                                              {:select [:c.id :c.location]
-                                               :from   [[:collection :c]]
-                                               :where  [:= :type "trash"]}
-                                              (when-let [personal-collection-and-descendant-ids
-                                                         (seq (user->personal-collection-and-descendant-ids current-user-id))]
-                                                {:select [:c.id :c.location]
-                                                 :from   [[:collection :c]]
-                                                 :where  [:in :id personal-collection-and-descendant-ids]})])}
-                  :c])]
-        ;; The `WHERE` clause is where we apply the other criteria we were given:
-        :where [:and
-                ;; hiding the trash collection when desired...
-                (when-not (:include-trash-collection? visibility-config)
-                  [:not= (trash-collection-id) :id])
-
-                ;; hiding archived items when desired...
-                (when (= :exclude (:include-archived-items visibility-config))
-                  [:= :archived false])
-
-                ;; (or showing them, if that's what you want)
-                (when (= :only (:include-archived-items visibility-config))
-                  [:or
-                   [:= :archived true]
-                   ;; the trash collection is included when viewing archived-only
-                   [:= :id (trash-collection-id)]])
-
-                ;; excluding things outside of the `archive_operation_id` you wanted...
-                (when-let [op-id (:archive-operation-id visibility-config)]
-                  [:or
-                   [:= :archive_operation_id op-id]
-                   ;; the trash collection is part of every `archive_operation`
-                   [:= :id (trash-collection-id)]])
-
-                ;; or finally, restricting the result set to effective children of the parent you passed in.
-                (when-let [parent-coll (:effective-child-of visibility-config)]
-                  (if (is-trash? parent-coll)
-                    [:= :archived_directly true]
-                    [:and
-                     ;; an effective child is a descendant of the parent collection
-                     [:like :location (str (children-location parent-coll) "%")]
-                     ;; but NOT a child of any OTHER visible collection.
-                     [:not [:exists {:select 1
-                                     :from [[:collection :c2]]
-                                     :where [:and
-                                             (visible-collection-filter-clause :c2.id (dissoc visibility-config :effective-child-of))
-                                             [:= :c.location [:concat :c2.location :c2.id (h2x/literal "/")]]
-                                             (when-not (collection.root/is-root-collection? parent-coll)
-                                               [:not= :c2.id (u/the-id parent-coll)])]}]]]))]}]])))
+      [:in collection-id-field (visible-collection-query visibility-config user-scope)]])))
 
 (def ^{:arglists '([visibility-config])} visible-collection-ids*
   "Impl for `visible-collection-ids`, caches for the lifetime of the request, maximum 10 seconds."
