@@ -6,7 +6,7 @@ title: Embedded analytics SDK - versions
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true enterprise-only=true %}
 
 The SDK stable version tracks with the Metabase version.
 

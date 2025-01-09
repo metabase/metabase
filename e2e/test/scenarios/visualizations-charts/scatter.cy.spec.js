@@ -205,7 +205,7 @@ select 10 as size, 2 as x, 5 as y`,
       rows: allTooltipRows,
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     // Resizing animation due to the sidebar
     cy.wait(200);
 
