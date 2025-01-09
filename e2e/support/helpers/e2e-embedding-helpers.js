@@ -287,9 +287,9 @@ export function openNewPublicLinkDropdown(resourceType) {
   );
 
   if (resourceType === "dashboard") {
-    openDashboardMenu("Public link");
+    openDashboardMenu(/public link/i);
   } else {
-    openQuestionActions("Public link");
+    openQuestionActions(/public link/i);
   }
 
   cy.wait("@sharingEnabled").then(
