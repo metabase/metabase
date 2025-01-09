@@ -3,9 +3,9 @@
   (:require
    [clojure.string :as str]
    [compojure.core :refer [PUT]]
+   [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.api.auth :as api.auth]
    [metabase.api.common :as api]
-   [metabase.harbormaster.client :as hm.client]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
