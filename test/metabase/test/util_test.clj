@@ -103,6 +103,31 @@
       (testing "The original definition survives"
         (is (= "original" (clump "orig" "inal")))))))
 
+(def not-a-function 23)
+
+(def accidentally-a-function :wut-up)
+
+(def also-accidentally-a-function #{:wut-up})
+
+(deftest ^:parallel with-dynamic-redefs-non-function
+  (testing "It is an error to redefine a non-function"
+    (is (thrown-with-msg?
+         AssertionError
+         #"Cannot proxy non-functions"
+         (mt/with-dynamic-redefs [not-a-function 5]
+           (is (= 5 not-a-function))))))
+  (testing "Redefining keywords or collections is likely to surprise you, so we don't allow it"
+    (is (thrown-with-msg?
+         AssertionError
+         #"Cannot proxy keywords"
+         (mt/with-dynamic-redefs [accidentally-a-function :not-much]
+           (is (= :not-much accidentally-a-function)))))
+    (is (thrown-with-msg?
+         AssertionError
+         #"Cannot proxy collections"
+         (mt/with-dynamic-redefs [also-accidentally-a-function #{:butter-cup}]
+           (is (= #{:butter-cup} also-accidentally-a-function)))))))
+
 (defn mock-me-inner []
   :mock/original)
 
