@@ -4,7 +4,6 @@ import TabContent from "metabase/core/components/TabContent";
 import TabLink from "metabase/core/components/TabLink";
 import * as Urls from "metabase/lib/urls";
 import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
 import type { CollectionId } from "metabase-types/api";
 
 import ModelActionDetails from "./ModelActionDetails";
@@ -16,33 +15,23 @@ import {
   TabPanelContent,
   TabRow,
 } from "./ModelDetailPage.styled";
-import ModelInfoSidePanel from "./ModelInfoSidePanel";
 import ModelSchemaDetails from "./ModelSchemaDetails";
-import { ModelUsageDetails } from "./ModelUsageDetails";
 
 interface Props {
   model: Question;
-  mainTable?: Table | null;
   tab: string;
   hasDataPermissions: boolean;
   hasActionsTab: boolean;
-  hasNestedQueriesEnabled: boolean;
-  supportsNestedQueries: boolean;
   onChangeName: (name?: string) => void;
-  onChangeDescription: (description?: string | null) => void;
   onChangeCollection: ({ id }: { id: CollectionId }) => void;
 }
 
 function ModelDetailPage({
   model,
   tab,
-  mainTable,
   hasDataPermissions,
   hasActionsTab,
-  hasNestedQueriesEnabled,
-  supportsNestedQueries,
   onChangeName,
-  onChangeDescription,
   onChangeCollection,
 }: Props) {
   const modelCard = model.card();
@@ -73,18 +62,6 @@ function ModelDetailPage({
               >{t`Actions`}</TabLink>
             )}
           </TabRow>
-          <TabPanel value="usage">
-            <TabPanelContent>
-              <ModelUsageDetails
-                model={model}
-                hasNewQuestionLink={
-                  hasDataPermissions &&
-                  supportsNestedQueries &&
-                  hasNestedQueriesEnabled
-                }
-              />
-            </TabPanelContent>
-          </TabPanel>
           <TabPanel value="schema">
             <TabPanelContent>
               <ModelSchemaDetails
@@ -102,11 +79,6 @@ function ModelDetailPage({
           )}
         </TabContent>
       </ModelMain>
-      <ModelInfoSidePanel
-        model={model}
-        mainTable={mainTable}
-        onChangeDescription={onChangeDescription}
-      />
     </RootLayout>
   );
 }

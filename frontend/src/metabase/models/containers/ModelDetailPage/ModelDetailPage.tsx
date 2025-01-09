@@ -153,16 +153,6 @@ function ModelDetailPage({
     [model, onChangeModel],
   );
 
-  const handleDescriptionChange = useCallback(
-    (description?: string | null) => {
-      if (model.description() !== description) {
-        const nextCard = model.setDescription(description).card();
-        onChangeModel(nextCard as Card);
-      }
-    },
-    [model, onChangeModel],
-  );
-
   const handleCollectionChange = useCallback(
     (collection: { id: CollectionId }) => {
       onChangeCollection(model.card() as Card, collection, {
@@ -195,7 +185,6 @@ function ModelDetailPage({
         hasNestedQueriesEnabled={hasNestedQueriesEnabled}
         supportsNestedQueries={supportsNestedQueries}
         onChangeName={handleNameChange}
-        onChangeDescription={handleDescriptionChange}
         onChangeCollection={handleCollectionChange}
       />
       {/* Required for rendering child `ModalRoute` elements */}
