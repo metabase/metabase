@@ -309,7 +309,7 @@
 (def ^:private supported-series-display-type (set (keys (methods series-are-compatible?))))
 
 (defn- fetch-compatible-series*
-  "Implementaiton of `fetch-compatible-series`.
+  "Implementation of `fetch-compatible-series`.
 
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
@@ -386,7 +386,7 @@
        new-cards))))
 
 (api/defendpoint GET "/:id/series"
-  "Fetches a list of comptatible series with the card with id `card_id`.
+  "Fetches a list of compatible series with the card with id `card_id`.
 
   - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.
   - `query` to search card by name.
