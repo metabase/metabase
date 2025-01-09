@@ -198,20 +198,25 @@ describe("QuestionInfoSidebar", () => {
       });
       await setup({ card });
 
-      const fieldCount = testDataset.cols.length;
+      // The card should use these columns
+      const expectedColumns = testDataset.cols;
+      const expectedFieldCount = expectedColumns.length;
+
       const cardWithFields = await screen.findByLabelText(
-        new RegExp(`${fieldCount} fields`),
+        new RegExp(`${expectedFieldCount} fields`),
       );
       expect(cardWithFields).toBeInTheDocument();
 
       // Expect the correct number of fields
       const listItems = await within(cardWithFields).findAllByRole("listitem");
-      expect(listItems).toHaveLength(fieldCount);
+      expect(listItems).toHaveLength(expectedFieldCount);
 
       // Expect the correct field names
-      const fieldNames = testDataset.cols.map(col => col.display_name);
-      fieldNames.forEach(fieldName => {
-        expect(within(cardWithFields).getByText(fieldName)).toBeInTheDocument();
+      const expectedFieldNames = expectedColumns.map(col => col.display_name);
+      expectedFieldNames.forEach(expectedFieldName => {
+        expect(
+          within(cardWithFields).getByText(expectedFieldName),
+        ).toBeInTheDocument();
       });
     });
   });
