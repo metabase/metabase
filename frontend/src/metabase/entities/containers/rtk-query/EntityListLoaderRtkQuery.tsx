@@ -1,6 +1,7 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
+import { useLatest } from "react-use";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
@@ -17,6 +18,7 @@ import { isObject } from "metabase-types/guards";
 import type {
   EntityDefinition,
   EntityQuery,
+  EntityQueryResponse,
   EntityQuerySelector,
   EntityType,
   EntityTypeSelector,
@@ -26,7 +28,7 @@ import type {
 } from "./types";
 import { usePaginatedQuery } from "./usePaginatedQuery";
 
-interface ChildrenProps<Entity, EntityWrapper> {
+interface ChildrenProps<Entity, EntityWrapper = Entity> {
   allError?: unknown;
   allFetched?: boolean;
   allLoaded?: boolean;
@@ -68,9 +70,12 @@ interface Props<Entity, EntityWrapper> {
   reloadInterval?: ReloadInterval | ReloadIntervalSelector<Entity>;
   selectorName?: "getList" | "getListUnfiltered";
   wrapped?: boolean;
+  onLoaded?: (data: EntityQueryResponse<Entity[]>) => void;
 }
 
-const transformResponse = (fetched: unknown) => {
+const transformResponse = <Entity extends object>(
+  fetched: EntityQueryResponse<Entity>,
+) => {
   if (!isObject(fetched) || !fetched.data) {
     return { results: fetched, metadata: {} };
   }
@@ -113,6 +118,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   reloadInterval: reloadIntervalProp,
   selectorName = "getList",
   wrapped = false,
+  onLoaded,
   ...props
 }: Props<Entity, EntityWrapper>) {
   const dispatch = useDispatch();
@@ -291,6 +297,14 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     queryKey,
     setHasMorePages,
   ]);
+
+  const onLoadedRef = useLatest(onLoaded);
+
+  useEffect(() => {
+    if (data) {
+      onLoadedRef.current?.(data);
+    }
+  }, [data, onLoadedRef]);
 
   // merge props passed in from stacked Entity*Loaders:
   const allError = error || (allErrorProp ?? null);

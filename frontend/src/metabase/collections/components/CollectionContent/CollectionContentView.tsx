@@ -307,7 +307,7 @@ export const CollectionContentView = ({
   };
 
   return (
-    <EntityListLoaderRtkQuery<CollectionItem, CollectionItem>
+    <EntityListLoaderRtkQuery
       ComposedComponent={ComposedComponent}
       entityType={Search.name}
       entityQuery={{
