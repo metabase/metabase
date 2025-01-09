@@ -229,6 +229,7 @@ jobs:
     - name: Test MariaDB driver (10.2)
       uses: ./.github/actions/test-driver
       with:
+        build-static-viz: true
         junit-name: 'be-tests-mariadb-10-2-ee'
         test-args: >-
           :partition/total 4
@@ -273,6 +274,7 @@ jobs:
     - name: Test MariaDB driver (latest)
       uses: ./.github/actions/test-driver
       with:
+        build-static-viz: true
         junit-name: 'be-tests-mariadb-latest-ee'
         test-args: >-
           :partition/total 4
@@ -574,6 +576,7 @@ jobs:
     - name: Test MySQL driver (8.0)
       uses: ./.github/actions/test-driver
       with:
+        build-static-viz: true
         junit-name: 'be-tests-mysql-8-0-ee'
         test-args: >-
           :partition/total 4
@@ -633,6 +636,7 @@ jobs:
     - name: Test MySQL driver (latest)
       uses: ./.github/actions/test-driver
       with:
+        build-static-viz: true
         junit-name: 'be-tests-mysql-latest-ee'
         test-args: >-
           :partition/total 4
@@ -757,9 +761,11 @@ jobs:
               enable-ssl-tests: 'true'
         job:
           - name: Driver Tests
+            build-static-viz: false
             test-args: >-
               :only-tags [:mb/driver-tests]
           - name: App DB Tests
+            build-static-viz: true
             test-args: >-
               :exclude-tags [:mb/driver-tests]
     name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
@@ -790,6 +796,7 @@ jobs:
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
         uses: ./.github/actions/test-driver
         with:
+          build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: 'be-tests-${{ matrix.version.junit-name }}'
           test-args: >-
             ${{ matrix.job.test-args }}
