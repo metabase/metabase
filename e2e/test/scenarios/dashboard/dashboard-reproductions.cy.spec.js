@@ -1572,11 +1572,5 @@ describe("issue 47170", () => {
     H.getDashboardCard(0)
       .findByText("37.65")
       .should("have.css", "color", primaryTextColor);
-
-    cy.findByTestId("sharing-menu-button").should(
-      "have.css",
-      "color",
-      primaryTextColor,
-    );
   });
 });

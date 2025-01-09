@@ -93,7 +93,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     );
 
     H.openQuestionAlerts(); // "Edit alerts"
-    H.modal().within(() => {
+    H.popover().within(() => {
       cy.findByText("You set up an alert").should("be.visible");
       cy.findByText("Edit").click();
     });
@@ -136,7 +136,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     H.openQuestionAlerts(); // "Edit alerts"
 
-    H.modal().within(() => {
+    H.popover().within(() => {
       cy.findByText("You set up an alert").should("be.visible");
       cy.findByText("Edit").click();
     });

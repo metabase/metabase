@@ -19,7 +19,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 
     // Create alert as admin
     H.visitQuestion(ORDERS_QUESTION_ID);
-    createBasicAlert();
+    createBasicAlert({ firstAlert: true });
 
     // Create alert as admin that user can see
     H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
@@ -66,7 +66,6 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 
     it("should not let you see other people's alerts", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openNotificationsMenu();
 
       H.notificationsMenuButton().realHover();
 
@@ -107,8 +106,12 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
   });
 });
 
-function createBasicAlert({ includeNormal } = {}) {
+function createBasicAlert({ firstAlert, includeNormal } = {}) {
   H.openQuestionAlerts(); // "Create an alert"
+
+  if (firstAlert) {
+    H.modal().findByText("Set up an alert").click();
+  }
 
   if (includeNormal) {
     cy.findByText("Email alerts to:").parent().children().last().click();

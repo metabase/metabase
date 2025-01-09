@@ -486,9 +486,10 @@ describe(
 
     it("should allow you to enable a webhook alert", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByTestId("notifications-menu-button").click();
-      H.popover().findByText("Create subscriptions").click();
 
+      cy.findByLabelText("Create an alert").click();
+
+      H.modal().button("Set up an alert").click();
       H.modal()
         .first()
         .within(() => {
@@ -496,9 +497,10 @@ describe(
           H.toggleAlertChannel(secondWebhookName);
           cy.button("Done").should("not.be.disabled").click();
         });
-      cy.findByTestId("notifications-menu-button").click();
-      H.popover().findByText("Edit subscriptions").click();
-      H.modal().within(() => {
+
+      cy.findByLabelText("Edit alerts").click();
+
+      H.popover().within(() => {
         cy.findByText("You set up an alert").should("exist");
         cy.findByText("Edit").click();
       });
@@ -516,8 +518,8 @@ describe(
     it("should allow you to test a webhook", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("notifications-menu-button").click();
-      H.popover().findByText("Create subscriptions").click();
 
+      H.modal().button("Set up an alert").click();
       H.modal()
         .first()
         .within(() => {
