@@ -1,5 +1,7 @@
-import { getDefaultAvailableOperator } from "metabase/querying/filters/utils";
-import { getAvailableOperatorOptions } from "metabase/querying/filters/utils/operators";
+import {
+  getAvailableOperatorOptions,
+  getDefaultAvailableOperator,
+} from "metabase/querying/filters/utils/operators";
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
