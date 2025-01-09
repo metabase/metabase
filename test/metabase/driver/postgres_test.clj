@@ -39,8 +39,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection)))
 
@@ -203,7 +202,7 @@
         ;; create the postgres DB
         (drop-if-exists-and-create-db! "hyphen-names-test")
         ;; create the DB object
-        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; populate the DB and create a view
             (exec! spec ["CREATE SCHEMA \"x-mas\";"
@@ -310,7 +309,7 @@
                                 SERVER foreign_server
                                 OPTIONS (user '" (:user details) "');
                               GRANT ALL ON public.local_table to PUBLIC;")])
-        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
           (is (=? [(default-table-result "foreign_table")
                    (default-table-result "local_table" {:estimated_row_count (mt/malli=? int?)})]
                   (describe-database->tables :postgres database))))))))
@@ -324,7 +323,7 @@
         ;; create the postgres DB
         (drop-if-exists-and-create-db! "dropped_views_test")
         ;; create the DB object
-        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; populate the DB and create a view
             (exec! spec ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
@@ -364,7 +363,7 @@
                          (.. conn getMetaData getDatabaseMajorVersion)))]
           (if (>= major-v 10)
             ;; create the DB object
-            (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname db-name)}]
+            (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname db-name)}]
               (let [sync! #(sync/sync-database! database)]
                 ;; create a main partitioned table and two partitions for it
                 (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\");"
@@ -558,7 +557,7 @@
         (jdbc/execute! spec [(str "CREATE SCHEMA bobdobbs;"
                                   "CREATE TABLE bobdobbs.describe_json_table (trivial_json JSONB NOT NULL);"
                                   "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")])
-        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details details}]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
@@ -583,7 +582,7 @@
         (jdbc/execute! spec [(str "CREATE SCHEMA \"AAAH_#\";"
                                   "CREATE TABLE \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json JSONB NOT NULL);"
                                   "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")])
-        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details details}]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database
             (sync-tables/sync-tables-and-database! database)
             (is (= #{{:name              "trivial_json → a",
@@ -737,7 +736,7 @@
                           "Lucky Pigeon"   6.0
                           "Katie Parakeet" 23.99]]]
          (next.jdbc/execute! conn sql+args))))
-    (t2.with-temp/with-temp [:model/Database db {:engine :postgres, :details (assoc details :dbname "money_columns_test")}]
+    (mt/with-temp [:model/Database db {:engine :postgres, :details (assoc details :dbname "money_columns_test")}]
       (sync/sync-database! db)
       (mt/with-db db
         (thunk)))))
@@ -819,7 +818,7 @@
 
 (defn- do-with-enums-db! [f]
   (create-enums-db!)
-  (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details (enums-test-db-details)}]
+  (mt/with-temp [:model/Database database {:engine :postgres, :details (enums-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)
     (f database)
     (driver/notify-database-updated :postgres database)))
@@ -1100,7 +1099,7 @@
                       "INSERT INTO mytable (id, column1, column2)
                       VALUES  (1, 'A', 'A'), (2, 'B', 'B');"]]
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details) [stmt]))
-        (t2.with-temp/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+        (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
           (mt/with-db database
             (sync/sync-database! database)
             (mt/with-actions-enabled
@@ -1166,7 +1165,7 @@
                              ");"
                              "INSERT INTO toucan_sleep_schedule (start_time, end_time, reason) "
                              "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
-        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
           (sync/sync-database! database)
           (is (= {"start_time" {:global {:distinct-count 1
                                          :nil%           0.0}
@@ -1251,7 +1250,7 @@
       (let [test-user-details (assoc (mt/dbdef->connection-details :postgres :db {:database-name "no-select-test"})
                                      :user "no_select_test_user"
                                      :password "123456")]
-        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details test-user-details}]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details test-user-details}]
           ;; make sure that sync still succeeds even tho some tables are not SELECTable.
           (binding [sync-util/*log-exceptions-and-continue?* false]
             (is (some? (sync/sync-database! database {:scan :schema}))))
@@ -1273,7 +1272,7 @@
                                  "json_val::jsonb ?| array['c', 'd'],"
                                  "json_val::jsonb ?& array['a', 'b']"
                                  "FROM \"json_table\";")]
-        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details json-db-details}]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details json-db-details}]
           (mt/with-db database (sync/sync-database! database)
             (is (= [[true false true]]
                    (-> {:query query}
@@ -1297,7 +1296,7 @@
                                                                      [4 6 "{\"int_turn_string\":5}"]]]
                                       (format "INSERT INTO PUBLIC.json_table (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json)))]
             (jdbc/execute! spec [statement]))
-          (t2.with-temp/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+          (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
             (mt/with-db database
               (sync-tables/sync-tables-and-database! database)
               (is (= #{{:name              "json_val → int_turn_string",

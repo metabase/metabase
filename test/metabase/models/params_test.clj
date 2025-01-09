@@ -6,8 +6,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.params :as params]
    [metabase.test :as mt]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel wrap-field-id-if-needed-test
   (doseq [[x expected] {10                                      [:field 10 nil]
@@ -65,14 +64,14 @@
 
 (deftest ^:parallel hydrate-param-fields-for-card-test
   (testing "check that we can hydrate param_fields for a Card"
-    (t2.with-temp/with-temp [:model/Card card {:dataset_query
-                                               {:database (mt/id)
-                                                :type     :native
-                                                :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
-                                                           :template-tags {"name" {:name         "name"
-                                                                                   :display_name "Name"
-                                                                                   :type         :dimension
-                                                                                   :dimension    [:field (mt/id :venues :id) nil]}}}}}]
+    (mt/with-temp [:model/Card card {:dataset_query
+                                     {:database (mt/id)
+                                      :type     :native
+                                      :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
+                                                 :template-tags {"name" {:name         "name"
+                                                                         :display_name "Name"
+                                                                         :type         :dimension
+                                                                         :dimension    [:field (mt/id :venues :id) nil]}}}}}]
       (is (= {(mt/id :venues :id) {:id                 (mt/id :venues :id)
                                    :table_id           (mt/id :venues)
                                    :display_name       "ID"

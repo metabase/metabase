@@ -10,8 +10,7 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -52,7 +51,7 @@
     (testing "Make sure we correctly infer complex types in views (#8630, #9276, #12191, #12547, #10681)"
       (let [details (mt/dbdef->connection-details :sqlite :db {:database-name "views_test"})
             spec    (sql-jdbc.conn/connection-details->spec :sqlite details)]
-        (t2.with-temp/with-temp [:model/Database {db-id :id :as database} {:engine :sqlite, :details (assoc details :dbname "views_test")}]
+        (mt/with-temp [:model/Database {db-id :id :as database} {:engine :sqlite, :details (assoc details :dbname "views_test")}]
           (doseq [statement ["drop view if exists v_groupby_test;"
                              "drop table if exists groupby_test;"
                              "drop view if exists v_src;"
@@ -128,7 +127,7 @@
                       "INSERT INTO timestamp_table (created_at) VALUES (datetime('now'));"]]
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver details)
                          [stmt]))
-        (t2.with-temp/with-temp [:model/Database db {:engine driver :details (assoc details :dbname db-name)}]
+        (mt/with-temp [:model/Database db {:engine driver :details (assoc details :dbname db-name)}]
           (sync/sync-database! db)
           (mt/with-db db
             (testing "timestamp columns"
@@ -167,7 +166,7 @@
                       ('null',            null,                      null,          null);"]]
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :sqlite details)
                        [stmt]))
-      (t2.with-temp/with-temp [:model/Database db {:engine :sqlite :details (assoc details :dbname db-name)}]
+      (mt/with-temp [:model/Database db {:engine :sqlite :details (assoc details :dbname db-name)}]
         (sync/sync-database! db)
         ;; In SQLite, you can actually store any value in any date/timestamp column,
         ;; let's test only values we'd reasonably run into.

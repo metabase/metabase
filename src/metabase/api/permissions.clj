@@ -18,11 +18,12 @@
    [metabase.models.permissions-revision :as perms-revision]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -73,12 +74,14 @@
 
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/graph"
   "Fetch a graph of all Permissions."
   []
   (api/check-superuser)
   (data-perms.graph/api-graph))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/graph/db/:db-id"
   "Fetch a graph of all Permissions for db-id `db-id`."
   [db-id]
@@ -86,6 +89,7 @@
   (api/check-superuser)
   (data-perms.graph/api-graph {:db-id db-id}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/graph/group/:group-id"
   "Fetch a graph of all Permissions for group-id `group-id`."
   [group-id]
@@ -105,6 +109,7 @@
   [_impersonations]
   (throw (premium-features/ee-feature-error (tru "Connection impersonation"))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
   format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
@@ -133,7 +138,7 @@
                              (mtx/transformer
                               mtx/string-transformer
                               (mtx/transformer {:name :perm-graph})))]
-    (when-not (mc/validate api.permission-graph/DataPermissionsGraph new-graph)
+    (when-not (mr/validate api.permission-graph/DataPermissionsGraph new-graph)
       (let [explained (mu/explain api.permission-graph/DataPermissionsGraph new-graph)]
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
                         {:status-code 400}))))
@@ -195,6 +200,7 @@
     (for [group groups]
       (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.
   This API requires superuser or group manager of more than one group.
@@ -216,6 +222,7 @@
     (-> (ordered-groups (request/limit) (request/offset) query)
         (t2/hydrate :member_count))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/group/:id"
   "Fetch the details for a certain permissions group."
   [id]
@@ -225,6 +232,7 @@
    (-> (t2/select-one :model/PermissionsGroup :id id)
        (t2/hydrate :members))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/group"
   "Create a new `PermissionsGroup`."
   [:as {{:keys [name]} :body}]
@@ -233,6 +241,7 @@
   (first (t2/insert-returning-instances! :model/PermissionsGroup
                                          :name name)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
   [group-id :as {{:keys [name]} :body}]
@@ -245,6 +254,7 @@
   ;; return the updated group
   (t2/select-one :model/PermissionsGroup :id group-id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
   [group-id]
@@ -255,6 +265,7 @@
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/membership"
   "Fetch a map describing the group memberships of various users.
    This map's format is:
@@ -275,6 +286,7 @@
                                                             [:= :user_id api/*current-user-id*]
                                                             [:= :is_group_manager true]]}])))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [:as {{:keys [group_id user_id is_group_manager]} :body}]
@@ -298,6 +310,7 @@
     (:members (t2/hydrate (t2/instance :model/PermissionsGroup {:id group_id})
                           :members))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
   [id :as {{:keys [is_group_manager]} :body}]
@@ -317,6 +330,7 @@
                 {:is_group_manager is_group_manager})
     (t2/select-one :model/PermissionsGroupMembership :id (:id old))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/membership/:group-id/clear"
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
   [group-id]
@@ -327,6 +341,7 @@
   (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/membership/:id"
   "Remove a User from a PermissionsGroup (delete their membership)."
   [id]

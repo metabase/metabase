@@ -14,8 +14,7 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -55,7 +54,7 @@
      (mt/with-temp ~model-bindings ~@body)))
 
 (defn create! [model & {:as properties}]
-  (first (t2/insert-returning-instances! model (merge (t2.with-temp/with-temp-defaults model) properties))))
+  (first (t2/insert-returning-instances! model (merge (mt/with-temp-defaults model) properties))))
 
 (defn -data-source-url [^metabase.db.data_source.DataSource data-source]
   (.url data-source))

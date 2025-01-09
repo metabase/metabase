@@ -24,8 +24,7 @@
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.test-util.automagic-dashboards :as automagic-dashboards.test]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -116,7 +115,7 @@
       (testing "Card sourcing has four branches..."
         (testing "A native query's source is itself with the :entity_type :entity/GenericTable assoced in"
           (let [query (mt/native-query {:query "select * from orders"})]
-            (t2.with-temp/with-temp [:model/Card card (mt/card-with-source-metadata-for-query query)]
+            (mt/with-temp [:model/Card card (mt/card-with-source-metadata-for-query query)]
               (let [{:keys [entity source]} (#'magic/->root card)]
                 (is (=? {:type :question}
                         card))
@@ -163,8 +162,8 @@
 (deftest ^:parallel source-root-metric-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/LegacyMetric"
     (testing "The source of a metric is its underlying table."
-      (t2.with-temp/with-temp [:model/LegacyMetric metric {:table_id   (mt/id :venues)
-                                                           :definition {:aggregation [[:count]]}}]
+      (mt/with-temp [:model/LegacyMetric metric {:table_id   (mt/id :venues)
+                                                 :definition {:aggregation [[:count]]}}]
         (let [{:keys [entity source]} (#'magic/->root metric)]
           (is (= entity metric))
           (is (= source (t2/select-one :model/Table (mt/id :venues)))))))))
@@ -232,8 +231,8 @@
         (is (pos? (count (:dashcards (magic/automagic-analysis field {})))))))))
 
 (deftest metric-test
-  (t2.with-temp/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)
-                                                       :definition {:aggregation [[:count]]}}]
+  (mt/with-temp [:model/LegacyMetric metric {:table_id (mt/id :venues)
+                                             :definition {:aggregation [[:count]]}}]
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup!
         (test-automagic-analysis metric 8)))))
@@ -255,8 +254,8 @@
   (mt/dataset test-data
     (testing "native queries have parameter mappings with field ids"
       (let [query (mt/native-query {:query "select * from products"})]
-        (t2.with-temp/with-temp [:model/Card card (mt/card-with-source-metadata-for-query
-                                                   query)]
+        (mt/with-temp [:model/Card card (mt/card-with-source-metadata-for-query
+                                         query)]
           (let [dashboard (magic/automagic-analysis card {})
                 ;; i'm not sure why category isn't picked here
                 expected-targets #{[:dimension
@@ -1007,8 +1006,8 @@
 
 (deftest empty-table-test
   (testing "candidate-tables should work with an empty Table (no Fields)"
-    (t2.with-temp/with-temp [:model/Database db {}
-                             :model/Table    _  {:db_id (:id db)}]
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    _  {:db_id (:id db)}]
       (mt/with-test-user :rasta
         (is (= []
                (magic/candidate-tables db)))))))
@@ -1028,11 +1027,11 @@
                    :stats)))))))
 
 (deftest enhance-table-stats-fk-test
-  (t2.with-temp/with-temp [:model/Database {db-id :id}    {}
-                           :model/Table    {table-id :id} {:db_id db-id}
-                           :model/Field    _              {:table_id table-id :semantic_type :type/PK}
-                           :model/Field    _              {:table_id table-id :semantic_type :type/FK}
-                           :model/Field    _              {:table_id table-id :semantic_type :type/FK}]
+  (mt/with-temp [:model/Database {db-id :id}    {}
+                 :model/Table    {table-id :id} {:db_id db-id}
+                 :model/Field    _              {:table_id table-id :semantic_type :type/PK}
+                 :model/Field    _              {:table_id table-id :semantic_type :type/FK}
+                 :model/Field    _              {:table_id table-id :semantic_type :type/FK}]
     (mt/with-test-user :rasta
       (automagic-dashboards.test/with-dashboard-cleanup!
         (is (= {:list-like?  false
@@ -1371,12 +1370,12 @@
 (deftest linked-metrics-test
   (testing "Testing the ability to return linked metrics based on a provided entity."
     (mt/dataset test-data
-      (t2.with-temp/with-temp [:model/LegacyMetric total-orders {:name       "Total Orders"
-                                                                 :table_id   (mt/id :orders)
-                                                                 :definition {:aggregation [[:count]]}}
-                               :model/LegacyMetric avg-quantity-ordered {:name       "Average Quantity Ordered"
-                                                                         :table_id   (mt/id :orders)
-                                                                         :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
+      (mt/with-temp [:model/LegacyMetric total-orders {:name       "Total Orders"
+                                                       :table_id   (mt/id :orders)
+                                                       :definition {:aggregation [[:count]]}}
+                     :model/LegacyMetric avg-quantity-ordered {:name       "Average Quantity Ordered"
+                                                               :table_id   (mt/id :orders)
+                                                               :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
         (testing "A metric links to a seq of a normalized version of itself"
           (is (=? [{:metric-definition (:definition total-orders)
                     :metric-score      100}]
@@ -1434,12 +1433,12 @@
 (deftest combination-grounded-metrics->dashcards-test
   (testing "Dashcard creation example test"
     (mt/dataset test-data
-      (t2.with-temp/with-temp [:model/LegacyMetric _total-orders {:name       "Total Orders"
-                                                                  :table_id   (mt/id :orders)
-                                                                  :definition {:aggregation [[:count]]}}
-                               :model/LegacyMetric _avg-quantity-ordered {:name       "Average Quantity Ordered"
-                                                                          :table_id   (mt/id :orders)
-                                                                          :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
+      (mt/with-temp [:model/LegacyMetric _total-orders {:name       "Total Orders"
+                                                        :table_id   (mt/id :orders)
+                                                        :definition {:aggregation [[:count]]}}
+                     :model/LegacyMetric _avg-quantity-ordered {:name       "Average Quantity Ordered"
+                                                                :table_id   (mt/id :orders)
+                                                                :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
         (mt/with-test-user :rasta
           (let [entity                      (t2/select-one :model/Table (mt/id :orders))
                 {template-dimensions :dimensions
@@ -1481,12 +1480,12 @@
 (deftest generate-dashboard-pipeline-test
   (testing "Example new pipeline dashboard generation test"
     (mt/dataset test-data
-      (t2.with-temp/with-temp [:model/LegacyMetric _total-orders {:name       "Total Orders"
-                                                                  :table_id   (mt/id :orders)
-                                                                  :definition {:aggregation [[:count]]}}
-                               :model/LegacyMetric _avg-quantity-ordered {:name       "Average Quantity Ordered"
-                                                                          :table_id   (mt/id :orders)
-                                                                          :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
+      (mt/with-temp [:model/LegacyMetric _total-orders {:name       "Total Orders"
+                                                        :table_id   (mt/id :orders)
+                                                        :definition {:aggregation [[:count]]}}
+                     :model/LegacyMetric _avg-quantity-ordered {:name       "Average Quantity Ordered"
+                                                                :table_id   (mt/id :orders)
+                                                                :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
         (mt/with-test-user :rasta
           (let [entity                      (t2/select-one :model/Table (mt/id :orders))
                 {template-dimensions :dimensions

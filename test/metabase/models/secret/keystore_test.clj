@@ -6,8 +6,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
@@ -62,12 +61,12 @@
               _         (doto (create-test-jks-instance ks-pw {key-alias key-value})
                           (.store baos (.toCharArray ks-pw)))
               ks-bytes (.toByteArray baos)]
-          (t2.with-temp/with-temp [:model/Database {:keys [details] :as database} {:engine  :secret-test-driver
-                                                                                   :name    "Test DB with keystore"
-                                                                                   :details {:host                    "localhost"
-                                                                                             :keystore-value          (str "data:application/octet-stream;base64,"
-                                                                                                                           (u/encode-base64-bytes ks-bytes))
-                                                                                             :keystore-password-value ks-pw}}]
+          (mt/with-temp [:model/Database {:keys [details] :as database} {:engine  :secret-test-driver
+                                                                         :name    "Test DB with keystore"
+                                                                         :details {:host                    "localhost"
+                                                                                   :keystore-value          (str "data:application/octet-stream;base64,"
+                                                                                                                 (u/encode-base64-bytes ks-bytes))
+                                                                                   :keystore-password-value ks-pw}}]
             (is (some? database))
             (is (not (contains? details :keystore-value)) "keystore-value was removed from details")
             (is (contains? details :keystore-id) "keystore-id was added to details")
