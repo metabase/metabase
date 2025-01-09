@@ -535,5 +535,4 @@
 
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :sqlserver
-    (testing "The default timezone should be a human readable string"
-      (is (= "Z" (driver/db-default-timezone :sqlserver (mt/db)))))))
+    (is (= "Z" (str (driver/db-default-timezone :sqlserver (mt/db)))))))

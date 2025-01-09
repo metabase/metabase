@@ -652,10 +652,8 @@
      (with-open [stmt (.prepareStatement conn "SELECT sysdatetimeoffset();")
                  rset (.executeQuery stmt)]
        (when (.next rset)
-         (some-> rset
-                 (.getObject 1 java.time.OffsetDateTime)
-                 t/zone-offset
-                 .getId))))))
+         (when-let [offset-date-time (.getObject rset 1 java.time.OffsetDateTime)]
+           (t/zone-offset offset-date-time)))))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :sqlserver
   [_]
