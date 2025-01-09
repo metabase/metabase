@@ -133,7 +133,6 @@
         (assoc :javax.net.ssl.trustStoreType (guess-keystore-type truststore password)
                :javax.net.ssl.trustStore truststore
                :javax.net.ssl.trustStorePassword password)
-        (secret/clean-secret-properties-from-details :oracle)
         (dissoc :ssl-use-truststore :ssl-truststore-value :ssl-truststore-path :ssl-truststore-password-value
                 :ssl-truststore-created-at :ssl-truststore-password-created-at))))
 
