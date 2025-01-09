@@ -706,11 +706,11 @@
                  (in-source-query? path)))]
     (lib.util.match/replace inner-query
       ;; remove order by and then recurse in case we need to do more tranformations at another level
-      (m :guard (partial remove-order-by? &parents))
-      (fix-order-bys (dissoc m :order-by))
+                            (m :guard (partial remove-order-by? &parents))
+                            (fix-order-bys (dissoc m :order-by))
 
-      (m :guard (partial add-limit? &parents))
-      (fix-order-bys (assoc m :limit qp.i/absolute-max-results)))))
+                            (m :guard (partial add-limit? &parents))
+                            (fix-order-bys (assoc m :limit qp.i/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
   [driver inner-query]
