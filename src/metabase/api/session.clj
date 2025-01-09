@@ -21,6 +21,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
+   [metabase.util.string :as str]
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
@@ -29,7 +30,7 @@
 (set! *warn-on-reflection* true)
 
 (mu/defn- record-login-history!
-  [session-id  :- uuid?
+  [session-id  :- string?
    user-id     :- ms/PositiveInt
    device-info :- request/DeviceInfo]
   (t2/insert! :model/LoginHistory (merge {:user_id    user-id
@@ -39,7 +40,7 @@
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or
   `:sso` (for other login types). Returns the newly generated Session."
-  {:arglists '(^java.util.UUID [session-type user device-info])}
+  {:arglists '(^str [session-type user device-info])}
   (fn [session-type & _]
     session-type))
 
@@ -52,24 +53,24 @@
   [:and
    [:map-of :keyword :any]
    [:map
-    [:id   uuid?]
+    [:id   string?]
     [:type [:enum :normal :full-app-embed]]]])
 
 (mu/defmethod create-session! :sso :- SessionSchema
   [_ user :- CreateSessionUserInfo device-info :- request/DeviceInfo]
-  (let [session-uuid (random-uuid)
+  (let [session-id (str/random-string 32)
         session      (first (t2/insert-returning-instances! :model/Session
-                                                            :id      (str session-uuid)
+                                                            :id      session-id
                                                             :user_id (u/the-id user)))]
     (assert (map? session))
     (let [event {:user-id (u/the-id user)}]
       (events/publish-event! :event/user-login event)
       (when (nil? (:last_login user))
         (events/publish-event! :event/user-joined event)))
-    (record-login-history! session-uuid (u/the-id user) device-info)
+    (record-login-history! session-id (u/the-id user) device-info)
     (when-not (:last_login user)
       (snowplow/track-event! ::snowplow/account {:event :new-user-created} (u/the-id user)))
-    (assoc session :id session-uuid)))
+    (assoc session :id session-id)))
 
 (mu/defmethod create-session! :password :- SessionSchema
   [session-type
@@ -97,7 +98,7 @@
 (def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
 (def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
 
-(mu/defn- ldap-login :- [:maybe [:map [:id uuid?]]]
+(mu/defn- ldap-login :- [:maybe [:map [:id string?]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- request/DeviceInfo]
@@ -120,7 +121,7 @@
       (catch LDAPSDKException e
         (log/error e "Problem connecting to LDAP server, will fall back to local authentication")))))
 
-(mu/defn- email-login :- [:maybe [:map [:id uuid?]]]
+(mu/defn- email-login :- [:maybe [:map [:id string?]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
@@ -183,8 +184,8 @@
   (let [ip-address   (request/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
-                       (let [{session-uuid :id, :as session} (login username password (request/device-info request))
-                             response                        {:id (str session-uuid)}]
+                       (let [{session-id :id, :as session} (login username password (request/device-info request))
+                             response                        {:id session-id}]
                          (request/set-session-cookies request response session request-time)))]
     (if throttling-disabled?
       (do-login)
@@ -203,8 +204,8 @@
   (request/clear-session-cookie api/generic-204-no-content))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
-;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-UUID, e.g.
-;; "100_8a266560-e3a8-4dc1-9cd1-b4471dcd56d7", before hashing it. "Leaking" the ID this way is ok because the
+;; hashed. So we'll make the plaintext token in the format USER-ID_RANDOM-ID, e.g.
+;; "100_8a266560e3a84dc19cd1b4471dcd56d7", before hashing it. "Leaking" the ID this way is ok because the
 ;; plaintext token is only sent in the password reset email to the user in question.
 ;;
 ;; There's also no need to salt the token because it's already random <3
@@ -294,9 +295,9 @@
             ;; Send all the active admins an email :D
             (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User :id user-id)))
           ;; after a successful password update go ahead and offer the client a new session that they can use
-          (let [{session-uuid :id, :as session} (create-session! :password user (request/device-info request))
+          (let [{session-id :id, :as session} (create-session! :password user (request/device-info request))
                 response                        {:success    true
-                                                 :session_id (str session-uuid)}]
+                                                 :session_id session-id}]
             (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
@@ -327,8 +328,8 @@
     (http-401-on-error
       (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
         (let [user (google/do-google-auth request)
-              {session-uuid :id, :as session} (create-session! :sso user (request/device-info request))
-              response {:id (str session-uuid)}
+              {session-id :id, :as session} (create-session! :sso user (request/device-info request))
+              response {:id session-id}
               user (t2/select-one [:model/User :id :is_active], :email (:email user))]
           (if (and user (:is_active user))
             (request/set-session-cookies request

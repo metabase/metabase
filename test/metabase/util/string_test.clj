@@ -28,3 +28,11 @@
     (testing "works with custom end-limit"
       (is (= "ab...ra"
              (u.str/mask "abracadabra" 2 2))))))
+
+(deftest random-string-test
+  (testing "can generate a random string"
+    (is (string? (u.str/random-string 10)))
+    (is (= 10 (count (u.str/random-string 10))))
+    (is (= 20 (count (u.str/random-string 20))))
+    (is (not (= (u.str/random-string 10)
+               (u.str/random-string 10))))))

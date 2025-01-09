@@ -25,6 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as str]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -52,7 +53,7 @@
     (throw (ex-info
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
             {:status-code 403})))
-  (let [session-id (str (random-uuid))
+  (let [session-id (str/random-string 32)
         new-user   (first (t2/insert-returning-instances! :model/User
                                                           :email        email
                                                           :first_name   first-name
