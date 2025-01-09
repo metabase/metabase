@@ -145,11 +145,20 @@ jobs:
       matrix:
         edition: [oss, ee]
         java-version: [11, 17, 21]
-        partition-index: [0, 1]
-    name: "Backend Tests (Java ${{ matrix.java-version }}, ${{ matrix.edition }}, Partition ${{ matrix.partition-index }})"
+        job:
+          - name: AppDB Tests
+            test-args: >-
+              :exclude-tags [:mb/driver-tests]
+            build-static-viz: true
+          - name: H2 Driver Tests
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+            build-static-viz: false
+    name: "Backend Tests (Java ${{ matrix.java-version }}, ${{ matrix.edition }}, ${{ matrix.job.name }})"
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
+        if: ${{ matrix.job.build-static-viz == 'true' }}
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
@@ -159,21 +168,19 @@ jobs:
       # Depending on which files changed, we might either have to build static-viz
       # from scratch or download the previously built artifact
       - name: Build static-viz frontend
-        if: needs.files-changed.outputs.backend_all == 'true'
+        if: ${{ matrix.job.build-static-viz == 'true' }} && needs.files-changed.outputs.backend_all == 'true'
         run: yarn build-static-viz
       - name: Download Static Viz Bundle Artifact
-        if: needs.static-viz-files-changed.outputs.static_viz == 'true'
+        if: ${{ matrix.job.build-static-viz == 'true' }} && needs.static-viz-files-changed.outputs.static_viz == 'true'
         uses: actions/download-artifact@v4
         with:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
-
       - name: Run tests
         id: run-java-tests
         run: >-
           clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
-          :partition/total 2
-          :partition/index ${{ matrix.partition-index }}
+          ${{ matrix.job.test-args }}
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -210,8 +217,10 @@ jobs:
       matrix:
         edition: [oss, ee]
         java-version: [11, 17, 21]
-        partition-index: [0, 1]
-    name: "Backend Tests (Java ${{ matrix.java-version }}, ${{ matrix.edition }}, Partition ${{ matrix.partition-index }})"
+        job:
+          - name: AppDB Tests
+          - name: H2 Driver Tests
+    name: "Backend Tests (Java ${{ matrix.java-version }}, ${{ matrix.edition }}, ${{ matrix.job.name }})"
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
