@@ -32,9 +32,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.util Base64)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -406,8 +404,9 @@
                                          [(-> (assoc
                                                ssl-details
                                                :ssl-truststore-value
-                                               (.encodeToString (Base64/getEncoder)
-                                                                (mt/file-path->bytes (:ssl-truststore-path ssl-details)))
+                                               (str "data:application/octet-stream:base64,"
+                                                    (u/encode-base64-bytes
+                                                      (mt/file-path->bytes (:ssl-truststore-path ssl-details))))
                                                :ssl-truststore-options
                                                "uploaded")
                                               (dissoc :ssl-truststore-path))
