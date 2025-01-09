@@ -45,7 +45,7 @@ export function isDatePickerExtractionUnit(
   return units.includes(unit);
 }
 
-export function getDateFilterValue(
+export function getDatePickerValue(
   query: Lib.Query,
   stageIndex: number,
   filterClause: Lib.FilterClause,
