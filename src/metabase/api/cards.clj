@@ -21,6 +21,7 @@
         :else dashboard)
       (dissoc :collection_id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/dashboards"
   "Get the dashboards that multiple cards appear in. The response is a sequence of maps, each of which has a `card_id`
   and `dashboards`. `dashboard` may include an `:error` key, either `:unreadable-dashboard` or
@@ -32,6 +33,7 @@
        (mapv (fn [card-id]
                {:card_id card-id :dashboards (map present-dashboard (get-dashboards card-id))}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/move"
   "Moves a number of Cards to a single collection or dashboard.
 

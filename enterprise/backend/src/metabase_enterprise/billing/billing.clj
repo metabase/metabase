@@ -53,6 +53,7 @@
                {:name "Token expiration date" :value (valid-thru) :format "string" :display "value"}
                {:name "Plan" :value "Enterprise Airgap" :format "string" :display "value"}]}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,
    using the embedding token and signed in user's email to fetch the billing information."

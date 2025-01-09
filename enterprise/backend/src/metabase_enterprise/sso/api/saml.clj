@@ -11,6 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/settings"
   "Update SAML related settings. You must be a superuser to do this."
   [:as {settings :body}]

@@ -28,7 +28,7 @@
 ;;; |                                              DOCSTRING GENERATION                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn handle-nonstandard-namespaces
+(defn- handle-nonstandard-namespaces
   "HACK to make sure some enterprise endpoints are consistent with the code.
    The right way to fix this is to move them -- see #22687"
   [name]
@@ -96,13 +96,13 @@
     ;; we can ignore the warning printed by umd/describe when schema is `nil`.
     (binding [*out* (new java.io.StringWriter)]
       (umd/describe schema))
-    (catch Exception _
-      (ex-data
-       (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
-         (log/warn
-          (u/format-color 'red "Invalid Malli Schema: %s defined at %s"
-                          (u/pprint-to-str schema)
-                          (u/add-period route-str)))))
+    (catch Exception e
+      (when (and schema config/is-dev?) ; schema is nil for any var without a schema. That's ok!
+        (log/warn
+         e
+         (u/format-color 'red "Invalid Malli Schema: %s defined at %s"
+                         (u/pprint-to-str schema)
+                         (u/add-period route-str))))
       "")))
 
 (defn- param-name
@@ -139,7 +139,7 @@
        (format-route-schema-dox param->schema route-str)))
 
 (defn- contains-superuser-check?
-  "Does the BODY of this `defendpoint` form contain a call to `check-superuser`?"
+  "Does the `body` of this `defendpoint` form contain a call to `check-superuser`?"
   [body]
   (let [body (set body)]
     (or (contains? body '(check-superuser))

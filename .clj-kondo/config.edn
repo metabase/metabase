@@ -326,6 +326,7 @@
     metabase.analyze               #{metabase.analyze}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
+                                     metabase.api.macros
                                      metabase.api.permission-graph
                                      metabase.api.routes}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
     metabase.async                 #{metabase.async.streaming-response
@@ -888,6 +889,7 @@
    metabase.api.embed-test/with-chain-filter-fixtures!                                                                       hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-card                                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-dashcard                                                                                hooks.common/let-one-with-optional-value
+   metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.api.persist-test/with-setup!                                                                                     hooks.common/with-one-top-level-binding
    metabase.api.public-test/with-required-param-card!                                                                        hooks.common/with-one-binding
    metabase.api.public-test/with-temp-public-card                                                                            hooks.common/let-one-with-optional-value
