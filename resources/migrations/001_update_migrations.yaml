@@ -10326,6 +10326,22 @@ databaseChangeLog:
               ALTER TABLE notification_recipient ALTER COLUMN id RESTART WITH 1;
               ALTER TABLE channel_template ALTER COLUMN id RESTART WITH 1;
 
+  - changeSet:
+      id: v53.2025-01-09T09:00:00
+      author: escherize
+      comment: add is_gsheet to metabase_table
+      changes:
+      - addColumn:
+          columns:
+            - column:
+                name: is_gsheet
+                type: boolean
+                defaultValueBoolean: false
+                remarks: Indicates that this table is associated with a google sheet
+                constraints:
+                  nullable: false
+          tableName: metabase_table
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
