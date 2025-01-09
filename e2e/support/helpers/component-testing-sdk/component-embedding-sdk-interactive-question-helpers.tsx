@@ -3,8 +3,13 @@ import type { ComponentProps } from "react";
 
 import { mountSdkContent } from "./component-embedding-sdk-helpers";
 
+interface Options {
+  shouldAssertCardQuery?: boolean;
+}
+
 export function mountInteractiveQuestion(
   extraProps: Partial<ComponentProps<typeof InteractiveQuestion>> = {},
+  { shouldAssertCardQuery }: Options = { shouldAssertCardQuery: true },
 ) {
   cy.intercept("GET", "/api/card/*").as("getCard");
   cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -15,7 +20,9 @@ export function mountInteractiveQuestion(
     );
   });
 
-  cy.wait("@getCard").then(({ response }) => {
-    expect(response?.statusCode).to.equal(200);
-  });
+  if (shouldAssertCardQuery) {
+    cy.wait("@getCard").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+    });
+  }
 }
