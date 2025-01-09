@@ -96,10 +96,11 @@
       background-color: var(--mb-color-background-hover);
     }
   }
+
   &[data-selected] {
     color: var(--mb-color-text-selected);
-    backgroundColor: var(--mb-color-background-selected);
-  },
+    background-color: var(--mb-color-background-selected);
+  }
 }
 
 .month {
