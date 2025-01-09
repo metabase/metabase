@@ -46,11 +46,6 @@ export function addEntityContainers(entity) {
     });
   };
 
-  entity.ListLoader = ({ query, ...props }) => (
-    <EntityListLoader entityType={entity.name} entityQuery={query} {...props} />
-  );
-  entity.ListLoader.displayName = `${ObjectName}.ListLoader`;
-
   entity.Name = ({ id, ...props }) => (
     <EntityName entityType={entity.name} entityId={id} {...props} />
   );
