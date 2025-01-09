@@ -169,7 +169,7 @@
         brk-column   (cond-> column
                        bucket  (lib/with-temporal-bucket bucket)
                        binning (lib/with-binning binning))]
-    (when (breakout-exists? query stage-number brk-column)
+    (when-not (breakout-exists? query stage-number brk-column)
       [:breakout stage-number (lib/ref brk-column) brk-column])))
 
 (defmethod run-step* :breakout [query [_breakout stage-number brk-clause _column]]
@@ -485,6 +485,11 @@
                (test-step ctx step)
                (recur ctx)))))
 
+(comment
+  (frequencies (repeatedly 100 #(next-steps* (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                             :breakout)))
+  )
+
 (defn- random-queries-from*
   "Returns a lazy sequence of queries powered by the generators."
   [ctx limit]
@@ -557,6 +562,19 @@
                         range
                         (map (comp count #(act-fn q %)))
                         (reduce +))))))))))
+
+;; XXX: START HERE: Pondering how to reuse these tests and generated queries.
+;; ISTM that there's really two kinds of tests we run to run against the generated queries.
+;; 1. Generic properties, possibly with some preconditions. (Eg. any query with multiple stages should...)
+;; 2. Specific tests where we want a known baseline query which is not part of the standard set.
+
+;; Type 2 tests can be generated in place, building only a few instances on demand and throwing them away.
+;; Type 1 tests should be registered, and then the whole collection of such tests run against all generated queries
+;; and maybe against all queries, period.
+;; How to collect both the properties and the tests is a tricky problem, but surely there's prior art here?
+;; - Didn't I already do something like this for lib.convert?
+
+
 
 (comment
   ;; Produces a map of {p-reset {p-pop {depth count}}} after generating 100 queries with those settings.

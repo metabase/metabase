@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.lib.join :as-alias lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -38,6 +37,9 @@
   Should only be necessary to call on new breakouts. Otherwise they should be looked up in the reified column maps."
   [query stage-number breakout-clause]
   ;; TODO: Make sure the default `metadata-method` is including the `:ident` for breakouts!
+  ;; XXX: I don't think this is actually what we want to be returning here. It includes a lot of pieces from the input
+  ;; column that I don't think should be part of the breakout. I think the breakout column should be minimal and link
+  ;; back to the original column...
   (-> (lib.metadata.calculation/metadata query stage-number breakout-clause)
       (assoc :lib/source :source/breakouts
              :ident      (lib.options/ident breakout-clause))))

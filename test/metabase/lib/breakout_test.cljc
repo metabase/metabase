@@ -6,9 +6,11 @@
    [metabase.lib.breakout.metadata :as lib.breakout.metadata]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.generators :as lib.tu.gen]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
@@ -764,3 +766,22 @@
       (is (=? {:unit :month}
               (->> (lib/breakout-column query breakout)
                    (lib/temporal-bucket)))))))
+
+(deftest ^:parallel columns-map-test
+  (testing ":lib.columns/breakout map"
+    (doseq [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib.tu.gen/random-queries-from 30))
+            sn    (range (lib/stage-count query))]
+      (if-let [brks (not-empty (lib/breakouts query sn))]
+        (testing "is present and correct on stages with breakouts"
+          (let [col-map  (:lib.columns/breakout (lib.util/query-stage query sn))
+                _        (is (map? col-map))
+                brk-cols (map #(lib/breakout-column query sn %) brks)
+                by-pos   (sort-by :position (vals col-map))]
+            (is (=? (into #{} (map lib.options/ident) brks)
+                    (set (keys col-map))))
+            (is (nil? by-pos))
+            #_(is (=? (map #(select-keys % [:id :name :ident :lib/source]) brk-cols)
+                    (map #(select-keys % [:id :name :ident :lib/source]) by-pos)))))
+        (testing "is absent on stages without breakouts"
+          (is (= false (contains? (lib.util/query-stage query sn) :lib.columns/breakout))))))))
