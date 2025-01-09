@@ -38,7 +38,6 @@ export function useDateFilter({
     value,
     availableOperators,
     availableUnits,
-    getFilterClause: (value: DatePickerValue) =>
-      getFilterClause(query, stageIndex, column, value),
+    getFilterClause: (value: DatePickerValue) => getFilterClause(column, value),
   };
 }

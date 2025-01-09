@@ -121,14 +121,12 @@ function getExcludeDateValue(
 }
 
 export function getFilterClause(
-  query: Lib.Query,
-  stageIndex: number,
   column: Lib.ColumnMetadata,
   value: DatePickerValue,
 ): Lib.ExpressionClause {
   switch (value.type) {
     case "specific":
-      return getSpecificFilterClause(query, stageIndex, column, value);
+      return getSpecificFilterClause(column, value);
     case "relative":
       return getRelativeFilterClause(column, value);
     case "exclude":
@@ -137,12 +135,10 @@ export function getFilterClause(
 }
 
 function getSpecificFilterClause(
-  query: Lib.Query,
-  stageIndex: number,
   column: Lib.ColumnMetadata,
   value: SpecificDatePickerValue,
 ): Lib.ExpressionClause {
-  return Lib.specificDateFilterClause(query, stageIndex, {
+  return Lib.specificDateFilterClause({
     operator: value.operator,
     column,
     values: value.values,
