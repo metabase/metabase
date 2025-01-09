@@ -158,7 +158,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
-        if: ${{ matrix.job.build-static-viz == 'true' }}
+        if: ${{ matrix.job.build-static-viz }}
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
@@ -168,10 +168,10 @@ jobs:
       # Depending on which files changed, we might either have to build static-viz
       # from scratch or download the previously built artifact
       - name: Build static-viz frontend
-        if: ${{ matrix.job.build-static-viz == 'true' && needs.files-changed.outputs.backend_all == 'true' }}
+        if: ${{ matrix.job.build-static-viz && needs.files-changed.outputs.backend_all == 'true' }}
         run: yarn build-static-viz
       - name: Download Static Viz Bundle Artifact
-        if: ${{ matrix.job.build-static-viz == 'true' && needs.static-viz-files-changed.outputs.static_viz == 'true' }}
+        if: ${{ matrix.job.build-static-viz && needs.static-viz-files-changed.outputs.static_viz == 'true' }}
         uses: actions/download-artifact@v4
         with:
           name: static-viz-bundle-${{ github.sha }}
