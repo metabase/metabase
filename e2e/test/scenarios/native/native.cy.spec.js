@@ -106,7 +106,7 @@ describe("scenarios > question > native", () => {
     cy.contains('Table "ORD" not found');
   });
 
-  it("should handle template tags", () => {
+  it("should handle template tags", { tags: "@flaky" }, () => {
     H.openNativeEditor();
     cy.realType(
       `select * from PRODUCTS where RATING > ${DOUBLE_LEFT_BRACKET}Stars}}`,
@@ -239,7 +239,7 @@ describe("scenarios > question > native", () => {
         .as("runQuery")
         .click();
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       cy.findByTestId("sidebar-left")
         .as("sidebar")
         .within(() => {

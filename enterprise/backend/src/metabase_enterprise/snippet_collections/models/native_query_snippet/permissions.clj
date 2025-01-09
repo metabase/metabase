@@ -4,9 +4,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.models.permissions :as perms]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
+   [metabase.permissions.util :as perms-util]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -21,7 +20,7 @@
   :feature :snippet-collections
   ([snippet]
    (and
-    (not (premium-features/sandboxed-user?))
+    (not (perms-util/sandboxed-user?))
     (snippet.perms/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :read)))
   ([model id]
@@ -32,7 +31,7 @@
   :feature :snippet-collections
   ([snippet]
    (and
-    (not (premium-features/sandboxed-user?))
+    (not (perms-util/sandboxed-user?))
     (snippet.perms/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :write)))
   ([model id]
@@ -43,7 +42,7 @@
   :feature :snippet-collections
   [_model m]
   (and
-   (not (premium-features/sandboxed-user?))
+   (not (perms-util/sandboxed-user?))
    (snippet.perms/has-any-native-permissions?)
    (has-parent-collection-perms? m :write)))
 
@@ -52,7 +51,7 @@
   :feature :snippet-collections
   [snippet changes]
   (and
-   (not (premium-features/sandboxed-user?))
+   (not (perms-util/sandboxed-user?))
    (snippet.perms/has-any-native-permissions?)
    (has-parent-collection-perms? snippet :write)
    (or (not (contains? changes :collection_id))

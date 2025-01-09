@@ -5,8 +5,8 @@
    [metabase.config :as config]
    [metabase.embed.settings :as embed.settings]
    [metabase.plugins.classloader :as classloader]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util.i18n :refer [tru]]))
 
 ;; TODO: figure out what other functions to move here from metabase.api.common

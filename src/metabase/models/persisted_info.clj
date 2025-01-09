@@ -5,7 +5,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]

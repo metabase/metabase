@@ -1002,7 +1002,7 @@ H.describeEE("formatting > sandboxes", () => {
       cy.signInAsSandboxedUser();
       createJoinedQuestion("14841", { visitQuestion: true });
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       cy.findByTestId("sidebar-left")
         .should("be.visible")
         .within(() => {

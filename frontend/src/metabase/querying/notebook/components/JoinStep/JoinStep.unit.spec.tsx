@@ -531,19 +531,26 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(within(rhsTablePicker).getByRole("button"));
     const entityPickerModal = await screen.findByTestId("entity-picker-modal");
     await waitForLoaderToBeRemoved();
-    await userEvent.click(within(entityPickerModal).getByText("Reviews"));
+    await userEvent.click(
+      await within(entityPickerModal).findByText("Reviews"),
+    );
     const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
-    await userEvent.click(within(lhsColumnPicker).getByText("ID"));
-
+    await userEvent.click(await within(lhsColumnPicker).findByText("ID"));
     const newRhsTablePicker = screen.getByLabelText("Right table");
-    await userEvent.click(within(newRhsTablePicker).getByText("Reviews"));
+    await userEvent.click(
+      await within(newRhsTablePicker).findByText("Reviews"),
+    );
     const newEntityPickerModal = await screen.findByTestId(
       "entity-picker-modal",
     );
     await waitForLoaderToBeRemoved();
-    await userEvent.click(within(newEntityPickerModal).getByText("Orders"));
+    await userEvent.click(
+      await within(newEntityPickerModal).findByText("Orders"),
+    );
     const lhsColumn = screen.getByLabelText("Left column");
-    expect(within(lhsColumn).getByText("Pick a column…")).toBeInTheDocument();
+    expect(
+      await within(lhsColumn).findByText("Pick a column…"),
+    ).toBeInTheDocument();
     expect(within(lhsColumn).queryByText("ID")).not.toBeInTheDocument();
   });
 

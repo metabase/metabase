@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]
+
    [toucan2.util :as u]))
 
 (deftest full-lifecycle-test
@@ -11,9 +11,9 @@
     (let [query     (mt/mbql-query products)
           pk_ref    (mt/$ids $products.id)
           value_ref (mt/$ids $products.title)]
-      (t2.with-temp/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                        :type :model
-                                                        :name "model index test")]
+      (mt/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                              :type :model
+                                              :name "model index test")]
         (let [model-index (mt/user-http-request :rasta :post 200 "/model-index"
                                                 {:model_id  (:id model)
                                                  :pk_ref    pk_ref
@@ -61,9 +61,9 @@
   (testing "Ensures that the pk ref is a primary key"
     (mt/dataset test-data
       (let [query (mt/mbql-query products)]
-        (t2.with-temp/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                          :type :model
-                                                          :name "model index test")]
+        (mt/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                                :type :model
+                                                :name "model index test")]
           (let [by-name (fn [n] (or (some (fn [f] (when (= n (-> f :name u/lower-case-en))
                                                     (:field_ref f)))
                                           (:result_metadata model))
@@ -101,9 +101,9 @@
         (let [query     (mt/mbql-query products)
               pk_ref    (mt/$ids $products.id)
               value_ref (mt/$ids $products.title)]
-          (t2.with-temp/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                            :type :model
-                                                            :name "model index test")]
+          (mt/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                                  :type :model
+                                                  :name "model index test")]
             (mt/user-http-request :crowberto :post 200 "/model-index" {:model_id  (:id model)
                                                                        :pk_ref    pk_ref
                                                                        :value_ref value_ref})

@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.e2e-test
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.serialization.cmd :as cmd]
@@ -15,8 +16,7 @@
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
    [reifyhealth.specmonstah.core :as rs]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.io File)
    (java.nio.file Path)))
@@ -471,7 +471,7 @@
                                                                :model model}}})
               dashboard->link-cards (fn [dashboard]
                                       (map #(get-in % [:visualization_settings :link :entity]) (:dashcards dashboard)))]
-          (t2.with-temp/with-temp
+          (mt/with-temp
             [:model/Collection    {coll-id   :id
                                    coll-name :name
                                    coll-eid  :entity_id}    {:name        "Link collection"
@@ -631,7 +631,7 @@
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
           ;; preparation
-          (t2.with-temp/with-temp
+          (mt/with-temp
             [:model/Dashboard           {dashboard-id :id
                                          dashboard-eid :entity_id} {:name "Dashboard with tab"}
              :model/Card                {card-id-1 :id
@@ -751,7 +751,7 @@
         (ts/with-dbs [source-db dest-db]
           (ts/with-db source-db
             ;; preparation
-            (t2.with-temp/with-temp [:model/Dashboard _ {:name "some dashboard"}]
+            (mt/with-temp [:model/Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
                 (is (thrown-with-msg? Exception #"Please upgrade"
                                       (cmd/v2-dump! dump-dir {}))
@@ -776,7 +776,7 @@
               ;; ensuring field ids are stable by loading dataset in db first
               (mt/db)
               (mt/$ids nil
-                (t2.with-temp/with-temp
+                (mt/with-temp
                   [:model/Collection {coll-id :id}  {:name "Pivot Collection"}
                    :model/Card       card           {:name          "Pivot Card"
                                                      :collection_id coll-id
@@ -879,7 +879,7 @@
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (ts/with-dbs [source-db dest-db]
       (ts/with-db source-db
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Collection {coll-id :id}   {:name "Collection"}
            :model/Card       {metric-id :id} {:name "Metric Card"
                                               :collection_id coll-id
@@ -914,3 +914,73 @@
                                             {:aggregation [[:metric (:id new-metric)]]
                                              :breakout    [[:field %orders.user_id nil]]})}
                           (t2/select-one :model/Card :name "Metric Consuming Question Card"))))))))))))
+
+(deftest ^:sequential query-idents-stable-across-serdes-test-1-randomized-idents
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (mt/with-temp
+          [:model/Collection {coll-id :id}    {:name "Collection"}
+           :model/Card       {card-id :id
+                              eid :entity_id} {:name "The Card"
+                                               :collection_id coll-id
+                                               :dataset_query
+                                               (mt/mbql-query orders
+                                                 {:aggregation [[:count] [:sum $subtotal]]
+                                                  :breakout    [$product_id->products.category $created_at]})}]
+          (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+            (storage/store! (seq extraction) dump-dir))
+          (let [original (:query (:dataset_query (t2/select-one :model/Card :id card-id)))]
+            (ts/with-db dest-db
+              (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                  "ingested successfully")
+              (let [imported (:query (:dataset_query (t2/select-one :model/Card :entity_id eid)))]
+                (is (= (select-keys original [:aggregation-idents :breakout-idents])
+                       (select-keys imported [:aggregation-idents :breakout-idents])))))))))))
+
+(deftest ^:sequential query-idents-stable-across-serdes-test-2-preexisting-card
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [base (mt/$ids orders
+                     {:database (mt/id)
+                      :type     :query
+                      :query    {:source-table $$orders
+                                 :aggregation  [[:count] [:sum $subtotal]]
+                                 :breakout     [$product_id->products.category $created_at]}})]
+          (mt/with-temp
+            [:model/Collection {coll-id :id}    {:name "Collection"}
+             :model/Card       {card-id :id
+                                eid :entity_id} {:name "The Card"
+                                                 :collection_id coll-id
+                                                 :dataset_query base}]
+            ;; When that temp Card got `t2/insert!`-ed, it had randomized idents generated. Strip them off.
+            (t2/update! :model/Card card-id {:dataset_query base})
+            ;; Now serialize this card!
+            (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+              (storage/store! (seq extraction) dump-dir))
+
+            (let [original (:dataset_query (t2/select-one :model/Card :id card-id))]
+              (ts/with-db dest-db
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "ingested successfully")
+                (let [imported    (t2/select-one :model/Card :entity_id eid)
+                      ;; The card was imported with the (backfilled) idents on it; strip those off too.
+                      ;; This simulates a Card that was serialized prior to the `:ident`s being added.
+                      stripped    (-> imported
+                                      :dataset_query
+                                      (update :query dissoc :aggregation-idents :breakout-idents))
+                      _           (t2/update! :model/Card (:id imported) {:dataset_query stripped})
+                      ;; Now on reading the card again, its idents will be backfilled on the client.
+                      preexisting (:dataset_query (t2/select-one :model/Card :entity_id eid))]
+                  (testing "the dest card has no idents as stored in appdb"
+                    (is (nil? (-> (t2/select-one :report_card :id (:id imported))
+                                  :dataset_query
+                                  (str/index-of "-idents")))))
+                  (testing "reading a preexisting card (without idents) backfills the same idents in each instance"
+                    (is (=? {:query {:aggregation-idents {0 (str "aggregation_" eid "@0__0")}
+                                     :breakout-idents    {0 (str "breakout_" eid "@0__0")}}}
+                            original))
+                    (is (=? {:query {:aggregation-idents {0 (str "aggregation_" eid "@0__0")}
+                                     :breakout-idents    {0 (str "breakout_" eid "@0__0")}}}
+                            preexisting))))))))))))

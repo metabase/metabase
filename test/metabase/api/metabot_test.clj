@@ -7,8 +7,7 @@
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.util :as metabot-util]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util.json :as json]))
 
 (deftest metabot-only-works-on-models-test
   (testing "POST /api/metabot/model/:model-id won't work for a table endpoint"
@@ -24,7 +23,7 @@
   (testing "POST /api/metabot/model/:model-id happy path"
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card orders-model {:name    "Orders Model"
                                      :dataset_query
                                      {:database (mt/id)
@@ -53,7 +52,7 @@
   (testing "POST /api/metabot/model/:model-id produces a message when no SQL is found"
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card orders-model {:name    "Orders Model"
                                      :dataset_query
                                      {:database (mt/id)
@@ -74,7 +73,7 @@
   (testing "POST /api/metabot/database/:database-id happy path"
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card orders-model {:name    "Orders Model"
                                      :dataset_query
                                      {:database (mt/id)
@@ -104,7 +103,7 @@
   (testing "With embeddings, you'll always get _some_ model, unless there aren't any at all."
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card _orders-model {:name    "Not a model"
                                       :dataset_query
                                       {:database (mt/id)
@@ -125,7 +124,7 @@
   (testing "When we can't find sql from the selected model, we return a message"
     (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
       (mt/dataset test-data
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card orders-model {:name    "Orders Model"
                                      :dataset_query
                                      {:database (mt/id)
@@ -149,7 +148,7 @@
   (mt/with-temp-env-var-value! [mb-is-metabot-enabled true]
     (testing "Too many requests returns a useful message"
       (mt/dataset test-data
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card _ {:name    "Orders Model"
                           :dataset_query
                           {:database (mt/id)
@@ -169,7 +168,7 @@
               (is (true? (str/includes? message "The bot server is under heavy load"))))))))
     (testing "Not having the right API keys set returns a useful message"
       (mt/dataset test-data
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card _ {:name    "Orders Model"
                           :dataset_query
                           {:database (mt/id)
