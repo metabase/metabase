@@ -33,8 +33,8 @@ export const SidesheetCardWithFields = ({
 
         return (
           <Column
-            columnMetadata={columnMetadata}
             query={query}
+            columnMetadata={columnMetadata}
             columnDisplayInfo={columnDisplayInfo}
             key={columnDisplayInfo.name}
           />
@@ -45,13 +45,13 @@ export const SidesheetCardWithFields = ({
 };
 
 const Column = ({
+  query,
   columnMetadata,
   columnDisplayInfo: columnInfo,
-  query,
 }: {
+  query: Lib.Query;
   columnMetadata: Lib.ColumnMetadata;
   columnDisplayInfo: Lib.ColumnDisplayInfo;
-  query: Lib.Query;
 }) => {
   return (
     <Group spacing="sm">
