@@ -19,7 +19,7 @@ const STORYBOOK_ID = "embeddingsdk-cypressstaticdashboardwithcors--default";
 H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
     H.restore();
-    cy.signIn("admin", { skipCache: true });
+    cy.signInAsAdmin();
     H.setTokenFeatures("all");
     enableJwtAuth();
 
