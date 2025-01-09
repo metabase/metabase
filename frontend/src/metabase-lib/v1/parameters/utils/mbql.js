@@ -1,6 +1,8 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 
+import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
+import { deserializeDateFilter } from "metabase/querying/parameters/utils/dates";
 import * as Lib from "metabase-lib";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
 import {
@@ -206,12 +208,7 @@ function isFieldFilterParameterConveratableToMBQL(parameter) {
   return hasValue && hasWellFormedTarget && hasFieldDimensionTarget;
 }
 
-/** compiles a parameter with value to MBQL */
-function filterParameterToMBQL(query, stageIndex, parameter) {
-  if (!isFieldFilterParameterConveratableToMBQL(parameter)) {
-    return null;
-  }
-
+function getParameterTargetColumn(query, stageIndex, parameter) {
   const columns = Lib.filterableColumns(query, stageIndex);
   const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
@@ -223,30 +220,65 @@ function filterParameterToMBQL(query, stageIndex, parameter) {
     return null;
   }
 
-  const column = columns[columnIndex];
-  const fieldRef = Lib.legacyRef(query, stageIndex, column);
+  return columns[columnIndex];
+}
 
+/** compiles a parameter with value to legacy MBQL */
+function filterParameterToMBQL(query, stageIndex, parameter, column) {
+  if (!isFieldFilterParameterConveratableToMBQL(parameter)) {
+    return;
+  }
+  // date parameters are handled in `filterParameterToClause`
   if (isDateParameter(parameter)) {
-    return dateParameterValueToMBQL(parameter.value, fieldRef, false);
-  } else if (Lib.isNumeric(column)) {
+    return;
+  }
+
+  const fieldRef = Lib.legacyRef(query, stageIndex, column);
+  if (Lib.isNumeric(column)) {
     return numberParameterValueToMBQL(parameter, fieldRef);
   } else {
     return stringParameterValueToMBQL(parameter, fieldRef);
   }
 }
 
+function filterParameterToClause(parameter, column) {
+  if (isDateParameter(parameter)) {
+    if (typeof parameter.value !== "string") {
+      return;
+    }
+
+    const value = deserializeDateFilter(parameter.value);
+    if (value == null) {
+      return;
+    }
+
+    return getDateFilterClause(column, value);
+  }
+}
+
 export function applyFilterParameter(query, stageIndex, parameter) {
-  const mbql = filterParameterToMBQL(query, stageIndex, parameter);
-  if (mbql) {
+  const column = getParameterTargetColumn(query, stageIndex, parameter);
+  if (!column) {
+    return query;
+  }
+
+  const clause = filterParameterToClause(parameter, column);
+  if (clause != null) {
+    return Lib.filter(query, stageIndex, clause);
+  }
+
+  // legacy MBQL
+  const mbql = filterParameterToMBQL(query, stageIndex, parameter, column);
+  if (mbql != null) {
     const filter = Lib.expressionClauseForLegacyExpression(
       query,
       stageIndex,
-      mbql,
+      clause,
     );
     return Lib.filter(query, stageIndex, filter);
-  } else {
-    return query;
   }
+
+  return query;
 }
 
 export function applyTemporalUnitParameter(query, stageIndex, parameter) {
