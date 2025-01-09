@@ -75,8 +75,8 @@
                   :when fk-column]
               [k (if multi-row?
                    (map #(assoc % fk-column parent-id) (get row k))
-                   (when-let [nested-row (get row k)]
-                     (assoc nested-row fk-column parent-id)))])))
+                   (some-> (get row k)
+                           (assoc fk-column parent-id)))])))
 
 (defn- sanitize-row-fn
   "Return a function that sanitizes the row to be inserted/updated."
