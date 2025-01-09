@@ -194,8 +194,6 @@ const CollectionContentViewInner = ({
   const hasPinnedItems = pinnedItems.length > 0;
   const actionId = { id: collectionId };
 
-  // return null;
-
   return (
     <CollectionRoot {...dropzoneProps}>
       {canCreateUpload && (
