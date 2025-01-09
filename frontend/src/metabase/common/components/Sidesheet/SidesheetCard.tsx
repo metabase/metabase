@@ -29,8 +29,8 @@ export const SidesheetCard = ({
       p="lg"
       withBorder
       shadow="none"
-      {...paperProps}
       aria-labelledby={title ? titleId : undefined}
+      {...paperProps}
     >
       {title && <SidesheetCardTitle id={titleId}>{title}</SidesheetCardTitle>}
       <Stack spacing="md" className={CS.textMedium} {...stackProps}>
