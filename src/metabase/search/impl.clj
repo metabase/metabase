@@ -276,7 +276,7 @@
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
 
-   [:compatibility {:optional true} :map]])
+   [:compatibility {:optional true} [:maybe :map]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
