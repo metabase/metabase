@@ -23,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -133,7 +134,7 @@
                              (mtx/transformer
                               mtx/string-transformer
                               (mtx/transformer {:name :perm-graph})))]
-    (when-not (mc/validate api.permission-graph/DataPermissionsGraph new-graph)
+    (when-not (mr/validate api.permission-graph/DataPermissionsGraph new-graph)
       (let [explained (mu/explain api.permission-graph/DataPermissionsGraph new-graph)]
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
                         {:status-code 400}))))

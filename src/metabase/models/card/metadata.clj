@@ -1,7 +1,6 @@
 (ns metabase.models.card.metadata
   "Code related to Card metadata (re)calculation and saving updated metadata asynchronously."
   (:require
-   [malli.core :as mc]
    [metabase.analyze :as analyze]
    [metabase.api.common :as api]
    [metabase.compatibility :as compatibility]
@@ -84,7 +83,7 @@ saved later when it is ready."
   This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
   might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
   [{:keys [original-query query metadata original-metadata model?], :as options}]
-  (let [valid-metadata? (and metadata (mc/validate analyze/ResultsMetadata metadata))]
+  (let [valid-metadata? (and metadata (mr/validate analyze/ResultsMetadata metadata))]
     (cond
       (or
        ;; query didn't change, preserve existing metadata

@@ -18,8 +18,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.xrays.automagic-dashboards.core :as magic]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
 
@@ -29,13 +28,13 @@
 
 (deftest ^:parallel serialize-dashboard-test
   (testing "without tabs"
-    (t2.with-temp/with-temp [:model/Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
-                             :model/Card                {card-id :id}     {}
-                             :model/Card                {series-id-1 :id} {}
-                             :model/Card                {series-id-2 :id} {}
-                             :model/DashboardCard       {dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}
-                             :model/DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}
-                             :model/DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
+    (mt/with-temp [:model/Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
+                   :model/Card                {card-id :id}     {}
+                   :model/Card                {series-id-1 :id} {}
+                   :model/Card                {series-id-2 :id} {}
+                   :model/DashboardCard       {dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}
+                   :model/DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}
+                   :model/DashboardCardSeries _                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
       (is (= {:name                "Test Dashboard"
               :archived_directly   false
               :auto_apply_filters  true
@@ -71,9 +70,9 @@
 
 (deftest ^:parallel serialize-dashboard-with-tabs-test
   (testing "with tabs"
-    (t2.with-temp/with-temp [:model/Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
-                             :model/DashboardTab {tab-id :id}                     {:dashboard_id dashboard-id :name "Test Tab" :position 0}
-                             :model/DashboardCard       {dashcard-id :id}                {:dashboard_id dashboard-id :dashboard_tab_id tab-id}]
+    (mt/with-temp [:model/Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
+                   :model/DashboardTab {tab-id :id}                     {:dashboard_id dashboard-id :name "Test Tab" :position 0}
+                   :model/DashboardCard       {dashcard-id :id}                {:dashboard_id dashboard-id :dashboard_tab_id tab-id}]
       (is (=? {:name                       "Test Dashboard"
                :auto_apply_filters         true
                :collection_id              nil
@@ -182,7 +181,7 @@
              {:name          "Apple"
               :collection_id nil}))))
 
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Collection {coll-id :id} {:name "New collection"}]
       (is (= "moved this Dashboard to New collection."
              (u/build-sentence
@@ -191,7 +190,7 @@
                {:name "Apple"}
                {:name          "Apple"
                 :collection_id coll-id})))))
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Collection {coll-id-1 :id} {:name "Old collection"}
        :model/Collection {coll-id-2 :id} {:name "New collection"}]
       (is (= "moved this Dashboard from Old collection to New collection."
@@ -241,7 +240,7 @@
                                         (create-dashboard-revision! dashboard-id true))]
 
     (testing "dashboard ---"
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Dashboard dashboard {:name                "A Dashboard"
                                      :description         "An insightful Dashboard"
                                      :collection_position 0
@@ -291,7 +290,7 @@
                                  changes))))))))))))
 
     (testing "dashboardcard ---"
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Dashboard     dashboard {:name "A Dashboard"}
          :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)}
          :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}
@@ -322,7 +321,7 @@
               (is (= 2 (t2/count :model/Revision :model "Dashboard" :model_id (:id dashboard)))))))))
 
     (testing "dashboardtab ---"
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Dashboard     dashboard {:name "A Dashboard"}
          :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}]
         (let [columns    (disj (set/difference (set (keys dashtab)) (set @#'dashboard/excluded-columns-for-dashboard-tab-revision))
@@ -341,13 +340,13 @@
               (is (= 2 (t2/count :model/Revision :model "Dashboard" :model_id (:id dashboard)))))))))))
 
 (deftest revert-dashboard!-test
-  (t2.with-temp/with-temp [:model/Dashboard           {dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}
-                           :model/Card                {card-id :id}                        {}
-                           :model/Card                {series-id-1 :id}                    {}
-                           :model/Card                {series-id-2 :id}                    {}
-                           :model/DashboardCard       {dashcard-id :id :as dashboard-card} {:dashboard_id dashboard-id, :card_id card-id}
-                           :model/DashboardCardSeries _                                    {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}
-                           :model/DashboardCardSeries _                                    {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
+  (mt/with-temp [:model/Dashboard           {dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}
+                 :model/Card                {card-id :id}                        {}
+                 :model/Card                {series-id-1 :id}                    {}
+                 :model/Card                {series-id-2 :id}                    {}
+                 :model/DashboardCard       {dashcard-id :id :as dashboard-card} {:dashboard_id dashboard-id, :card_id card-id}
+                 :model/DashboardCardSeries _                                    {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}
+                 :model/DashboardCardSeries _                                    {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
     (let [check-ids            (fn [[{:keys [id card_id series] :as card}]]
                                  [(assoc card
                                          :id      (= dashcard-id id)
@@ -464,7 +463,7 @@
 
 (deftest revert-dashboard-with-tabs-basic-test
   (testing "revert adding tabs"
-    (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
       ;; 0. create a dashboard
       (create-dashboard-revision! dashboard-id true)
 
@@ -495,7 +494,7 @@
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))))))
 
   (testing "revert renaming tabs"
-    (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
       ;; 0. create a dashboard
       (create-dashboard-revision! dashboard-id true)
 
@@ -523,7 +522,7 @@
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))))))
 
   (testing "revert deleting tabs"
-    (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
      ;; 0. create a dashboard
       (create-dashboard-revision! dashboard-id true)
 
@@ -551,7 +550,7 @@
                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
 
 (deftest revert-dashboard-with-tabs-advanced-test
-  (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
+  (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
     ;; 0. create a dashboard
     (create-dashboard-revision! dashboard-id true)
 
@@ -640,10 +639,10 @@
         (is (false? (t2/exists? :model/DashboardTab :dashboard_id dashboard-id :name "Tab 3")))))))
 
 (deftest revert-dashboard-skip-archived-or-deleted-card-test
-  (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id}          {:name "A dashboard"}
-                           :model/Card      {will-be-archived-card :id} {}
-                           :model/Card      {will-be-deleted-card :id}  {}
-                           :model/Card      {unchanged-card       :id}  {}]
+  (mt/with-temp [:model/Dashboard {dashboard-id :id}          {:name "A dashboard"}
+                 :model/Card      {will-be-archived-card :id} {}
+                 :model/Card      {will-be-deleted-card :id}  {}
+                 :model/Card      {unchanged-card       :id}  {}]
     ;; 0. create a dashboard
     (create-dashboard-revision! dashboard-id true)
     ;; 1. add 3 cards and 1 text card
@@ -697,13 +696,13 @@
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
-      (t2.with-temp/with-temp [:model/Dashboard dashboard {:public_uuid (str (random-uuid))}]
+      (mt/with-temp [:model/Dashboard dashboard {:public_uuid (str (random-uuid))}]
         (is (=? u/uuid-regex
                 (:public_uuid dashboard)))))
 
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
-        (t2.with-temp/with-temp [:model/Dashboard dashboard {:public_uuid (str (random-uuid))}]
+        (mt/with-temp [:model/Dashboard dashboard {:public_uuid (str (random-uuid))}]
           (is (= nil
                  (:public_uuid dashboard))))))))
 
@@ -776,13 +775,13 @@
         (is (= 0 (count (pulse-channel-test/send-pulse-triggers pulse-id))))))))
 
 (deftest post-update-test
-  (t2.with-temp/with-temp [:model/Collection    {collection-id-1 :id} {}
-                           :model/Collection    {collection-id-2 :id} {}
-                           :model/Dashboard     {dashboard-id :id}    {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}
-                           :model/Card          {card-id :id}         {}
-                           :model/Pulse         {pulse-id :id}        {:dashboard_id dashboard-id, :collection_id collection-id-1}
-                           :model/DashboardCard {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}
-                           :model/PulseCard     _                     {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]
+  (mt/with-temp [:model/Collection    {collection-id-1 :id} {}
+                 :model/Collection    {collection-id-2 :id} {}
+                 :model/Dashboard     {dashboard-id :id}    {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}
+                 :model/Card          {card-id :id}         {}
+                 :model/Pulse         {pulse-id :id}        {:dashboard_id dashboard-id, :collection_id collection-id-1}
+                 :model/DashboardCard {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}
+                 :model/PulseCard     _                     {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]
     (testing "Pulse name and collection-id updates"
       (t2/update! :model/Dashboard dashboard-id {:name "Lucky's Close Shaves" :collection_id collection-id-2})
       (is (= "Lucky's Close Shaves"
@@ -790,7 +789,7 @@
       (is (= collection-id-2
              (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))
     (testing "PulseCard syncing"
-      (t2.with-temp/with-temp [:model/Card {new-card-id :id}]
+      (mt/with-temp [:model/Card {new-card-id :id}]
         (dashboard/add-dashcards! dashboard-id [{:card_id new-card-id
                                                  :row     0
                                                  :col     0
@@ -801,10 +800,10 @@
 
 (deftest parameter-card-test
   (testing "A new dashboard creates a new ParameterCard"
-    (t2.with-temp/with-temp [:model/Card      {card-id :id}      {}
-                             :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
-                                                                                      {:values_source_type    "card"
-                                                                                       :values_source_config {:card_id card-id}})]}]
+    (mt/with-temp [:model/Card      {card-id :id}      {}
+                   :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
+                                                                            {:values_source_type    "card"
+                                                                             :values_source_config {:card_id card-id}})]}]
       (is (=? {:card_id                   card-id
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
@@ -812,8 +811,8 @@
               (t2/select-one 'ParameterCard :card_id card-id)))))
 
   (testing "Adding a card_id creates a new ParameterCard"
-    (t2.with-temp/with-temp [:model/Card      {card-id :id}      {}
-                             :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
+    (mt/with-temp [:model/Card      {card-id :id}      {}
+                   :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
       (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))
       (t2/update! :model/Dashboard dashboard-id {:parameters [(merge default-parameter
                                                                      {:values_source_type    "card"
@@ -825,10 +824,10 @@
               (t2/select-one 'ParameterCard :card_id card-id)))))
 
   (testing "Removing a card_id deletes old ParameterCards"
-    (t2.with-temp/with-temp [:model/Card      {card-id :id}      {}
-                             :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
-                                                                                      {:values_source_type    "card"
-                                                                                       :values_source_config {:card_id card-id}})]}]
+    (mt/with-temp [:model/Card      {card-id :id}      {}
+                   :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
+                                                                            {:values_source_type    "card"
+                                                                             :values_source_config {:card_id card-id}})]}]
         ;; same setup as earlier test, we know the ParameterCard exists right now
       (t2/delete! :model/Dashboard :id dashboard-id)
       (is (nil? (t2/select-one 'ParameterCard :card_id card-id))))))
@@ -851,14 +850,14 @@
 
 (defn do-with-dash-in-collection! [f]
   (tu/with-non-admin-groups-no-root-collection-perms
-    (t2.with-temp/with-temp [:model/Collection    collection {}
-                             :model/Dashboard     dash       {:collection_id (u/the-id collection)}
-                             :model/Database      db         {:engine :h2}
-                             :model/Table         table      {:db_id (u/the-id db)}
-                             :model/Card          card       {:dataset_query {:database (u/the-id db)
-                                                                              :type     :query
-                                                                              :query    {:source-table (u/the-id table)}}}
-                             :model/DashboardCard _          {:dashboard_id (u/the-id dash), :card_id (u/the-id card)}]
+    (mt/with-temp [:model/Collection    collection {}
+                   :model/Dashboard     dash       {:collection_id (u/the-id collection)}
+                   :model/Database      db         {:engine :h2}
+                   :model/Table         table      {:db_id (u/the-id db)}
+                   :model/Card          card       {:dataset_query {:database (u/the-id db)
+                                                                    :type     :query
+                                                                    :query    {:source-table (u/the-id table)}}}
+                   :model/DashboardCard _          {:dashboard_id (u/the-id dash), :card_id (u/the-id card)}]
       (f db collection dash))))
 
 (defmacro with-dash-in-collection!
@@ -901,19 +900,19 @@
                    (-> dashboard :dashcards count)))))))))
 
 (deftest validate-collection-namespace-test
-  (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
+  (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Dashboard in a non-normal Collection"
       (let [dashboard-name (mt/random-name)]
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Dashboard can only go in Collections in the \"default\" or :analytics namespace."
-               (t2/insert! :model/Dashboard (assoc (t2.with-temp/with-temp-defaults :model/Dashboard) :collection_id collection-id, :name dashboard-name))))
+               (t2/insert! :model/Dashboard (assoc (mt/with-temp-defaults :model/Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
             (t2/delete! :model/Dashboard :name dashboard-name)))))
 
     (testing "Shouldn't be able to move a Dashboard to a non-normal Collection"
-      (t2.with-temp/with-temp [:model/Dashboard {card-id :id}]
+      (mt/with-temp [:model/Dashboard {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Dashboard can only go in Collections in the \"default\" or :analytics namespace."
@@ -925,9 +924,9 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #":parameters must be a sequence of maps with :id and :type keys"
-           (t2.with-temp/with-temp [:model/Dashboard _ {:parameters {:a :b}}]))))
+           (mt/with-temp [:model/Dashboard _ {:parameters {:a :b}}]))))
     (testing "updating"
-      (t2.with-temp/with-temp [:model/Dashboard {:keys [id]} {:parameters []}]
+      (mt/with-temp [:model/Dashboard {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
@@ -960,10 +959,10 @@
 
 (deftest should-add-default-values-source-test
   (testing "shoudld add default if not exists"
-    (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                                :slug   "category_name"
-                                                                                :id     "_CATEGORY_NAME_"
-                                                                                :type   "category"}]}]
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                      :slug   "category_name"
+                                                                      :id     "_CATEGORY_NAME_"
+                                                                      :type   "category"}]}]
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
@@ -992,8 +991,8 @@
 (deftest identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (t2.with-temp/with-temp [:model/Collection c1   {:name "top level" :location "/" :created_at now}
-                               :model/Dashboard  dash {:name "my dashboard" :collection_id (:id c1) :created_at now}]
+      (mt/with-temp [:model/Collection c1   {:name "top level" :location "/" :created_at now}
+                     :model/Dashboard  dash {:name "my dashboard" :collection_id (:id c1) :created_at now}]
         (is (= "8cbf93b7"
                (serdes/raw-hash ["my dashboard" (serdes/identity-hash c1) now])
                (serdes/identity-hash dash)))))))

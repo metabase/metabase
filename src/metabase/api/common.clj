@@ -427,7 +427,7 @@
   "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
   [nmspace]
   (for [[_symb varr] (ns-publics nmspace)
-        :when       (:is-endpoint? (meta varr))]
+        :when        (:is-endpoint? (meta varr))]
     varr))
 
 (defn- api-routes-docstring [nmspace route-fns middleware]

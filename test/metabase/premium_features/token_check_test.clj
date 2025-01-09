@@ -13,8 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -174,7 +173,7 @@
       (is (nil? (premium-features/token-status))))))
 
 (deftest active-users-count-setting-test
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [:model/User _ {:is_active false}]
     (testing "returns the number of active users"
       (is (= (t2/count :model/User :is_active true :type :personal)

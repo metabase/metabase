@@ -10,8 +10,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.protocols :as server.protocols]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [metabase.util :as u])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
@@ -43,7 +42,7 @@
   `(do-with-streaming-response-thread-pool! (fn [] ~@body)))
 
 (defmacro ^:private with-test-driver-db! {:style/indent 0} [& body]
-  `(t2.with-temp/with-temp [:model/Database db# {:engine ::test-driver}]
+  `(mt/with-temp [:model/Database db# {:engine ::test-driver}]
      (mt/with-db db#
        (with-streaming-response-thread-pool!
          ~@body))))
