@@ -2,7 +2,8 @@ name: Driver Tests (Summary)
 
 on:
   workflow_run:
-    workflows: [Driver Tests]
+    workflows:
+      - Driver Tests
     types: completed
 
 
