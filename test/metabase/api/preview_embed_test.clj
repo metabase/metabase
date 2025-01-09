@@ -10,8 +10,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 ;;; --------------------------------------- GET /api/preview_embed/card/:token ---------------------------------------
 
@@ -153,7 +152,7 @@
   (testing "GET /api/preview_embed/card/:token/query with default values for params"
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (testing "if the param is enabled"
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card card (assoc (embed-test/card-with-date-field-filter-default) :embedding_params {:date "enabled"})]
           (testing "the default should apply if no param value is provided"
             (is (= [[107]]
@@ -171,7 +170,7 @@
                    (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "enabled"}
                                                                                             :params            {:date nil}}))))))))
       (testing "if the param is disabled"
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card card (assoc (embed-test/card-with-date-field-filter-default) :embedding_params {:date "disabled"})]
           (testing "the default should apply if no param is provided"
             (is (= [[107]]
@@ -180,7 +179,7 @@
             (is (= "You're not allowed to specify a value for :date."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:date "disabled"}}) "?date=")))))))
       (testing "if the param is locked"
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card card (assoc (embed-test/card-with-date-field-filter-default) :embedding_params {:date "locked"})]
           (testing "an empty value with `nil` as the param's value is invalid and should result in an error"
             (is (= "You must specify a value for :date in the JWT."
@@ -224,7 +223,7 @@
 (deftest dashboard-test
   (testing "GET /api/preview_embed/dashboard/:token"
     (embed-test/with-embedding-enabled-and-new-secret-key!
-      (t2.with-temp/with-temp [:model/Dashboard dash]
+      (mt/with-temp [:model/Dashboard dash]
         (testing "it should be possible to call this endpoint successfully..."
           (is (= embed-test/successful-dashboard-info
                  (embed-test/dissoc-id-and-name
@@ -246,10 +245,10 @@
 (deftest only-enabled-params-not-in-jwt-test
   (testing "Check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
     (embed-test/with-embedding-enabled-and-new-secret-key!
-      (t2.with-temp/with-temp [:model/Dashboard dash {:parameters [{:id "_a", :slug "a", :name "a", :type "date"}
-                                                                   {:id "_b", :slug "b", :name "b", :type "date"}
-                                                                   {:id "_c", :slug "c", :name "c", :type "date"}
-                                                                   {:id "_d", :slug "d", :name "d", :type "date"}]}]
+      (mt/with-temp [:model/Dashboard dash {:parameters [{:id "_a", :slug "a", :name "a", :type "date"}
+                                                         {:id "_b", :slug "b", :name "b", :type "date"}
+                                                         {:id "_c", :slug "c", :name "c", :type "date"}
+                                                         {:id "_d", :slug "d", :name "d", :type "date"}]}]
         (is (=? [{:id "_d", :slug "d", :name "d", :type "date"}]
                 (:parameters (mt/user-http-request :crowberto :get 200 (dashboard-url dash
                                                                                       {:params            {:c 100}
@@ -372,14 +371,14 @@
 (deftest editable-params-should-not-be-invalid-test
   (testing "Make sure that editable params do not result in \"Invalid Parameter\" exceptions (#7212)"
     (embed-test/with-embedding-enabled-and-new-secret-key!
-      (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database (mt/id)
-                                                                 :type     :native
-                                                                 :native   {:query         "SELECT {{num}} AS num"
-                                                                            :template-tags {:num {:name         "num"
-                                                                                                  :display_name "Num"
-                                                                                                  :type         "number"
-                                                                                                  :required     true
-                                                                                                  :default      "1"}}}}}]
+      (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query         "SELECT {{num}} AS num"
+                                                                  :template-tags {:num {:name         "num"
+                                                                                        :display_name "Num"
+                                                                                        :type         "number"
+                                                                                        :required     true
+                                                                                        :default      "1"}}}}}]
         (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters [{:name "Num"
                                                                            :slug "num"
                                                                            :id   "_NUM_"
@@ -398,8 +397,8 @@
   (mt/test-driver :postgres
     (testing "Make sure that ID params correctly get converted to numbers as needed (Postgres-specific)..."
       (embed-test/with-embedding-enabled-and-new-secret-key!
-        (t2.with-temp/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues
-                                                                    {:aggregation [:count]})}]
+        (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues
+                                                          {:aggregation [:count]})}]
           (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters [{:name "Venue ID"
                                                                              :slug "venue_id"
                                                                              :id   "_VENUE_ID_"
@@ -495,17 +494,17 @@
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
     (mt/dataset test-data
       (embed-test/with-embedding-enabled-and-new-secret-key!
-        (t2.with-temp/with-temp [:model/Card {card-id :id, :as card} {:dataset_query    (mt/native-query
-                                                                                          {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                                                                                           :template-tags {"NAME"
-                                                                                                           {:name         "NAME"
-                                                                                                            :display-name "Name"
-                                                                                                            :type         :dimension
-                                                                                                            :dimension    [:field (mt/id :people :name) nil]
-                                                                                                            :widget-type  :string/=
-                                                                                                            :default      nil}}})
-                                                                      :enable_embedding true
-                                                                      :embedding_params {"NAME" "enabled"}}]
+        (mt/with-temp [:model/Card {card-id :id, :as card} {:dataset_query    (mt/native-query
+                                                                                {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                                 :template-tags {"NAME"
+                                                                                                 {:name         "NAME"
+                                                                                                  :display-name "Name"
+                                                                                                  :type         :dimension
+                                                                                                  :dimension    [:field (mt/id :people :name) nil]
+                                                                                                  :widget-type  :string/=
+                                                                                                  :default      nil}}})
+                                                            :enable_embedding true
+                                                            :embedding_params {"NAME" "enabled"}}]
           (testing "Card"
             (let [url (card-query-url card {:_embedding_params {:NAME "enabled"}})]
               (is (= [[1]]

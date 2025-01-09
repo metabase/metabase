@@ -27,8 +27,8 @@
    [metabase.models.secret :as secret]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.sample-data :as sample-data]
    [metabase.sync.analyze :as analyze]
@@ -270,6 +270,7 @@
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
       include-only-uploadable?     (#(filter uploadable-db? %)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Fetch all `Databases`.
 
@@ -361,6 +362,7 @@
                                     secret/expand-db-details-inferred-secret-values
                                     (assoc :can-manage true)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
    belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
@@ -427,6 +429,7 @@
              [:in :table_id table-ids]
              always-false-hsql-expr)})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/usage_info"
   "Get usage info for a database.
   Returns a map with keys are models and values are the number of entities that use this database."
@@ -448,6 +451,7 @@
 ;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
 ;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
 ;; match the virtual ID (and nothing else).
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
@@ -488,6 +492,7 @@
                             (filter :active tables))
                           identity)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
@@ -627,6 +632,7 @@
                                     {:option v
                                      :valid-options autocomplete-matching-options}))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
   `substring` will have priority if both are present.
@@ -658,6 +664,7 @@
     (catch Throwable e
       (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/card_autocomplete_suggestions"
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
@@ -676,6 +683,7 @@
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/fields"
   "Get a list of all `Fields` in `Database`."
   [id]
@@ -697,6 +705,7 @@
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
   [id include_editable_data_model]
@@ -779,6 +788,7 @@
              (assoc :valid false))
      details)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]} :body}]
@@ -831,6 +841,7 @@
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
   ;; TODO - why do we pass the DB in under the key `details`?
@@ -844,6 +855,7 @@
 
 ;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/sample_database"
   "Add the sample database as a new `Database`."
   []
@@ -866,6 +878,7 @@
             details
             (database/sensitive-fields-for-db database)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/persist"
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
   [id]
@@ -891,6 +904,7 @@
                           {:error error
                            :database (:name database)})))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/unpersist"
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [id]
@@ -905,6 +919,7 @@
       ;; todo: a response saying this was a no-op? an error? same on the post to persist
       api/generic-204-no-content)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
@@ -980,6 +995,7 @@
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id"
   "Delete a `Database`."
   [id]
@@ -994,6 +1010,7 @@
 ;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------
 
 ;; Should somehow trigger sync-database/sync-database!
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
@@ -1016,6 +1033,7 @@
           (analyze/analyze-db! db))
         {:status :ok}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/dismiss_spinner"
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
@@ -1040,6 +1058,7 @@
   true)
 
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [id]
@@ -1065,6 +1084,7 @@
                                :where      [:= :t.db_id (u/the-id database-or-id)]}]}))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [id]
@@ -1095,6 +1115,7 @@
                                                      schema-name))
    (current-user-can-manage-schema-metadata? database-id schema-name)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/syncable_schemas"
   "Returns a list of all syncable schemas found for the database `id`."
   [id]
@@ -1133,6 +1154,7 @@
          distinct
          sort)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
   [id include_editable_data_model include_hidden]
@@ -1142,6 +1164,7 @@
   (database-schemas id {:include-editable-data-model? include_editable_data_model
                         :include-hidden? include_hidden}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET ["/:virtual-db/schemas"
                       :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the schemas found for the saved questions virtual database."
@@ -1152,6 +1175,7 @@
          distinct
          (sort-by u/lower-case-en))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET ["/:virtual-db/datasets"
                       :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the datasets found for the saved questions virtual database."
@@ -1191,6 +1215,7 @@
          tables)
        (filter mi/can-read? tables)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
   [id include_hidden include_editable_data_model schema]
@@ -1203,6 +1228,7 @@
                        include_hidden
                        include_editable_data_model))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/schema/"
   "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
   [id include_hidden include_editable_data_model]
@@ -1212,6 +1238,7 @@
   (api/check-404 (seq (concat (schema-tables-list id nil include_hidden include_editable_data_model)
                               (schema-tables-list id "" include_hidden include_editable_data_model)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET ["/:virtual-db/schema/:schema"
                       :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
@@ -1224,6 +1251,7 @@
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET ["/:virtual-db/datasets/:schema"
                       :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."

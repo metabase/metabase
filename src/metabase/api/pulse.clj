@@ -22,8 +22,9 @@
    [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.notification.core :as notification]
+   [metabase.permissions.util :as perms-util]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.pulse.core :as pulse]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -45,7 +46,7 @@
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
   themselves. Recipients that are plain email addresses are preserved."
   [pulses]
-  (if (premium-features/sandboxed-or-impersonated-user?)
+  (if (perms-util/sandboxed-or-impersonated-user?)
     (for [pulse pulses]
       (assoc pulse :channels
              (for [channel (:channels pulse)]
@@ -70,6 +71,7 @@
                 (fn [channels]
                   (map #(dissoc % :recipients) channels))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
   permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
@@ -105,6 +107,7 @@
     (assert (integer? card-id))
     (api/read-check :model/Card card-id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new `Pulse`."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id parameters]} :body}]
@@ -143,6 +146,7 @@
         (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
         pulse))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
@@ -160,7 +164,7 @@
   to merge in existing recipients before writing the pulse updates to avoid them being deleted unintentionally. We only
   merge in recipients that are Metabase users, not raw email addresses, which these users can still view and modify."
   [pulse-updates pulse-before-update]
-  (if (premium-features/sandboxed-or-impersonated-user?)
+  (if (perms-util/sandboxed-or-impersonated-user?)
     (let [recipients-to-add (filter
                              (fn [{id :id}] (and id (not= id api/*current-user-id*)))
                              (:recipients (api.alert/email-channel pulse-before-update)))]
@@ -172,6 +176,7 @@
                  channel))))
     pulse-updates))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update a Pulse with `id`."
   [id :as {{:keys [name cards channels skip_if_empty collection_id archived parameters], :as pulse-updates} :body}]
@@ -222,6 +227,7 @@
   ;; return updated Pulse
   (models.pulse/retrieve-pulse id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
@@ -231,7 +237,7 @@
                        (assoc-in [:email :configured] (email/email-configured?))
                        (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
     {:channels (cond
-                 (premium-features/sandboxed-or-impersonated-user?)
+                 (perms-util/sandboxed-or-impersonated-user?)
                  (dissoc chan-types :slack)
 
                  ;; no Slack integration, so we are g2g
@@ -263,6 +269,7 @@
        :context     :pulse
        :card-id     card-id}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
   [id]
@@ -278,6 +285,7 @@
                                                               result
                                                               {:channel.render/include-title? true, :channel.render/include-buttons? true})]])}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/preview_dashboard/:id"
   "Get HTML rendering of a Dashboard with `id`.
 
@@ -299,6 +307,7 @@
               [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
                (channel.render/render-dashboard-to-html id)]))})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
   [id]
@@ -321,6 +330,7 @@
 
 (def ^:private preview-card-width 400)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`."
   [id]
@@ -334,6 +344,7 @@
                                                         {:channel.render/include-title? true})]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/test"
   "Test send an unsaved pulse."
   [:as {{:keys [name cards channels skip_if_empty collection_id collection_position dashboard_id] :as body} :body}]
@@ -357,6 +368,7 @@
     (pulse/send-pulse! (assoc body :creator_id api/*current-user-id*)))
   {:ok true})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
   [id]

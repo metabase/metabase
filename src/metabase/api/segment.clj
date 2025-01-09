@@ -14,6 +14,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new `Segment`."
   [:as {{:keys [name description table_id definition], :as body} :body}]
@@ -37,12 +38,14 @@
   (-> (api/read-check (t2/select-one :model/Segment :id id))
       (t2/hydrate :creator)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Fetch `Segment` with ID."
   [id]
   {id ms/PositiveInt}
   (hydrated-segment id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Fetch *all* `Segments`."
   []
@@ -71,6 +74,7 @@
       (events/publish-event! (if archive? :event/segment-delete :event/segment-update)
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update a `Segment` with ID."
   [id :as {{:keys [name definition revision_message archived caveats description points_of_interest
@@ -87,6 +91,7 @@
    show_in_getting_started [:maybe :boolean]}
   (write-check-and-update-segment! id body))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [id revision_message]
@@ -96,6 +101,7 @@
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for `Segment` with ID."
   [id]
@@ -103,6 +109,7 @@
   (api/read-check :model/Segment id)
   (revision/revisions+details :model/Segment id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/revert"
   "Revert a `Segement` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
@@ -115,6 +122,7 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]

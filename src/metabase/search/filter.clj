@@ -2,7 +2,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]

@@ -11,7 +11,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.date-time-zone-functions-test :as qp-test.date-time-zone-functions-test]
    [metabase.query-processor.test-util :as qp.test-util]

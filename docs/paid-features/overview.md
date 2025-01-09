@@ -22,7 +22,9 @@ Pro and Enterprise plans include more ways to authenticate people and manage gro
   - [Setting up SAML with Keycloak](../people-and-groups/saml-keycloak.md)
   - [Setting up SAML with Okta](../people-and-groups/saml-okta.md)
 - [Authenticating with JWT](../people-and-groups/authenticating-with-jwt.md)
-- [Multiple domains with Google Sign-in](../people-and-groups/google-and-ldap.md#multiple-domains-for-google-sign-in)
+- [Multiple domains with Google Sign-in](../people-and-groups/google-sign-in.md#multiple-domains-for-google-sign-in)
+- [LDAP group membership filter](../people-and-groups/ldap.md#ldap-group-membership-filter)
+- [LDAP sync user attributes](../people-and-groups/ldap.md#syncing-user-attributes-with-ldap)
 - [User provisioning with SCIM](../people-and-groups/user-provisioning.md)
 
 ## Permissions

@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.pivots :as api.pivots]
    [metabase.lib.core :as lib]
@@ -17,7 +16,8 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -405,7 +405,7 @@
         ;; check each row, but fail fast if the shapes are wrong.
         (is (=? {:status :success}
                 (reduce
-                 (let [validator (mc/validator Row)]
+                 (let [validator (mr/validator Row)]
                    (fn [_ row]
                      (testing (pr-str row)
                        (if (validator row)

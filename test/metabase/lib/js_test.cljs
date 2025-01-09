@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [goog.object :as gobject]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -13,7 +12,8 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.test-runner.assert-exprs.approximately-equal]
    [metabase.test.util.js :as test.js]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel query=-test
   (doseq [q1 [nil js/undefined]
@@ -418,7 +418,7 @@
 
 (deftest ^:parallel expression-clause-normalization-test
   (are [x y] (do
-               (is (mc/validate :metabase.lib.schema.expression/expression y))
+               (is (mr/validate :metabase.lib.schema.expression/expression y))
                (is (=? x y)))
 
     [:time-interval {} [:field {} int?] :current :day]
