@@ -27,16 +27,17 @@ const format = "--pretty='format:%(decorate:prefix=,suffix=)||%s||%H||%ah'";
 
 export async function gitLog(channel: ReleaseChannel, edition: Edition): Promise<CommitInfo> {
   const { stdout } = await $`git log -1 ${format} refs/tags/${channel}-${edition}`.catch(() => ({ stdout: '' }));
-  const commitInfo = processCommit(stdout.trim(), edition);
+  const commitInfo = processCommit(stdout.trim());
 
   return commitInfo;
 }
 
-function processCommit(commitLine: string, edition: Edition): CommitInfo {
+function processCommit(commitLine: string): CommitInfo {
   const [refs, message, hash, date] = commitLine.split('||');
-  const version = edition === "ee"
-   ? refs?.match(/(v1\.[\d\.\-(RC|beta|alpha)]+)/i)?.[1] ?? ''
-   : refs?.match(/(v0\.[\d\.\-(RC|beta|alpha)]+)/i)?.[1] ?? '';
+
+  // match version strings that don't have an x in them
+  // https://regexr.com/8a5kb
+  const version = refs?.match(/(v(0|1)\.[\d\.\-(RC|beta|alpha)]+)(?!.*x)/i)?.[1] ?? '';
 
   return { version, message, hash, date};
 }

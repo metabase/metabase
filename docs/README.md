@@ -224,7 +224,7 @@ Metabase's reference documentation.
 ### Metabase API
 
 - [Metabase API documentation](./api-documentation.md)
-- [API tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//metabase-api)
+- [API tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api)
 
 ### Troubleshooting
 

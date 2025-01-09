@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is are testing]]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -13,7 +12,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (comment lib/keep-me)
 
@@ -84,7 +84,7 @@
                         (lib/expression "myexpr" expr))
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (testing (pr-str resolved)
-            (is (mc/validate ::lib.schema/query query))
+            (is (mr/validate ::lib.schema/query query))
             (is (string? (-> resolved lib.options/ident not-empty)))
             (is (= typ (lib.schema.expression/type-of resolved)))))))))
 

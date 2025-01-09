@@ -154,11 +154,6 @@
   [_column]
   true)
 
-(defn ^:export numeric-base-type?
-  "Is `column` a numneric base type?"
-  [column]
-  (clojure.core/isa? (:effective-type column) :type/Number))
-
 (defn ^:export date-or-datetime?
   "Is `column` a date or datetime?"
   [column]
@@ -184,16 +179,6 @@
   "Is `column` a creation time column?"
   [column]
   (clojure.core/isa? (:semantic-type column) :type/CreationTime))
-
-;; ZipCode, ID, etc derive from Number but should not be formatted as numbers
-(defn ^:export number?
-  "Is `column` a number without some other semantic type (like ZIP code)?"
-  [column]
-  (and (numeric-base-type? column)
-       (let [semantic-type (:semantic-type column)]
-         (or (nil? semantic-type)
-             ;; this is a precaution, :type/Number is not a semantic type
-             (clojure.core/isa? semantic-type :type/Number)))))
 
 (defn ^:export integer?
   "Is `column` a integer column?"
@@ -301,6 +286,6 @@
   [src-column dst-column]
   (or
    (and (string? src-column)   (string? dst-column))
-   (and (number? src-column)   (number? dst-column))
+   (and (numeric? src-column)  (numeric? dst-column))
    (and (temporal? src-column) (temporal? dst-column))
    (clojure.core/isa? (:base-type src-column) (:base-type dst-column))))

@@ -11,6 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/graph"
   "Fetch a graph of Application Permissions."
   []
@@ -34,6 +35,7 @@
   [graph]
   (update graph :groups dejsonify-groups))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/graph"
   "Do a batch update of Application Permissions by passing a modified graph."
   [:as {body :body

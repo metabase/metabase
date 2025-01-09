@@ -22,6 +22,7 @@
   (validation/check-embedding-enabled)
   (embed/unsign token))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:token"
   "Fetch a Card you're considering embedding by passing a JWT `token`."
   [token]
@@ -34,6 +35,7 @@
   "Embedding previews need to be limited in size to avoid performance issues (#20938)."
   2000)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [token & query-params]
@@ -48,6 +50,7 @@
      :constraints      {:max-results max-results}
      :query-params     (api.embed.common/parse-query-params query-params))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
   [token]
@@ -56,6 +59,7 @@
     (api.embed.common/dashboard-for-unsigned-token unsigned-token
                                                    :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
   [token param-key :as {:keys [query-params]}]
@@ -65,6 +69,7 @@
                                            (api.embed.common/parse-query-params query-params)
                                            {:preview true}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [token dashcard-id card-id & query-params]
@@ -84,6 +89,7 @@
      :token-params     token-params
      :query-params     (api.embed.common/parse-query-params query-params))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/pivot/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [token & query-params]
@@ -98,6 +104,7 @@
      :query-params     (api.embed.common/parse-query-params query-params)
      :qp               qp.pivot/run-pivot-query)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
   [token dashcard-id card-id & query-params]

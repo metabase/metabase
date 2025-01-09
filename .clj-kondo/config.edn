@@ -56,6 +56,7 @@
   ;;
   ;; globally-enabled custom linters
   ;;
+  :metabase/check-me-humanize                          {:level :warning}
   :metabase/defsetting-must-specify-export             {:level :warning}
   :metabase/mbql-query-first-arg                       {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
@@ -244,7 +245,7 @@
     metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
     metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
     metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
-    metabase.public-settings.premium-features/enable-enhancements?               {:namespaces ["metabase\\.models.*"]}
+    metabase.premium-features.premium-features/enable-enhancements?              {:namespaces ["metabase\\.models.*"]}
     metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
     metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}
     schema.core/both                                                             {:namespaces ["metabase.*"]}
@@ -269,13 +270,16 @@
    honeysql.core/raw                                  {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
    java-time/with-clock                               {:message "Use mt/with-clock"}
    java.util.UUID/randomUUID                          {:message "Use clojure.core/random-uuid instead of java.util.UUID/randomUUID"}
-   malli.core/explainer                               {:message "Use metabase.util.malli.registry/explainer instead of malli.core/explainer"}
+   malli.core/explain                                 {:message "Use metabase.util.malli.registry/explain instead of malli.core/explain because it has built-in caching"}
+   malli.core/explainer                               {:message "Use metabase.util.malli.registry/explainer instead of malli.core/explainer because it has built-in caching"}
+   malli.core/validate                                {:message "Use metabase.util.malli.registry/validate instead of malli.core/validate because it has built-in caching"}
+   malli.core/validator                               {:message "Use metabase.util.malli.registry/validator instead of malli.core/validator because it has built-in caching"}
    me.flowthing.pp/pprint                             {:message "Use metabase.util.log instead of me.flowthing.pp/pprint"}
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.driver/database-supports?                 {:message "Use metabase.driver.util/supports? instead of metabase.driver/database-supports?"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
    metabase.test/with-temp*                           {:message "Use mt/with-temp instead of mt/with-temp*"}
-   toucan2.tools.with-temp                            {:message "Use mt/with-temp instead of t2.with-temp/with-temp"}}
+   toucan2.tools.with-temp/with-temp                  {:message "Use mt/with-temp instead of toucan2.tools.with-temp/with-temp"}}
 
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
@@ -322,6 +326,7 @@
     metabase.analyze               #{metabase.analyze}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
+                                     metabase.api.macros
                                      metabase.api.permission-graph
                                      metabase.api.routes}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
     metabase.async                 #{metabase.async.streaming-response
@@ -365,8 +370,8 @@
     metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
     metabase.plugins               #{metabase.plugins
                                      metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
-    metabase.public-settings       #{metabase.public-settings
-                                     metabase.public-settings.premium-features}
+    metabase.premium-features      #{metabase.premium-features.core}
+    metabase.public-settings       #{metabase.public-settings}
     metabase.pulse                 #{metabase.pulse.core}
     metabase.query-processor       :any                                                             ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
     metabase.query-analysis        #{metabase.query-analysis
@@ -402,6 +407,7 @@
                                      metabase.sync.sync-metadata.tables
                                      metabase.sync.util}                                            ; TODO -- consolidate these into a real API namespace.
     metabase.task                  #{metabase.task
+                                     metabase.task.bootstrap
                                      metabase.task.index-values
                                      metabase.task.persist-refresh
                                      ;; We need to expose this to the metabase.search module.
@@ -429,7 +435,8 @@
     metabase.api                   :any
     metabase.async                 :any
     metabase.audit                 :any
-    metabase.auth-provider         #{metabase.util metabase.public-settings}
+    metabase.auth-provider         #{metabase.util
+                                     metabase.premium-features}
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
@@ -453,6 +460,7 @@
     metabase.notification          :any
     metabase.permissions           :any
     metabase.plugins               :any
+    metabase.premium-features      :any
     metabase.public-settings       :any
     metabase.pulse                 :any
     metabase.query-analysis        #{metabase.config
@@ -673,7 +681,7 @@
     metabase.notification.test-util                               notification.tu
     metabase.plugins.initialize                                   plugins.init
     metabase.public-settings                                      public-settings
-    metabase.public-settings.premium-features                     premium-features
+    metabase.premium-features.core                                premium-features
     metabase.pulse.core                                           pulse
     metabase.pulse.render                                         render
     metabase.pulse.render.body                                    body
@@ -801,8 +809,9 @@
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
   metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
-  metabase.public-settings.premium-features/defenterprise-schema                        clj-kondo.lint-as/def-catch-all
-  metabase.public-settings.premium-features/define-premium-feature                      clojure.core/def
+  metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
+  metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
+  metabase.premium-features.core/define-premium-feature                                 clojure.core/def
   metabase.pulse.send-test/with-pulse-for-card                                          clojure.core/let
   metabase.query-processor-test.pipeline-queries-test/pmbql-query                       clojure.core/->
   metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                   clojure.core/->
@@ -857,6 +866,7 @@
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
+   malli.error/humanize                                                                                                      hooks.malli.error/humanize
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
@@ -879,6 +889,7 @@
    metabase.api.embed-test/with-chain-filter-fixtures!                                                                       hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-card                                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-dashcard                                                                                hooks.common/let-one-with-optional-value
+   metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.api.persist-test/with-setup!                                                                                     hooks.common/with-one-top-level-binding
    metabase.api.public-test/with-required-param-card!                                                                        hooks.common/with-one-binding
    metabase.api.public-test/with-temp-public-card                                                                            hooks.common/let-one-with-optional-value
@@ -912,7 +923,8 @@
    metabase.models.pulse-test/with-pulse-in-collection!                                                                      hooks.common/with-four-bindings
    metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/define-multi-setting
    metabase.models.setting/defsetting                                                                                        hooks.metabase.models.setting/defsetting
-   metabase.public-settings.premium-features/defenterprise                                                                   hooks.metabase.public-settings.premium-features/defenterprise
+   metabase.premium-features.core/defenterprise                                                                              hooks.metabase.premium-features.defenterprise/defenterprise
+   metabase.premium-features.defenterprise/defenterprise                                                                     hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.pulse.test-util/checkins-query-card                                                                              hooks.metabase.test.data/$ids
    metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids

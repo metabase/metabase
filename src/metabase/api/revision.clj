@@ -16,6 +16,7 @@
     "card"      [:model/Card (t2/select-one :model/Card :id id)]
     "dashboard" [:model/Dashboard (t2/select-one :model/Dashboard :id id)]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Get revisions of an object."
   [entity id]
@@ -25,6 +26,7 @@
     (when (api/read-check instance)
       (revision/revisions+details model id))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/revert"
   "Revert an object to a prior revision."
   [:as {{:keys [entity id revision_id]} :body}]

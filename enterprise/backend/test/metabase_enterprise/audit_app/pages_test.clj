@@ -13,8 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [ring.util.codec :as codec]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [ring.util.codec :as codec]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -127,11 +126,11 @@
               (qp/process-query (mt/userland-query query)))))))
 
 (defn- do-with-temp-objects [f]
-  (t2.with-temp/with-temp [:model/Database      database {}
-                           :model/Table         table    {:db_id (u/the-id database)}
-                           :model/Card          card     {:table_id (u/the-id table), :database_id (u/the-id database)}
-                           :model/Dashboard     dash     {}
-                           :model/DashboardCard _        {:card_id (u/the-id card), :dashboard_id (u/the-id dash)}]
+  (mt/with-temp [:model/Database      database {}
+                 :model/Table         table    {:db_id (u/the-id database)}
+                 :model/Card          card     {:table_id (u/the-id table), :database_id (u/the-id database)}
+                 :model/Dashboard     dash     {}
+                 :model/DashboardCard _        {:card_id (u/the-id card), :dashboard_id (u/the-id dash)}]
     (f {:database database, :table table, :card card, :dash dash})))
 
 (defmacro ^:private with-temp-objects [[objects-binding] & body]
