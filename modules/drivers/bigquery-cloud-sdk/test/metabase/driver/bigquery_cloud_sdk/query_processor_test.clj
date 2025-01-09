@@ -25,8 +25,7 @@
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (def ^:private test-db-name (bigquery.tx/test-dataset-id "test_data"))
 
@@ -203,9 +202,9 @@
         "A UTC date is returned, we should read/return it as UTC")
 
     (test.tz/with-system-timezone-id! "America/Chicago"
-      (t2.with-temp/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
-                                                   :details (assoc (:details (mt/db))
-                                                                   :use-jvm-timezone true)}]
+      (mt/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
+                                         :details (assoc (:details (mt/db))
+                                                         :use-jvm-timezone true)}]
         (is (= "2018-08-31T00:00:00-05:00"
                (native-timestamp-query db "2018-08-31 00:00:00-05" "America/Chicago"))
             (str "This test includes a `use-jvm-timezone` flag of true that will assume that the date coming from BigQuery "
@@ -213,9 +212,9 @@
                  "the correct date is compared"))))
 
     (test.tz/with-system-timezone-id! "Asia/Jakarta"
-      (t2.with-temp/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
-                                                   :details (assoc (:details (mt/db))
-                                                                   :use-jvm-timezone true)}]
+      (mt/with-temp [:model/Database db {:engine  :bigquery-cloud-sdk
+                                         :details (assoc (:details (mt/db))
+                                                         :use-jvm-timezone true)}]
         (is (= "2018-08-31T00:00:00+07:00"
                (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))
             "Similar to the above test, but covers a positive offset")))))

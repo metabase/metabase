@@ -15,8 +15,7 @@
    [metabase.test.data.dataset-definition-test :as dataset-definition-test]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -189,20 +188,20 @@
             patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
         (testing "syncable-schemas works as expected"
           (testing "with an inclusion filter"
-            (t2.with-temp/with-temp [:model/Database db-filtered {:engine  driver
-                                                                  :details (-> (mt/db)
-                                                                               :details
-                                                                               (assoc filter-type-prop "inclusion"
-                                                                                      patterns-type-prop "public"))}]
+            (mt/with-temp [:model/Database db-filtered {:engine  driver
+                                                        :details (-> (mt/db)
+                                                                     :details
+                                                                     (assoc filter-type-prop "inclusion"
+                                                                            patterns-type-prop "public"))}]
               (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
                 (is      (contains? syncable "public"))
                 (is (not (contains? syncable fake-schema-name))))))
           (testing "with an exclusion filter"
-            (t2.with-temp/with-temp [:model/Database db-filtered {:engine  driver
-                                                                  :details (-> (mt/db)
-                                                                               :details
-                                                                               (assoc filter-type-prop "exclusion"
-                                                                                      patterns-type-prop "public"))}]
+            (mt/with-temp [:model/Database db-filtered {:engine  driver
+                                                        :details (-> (mt/db)
+                                                                     :details
+                                                                     (assoc filter-type-prop "exclusion"
+                                                                            patterns-type-prop "public"))}]
               (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
                 (is (not (contains? syncable "public")))
                 (is (not (contains? syncable fake-schema-name)))))))))))

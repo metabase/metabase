@@ -7,12 +7,23 @@
    [malli.error :as me]
    [metabase.util.malli.registry :as mr]))
 
+(deftest ^:parallel cache-handle-regexes-test
+  (testing (str "For things that aren't ever equal when you re-evaluate them (like Regex literals) maybe sure we do"
+                " something smart to avoid creating infinite cache entries")
+    (mr/validate [:re #"\d{4}"] "1234")
+    (:validator @@#'mr/cache)
+    (let [before-count (count (:validator @@#'mr/cache))]
+      (mr/validate [:re #"\d{4}"] "1234")
+      (mr/validate [:re #"\d{4}"] "1234")
+      (is (= (count (:validator @@#'mr/cache))
+             before-count)))))
+
 (mr/def ::int
   :int)
 
 (deftest ^:parallel explainer-test
   (is (= ["should be an integer"]
-         (me/humanize (mc/explain ::int "1"))
+         (me/humanize (mr/explain ::int "1"))
          (me/humanize ((mr/explainer ::int) "1"))))
   (testing "cache explainers"
     (is (identical? (mr/explainer ::int)

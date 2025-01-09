@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.scheduler :as qs]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.driver.util :as driver.u]
    [metabase.models.model-index :as model-index]
@@ -15,8 +14,8 @@
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (defmacro ^:private with-scheduler-setup! [& body]
   `(let [scheduler# (#'tu/in-memory-scheduler)]
@@ -205,8 +204,8 @@
                                                            &Products.products.id],
                                             :alias        "Products"}]})
                           [(mt/$ids [&Products.products.id &Products.products.title])]])])]
-        (t2.with-temp/with-temp [:model/Card model (mt/card-with-source-metadata-for-query
-                                                    query)]
+        (mt/with-temp [:model/Card model (mt/card-with-source-metadata-for-query
+                                          query)]
           (testing (str "scenario: " scenario)
             (let [[pk-ref value-ref] (or field-refs
                                          (->> model :result_metadata (map :field_ref)))
@@ -216,8 +215,8 @@
               (is (nil? error))
               (is (> (count values) 0))
               ;; oracle returns BigDecimal ids so need `number?` rather than `int?`
-              (is (mc/validate [:sequential [:tuple number? string?]] values)
-                  (-> (mc/explain [:sequential [:tuple number? string?]] values)
+              (is (mr/validate [:sequential [:tuple number? string?]] values)
+                  (-> (mr/explain [:sequential [:tuple number? string?]] values)
                       (me/humanize))))))))))
 
 (defn- test-index!
@@ -225,9 +224,9 @@
   do and ensures that items in the options map are correct."
   [{:keys [query pk-name value-name quantity subset scenario]}]
   (testing scenario
-    (t2.with-temp/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                      :type :model
-                                                      :name "model index test")]
+    (mt/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                            :type :model
+                                            :name "model index test")]
       (let [by-name     (fn [n] (or (some (fn [f]
                                             (when (= (-> f :display_name u/lower-case-en) (u/lower-case-en n))
                                               (:field_ref f)))
@@ -297,15 +296,15 @@
       (let [query             (mt/mbql-query products {:fields [$id $title]})
             pk-ref            (mt/$ids $products.id)
             invalid-value-ref (mt/$ids $products.ean)]
-        (t2.with-temp/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
-                                                          :type :model
-                                                          :name "model index test")
-                                 :model/ModelIndex mi {:model_id   (u/the-id model)
-                                                       :pk_ref     pk-ref
-                                                       :value_ref  invalid-value-ref
-                                                       :creator_id (mt/user->id :rasta)
-                                                       :schedule   "0 0 23 * * ? *"
-                                                       :state      "initial"}]
+        (mt/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                                :type :model
+                                                :name "model index test")
+                       :model/ModelIndex mi {:model_id   (u/the-id model)
+                                             :pk_ref     pk-ref
+                                             :value_ref  invalid-value-ref
+                                             :creator_id (mt/user->id :rasta)
+                                             :schedule   "0 0 23 * * ? *"
+                                             :state      "initial"}]
           (model-index/add-values! mi)
           (let [bad-attempt (t2/select-one :model/ModelIndex :id (u/the-id mi))]
             (is (=? {:state "error"

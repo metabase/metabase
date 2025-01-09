@@ -35,8 +35,7 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -254,7 +253,7 @@
                            (format "GRANT SELECT ON %s TO PUBLIC;" (identifier db-name schema-name table-name))])]
              (jdbc/execute! {:connection conn} [stmt] {:transaction? false}))))
         ;; fetch metadata
-        (t2.with-temp/with-temp [:model/Database database {:engine :snowflake, :details details}]
+        (mt/with-temp [:model/Database database {:engine :snowflake, :details details}]
           (is (=? {:tables #{{:name table-name, :schema schema-name, :description nil}}}
                   (driver/describe-database :snowflake database))))))))
 
@@ -269,7 +268,7 @@
                       (format "CREATE DATABASE \"%s\";" db-name)]]
           (jdbc/execute! spec [stmt] {:transaction? false}))
         ;; create the DB object
-        (t2.with-temp/with-temp [:model/Database database {:engine :snowflake, :details details}]
+        (mt/with-temp [:model/Database database {:engine :snowflake, :details details}]
           (let [sync! #(sync/sync-database! database)]
             ;; create a view
             (doseq [statement [(format "CREATE VIEW \"%s\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";" db-name)
@@ -712,10 +711,10 @@
 (deftest ^:parallel normalize-test
   (mt/test-driver :snowflake
     (testing "details should be normalized coming out of the DB"
-      (t2.with-temp/with-temp [:model/Database db {:name    "Legacy Snowflake DB"
-                                                   :engine  :snowflake,
-                                                   :details {:account  "my-instance"
-                                                             :regionid "us-west-1"}}]
+      (mt/with-temp [:model/Database db {:name    "Legacy Snowflake DB"
+                                         :engine  :snowflake,
+                                         :details {:account  "my-instance"
+                                                   :regionid "us-west-1"}}]
         (is (= {:account "my-instance.us-west-1"}
                (:details db)))))))
 

@@ -6,8 +6,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.io DataInputStream File)
    (java.nio.charset StandardCharsets)))
@@ -29,10 +28,10 @@
   (doseq [value ["fourtytwo" (byte-array (range 0 100))]]
     (let [name        "Test Secret"
           kind        ::secret/password]
-      (t2.with-temp/with-temp [:model/Secret {:keys [id] :as secret} {:name       name
-                                                                      :kind       kind
-                                                                      :value      value
-                                                                      :creator_id (mt/user->id :crowberto)}]
+      (mt/with-temp [:model/Secret {:keys [id] :as secret} {:name       name
+                                                            :kind       kind
+                                                            :value      value
+                                                            :creator_id (mt/user->id :crowberto)}]
         (is (= name (:name secret)))
         (is (= kind (:kind secret)))
         (is (mt/secret-value-equals? value (:value secret)))
@@ -56,21 +55,21 @@
            (secret/get-secret-string {:secret-prop-value "titok"} "secret-prop"))))
 
   (testing "get-secret-string from value only from the database"
-    (t2.with-temp/with-temp [:model/Secret {id :id} {:name       "private-key"
-                                                     :kind       ::secret/pem-cert
-                                                     :value      "titok"
-                                                     :creator_id (mt/user->id :crowberto)}]
+    (mt/with-temp [:model/Secret {id :id} {:name       "private-key"
+                                           :kind       ::secret/pem-cert
+                                           :value      "titok"
+                                           :creator_id (mt/user->id :crowberto)}]
       (is (= "titok"
              (secret/get-secret-string {:secret-prop-id id} "secret-prop")))))
 
   (testing "get-secret-string from uploaded value"
-    (t2.with-temp/with-temp [:model/Secret {id :id} {:name       "private-key"
-                                                     :kind       ::secret/pem-cert
-                                                     :value      (let [encoder (java.util.Base64/getEncoder)]
-                                                                   (str "data:application/octet-stream;base64,"
-                                                                        (.encodeToString encoder
-                                                                                         (.getBytes "titok" "UTF-8"))))
-                                                     :creator_id (mt/user->id :crowberto)}]
+    (mt/with-temp [:model/Secret {id :id} {:name       "private-key"
+                                           :kind       ::secret/pem-cert
+                                           :value      (let [encoder (java.util.Base64/getEncoder)]
+                                                         (str "data:application/octet-stream;base64,"
+                                                              (.encodeToString encoder
+                                                                               (.getBytes "titok" "UTF-8"))))
+                                           :creator_id (mt/user->id :crowberto)}]
       (is (= "titok"
              (secret/get-secret-string
               {:secret-prop-id      id
@@ -104,10 +103,10 @@
                 "secret-prop"))))
 
       (testing "from the database"
-        (t2.with-temp/with-temp [:model/Secret {id :id} {:name       "private-key"
-                                                         :kind       ::secret/pem-cert
-                                                         :value      file-db
-                                                         :creator_id (mt/user->id :crowberto)}]
+        (mt/with-temp [:model/Secret {id :id} {:name       "private-key"
+                                               :kind       ::secret/pem-cert
+                                               :value      file-db
+                                               :creator_id (mt/user->id :crowberto)}]
           (is (= "titok"
                  (secret/get-secret-string
                   {:secret-prop-id      id
@@ -144,7 +143,7 @@
                                                  :source "file-path"
                                                  :value  (.getAbsolutePath tmp-file)}]]]
         (testing (format " with a %s value" value-kind)
-          (t2.with-temp/with-temp [:model/Secret {:keys [value] :as secret} (assoc secret-map :creator_id (mt/user->id :crowberto))]
+          (mt/with-temp [:model/Secret {:keys [value] :as secret} (assoc secret-map :creator_id (mt/user->id :crowberto))]
             (let [val-file (secret/value->file! secret nil)]
               (is (value-matches? (or exp-val value)
                                   (let [result (byte-array (.length val-file))]
@@ -157,19 +156,19 @@
             ^File tmp-file  (doto (File/createTempFile "value-to-file-test_" ".txt")
                               (.deleteOnExit))]
         (spit tmp-file file-secret-val)
-        (t2.with-temp/with-temp [:model/Secret secret {:name   "file based secret"
-                                                       :kind   :perm-cert
-                                                       :source "file-path"
-                                                       :value  (.getAbsolutePath tmp-file)}]
+        (mt/with-temp [:model/Secret secret {:name   "file based secret"
+                                             :kind   :perm-cert
+                                             :source "file-path"
+                                             :value  (.getAbsolutePath tmp-file)}]
           (is (instance? java.io.File (secret/value->file! secret nil)))
           (is (= (secret/value->file! secret nil)
                  (secret/value->file! secret nil))
               "Secret did not return the same file"))))
     (testing "for upload files (#23034)"
-      (t2.with-temp/with-temp [:model/Secret secret {:name   "file based secret"
-                                                     :kind   :perm-cert
-                                                     :source nil
-                                                     :value  (.getBytes "super secret")}]
+      (mt/with-temp [:model/Secret secret {:name   "file based secret"
+                                           :kind   :perm-cert
+                                           :source nil
+                                           :value  (.getBytes "super secret")}]
         (is (instance? java.io.File (secret/value->file! secret nil)))
         (is (= (secret/value->file! secret nil)
                (secret/value->file! secret nil))
@@ -234,10 +233,10 @@
                                 true
                                 (catch Exception _
                                   false)))]
-      (t2.with-temp/with-temp [:model/Secret {:keys [id version]} (by-crowberto secret-map1)
-                               :model/Secret _ (-> secret-map2
-                                                   by-crowberto
-                                                   (assoc :id id :version (inc version)))]
+      (mt/with-temp [:model/Secret {:keys [id version]} (by-crowberto secret-map1)
+                     :model/Secret _ (-> secret-map2
+                                         by-crowberto
+                                         (assoc :id id :version (inc version)))]
         (let [details {:secret-id id}]
           (testing "db-details-prop->secret-map"
             (let [secret (secret/db-details-prop->secret-map details secret-property)]

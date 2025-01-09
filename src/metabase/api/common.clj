@@ -425,7 +425,11 @@
                                      ~@(validate-params arg->schema)
                                      ~@body))))))
 
-(defn- defendpoint2-route-fn
+(defn- pass-thru-handler
+  ([_request] nil)
+  ([_request respond _raise] (respond nil)))
+
+(defn defendpoint-2-handler
   "Get the combined handler created by [[metabase.api.macros/defendpoint-build-ns-handler]] for all the routes defined
   by [[metabase.api.macros/defendpoint]]."
   [nmspace]
@@ -433,33 +437,26 @@
   (let [nmspace    (the-ns nmspace)
         handler-fn #(:api/handler (meta nmspace))]
     ;; for dev, fetch the handler from the metadata on every request so we get nice live reloading if the endpoints in a
-    ;; namespace change. For prod that's not necessary since they shouldn't change
-    (some-> (if config/is-dev?
-              (fn
-                ([request]
-                 (when-let [handler (handler-fn)]
-                   (handler request)))
-                ([request respond raise]
-                 (if-let [handler (handler-fn)]
-                   (handler request respond raise)
-                   (respond nil))))
-              (handler-fn))
-            ;; attach the namespace to the handler so we can use it to build OpenAPI documentation
-            ;; in [[metabase.api.common.openapi/collect-routes]]. This is kind of a roundabout way of doing things but I'm
-            ;; running with it for now to avoid having to rewrite too much stuff as we transition from defendpoint 1 to
-            ;; defendpoint 2.
-            (vary-meta assoc :ns nmspace, :api/defendpoint-2-handler? true))))
+    ;; namespace change.
+    (if config/is-dev?
+      (fn
+        ([request]
+         (when-let [handler (handler-fn)]
+           (handler request)))
+        ([request respond raise]
+         (if-let [handler (handler-fn)]
+           (handler request respond raise)
+           (respond nil))))
+      ;; For prod, fetching the handler on each request gives us nothing since it shouldn't change; fetch it once and if
+      ;; it's not defined just use the [[pass-thru-handler]] above instead.
+      (or (handler-fn) pass-thru-handler))))
 
-(defn- namespace->api-route-fns
+(defn- namespace->defendpoint-1-route-vars
   "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
   [nmspace]
-  (filter
-   some?
-   (cons
-    (defendpoint2-route-fn nmspace)
-    (for [[_symb varr] (ns-publics nmspace)
-          :when        (:is-endpoint? (meta varr))]
-      varr))))
+  (for [[_symb varr] (ns-publics nmspace)
+        :when        (:is-endpoint? (meta varr))]
+    varr))
 
 (defn- api-routes-docstring [nmspace route-fns middleware]
   (str
@@ -479,12 +476,26 @@
     (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
   {:style/indent 0}
   [& middleware]
-  (let [api-route-fns (vec (namespace->api-route-fns *ns*))
-        routes        `(with-meta (compojure/routes ~@api-route-fns) {:routes ~api-route-fns})
+  (let [api-route-fns (vec (namespace->defendpoint-1-route-vars *ns*))
+        routes        `(-> (compojure/routes
+                            (defendpoint-2-handler '~(ns-name *ns*))
+                            ~@api-route-fns)
+                           (with-meta {:routes ~api-route-fns, :api/defendpoint-2-namespace '~(ns-name *ns*)}))
         docstring     (str "Routes for " *ns*)]
     `(def ~(vary-meta 'routes assoc
-                      :doc    (api-routes-docstring *ns* api-route-fns middleware)
-                      :routes api-route-fns)
+                      :doc                         (api-routes-docstring *ns* api-route-fns middleware)
+                      ;; not really super clear whether the expectation is someone should be looking at the metadata on
+                      ;; the varr
+                      ;;
+                      ;;    (meta #'metabase.api.timeline/routes)
+                      ;;
+                      ;; or on the handler e.g.
+                      ;;
+                      ;;    (meta metabase.api.timeline/routes)
+                      ;;
+                      ;; ... the [[metabase.api.common.openapi]] code seems to do a little of both, so just support both for right now.
+                      :routes                      api-route-fns
+                      :api/defendpoint-2-namespace (list 'quote (ns-name *ns*)))
        ~docstring
        ~(if (seq middleware)
           `(-> ~routes ~@middleware)
@@ -497,7 +508,7 @@
                                                         :path   ~path}))
 
 (defmacro defroutes
-  "Replacement for `compojure.core/defroutes, but with metadata"
+  "Replacement for [[compojure.core/defroutes]], but with metadata"
   [name & routes]
   (let [[name routes] (macro/name-with-attributes name routes)
         name          (vary-meta name assoc :routes (vec routes))]

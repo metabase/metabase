@@ -13,8 +13,7 @@
    [metabase.search.in-place.legacy :as search.legacy]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel parse-engine-test
   (testing "Default engine"
@@ -55,7 +54,7 @@
 
 (deftest search-db-call-count-test
   (let [search-string (mt/random-name)]
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Card      _              {:name (str "card db 1 " search-string)}
        :model/Card      _              {:name (str "card db 2 " search-string)}
        :model/Card      _              {:name (str "card db 3 " search-string)}
@@ -103,7 +102,7 @@
         new           #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Dashboard  {dashboard-new :id} {:name       search-term
                                                 :created_at new}
          :model/Dashboard  {dashboard-old :id} {:name       search-term
@@ -201,7 +200,7 @@
         new           #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus new (t/years 2))]
     (mt/with-clock new
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Dashboard  {dashboard-new :id} {:name search-term}
          :model/Dashboard  {dashboard-old :id} {:name search-term}
          :model/Card       {card-new :id}      {:name search-term}

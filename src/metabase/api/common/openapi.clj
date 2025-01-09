@@ -87,6 +87,25 @@
 
 ;;; OpenAPI generation
 
+(defn- first-if-vec [x]
+  (if (vector? x) (first x) x))
+
+(defn- collect-defendpoint-1-routes [walk {:keys [prefix tag]} handler-var]
+  (let [tag  (or (not-empty tag) (some-> (not-empty prefix) (subs 1)))
+        path (str prefix (-> handler-var meta :path first-if-vec))]
+    (cons {:path  (path->openapi path)
+           :tag   tag
+           :route handler-var}
+          (when-let [routes (-> handler-var meta :routes not-empty)]
+            (mapcat (partial walk {:prefix path :tag tag})
+                    routes)))))
+
+(defn- collect-defendpoint-2-routes [{:keys [prefix tag]} ns-symb]
+  (for [route (vals (-> ns-symb the-ns meta :api/endpoints))]
+    {:path                     (path->openapi (str prefix (get-in route [:form :route :path])))
+     :tag                      (or (not-empty tag) (some-> (not-empty prefix) (subs 1)))
+     :defendpoint-2-definition (:form route)}))
+
 (mu/defn- collect-routes :- [:sequential
                              [:or
                               ;; defendpoint 1 handler var
@@ -99,27 +118,11 @@
                                [:defendpoint-2-definition ::api.macros/parsed-args]]]]
   "Collect routes with schemas with their full paths."
   [root]
-  (letfn [(first-if-vec [x]
-            (if (vector? x) (first x) x))
-          (collect-defendpoint-1-routes [{:keys [prefix tag]} handler-var]
-            (let [tag  (or (not-empty tag) (some-> (not-empty prefix) (subs 1)))
-                  path (str prefix (-> handler-var meta :path first-if-vec))]
-              (cons {:path  (path->openapi path)
-                     :tag   tag
-                     :route handler-var}
-                    (when-let [routes (-> handler-var meta :routes not-empty)]
-                      (mapcat (partial walk {:prefix path :tag tag})
-                              routes)))))
-          (collect-defendpoint-2-routes [{:keys [prefix tag]} handler]
-            (when-let [namespac (some-> handler meta :ns the-ns)]
-              (for [route (vals (-> namespac meta :api/endpoints))]
-                {:path                     (path->openapi (str prefix (get-in route [:form :route :path])))
-                 :tag                      (or (not-empty tag) (some-> (not-empty prefix) (subs 1)))
-                 :defendpoint-2-definition (:form route)})))
-          (walk [context handler]
-            (if (:api/defendpoint-2-handler? (meta handler))
-              (collect-defendpoint-2-routes context handler)
-              (collect-defendpoint-1-routes context handler)))]
+  (letfn [(walk [context handler]
+            (concat
+             (when-let [ns-symb (:api/defendpoint-2-namespace (meta handler))]
+               (collect-defendpoint-2-routes context ns-symb))
+             (collect-defendpoint-1-routes walk context handler)))]
     (->> (walk {:prefix ""} root)
          (filter #(or
                    (-> % :route meta :schema) ; defendpoint 1 handler
