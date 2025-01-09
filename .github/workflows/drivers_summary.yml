@@ -13,6 +13,7 @@ jobs:
   #
   driver-tests:
     runs-on: ubuntu-22.04
+    name: Wait for all driver tests to pass
     steps:
       - if: github.event.workflow_run.conclusion == 'success'
         run: >-
