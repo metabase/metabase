@@ -146,7 +146,7 @@ jobs:
         edition: [oss, ee]
         java-version: [11, 17, 21]
         partition-index: [0, 1]
-    name: "Backend Tests (Java ${{ matrix.java-version }} ${{ matrix.edition }} Partition #{{ matrix.partition-index }})"
+    name: "Backend Tests (Java ${{ matrix.java-version }}, ${{ matrix.edition }}, Partition ${{ matrix.partition-index }}"
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -211,7 +211,7 @@ jobs:
         edition: [oss, ee]
         java-version: [11, 17, 21]
         partition-index: [0, 1]
-    name: "Backend Tests (Java ${{ matrix.java-version }}, ${{ matrix.edition }}, Partition ${{ matrix.partition-index }})"
+    name: "Backend Tests (Java ${{ matrix.java-version }}, ${{ matrix.edition }}, Partition ${{ matrix.partition-index }}"
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
