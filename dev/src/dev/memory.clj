@@ -59,7 +59,7 @@
           print-stats (fn
                         ([stats]
                          (log/infof "%s%s | Memory before:: %.2f MB "
-                                   indent context stats))
+                                    indent context stats))
                         ([before after]
                          (log/infof "%s%s | Memory after:: %.2f MB (delta: %.2f MB)"
                                     indent context after (- after before))))
