@@ -114,7 +114,7 @@
                              [:= :type collection/trash-collection-type] 1
                              :else 2]] :asc]
                           [:%lower.name :asc]]})
-   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
@@ -412,8 +412,8 @@
                     [:u.last_name :last_edit_last_name]
                     [:r.timestamp :last_edit_timestamp]
                     [:mr.status :moderated_status]]
-                   (#{:question :model} card-type)
-                   (conj :c.database_id))
+                    (#{:question :model} card-type)
+                    (conj :c.database_id))
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
                                    [:= :r.model_id :c.id]
