@@ -146,6 +146,7 @@ jobs:
       matrix:
         edition: [oss, ee]
         java-version: [11, 17, 21]
+        partition-index: [0, 1]
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -169,7 +170,10 @@ jobs:
 
       - name: Run tests
         id: run-java-tests
-        run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+        run: >-
+          clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+          :partition/total 2
+          :partition/index ${{ matrix.partition-index }}
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -200,13 +204,14 @@ jobs:
       always() &&
       github.event.pull_request.draft == false && needs.be-tests.result == 'skipped'
     runs-on: ubuntu-22.04
-    name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
     timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
         edition: [oss, ee]
         java-version: [11, 17, 21]
+        partition-index: [0, 1]
+    name: "be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }} (${{ matrix.partition-index }})"
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
