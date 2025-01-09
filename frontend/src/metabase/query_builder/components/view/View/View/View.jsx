@@ -77,12 +77,10 @@ const ViewInner = props => {
     onOpenModal,
     originalQuestion,
     isShowingChartSettingsSidebar,
-    isShowingChartTypeSidebar,
     onCloseChartSettings,
     addField,
     initialChartSetting,
     onReplaceAllVisualizationSettings,
-    onOpenChartType,
     visualizationSettings,
     showSidebarTitle,
     isShowingSummarySidebar,
@@ -162,8 +160,7 @@ const ViewInner = props => {
   const isNotebookContainerOpen =
     isNewQuestion || queryBuilderMode === "notebook";
 
-  const showLeftSidebar =
-    isShowingChartSettingsSidebar || isShowingChartTypeSidebar;
+  const showLeftSidebar = isShowingChartSettingsSidebar;
   const showRightSidebar =
     isShowingTimelineSidebar ||
     isShowingQuestionInfoSidebar ||
@@ -213,14 +210,12 @@ const ViewInner = props => {
               question={question}
               result={result}
               isShowingChartSettingsSidebar={isShowingChartSettingsSidebar}
-              isShowingChartTypeSidebar={isShowingChartTypeSidebar}
               onCloseChartSettings={onCloseChartSettings}
               addField={addField}
               initialChartSetting={initialChartSetting}
               onReplaceAllVisualizationSettings={
                 onReplaceAllVisualizationSettings
               }
-              onOpenChartType={onOpenChartType}
               visualizationSettings={visualizationSettings}
               showSidebarTitle={showSidebarTitle}
             />
