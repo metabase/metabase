@@ -13,10 +13,10 @@
    [toucan2.core :as t2]))
 
 (use-fixtures
- :each
- (fn [thunk]
-   (binding [notification/*default-options* {:notification/sync? true}]
-     (thunk))))
+  :each
+  (fn [thunk]
+    (binding [notification/*default-options* {:notification/sync? true}]
+      (thunk))))
 
 (defn- construct-email
   [& [data]]
@@ -95,7 +95,6 @@
                                   :sent_at            (mt/malli=? :any)}}
                           req)))}))))))))
 
-
 (deftest basic-line-graph-test
   (testing "card notification of a simple line graph"
     (notification.tu/with-card-notification
@@ -111,9 +110,6 @@
           (is (= (construct-email
                   {:message [{notification.tu/default-card-name true
                               "Manage your subscriptions"       true}
-
-                             ;; static viz
-                             notification.tu/png-attachment
                              ;; icon
                              notification.tu/png-attachment
                              notification.tu/csv-attachment]})
@@ -270,7 +266,6 @@
                    :message [{notification.tu/default-card-name true
                               "This question has reached its goal of 5\\.9\\." true}
                              notification.tu/png-attachment
-                             notification.tu/png-attachment
                              notification.tu/csv-attachment]})
                  (mt/summarize-multipart-single-email
                   email
@@ -320,7 +315,6 @@
                   {:subject "Alert: Card notification test card has gone below its goal"
                    :message [{notification.tu/default-card-name true
                               "This question has gone below its goal of 1\\.1\\." true}
-                             notification.tu/png-attachment
                              notification.tu/png-attachment
                              notification.tu/csv-attachment]})
                  (mt/summarize-multipart-single-email

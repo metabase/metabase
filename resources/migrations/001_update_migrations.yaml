@@ -10523,6 +10523,7 @@ databaseChangeLog:
             referencedTableName: core_user
             referencedColumnNames: id
             constraintName: fk_notification_creator_id
+            onDelete: CASCADE
             nullable: true
             onDelete: CASCADE
 

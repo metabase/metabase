@@ -5,6 +5,7 @@
   NOTE: This namespace is deprecated, all of these emails will soon be converted to System Email Notifications."
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.channel.render.core :as channel.render]
@@ -348,53 +349,49 @@
                 (schedule-hour-text schedule)
                 (schedule-timezone))))))
 
-(def alert-condition-text
-  "A map of alert conditions to their corresponding text."
-  {:meets "when this question meets its goal"
-   :below "when this question goes below its goal"
-   :rows  "whenever this question has any results"})
-
 (defn- send-email!
   "Sends an email on a background thread, returning a future."
-  [user subject template-path template-context]
-  (future
-    (try
-      (email/send-email-retrying!
-       {:recipients   [(:email user)]
-        :message-type :html
-        :subject      subject
-        :message      (channel.template/render template-path template-context)})
-      (catch Exception e
-        (log/errorf e "Failed to send message to '%s' with subject '%s'" (:email user) subject)))))
+  ([recipients subject template-path template-context]
+   (send-email! recipients subject template-path template-context false))
+  ([recipients subject template-path template-context bcc?]
+   (when (seq recipients)
+     (future
+       (try
+         (email/send-email-retrying!
+          {:recipients   recipients
+           :message-type :html
+           :subject      subject
+           :message      (channel.template/render template-path template-context)
+           :bcc?         bcc?})
+         (catch Exception e
+           (log/errorf e "Failed to send message to '%s' with subject '%s'" (str/join ", " recipients) subject)))))))
 
 (defn- template-path [template-name]
   (str "metabase/email/" template-name ".hbs"))
 
 ;; Paths to the templates for all of the alerts emails
-(def ^:private you-unsubscribed-template   (template-path "alert_unsubscribed"))
-(def ^:private admin-unsubscribed-template (template-path "alert_admin_unsubscribed_you"))
-(def ^:private added-template              (template-path "alert_you_were_added"))
+(def ^:private you-unsubscribed-template   (template-path "notification_card_unsubscribed"))
+(def ^:private removed-template            (template-path "notification_card_you_were_removed"))
+(def ^:private added-template              (template-path "notification_card_you_were_added"))
 (def ^:private stopped-template            (template-path "alert_stopped_working"))
 (def ^:private archived-template           (template-path "alert_archived"))
 
-(defn send-you-unsubscribed-alert-email!
-  "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `alert`"
-  [alert who-unsubscribed]
-  (send-email! who-unsubscribed "You unsubscribed from an alert" you-unsubscribed-template
-               (common-alert-context alert)))
+(defn send-you-unsubscribed-notification-card-email!
+  "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `notification`"
+  [notification unsubscribed-emails]
+  (send-email! unsubscribed-emails "You unsubscribed from an alert" you-unsubscribed-template notification true))
 
-(defn send-admin-unsubscribed-alert-email!
-  "Send an email to `user-added` letting them know `admin` has unsubscribed them from `alert`"
-  [alert user-added {:keys [first_name last_name] :as _admin}]
-  (let [admin-name (format "%s %s" first_name last_name)]
-    (send-email! user-added "You’ve been unsubscribed from an alert" admin-unsubscribed-template
-                 (assoc (common-alert-context alert) :adminName admin-name))))
+(defn send-you-were-removed-notification-card-email!
+  "Send an email to `removed-users` letting them know `admin` has removed them from `notification`"
+  [notification removed-emails {:keys [first_name last_name] :as _actor}]
+  (let [actor-name (format "%s %s" first_name last_name)]
+    (send-email! removed-emails "You’ve been unsubscribed from an alert" removed-template (assoc notification :actor_name actor-name) true)))
 
-(defn send-you-were-added-alert-email!
-  "Send an email to `user-added` letting them know `admin-adder` has added them to `alert`"
-  [alert user-added {:keys [first_name last_name] :as _admin-adder}]
+(defn send-you-were-added-card-notification-email!
+  "Send an email to `added-users` letting them know `admin-adder` has added them to `notification`"
+  [notification added-user-emails {:keys [first_name last_name] :as _adder}]
   (let [subject (format "%s %s added you to an alert" first_name last_name)]
-    (send-email! user-added subject added-template (common-alert-context alert alert-condition-text))))
+    (send-email! added-user-emails subject added-template notification true)))
 
 (def ^:private not-working-subject "One of your alerts has stopped working")
 
@@ -402,14 +399,15 @@
   "Email to notify users when a card associated to their alert has been archived"
   [alert user {:keys [first_name last_name] :as _archiver}]
   (let [{card-id :id card-name :name} (first-card alert)]
-    (send-email! user not-working-subject archived-template {:archiveURL   (urls/archive-url)
-                                                             :questionName (format "%s (#%d)" card-name card-id)
-                                                             :archiverName (format "%s %s" first_name last_name)})))
+    (send-email! [(:email user)] not-working-subject archived-template {:archiveURL   (urls/archive-url)
+                                                                        :questionName (format "%s (#%d)" card-name card-id)
+                                                                        :archiverName (format "%s %s" first_name last_name)})))
+
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
   [alert user {:keys [first_name last_name] :as _archiver}]
   (let [edited-text (format "the question was edited by %s %s" first_name last_name)]
-    (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause edited-text))))
+    (send-email! [(:email user)] not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause edited-text))))
 
 (defn send-broken-subscription-notification!
   "Email dashboard and subscription creators information about a broken subscription due to bad parameters"

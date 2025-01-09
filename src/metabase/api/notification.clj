@@ -1,15 +1,18 @@
 (ns metabase.api.notification
   "/api/notification endpoints"
   (:require
+   [clojure.data :refer [diff]]
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
+   [metabase.email :as email]
+   [metabase.email.messages :as messages]
    [metabase.models.interface :as mi]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
 
 (set! *warn-on-reflection* true)
 
@@ -18,6 +21,10 @@
   (-> (t2/select-one :model/Notification id)
       api/check-404
       models.notification/hydrate-notification))
+
+(defn- card-notification?
+  [notification]
+  (= :notification/card (:payload_type notification)))
 
 (api/defendpoint GET "/"
   "List notifications.
@@ -61,18 +68,64 @@
   (-> (get-notification id)
       api/read-check))
 
+(defn- all-email-recipients [notification]
+  (->> (:handlers notification)
+       (filter #(= :channel/email ((comp keyword :channel_type) %)))
+       (mapcat :recipients)
+       (filter #(#{:notification-recipient/user :notification-recipient/raw-value} ((comp keyword :type) %)))
+       (map (fn [recipient]
+              (if (= :notification-recipient/user ((comp keyword :type) recipient))
+                (or (-> recipient :user :email) (t2/select-one-fn :email :model/User (:user_id recipient)))
+                (-> recipient :details :value))))
+       (remove nil?)
+       set))
+
+(defn- send-you-were-added-card-notification-email! [notification]
+  (when (email/email-configured?)
+    (messages/send-you-were-added-card-notification-email!
+     (update notification :payload t2/hydrate :card) (all-email-recipients notification) @api/*current-user*)))
+
 (api/defendpoint POST "/"
   "Create a new notification, return the created notification."
   [:as {body :body}]
   {body ::models.notification/FullyHydratedNotification}
   (api/create-check :model/Notification body)
-  (models.notification/hydrate-notification
-   (models.notification/create-notification!
-    (-> body
-        (assoc :creator_id api/*current-user-id*)
-        (dissoc body :handlers :subscriptions))
-    (:subscriptions body)
-    (:handlers body))))
+  (let [notification (models.notification/hydrate-notification
+                      (models.notification/create-notification!
+                       (-> body
+                           (assoc :creator_id api/*current-user-id*)
+                           (dissoc :handlers :subscriptions))
+                       (:subscriptions body)
+                       (:handlers body)))]
+    (when (card-notification? notification)
+      (send-you-were-added-card-notification-email! notification))
+    notification))
+
+(defn- notify-notification-updates!
+  "Send notification emails based on changes between updated and existing notification"
+  [updated-notification existing-notification]
+  (when (email/email-configured?)
+    (let [was-active?  (:active existing-notification)
+          is-active?   (:active updated-notification)
+          current-user @api/*current-user*
+          old-emails   (all-email-recipients existing-notification)
+          new-emails   (all-email-recipients updated-notification)
+          notification (update existing-notification :payload t2/hydrate :card)]
+      (cond
+        ;; Notification was just archived - notify all users they were unsubscribed
+        (and was-active? (not is-active?))
+        (messages/send-you-were-removed-notification-card-email! notification old-emails current-user)
+
+        ;; Notification was just unarchived - notify all users they were added
+        (and (not was-active?) is-active?)
+        (messages/send-you-were-added-card-notification-email! notification new-emails @api/*current-user*)
+
+        (not= old-emails new-emails)
+        (let [[removed-recipients added-recipients _] (diff old-emails new-emails)]
+          (when (seq removed-recipients)
+            (messages/send-you-were-removed-notification-card-email! notification removed-recipients current-user))
+          (when (seq added-recipients)
+            (messages/send-you-were-added-card-notification-email! notification added-recipients @api/*current-user*)))))))
 
 (api/defendpoint PUT "/:id"
   "Update a notification, can also update its subscriptions, handlers.
@@ -83,6 +136,8 @@
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
     (models.notification/update-notification! existing-notification body)
+    (when (card-notification? existing-notification)
+      (notify-notification-updates! body existing-notification))
     (get-notification id)))
 
 (api/defendpoint POST "/:id/send"
@@ -113,6 +168,11 @@
   (let [notification (get-notification id)]
     (api/check-403 (models.notification/can-unsubscribe? notification))
     (models.notification/unsubscribe-user! id api/*current-user-id*)
-    (get-notification id)))
+    (u/prog1 (get-notification id)
+      (when (card-notification? <>)
+        (u/ignore-exceptions
+          (messages/send-you-unsubscribed-notification-card-email!
+           (update <> :payload t2/hydrate :card)
+           [(:email @api/*current-user*)]))))))
 
 (api/define-routes)

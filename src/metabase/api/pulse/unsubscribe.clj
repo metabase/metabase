@@ -26,6 +26,8 @@
                     {:type        type
                      :status-code 400}))))
 
+;; TODO: needs to make this work too
+
 (api/defendpoint POST "/"
   "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
   [:as {{:keys [email hash pulse-id]} :body, :as request}]
