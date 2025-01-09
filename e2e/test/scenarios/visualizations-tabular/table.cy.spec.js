@@ -51,7 +51,8 @@ describe("scenarios > visualizations > table", () => {
 
     cy.findByTestId(/subtotal-hide-button/i).click();
     cy.findByTestId(/tax-hide-button/i).click();
-    cy.findByTestId("sidebar-left").findByText("Done").click();
+
+    H.closeVizSettingsSidebar();
 
     headerCells().eq(3).should("contain.text", "TOTAL").as("total");
 

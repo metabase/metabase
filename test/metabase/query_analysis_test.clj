@@ -10,8 +10,7 @@
    [metabase.query-analysis :as query-analysis]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -106,7 +105,7 @@
 
 (deftest replace-fields-and-tables!-test
   (testing "fields and tables in a native card can be replaced"
-    (t2.with-temp/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
+    (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
       (let [replacements {:fields {(mt/id :orders :total) (mt/id :people :name)}
                           :tables {(mt/id :orders) (mt/id :people)}}]
         (is (= "SELECT NAME FROM PEOPLE"

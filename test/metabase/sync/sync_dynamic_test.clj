@@ -7,8 +7,7 @@
    [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (defn- remove-nonsense
   "Remove fields that aren't really relevant in the output for `tables` and their `fields`. Done for the sake of making
@@ -36,7 +35,7 @@
 
 (deftest sync-nested-fields-test
   (testing "basic test to make sure syncing nested fields works. This is sort of a higher-level test."
-    (t2.with-temp/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
+    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
       (sync/sync-database! db)
       (is (= (remove-nonsense toucanery/toucanery-tables-and-fields)
              (remove-nonsense (get-tables db)))))))

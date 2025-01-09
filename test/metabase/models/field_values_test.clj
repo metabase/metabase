@@ -12,8 +12,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [next.jdbc :as next.jdbc]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import (clojure.lang ExceptionInfo)))
 
 (def ^:private base-types-without-field-values
@@ -239,9 +238,9 @@
           (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :full))))
 
       (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
-        (t2.with-temp/with-temp [:model/FieldValues _ {:field_id (mt/id :categories :name)
-                                                       :type     :sandbox
-                                                       :hash_key "random-hash"}]
+        (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :categories :name)
+                                             :type     :sandbox
+                                             :hash_key "random-hash"}]
           (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name))))))))
 
       (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
@@ -258,8 +257,8 @@
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
-    (t2.with-temp/with-temp [:model/FieldValues fv {:field_id (mt/id :venues :id)
-                                                    :values   (json/encode ["1" "2" "3"])}]
+    (mt/with-temp [:model/FieldValues fv {:field_id (mt/id :venues :id)
+                                          :values   (json/encode ["1" "2" "3"])}]
       (is (t2/query-one {:update :metabase_fieldvalues
                          :set    {:human_readable_values (json/encode {"1" "a", "2" "b", "3" "c"})}
                          :where  [:= :id (:id fv)]}))
@@ -280,10 +279,10 @@
                                                     {:id 2 :category_id 2 :desc "bar"}
                                                     {:id 3 :category_id 3 :desc "baz"}])
        ;; Create a new in the Database table for this newly created temp database
-       (t2.with-temp/with-temp [:model/Database db {:engine       :h2
-                                                    :name         "foo"
-                                                    :is_full_sync true
-                                                    :details      "{\"db\": \"mem:temp\"}"}]
+       (mt/with-temp [:model/Database db {:engine       :h2
+                                          :name         "foo"
+                                          :is_full_sync true
+                                          :details      "{\"db\": \"mem:temp\"}"}]
          ;; Sync the database so we have the new table and it's fields
          (sync/sync-database! db)
          (let [table-id        (t2/select-one-fn :id :model/Table :db_id (u/the-id db) :name "FOO")
@@ -325,9 +324,9 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid human-readable-values"
-           (t2.with-temp/with-temp [:model/FieldValues _ {:field_id (mt/id :venues :id), :human_readable_values {"1" "A", "2", "B"}}]))))
+           (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :venues :id), :human_readable_values {"1" "A", "2", "B"}}]))))
     (testing "updating"
-      (t2.with-temp/with-temp [:model/FieldValues {:keys [id]} {:field_id (mt/id :venues :id), :human_readable_values []}]
+      (mt/with-temp [:model/FieldValues {:keys [id]} {:field_id (mt/id :venues :id), :human_readable_values []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid human-readable-values"
@@ -342,9 +341,9 @@
           (testing "Should have no FieldValues initially"
             (is (= nil
                    (field-values))))
-          (t2.with-temp/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :product_id)
-                                                       :human_readable_field_id (mt/id :products :title)
-                                                       :type                    "external"}]
+          (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :product_id)
+                                             :human_readable_field_id (mt/id :products :title)
+                                             :type                    "external"}]
             (mt/with-temp-vals-in-db :model/Field (mt/id :orders :product_id) {:has_field_values "list"}
               (is (= ::field-values/fv-created
                      (field-values/create-or-update-full-field-values! (t2/select-one :model/Field :id (mt/id :orders :product_id)))))
@@ -378,11 +377,11 @@
           (t2/delete! :model/FieldValues :field_id field-id))))))
 
 (deftest update-field-values-hook-test
-  (t2.with-temp/with-temp [:model/FieldValues {full-id :id}    {:field_id (mt/id :venues :id)
-                                                                :type     :full}
-                           :model/FieldValues {sandbox-id :id} {:field_id (mt/id :venues :id)
-                                                                :type     :sandbox
-                                                                :hash_key "random-hash"}]
+  (mt/with-temp [:model/FieldValues {full-id :id}    {:field_id (mt/id :venues :id)
+                                                      :type     :full}
+                 :model/FieldValues {sandbox-id :id} {:field_id (mt/id :venues :id)
+                                                      :type     :sandbox
+                                                      :hash_key "random-hash"}]
     (testing "The model hooks prevent us changing the intrinsic identity of a field values"
       (doseq [[id update-map] [[sandbox-id {:field_id 1}]
                                [sandbox-id {:type :full}]

@@ -10,8 +10,7 @@
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,10 +35,10 @@
     (let [query (mt/mbql-query orders
                   {:aggregation  [[:count]]
                    :breakout     [!month.created_at]})]
-      (t2.with-temp/with-temp [:model/Card card {:dataset_query          query
-                                                 :display                :line
-                                                 :visualization_settings {:graph.dimensions ["CREATED_AT"]
-                                                                          :graph.metrics    ["count"]}}]
+      (mt/with-temp [:model/Card card {:dataset_query          query
+                                       :display                :line
+                                       :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                                                :graph.metrics    ["count"]}}]
         (is (some? (lib.util.match/match-one
                      (render-pulse-card card)
                      [:img _])))))))

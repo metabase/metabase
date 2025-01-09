@@ -1,11 +1,11 @@
 (ns metabase.email
   (:require
-   [malli.core :as mc]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.retry :as retry]
    [postal.core :as postal]
@@ -46,7 +46,7 @@
   [:maybe [:sequential ms/Email]])
 
 (def ^:private ^{:arglists '([reply-to-addresses])} validate-reply-to-addresses
-  (mc/validator ReplyToAddresses))
+  (mr/validator ReplyToAddresses))
 
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address.")

@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
@@ -13,6 +12,7 @@
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -125,7 +125,7 @@
   (t2/select-one-fn :dbms_version :model/Database :id (u/the-id db-or-id)))
 
 (defn- check-dbms-version [dbms-version]
-  (me/humanize (mc/validate sync-dbms-ver/DBMSVersion dbms-version)))
+  (me/humanize (mr/explain sync-dbms-ver/DBMSVersion dbms-version)))
 
 (deftest dbms-version-test
   (mt/test-driver

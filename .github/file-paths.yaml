@@ -79,7 +79,6 @@ backend_specs: &backend_specs
   - "test_modules/**"
   - "modules/drivers/*/test/**"
   - "test_config/**"
-  - "dev/**"
   - "test_resources/**"
 
 backend_all: &backend_all

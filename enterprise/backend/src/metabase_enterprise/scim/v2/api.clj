@@ -7,7 +7,7 @@
    [compojure.core :refer [GET POST]]
    [metabase-enterprise.scim.api :as scim]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.api.common :as api :refer [defendpoint]]
+   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
@@ -200,7 +200,8 @@
       [:= :%lower.email (u/lower-case-en match)]
       (throw-scim-error 400 (format "Unsupported filter parameter: %s" filter-parameter)))))
 
-(defendpoint GET "/Users"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/Users"
   "Fetch a list of users."
   [:as {{start-index :startIndex c :count filter-param :filter} :params}]
   {start-index  [:maybe ms/PositiveInt]
@@ -228,7 +229,8 @@
                           :Resources    (map mb-user->scim hydrated-users)}]
       (scim-response result))))
 
-(defendpoint GET "/Users/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/Users/:id"
   "Fetch a single user."
   [id]
   {id ms/NonBlankString}
@@ -237,7 +239,8 @@
         (t2/hydrate :scim_user_group_memberships)
         mb-user->scim)))
 
-(defendpoint POST "/Users"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/Users"
   "Create a single user."
   [:as {scim-user :body}]
   {scim-user SCIMUser}
@@ -253,7 +256,8 @@
                            mb-user->scim))]
         (scim-response new-user 201)))))
 
-(defendpoint PUT "/Users/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint PUT "/Users/:id"
   "Update a user."
   [:as {scim-user :body {id :id} :params}]
   {scim-user SCIMUser}
@@ -278,7 +282,8 @@
                                :status      400
                                :status-code 400})))))))))
 
-(defendpoint PATCH "/Users/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint PATCH "/Users/:id"
   "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches."
   [:as {patch-ops :body {id :id} :params}]
   {patch-ops UserPatch}
@@ -361,7 +366,8 @@
       (throw (ex-info "Unsupported filter parameter" {:filter      filter-parameter
                                                       :status-code 400})))))
 
-(defendpoint GET "/Groups"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/Groups"
   "Fetch a list of groups."
   [:as {{start-index :startIndex c :count filter-param :filter} :params}]
   {start-index  [:maybe ms/PositiveInt]
@@ -390,7 +396,8 @@
                           :Resources    (map mb-group->scim groups)}]
       (scim-response result))))
 
-(defendpoint GET "/Groups/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/Groups/:id"
   "Fetch a single group."
   [id]
   {id ms/NonBlankString}
@@ -410,7 +417,8 @@
       (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
       (t2/insert! :model/PermissionsGroupMembership memberships))))
 
-(defendpoint POST "/Groups"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/Groups"
   "Create a single group, and populates it if necessary."
   [:as {scim-group :body}]
   {scim-group SCIMGroup}
@@ -428,7 +436,8 @@
               mb-group->scim
               (scim-response 201)))))))
 
-(defendpoint PUT "/Groups/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint PUT "/Groups/:id"
   "Update a group."
   [:as {scim-group :body {id :id} :params}]
   {scim-group SCIMGroup}
@@ -445,7 +454,8 @@
               mb-group->scim
               scim-response))))))
 
-(defendpoint DELETE "/Groups/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint DELETE "/Groups/:id"
   "Delete a group."
   [id]
   {id ms/NonBlankString}

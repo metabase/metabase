@@ -111,7 +111,7 @@ describe("scenarios > visualizations > line chart", () => {
     H.openSeriesSettings("Count");
     cy.icon("bar").click();
 
-    H.openVizTypeSidebar();
+    H.openVizTypeSidebar({ isSidebarOpen: true });
 
     cy.icon("line").click();
 
