@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 
+import { useListCollectionItemsQuery } from "metabase/api";
 import {
   ALL_MODELS,
   COLLECTION_PAGE_SIZE,
@@ -24,13 +25,9 @@ import { ItemsTable } from "metabase/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/components/ItemsTable/utils";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import CS from "metabase/css/core/index.css";
-import {
-  EntityListLoaderRtkQuery,
-  type EntityListQueryResponse,
-} from "metabase/entities/containers/rtk-query";
 import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -160,96 +157,82 @@ export const CollectionItemsTable = ({
 
   const showAllItems = isEmbeddingSdk || isRootTrashCollection(collection);
 
-  const onSearchListLoaded = (
-    response: EntityListQueryResponse<CollectionItem[]>,
-  ) => {
-    if (isWrappedResponse(response)) {
-      setTotal(response.total);
-    }
+  const { data, isFetching: loadingUnpinnedItems } =
+    useListCollectionItemsQuery({
+      id: collectionId,
+      models,
+      limit: pageSize,
+      offset: pageSize * page,
+      ...(showAllItems
+        ? { show_dashboard_questions: true }
+        : { pinned_state: "is_not_pinned" }),
+      ...unpinnedItemsSorting,
+    });
+
+  const hasPagination: boolean = total ? total > pageSize : false;
+  const dispatch = useDispatch();
+  const unpinnedItems = useMemo(() => {
+    return data?.data?.map(item => Search.wrapEntity(item, dispatch)) ?? [];
+  }, [data, dispatch]);
+
+  const unselected = getIsSelected
+    ? unpinnedItems.filter(item => !getIsSelected(item))
+    : unpinnedItems;
+  const hasUnselected = unselected.length > 0;
+
+  const handleSelectAll = () => {
+    selectOnlyTheseItems?.(unpinnedItems);
   };
 
-  const ComposedComponent = ({
-    list: unpinnedItems = [],
-    loading: loadingUnpinnedItems,
-  }: {
-    list: CollectionItem[] | undefined;
-    loading: boolean;
-  }) => {
-    const hasPagination: boolean = total ? total > pageSize : false;
+  const loading = loadingPinnedItems || loadingUnpinnedItems;
+  const isEmpty = !loading && !hasPinnedItems && unpinnedItems.length === 0;
 
-    const unselected = getIsSelected
-      ? unpinnedItems.filter(item => !getIsSelected(item))
-      : unpinnedItems;
-    const hasUnselected = unselected.length > 0;
-
-    const handleSelectAll = () => {
-      selectOnlyTheseItems?.(unpinnedItems);
-    };
-
-    const loading = loadingPinnedItems || loadingUnpinnedItems;
-    const isEmpty = !loading && !hasPinnedItems && unpinnedItems.length === 0;
-
-    if (isEmpty && !loadingUnpinnedItems) {
-      return <EmptyContentComponent collection={collection} />;
+  useEffect(() => {
+    if (isWrappedResponse(data)) {
+      setTotal(data.total);
     }
+  }, [data]);
 
-    return (
-      <CollectionTable data-testid="collection-table">
-        <ItemsTable
-          databases={databases}
-          bookmarks={bookmarks}
-          createBookmark={createBookmark}
-          deleteBookmark={deleteBookmark}
-          items={unpinnedItems}
-          collection={collection}
-          sortingOptions={unpinnedItemsSorting}
-          onSortingOptionsChange={handleUnpinnedItemsSortingChange}
-          selectedItems={selected}
-          hasUnselected={hasUnselected}
-          getIsSelected={getIsSelected}
-          onToggleSelected={toggleItem}
-          onDrop={clear}
-          onMove={handleMove}
-          onCopy={handleCopy}
-          onSelectAll={handleSelectAll}
-          onSelectNone={clear}
-          onClick={onClick}
-          visibleColumnsMap={visibleColumnsMap}
-        />
-        <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
-          {hasPagination && (
-            <PaginationControls
-              showTotal
-              page={page}
-              pageSize={pageSize}
-              total={total ?? undefined}
-              itemsLength={unpinnedItems.length}
-              onNextPage={handleNextPage}
-              onPreviousPage={handlePreviousPage}
-            />
-          )}
-        </div>
-      </CollectionTable>
-    );
-  };
+  if (isEmpty && !loadingUnpinnedItems) {
+    return <EmptyContentComponent collection={collection} />;
+  }
 
   return (
-    <EntityListLoaderRtkQuery
-      ComposedComponent={ComposedComponent}
-      entityType={Search.name}
-      entityQuery={{
-        collection: collectionId,
-        models,
-        limit: pageSize,
-        offset: pageSize * page,
-        ...(showAllItems
-          ? { show_dashboard_questions: true }
-          : { pinned_state: "is_not_pinned" }),
-        ...unpinnedItemsSorting,
-      }}
-      loadingAndErrorWrapper={false}
-      wrapped
-      onLoaded={onSearchListLoaded}
-    />
+    <CollectionTable data-testid="collection-table">
+      <ItemsTable
+        databases={databases}
+        bookmarks={bookmarks}
+        createBookmark={createBookmark}
+        deleteBookmark={deleteBookmark}
+        items={unpinnedItems}
+        collection={collection}
+        sortingOptions={unpinnedItemsSorting}
+        onSortingOptionsChange={handleUnpinnedItemsSortingChange}
+        selectedItems={selected}
+        hasUnselected={hasUnselected}
+        getIsSelected={getIsSelected}
+        onToggleSelected={toggleItem}
+        onDrop={clear}
+        onMove={handleMove}
+        onCopy={handleCopy}
+        onSelectAll={handleSelectAll}
+        onSelectNone={clear}
+        onClick={onClick}
+        visibleColumnsMap={visibleColumnsMap}
+      />
+      <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
+        {hasPagination && (
+          <PaginationControls
+            showTotal
+            page={page}
+            pageSize={pageSize}
+            total={total ?? undefined}
+            itemsLength={unpinnedItems.length}
+            onNextPage={handleNextPage}
+            onPreviousPage={handlePreviousPage}
+          />
+        )}
+      </div>
+    </CollectionTable>
   );
 };
