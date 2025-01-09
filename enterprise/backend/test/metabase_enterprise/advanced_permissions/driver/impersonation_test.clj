@@ -13,8 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel connection-impersonation-role-test
   (testing "Returns nil when no impersonations are in effect"
@@ -95,7 +94,7 @@
                            "REVOKE ALL PRIVILEGES ON DATABASE \"conn_impersonation_test\" FROM \"impersonation.role\";"
                            "GRANT SELECT ON TABLE \"conn_impersonation_test\".PUBLIC.table_with_access TO \"impersonation.role\";"]]
           (jdbc/execute! spec [statement]))
-        (t2.with-temp/with-temp [:model/Database database {:engine :postgres, :details details}]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database (sync/sync-database! database)
             (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                          :attributes     {"impersonation_attr" "impersonation.role"}}

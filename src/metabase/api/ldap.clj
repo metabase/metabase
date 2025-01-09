@@ -98,6 +98,7 @@
       current-password
       new-password)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/settings"
   "Update LDAP related settings. You must be a superuser to do this."
   [:as {settings :body}]

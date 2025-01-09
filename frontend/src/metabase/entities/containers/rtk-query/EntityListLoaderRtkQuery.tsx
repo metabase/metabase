@@ -1,7 +1,9 @@
+import { bindActionCreators } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import { useLatest } from "react-use";
 import { match } from "ts-pattern";
+import _ from "underscore";
 
 import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { capitalize } from "metabase/lib/formatting";
@@ -23,6 +25,7 @@ import type {
   ReloadInterval,
   ReloadIntervalSelector,
 } from "./types";
+import { usePaginatedQuery } from "./usePaginatedQuery";
 
 interface ChildrenProps<Entity, EntityWrapper> {
   allError?: unknown;
@@ -57,9 +60,11 @@ interface Props<Entity, EntityWrapper> {
   ComposedComponent: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
   entityQuery?: EntityQuery | EntityQuerySelector;
   entityType: EntityType | EntityTypeSelector;
+  initialPage?: number;
   listName?: string;
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
+  pageSize?: number;
   reload?: boolean;
   reloadInterval?: ReloadInterval | ReloadIntervalSelector<Entity>;
   selectorName?: "getList" | "getListUnfiltered";
@@ -74,6 +79,16 @@ const transformResponse = (fetched: unknown) => {
 
   const { data, ...metadata } = fetched;
   return { results: data, metadata };
+};
+
+const isPaginationMetadata = (
+  value: Record<string, unknown>,
+): value is { limit: number; offset: number; total: number } => {
+  return (
+    typeof value.limit === "number" &&
+    typeof value.offset === "number" &&
+    typeof value.total === "number"
+  );
 };
 
 /**
@@ -91,9 +106,11 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   ComposedComponent,
   entityQuery: entityQueryProp,
   entityType: entityTypeProp,
+  initialPage,
   listName,
   loadingAndErrorWrapper = true,
   LoadingAndErrorWrapper = DefaultLoadingAndErrorWrapper,
+  pageSize,
   reload = false,
   reloadInterval: reloadIntervalProp,
   selectorName = "getList",
@@ -117,54 +134,70 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       return entitiesDefinitions[entityType];
     }, [entityType]);
 
-  const entityQuery = useSelector(state =>
-    typeof entityQueryProp === "function"
-      ? entityQueryProp(state, props)
-      : entityQueryProp,
+  const nonPaginatedEntityQuery = useSelector(
+    state =>
+      typeof entityQueryProp === "function"
+        ? entityQueryProp(state, props)
+        : entityQueryProp,
+    _.isEqual,
   );
+
+  const {
+    entityQuery,
+    hasMorePages,
+    isPaginated,
+    page,
+    onNextPage,
+    onPreviousPage,
+    setHasMorePages,
+  } = usePaginatedQuery(nonPaginatedEntityQuery, pageSize, initialPage);
+  const paginationProps = isPaginated
+    ? {
+        hasMorePages,
+        page,
+        pageSize,
+        onNextPage,
+        onPreviousPage,
+      }
+    : undefined;
+
+  const entityOptions = useMemo(() => ({ entityQuery }), [entityQuery]);
 
   const list = useSelector(state => {
     return match(selectorName)
       .with("getList", () => {
-        return entityDefinition.selectors.getList(state, { entityQuery });
+        return entityDefinition.selectors.getList(state, entityOptions);
       })
       .with("getListUnfiltered", () => {
-        return entityDefinition.selectors.getListUnfiltered(state, {
-          entityQuery,
-        });
+        return entityDefinition.selectors.getListUnfiltered(
+          state,
+          entityOptions,
+        );
       })
       .exhaustive();
   });
 
   const fetched = useSelector(state => {
-    const value = entityDefinition.selectors.getFetched(state, {
-      entityQuery,
-    });
+    const value = entityDefinition.selectors.getFetched(state, entityOptions);
     return Boolean(value);
   });
 
   const loaded = useSelector(state => {
-    const value = entityDefinition.selectors.getLoaded(state, {
-      entityQuery,
-    });
+    const value = entityDefinition.selectors.getLoaded(state, entityOptions);
     return Boolean(value);
   });
 
   const loading = useSelector(state => {
-    const value = entityDefinition.selectors.getLoading(state, {
-      entityQuery,
-    });
+    const value = entityDefinition.selectors.getLoading(state, entityOptions);
     return Boolean(value);
   });
 
   const error = useSelector(state => {
-    return entityDefinition.selectors.getError(state, { entityQuery });
+    return entityDefinition.selectors.getError(state, entityOptions);
   });
 
   const metadata = useSelector(state => {
-    return entityDefinition.selectors.getListMetadata(state, {
-      entityQuery,
-    });
+    return entityDefinition.selectors.getListMetadata(state, entityOptions);
   });
 
   const wrappedList = useMemo(() => {
@@ -221,8 +254,12 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   }, [dispatch, rtkError, requestStatePath, queryKey]);
 
   useEffect(() => {
-    if (data) {
+    if (data && !isFetching) {
       const { results, metadata } = transformResponse(data);
+
+      if (isPaginationMetadata(metadata)) {
+        setHasMorePages(metadata.offset + metadata.limit < metadata.total);
+      }
 
       if (!Array.isArray(results)) {
         throw new Error(`Invalid response listing ${entityDefinition.name}`);
@@ -252,8 +289,10 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     data,
     entityDefinition,
     entityQuery,
+    isFetching,
     requestStatePath,
     queryKey,
+    setHasMorePages,
   ]);
 
   const onLoadedRef = useLatest(onLoaded);
@@ -271,8 +310,14 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   const allLoading = loading || (allLoadingProp ?? false);
   const finalListName = listName || entityDefinition.nameMany;
 
+  const actionCreators = useMemo(() => {
+    return bindActionCreators(entityDefinition.actions, dispatch);
+  }, [entityDefinition.actions, dispatch]);
+
   const children = (
     <ComposedComponent
+      {...actionCreators}
+      {...paginationProps}
       {...props}
       {...{
         [finalListName]: wrappedList,

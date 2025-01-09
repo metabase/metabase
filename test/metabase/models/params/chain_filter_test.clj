@@ -7,8 +7,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (defn shorthand->constraint [field-id v]
   (if-not (vector? v)
@@ -586,7 +585,7 @@
           (testing "no FieldValues"
             (thunk))
           (testing "with FieldValues for myfield"
-            (t2.with-temp/with-temp [:model/FieldValues _ {:field_id %myfield, :values ["value" nil ""]}]
+            (mt/with-temp [:model/FieldValues _ {:field_id %myfield, :values ["value" nil ""]}]
               (mt/with-temp-vals-in-db :model/Field %myfield {:has_field_values "auto-list"}
                 (testing "Sanity check: make sure we will actually use the cached FieldValues"
                   (is (field-values/field-should-have-field-values? %myfield))
