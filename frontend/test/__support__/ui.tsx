@@ -25,7 +25,6 @@ import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { NotebookProvider } from "metabase/querying/notebook/components/Notebook/context";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
@@ -50,7 +49,6 @@ export interface RenderWithProvidersOptions {
   /** Renders children wrapped with kbar provider */
   withKBar?: boolean;
   withDND?: boolean;
-  withNotebook?: boolean;
   withUndos?: boolean;
   customReducers?: ReducerObject;
   sdkProviderProps?: Partial<MetabaseProviderProps> | null;
@@ -72,7 +70,6 @@ export function renderWithProviders(
     withKBar = false,
     withDND = false,
     withUndos = false,
-    withNotebook = false,
     customReducers,
     sdkProviderProps = null,
     theme,
@@ -162,7 +159,6 @@ export function renderWithProviders(
         withRouter={withRouter}
         withDND={withDND}
         withUndos={withUndos}
-        withNotebook={withNotebook}
         theme={theme}
         withKBar={withKBar}
       />
@@ -195,7 +191,6 @@ export function TestWrapper({
   withKBar,
   withDND,
   withUndos,
-  withNotebook,
   theme,
 }: {
   children: React.ReactElement;
@@ -205,7 +200,6 @@ export function TestWrapper({
   withKBar: boolean;
   withDND: boolean;
   withUndos?: boolean;
-  withNotebook: boolean;
   theme?: MantineThemeOverride;
 }): JSX.Element {
   return (
@@ -216,9 +210,7 @@ export function TestWrapper({
 
           <MaybeKBar hasKBar={withKBar}>
             <MaybeRouter hasRouter={withRouter} history={history}>
-              <MaybeNotebookProvider hasNotebook={withNotebook}>
-                {children}
-              </MaybeNotebookProvider>
+              {children}
             </MaybeRouter>
           </MaybeKBar>
           {withUndos && <UndoListing />}
@@ -271,20 +263,6 @@ function MaybeDNDProvider({
       {children}
     </DragDropContextProvider>
   );
-}
-
-function MaybeNotebookProvider({
-  children,
-  hasNotebook,
-}: {
-  children: React.ReactElement;
-  hasNotebook: boolean;
-}) {
-  if (!hasNotebook) {
-    return children;
-  }
-
-  return <NotebookProvider>{children}</NotebookProvider>;
 }
 
 export function getIcon(name: string) {

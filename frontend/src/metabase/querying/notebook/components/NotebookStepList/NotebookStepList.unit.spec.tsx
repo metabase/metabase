@@ -14,6 +14,8 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
+import { NotebookProvider } from "../Notebook/context";
+
 import { NotebookStepList } from "./NotebookStepList";
 
 const metadata = createMockMetadata({
@@ -37,15 +39,16 @@ function setup(opts: SetupOpts = {}, query: Lib.Query = createQuery()) {
   });
 
   renderWithProviders(
-    <NotebookStepList
-      question={question}
-      reportTimezone={reportTimezone}
-      updateQuestion={jest.fn()}
-      {...opts}
-    />,
+    <NotebookProvider>
+      <NotebookStepList
+        question={question}
+        reportTimezone={reportTimezone}
+        updateQuestion={jest.fn()}
+        {...opts}
+      />
+    </NotebookProvider>,
     {
       storeInitialState: state,
-      withNotebook: true,
     },
   );
 }
