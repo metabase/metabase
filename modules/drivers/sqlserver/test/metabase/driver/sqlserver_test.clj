@@ -533,7 +533,7 @@
                                               (fn [^java.sql.Connection conn]
                                                 (next.jdbc/execute! conn query))))))))))))
 
-(deftest ^:parallel default-timezone-is-readable
+(deftest ^:parallel db-default-timezone-test
   (mt/test-driver :sqlserver
                   (testing "The default timezone should be a human readable string"
                     (is (= "Z" (driver/db-default-timezone :sqlserver (mt/db)))))))
