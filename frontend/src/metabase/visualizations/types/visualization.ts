@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
@@ -11,6 +11,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Query from "metabase-lib/v1/queries/Query";
 import type {
   Card,
+  DashboardId,
   DatasetColumn,
   DatasetData,
   RawSeries,
@@ -88,6 +89,8 @@ export interface StaticVisualizationProps {
   isStorybook?: boolean;
 }
 
+export type GraphMetricName = string | null;
+
 export interface VisualizationProps {
   series: Series;
   card: Card;
@@ -140,11 +143,19 @@ export interface VisualizationProps {
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: () => void;
 
+  "graph.dimensions"?: string[];
+  "graph.metrics"?: GraphMetricName[];
+
   canRemoveSeries?: (seriesIndex: number) => boolean;
   canToggleSeriesVisibility?: boolean;
   onRemoveSeries?: (event: React.MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
 }
+
+export type CardDerivedSettingsData = {
+  transformedSeries?: TransformedSeries;
+  dashboardId?: DashboardId;
+};
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   title?: string;
@@ -164,14 +175,21 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   ) => TProps;
 };
 
-export type VisualizationSettingDefinition<TValue, TProps = void> = {
+type BaseVisualizationSettingDefinition<TValue> = {
   section?: string;
   title?: string;
   group?: string;
-  widget?: string | React.ComponentType<TProps>;
   isValid?: (series: Series, settings: VisualizationSettings) => boolean;
-  getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
-  getDefault?: (series: Series, settings: VisualizationSettings) => TValue;
+  getHidden?: (
+    series: Series,
+    settings: VisualizationSettings,
+    extra?: CardDerivedSettingsData,
+  ) => boolean;
+  getDefault?: (
+    series: Series,
+    settings: VisualizationSettings,
+  ) => TValue | null;
+  onUpdate?: (value: TValue, extra: CardDerivedSettingsData) => void;
   getValue?: (series: Series, settings: VisualizationSettings) => TValue;
   getDisabled?: (series: Series, settings: VisualizationSettings) => TValue;
   disabled?: boolean;
@@ -180,24 +198,48 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
   getMarginBottom?: (series: Series, settings: VisualizationSettings) => string;
   persistDefault?: boolean;
   inline?: boolean;
-  props?: TProps;
-  getProps?: (
-    series: Series,
-    vizSettings: VisualizationSettings,
-    onChange: (value: TValue) => void,
-    extra: unknown,
-    onChangeSettings: (value: Record<string, any>) => void,
-  ) => TProps;
   readDependencies?: string[];
   writeDependencies?: string[];
   eraseDependencies?: string[];
   // is the setting visible in the dashboard card viz settings
   dashboard?: boolean;
   useRawSeries?: boolean;
+  hidden?: boolean;
+  placeholder?: string;
+  index?: number;
 };
 
+export type WidgetComponentDef<Widget, Props, Value> = {
+  widget?: Widget;
+  props?: Props;
+  getProps?: (
+    series: Series,
+    vizSettings: VisualizationSettings,
+    onChange: (value: Value | null) => void,
+    extra: CardDerivedSettingsData,
+    onChangeSettings: (value: VisualizationSettings) => void,
+  ) => Props;
+};
+
+type VisualizationSettingWidgetDef<
+  Value,
+  Widget extends string | ComponentType<any> = string | ComponentType<any>,
+> = Widget extends string
+  ? WidgetComponentDef<Widget, unknown, Value>
+  : Widget extends ComponentType<infer Props>
+    ? WidgetComponentDef<Widget, Props, Value>
+    : never;
+
+export type VisualizationSettingDefinition<
+  K extends keyof VisualizationSettings = keyof VisualizationSettings,
+  Widget extends string | ComponentType<any> = string | ComponentType<any>,
+> = {
+  id?: K;
+} & BaseVisualizationSettingDefinition<VisualizationSettings[K]> &
+  VisualizationSettingWidgetDef<VisualizationSettings[K], Widget>;
+
 export type VisualizationSettingsDefinitions = {
-  [key: string]: VisualizationSettingDefinition<unknown, unknown>;
+  [K in keyof VisualizationSettings]: VisualizationSettingDefinition<K>;
 };
 
 export type VisualizationGridSize = {

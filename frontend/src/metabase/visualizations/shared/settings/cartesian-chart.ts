@@ -15,7 +15,10 @@ import {
   getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  GraphMetricName,
+} from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isAny,
@@ -29,6 +32,7 @@ import type {
   DatasetColumn,
   DatasetData,
   RawSeries,
+  Series,
   SeriesOrderSetting,
 } from "metabase-types/api";
 
@@ -194,7 +198,7 @@ export const getSeriesOrderVisibilitySettings = (
   }));
 };
 
-export const getDefaultYAxisTitle = (metricNames: string[]) => {
+export const getDefaultYAxisTitle = (metricNames: GraphMetricName[]) => {
   const metricsCount = new Set(metricNames).size;
   return metricsCount === 1 ? metricNames[0] : null;
 };
@@ -312,7 +316,7 @@ export const getAvailableXAxisScales = (
 
 const WATERFALL_UNSUPPORTED_X_AXIS_SCALES = ["pow", "log"];
 export const isXAxisScaleValid = (
-  series: RawSeries,
+  series: Series,
   settings: ComputedVisualizationSettings,
 ) => {
   const isWaterfall = series[0].card.display === "waterfall";
@@ -325,9 +329,9 @@ export const isXAxisScaleValid = (
     return false;
   }
 
-  return (
+  return Boolean(
     !isWaterfall ||
-    (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale))
+      (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)),
   );
 };
 
@@ -369,7 +373,11 @@ export function getDefaultBubbleSizeCol(data: DatasetData) {
   return getDefaultScatterColumns(data).bubble;
 }
 
-export function getDefaultColumns(series: RawSeries) {
+export function getDefaultColumns(series: RawSeries): {
+  dimensions: (string | null)[];
+  metrics: GraphMetricName[];
+  bubble?: string | null;
+} {
   if (series[0].card.display === "scatter") {
     return getDefaultScatterColumns(series[0].data);
   } else {
