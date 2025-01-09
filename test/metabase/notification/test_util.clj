@@ -186,8 +186,7 @@
   [channel-types & body]
   `(apply-channel-fixtures ~channel-types (fn [] ~@body)))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defn test-send-notification
+(defn test-send-notification!
   "Test sending a notification with the given channel-type->assert-fn map."
   [notification channel-type->assert-fn]
   (with-channel-fixtures (keys channel-type->assert-fn)
