@@ -51,7 +51,7 @@ const Column = ({
   columnDisplayInfo: Lib.ColumnDisplayInfo;
 }) => {
   return (
-    <Group spacing="sm">
+    <Group spacing="sm" role="listitem">
       <QueryColumnInfoIcon
         position="left-start"
         query={query}
