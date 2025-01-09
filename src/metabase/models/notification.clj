@@ -395,7 +395,7 @@
   (->> (:handlers (t2/hydrate notification [:handlers :recipients]))
        (mapcat :recipients)
        (map :user_id)
-       set
+       distinct
        (some #{(mi/current-user-id)})
        boolean))
 
@@ -406,7 +406,6 @@
 
 (defmethod mi/can-read? :model/Notification
   ([notification]
-   ;; users can view a notification if they can view the payload or if they are the creator
    (or
     (mi/superuser?)
     (current-user-is-creator? notification)
@@ -416,13 +415,11 @@
 
 (defmethod mi/can-create? :model/Notification
   [_ notification]
-  (or
-   (mi/superuser?)
-   (current-user-can-read-payload? notification)
-   ;; if ee is enabled, prevent users without subscription permissions from creating notifications
-   (and
-    (premium-features/has-feature? :advanced-permissions)
-    (perms/current-user-has-application-permissions? :subscription))))
+  (or (mi/superuser?)
+      (and (current-user-can-read-payload? notification)
+           ;; if advanced-permissions is enabled, we require users to have subscription permissions
+           (or (not (premium-features/has-feature? :advanced-permissions))
+               (perms/current-user-has-application-permissions? :subscription)))))
 
 (defmethod mi/can-update? :model/Notification
   [instance _changes]
