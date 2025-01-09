@@ -48,8 +48,9 @@
                                    (set! (.-__mbcache host) #js {})))
      ([^js cache subkey x]       (when-let [inner-cache (gobject/get cache subkey)]
                                    (.get inner-cache x)))
-     ([^js cache subkey x value] (let [inner-cache (gobject/setWithReturnValueIfNotSet cache subkey #(js/WeakMap.))]
-                                   (.set inner-cache x value)))))
+     ([^js cache subkey x value] (when x
+                                   (let [inner-cache (gobject/setWithReturnValueIfNotSet cache subkey #(js/WeakMap.))]
+                                     (.set inner-cache x value))))))
 
 (defn attach-query-cache
   "Attaches the cache to a newly constructed query.
