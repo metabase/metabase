@@ -96,6 +96,7 @@
       background-color: var(--mb-color-background-hover);
     }
   }
+
   &[data-selected] {
     color: var(--mb-color-text-selected);
     background-color: var(--mb-color-background-selected);
