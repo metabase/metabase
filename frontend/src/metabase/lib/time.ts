@@ -34,7 +34,7 @@ const NUMERIC_UNIT_FORMATS = {
       .startOf("day"),
   "week-of-year": (value: number) =>
     moment("2016-01-01") // initial date must be in a year with 53 iso weeks to format properly
-      .isoWeek(value)
+      .isoWeek(value) // set the iso week number to not depend on the first day of week
       .startOf("isoWeek"),
   "month-of-year": (value: number) =>
     moment()
