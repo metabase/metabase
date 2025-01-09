@@ -162,6 +162,13 @@
                        :creator_id   (mt/user->id :crowberto)}
                       notification)))))))))
 
+(defn- bit->boolean
+  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
+  [v]
+  (if (number? v)
+    (not (zero? v))
+    v))
+
 (defn test-alert-view!
   [{:keys [alert pcs expected-views]}]
   (mt/with-model-cleanup [:model/Pulse :model/Notification]
@@ -175,10 +182,11 @@
                              :card_id card-id
                              :entity_id notification-id)
                      expected-views)
-                (t2/query {:select [:*]
-                           :from [:v_alerts]
-                           :where [:= :entity_qualified_id entity-id]
-                           :order-by [:recipient_type]})))))))
+                (map #(update % :archived bit->boolean)
+                     (t2/query {:select [:*]
+                                :from [:v_alerts]
+                                :where [:= :entity_qualified_id entity-id]
+                                :order-by [:recipient_type]}))))))))
 
 (deftest v_alerts-test
   (testing "testing the new v_alerts view created by v53.2024-12-12T08:06:00 migration"

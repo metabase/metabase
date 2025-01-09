@@ -5,12 +5,9 @@ with parsed_cron as (
     select
         n.id,
         ns.cron_schedule,
-        SUBSTRING(SUBSTRING_INDEX(ns.cron_schedule, ' ', 3), 
-                 LENGTH(SUBSTRING_INDEX(ns.cron_schedule, ' ', 2)) + 2) as hours,
-        SUBSTRING(SUBSTRING_INDEX(ns.cron_schedule, ' ', 4), 
-                 LENGTH(SUBSTRING_INDEX(ns.cron_schedule, ' ', 3)) + 2) as day_of_month,
-        SUBSTRING(SUBSTRING_INDEX(ns.cron_schedule, ' ', 6), 
-                 LENGTH(SUBSTRING_INDEX(ns.cron_schedule, ' ', 5)) + 2) as day_of_week
+        REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){2}([^ ]+)', 1, 1, '', 2) as hours,
+        REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){3}([^ ]+)', 1, 1, '', 2) as day_of_month,
+        REGEXP_SUBSTR(ns.cron_schedule, '^([^ ]+ ){5}([^ ]+)', 1, 1, '', 2) as day_of_week
     from notification n
     join notification_subscription ns on n.id = ns.notification_id
     where n.payload_type = 'notification/card'
