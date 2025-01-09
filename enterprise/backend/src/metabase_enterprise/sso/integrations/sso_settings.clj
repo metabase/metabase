@@ -3,7 +3,6 @@
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
-   [malli.core :as mc]
    [metabase-enterprise.scim.api :as scim]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -12,6 +11,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [saml20-clj.core :as saml]))
 
@@ -21,7 +21,7 @@
   [:maybe [:map-of ms/KeywordOrString [:sequential ms/PositiveInt]]])
 
 (def ^:private ^{:arglists '([group-mappings])} validate-group-mappings
-  (mc/validator GroupMappings))
+  (mr/validator GroupMappings))
 
 (defsetting saml-user-provisioning-enabled?
   (deferred-tru "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who

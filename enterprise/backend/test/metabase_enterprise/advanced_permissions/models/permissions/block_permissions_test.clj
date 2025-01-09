@@ -10,8 +10,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 ;;;; Graph-related stuff
 
@@ -55,7 +54,7 @@
   (testing "PUT /api/permissions/graph"
     (testing (str "fails when a group has a block permission set, and the instance doesn't have the "
                   ":advanced-permissions premium feature enabled")
-      (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id}]
+      (mt/with-temp [:model/PermissionsGroup {group-id :id}]
         ;; Revoke native perms so that we can set block perms
         (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
         (let [current-graph (data-perms.graph/api-graph)
@@ -75,7 +74,7 @@
                                   "the perms graph API endpoint"
                                   api-grant-block-perms!}]
       (testing (str description "\n")
-        (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id}]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id}]
           (testing "Group should have unrestricted view-data perms upon creation"
             (is (= :unrestricted
                    (test-db-perms group-id)))

@@ -28,6 +28,7 @@
          metabase-enterprise.sso.integrations.saml/keep-me)
 
 ;; GET /auth/sso
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [:as req]
@@ -50,6 +51,7 @@
                                     :additionalData data}))})
 
 ;; POST /auth/sso
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Route the SSO backends call with successful login details"
   [:as req]
@@ -66,6 +68,7 @@
   "/auth/sso/handle_slo")
 
 ;; POST /auth/sso/logout
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/logout"
   "Logout."
   [:as {cookies :cookies}]
@@ -91,6 +94,7 @@
                         (str (urls/site-url) metabase-slo-redirect-url))))})))
 
 ;; POST /auth/sso/handle_slo
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/handle_slo"
   "Handles client confirmation of saml logout via slo"
   [:as req]

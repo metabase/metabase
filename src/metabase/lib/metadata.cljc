@@ -1,5 +1,6 @@
 (ns metabase.lib.metadata
   (:require
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -46,7 +47,10 @@
   "Get metadata about all the Fields belonging to a specific Table."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    table-id              :- ::lib.schema.id/table]
-  (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
+  (let [prefix (lib.metadata.ident/table-prefix (:name (database metadata-providerable))
+                                                (table metadata-providerable table-id))]
+    (->> (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id)
+         (lib.metadata.ident/attach-idents (constantly prefix)))))
 
 (mu/defn metadatas-for-table :- [:sequential [:or
                                               ::lib.schema.metadata/column
@@ -57,7 +61,9 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    metadata-type         :- [:enum :metadata/column :metadata/metric :metadata/segment]
    table-id              :- ::lib.schema.id/table]
-  (lib.metadata.protocols/metadatas-for-table (->metadata-provider metadata-providerable) metadata-type table-id))
+  (case metadata-type
+    :metadata/column (fields metadata-providerable table-id)
+    (lib.metadata.protocols/metadatas-for-table (->metadata-provider metadata-providerable) metadata-type table-id)))
 
 (mu/defn metadatas-for-card :- [:sequential ::lib.schema.metadata/metric]
   "Return active (non-archived) metadatas associated with a particular Card, currently only Metrics.
@@ -67,11 +73,25 @@
    card-id              :- ::lib.schema.id/card]
   (lib.metadata.protocols/metadatas-for-card (->metadata-provider metadata-providerable) metadata-type card-id))
 
+(def ^:dynamic *enforce-idents*
+  "Dynamic variable to control whether errors are thrown when we return a `:metadata/column` with no ident.
+
+  Generally that is an error and we should throw, but there are a few tests explicitly checking broken fields that
+  don't want to get hung up on this error."
+  true)
+
 (mu/defn field :- [:maybe ::lib.schema.metadata/column]
   "Get metadata about a specific Field in the Database we're querying."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    field-id              :- ::lib.schema.id/field]
-  (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
+  (let [fieldd (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id)]
+    (when (and fieldd
+               (not (:ident fieldd))
+               *enforce-idents*)
+      (throw (ex-info "Returning a field with no :ident" {:metadata-providerable (pr-str metadata-providerable)
+                                                          :id                    field-id
+                                                          :field                 fieldd})))
+    fieldd))
 
 (mu/defn setting :- any?
   "Get the value of a Metabase setting for the instance we're querying."
@@ -203,6 +223,14 @@
     (let [provider   (->metadata-provider metadata-providerable)
           results    (lib.metadata.protocols/metadatas provider metadata-type ids)
           id->result (into {} (map (juxt :id identity)) results)]
+      (when (= metadata-type :metadata/column)
+        (when-let [missing (and *enforce-idents*
+                                (not-empty (remove :ident results)))]
+          (throw (ex-info "Bulk metadata request returned some columns without idents"
+                          {:provider      metadata-providerable
+                           :type          metadata-type
+                           :ids           ids
+                           :missing-ident missing}))))
       (into []
             (comp (map id->result)
                   (filter some?))

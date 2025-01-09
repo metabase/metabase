@@ -21,8 +21,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
@@ -250,7 +249,7 @@
     :redshift
     (testing "Late-binding view with with data types that cause a JDBC error can still be synced successfully (#21215)"
       (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
-        (t2.with-temp/with-temp [:model/Database database {:engine :redshift, :details db-details}]
+        (mt/with-temp [:model/Database database {:engine :redshift, :details db-details}]
           (let [view-nm      (tx/db-qualified-table-name (:name database) "lbv")
                 qual-view-nm (format "\"%s\".\"%s\"" (redshift.tx/unique-session-schema) view-nm)]
             (execute!

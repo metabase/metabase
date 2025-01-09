@@ -68,6 +68,7 @@
     (-> (filter mi/can-read? (t2/select :model/Field :id [:in ids]))
         (t2/hydrate :has_field_values :dimensions :name_field))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Get `Field` with ID."
   [id include_editable_data_model]
@@ -126,6 +127,7 @@
                   {:active false})))
   nil)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
@@ -191,6 +193,7 @@
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
   [id]
@@ -201,6 +204,7 @@
 
 ;;; --------------------------------------------------- Dimensions ---------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/dimension"
   "Sets the dimension for the given field at ID"
   [id :as {{dimension-type :type, dimension-name :name, human_readable_field_id :human_readable_field_id} :body}]
@@ -225,6 +229,7 @@
                  :human_readable_field_id human_readable_field_id}))
   (t2/select-one :model/Dimension :field_id id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id/dimension"
   "Remove the dimension associated to field at ID"
   [id]
@@ -262,6 +267,7 @@
      :has_more_values (not (str/blank? query))
      :field_id        field-id}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/values"
   "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field (or
   remapped Field), and (if defined by a User) a map of human-readable remapped values. If `has_field_values` is not
@@ -282,6 +288,7 @@
                [400 "If remapped values are specified, they must be specified for all field values"])
     has-human-readable-values?))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/values"
   "Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional."
@@ -301,6 +308,7 @@
       (api/check-500 (pos? updated-pk))))
   {:status :success})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
@@ -314,6 +322,7 @@
       (field-values/create-or-update-full-field-values! field)))
   {:status :success})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
@@ -378,6 +387,7 @@
        (log/error e "Error searching field values")
        []))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   `metabase.api.field/search-values` for a more detailed explanation."
@@ -428,6 +438,7 @@
     (.parse (NumberFormat/getInstance) value)
     value))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
   [id remapped-id value]
@@ -439,6 +450,7 @@
         value          (parse-query-param-value-for-field field value)]
     (remapped-value field remapped-field value)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]

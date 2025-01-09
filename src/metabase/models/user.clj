@@ -16,8 +16,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.setup :as setup]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -170,10 +170,13 @@
       (t2/delete! 'PulseChannelRecipient :user_id id))
     ;; If we're setting the reset_token then encrypt it before it goes into the DB
     (cond-> user
-      true        (merge (hashed-password-values (t2/changes user)))
-      reset-token (update :reset_token u.password/hash-bcrypt)
-      locale      (update :locale i18n/normalized-locale-string)
-      email       (update :email u/lower-case-en))))
+      true             (merge (hashed-password-values (t2/changes user)))
+      reset-token      (update :reset_token u.password/hash-bcrypt)
+      locale           (update :locale i18n/normalized-locale-string)
+      email            (update :email u/lower-case-en)
+      ;; Set or clear deactivated_at if the :is_active key changes. Not used directly in product.
+      active?          (assoc :deactivated_at nil)
+      (false? active?) (assoc :deactivated_at :%now))))
 
 (defn add-common-name
   "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.

@@ -1,11 +1,11 @@
 (ns metabase.lib.schema.expression.temporal-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as expression]
-   [metabase.lib.schema.expression.temporal :as temporal]))
+   [metabase.lib.schema.expression.temporal :as temporal]
+   [metabase.util.malli.registry :as mr]))
 
 (comment metabase.lib.schema/keep-me)
 
@@ -21,7 +21,7 @@
 (deftest ^:parallel absolute-datetime-test
   (testing ::expression/date
     (are [s unit] (not (me/humanize
-                        (mc/explain
+                        (mr/explain
                          ::expression/date
                          [:absolute-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} s unit])))
       "2023-03-08" :day
@@ -32,7 +32,7 @@
       :current     :month))
   (testing ::expression/datetime
     (are [s unit] (not (me/humanize
-                        (mc/explain
+                        (mr/explain
                          ::expression/datetime
                          [:absolute-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} s unit])))
       "2023-03-08T03:18-07:00" :month
@@ -42,7 +42,7 @@
 
 (deftest ^:parallel invalid-absolute-datetime-test
   (binding [expression/*suppress-expression-type-check?* false]
-    (are [expr] (me/humanize (mc/explain ::expression/date expr))
+    (are [expr] (me/humanize (mr/explain ::expression/date expr))
       ;; wrong literal string
       [:absolute-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2023-03-08T19:55:01" :day]
       ;; wrong unit
@@ -55,7 +55,7 @@
 
 (deftest ^:parallel temporal-extract-test
   (is (not (me/humanize
-            (mc/explain
+            (mr/explain
              :mbql.clause/temporal-extract
              [:temporal-extract
               {:lib/uuid "202ec127-f7b9-49ce-b785-cd7b96996660"}
@@ -63,7 +63,7 @@
               :year-of-era])))))
 
 (deftest ^:parallel relative-datetime-test
-  (are [clause] (not (mc/explain :mbql.clause/relative-datetime clause))
+  (are [clause] (not (mr/explain :mbql.clause/relative-datetime clause))
     [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} -1 :day]
     [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} -1 :minute]
     [:relative-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} 0 :day]
@@ -73,7 +73,7 @@
 
 (deftest ^:parallel timezone-id-test
   (are [input error] (= error
-                        (me/humanize (mc/explain ::temporal/timezone-id input)))
+                        (me/humanize (mr/explain ::temporal/timezone-id input)))
     "US/Pacific"  nil
     "US/Specific" ["invalid timezone ID: \"US/Specific\"" "timezone offset string literal"]
     ""            ["should be at least 1 character" "non-blank string" "invalid timezone ID: \"\"" "timezone offset string literal"]
@@ -82,7 +82,7 @@
 
 (deftest ^:parallel convert-timezone-test
   (are [clause error] (= error
-                         (me/humanize (mc/explain :mbql.clause/convert-timezone clause)))
+                         (me/humanize (mr/explain :mbql.clause/convert-timezone clause)))
     ;; with both target and source timezone
     [:convert-timezone
      {:lib/uuid "00000000-0000-0000-0000-000000000000"}
@@ -115,7 +115,7 @@
 
 (deftest ^:parallel get-week-test
   (are [clause error] (= error
-                         (me/humanize (mc/explain :mbql.clause/get-week clause)))
+                         (me/humanize (mr/explain :mbql.clause/get-week clause)))
     ;; without mode
     [:get-week {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2023-05-25"]
     nil
