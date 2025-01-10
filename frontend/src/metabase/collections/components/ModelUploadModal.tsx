@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useSearchQuery } from "metabase/api";
+import { useSearchListQuery } from "metabase/common/hooks";
 import {
   Button,
   Flex,
@@ -45,13 +45,15 @@ export function ModelUploadModal({
 }) {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.create);
   const [tableId, setTableId] = useState<TableId | null>(null);
-  const { data: models, isFetching: isFetchingModels } = useSearchQuery({
-    collection: collectionId,
-    models: ["dataset"],
+  const models = useSearchListQuery({
+    query: {
+      collection: collectionId,
+      models: ["dataset"],
+    },
   });
 
   const uploadableModels = useMemo(
-    () => models?.data?.filter(model => !!model.based_on_upload) ?? [],
+    () => models?.data?.filter(model => !!model.based_on_upload),
     [models],
   );
 
@@ -69,7 +71,7 @@ export function ModelUploadModal({
 
   const handleUpload = () => {
     if (uploadMode !== UploadMode.create && tableId) {
-      const modelForTableId = uploadableModels.find(
+      const modelForTableId = uploadableModels?.find(
         model => model.based_on_upload === Number(tableId),
       );
       const modelId = modelForTableId?.id;
@@ -91,18 +93,11 @@ export function ModelUploadModal({
   useEffect(() => {
     // if we trigger the modal, and there's no uploadable models, just
     // automatically upload a new one
-    if (opened && uploadableModels.length === 0 && !isFetchingModels) {
+    if (opened && uploadableModels?.length === 0) {
       onUpload({ collectionId, uploadMode: UploadMode.create });
       onClose();
     }
-  }, [
-    onUpload,
-    onClose,
-    collectionId,
-    uploadableModels,
-    opened,
-    isFetchingModels,
-  ]);
+  }, [onUpload, onClose, collectionId, uploadableModels, opened]);
 
   if (!uploadableModels?.length) {
     return null;
