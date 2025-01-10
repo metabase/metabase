@@ -74,6 +74,8 @@ export const Header = styled.div`
 `;
 
 export const ItemContainer = styled.div`
+  position: relative;
+
   &:hover,
   &:focus,
   &:focus-within {
