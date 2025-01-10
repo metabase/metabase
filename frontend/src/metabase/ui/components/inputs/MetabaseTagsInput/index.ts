@@ -1,0 +1,1 @@
+export { MetabaseTagsInput } from "./MetabaseTagsInput";

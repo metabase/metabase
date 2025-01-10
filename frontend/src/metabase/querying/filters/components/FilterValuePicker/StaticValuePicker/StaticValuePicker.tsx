@@ -27,7 +27,6 @@ export function StaticValuePicker({
       data={[]}
       value={selectedValues}
       placeholder={placeholder}
-      searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
       shouldCreate={shouldCreate}

@@ -1,17 +1,19 @@
-import { TagsInput, type TagsInputProps, Tooltip } from "@mantine/core";
+import { type TagsInputProps, Tooltip, ComboboxItem } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
-import { useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
+import { Icon, MetabaseTagsInput } from "metabase/ui";
 
 import { parseValues, unique } from "./utils";
 
 export type MultiAutocompleteProps = Omit<TagsInputProps, "shouldCreate"> & {
   shouldCreate?: (query: string, selectedValues: string[]) => boolean;
   showInfoIcon?: boolean;
+  data: ComboboxItem[];
+  nothingFoundMessage?: React.ReactNode;
 };
 
 export function MultiAutocomplete({
@@ -28,33 +30,45 @@ export function MultiAutocomplete({
   onSearchChange,
   onFocus,
   onBlur,
+  nothingFoundMessage,
   ...props
 }: MultiAutocompleteProps) {
   const [selectedValues, setSelectedValues] = useUncontrolled({
     value: controlledValue,
     defaultValue,
     finalValue: [],
-    onChange,
+    onChange: val => {
+      onChange?.(val);
+    },
   });
   const [searchValue, setSearchValue] = useUncontrolled({
     value: controlledSearchValue,
     finalValue: "",
     onChange: onSearchChange,
   });
+
+  const stupidRef = useRef<string[]>([]);
   const [lastSelectedValues, setLastSelectedValues] = useState(selectedValues);
   const [isFocused, setIsFocused] = useState(false);
-  const visibleValues = isFocused ? lastSelectedValues : [...selectedValues];
-
-  const items = data;
+  // const visibleValues = isFocused ? lastSelectedValues : [...selectedValues];
+  const items = useMemo(
+    () => getAvailableSelectItems(data, lastSelectedValues),
+    [data, lastSelectedValues],
+  );
 
   const handleChange = (newValues: string[]) => {
-    const values = unique(newValues).map(parseValues).flat().filter(isValid);
+    const values = unique(newValues)
+      .map(parseValues)
+      .flat()
+      .filter(val => shouldCreate(val, []));
+    stupidRef.current = values;
     setLastSelectedValues(values);
     setSelectedValues(values);
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
     setIsFocused(true);
+    stupidRef.current = selectedValues;
     setLastSelectedValues(selectedValues);
     onFocus?.(event);
   };
@@ -62,29 +76,6 @@ export function MultiAutocomplete({
   function isValid(value: string) {
     return value !== "" && shouldCreate?.(value, lastSelectedValues);
   }
-
-  // const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
-  //   setIsFocused(false);
-
-  //   console.log(event.target.value);
-
-  //   const values = parseValues(event.target.value);
-  //   const validValues = values.filter(isValid);
-
-  //   // setSearchValue("");
-
-  //   if (validValues.length > 0) {
-  //     const newValues = unique([...lastSelectedValues, ...validValues]);
-  //     console.log({ newValues });
-  //     setSelectedValues(newValues);
-  //     setLastSelectedValues(newValues);
-  //   } else {
-  //     console.log({ lastSelectedValues });
-  //     setSelectedValues(lastSelectedValues);
-  //   }
-
-  //   onBlur?.(event);
-  // };
 
   const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
     event.preventDefault();
@@ -104,6 +95,7 @@ export function MultiAutocomplete({
     if (values.length > 0) {
       const newValues = unique([...lastSelectedValues, ...validValues]);
       setSelectedValues(newValues);
+      stupidRef.current = newValues;
       setLastSelectedValues(newValues);
       setSearchValue("");
     } else {
@@ -131,25 +123,21 @@ export function MultiAutocomplete({
       const values = parseValues(newSearchValue);
       if (values.length >= 1) {
         const value = values[0];
-        if (isValid(value)) {
-          setSelectedValues(unique([...lastSelectedValues, value]));
+        if (shouldCreate(value, [])) {
+          setSelectedValues(unique([...stupidRef.current, value]));
         }
       }
     }
     if (newSearchValue === "") {
-      //TODO: Come up with something better here
-      setTimeout(() => {
-        setSelectedValues(unique([...lastSelectedValues]));
-      }, 200);
+      setSelectedValues(unique([...stupidRef.current]));
     }
   };
 
   return (
-    <TagsInput
+    <MetabaseTagsInput
       {...props}
-      role="combobox"
       data={items}
-      value={visibleValues}
+      value={lastSelectedValues}
       searchValue={searchValue}
       placeholder={placeholder}
       splitChars={[",", "\t", "\n"]}
@@ -158,11 +146,53 @@ export function MultiAutocomplete({
       onFocus={handleFocus}
       onSearchChange={handleSearchChange}
       onPasteCapture={handlePaste}
+      onBlur={e => onBlur?.(e)}
       rightSection={rightSection ?? (showInfoIcon ? infoIcon : null)}
+      acceptValueOnBlur
+      role="combobox"
+      nothingFoundMessage={nothingFoundMessage}
+      comboboxProps={{
+        ...props.comboboxProps,
+        styles: {
+          empty: {
+            padding: "1.5rem 0.5rem",
+            color: "var(--mb-color-text-light)",
+          },
+        },
+      }}
     />
   );
 }
 
 function defaultShouldCreate(query: string) {
   return query.trim().length > 0;
+}
+
+function getSelectItem(item: string | ComboboxItem): ComboboxItem {
+  if (typeof item === "string") {
+    return { value: item, label: item };
+  }
+
+  if (!item.label) {
+    return { value: item.value, label: item.value?.toString() ?? "" };
+  }
+
+  return item;
+}
+
+function getAvailableSelectItems(
+  data: ReadonlyArray<string | ComboboxItem>,
+  selectedValues: string[],
+) {
+  const all = [...data, ...selectedValues].map(getSelectItem);
+  const seen = new Set();
+
+  // Deduplicate items based on value
+  return all.filter(function (option) {
+    if (seen.has(option.value)) {
+      return false;
+    }
+    seen.add(option.value);
+    return true;
+  });
 }
