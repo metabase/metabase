@@ -34,11 +34,10 @@ describe("scenarios > question > native", () => {
   });
 
   it("lets you create and run a SQL question", () => {
-    H.openNativeEditor();
-    cy.realType("select count(*) from orders");
-    runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("18,760");
+    H.startNewNativeQuestion();
+    H.focusNativeEditor().realType("select count(*) from ORDERS");
+    H.runNativeQuery();
+    cy.findByTestId("TableInteractive-root").findByText("18,760");
   });
 
   it("should suggest the currently viewed collection when saving question if the user has not recently visited a dashboard", () => {
@@ -87,46 +86,46 @@ describe("scenarios > question > native", () => {
   });
 
   it("displays an error", { tags: "@flaky" }, () => {
-    H.openNativeEditor();
-    cy.realType("select * from not_a_table");
-    runQuery();
+    H.startNewNativeQuestion();
+    H.focusNativeEditor().realType("select * from not_a_table");
+    H.runNativeQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
   it("displays an error when running selected text", { tags: "@flaky" }, () => {
-    H.openNativeEditor();
-    cy.realType("select * from orders");
+    H.startNewNativeQuestion();
+    H.focusNativeEditor().realType("select * from orders");
     // move left three
     Cypress._.range(3).forEach(() => cy.realPress("ArrowLeft"));
     // highlight back to the front
     Cypress._.range(19).forEach(() => cy.realPress(["Shift", "ArrowLeft"]));
-    runQuery();
+    H.runNativeQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "ORD" not found');
   });
 
   it("should handle template tags", { tags: "@flaky" }, () => {
-    H.openNativeEditor();
-    cy.realType(
+    H.startNewNativeQuestion();
+    H.focusNativeEditor().realType(
       `select * from PRODUCTS where RATING > ${DOUBLE_LEFT_BRACKET}Stars}}`,
     );
     cy.get("input[placeholder*='Stars']").type("3");
-    runQuery();
+    H.runNativeQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 168 rows");
   });
 
   it("should modify parameters accordingly when tags are modified", () => {
-    H.openNativeEditor();
-    cy.realType(
+    H.startNewNativeQuestion();
+    H.focusNativeEditor().realType(
       `select * from PRODUCTS where CATEGORY = ${DOUBLE_LEFT_BRACKET}cat}}`,
     );
     cy.findByTestId("sidebar-right")
       .findByText("Always require a value")
       .click();
     cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
-    runQuery();
+    H.runNativeQuery();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
@@ -148,9 +147,9 @@ describe("scenarios > question > native", () => {
   });
 
   it("can save a question with no rows", { tags: "@flaky" }, () => {
-    H.openNativeEditor();
-    cy.realType("select * from people where false");
-    runQuery();
+    H.startNewNativeQuestion();
+    H.focusNativeEditor().realType("select * from people where false");
+    H.runNativeQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("No results!");
     cy.icon("contract").click();
@@ -254,14 +253,14 @@ describe("scenarios > question > native", () => {
   );
 
   it("should recognize template tags and save them as parameters", () => {
-    H.openNativeEditor();
-    cy.realType(
+    H.startNewNativeQuestion();
+    H.focusNativeEditor().realType(
       `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}cat}} and RATING >= ${DOUBLE_LEFT_BRACKET}stars}}`,
     );
     cy.get("input[placeholder*='Cat']").type("Gizmo");
     cy.get("input[placeholder*='Stars']").type("3");
 
-    runQuery();
+    H.runNativeQuery();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
@@ -311,8 +310,8 @@ describe("scenarios > question > native", () => {
   });
 
   it("should allow to preview a fully parameterized query", () => {
-    H.openNativeEditor();
-    cy.realType(
+    H.startNewNativeQuestion();
+    H.focusNativeEditor().realType(
       `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}category}}`,
     );
     cy.findByPlaceholderText("Category").type("Gadget");
@@ -453,7 +452,7 @@ describe("scenarios > native question > data reference sidebar", () => {
   });
 
   it("should show tables", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     referenceButton().click();
 
     sidebarHeaderTitle().should("have.text", "Sample Database");
@@ -511,7 +510,7 @@ describe("scenarios > native question > data reference sidebar", () => {
 
   describe("metrics", () => {
     it("should not show metrics when they are not defined on the selected table", () => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       referenceButton().click();
       sidebarHeaderTitle().should("have.text", "Sample Database");
 
@@ -524,7 +523,7 @@ describe("scenarios > native question > data reference sidebar", () => {
     it("should show metrics defined on tables", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
 
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       referenceButton().click();
       sidebarHeaderTitle().should("have.text", "Sample Database");
 
@@ -553,10 +552,3 @@ function sidebarHeaderTitle() {
 function dataReferenceSidebar() {
   return cy.findByTestId("sidebar-right");
 }
-
-const runQuery = () => {
-  cy.findByTestId("native-query-editor-container").within(() => {
-    cy.button("Get Answer").click();
-  });
-  cy.wait("@dataset");
-};
