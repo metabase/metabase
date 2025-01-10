@@ -12,7 +12,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { CollectionId, SearchResultId, TableId } from "metabase-types/api";
+import type { CardId, CollectionId, TableId } from "metabase-types/api";
 import { UploadMode } from "metabase-types/store/upload";
 
 import type { OnFileUpload } from "../types";
@@ -29,7 +29,7 @@ export type CollectionOrTableIdProps =
       uploadMode: UploadMode.append | UploadMode.replace;
       collectionId?: never;
       tableId: TableId;
-      modelId?: SearchResultId;
+      modelId?: CardId;
     };
 
 export function ModelUploadModal({
@@ -72,9 +72,15 @@ export function ModelUploadModal({
       const modelForTableId = uploadableModels.find(
         model => model.based_on_upload === Number(tableId),
       );
+      const modelId = modelForTableId?.id;
+
+      if (typeof modelId !== "number" && typeof modelId !== "undefined") {
+        return;
+      }
+
       return onUpload({
         tableId: Number(tableId),
-        modelId: modelForTableId?.id,
+        modelId,
         uploadMode: uploadMode,
       });
     }
