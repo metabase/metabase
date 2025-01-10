@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import {
+  type ComponentProps,
   type ComponentType,
   useCallback,
   useEffect,
@@ -24,6 +25,10 @@ import { ItemsTable } from "metabase/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/components/ItemsTable/utils";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import CS from "metabase/css/core/index.css";
+import {
+  EntityListLoaderRtkQuery,
+  type EntityListQueryResponse,
+} from "metabase/entities/containers/rtk-query";
 import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useSelector } from "metabase/lib/redux";
@@ -37,6 +42,7 @@ import type {
   CollectionItemModel,
 } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import { isObject } from "metabase-types/guards";
 
 import {
   CollectionEmptyContent,
@@ -94,6 +100,38 @@ const DefaultEmptyContentComponent = ({
     </CollectionEmptyContent>
   );
 };
+
+const isWrappedResponse = <Data extends object>(
+  value: unknown,
+): value is { data: Data; total: number } => {
+  return isObject(value) && typeof value.total === "number";
+};
+
+type EntityListLoaderRtkQueryProps = ComponentProps<
+  typeof EntityListLoaderRtkQuery<CollectionItem, CollectionItem>
+>;
+
+interface SearchListLoaderProps
+  extends Pick<
+    EntityListLoaderRtkQueryProps,
+    "loadingAndErrorWrapper" | "wrapped" | "onLoaded"
+  > {
+  children: EntityListLoaderRtkQueryProps["ComposedComponent"];
+  query: EntityListLoaderRtkQueryProps["entityQuery"];
+}
+
+const SearchListLoader = ({
+  children,
+  query,
+  ...props
+}: SearchListLoaderProps) => (
+  <EntityListLoaderRtkQuery
+    ComposedComponent={children}
+    entityType={Search.name}
+    entityQuery={query}
+    {...props}
+  />
+);
 
 export const CollectionItemsTable = ({
   collectionId,
@@ -160,20 +198,18 @@ export const CollectionItemsTable = ({
     ...unpinnedItemsSorting,
   };
 
-  const onSearchListLoaded = (result: {
-    payload: { metadata: { total: number } };
-  }) => {
-    // onLoaded returns a `payload` object with the data and metadata
-    if (result.payload?.metadata?.total) {
-      setTotal(result.payload.metadata.total);
+  const onSearchListLoaded = (
+    data: EntityListQueryResponse<CollectionItem[]>,
+  ) => {
+    if (isWrappedResponse(data)) {
+      setTotal(data.total);
     }
   };
 
   return (
-    <Search.ListLoader
+    <SearchListLoader
       query={unpinnedQuery}
       loadingAndErrorWrapper={false}
-      keepListWhileLoading
       wrapped
       onLoaded={onSearchListLoaded}
     >
@@ -181,7 +217,7 @@ export const CollectionItemsTable = ({
         list: unpinnedItems = [],
         loading: loadingUnpinnedItems,
       }: {
-        list: CollectionItem[];
+        list: CollectionItem[] | undefined;
         loading: boolean;
       }) => {
         const hasPagination: boolean = total ? total > pageSize : false;
@@ -242,6 +278,6 @@ export const CollectionItemsTable = ({
           </CollectionTable>
         );
       }}
-    </Search.ListLoader>
+    </SearchListLoader>
   );
 };
