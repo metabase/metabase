@@ -145,41 +145,43 @@ export const CollectionItemsTable = ({
 
   const showAllItems = isEmbeddingSdk || isRootTrashCollection(collection);
 
-  <CollectionItemsTableContent
-    bookmarks={bookmarks}
-    clear={clear}
-    collection={collection}
-    createBookmark={createBookmark}
-    databases={databases}
-    deleteBookmark={deleteBookmark}
-    EmptyContentComponent={EmptyContentComponent}
-    getIsSelected={getIsSelected}
-    handleCopy={handleCopy}
-    handleMove={handleMove}
-    hasPinnedItems={hasPinnedItems}
-    loadingPinnedItems={loadingPinnedItems}
-    page={page}
-    selected={selected}
-    selectOnlyTheseItems={selectOnlyTheseItems}
-    toggleItem={toggleItem}
-    total={total}
-    unpinnedItemsSorting={unpinnedItemsSorting}
-    unpinnedQuery={{
-      collection: collectionId,
-      models,
-      limit: pageSize,
-      offset: pageSize * page,
-      ...(showAllItems
-        ? { show_dashboard_questions: true }
-        : { pinned_state: "is_not_pinned" }),
-      ...unpinnedItemsSorting,
-    }}
-    visibleColumns={visibleColumns}
-    onClick={onClick}
-    onNextPage={handleNextPage}
-    onPreviousPage={handlePreviousPage}
-    onUnpinnedItemsSortingChange={handleUnpinnedItemsSortingChange}
-  />;
+  return (
+    <CollectionItemsTableContent
+      bookmarks={bookmarks}
+      clear={clear}
+      collection={collection}
+      createBookmark={createBookmark}
+      databases={databases}
+      deleteBookmark={deleteBookmark}
+      EmptyContentComponent={EmptyContentComponent}
+      getIsSelected={getIsSelected}
+      handleCopy={handleCopy}
+      handleMove={handleMove}
+      hasPinnedItems={hasPinnedItems}
+      loadingPinnedItems={loadingPinnedItems}
+      page={page}
+      selected={selected}
+      selectOnlyTheseItems={selectOnlyTheseItems}
+      toggleItem={toggleItem}
+      total={total}
+      unpinnedItemsSorting={unpinnedItemsSorting}
+      unpinnedQuery={{
+        collection: collectionId,
+        models,
+        limit: pageSize,
+        offset: pageSize * page,
+        ...(showAllItems
+          ? { show_dashboard_questions: true }
+          : { pinned_state: "is_not_pinned" }),
+        ...unpinnedItemsSorting,
+      }}
+      visibleColumns={visibleColumns}
+      onClick={onClick}
+      onNextPage={handleNextPage}
+      onPreviousPage={handlePreviousPage}
+      onUnpinnedItemsSortingChange={handleUnpinnedItemsSortingChange}
+    />
+  );
 };
 
 type CollectionItemsTableContentProps = CollectionItemsTableProps & {
