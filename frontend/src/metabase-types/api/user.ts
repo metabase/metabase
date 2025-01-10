@@ -115,11 +115,10 @@ export type UpdateUserRequest = {
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
 };
 
-// NOTE: remove silly value namespace/key from FE once we add a real feature
 export type UserKeyValue = {
-  namespace: "meow";
-  key: "meow";
-  value: string;
+  namespace: "user_acknowledgement";
+  key: string;
+  value: boolean;
 };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

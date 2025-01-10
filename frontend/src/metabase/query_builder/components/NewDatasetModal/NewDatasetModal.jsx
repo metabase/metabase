@@ -1,10 +1,12 @@
 import PropTypes from "prop-types";
+import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
+import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
 import { connect } from "metabase/lib/redux";
 import { turnQuestionIntoModel } from "metabase/query_builder/actions";
 import { Box, Text } from "metabase/ui";
@@ -21,10 +23,26 @@ const mapDispatchToProps = {
 };
 
 function NewDatasetModal({ turnQuestionIntoModel, onClose }) {
-  const onConfirm = () => {
+  const { value: acknowledged, setValue: setAcknowledged } = useUserKeyValue({
+    namespace: "user_acknowledgement",
+    key: "turn_into_model_modal",
+    defaultValue: false,
+  });
+
+  const onConfirm = useCallback(() => {
+    if (!acknowledged) {
+      setAcknowledged(true);
+    }
     turnQuestionIntoModel();
     onClose();
-  };
+  }, [acknowledged, setAcknowledged, turnQuestionIntoModel, onClose]);
+
+  // auto-confirm if this user has acknowledged this modal before
+  useEffect(() => {
+    if (acknowledged) {
+      onConfirm();
+    }
+  }, [acknowledged, onConfirm]);
 
   return (
     <ModalContent
