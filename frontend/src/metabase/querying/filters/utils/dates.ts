@@ -244,7 +244,7 @@ function getQuarterYearFilterClause(
   });
 }
 
-export function getDateFilterTitle(value: DateFilterValue) {
+export function formatDateFilter(value: DateFilterValue) {
   return match(value)
     .with(
       {
