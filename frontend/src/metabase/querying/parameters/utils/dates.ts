@@ -49,7 +49,7 @@ const SERIALIZERS: Serializer[] = [
     deserialize: match => {
       const year = parseInt(match[1]);
       const month = parseInt(match[2]);
-      if (isFinite(year) && isFinite(month)) {
+      if (isFinite(year) && month >= 1 && month <= 12) {
         return {
           type: "month",
           year,
@@ -70,7 +70,7 @@ const SERIALIZERS: Serializer[] = [
     deserialize: match => {
       const year = parseInt(match[2]);
       const quarter = parseInt(match[1]);
-      if (isFinite(year) && isFinite(quarter)) {
+      if (isFinite(year) && quarter >= 1 && quarter <= 4) {
         return {
           type: "quarter",
           year,
