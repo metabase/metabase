@@ -35,4 +35,4 @@
     (is (= 10 (count (u.str/random-string 10))))
     (is (= 20 (count (u.str/random-string 20))))
     (is (not (= (u.str/random-string 10)
-               (u.str/random-string 10))))))
+                (u.str/random-string 10))))))
