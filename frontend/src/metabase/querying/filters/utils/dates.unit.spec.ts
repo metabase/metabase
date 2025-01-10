@@ -22,6 +22,35 @@ describe("getDateFilterClause", () => {
       displayName: "Created At is today",
     },
     {
+      value: { type: "relative", value: -2, unit: "year" },
+      displayName: "Created At is in the previous 2 years",
+    },
+    {
+      value: {
+        type: "relative",
+        value: -2,
+        unit: "year",
+        offsetValue: -1,
+        offsetUnit: "year",
+      },
+      displayName: "Created At is in the previous 2 years, starting 1 year ago",
+    },
+    {
+      value: { type: "relative", value: 4, unit: "month" },
+      displayName: "Created At is in the next 4 months",
+    },
+    {
+      value: {
+        type: "relative",
+        value: 4,
+        unit: "month",
+        offsetValue: 2,
+        offsetUnit: "quarter",
+      },
+      displayName:
+        "Created At is in the next 4 months, starting 2 quarters from now",
+    },
+    {
       value: { type: "month", year: 2024, month: 1 },
       displayName: "Created At is Jan 1–31, 2024",
     },
