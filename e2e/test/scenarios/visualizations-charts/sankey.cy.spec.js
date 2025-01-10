@@ -53,7 +53,7 @@ describe("scenarios > visualizations > sankey", () => {
     H.echartsContainer().findByText("Social Media");
 
     // Edit viz settings
-    H.openVizSettingsSidebar();
+    H.openVizSettingsSidebar({ isSidebarOpen: true });
     cy.findByTestId("chartsettings-sidebar")
       .as("settings-sidebar")
       .findByText("Display")
