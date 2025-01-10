@@ -586,7 +586,7 @@
     ;; c) their personal collection and its descendants
     :from [(if is-superuser?
              [:collection :c]
-             [{:union-all (keep identity [{:select [:c.id :c.location]
+             [{:union-all (keep identity [{:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
                                            :from   [[:collection :c]]
                                            :join   [[:permissions :p]
                                                     [:= :c.id :p.collection_id]
@@ -599,12 +599,12 @@
                                                      [:= :p.perm_value "read-and-write"]
                                                      (when (= :read (:permission-level visibility-config))
                                                        [:= :p.perm_value "read"])]]}
-                                          {:select [:c.id :c.location]
+                                          {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
                                            :from   [[:collection :c]]
                                            :where  [:= :type "trash"]}
                                           (when-let [personal-collection-and-descendant-ids
                                                      (seq (user->personal-collection-and-descendant-ids current-user-id))]
-                                            {:select [:c.id :c.location]
+                                            {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
                                              :from   [[:collection :c]]
                                              :where  [:in :id personal-collection-and-descendant-ids]})])}
               :c])]
@@ -612,33 +612,33 @@
     :where [:and
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
-              [:not= (trash-collection-id) :id])
+              [:not= (trash-collection-id) :c.id])
 
             ;; hiding archived items when desired...
             (when (= :exclude (:include-archived-items visibility-config))
-              [:= :archived false])
+              [:= :c.archived false])
 
             ;; (or showing them, if that's what you want)
             (when (= :only (:include-archived-items visibility-config))
               [:or
-               [:= :archived true]
+               [:= :c.archived true]
                ;; the trash collection is included when viewing archived-only
                [:= :id (trash-collection-id)]])
 
             ;; excluding things outside of the `archive_operation_id` you wanted...
             (when-let [op-id (:archive-operation-id visibility-config)]
               [:or
-               [:= :archive_operation_id op-id]
+               [:= :c.archive_operation_id op-id]
                ;; the trash collection is part of every `archive_operation`
                [:= :id (trash-collection-id)]])
 
             ;; or finally, restricting the result set to effective children of the parent you passed in.
             (when-let [parent-coll (:effective-child-of visibility-config)]
               (if (is-trash? parent-coll)
-                [:= :archived_directly true]
+                [:= :c.archived_directly true]
                 [:and
                  ;; an effective child is a descendant of the parent collection
-                 [:like :location (str (children-location parent-coll) "%")]
+                 [:like :c.location (str (children-location parent-coll) "%")]
                  ;; but NOT a child of any OTHER visible collection.
                  [:not [:exists {:select 1
                                  :from [[:collection :c2]]
