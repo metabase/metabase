@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
-import { P, match } from "ts-pattern";
-import { t } from "ttag";
+import { match } from "ts-pattern";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   DATE_PICKER_EXTRACTION_UNITS,
@@ -20,6 +20,7 @@ import type {
   RelativeDatePickerValue,
   SpecificDatePickerValue,
 } from "metabase/querying/filters/types";
+import type { ExcludeDateFilterUnit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 
 export function isDatePickerOperator(
@@ -247,22 +248,80 @@ function getQuarterYearFilterClause(
 export function formatDateFilter(value: DateFilterValue) {
   return match(value)
     .with(
-      {
-        type: "relative",
-        offsetValue: P.nonNullable,
-        offsetUnit: P.nonNullable,
-      },
-      value => {
-        const prefix = Lib.describeTemporalInterval(value.value, value.unit);
-        const suffix = Lib.describeRelativeDatetime(
-          value.offsetValue,
-          value.offsetUnit,
-        );
-        return t`${prefix}, starting ${suffix}`;
+      { type: "specific", operator: "=" },
+      ({ values: [value], hasTime }) => {
+        return formatDate(value, hasTime);
       },
     )
-    .with({ type: "relative" }, value => {
-      return Lib.describeTemporalInterval(value.value, value.unit);
+    .with(
+      { type: "specific", operator: "<" },
+      ({ values: [value], hasTime }) => {
+        return t`Before ${formatDate(value, hasTime)}`;
+      },
+    )
+    .with(
+      { type: "specific", operator: ">" },
+      ({ values: [value], hasTime }) => {
+        return t`After ${formatDate(value, hasTime)}`;
+      },
+    )
+    .with(
+      { type: "specific", operator: "between" },
+      ({ values: [start, end], hasTime }) => {
+        return `${formatDate(start, hasTime)} - ${formatDate(end, hasTime)}`;
+      },
+    )
+    .with(
+      {
+        type: "relative",
+      },
+      ({ value, unit, offsetValue, offsetUnit }) => {
+        if (offsetValue != null && offsetUnit != null) {
+          const prefix = Lib.describeTemporalInterval(value, unit);
+          const suffix = Lib.describeRelativeDatetime(offsetValue, offsetUnit);
+          return t`${prefix}, starting ${suffix}`;
+        } else {
+          return Lib.describeTemporalInterval(value, unit);
+        }
+      },
+    )
+    .with({ type: "exclude", operator: "!=" }, ({ values, unit }) => {
+      if (values.length <= 2 && unit != null) {
+        const parts = values.map(value => formatExcludeUnit(value, unit));
+        return t`Exclude ${parts.join(", ")}`;
+      } else {
+        const count = values.length;
+        return ngettext(
+          msgid`Exclude ${count} selection`,
+          msgid`Exclude ${count} selections`,
+          count,
+        );
+      }
+    })
+    .with({ type: "exclude", operator: "is-null" }, () => {
+      return t`Is empty`;
+    })
+    .with({ type: "exclude", operator: "not-null" }, () => {
+      return t`Not empty`;
     })
     .otherwise(() => "");
+}
+
+function formatDate(date: Date, hasTime: boolean) {
+  return hasTime
+    ? dayjs(date).format("MMMM D, YYYY hh:mm A")
+    : dayjs(date).format("MMMM D, YYYY");
+}
+
+function formatExcludeUnit(value: number, unit: ExcludeDateFilterUnit) {
+  switch (unit) {
+    case "hour-of-day":
+      return dayjs().hour(value).format("h A");
+    case "day-of-week":
+      return dayjs().isoWeekday(value).format("dddd");
+    case "month-of-year":
+      return dayjs().isoWeekday(value).format("MMMM");
+    case "quarter-of-year":
+      return dayjs().isoWeekday(value).format("[Q]Q");
+  }
 }
