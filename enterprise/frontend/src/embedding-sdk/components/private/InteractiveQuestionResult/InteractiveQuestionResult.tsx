@@ -2,7 +2,7 @@ import { Code } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
-import { jt } from "ttag";
+import { jt, t } from "ttag";
 
 import {
   SdkError,
@@ -11,7 +11,7 @@ import {
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { Box, Divider, Group, Stack } from "metabase/ui";
+import { Box, Divider, Group, PopoverBackButton, Stack } from "metabase/ui";
 
 import {
   FlexibleSizeComponent,
@@ -112,20 +112,34 @@ export const InteractiveQuestionResult = ({
           style={{ borderRadius: "0.5rem" }}
         >
           <Group spacing="xs">
-            {withChartTypeSelector && (
+            {isEditorOpen ? (
+              <PopoverBackButton
+                onClick={toggleEditor}
+                color="brand"
+                fz="md"
+                ml="sm"
+              >
+                {t`Back to visualization`}
+              </PopoverBackButton>
+            ) : (
               <>
-                <InteractiveQuestion.ChartTypeDropdown />
-                <Divider
-                  mx="xs"
-                  orientation="vertical"
-                  // we have to do this for now because Mantine's divider overrides this color no matter what
-                  color="var(--mb-color-border) !important"
-                />
+                {withChartTypeSelector && (
+                  <>
+                    <InteractiveQuestion.ChartTypeDropdown />
+                    <InteractiveQuestion.QuestionSettingsDropdown />
+                    <Divider
+                      mx="xs"
+                      orientation="vertical"
+                      // we have to do this for now because Mantine's divider overrides this color no matter what
+                      color="var(--mb-color-border) !important"
+                    />
+                  </>
+                )}
+                <InteractiveQuestion.FilterDropdown />
+                <InteractiveQuestion.SummarizeDropdown />
+                <InteractiveQuestion.BreakoutDropdown />
               </>
             )}
-            <InteractiveQuestion.FilterDropdown />
-            <InteractiveQuestion.SummarizeDropdown />
-            <InteractiveQuestion.BreakoutDropdown />
           </Group>
           <InteractiveQuestion.EditorButton
             isOpen={isEditorOpen}
