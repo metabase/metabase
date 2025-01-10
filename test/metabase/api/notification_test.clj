@@ -780,7 +780,7 @@
                              (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :recipients))]
       (testing "creator can unsubscribe themselves"
         (unsbuscribe
-         :crowberto 204
+         :crowberto 200
          (fn [noti]
            (is (=?
                 [{:type    :notification-recipient/user
@@ -789,7 +789,7 @@
 
       (testing "recipient can unsubscribe themselves"
         (unsbuscribe
-         :lucky 204
+         :lucky 200
          (fn [noti]
            (is (=?
                 [{:type    :notification-recipient/user
@@ -826,7 +826,7 @@
                                                                                    :recipients   [{:type    :notification-recipient/user
                                                                                                    :user_id (mt/user->id :lucky)}]}]}]
               ;; Unsubscribe from first notification
-              (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))
+              (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))
 
               ;; Check first notification has no recipients
               ;; First notification should have no recipients
@@ -848,7 +848,7 @@
                                                                                                      :user_id (mt/user->id :lucky)}]}]}]
           (let [[email] (notification.tu/with-mock-inbox-email!
                           (with-send-messages-sync!
-                            (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
+                            (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))))
                 a-href (format "<a href=\"https://metabase.com/testmb/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
             (testing "sends unsubscribe confirmation email"
@@ -868,7 +868,7 @@
                        :handlers     [{:channel_type "channel/email"
                                        :recipients   [{:type    :notification-recipient/user
                                                        :user_id (mt/user->id :lucky)}]}]}]
-        (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" (:id notification)))
+        (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" (:id notification)))
         (testing "unsubscribing from a notification publishes an event/notification-unsubscribe event"
           (is (= {:topic    :notification-unsubscribe
                   :user_id  (mt/user->id :lucky)

@@ -183,6 +183,6 @@
            (update <> :payload t2/hydrate :card)
            [(:email @api/*current-user*)])))
       (events/publish-event! :event/notification-unsubscribe {:object {:id id}
-                                                                :user-id api/*current-user-id*}))))
+                                                              :user-id api/*current-user-id*}))))
 
 (api/define-routes)
