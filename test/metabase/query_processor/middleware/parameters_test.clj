@@ -11,8 +11,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.store :as qp.store]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [metabase.test :as mt])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -324,22 +323,22 @@
                             :snippet-id   snippet-id}])))
 
 (deftest expand-multiple-snippets-test
-  (t2.with-temp/with-temp [:model/NativeQuerySnippet select-snippet {:content     "name, price"
-                                                                     :creator_id  (mt/user->id :rasta)
-                                                                     :description "Fields to SELECT"
-                                                                     :name        "Venue fields"}
-                           :model/NativeQuerySnippet where-snippet  {:content     "price > 2"
-                                                                     :creator_id  (mt/user->id :rasta)
-                                                                     :description "Meant for use in WHERE clause"
-                                                                     :name        "Filter: expensive venues"}
-                           :model/Card card {:dataset_query
-                                             (mt/native-query
-                                               {:query         (str "SELECT {{ Venue fields }} "
-                                                                    "FROM venues "
-                                                                    "WHERE {{ Filter: expensive venues }}")
-                                                :template-tags (snippet-template-tags
-                                                                {"Venue fields"             (:id select-snippet)
-                                                                 "Filter: expensive venues" (:id where-snippet)})})}]
+  (mt/with-temp [:model/NativeQuerySnippet select-snippet {:content     "name, price"
+                                                           :creator_id  (mt/user->id :rasta)
+                                                           :description "Fields to SELECT"
+                                                           :name        "Venue fields"}
+                 :model/NativeQuerySnippet where-snippet  {:content     "price > 2"
+                                                           :creator_id  (mt/user->id :rasta)
+                                                           :description "Meant for use in WHERE clause"
+                                                           :name        "Filter: expensive venues"}
+                 :model/Card card {:dataset_query
+                                   (mt/native-query
+                                     {:query         (str "SELECT {{ Venue fields }} "
+                                                          "FROM venues "
+                                                          "WHERE {{ Filter: expensive venues }}")
+                                      :template-tags (snippet-template-tags
+                                                      {"Venue fields"             (:id select-snippet)
+                                                       "Filter: expensive venues" (:id where-snippet)})})}]
     (qp.store/with-metadata-provider (mt/id)
       (testing "multiple snippets are correctly expanded in parent query"
         (is (= (mt/native-query

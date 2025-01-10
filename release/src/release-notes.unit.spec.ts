@@ -86,13 +86,13 @@ describe("Release Notes", () => {
         "### Under the Hood\n\n**Administration**\n\n- Issue That Users Don't Care About (#4)",
       );
 
-      expect(notes).toContain("metabase/metabase-enterprise:v1.2.3");
-      expect(notes).toContain("metabase/metabase:v0.2.3");
+      expect(notes).toContain("metabase/metabase-enterprise:v1.2.3.x");
+      expect(notes).toContain("metabase/metabase:v0.2.3.x");
       expect(notes).toContain(
-        "https://downloads.metabase.com/enterprise/v1.2.3/metabase.jar",
+        "https://downloads.metabase.com/enterprise/v1.2.3.x/metabase.jar",
       );
       expect(notes).toContain(
-        "https://downloads.metabase.com/v0.2.3/metabase.jar",
+        "https://downloads.metabase.com/v0.2.3.x/metabase.jar",
       );
     });
   });

@@ -5,8 +5,7 @@
    [metabase.query-analysis :as query-analysis]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (def ^:private query-table-keys
   [:card_id :schema :table :table_id])
@@ -38,8 +37,8 @@
     (let [table-id (mt/id :orders)
           tax-id   (mt/id :orders :tax)
           total-id (mt/id :orders :total)]
-      (t2.with-temp/with-temp [:model/Card {card-id :id}
-                               {:dataset_query (mt/native-query {:query "SELECT NOT_TAX, TOTAL FROM orders"})}]
+      (mt/with-temp [:model/Card {card-id :id}
+                     {:dataset_query (mt/native-query {:query "SELECT NOT_TAX, TOTAL FROM orders"})}]
         (try
           (f {:card-id  card-id
               :tax-id   tax-id

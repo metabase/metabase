@@ -2,13 +2,13 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
-   [malli.core :as mc]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -16,7 +16,7 @@
   (let [query   lib.tu/venues-query
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
-    (is (not (mc/explain [:sequential @#'lib.column-group/ColumnGroup] groups)))
+    (is (not (mr/explain [:sequential @#'lib.column-group/ColumnGroup] groups)))
     (is (=? [{::lib.column-group/group-type :group-type/main
               :lib/type                     :metadata/column-group
               ::lib.column-group/columns    [{:name "ID", :display-name "ID"}

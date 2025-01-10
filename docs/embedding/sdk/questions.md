@@ -68,7 +68,7 @@ export default function App() {
 | entityTypeFilter      | string array; options include "table", "question", "model", "metric" | (optional) An array that specifies which entity types are available in the data picker                                                                                                                                                                                                                             |
 | isSaveEnabled         | boolean                                                              | (optional) Whether people can save the question.                                                                                                                                                                                                                                                                   |
 | withResetButton       | boolean                                                              | (optional, default: `true`) Determines whether a reset button is displayed. Only relevant when using the default layout                                                                                                                                                                                            |
-| withChartTypeSelector | boolean                                                              | (optional, default: `true`) Determines whether the chart type selector is shown. Only relevant when using the default layout.                                                                                                                                                                                      |
+| withChartTypeSelector | boolean                                                              | (optional, default: `true`) Determines whether the chart type selector and corresponding settings button are shown. Only relevant when using the default layout.                                                                                                                                                   |
 | title                 | boolean or string or `ReactNode` or `() => ReactNode`                | (optional) Determines whether the question title is displayed, and allows a custom title to be displayed instead of the default question title. Shown by default. Only Only applicable to interactive questions when using the default layout.                                                                     |
 | onBeforeSave          | `() => void`                                                         | (optional) A callback function that triggers before saving. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                                             |
 | onSave                | `() => void`                                                         | (optional) A callback function that triggers when a user saves the question. Only relevant when `isSaveEnabled = true`.                                                                                                                                                                                            |
@@ -139,24 +139,25 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 
 These components are available via the `InteractiveQuestion` namespace (e.g., `<InteractiveQuestion.Filter />`).
 
-| Component               | Info                                                                                                                         |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
-| `Filter`                | A set of badges for adding, viewing, and editing the filters of the current question                                         |
-| `FilterPicker`          | Picker for adding a new filter to the question                                                                               |
-| `FilterDropdown`        | A button which has a dropdown for adding, viewing, and editing the filters of the current question                           |
-| `ResetButton`           | The button used to reset the question after the question has been modified with filters/aggregations/etc                     |
-| `Title`                 | The question's title                                                                                                         |
-| `SaveButton`            | Button for saving the question.                                                                                              |
-| `Breakout`              | A set of badges for adding, viewing, and editing the groupings of the current question                                       |
-| `BreakoutDropdown`      | A button which has a dropdown for adding, viewing, and editing the groupings of the current question                         |
-| `Summarize`             | A set of badges for adding, viewing, and editing the groupings of the current question                                       |
-| `SummarizeDropdown`     | A button which has a dropdown for adding, viewing, and editing the groupings of the current question                         |
-| `Notebook`              | The Notebook editor that allows for more filter, aggregation, and custom steps                                               |
-| `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
-| `QuestionVisualization` | The chart visualization for the question                                                                                     |
-| `QuestionSettings`      | The settings for the current visualization                                                                                   |
-| `ChartTypeDropdown`     | A dropdown containing the possible visualization options for the current question                                            |
+| Component                  | Info                                                                                                                         |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `BackButton`               | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
+| `Filter`                   | A set of badges for adding, viewing, and editing the filters of the current question                                         |
+| `FilterPicker`             | Picker for adding a new filter to the question                                                                               |
+| `FilterDropdown`           | A button which has a dropdown for adding, viewing, and editing the filters of the current question                           |
+| `ResetButton`              | The button used to reset the question after the question has been modified with filters/aggregations/etc                     |
+| `Title`                    | The question's title                                                                                                         |
+| `SaveButton`               | Button for saving the question.                                                                                              |
+| `Breakout`                 | A set of badges for adding, viewing, and editing the groupings of the current question                                       |
+| `BreakoutDropdown`         | A button which has a dropdown for adding, viewing, and editing the groupings of the current question                         |
+| `Summarize`                | A set of badges for adding, viewing, and editing the groupings of the current question                                       |
+| `SummarizeDropdown`        | A button which has a dropdown for adding, viewing, and editing the groupings of the current question                         |
+| `Notebook`                 | The Notebook editor that allows for more filter, aggregation, and custom steps                                               |
+| `NotebookButton`           | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
+| `QuestionVisualization`    | The chart visualization for the question                                                                                     |
+| `QuestionSettings`         | The settings for the current visualization                                                                                   |
+| `QuestionSettingsDropdown` | A settings button that contains the `QuestionSettings` component in the dropdown                                             |
+| `ChartTypeDropdown`        | A dropdown containing the possible visualization options for the current question                                            |
 
 ## Interactive question plugins
 
