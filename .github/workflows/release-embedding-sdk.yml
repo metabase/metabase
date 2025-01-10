@@ -211,6 +211,9 @@ jobs:
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
+          git fetch origin
+          git branch -D update-sdk-version-${{ env.sdk_version }} || true
+          git push origin --delete update-sdk-version-${{ env.sdk_version }} || true
           git checkout -b update-sdk-version-${{ env.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
           git push origin HEAD
