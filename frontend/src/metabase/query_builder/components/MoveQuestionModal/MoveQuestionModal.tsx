@@ -63,54 +63,61 @@ export const MoveQuestionModal = ({
             collection_id: canonicalCollectionId(destination.id),
           };
 
-    try {
-      const cardId = question.id();
-      const updatedCard = await updateQuestion({
-        id: cardId,
-        delete_old_dashcards: deleteOldDashcards,
-        ...update,
-      }).unwrap();
+    await updateQuestion({
+      id: question.id(),
+      delete_old_dashcards: deleteOldDashcards,
+      ...update,
+    })
+      .unwrap()
+      .then(async updatedCard => {
+        // HACK: entity framework would previously keep the qb in sync
+        // with changing where the question lived
+        dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
+        dispatch({
+          type: INJECT_RTK_QUERY_QUESTION_VALUE,
+          payload: updatedCard,
+        });
 
-      // HACK: entity framework would previously keep the qb in sync
-      // with changing where the question lived
-      dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
-      dispatch({
-        type: INJECT_RTK_QUERY_QUESTION_VALUE,
-        payload: updatedCard,
-      });
-
-      dispatch(
-        addUndo({
-          message: (
-            <QuestionMoveToast destination={destination} question={question} />
-          ),
-          undo: false,
-        }),
-      );
-
-      const dashboard = await dispatch(
-        getDashboard.initiate({ id: destination.id }),
-      )
-        .unwrap()
-        .catch(() => undefined); // we can fallback to navigation w/o this info
-      const dashcard = dashboard?.dashcards.find(c => c.card_id === cardId);
-
-      if (!dashboard || !dashcard) {
-        console.warn(
-          "Could not fetch dashcard position on dashboard, falling back to navigation without auto-scrolling",
+        dispatch(
+          addUndo({
+            message: (
+              <QuestionMoveToast
+                destination={destination}
+                question={question}
+              />
+            ),
+            undo: false,
+          }),
         );
-      }
 
-      const url = Urls.dashboard(
-        { id: destination.id, name: "", ...dashboard },
-        { editMode: true, scrollToDashcard: dashcard?.id },
-      );
-      dispatch(push(url));
+        if (destination.model === "dashboard") {
+          const dashboard = await dispatch(
+            getDashboard.initiate({ id: destination.id }),
+          )
+            .unwrap()
+            .catch(() => undefined); // we can fallback to navigation w/o this info
+          const dashcard = dashboard?.dashcards.find(
+            c => c.card_id === question.id(),
+          );
 
-      onClose();
-    } catch (e) {
-      setErrorMessage(getResponseErrorMessage(e));
-    }
+          if (!dashboard || !dashcard) {
+            console.warn(
+              "Could not fetch dashcard position on dashboard, falling back to navigation without auto-scrolling",
+            );
+          }
+
+          const url = Urls.dashboard(
+            { id: destination.id, name: "", ...dashboard },
+            { editMode: true, scrollToDashcard: dashcard?.id },
+          );
+          dispatch(push(url));
+        }
+
+        onClose();
+      })
+      .catch(e => {
+        setErrorMessage(getResponseErrorMessage(e));
+      });
   };
 
   const handleMoveConfirm = () => {
