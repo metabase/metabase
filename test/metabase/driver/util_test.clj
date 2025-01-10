@@ -224,11 +224,6 @@
            #"Cycle detected"
            (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
 
-(deftest ^:parallel decode-uploaded-test
-  (are [expected base64] (= expected (String. (driver.u/decode-uploaded base64) "UTF-8"))
-    "hi" "aGk="
-    "hi" "data:application/octet-stream;base64,aGk="))
-
 (deftest ^:parallel semantic-version-gte-test
   (testing "semantic-version-gte works as expected"
     (are [x y] (driver.u/semantic-version-gte x y)

@@ -85,10 +85,7 @@
                           :keystore-options "uploaded"}
                          "keystore"))
           "psszt!"
-          (let [encoder (java.util.Base64/getEncoder)]
-            (str "data:application/octet-stream;base64,"
-                 (.encodeToString encoder
-                                  (.getBytes "psszt!" "UTF-8"))))))))
+          (mt/bytes->base64-data-uri (.getBytes "psszt!" "UTF-8"))))))
 
   (testing "get-secret-string from local file"
     (mt/with-temp-file [file-db "-1-key.pem"

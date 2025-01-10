@@ -1457,6 +1457,11 @@
   (let [f   (File. file-path)]
     (file->bytes f)))
 
+(defn bytes->base64-data-uri
+  "Encodes bytes in base64 and wraps with data-uri similar to mimic browser uploads."
+  [^bytes bs]
+  (str "data:application/octet-stream;base64," (u/encode-base64-bytes bs)))
+
 (defn works-after
   "Returns a function which works as `f` except that on the first `n` calls an
   exception is thrown instead.

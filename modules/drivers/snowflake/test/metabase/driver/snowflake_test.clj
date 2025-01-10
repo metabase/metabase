@@ -383,10 +383,6 @@
         (re-find #"(?s)(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
     (str header (str/replace body #"\s+|\\n" "\n") footer)))
 
-(defn- ->data-uri [private-key-value]
-  (str "data:application/octet-stream;base64,"
-       (u/encode-base64 private-key-value)))
-
 (deftest can-change-from-password-test
   (mt/test-driver
     :snowflake
@@ -445,9 +441,9 @@
                 (spit pk-path pk-key)
                 (doseq [to-merge [{:private-key-value pk-key                      ;; uploaded string
                                    :private-key-options "uploaded"}
-                                  {:private-key-value (->data-uri pk-key)
+                                  {:private-key-value (mt/bytes->base64-data-uri pk-key)
                                    :private-key-options "uploaded"}               ;; uploaded byte array
-                                  {:private-key-value (->data-uri pk-key)}   ;; uploaded byte array without private-key-options
+                                  {:private-key-value (mt/bytes->base64-data-uri pk-key)}   ;; uploaded byte array without private-key-options
                                   {:private-key-id secret-id}]]              ;; local file path
                   (let [details (-> (:details (mt/db))
                                     (dissoc :password)
@@ -474,7 +470,7 @@
                                        :advanced-options    false
                                        :schema-filters-type "all"
                                        :account             account
-                                       :private-key-value   (->data-uri private-key-value)
+                                       :private-key-value   (mt/bytes->base64-data-uri private-key-value)
                                        :tunnel-enabled      false
                                        :user                user}}]
      ;; TODO: We should make those message returned when role is incorrect more descriptive!
@@ -533,7 +529,7 @@
                                        :advanced-options    false
                                        :schema-filters-type "all"
                                        :account             account
-                                       :private-key-value   (->data-uri private-key-value)
+                                       :private-key-value   (mt/bytes->base64-data-uri private-key-value)
                                        :tunnel-enabled      false
                                        :user                user}}]
       (testing "Database can be created using _default_ `nil` role"

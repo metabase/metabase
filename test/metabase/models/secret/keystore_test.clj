@@ -5,7 +5,6 @@
    [metabase.api.common :as api]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayOutputStream)
@@ -64,8 +63,7 @@
           (mt/with-temp [:model/Database {:keys [details] :as database} {:engine  :secret-test-driver
                                                                          :name    "Test DB with keystore"
                                                                          :details {:host                    "localhost"
-                                                                                   :keystore-value          (str "data:application/octet-stream;base64,"
-                                                                                                                 (u/encode-base64-bytes ks-bytes))
+                                                                                   :keystore-value          (mt/bytes->base64-data-uri ks-bytes)
                                                                                    :keystore-password-value ks-pw}}]
             (is (some? database))
             (is (not (contains? details :keystore-value)) "keystore-value was removed from details")

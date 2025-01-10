@@ -488,11 +488,6 @@
   "A regex to match data-URL-encoded files uploaded via the frontend"
   #"^data:[^;]+;base64,")
 
-(defn decode-uploaded
-  "Returns bytes from encoded frontend file upload string."
-  ^bytes [^String uploaded-data]
-  (u/decode-base64-to-bytes (str/replace uploaded-data data-url-pattern "")))
-
 (def official-drivers
   "The set of all official drivers"
   #{"athena"

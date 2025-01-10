@@ -403,9 +403,10 @@
                                          [(-> (assoc
                                                ssl-details
                                                :ssl-truststore-value
-                                               (str "data:application/octet-stream:base64,"
-                                                    (u/encode-base64-bytes
-                                                      (mt/file-path->bytes (:ssl-truststore-path ssl-details))))
+                                               (-> ssl-details
+                                                   :ssl-truststore-path
+                                                   mt/file-path->bytes
+                                                   mt/bytes->base64-data-uri)
                                                :ssl-truststore-options
                                                "uploaded")
                                               (dissoc :ssl-truststore-path))
