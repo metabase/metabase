@@ -76,10 +76,6 @@ export function ModelUploadModal({
       );
       const modelId = modelForTableId?.id;
 
-      if (typeof modelId !== "number" && typeof modelId !== "undefined") {
-        return;
-      }
-
       return onUpload({
         tableId: Number(tableId),
         modelId,
