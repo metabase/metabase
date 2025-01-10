@@ -100,9 +100,10 @@ describe("scenarios > question > native", () => {
     Cypress._.range(3).forEach(() => cy.realPress("ArrowLeft"));
     // highlight back to the front
     Cypress._.range(19).forEach(() => cy.realPress(["Shift", "ArrowLeft"]));
-    H.runNativeQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains('Table "ORD" not found');
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    cy.findByTestId("query-visualization-root").findByText(
+      /Table "ORD" not found/i,
+    );
   });
 
   it("should handle template tags", { tags: "@flaky" }, () => {
