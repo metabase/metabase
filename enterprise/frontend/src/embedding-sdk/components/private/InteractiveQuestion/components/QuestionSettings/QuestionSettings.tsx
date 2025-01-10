@@ -11,9 +11,9 @@ import type { VisualizationSettings } from "metabase-types/api";
 import {
   type InteractiveQuestionContextType,
   useInteractiveQuestionContext,
-} from "../context";
+} from "../../context";
 
-export const QuestionSettingsContent = ({
+const QuestionSettingsContent = ({
   question,
   queryResults,
   updateQuestion,

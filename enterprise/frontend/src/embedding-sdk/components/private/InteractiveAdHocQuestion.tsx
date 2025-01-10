@@ -1,6 +1,6 @@
 import { type ReactNode, useMemo } from "react";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 
 import {
@@ -14,7 +14,7 @@ interface InteractiveAdHocQuestionProps {
   onNavigateBack: () => void;
   title: SdkQuestionTitleProps;
   height?: number;
-  plugins?: SdkPluginsConfig;
+  plugins?: MetabasePluginsConfig;
   children?: ReactNode;
 }
 

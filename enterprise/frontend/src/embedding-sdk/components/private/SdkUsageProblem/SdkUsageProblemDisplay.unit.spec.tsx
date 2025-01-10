@@ -12,7 +12,7 @@ import {
   createMockAuthProviderUriConfig,
 } from "embedding-sdk/test/mocks/config";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
-import type { SDKConfig } from "embedding-sdk/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -25,7 +25,7 @@ const TEST_USER = createMockUser();
 jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
 
 interface Options {
-  config: SDKConfig;
+  authConfig: MetabaseAuthConfig;
   hasEmbeddingFeature?: boolean;
 }
 
@@ -46,7 +46,7 @@ const setup = (options: Options) => {
   setupPropertiesEndpoints(settingValues);
 
   return renderWithProviders(<div>hello!</div>, {
-    sdkProviderProps: { config: options.config },
+    sdkProviderProps: { authConfig: options.authConfig },
     storeInitialState: state,
     mode: "sdk",
   });
@@ -58,7 +58,7 @@ const PROBLEM_INDICATOR_TEST_ID = "sdk-usage-problem-indicator";
 describe("SdkUsageProblemDisplay", () => {
   it("does not show an error when JWT is provided with a license", () => {
     setup({
-      config: createMockAuthProviderUriConfig(),
+      authConfig: createMockAuthProviderUriConfig(),
       hasEmbeddingFeature: true,
     });
 
@@ -69,7 +69,7 @@ describe("SdkUsageProblemDisplay", () => {
 
   it("shows an error when JWT is used without a license", async () => {
     setup({
-      config: createMockAuthProviderUriConfig(),
+      authConfig: createMockAuthProviderUriConfig(),
       hasEmbeddingFeature: false,
     });
 
@@ -88,7 +88,7 @@ describe("SdkUsageProblemDisplay", () => {
   it("shows a warning when API keys are used in localhost", async () => {
     expect(window.location.origin).toBe("http://localhost");
 
-    setup({ config: createMockApiKeyConfig(), hasEmbeddingFeature: true });
+    setup({ authConfig: createMockApiKeyConfig(), hasEmbeddingFeature: true });
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
@@ -108,7 +108,7 @@ describe("SdkUsageProblemDisplay", () => {
       .mockImplementation(() => false);
 
     setup({
-      config: createMockApiKeyConfig(),
+      authConfig: createMockApiKeyConfig(),
       hasEmbeddingFeature: true,
     });
 
@@ -129,7 +129,7 @@ describe("SdkUsageProblemDisplay", () => {
   it("shows an error when neither an Auth Provider URI or API keys are provided", async () => {
     setup({
       // @ts-expect-error - we're intentionally passing neither to simulate bad usage
-      config: { metabaseInstanceUrl: "http://localhost" },
+      authConfig: { metabaseInstanceUrl: "http://localhost" },
     });
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
@@ -144,7 +144,7 @@ describe("SdkUsageProblemDisplay", () => {
   it("shows an error when both an Auth Provider URI and API keys are provided", async () => {
     setup({
       // @ts-expect-error - we're intentionally passing both to simulate bad usage
-      config: {
+      authConfig: {
         apiKey: "TEST_API_KEY",
         metabaseInstanceUrl: "http://localhost",
         authProviderUri: "http://TEST_URI/sso/metabase",

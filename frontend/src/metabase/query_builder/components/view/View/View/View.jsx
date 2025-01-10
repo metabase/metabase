@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 
-import { connect } from "react-redux";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -13,6 +12,7 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
+import { connect } from "metabase/lib/redux";
 import {
   rememberLastUsedDatabase,
   setArchivedQuestion,

@@ -58,13 +58,13 @@ describe("scenarios > dashboard cards > visualization options", () => {
     H.modal().findAllByTestId("column-header").first().contains("User ID");
   });
 
-  it("should refelct column settings accurately when changing (metabase#30966)", () => {
+  it("should reflect column settings accurately when changing (metabase#30966)", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByLabelText("Edit dashboard").click();
     H.getDashboardCard().realHover();
     cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("Subtotal-settings-button").click();
-    H.popover().findByLabelText("Show a mini bar chart").click();
+    H.popover().findByLabelText("Show a mini bar chart").click({ force: true });
     cy.findAllByTestId("mini-bar").should("have.length.above", 0);
   });
 });

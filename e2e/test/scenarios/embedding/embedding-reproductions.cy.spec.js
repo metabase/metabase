@@ -1064,10 +1064,10 @@ H.describeEE("issue 8490", () => {
             filter: [
               "and",
               [
-                "time-interval",
+                "between",
                 ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
-                -2,
-                "month",
+                "2024-10-01",
+                "2024-12-01",
               ],
               [
                 "=",

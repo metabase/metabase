@@ -64,7 +64,7 @@ dashcards:
               target:
                 id: 6b3da96f
                 type: parameter
-          tabId: 1
+          tabId: ["DHMhMa1FYxiyIgM7_xdgR", "VLzpbzPlShrECFp-dG4pH"]
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
       '["name","name"]':
@@ -115,7 +115,7 @@ dashcards:
               target:
                 id: 6b3da96f
                 type: parameter
-          tabId: 1
+          tabId: ["DHMhMa1FYxiyIgM7_xdgR", "VLzpbzPlShrECFp-dG4pH"]
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
   serdes/meta:

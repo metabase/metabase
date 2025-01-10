@@ -1,4 +1,4 @@
-import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import type { MetabasePluginsConfig } from "embedding-sdk/lib/plugins";
 import type Question from "metabase-lib/v1/Question";
 
 import { Mode } from "../Mode";
@@ -13,7 +13,7 @@ export function getMode(question: Question): Mode | null {
 
 export function getEmbeddingMode(
   question: Question,
-  plugins?: SdkPluginsConfig,
+  plugins?: MetabasePluginsConfig,
 ): Mode | null {
   return new Mode(question, EmbeddingSdkMode, plugins);
 }

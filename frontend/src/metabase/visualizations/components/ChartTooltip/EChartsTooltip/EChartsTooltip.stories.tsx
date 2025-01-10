@@ -1,5 +1,5 @@
 import { SdkVisualizationWrapper } from "__support__/storybook";
-import { type MetabaseTheme, defineEmbeddingSdkTheme } from "embedding-sdk";
+import { type MetabaseTheme, defineMetabaseTheme } from "embedding-sdk";
 import { Box, Flex } from "metabase/ui";
 
 import { EChartsTooltip, type EChartsTooltipProps } from "./EChartsTooltip";
@@ -35,7 +35,7 @@ export const LightTheme = {
     </SdkVisualizationWrapper>
   ),
   args: {
-    theme: defineEmbeddingSdkTheme({
+    theme: defineMetabaseTheme({
       components: {
         tooltip: {
           textColor: "#2f3542",

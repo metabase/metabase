@@ -25,7 +25,10 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
-import type { SDKConfig, SDKConfigWithAuthProvider } from "embedding-sdk/types";
+import type {
+  MetabaseAuthConfig,
+  MetabaseAuthConfigWithProvider,
+} from "embedding-sdk/types";
 import { GET } from "metabase/lib/api";
 import {
   createMockSettings,
@@ -36,17 +39,17 @@ import { createMockState } from "metabase-types/store/mocks";
 
 const TEST_USER = createMockUser();
 
-const TestComponent = ({ config }: { config: SDKConfig }) => {
+const TestComponent = ({ authConfig }: { authConfig: MetabaseAuthConfig }) => {
   const dispatch = useSdkDispatch();
 
   const loginStatus = useSdkSelector(getLoginStatus);
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
 
   useInitData({
-    config: {
-      ...config,
+    authConfig: {
+      ...authConfig,
       metabaseInstanceUrl: "http://localhost",
-    } as SDKConfig,
+    } as MetabaseAuthConfig,
   });
 
   const refreshToken = () =>
@@ -79,7 +82,7 @@ const setup = ({
 }: {
   isValidConfig?: boolean;
   isValidUser?: boolean;
-} & Partial<SDKConfigWithAuthProvider>) => {
+} & Partial<MetabaseAuthConfigWithProvider>) => {
   fetchMock.get("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
     exp: 1965805007,
@@ -119,12 +122,12 @@ const setup = ({
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValuesWithToken);
 
-  const config = createMockAuthProviderUriConfig({
+  const authConfig = createMockAuthProviderUriConfig({
     authProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
     ...configOpts,
   });
 
-  return renderWithProviders(<TestComponent config={config} />, {
+  return renderWithProviders(<TestComponent authConfig={authConfig} />, {
     storeInitialState: state,
     customReducers: sdkReducers,
   });
@@ -226,12 +229,12 @@ describe("useInitData hook", () => {
         exp: Number.MAX_SAFE_INTEGER,
       }));
 
-      const config = createMockAuthProviderUriConfig({
+      const authConfig = createMockAuthProviderUriConfig({
         authProviderUri: "http://TEST_URI/sso/metabase",
         fetchRequestToken,
       });
 
-      rerender(<TestComponent config={config} />);
+      rerender(<TestComponent authConfig={authConfig} />);
 
       await userEvent.click(screen.getByText("Refresh Token"));
 

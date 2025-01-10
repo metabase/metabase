@@ -1,5 +1,7 @@
-import type { SDKConfig } from "@metabase/embedding-sdk-react";
-import { MetabaseProvider } from "@metabase/embedding-sdk-react";
+import {
+  MetabaseProvider,
+  type MetabaseProviderProps,
+} from "@metabase/embedding-sdk-react";
 import * as jose from "jose";
 import type { JSX } from "react";
 
@@ -13,7 +15,7 @@ export const AUTH_PROVIDER_URL = "http://auth-provider/sso";
 export const JWT_SHARED_SECRET =
   "0000000000000000000000000000000000000000000000000000000000000000";
 
-export const DEFAULT_SDK_PROVIDER_CONFIG = {
+export const DEFAULT_SDK_AUTH_PROVIDER_CONFIG = {
   authProviderUri: AUTH_PROVIDER_URL,
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
 };
@@ -53,13 +55,17 @@ export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
 
 export function mountSdkContent(
   children: JSX.Element,
-  extraConfig: Partial<SDKConfig> = {},
+  sdkProviderProps: Partial<MetabaseProviderProps> = {},
 ) {
   cy.intercept("GET", "/api/user/current").as("getUser");
 
   cy.mount(
     <MetabaseProvider
-      config={{ ...DEFAULT_SDK_PROVIDER_CONFIG, ...extraConfig }}
+      {...sdkProviderProps}
+      authConfig={{
+        ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+        ...sdkProviderProps?.authConfig,
+      }}
     >
       {children}
     </MetabaseProvider>,

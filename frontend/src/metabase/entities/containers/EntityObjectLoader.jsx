@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import { createSelector } from "@reduxjs/toolkit";
 import { Component } from "react";
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { connect } from "metabase/lib/redux";
 
 import entityType from "./EntityType";
 

@@ -6,7 +6,7 @@ title: Embedded analytics SDK - authentication
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true enterprise-only=true %}
 
 Notes on handling authentication when working with the SDK.
 
@@ -155,7 +155,7 @@ First, create an [API key](../../people-and-groups/api-keys.md).
 Then you can then use the API key to authenticate with Metabase in your application. All you need to do is include your API key in the config object using the key: `apiKey`.
 
 ```typescript
-const metabaseConfig = {
+const authConfig = {
     ...
     apiKey: "YOUR_API_KEY"
     ...
@@ -163,7 +163,7 @@ const metabaseConfig = {
 
 export default function App() {
   return (
-    <MetabaseProvider config={metabaseConfig} className="optional-class">
+    <MetabaseProvider authConfig={authConfig} className="optional-class">
       Hello World!
     </MetabaseProvider>
   );

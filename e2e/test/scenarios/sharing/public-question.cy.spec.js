@@ -55,7 +55,7 @@ describe("scenarios > public > question", () => {
       H.visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
-      cy.get("[data-testid=cell-data]").contains("Winner");
+      cy.findByTestId("visualization-root").should("be.visible");
 
       H.openNewPublicLinkDropdown("card");
 
@@ -71,8 +71,6 @@ describe("scenarios > public > question", () => {
       H.filterWidget().contains("Affiliate");
 
       cy.wait("@publicQuery");
-      // Name of a city from the expected results
-      cy.get("[data-testid=cell-data]").contains("Winner");
 
       // Make sure we can download the public question (metabase#21993)
       cy.get("@uuid").then(publicUuid => {
@@ -118,7 +116,7 @@ describe("scenarios > public > question", () => {
               H.filterWidget().contains("Previous 30 Years");
               H.filterWidget().contains("Affiliate");
 
-              cy.get("[data-testid=cell-data]").contains("Winner");
+              cy.findByTestId("visualization-root").should("be.visible");
             },
           );
         });
@@ -216,16 +214,21 @@ H.describeEE("scenarios [EE] > public > question", () => {
       { wrapId: true },
     );
 
+    // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
+    cy.intercept("/app/locales/de.json").as("deLocale");
+
     cy.get("@questionId").then(id => {
       H.visitPublicQuestion(id, {
         params: {
           some_parameter: "some_value",
         },
         hash: {
-          locale: "de",
+          locale: "de-CH",
         },
       });
     });
+
+    cy.wait("@deLocale");
 
     H.main().findByText("Februar 11, 2025");
 

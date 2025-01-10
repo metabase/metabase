@@ -1,3 +1,51 @@
+## [0.52.6](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.5-nightly...embedding-sdk-0.52.6) (2024-12-20)
+
+
+### Bug Fixes
+
+* **sdk:** migrate to custom redux context to allow using the sdk on host apps that use redux ([#51414](https://github.com/metabase/metabase/issues/51414)) ([f229c49](https://github.com/metabase/metabase/commit/f229c492e01ac1c7bce1216089f1ef248fad5066))
+* **sdk:** update define function names in Next.js compat ([#51071](https://github.com/metabase/metabase/issues/51071)) ([#51453](https://github.com/metabase/metabase/issues/51453)) ([d0220ff](https://github.com/metabase/metabase/commit/d0220ff31b64abb1d2b6594ffbb38d3e0f05968f))
+
+
+### Features
+
+* **sdk:** use metabase type prefix and re-export types ([#51072](https://github.com/metabase/metabase/issues/51072)) ([ab954c5](https://github.com/metabase/metabase/commit/ab954c5a4785d7154ba354eb3405cecb3daaf7ed))
+
+
+
+## [0.52.5](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.2-nightly...embedding-sdk-0.52.5) (2024-12-17)
+
+
+### Bug Fixes
+
+* **sdk:** entity picker theming fixes ([#50449](https://github.com/metabase/metabase/issues/50449)) ([#50590](https://github.com/metabase/metabase/issues/50590)) ([5fcad73](https://github.com/metabase/metabase/commit/5fcad73c9f3deb5ce42bc1761ede3f2c0720a489))
+* **sdk:** entity picker's hover and accent colors are not mappable via sdk theming ([#50299](https://github.com/metabase/metabase/issues/50299)) ([5f6b9ec](https://github.com/metabase/metabase/commit/5f6b9ecb17a504db891f1a3a868b98a763696307))
+* **sdk:** introduce `.mb-wrapper` to scope down our css ([#50466](https://github.com/metabase/metabase/issues/50466)) ([#50791](https://github.com/metabase/metabase/issues/50791)) ([d8adb55](https://github.com/metabase/metabase/commit/d8adb559906c54736df51da627102aa0f7ac4b19))
+* **sdk:** make modals use the correct portal ([#50565](https://github.com/metabase/metabase/issues/50565)) ([#50570](https://github.com/metabase/metabase/issues/50570)) ([3bce97f](https://github.com/metabase/metabase/commit/3bce97fb019911967a4ffaeb47aa8d66a260f42d))
+* **sdk:** remove Error.captureStackTrace as it errors on firefox ([#50773](https://github.com/metabase/metabase/issues/50773)) ([#50934](https://github.com/metabase/metabase/issues/50934)) ([4bbc921](https://github.com/metabase/metabase/commit/4bbc92122c075172e30e101110b3cc8bfac06d01))
+* **sdk:** show loader right after visualizing in notebook editor for the first time ([#50411](https://github.com/metabase/metabase/issues/50411)) ([7828b5e](https://github.com/metabase/metabase/commit/7828b5e2911b1779aa76e461cc05d36d107fc6c8))
+* **sdk:** summarize sdk component crashes with stage index errors ([#50400](https://github.com/metabase/metabase/issues/50400)) ([5317db6](https://github.com/metabase/metabase/commit/5317db6d60000ea3911537d56831f04ebb18507a))
+* **sdk:** wrap InteractiveDashboard with renderOnlyInSdkProvider ([#51224](https://github.com/metabase/metabase/issues/51224)) ([#51329](https://github.com/metabase/metabase/issues/51329)) ([cf33d59](https://github.com/metabase/metabase/commit/cf33d59a6b175da0c2f98792817ca9504d5c0330))
+
+
+### Features
+
+* **sdk:** Add cross-version e2e tests using a published SDK package ([#50423](https://github.com/metabase/metabase/issues/50423)) ([#50572](https://github.com/metabase/metabase/issues/50572)) ([ce1db0b](https://github.com/metabase/metabase/commit/ce1db0bab63da7a6a504c40b639818da25bd04b5))
+* **sdk:** add style and className to static dashboards ([#50860](https://github.com/metabase/metabase/issues/50860)) ([#50884](https://github.com/metabase/metabase/issues/50884)) ([30c04a1](https://github.com/metabase/metabase/commit/30c04a1dcc1fcf4856ccaca8ddc8898288d5d4bf))
+* **sdk:** add withChartTypeSelector prop to InteractiveQuestion ([#50664](https://github.com/metabase/metabase/issues/50664)) ([#50705](https://github.com/metabase/metabase/issues/50705)) ([132bb1a](https://github.com/metabase/metabase/commit/132bb1a2680d4313429c012534b3b7bcb27cbc05))
+* **sdk:** combine title props in interactive question ([#51066](https://github.com/metabase/metabase/issues/51066)) ([63833f4](https://github.com/metabase/metabase/commit/63833f46c1b4418123d4782f471613369b1e8b66))
+* **sdk:** detect if session.id is not a string ([#50890](https://github.com/metabase/metabase/issues/50890)) ([#51055](https://github.com/metabase/metabase/issues/51055)) ([9930ed8](https://github.com/metabase/metabase/commit/9930ed8a4fc42fe0139e34db70ba199d35ea1b16))
+* **sdk:** make tooltips themeable ([#50457](https://github.com/metabase/metabase/issues/50457)) ([#50596](https://github.com/metabase/metabase/issues/50596)) ([9af0d46](https://github.com/metabase/metabase/commit/9af0d46ddaeb764051c9fc59ab793004720127ea))
+* **sdk:** migrate existing sdk tests to cypress component testing ([0751632](https://github.com/metabase/metabase/commit/075163202f2bea781ae675bb1140ad12e462466e))
+* **sdk:** move non-auth config options to provider ([#51063](https://github.com/metabase/metabase/issues/51063)) ([594e80a](https://github.com/metabase/metabase/commit/594e80a5c86aac84e3b1bafeb04baa77ef72558e))
+* **sdk:** next sdk compatibility layer ([#50230](https://github.com/metabase/metabase/issues/50230)) ([#51059](https://github.com/metabase/metabase/issues/51059)) ([489986c](https://github.com/metabase/metabase/commit/489986cfa9423278e8f4bebc72dab49499ac00e7)), closes [#50736](https://github.com/metabase/metabase/issues/50736)
+* **sdk:** rename prop names to be clear and explicit ([#50656](https://github.com/metabase/metabase/issues/50656)) ([#50817](https://github.com/metabase/metabase/issues/50817)) ([e48212b](https://github.com/metabase/metabase/commit/e48212bc344ee925cde30d419218afcaa62af6a8))
+* **sdk:** support sql parameters in interactive questions ([#50728](https://github.com/metabase/metabase/issues/50728)) ([#51061](https://github.com/metabase/metabase/issues/51061)) ([1e275b9](https://github.com/metabase/metabase/commit/1e275b9e499a92260cd6f25e7b0156698404cbdf))
+* **sdk:** use public-facing question type in event handlers ([#51037](https://github.com/metabase/metabase/issues/51037)) ([8ea66a3](https://github.com/metabase/metabase/commit/8ea66a38674d25f51eb80bff421a66142095b64d)), closes [#50867](https://github.com/metabase/metabase/issues/50867)
+* **sdk:** use string types for specifying entity ids instead of internal nanoid type ([#50663](https://github.com/metabase/metabase/issues/50663)) ([#50704](https://github.com/metabase/metabase/issues/50704)) ([63414a3](https://github.com/metabase/metabase/commit/63414a34a15acc6c31ac918f511b95bea99e4fed))
+
+
+
 ## [0.52.2-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.1-nightly...embedding-sdk-0.52.2-nightly) (2024-11-21)
 
 

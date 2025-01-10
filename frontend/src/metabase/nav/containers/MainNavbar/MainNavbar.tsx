@@ -1,12 +1,12 @@
 import type { LocationDescriptor } from "history";
 import { useEffect, useMemo } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { useQuestionQuery } from "metabase/common/hooks";
 import { getDashboard } from "metabase/dashboard/selectors";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import type Question from "metabase-lib/v1/Question";
