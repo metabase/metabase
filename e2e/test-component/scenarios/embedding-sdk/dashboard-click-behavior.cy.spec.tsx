@@ -108,7 +108,10 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
 
         // Drill-through should work on URL columns, which is PRODUCT_ID in this case.
         // It should open a popover, not open a new link.
-        H.getDashboardCard(0).findByText("123").click();
+        const urlCell = H.getDashboardCard(0).findByText("123");
+        urlCell.should("not.have.attr", "data-testid", "link-formatted-text");
+        urlCell.click();
+
         popover().should("contain.text", "Filter by this value");
 
         // Table column click behavior should be disabled in the sdk
