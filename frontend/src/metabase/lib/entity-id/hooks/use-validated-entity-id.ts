@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import { useTranslateEntityIdQuery } from "metabase/api/entity-id";
@@ -54,7 +55,7 @@ export const useValidatedEntityId = <
   );
 
   return useMemo(() => {
-    if (isNumber(id)) {
+    if (_.isNumber(id)) {
       // no need to translate anything if the id is already not a entity id
       return {
         id: id as TReturnedId,
@@ -91,7 +92,3 @@ export const useValidatedEntityId = <
     return { id: null, isLoading: false, isError: true } as const;
   }, [isEntityId, isLoading, isError, entity_ids, id]);
 };
-
-function isNumber(num: unknown): num is number {
-  return typeof num === "number" && Number.isFinite(num) && !Number.isNaN(num);
-}
