@@ -142,19 +142,21 @@ These components are available via the `InteractiveQuestion` namespace (e.g., `<
 | Component               | Info                                                                                                                         |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
-| `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
-| `Filter`                | The Filter pane containing all possible filters                                                                              |
+| `Filter`                | A set of badges for adding, viewing, and editing the filters of the current question                                         |
 | `FilterPicker`          | Picker for adding a new filter to the question                                                                               |
-| `FilterButton`          | The button used in the default layout to open the Filter pane. You can replace this button with your own implementation.     |
+| `FilterDropdown`        | A button which has a dropdown for adding, viewing, and editing the filters of the current question                           |
 | `ResetButton`           | The button used to reset the question after the question has been modified with filters/aggregations/etc                     |
 | `Title`                 | The question's title                                                                                                         |
 | `SaveButton`            | Button for saving the question.                                                                                              |
-| `Summarize`             | The Summarize pane containing all possible aggregations                                                                      |
-| `SummarizeButton`       | The button used in the default layout to open the Summarize pane. You can replace this button with your own implementation.  |
+| `Breakout`              | A set of badges for adding, viewing, and editing the groupings of the current question                                       |
+| `BreakoutDropdown`      | A button which has a dropdown for adding, viewing, and editing the groupings of the current question                         |
+| `Summarize`             | A set of badges for adding, viewing, and editing the groupings of the current question                                       |
+| `SummarizeDropdown`     | A button which has a dropdown for adding, viewing, and editing the groupings of the current question                         |
 | `Notebook`              | The Notebook editor that allows for more filter, aggregation, and custom steps                                               |
 | `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
 | `QuestionVisualization` | The chart visualization for the question                                                                                     |
 | `QuestionSettings`      | The settings for the current visualization                                                                                   |
+| `ChartTypeDropdown`     | A dropdown containing the possible visualization options for the current question                                            |
 
 ## Interactive question plugins
 
