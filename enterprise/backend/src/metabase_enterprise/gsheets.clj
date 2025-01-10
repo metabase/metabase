@@ -68,15 +68,14 @@
       false)))
 
 #_{:clj-kondo/ignore [:unused-private-var]}
-(defn- service-account-setup? [gsheets-status]
+(defn- service-account-email [gsheets]
   ;; When google drive service-account exists, set the gsheets setting to be auth-complete.
   (or
-   ;; It's already set up! no need to ask HM or update the status:
-   (contains? #{"connected"} gsheets-status)
+   (:email gsheets) ;; It's already set up! no need to ask HM or update the status:
    (if-let [email (hm-service-account-setup?)]
      ;; When harbormaster says service-account exists, set the gsheets status to `auth-complete`:
      (do (gsheets! {:status "connected" :email email})
-         true)
+         email)
      false)))
 
 (mu/defn- setup-drive-folder-sync :- [:tuple [:enum :ok :error] :map]
@@ -121,7 +120,7 @@
   (api/check-superuser)
   (when-not (api.auth/show-google-sheets-integration)
     (throw (ex-info "Google Sheets integration is not enabled." {})))
-  {:service_account_setup (service-account-setup? (:status (gsheets)))})
+  {:email (service-account-email (gsheets))})
 
 (api/defendpoint POST "/folder"
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
