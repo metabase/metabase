@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useSearchListQuery } from "metabase/common/hooks";
+import { useSearchQuery } from "metabase/api";
 import {
   Button,
   Flex,
@@ -12,7 +12,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { CardId, CollectionId, TableId } from "metabase-types/api";
+import type { CollectionId, SearchResultId, TableId } from "metabase-types/api";
 import { UploadMode } from "metabase-types/store/upload";
 
 import type { OnFileUpload } from "../types";
@@ -29,7 +29,7 @@ export type CollectionOrTableIdProps =
       uploadMode: UploadMode.append | UploadMode.replace;
       collectionId?: never;
       tableId: TableId;
-      modelId?: CardId;
+      modelId?: SearchResultId;
     };
 
 export function ModelUploadModal({
@@ -45,16 +45,14 @@ export function ModelUploadModal({
 }) {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.create);
   const [tableId, setTableId] = useState<TableId | null>(null);
-  const models = useSearchListQuery({
-    query: {
-      collection: collectionId,
-      models: ["dataset"],
-    },
+  const { data: models, isFetching: isFetchingModels } = useSearchQuery({
+    collection: collectionId,
+    models: ["dataset"],
   });
 
   const uploadableModels = useMemo(
-    () => models.data?.filter(model => !!model.based_on_upload) ?? [],
-    [models.data],
+    () => models?.data?.filter(model => !!model.based_on_upload) ?? [],
+    [models],
   );
 
   useEffect(
@@ -87,11 +85,18 @@ export function ModelUploadModal({
   useEffect(() => {
     // if we trigger the modal, and there's no uploadable models, just
     // automatically upload a new one
-    if (opened && uploadableModels.length === 0) {
+    if (opened && uploadableModels.length === 0 && !isFetchingModels) {
       onUpload({ collectionId, uploadMode: UploadMode.create });
       onClose();
     }
-  }, [onUpload, onClose, collectionId, uploadableModels, opened]);
+  }, [
+    onUpload,
+    onClose,
+    collectionId,
+    uploadableModels,
+    opened,
+    isFetchingModels,
+  ]);
 
   if (!uploadableModels?.length) {
     return null;
