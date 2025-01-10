@@ -593,15 +593,15 @@
                                                     [:permissions_group :pg] [:= :pg.id :p.group_id]
                                                     [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
                                            :where  [:and
-                                                    [:= :pgm.user_id current-user-id]
-                                                    [:= :p.perm_type "perms/collection-access"]
+                                                    [:= :pgm.user_id [:inline current-user-id]]
+                                                    [:= :p.perm_type (h2x/literal "perms/collection-access")]
                                                     [:or
-                                                     [:= :p.perm_value "read-and-write"]
+                                                     [:= :p.perm_value (h2x/literal "read-and-write")]
                                                      (when (= :read (:permission-level visibility-config))
-                                                       [:= :p.perm_value "read"])]]}
+                                                       [:= :p.perm_value (h2x/literal "read")])]]}
                                           {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
                                            :from   [[:collection :c]]
-                                           :where  [:= :type "trash"]}
+                                           :where  [:= :type (h2x/literal "trash")]}
                                           (when-let [personal-collection-and-descendant-ids
                                                      (seq (user->personal-collection-and-descendant-ids current-user-id))]
                                             {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
@@ -612,7 +612,7 @@
     :where [:and
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
-              [:not= (trash-collection-id) :c.id])
+              [:not= [:inline (trash-collection-id)] :c.id])
 
             ;; hiding archived items when desired...
             (when (= :exclude (:include-archived-items visibility-config))
@@ -623,12 +623,12 @@
               [:or
                [:= :c.archived true]
                ;; the trash collection is included when viewing archived-only
-               [:= :id (trash-collection-id)]])
+               [:= :id [:inline (trash-collection-id)]]])
 
             ;; excluding things outside of the `archive_operation_id` you wanted...
             (when-let [op-id (:archive-operation-id visibility-config)]
               [:or
-               [:= :c.archive_operation_id op-id]
+               [:= :c.archive_operation_id [:inline op-id]]
                ;; the trash collection is part of every `archive_operation`
                [:= :id (trash-collection-id)]])
 
@@ -646,7 +646,7 @@
                                          (visible-collection-filter-clause :c2.id (dissoc visibility-config :effective-child-of))
                                          [:= :c.location [:concat :c2.location :c2.id (h2x/literal "/")]]
                                          (when-not (collection.root/is-root-collection? parent-coll)
-                                           [:not= :c2.id (u/the-id parent-coll)])]}]]]))]}))
+                                           [:not= :c2.id [:inline (u/the-id parent-coll)]])]}]]]))]}))
 
 (mu/defn visible-collection-filter-clause
   "Given a `CollectionVisibilityConfig`, return a HoneySQL filter clause ready for use in queries. Takes an optional
