@@ -17,6 +17,8 @@ import {
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
   PULSE_PARAM_EMPTY,
@@ -26,6 +28,7 @@ import type {
   ActionDashboardCard,
   CardId,
   DashCardId,
+  Dashboard,
   Parameter,
   ParameterId,
   ParameterMappingOptions,
@@ -47,19 +50,25 @@ import {
   getDashCardById,
   getDashboard,
   getDashboardBeforeEditing,
+  getDashboardComplete,
   getDashboardId,
-  getDashcards,
   getDraftParameterValues,
   getFiltersToReset,
   getIsAutoApplyFilters,
   getParameterMappingsBeforeEditing,
   getParameterValues,
   getParameters,
+  getQuestions,
   getSelectedTabId,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
-import { setDashCardAttributes, setDashboardAttributes } from "./core";
+import {
+  type SetDashCardAttributesOpts,
+  setDashCardAttributes,
+  setDashboardAttributes,
+  setMultipleDashCardAttributes,
+} from "./core";
 import { closeSidebar, setSidebar } from "./ui";
 
 type SingleParamUpdater = (p: Parameter) => Parameter;
@@ -203,47 +212,24 @@ export const RESET_PARAMETER_MAPPINGS =
   "metabase/dashboard/RESET_PARAMETER_MAPPINGS";
 export const resetParameterMapping = createThunkAction(
   RESET_PARAMETER_MAPPINGS,
-  (parameterId: ParameterId, dashcardId?: DashCardId) => {
+  (parameterId: ParameterId) => {
     return (dispatch, getState) => {
-      const dashboard = getDashboard(getState());
-
-      if (!dashboard || !dashboard.parameters) {
+      const dashboard = getDashboardComplete(getState());
+      const questions = getQuestions(getState());
+      if (!dashboard) {
         return;
       }
 
-      const allDashcards = getDashcards(getState());
-
-      const dashcards = dashcardId
-        ? [allDashcards[dashcardId]]
-        : dashboard.dashcards.map(dashcardId => allDashcards[dashcardId]);
-
-      for (const dashcard of dashcards) {
-        if (!dashcard.parameter_mappings?.length) {
-          continue;
-        }
-
-        const isDashcardMappedToParameter = dashcard.parameter_mappings.some(
-          mapping => mapping.parameter_id === parameterId,
+      const newDashcardAttributes =
+        getDashcardAttributesWithoutParameterMapping(
+          dashboard,
+          questions,
+          parameterId,
+          () => true,
         );
-
-        if (!isDashcardMappedToParameter) {
-          continue;
-        }
-
-        const parameterMappingsWithoutParameterId =
-          dashcard.parameter_mappings.filter(
-            mapping => mapping.parameter_id !== parameterId,
-          );
-
-        dispatch(
-          setDashCardAttributes({
-            id: dashcard.id,
-            attributes: {
-              parameter_mappings: parameterMappingsWithoutParameterId,
-            },
-          }),
-        );
-      }
+      dispatch(
+        setMultipleDashCardAttributes({ dashcards: newDashcardAttributes }),
+      );
     };
   },
 );
@@ -282,29 +268,55 @@ export const setParameterType = createThunkAction(
   SET_PARAMETER_TYPE,
   (parameterId: ParameterId, type: string, sectionId: string) =>
     (dispatch, getState) => {
+      const dashboard = getDashboardComplete(getState());
+      const questions = getQuestions(getState());
       const parameter = getParameters(getState()).find(
         ({ id }) => id === parameterId,
       );
-
-      if (!parameter) {
+      if (!dashboard || !parameter) {
         return;
       }
 
-      let haveRestoredParameterMappingsToPristine = false;
+      const hasSectionChanged = parameter.sectionId !== sectionId;
+      const hasTypeChanged = parameter.type !== type;
+      const newDashcardAttributes =
+        getDashcardAttributesWithoutParameterMapping(
+          dashboard,
+          questions,
+          parameterId,
+          question => {
+            // reset mappings to all queries if the main type has changed,
+            // e.g. from a `string` to `number`
+            if (hasSectionChanged) {
+              return true;
+            }
 
-      if (parameter.sectionId !== sectionId) {
-        // reset all mappings if type has changed,
-        // operator change resets mappings in some cases as well
-        dispatch(resetParameterMapping(parameterId));
+            // reset mappings to native queries only if only the operator has
+            // changed, e.g. from `number/=` to `number/between`
+            if (hasTypeChanged) {
+              const queryInfo = Lib.queryDisplayInfo(question.query());
+              return !queryInfo.isNative;
+            }
 
-        haveRestoredParameterMappingsToPristine =
-          restoreParameterMappingsIfNeeded(
-            getState,
-            dispatch,
-            parameterId,
-            sectionId,
-          );
+            return false;
+          },
+        );
+
+      const hasDashcardChanges = newDashcardAttributes.length > 0;
+      if (hasDashcardChanges) {
+        dispatch(
+          setMultipleDashCardAttributes({ dashcards: newDashcardAttributes }),
+        );
       }
+
+      const haveRestoredParameterMappingsToPristine =
+        hasSectionChanged &&
+        restoreParameterMappingsIfNeeded(
+          getState,
+          dispatch,
+          parameterId,
+          sectionId,
+        );
 
       if (!haveRestoredParameterMappingsToPristine) {
         // update to default
@@ -318,6 +330,47 @@ export const setParameterType = createThunkAction(
       return { id: parameterId, type };
     },
 );
+
+function getDashcardAttributesWithoutParameterMapping(
+  dashboard: Dashboard,
+  questionById: Record<CardId, Question>,
+  parameterId: ParameterId,
+  questionFilter: (question: Question) => boolean,
+) {
+  const dashcards = dashboard?.dashcards ?? [];
+
+  return dashcards.reduce(
+    (attributes: SetDashCardAttributesOpts[], dashcard) => {
+      if (!isQuestionDashCard(dashcard)) {
+        return attributes;
+      }
+
+      const parameterMappings = dashcard.parameter_mappings ?? [];
+      const newParameterMappings = parameterMappings.filter(
+        parameterMapping => {
+          const question = questionById[parameterMapping.card_id];
+          return (
+            parameterMapping.parameter_id !== parameterId ||
+            !question ||
+            questionFilter(question)
+          );
+        },
+      );
+
+      if (newParameterMappings.length !== parameterMappings.length) {
+        attributes.push({
+          id: dashcard.id,
+          attributes: {
+            parameter_mappings: newParameterMappings,
+          },
+        });
+      }
+
+      return attributes;
+    },
+    [],
+  );
+}
 
 function restoreParameterMappingsIfNeeded(
   getState: GetState,
