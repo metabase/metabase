@@ -219,3 +219,33 @@ describe("issue 47847", () => {
     });
   });
 });
+
+describe("issue 51926", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render pivot table when selecting it from another viz type", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pivot",
+    });
+
+    H.openVizTypeSidebar();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("Table-button").click();
+      cy.findByTestId("Pivot Table-button").click();
+    });
+
+    cy.findAllByTestId("pivot-table-cell").contains("April 24, 2022");
+  });
+});
