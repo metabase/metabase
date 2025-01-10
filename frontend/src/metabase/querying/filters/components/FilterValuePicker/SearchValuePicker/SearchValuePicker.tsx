@@ -96,7 +96,6 @@ export function SearchValuePicker({
       value={selectedValues}
       searchValue={searchValue}
       placeholder={t`Search by ${columnDisplayName}`}
-      searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
       shouldCreate={shouldCreate}
@@ -106,6 +105,10 @@ export function SearchValuePicker({
       onSearchChange={handleSearchChange}
       onFocus={onFocus}
       onBlur={onBlur}
+      comboboxProps={{
+        withinPortal: false,
+        floatingStrategy: "fixed",
+      }}
     />
   );
 }

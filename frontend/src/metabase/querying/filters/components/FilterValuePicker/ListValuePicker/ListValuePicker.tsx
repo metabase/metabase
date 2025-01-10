@@ -184,7 +184,6 @@ export function AutocompletePicker({
       placeholder={placeholder}
       shouldCreate={shouldCreate}
       autoFocus={autoFocus}
-      searchable
       aria-label={t`Filter value`}
       onChange={onChange}
       onFocus={onFocus}
