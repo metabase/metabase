@@ -115,7 +115,7 @@
             (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
             (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
             (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
-            (is (= 1 (:count (t2/query-one {:select [[:%count.* :count]] :from [:query_cache]}))))
+            (is (= 1 (t2/count :model/QueryCache)))
 
             (testing "Adding encryption encrypts database on restart"
               (encryption-test/with-secret-key "key1"
@@ -124,7 +124,7 @@
                 (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check"))))
                 (is (encryption/possibly-encrypted-string? (:details (t2/select-one "metabase_database"))))
                 (testing "Cache is cleared on encryption"
-                  (is (= 0 (:count (t2/query-one {:select [[:%count.* :count]] :from [:query_cache]})))))))))))
+                  (is (= 0 (t2/count :model/QueryCache))))))))))
     (testing "Database created with encryption configured is encrypted"
       (encryption-test/with-secret-key "key2"
         (mt/with-temp-empty-app-db [_conn driver/*driver*]

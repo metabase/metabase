@@ -1,27 +1,24 @@
 (ns metabase.query-processor.middleware.cache-backend.db-test
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db :as mdb]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.test :as mt]
    [metabase.util.encryption-test :as encryption-test])
-  (:import (java.sql Connection ResultSet)
-           (org.apache.commons.io IOUtils)))
+  (:import (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
 (defn- cache-results
   "Get the stored value from the query_cache"
   ^bytes [^Connection conn]
-  (with-open [stmt (.prepareStatement conn "select results from query_cache"
-                                      ResultSet/TYPE_FORWARD_ONLY
-                                      ResultSet/CONCUR_READ_ONLY
-                                      ResultSet/CLOSE_CURSORS_AT_COMMIT)]
-    (with-open [rs (.executeQuery stmt)]
-      (is (.next rs))
-      (IOUtils/toByteArray (.getBinaryStream rs 1)))))
+  (-> (jdbc/query {:connection conn} "select results from query_cache limit 1")
+    first
+    :results
+    byte-array))
 
 (deftest encryption-test
   (testing "With no encryption, cache results should be stored plain text"

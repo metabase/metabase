@@ -19,6 +19,8 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private ^:const aes-streaming-spec "AES/CBC/PKCS5Padding")
+
 (defn secret-key->hash
   "Generate a 64-byte byte array hash of `secret-key` using 100,000 iterations of PBKDF2+SHA512."
   ^bytes [^String secret-key]
@@ -101,7 +103,7 @@
   (^InputStream [^InputStream input-stream]
    (encrypt-stream default-secret-key input-stream))
   (^InputStream [secret-key ^InputStream input-stream]
-   (let [spec "AES/CBC/PKCS5Padding"
+   (let [spec aes-streaming-spec
          spec-header (codecs/to-bytes (format "%-32s" spec))
          cipher (Cipher/getInstance spec)
          iv (nonce/random-bytes 16)]
@@ -126,16 +128,21 @@
    (let [spec-array (byte-array 32)
          spec-array-length (.read input-stream spec-array)
          spec (str/trim (codecs/bytes->str spec-array))]
-     (cond (= spec-array-length -1) input-stream
-           (and (= spec-array-length 32) (= spec "AES/CBC/PKCS5Padding"))
-           (let [cipher (Cipher/getInstance spec)
-                 iv (byte-array 16)
-                 _ (.read input-stream iv)]
-             (.init cipher Cipher/DECRYPT_MODE (SecretKeySpec. (bytes/slice secret-key 32 64) "AES") (IvParameterSpec. iv))
-             (CipherInputStream. input-stream cipher))
-           :else (SequenceInputStream.
-                  (ByteArrayInputStream. (bytes/slice spec-array 0 spec-array-length))
-                  input-stream)))))
+     (cond
+       (= spec-array-length -1)
+       input-stream
+
+       (and (= spec-array-length 32) (= spec aes-streaming-spec))
+       (let [cipher (Cipher/getInstance spec)
+             iv (byte-array 16)
+             _ (.read input-stream iv)]
+         (.init cipher Cipher/DECRYPT_MODE (SecretKeySpec. (bytes/slice secret-key 32 64) "AES") (IvParameterSpec. iv))
+         (CipherInputStream. input-stream cipher))
+
+       :else
+       (SequenceInputStream.
+         (ByteArrayInputStream. (bytes/slice spec-array 0 spec-array-length))
+         input-stream)))))
 
 (defn decrypt
   "Decrypt string `s` using a `secret-key` (a 64-byte byte array), by default the hashed value of
