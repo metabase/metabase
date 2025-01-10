@@ -35,7 +35,7 @@ describe("scenarios > question > native", () => {
 
   it("lets you create and run a SQL question", () => {
     H.openNativeEditor();
-    cy.realType("select count(*) from orders");
+    cy.realType(" select count(*) from orders");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("18,760");
