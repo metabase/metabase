@@ -251,6 +251,7 @@ H.describeEE("scenarios > admin > permissions > view data > granular", () => {
 
 H.describeEE(
   "scenarios > admin > permissions > view data > impersonated",
+  { tags: "@external" },
   () => {
     beforeEach(() => {
       H.restore("postgres-12");
@@ -770,45 +771,53 @@ H.describeEE(
       );
     });
 
-    it("should allow you to impersonate view permissions and also edit the create queries permissions and saving should persist both (metabase#46450)", () => {
-      H.restore("postgres-12");
-      H.createTestRoles({ type: "postgres" });
-      cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+    it(
+      "should allow you to impersonate view permissions and also edit the create queries permissions and saving should persist both (metabase#46450)",
+      { tags: "@external" },
+      () => {
+        H.restore("postgres-12");
+        H.createTestRoles({ type: "postgres" });
+        cy.signInAsAdmin();
+        H.setTokenFeatures("all");
 
-      cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
+        cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
 
-      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+        cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
-      // Set impersonated access on Postgres database
-      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
+        // Set impersonated access on Postgres database
+        H.modifyPermission(
+          "QA Postgres12",
+          DATA_ACCESS_PERM_IDX,
+          "Impersonated",
+        );
 
-      H.selectImpersonatedAttribute("role");
-      H.saveImpersonationSettings();
+        H.selectImpersonatedAttribute("role");
+        H.saveImpersonationSettings();
 
-      H.modifyPermission(
-        "QA Postgres12",
-        CREATE_QUERIES_PERM_IDX,
-        "Query builder only",
-      );
+        H.modifyPermission(
+          "QA Postgres12",
+          CREATE_QUERIES_PERM_IDX,
+          "Query builder only",
+        );
 
-      H.savePermissions();
+        H.savePermissions();
 
-      cy.wait("@saveGraph").then(({ response }) => {
-        expect(response.statusCode).to.equal(200);
-      });
+        cy.wait("@saveGraph").then(({ response }) => {
+          expect(response.statusCode).to.equal(200);
+        });
 
-      H.assertPermissionForItem(
-        "QA Postgres12",
-        DATA_ACCESS_PERM_IDX,
-        "Impersonated",
-      );
-      H.assertPermissionForItem(
-        "QA Postgres12",
-        CREATE_QUERIES_PERM_IDX,
-        "Query builder only",
-      );
-    });
+        H.assertPermissionForItem(
+          "QA Postgres12",
+          DATA_ACCESS_PERM_IDX,
+          "Impersonated",
+        );
+        H.assertPermissionForItem(
+          "QA Postgres12",
+          CREATE_QUERIES_PERM_IDX,
+          "Query builder only",
+        );
+      },
+    );
   },
 );
 H.describeEE(

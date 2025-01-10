@@ -1552,7 +1552,7 @@ describe("issue 44668", () => {
   });
 });
 
-describe("issue 44974", () => {
+describe("issue 44974", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
 
   beforeEach(() => {
