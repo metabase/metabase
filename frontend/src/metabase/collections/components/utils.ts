@@ -1,7 +1,7 @@
 import type { CollectionItem } from "metabase-types/api";
 
 export const findLastEditedCollectionItem = (
-  collectionItems: Pick<CollectionItem, "last-edit-info" | "based_on_upload">[],
+  collectionItems: CollectionItem[],
 ) => {
   return collectionItems.reduce((latest, item) => {
     if (!latest) {
