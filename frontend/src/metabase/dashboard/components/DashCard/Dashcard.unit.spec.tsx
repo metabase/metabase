@@ -90,6 +90,7 @@ function setup({
       onChangeLocation={jest.fn()}
       downloadsEnabled
       autoScroll={false}
+      reportAutoScrolledToDashcard={jest.fn()}
     />,
     {
       storeInitialState: {
