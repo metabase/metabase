@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
+import { t } from "ttag";
 
 import {
   DATE_PICKER_EXTRACTION_UNITS,
@@ -245,8 +246,23 @@ function getQuarterYearFilterClause(
 
 export function getDateFilterTitle(value: DateFilterValue) {
   return match(value)
-    .with({ type: "relative" }, value =>
-      Lib.describeTemporalInterval(value.value, value.unit),
+    .with(
+      {
+        type: "relative",
+        offsetValue: P.nonNullable,
+        offsetUnit: P.nonNullable,
+      },
+      value => {
+        const prefix = Lib.describeTemporalInterval(value.value, value.unit);
+        const suffix = Lib.describeRelativeDatetime(
+          value.offsetValue,
+          value.offsetUnit,
+        );
+        return t`${prefix}, starting ${suffix}`;
+      },
     )
+    .with({ type: "relative" }, value => {
+      return Lib.describeTemporalInterval(value.value, value.unit);
+    })
     .otherwise(() => "");
 }

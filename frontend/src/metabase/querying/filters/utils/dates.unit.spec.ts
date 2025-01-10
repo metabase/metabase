@@ -162,6 +162,16 @@ describe("getDateFilterTitle", () => {
       value: { type: "relative", value: -1, unit: "year" },
       title: "Previous Year",
     },
+    {
+      value: {
+        type: "relative",
+        value: -3,
+        unit: "month",
+        offsetValue: -1,
+        offsetUnit: "year",
+      },
+      title: "Previous 3 Months, starting 1 year ago",
+    },
   ])(
     "should generate a title for a relative date filter",
     ({ value, title }) => {
