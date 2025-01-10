@@ -256,7 +256,9 @@
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:include-dashboard-questions?        {:optional true} :boolean]])
+   [:include-dashboard-questions?        {:optional true} :boolean]
+
+   [:compatibility {:optional true} [:maybe :map]]])
 
 (defmulti column->string
   "Turn a complex column into a string"

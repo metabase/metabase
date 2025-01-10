@@ -1,33 +1,83 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import {
+  type VisualizerSearchParams,
+  useVisualizerSearchQuery,
+} from "metabase/api";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Box, Flex, Icon, TextInput } from "metabase/ui";
-import { getDataSources } from "metabase/visualizer/selectors";
+import {
+  Box,
+  Center,
+  Flex,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+  TextInput,
+} from "metabase/ui";
+import {
+  getDataSources,
+  getVisualizationType,
+  getVisualizerDatasetColumns,
+} from "metabase/visualizer/selectors";
+import { createDataSource } from "metabase/visualizer/utils";
 import {
   addDataSource,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
+import type {
+  DatasetColumn,
+  Field,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import type { VisualizerDataSource } from "metabase-types/store/visualizer";
 
-import { RecentsList } from "./RecentsList";
-import type { ResultsListProps } from "./ResultsList";
-import { SearchResultsList } from "./SearchResultsList";
+import { DataTypeStack } from "./DataTypeStack";
+
+type DataImporterListItem = {
+  dataSource: VisualizerDataSource;
+  columns: Field[];
+  location: string;
+  isCompatible: boolean;
+};
 
 export const DataImporter = () => {
-  const dispatch = useDispatch();
+  const display = useSelector(getVisualizationType);
+  const columns = useSelector(getVisualizerDatasetColumns);
   const dataSources = useSelector(getDataSources);
+  const dispatch = useDispatch();
+
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
+
+  const { data: result = [] } = useVisualizerSearchQuery(
+    getSearchQuery(debouncedSearch, display, columns),
+    {
+      refetchOnMountOrArgChange: true,
+    },
+  );
+
+  const items: DataImporterListItem[] = useMemo(() => {
+    const isEmpty = columns.length === 0;
+    return result.map(card => {
+      return {
+        dataSource: createDataSource("card", card.id, card.name),
+        location: card.collection?.name ?? t`Our analytics`,
+        columns: card.result_metadata,
+        isCompatible: isEmpty || Boolean(card.compatible),
+      };
+    });
+  }, [result, columns]);
 
   const dataSourceIds = useMemo(
     () => new Set(dataSources.map(s => s.id)),
     [dataSources],
   );
 
-  const handleDataSourceSelect: ResultsListProps["onSelect"] = useCallback(
+  const handleDataSourceSelect = useCallback(
     (source: VisualizerDataSource) => {
       if (dataSourceIds.has(source.id)) {
         dispatch(removeDataSource(source));
@@ -43,8 +93,6 @@ export const DataImporter = () => {
       setSearch(e.target.value);
     }, []);
 
-  const showRecents = search.trim() === "";
-
   return (
     <Flex
       direction="column"
@@ -57,8 +105,7 @@ export const DataImporter = () => {
     >
       <Box
         style={{
-          borderBottom: `
-        1px solid var(--mb-color-border)`,
+          borderBottom: "1px solid var(--mb-color-border)",
         }}
       >
         <TextInput
@@ -78,19 +125,82 @@ export const DataImporter = () => {
           overflowY: "auto",
         }}
       >
-        {showRecents ? (
-          <RecentsList
-            onSelect={handleDataSourceSelect}
-            dataSourceIds={dataSourceIds}
-          />
+        {items.length > 0 ? (
+          <Box component="ul">
+            {items.map(item => (
+              <ListItem
+                key={item.dataSource.id}
+                item={item}
+                isSelected={dataSourceIds.has(item.dataSource.id)}
+                onSelect={() => handleDataSourceSelect(item.dataSource)}
+              />
+            ))}
+          </Box>
         ) : (
-          <SearchResultsList
-            search={debouncedSearch}
-            onSelect={handleDataSourceSelect}
-            dataSourceIds={dataSourceIds}
-          />
+          <Center>
+            <Loader />
+          </Center>
         )}
       </Flex>
     </Flex>
   );
 };
+
+type ListItemProps = {
+  item: DataImporterListItem;
+  isSelected: boolean;
+  onSelect: () => void;
+};
+
+function ListItem({
+  item: { dataSource, location, columns, isCompatible },
+  isSelected,
+  onSelect,
+}: ListItemProps) {
+  const isMuted = !isCompatible && !isSelected;
+  return (
+    <Box
+      component="li"
+      px={14}
+      py={10}
+      mb={4}
+      style={{
+        border: "1px solid var(--mb-color-border)",
+        borderRadius: 5,
+        cursor: "pointer",
+        backgroundColor: isSelected
+          ? "var(--mb-color-bg-medium)"
+          : "transparent",
+        opacity: isMuted ? 0.5 : 1,
+      }}
+      onClick={onSelect}
+    >
+      <Flex direction="row" align="center" justify="space-between" w="100%">
+        <Stack spacing="xs" maw="75%">
+          <Text truncate fw="bold">
+            {dataSource.name}
+          </Text>
+          <Text truncate c="text-medium" size="sm">
+            {location}
+          </Text>
+        </Stack>
+        <DataTypeStack columns={columns} />
+      </Flex>
+    </Box>
+  );
+}
+
+function getSearchQuery(
+  search: string | undefined,
+  display: VisualizationDisplay | null,
+  columns: DatasetColumn[],
+) {
+  const query: VisualizerSearchParams = {
+    display,
+    "dataset-columns": columns,
+  };
+  if (search && search.length > 0) {
+    query.search = search;
+  }
+  return query;
+}

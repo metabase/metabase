@@ -183,6 +183,8 @@
                                   (when collection_effective_ancestors
                                     {:effective_ancestors collection_effective_ancestors})))
          :scores          (remove-thunks all-scores))
+        (update :result_metadata json/decode)
+        (update :visualization_settings json/decode)
         (update :dataset_query (fn [dataset-query]
                                  (when-let [query (some-> dataset-query json/decode)]
                                    (if (get query "type")
@@ -191,11 +193,11 @@
         (dissoc
          :all-scores
          :relevant-scores
-         :collection_effective_ancestors
-         :collection_id
-         :collection_location
-         :collection_name
-         :collection_type
+         #_:collection_effective_ancestors
+         #_:collection_id
+         #_:collection_location
+         #_:collection_name
+         #_:collection_type
          :archived_directly
          :display_name
          :effective_parent))))
@@ -272,11 +274,14 @@
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
-   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]])
+   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
+
+   [:compatibility {:optional true} [:maybe :map]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
+           compatibility
            context
            calculate-available-models?
            created-at
@@ -322,7 +327,8 @@
                         :models                              models
                         :model-ancestors?                    (boolean model-ancestors?)
                         :search-engine                       engine
-                        :search-string                       search-string}
+                        :search-string                       search-string
+                        :compatibility                       compatibility}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
@@ -410,7 +416,7 @@
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
   (let [reducible-results (search.engine/results search-ctx)
-        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
+        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query :compatibility])
         xf                (comp
                            (take search.config/*db-max-results*)
                            (map normalize-result)
