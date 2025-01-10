@@ -147,6 +147,8 @@ import filter_component from "./filter.svg?component";
 import filter_source from "./filter.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
+import folder_disconnect_component from "./folder_disconnect.svg?component";
+import folder_disconnect_source from "./folder_disconnect.svg?source";
 import folder_filled_component from "./folder_filled.svg?component";
 import folder_filled_source from "./folder_filled.svg?source";
 import formula_component from "./formula.svg?component";
@@ -718,6 +720,10 @@ export const Icons = {
   folder_filled: {
     component: folder_filled_component,
     source: folder_filled_source,
+  },
+  folder_disconnect: {
+    component: folder_disconnect_component,
+    source: folder_disconnect_source,
   },
   gauge: {
     component: gauge_component,
