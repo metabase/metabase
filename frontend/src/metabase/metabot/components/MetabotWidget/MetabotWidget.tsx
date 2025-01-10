@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -7,6 +6,7 @@ import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Search from "metabase/entities/search";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { getUser } from "metabase/selectors/user";

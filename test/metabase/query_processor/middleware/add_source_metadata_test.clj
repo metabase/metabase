@@ -282,13 +282,15 @@
                                         [count-col] (results-metadata (qp.preprocess/query->expected-cols
                                                                        (lib.tu.macros/mbql-query venues
                                                                          {:aggregation [[:count]]})))]
-                                    [(assoc lat-col :field_ref [:field
-                                                                (meta/id :venues :latitude)
-                                                                {:binning {:strategy  :bin-width
-                                                                           :min-value 10.0
-                                                                           :max-value 45.0
-                                                                           :num-bins  7
-                                                                           :bin-width 5.0}}])
+                                    [(assoc lat-col
+                                            :field_ref [:field
+                                                        (meta/id :venues :latitude)
+                                                        {:binning {:strategy  :bin-width
+                                                                   :min-value 10.0
+                                                                   :max-value 45.0
+                                                                   :num-bins  7
+                                                                   :bin-width 5.0}}]
+                                            :display_name "Latitude: 5°")
                                      ;; computed column doesn't have an effective type in middleware before query
                                      (-> count-col
                                          (dissoc :effective_type)

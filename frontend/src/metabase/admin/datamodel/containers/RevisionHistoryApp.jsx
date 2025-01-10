@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { connect } from "react-redux";
 
 import Segments from "metabase/entities/segments";
+import { connect } from "metabase/lib/redux";
 
 import RevisionHistory from "../components/revisions/RevisionHistory";
 import { fetchSegmentRevisions } from "../datamodel";

@@ -1,3 +1,4 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -5,29 +6,6 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  addOrUpdateDashboardCard,
-  assertQueryBuilderRowCount,
-  assertTooltipRow,
-  chartPathWithFillColor,
-  echartsContainer,
-  echartsTooltip,
-  editDashboard,
-  entityPickerModal,
-  filterWidget,
-  getDashboardCard,
-  main,
-  modal,
-  popover,
-  queryBuilderHeader,
-  queryBuilderMain,
-  restore,
-  saveDashboard,
-  showDashboardCardActions,
-  sidebar,
-  tooltipHeader,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 const {
   ORDERS,
@@ -41,20 +19,20 @@ const {
 
 describe("scenarios > dashboard > dashboard drill", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should handle URL click through on a table", () => {
     createDashboardWithQuestion({}, dashboardId => {
-      visitDashboard(dashboardId);
+      H.visitDashboard(dashboardId);
 
       cy.findByTestId("dashboard-header").icon("pencil").click();
-      showDashboardCardActions();
+      H.showDashboardCardActions();
       cy.findByTestId("dashboardcard-actions-panel").icon("click").click();
 
       // configure a URL click through on the  "MY_NUMBER" column
-      sidebar()
+      H.sidebar()
         .findByText("On-click behavior for each column")
         .parent()
         .parent()
@@ -63,7 +41,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.findByText("URL").click();
 
       // set the url and text template
-      modal().within(() => {
+      H.modal().within(() => {
         cy.get("input").first().type("/foo/{{my_number}}/{{my_param}}", {
           parseSpecialCharSequences: false,
         });
@@ -81,7 +59,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       setParamValue("My Param", "param-value");
       // click value and confirm url updates
 
-      getDashboardCard().findByText("column value: 111").click();
+      H.getDashboardCard().findByText("column value: 111").click();
       cy.location("pathname").should("eq", "/foo/111/param-value");
     });
   });
@@ -128,7 +106,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           visualization_settings: clickBehavior,
         });
 
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       },
     );
 
@@ -164,7 +142,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       questionId => {
         createDashboard(
           { questionId, visualization_settings: dashCardSettings },
-          dashboardIdA => visitDashboard(dashboardIdA),
+          dashboardIdA => H.visitDashboard(dashboardIdA),
         );
       },
     );
@@ -174,28 +152,30 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should handle question click through on a table", () => {
-    createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
+    createDashboardWithQuestion({}, dashboardId =>
+      H.visitDashboard(dashboardId),
+    );
 
     cy.findByLabelText("Edit dashboard").click();
-    showDashboardCardActions();
+    H.showDashboardCardActions();
     cy.findByLabelText("Click behavior").click();
 
-    sidebar().within(() => {
+    H.sidebar().within(() => {
       // Configuring on-click behavior for MY_NUMBER column
       cy.findByText("MY_NUMBER").click();
       cy.findByText("Go to a custom destination").click();
       cy.findByText("Saved question").click();
     });
 
-    modal().findByText("Orders").click();
+    H.modal().findByText("Orders").click();
 
-    sidebar().findByText("User ID").click();
-    popover().findByText("MY_NUMBER").click();
+    H.sidebar().findByText("User ID").click();
+    H.popover().findByText("MY_NUMBER").click();
 
-    sidebar().findByText("Product → Category").click();
-    popover().findByText("My Param").click();
+    H.sidebar().findByText("Product → Category").click();
+    H.popover().findByText("My Param").click();
 
-    sidebar()
+    H.sidebar()
       .findByLabelText(/Customize link text/)
       .type("num: {{my_number}}", {
         parseSpecialCharSequences: false,
@@ -204,18 +184,18 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.findByTestId("edit-bar").button("Save").click();
 
     // wait to leave editing mode and set a param value
-    main().findByText("You're editing this dashboard.").should("not.exist");
+    H.main().findByText("You're editing this dashboard.").should("not.exist");
     setParamValue("My Param", "Widget");
 
     // click on table value
     cy.findByTestId("dashcard").findByText("num: 111").click();
 
-    queryBuilderHeader().findByText("Orders").should("be.visible");
+    H.queryBuilderHeader().findByText("Orders").should("be.visible");
     cy.findByTestId("qb-filters-panel").within(() => {
       cy.findByText("User ID is 111").should("be.visible");
       cy.findByText("Product → Category is Widget").should("be.visible");
     });
-    assertQueryBuilderRowCount(5);
+    H.assertQueryBuilderRowCount(5);
   });
 
   it("should handle dashboard click through on a table", () => {
@@ -226,14 +206,14 @@ describe("scenarios > dashboard > dashboard drill", () => {
           createDashboardWithQuestion(
             { dashboardName: "end dash" },
             dashboardIdB => {
-              visitDashboard(dashboardIdA);
+              H.visitDashboard(dashboardIdA);
             },
           );
         },
       );
     });
     cy.icon("pencil").click();
-    showDashboardCardActions();
+    H.showDashboardCardActions();
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
       cy.icon("click").click();
     });
@@ -252,7 +232,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       .parent()
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("Dashboard").click());
-    entityPickerModal().within(() => {
+    H.entityPickerModal().within(() => {
       cy.findByRole("tab", { name: /Dashboards/ }).click();
       cy.findByText("end dash").click();
     });
@@ -262,7 +242,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("My Param").click());
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("MY_STRING").click());
+    H.popover().within(() => cy.findByText("MY_STRING").click());
 
     // set the text template
     cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
@@ -288,21 +268,21 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
   it("should open the same dashboard when a custom URL click behavior points to the same dashboard (metabase#22702)", () => {
     createDashboardWithQuestion({}, dashboardId => {
-      visitDashboard(dashboardId);
-      editDashboard();
-      showDashboardCardActions();
+      H.visitDashboard(dashboardId);
+      H.editDashboard();
+      H.showDashboardCardActions();
       cy.findByTestId("dashboardcard-actions-panel")
         .icon("click")
         .should("be.visible")
         .click();
 
-      sidebar().within(() => {
+      H.sidebar().within(() => {
         cy.findByText("MY_NUMBER").click();
         cy.findByText("Go to a custom destination").click();
         cy.findByText("URL").click();
       });
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.get("input")
           .first()
           .type(`/dashboard/${dashboardId}?my_param=Aaron Hand`, { delay: 0 });
@@ -310,7 +290,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.button("Done").click();
       });
 
-      saveDashboard();
+      H.saveDashboard();
 
       cy.findByTestId("dashcard").findByText("Click behavior").click();
       cy.get("fieldset").should("contain", "Aaron Hand");
@@ -322,9 +302,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
   // This was flaking. Example: https://dashboard.cypress.io/projects/a394u1/runs/2109/test-results/91a15b66-4b80-40bf-b569-de28abe21f42
   it.skip("should handle cross-filter on a table", () => {
-    createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
+    createDashboardWithQuestion({}, dashboardId =>
+      H.visitDashboard(dashboardId),
+    );
     cy.icon("pencil").click();
-    showDashboardCardActions();
+    H.showDashboardCardActions();
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
       cy.icon("click").click();
     });
@@ -344,7 +326,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("My Param").click());
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("MY_STRING").click());
+    H.popover().within(() => cy.findByText("MY_STRING").click());
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
@@ -419,7 +401,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     it("when clicking on the field value (metabase#13062-1)", () => {
       cy.findByTestId("dashcard").findByText("xavier").click();
-      popover().findByText("Is xavier").click();
+      H.popover().findByText("Is xavier").click();
 
       cy.findByTestId("qb-filters-panel").within(() => {
         cy.findByText("Reviewer is xavier").should("be.visible");
@@ -427,11 +409,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
       });
 
       // xavier's review
-      queryBuilderMain()
+      H.queryBuilderMain()
         .contains("Reprehenderit non error")
         .should("be.visible");
 
-      assertQueryBuilderRowCount(1);
+      H.assertQueryBuilderRowCount(1);
     });
 
     it("when clicking on the card title (metabase#13062-2)", () => {
@@ -441,11 +423,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
         .should("be.visible");
 
       // Sample review body
-      queryBuilderMain()
+      H.queryBuilderMain()
         .contains("Ad perspiciatis quis et consectetur.")
         .should("be.visible");
 
-      assertQueryBuilderRowCount(907);
+      H.assertQueryBuilderRowCount(907);
     });
   });
 
@@ -495,7 +477,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       ],
     });
 
-    visitDashboard(ORDERS_DASHBOARD_ID);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findAllByTestId("column-header").contains("ID").click().click();
 
     cy.get(".test-Table-ID").contains(PK_VALUE).first().click();
@@ -557,7 +539,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    visitDashboard(ORDERS_DASHBOARD_ID);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
     // Product ID in the first row (query fails for User ID as well)
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("105").click();
@@ -598,7 +580,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         });
 
         cy.log("Add question to the dashboard");
-        addOrUpdateDashboardCard({
+        H.addOrUpdateDashboardCard({
           card_id: QUESTION_ID,
           dashboard_id: DASHBOARD_ID,
           card: {
@@ -633,23 +615,23 @@ describe("scenarios > dashboard > dashboard drill", () => {
           },
         });
 
-        visitDashboard(DASHBOARD_ID);
+        H.visitDashboard(DASHBOARD_ID);
 
         cy.intercept(
           "POST",
           `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION_ID}/query`,
         ).as("cardQuery");
 
-        chartPathWithFillColor("#509EE3")
+        H.chartPathWithFillColor("#509EE3")
           .eq(14) // August 2023 (Total of 12 reviews, 9 unique days)
           .click();
 
         cy.wait("@cardQuery");
         cy.url().should("include", "2023-08");
-        chartPathWithFillColor("#509EE3").should("have.length", 1);
+        H.chartPathWithFillColor("#509EE3").should("have.length", 1);
         // Since hover doesn't work in Cypress we can't assert on the popover that's shown when one hovers the bar
         // But when this issue gets fixed, Y-axis should definitely show "12" (total count of reviews)
-        echartsContainer().get("text").contains("12");
+        H.echartsContainer().get("text").contains("12");
       });
     });
   });
@@ -676,16 +658,16 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { dashboard_id } }) => {
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
 
         // click the first bar on the card's graph and do a zoom drill-through
-        chartPathWithFillColor("#509EE3").eq(0).click();
+        H.chartPathWithFillColor("#509EE3").eq(0).click();
         cy.findByText("See this month by week").click();
 
         cy.wait("@dataset");
 
         // check that the display is still a bar chart by checking that a .bar element exists
-        chartPathWithFillColor("#509EE3").should("exist");
+        H.chartPathWithFillColor("#509EE3").should("exist");
       },
     );
   });
@@ -716,7 +698,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     createQuestion({ visualization_settings: questionSettings }, questionId => {
       createDashboard(
         { questionId, visualization_settings: dashCardSettings },
-        dashboardIdA => visitDashboard(dashboardIdA),
+        dashboardIdA => H.visitDashboard(dashboardIdA),
       );
     });
 
@@ -735,7 +717,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add previously added question to the dashboard
-        addOrUpdateDashboardCard({
+        H.addOrUpdateDashboardCard({
           card_id: QUESTION_ID,
           dashboard_id: DASHBOARD_ID,
           card: {
@@ -755,12 +737,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
           },
         });
 
-        visitDashboard(DASHBOARD_ID);
+        H.visitDashboard(DASHBOARD_ID);
         cy.icon("pencil").click();
         // Edit "Visualization options"
-        showDashboardCardActions();
+        H.showDashboardCardActions();
         cy.icon("palette").click();
-        modal().within(() => {
+        H.modal().within(() => {
           cy.findByText("Reset to defaults").click();
           cy.button("Done").click();
         });
@@ -807,7 +789,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           ],
         });
         // Add question to the dashboard
-        addOrUpdateDashboardCard({
+        H.addOrUpdateDashboardCard({
           card_id: QUESTION_ID,
           dashboard_id: DASHBOARD_ID,
           card: {
@@ -872,7 +854,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       }).then(({ body: { id: QUESTION2_ID } }) => {
         cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           // Add the first question to the dashboard
-          addOrUpdateDashboardCard({
+          H.addOrUpdateDashboardCard({
             card_id: QUESTION1_ID,
             dashboard_id: DASHBOARD_ID,
             card: {
@@ -884,19 +866,19 @@ describe("scenarios > dashboard > dashboard drill", () => {
             },
           });
 
-          visitDashboard(DASHBOARD_ID);
+          H.visitDashboard(DASHBOARD_ID);
 
           const assertTooltipValues = () =>
-            echartsTooltip().within(() => {
-              tooltipHeader().should("have.text", 1);
-              assertTooltipRow("15612_1", { color: "#88BF4D", value: "5" });
-              assertTooltipRow("15612_2", { color: "#98D9D9", value: "10" });
+            H.echartsTooltip().within(() => {
+              H.tooltipHeader().should("have.text", 1);
+              H.assertTooltipRow("15612_1", { color: "#88BF4D", value: "5" });
+              H.assertTooltipRow("15612_2", { color: "#98D9D9", value: "10" });
             });
 
-          chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
+          H.chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
           assertTooltipValues();
 
-          chartPathWithFillColor("#98D9D9").first().trigger("mousemove");
+          H.chartPathWithFillColor("#98D9D9").first().trigger("mousemove");
           assertTooltipValues();
         });
       });
@@ -965,7 +947,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ],
       });
 
-      visitDashboard(ORDERS_DASHBOARD_ID);
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
     });
 
     it("should correctly drill-through on Orders filter (metabase#11503-1)", () => {
@@ -973,13 +955,13 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
       drillThroughCardTitle("Orders");
 
-      queryBuilderMain().within(() => {
+      H.queryBuilderMain().within(() => {
         cy.findByText("37.65").should("be.visible");
         cy.findByText("110.93").should("be.visible");
         cy.findByText("52.72").should("not.exist");
       });
 
-      assertQueryBuilderRowCount(2);
+      H.assertQueryBuilderRowCount(2);
 
       postDrillAssertion("ID is 2 selections");
     });
@@ -988,18 +970,18 @@ describe("scenarios > dashboard > dashboard drill", () => {
       setFilterValue(productsIdFilter.name);
 
       drillThroughCardTitle("Orders");
-      queryBuilderMain().within(() => {
+      H.queryBuilderMain().within(() => {
         cy.findByText("37.65").should("not.exist");
         cy.findAllByText("105.12").should("have.length", 17);
       });
 
-      assertQueryBuilderRowCount(191);
+      H.assertQueryBuilderRowCount(191);
 
       postDrillAssertion("Product → ID is 2 selections");
     });
 
     function setFilterValue(filterName) {
-      filterWidget().contains(filterName).click();
+      H.filterWidget().contains(filterName).click();
       cy.findByPlaceholderText("Enter an ID").type("1,2,");
       cy.button("Add filter").click();
       cy.findByText("2 selections");
@@ -1007,7 +989,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     function postDrillAssertion(filterName) {
       cy.findByTestId("qb-filters-panel").findByText(filterName).click();
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findAllByRole("combobox")
           .last()
           .should("contain", "1")
@@ -1062,7 +1044,7 @@ function createDashboard(
         ],
       });
 
-      addOrUpdateDashboardCard({
+      H.addOrUpdateDashboardCard({
         card_id: questionId,
         dashboard_id: dashboardId,
         card: {
@@ -1087,7 +1069,7 @@ function setParamValue(paramName, text) {
   // wait to leave editing mode and set a param value
   cy.findByText("You're editing this dashboard.").should("not.exist");
   cy.findByText(paramName).click();
-  popover().within(() => {
+  H.popover().within(() => {
     cy.findByPlaceholderText("Search by Name").type(text);
     cy.findByText("Add filter").click();
   });

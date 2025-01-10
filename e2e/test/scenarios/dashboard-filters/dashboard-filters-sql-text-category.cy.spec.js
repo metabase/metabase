@@ -1,14 +1,4 @@
-import {
-  clearFilterWidget,
-  editDashboard,
-  filterWidget,
-  popover,
-  restore,
-  saveDashboard,
-  setFilter,
-  visitDashboard,
-  visitQuestion,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -23,34 +13,34 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
       "dashcardQuery",
     );
 
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
-        visitQuestion(card_id);
+        H.visitQuestion(card_id);
 
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       },
     );
 
-    editDashboard();
+    H.editDashboard();
   });
 
   it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
-      setFilter("Text or Category", filter);
+      H.setFilter("Text or Category", filter);
 
       cy.findByText("Select…").click();
-      popover().contains(filter).click();
+      H.popover().contains(filter).click();
     });
 
-    saveDashboard();
+    H.saveDashboard();
 
     Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
-        filterWidget().eq(index).click();
+        H.filterWidget().eq(index).click();
         applyFilterByType(filter, value);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
@@ -58,35 +48,35 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
           cy.contains(representativeResult);
         });
 
-        clearFilterWidget(index);
+        H.clearFilterWidget(index);
         cy.wait("@dashcardQuery");
       },
     );
   });
 
   it("should work when set as the default filter and when that filter is removed (metabase#20493)", () => {
-    setFilter("Text or Category", "Is");
+    H.setFilter("Text or Category", "Is");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
-    popover().contains("Is").click();
+    H.popover().contains("Is").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
     applyFilterByType("Is", "Gizmo");
 
-    saveDashboard();
+    H.saveDashboard();
 
     cy.findByTestId("dashcard").within(() => {
       cy.contains("Rustic Paper Wallet");
     });
 
-    clearFilterWidget();
+    H.clearFilterWidget();
 
     cy.url().should("not.include", "Gizmo");
 
-    filterWidget().click();
+    H.filterWidget().click();
 
     applyFilterByType("Is", "Doohickey", { buttonLabel: "Update filter" });
 

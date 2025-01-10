@@ -1,5 +1,4 @@
-import { connect } from "react-redux";
-
+import { connect } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import QuestionDisplayToggle from "metabase/query_builder/components/view/QuestionDisplayToggle";
 import type Question from "metabase-lib/v1/Question";

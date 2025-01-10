@@ -18,8 +18,8 @@ export const getTooltipOverrides = (): MantineThemeOverride["components"] => ({
     },
     styles: theme => ({
       tooltip: {
-        backgroundColor: theme.fn.themeColor("bg-black"),
-        color: theme.white,
+        backgroundColor: "var(--mb-color-tooltip-background)",
+        color: "var(--mb-color-tooltip-text)",
         fontSize: theme.fontSizes.sm,
         fontWeight: "bold",
         padding: "0.6rem 0.75rem",

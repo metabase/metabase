@@ -10,6 +10,8 @@ You can embed Metabase tables, charts, and dashboards—even Metabase's query bu
 
 Here are the different ways you can embed Metabase.
 
+{% include shared/in-page-promo.html %}
+
 ## Embedding SDK with React (BETA)
 
 With the [Embedding SDK](./sdk/introduction.md), you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.

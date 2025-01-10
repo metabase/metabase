@@ -1,48 +1,33 @@
+import { H } from "e2e/support";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  addOrUpdateDashboardCard,
-  editDashboard,
-  filterWidget,
-  getDashboardCard,
-  multiAutocompleteInput,
-  popover,
-  resetTestTable,
-  restore,
-  resyncDatabase,
-  saveDashboard,
-  setFilter,
-  showDashboardCardActions,
-  sidebar,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > chained filter", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   for (const has_field_values of ["search", "list"]) {
     it(`limit ${has_field_values} options based on linked filter`, () => {
       cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values }),
-        visitDashboard(ORDERS_DASHBOARD_ID);
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-      editDashboard();
+      H.editDashboard();
 
       // add a state filter
-      setFilter("Location", "Is", "Location");
+      H.setFilter("Location", "Is", "Location");
 
       // connect that to people.state
-      getDashboardCard().within(() => {
+      H.getDashboardCard().within(() => {
         cy.findByText("Column to filter on");
         cy.findByText("Select…").click();
       });
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("State").click();
       });
 
@@ -53,17 +38,17 @@ describe("scenarios > dashboard > chained filter", () => {
         .findByText("add another dashboard filter")
         .click();
 
-      popover().findByText("Location").click();
+      H.popover().findByText("Location").click();
 
-      sidebar().findByText("Filter operator").next().click();
-      popover().findByText("Is").click();
+      H.sidebar().findByText("Filter operator").next().click();
+      H.popover().findByText("Is").click();
 
       // connect that to person.city
-      getDashboardCard().within(() => {
+      H.getDashboardCard().within(() => {
         cy.findByText("Column to filter on");
         cy.findByText("Select…").click();
       });
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("City").click();
       });
 
@@ -81,50 +66,48 @@ describe("scenarios > dashboard > chained filter", () => {
         cy.findByText("Filtered column");
       });
 
-      saveDashboard();
+      H.saveDashboard();
 
       // now test that it worked!
       // Select Alaska as a state. We should see Anchorage as a option but not Anacoco
-      filterWidget().contains("Location").click();
-      popover().within(() => {
+      H.filterWidget().contains("Location").click();
+      H.popover().within(() => {
         cy.findByText("AK").click();
         cy.findByText("Add filter").click();
       });
 
-      filterWidget().contains("Location 1").click();
+      H.filterWidget().contains("Location 1").click();
 
-      popover().within(() => {
+      H.popover().within(() => {
         if (has_field_values === "search") {
-          multiAutocompleteInput().type("An");
+          H.fieldValuesInput().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
         }
       });
 
-      popover()
+      H.popover()
         .last()
         .within(() => {
           cy.findByText("Anchorage");
           cy.findByText("Anacoco").should("not.exist");
         });
 
-      popover()
-        .first()
-        .within(() => {
-          if (has_field_values === "search") {
-            multiAutocompleteInput()
-              .type("{backspace}{backspace}")
-              // close the suggestion list
-              .blur();
-          }
-          if (has_field_values === "list") {
-            cy.findByPlaceholderText("Search the list").clear();
-          }
-        });
+      cy.findByTestId("parameter-value-dropdown").within(() => {
+        if (has_field_values === "search") {
+          H.fieldValuesInput()
+            .type("{backspace}{backspace}")
+            // close the suggestion list
+            .blur();
+        }
+        if (has_field_values === "list") {
+          cy.findByPlaceholderText("Search the list").clear();
+        }
+      });
 
-      filterWidget().contains("AK").click();
-      popover()
+      H.filterWidget().contains("AK").click();
+      H.popover()
         .last()
         .within(() => {
           cy.findByText("AK").click();
@@ -134,17 +117,17 @@ describe("scenarios > dashboard > chained filter", () => {
         });
 
       // do it again to make sure it isn't cached incorrectly
-      filterWidget().contains("Location 1").click();
-      popover().within(() => {
+      H.filterWidget().contains("Location 1").click();
+      H.popover().within(() => {
         if (has_field_values === "search") {
-          multiAutocompleteInput().type("An");
+          H.fieldValuesInput().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
         }
       });
 
-      popover()
+      H.popover()
         .last()
         .within(() => {
           cy.findByText("Canton");
@@ -152,16 +135,14 @@ describe("scenarios > dashboard > chained filter", () => {
         });
 
       if (has_field_values === "search") {
-        popover()
-          .first()
-          .within(() => {
-            // close the suggestion list
-            multiAutocompleteInput().blur();
-          });
+        cy.findByTestId("parameter-value-dropdown").within(() => {
+          // close the suggestion list
+          H.fieldValuesInput().blur();
+        });
       }
 
-      filterWidget().contains("GA").click();
-      popover()
+      H.filterWidget().contains("GA").click();
+      H.popover()
         .last()
         .within(() => {
           cy.findByText("GA").click();
@@ -169,19 +150,17 @@ describe("scenarios > dashboard > chained filter", () => {
         });
 
       // do it again without a state filter to make sure it isn't cached incorrectly
-      filterWidget().contains("Location 1").click();
-      popover()
-        .first()
-        .within(() => {
-          if (has_field_values === "search") {
-            multiAutocompleteInput().type("An");
-          }
-          if (has_field_values === "list") {
-            cy.findByRole("textbox").type("An");
-          }
-        });
+      H.filterWidget().contains("Location 1").click();
+      cy.findByTestId("parameter-value-dropdown").within(() => {
+        if (has_field_values === "search") {
+          H.fieldValuesInput().type("An");
+        }
+        if (has_field_values === "list") {
+          cy.findByRole("textbox").type("An");
+        }
+      });
 
-      popover()
+      H.popover()
         .last()
         .within(() => {
           cy.findByText("Adrian");
@@ -199,10 +178,10 @@ describe("scenarios > dashboard > chained filter", () => {
       const dialect = "postgres";
       const TEST_TABLE = "many_data_types";
 
-      resetTestTable({ type: dialect, table: TEST_TABLE });
-      restore(`${dialect}-writable`);
+      H.resetTestTable({ type: dialect, table: TEST_TABLE });
+      H.restore(`${dialect}-writable`);
       cy.signInAsAdmin();
-      resyncDatabase({ tableName: TEST_TABLE, tableAlias: "testTable" });
+      H.resyncDatabase({ tableName: TEST_TABLE, tableAlias: "testTable" });
 
       cy.get("@testTable").then(testTable => {
         const testTableId = testTable.id;
@@ -251,7 +230,7 @@ describe("scenarios > dashboard > chained filter", () => {
             });
 
             // Add previously created question to the dashboard
-            addOrUpdateDashboardCard({
+            H.addOrUpdateDashboardCard({
               card_id: QUESTION_ID,
               dashboard_id: DASHBOARD_ID,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
@@ -277,17 +256,17 @@ describe("scenarios > dashboard > chained filter", () => {
               });
             });
 
-            visitDashboard(DASHBOARD_ID);
+            H.visitDashboard(DASHBOARD_ID);
             cy.icon("pencil").click();
-            showDashboardCardActions();
-            getDashboardCard().icon("click").click();
+            H.showDashboardCardActions();
+            H.getDashboardCard().icon("click").click();
             cy.findByText("UUID").click();
             cy.findByText("Update a dashboard filter").click();
             cy.findByText("Available filters")
               .parent()
               .findByText("ID")
               .click();
-            popover().findByText("UUID").should("be.visible");
+            H.popover().findByText("UUID").should("be.visible");
           });
         });
       });

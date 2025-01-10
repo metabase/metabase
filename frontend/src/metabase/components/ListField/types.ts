@@ -11,4 +11,5 @@ export interface ListFieldProps {
   placeholder: string;
   isDashboardFilter?: boolean;
   checkedColor?: string;
+  isLoading?: boolean;
 }

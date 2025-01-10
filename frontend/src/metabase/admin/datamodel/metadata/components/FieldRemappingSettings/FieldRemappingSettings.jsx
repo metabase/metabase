@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component, createRef } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +9,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
+import { connect } from "metabase/lib/redux";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import {
   getFieldTargetId,

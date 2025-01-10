@@ -489,3 +489,18 @@
         (is (not (< (get query_executions k)
                     (get query_executions_24h k)))
             "There are never more query executions in the 24h version than all-of-time.")))))
+
+(deftest query-execution-24h-filtering-test
+  (let [before (#'stats/->snowplow-grouped-metric-info)]
+    ;; run 2 internal queries, set one to happen a year ago:
+    (mt/with-temp [:model/QueryExecution _internal-year-ago
+                   (merge query-execution-defaults
+                          {:started_at (-> (t/offset-date-time) (t/minus (t/years 1)))})
+                   :model/QueryExecution _internal-new query-execution-defaults]
+      (let [after (#'stats/->snowplow-grouped-metric-info)
+            before-internal (-> before :query-executions (get "internal"))
+            after-internal (-> after :query-executions (get "internal"))
+            before-24h-internal (-> before :query-executions-24h (get "internal"))
+            after-24h-internal (-> after :query-executions-24h (get "internal"))]
+        (is (= 2 (- after-internal before-internal)))
+        (is (= 1 (- after-24h-internal before-24h-internal)))))))

@@ -391,6 +391,7 @@ function getDefaultLineAreaBarColumns(series: RawSeries) {
 export function getAvailableAdditionalColumns(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  metricsOnly: boolean,
 ): DatasetColumn[] {
   const alreadyIncludedColumns = new Set<DatasetColumn>();
 
@@ -417,18 +418,28 @@ export function getAvailableAdditionalColumns(
     .flatMap(singleSeries => {
       return singleSeries.data.cols;
     })
-    .filter(column => isMetric(column) && !alreadyIncludedColumns.has(column));
+    .filter(
+      column =>
+        (isMetric(column) || !metricsOnly) &&
+        !alreadyIncludedColumns.has(column),
+    );
 }
 
 export function getComputedAdditionalColumnsValue(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
+  const isScatter = rawSeries[0].card.display === "scatter";
+
   const availableAdditionalColumnKeys = new Set(
-    getAvailableAdditionalColumns(rawSeries, settings).map(column =>
+    getAvailableAdditionalColumns(rawSeries, settings, !isScatter).map(column =>
       getColumnKey(column),
     ),
   );
+
+  if (!settings["graph.tooltip_columns"] && isScatter) {
+    return Array.from(availableAdditionalColumnKeys);
+  }
 
   const filteredStoredColumns = (
     settings["graph.tooltip_columns"] ?? []

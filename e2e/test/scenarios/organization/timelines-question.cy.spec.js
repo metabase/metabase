@@ -1,22 +1,13 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  createTimeline,
-  createTimelineWithEvents,
-  echartsIcon,
-  popover,
-  restore,
-  rightSidebar,
-  visitQuestion,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > organization > timelines > question", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
   });
 
   describe("as admin", () => {
@@ -28,7 +19,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should create the first event and timeline", () => {
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -49,12 +40,12 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should create an event within the default timeline", () => {
-      createTimelineWithEvents({
+      H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -77,7 +68,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should display all events in data view", () => {
-      createTimelineWithEvents({
+      H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
           { name: "v1", timestamp: "2027-01-01T00:00:00Z" },
@@ -86,7 +77,7 @@ describe("scenarios > organization > timelines > question", () => {
         ],
       });
 
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -109,12 +100,12 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should edit an event", () => {
-      createTimelineWithEvents({
+      H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -122,7 +113,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      rightSidebar().icon("ellipsis").click();
+      H.rightSidebar().icon("ellipsis").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit event").click();
 
@@ -138,13 +129,13 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should move an event", () => {
-      createTimeline({ name: "Releases" });
-      createTimelineWithEvents({
+      H.createTimeline({ name: "Releases" });
+      H.createTimelineWithEvents({
         timeline: { name: "Builds" },
         events: [{ name: "RC2", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -152,7 +143,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Builds").should("be.visible");
-      rightSidebar().icon("ellipsis").click();
+      H.rightSidebar().icon("ellipsis").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Move event").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -167,12 +158,12 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should archive and unarchive an event", () => {
-      createTimelineWithEvents({
+      H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
@@ -180,7 +171,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases").should("be.visible");
-      rightSidebar().icon("ellipsis").click();
+      H.rightSidebar().icon("ellipsis").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Archive event").click();
       cy.wait("@updateEvent");
@@ -195,7 +186,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should support markdown in event description", () => {
-      createTimelineWithEvents({
+      H.createTimelineWithEvents({
         timeline: {
           name: "Releases",
         },
@@ -208,7 +199,7 @@ describe("scenarios > organization > timelines > question", () => {
         ],
       });
 
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.icon("calendar").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -218,12 +209,12 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should show events for ad-hoc questions", () => {
-      createTimelineWithEvents({
+      H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: {
@@ -242,16 +233,16 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
-      echartsIcon("star").should("be.visible");
+      H.echartsIcon("star").should("be.visible");
     });
 
     it("should not show events for non-timeseries questions", () => {
-      createTimelineWithEvents({
+      H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: {
@@ -272,16 +263,16 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
-      echartsIcon("star").should("not.exist");
+      H.echartsIcon("star").should("not.exist");
     });
 
     it("should show events for native queries", () => {
-      createTimelineWithEvents({
+      H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
 
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           type: "native",
           native: {
@@ -298,7 +289,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
-      echartsIcon("star").should("be.visible");
+      H.echartsIcon("star").should("be.visible");
     });
 
     it("should toggle individual event visibility", () => {
@@ -306,14 +297,14 @@ describe("scenarios > organization > timelines > question", () => {
         name: "Parent",
         parent_id: null,
       }).then(({ body: { id: PARENT_COLLECTION_ID } }) => {
-        createTimelineWithEvents({
+        H.createTimelineWithEvents({
           timeline: { name: "Releases" },
           events: [
             { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "cloud" },
           ],
         });
 
-        createTimelineWithEvents({
+        H.createTimelineWithEvents({
           timeline: {
             name: "Timeline for collection",
             collection_id: PARENT_COLLECTION_ID,
@@ -323,24 +314,24 @@ describe("scenarios > organization > timelines > question", () => {
           ],
         });
 
-        visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+        H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
         cy.findByTestId("view-footer")
           .findByText("Visualization")
           .should("be.visible");
-        echartsIcon("cloud").should("be.visible");
+        H.echartsIcon("cloud").should("be.visible");
 
         // should hide individual events from chart if hidden in sidebar
         cy.icon("calendar").click();
         cy.findByTestId("sidebar-content").findByText("Releases").click();
         toggleEventVisibility("RC1");
 
-        echartsIcon("cloud").should("not.exist");
+        H.echartsIcon("cloud").should("not.exist");
 
         // should show individual events in chart again
         toggleEventVisibility("RC1");
 
-        echartsIcon("cloud").should("be.visible");
+        H.echartsIcon("cloud").should("be.visible");
 
         // should show a newly created event
         cy.button("Add an event").click();
@@ -349,12 +340,12 @@ describe("scenarios > organization > timelines > question", () => {
         cy.button("Create").click();
         cy.wait("@createEvent");
 
-        echartsIcon("star").should("be.visible");
+        H.echartsIcon("star").should("be.visible");
 
         // should then hide the newly created event
         toggleEventVisibility("RC2");
 
-        echartsIcon("star").should("not.exist");
+        H.echartsIcon("star").should("not.exist");
 
         // its timeline, visible but having one hidden event
         // should display its checkbox with a "dash" icon
@@ -370,8 +361,8 @@ describe("scenarios > organization > timelines > question", () => {
           });
 
         // once timeline is visible, all its events should be visible
-        echartsIcon("star").should("be.visible");
-        echartsIcon("cloud").should("be.visible");
+        H.echartsIcon("star").should("be.visible");
+        H.echartsIcon("cloud").should("be.visible");
 
         // should initialize events in a hidden timelime
         // with event checkboxes unchecked
@@ -393,43 +384,43 @@ describe("scenarios > organization > timelines > question", () => {
           .closest("[aria-label=Timeline card header]")
           .within(() => cy.findByRole("checkbox").click());
 
-        echartsIcon("warning").should("be.visible");
+        H.echartsIcon("warning").should("be.visible");
 
         // events whose timeline was invisible on page load
         // should be hideable once their timelines are visible
         toggleEventVisibility("TC1");
 
-        echartsIcon("warning").should("not.exist");
+        H.echartsIcon("warning").should("not.exist");
       });
     });
 
     it("should color the event icon when hovering", () => {
-      createTimelineWithEvents({
+      H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
           { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
         ],
       });
 
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-      echartsIcon("star").should("be.visible");
-      echartsIcon("star").realHover();
-      echartsIcon("star", true).should("be.visible");
+      H.echartsIcon("star").should("be.visible");
+      H.echartsIcon("star").realHover();
+      H.echartsIcon("star", true).should("be.visible");
     });
 
     it("should open the sidebar when clicking an event icon", () => {
-      createTimelineWithEvents({
+      H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
           { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
         ],
       });
 
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-      echartsIcon("star").should("be.visible");
-      echartsIcon("star").realClick();
+      H.echartsIcon("star").should("be.visible");
+      H.echartsIcon("star").realClick();
 
       // event should be selected in sidebar
       timelineEventCard("RC1").should("be.visible");
@@ -440,7 +431,7 @@ describe("scenarios > organization > timelines > question", () => {
       );
 
       // after clicking the icon again, it should be deselected in sidebar
-      echartsIcon("star", true).click();
+      H.echartsIcon("star", true).click();
       timelineEventCard("RC1").should("be.visible");
       timelineEventCard("RC1").should(
         "have.css",
@@ -450,7 +441,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should not filter out events in last period (metabase#23336)", () => {
-      createTimelineWithEvents({
+      H.createTimelineWithEvents({
         events: [
           { name: "Last week", timestamp: "2026-04-21T12:00:00Z" },
           { name: "Last month", timestamp: "2026-04-27T12:00:00Z" },
@@ -459,7 +450,7 @@ describe("scenarios > organization > timelines > question", () => {
         ],
       });
 
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           database: SAMPLE_DB_ID,
@@ -476,7 +467,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.icon("calendar").click();
 
       // Week
-      rightSidebar().within(() => {
+      H.rightSidebar().within(() => {
         cy.findByText("Last week").should("exist");
         cy.findByText("Last month").should("not.exist");
         cy.findByText("Last quarter").should("not.exist");
@@ -485,9 +476,9 @@ describe("scenarios > organization > timelines > question", () => {
 
       // Month
       cy.findByTestId("timeseries-chrome").findByText("Week").click();
-      popover().findByText("Month").click();
+      H.popover().findByText("Month").click();
       cy.wait("@dataset");
-      rightSidebar().within(() => {
+      H.rightSidebar().within(() => {
         cy.findByText("Last week").should("exist");
         cy.findByText("Last month").should("exist");
         cy.findByText("Last quarter").should("not.exist");
@@ -496,9 +487,9 @@ describe("scenarios > organization > timelines > question", () => {
 
       // Quarter
       cy.findByTestId("timeseries-chrome").findByText("Month").click();
-      popover().findByText("Quarter").click();
+      H.popover().findByText("Quarter").click();
       cy.wait("@dataset");
-      rightSidebar().within(() => {
+      H.rightSidebar().within(() => {
         cy.findByText("Last week").should("exist");
         cy.findByText("Last month").should("exist");
         cy.findByText("Last quarter").should("exist");
@@ -507,9 +498,9 @@ describe("scenarios > organization > timelines > question", () => {
 
       // Year
       cy.findByTestId("timeseries-chrome").findByText("Quarter").click();
-      popover().findByText("Year").click();
+      H.popover().findByText("Year").click();
       cy.wait("@dataset");
-      rightSidebar().within(() => {
+      H.rightSidebar().within(() => {
         cy.findByText("Last week").should("exist");
         cy.findByText("Last month").should("exist");
         cy.findByText("Last quarter").should("exist");
@@ -521,7 +512,7 @@ describe("scenarios > organization > timelines > question", () => {
   describe("as readonly user", () => {
     it("should not allow creating default timelines", () => {
       cy.signIn("readonly");
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At: Year").should("be.visible");
 
@@ -534,13 +525,13 @@ describe("scenarios > organization > timelines > question", () => {
 
     it("should not allow creating or editing events", () => {
       cy.signInAsAdmin();
-      createTimelineWithEvents({
+      H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
       cy.signOut();
       cy.signIn("readonly");
-      visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At: Year").should("be.visible");
 
@@ -549,7 +540,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByText("Releases").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add an event").should("not.exist");
-      rightSidebar().icon("ellipsis").should("not.exist");
+      H.rightSidebar().icon("ellipsis").should("not.exist");
     });
   });
 });

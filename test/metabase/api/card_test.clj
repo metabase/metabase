@@ -42,6 +42,7 @@
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.test.util :as tu]
    [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -311,25 +312,6 @@
         (is (= {:embedding_client client-string, :embedding_version version-string}
                (t2/select-one [:model/ViewLog :embedding_client :embedding_version] :model "card" :model_id (u/the-id card-1))))))))
 
-(defn- do-poll-until [^Long timeout-ms thunk]
-  (let [result-prom (promise)
-        _timeouter (future (Thread/sleep timeout-ms) (deliver result-prom ::timeout))
-        _runner (future (loop []
-                          (if-let [thunk-return (try (thunk) (catch Exception e e))]
-                            (deliver result-prom thunk-return)
-                            (recur))))
-        result @result-prom]
-    (cond (= result ::timeout) (throw (ex-info (str "Timeout after " timeout-ms "ms")
-                                               {:timeout-ms timeout-ms}))
-          (instance? Throwable result) (throw result)
-          :else result)))
-
-(defmacro ^:private poll-until
-  "A macro that continues to call the given body until it returns a truthy value or the timeout is reached.
-  Returns the truthy body, or re-throws any exception raised in body. Hence, this cannot be used to return nil, false, or a Throwable."
-  [timeout-ms & body]
-  `(do-poll-until ~timeout-ms (fn [] ~@body)))
-
 (deftest embedding-sdk-info-saves-query-execution
   (testing "GET /api/card with embedding headers set"
     (mt/with-temp [:model/Card card-1 {:name "Card 1"
@@ -343,9 +325,9 @@
                                                          "x-metabase-client-version" "2"}}})
       (is (=? {:embedding_client "client-B", :embedding_version "2"}
               ;; The query metadata is handled asynchronously, so we need to poll until it's available:
-              (poll-until 100
-                          (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
-                                         :card_id (u/the-id card-1))))))))
+              (tu/poll-until 100
+                             (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
+                                            :card_id (u/the-id card-1))))))))
 
 (deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"

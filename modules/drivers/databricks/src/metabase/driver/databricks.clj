@@ -1,5 +1,6 @@
 (ns metabase.driver.databricks
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -45,6 +46,17 @@
     #"timestamp_ntz" :type/DateTime
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
+
+(defn- catalog-present?
+  [jdbc-spec catalog]
+  (let [sql "select 0 from `system`.`information_schema`.`catalogs` where catalog_name = ?"]
+    (= 1 (count (jdbc/query jdbc-spec [sql catalog])))))
+
+(defmethod driver/can-connect? :databricks
+  [driver details]
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+    (and (catalog-present? jdbc-spec (:catalog details))
+         (sql-jdbc.conn/can-connect-with-spec? jdbc-spec))))
 
 (defn- get-tables-sql
   [catalog]
@@ -130,7 +142,7 @@
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
-(defmethod driver/describe-fields :sql-jdbc
+(defmethod driver/describe-fields :databricks
   [driver database & {:as args}]
   (let [catalog (get-in database [:details :catalog])]
     (sql-jdbc.sync/describe-fields driver database (assoc args :catalog catalog))))
@@ -164,7 +176,7 @@
                :order-by [:fk-table-schema :fk-table-name]}
               :dialect (sql.qp/quote-style driver)))
 
-(defmethod driver/describe-fks :sql-jdbc
+(defmethod driver/describe-fks :databricks
   [driver database & {:as args}]
   (let [catalog (get-in database [:details :catalog])]
     (sql-jdbc.sync/describe-fks driver database (assoc args :catalog catalog))))

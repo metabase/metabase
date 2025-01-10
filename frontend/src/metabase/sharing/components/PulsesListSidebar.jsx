@@ -2,7 +2,6 @@
 
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { connect } from "react-redux";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -17,6 +16,7 @@ import {
   formatTimeWithUnit,
 } from "metabase/lib/formatting";
 import { getActivePulseParameters } from "metabase/lib/pulse";
+import { connect } from "metabase/lib/redux";
 import { formatFrame } from "metabase/lib/time";
 import { Icon } from "metabase/ui";
 

@@ -383,7 +383,7 @@ dashcards:
               target:
                 id: 6b3da96f
                 type: parameter
-          tabId: 1
+          tabId: ["DHMhMa1FYxiyIgM7_xdgR", "VLzpbzPlShrECFp-dG4pH"]
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
         column_title: Person Name
@@ -472,7 +472,7 @@ dashcards:
               target:
                 id: 6b3da96f
                 type: parameter
-          tabId: 1
+          tabId: ["DHMhMa1FYxiyIgM7_xdgR", "VLzpbzPlShrECFp-dG4pH"]
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
         column_title: Person Name
@@ -489,7 +489,7 @@ dashcards:
               target:
                 id: 6b3da96f
                 type: parameter
-          tabId: 1
+          tabId: ["DHMhMa1FYxiyIgM7_xdgR", "VLzpbzPlShrECFp-dG4pH"]
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
       ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'

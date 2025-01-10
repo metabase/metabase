@@ -1,47 +1,35 @@
+import { H } from "e2e/support";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  mockSlackConfigured,
-  modal,
-  openSharingMenu,
-  popover,
-  restore,
-  setupNotificationChannel,
-  setupSMTP,
-  sharingMenuButton,
-  toggleAlertChannel,
-  visitModel,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 const channels = {
   slack: {
-    setup: mockSlackConfigured,
+    setup: H.mockSlackConfigured,
     createAlert: () => {
-      toggleAlertChannel("Email");
-      toggleAlertChannel("Slack");
+      H.toggleAlertChannel("Email");
+      H.toggleAlertChannel("Slack");
       cy.findByPlaceholderText(/Pick a user or channel/).click();
-      popover().findByText("#work").click();
+      H.popover().findByText("#work").click();
     },
   },
-  email: { setup: setupSMTP, createAlert: () => {} },
+  email: { setup: H.setupSMTP, createAlert: () => {} },
 };
 
 describe("scenarios > alert", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   describe("with nothing set", () => {
     it("should prompt you to add email/slack credentials", () => {
-      visitQuestion(ORDERS_QUESTION_ID);
-      openSharingMenu("Create alert");
+      H.visitQuestion(ORDERS_QUESTION_ID);
+      H.openSharingMenu("Create alert");
 
-      modal().within(() => {
+      H.modal().within(() => {
         cy.findByText(
           "To send alerts, you'll need to set up email, Slack or Webhook integration.",
         );
@@ -67,8 +55,8 @@ describe("scenarios > alert", () => {
     it("should say to non-admins that admin must add email credentials", () => {
       cy.signInAsNormalUser();
 
-      visitQuestion(ORDERS_QUESTION_ID);
-      openSharingMenu("Create alert");
+      H.visitQuestion(ORDERS_QUESTION_ID);
+      H.openSharingMenu("Create alert");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
@@ -88,8 +76,8 @@ describe("scenarios > alert", () => {
         );
 
         // Open the first alert screen and create an alert
-        visitQuestion(ORDERS_QUESTION_ID);
-        openSharingMenu("Create alert");
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        H.openSharingMenu("Create alert");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("The wide world of alerts");
@@ -113,10 +101,10 @@ describe("scenarios > alert", () => {
         cy.wait("@savedAlert");
 
         // Open the second alert screen
-        visitQuestion(ORDERS_COUNT_QUESTION_ID);
+        H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
         cy.wait("@questionLoaded");
 
-        openSharingMenu("Create alert");
+        H.openSharingMenu("Create alert");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Let's set up your alert");
@@ -128,11 +116,11 @@ describe("scenarios > alert", () => {
 
   describe("with a webhook", { tags: ["@external"] }, () => {
     beforeEach(() => {
-      setupNotificationChannel({
+      H.setupNotificationChannel({
         name: "Foo Hook",
         description: "This is a hook",
       });
-      setupNotificationChannel({
+      H.setupNotificationChannel({
         name: "Bar Hook",
         description: "This is another hook",
       });
@@ -140,19 +128,19 @@ describe("scenarios > alert", () => {
     });
 
     it("should be able to create and delete alerts with webhooks enabled", () => {
-      visitQuestion(ORDERS_QUESTION_ID);
-      openSharingMenu("Create alert");
+      H.visitQuestion(ORDERS_QUESTION_ID);
+      H.openSharingMenu("Create alert");
 
       //Disable Email
-      toggleAlertChannel("Email");
-      toggleAlertChannel("Foo Hook");
-      toggleAlertChannel("Bar Hook");
+      H.toggleAlertChannel("Email");
+      H.toggleAlertChannel("Foo Hook");
+      H.toggleAlertChannel("Bar Hook");
 
       cy.findByRole("button", { name: "Done" }).click();
 
-      openSharingMenu("Edit alerts");
+      H.openSharingMenu("Edit alerts");
 
-      popover().within(() => {
+      H.popover().within(() => {
         cy.findByText("You set up an alert").should("be.visible");
         cy.findByRole("listitem", { name: "Number of HTTP channels" })
           .should("contain.text", "2")
@@ -174,7 +162,7 @@ describe("scenarios > alert", () => {
   });
 
   it("should not be offered for models (metabase#37893)", () => {
-    visitModel(ORDERS_MODEL_ID);
+    H.visitModel(ORDERS_MODEL_ID);
     cy.findByTestId("view-footer").within(() => {
       cy.findByTestId("question-row-count")
         .should("have.text", "Showing first 2,000 rows")
@@ -182,6 +170,6 @@ describe("scenarios > alert", () => {
       cy.icon("download").should("exist");
     });
 
-    sharingMenuButton().should("not.exist");
+    H.sharingMenuButton().should("not.exist");
   });
 });

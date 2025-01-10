@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.core :as compojure]
+   [compojure.route :as compojure.route]
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.task.send-pulses :as task.send-pulses]
@@ -54,9 +55,10 @@
 
 (defn do-with-server
   [route+handlers f]
-  (let [handler        (->> route+handlers
-                            (map :route)
-                            (apply compojure/routes))
+  (let [handler        (as-> route+handlers routes+handlers
+                         (mapv :route routes+handlers)
+                         (conj routes+handlers (compojure.route/not-found {:status-code 404 :body "Not found."}))
+                         (apply compojure/routes routes+handlers))
         ^Server server (jetty/run-jetty (apply-middleware handler middlewares) {:port 0 :join? false})]
     (try
       (f (str "http://localhost:" (.. server getURI getPort)))
@@ -143,7 +145,7 @@
        (ex-data e#))))
 
 (deftest ^:parallel can-connect-no-auth-test
-  (with-server [url [get-favicon get-200 get-302-redirect-200 get-400 get-302-redirect-400]]
+  (with-server [url [get-favicon get-200 get-302-redirect-200 get-400 get-302-redirect-400 get-500]]
     (let [can-connect?* (fn [route]
                           (can-connect? {:url         (str url (:path route))
                                          :auth-method "none"
@@ -161,11 +163,9 @@
         (is (= {:request-status 400
                 :request-body   "Bad request"}
                (exception-data (can-connect?* get-400)))))
-      (is (=? {:request-status 500
-               ;; not sure why it's returns a response map is nil body
-               ;; looks like a jetty bug: https://stackoverflow.com/q/46299061
-               #_:request-body   #_"Internal server error"}
-              (exception-data (can-connect?* get-500)))))))
+      (is (= {:request-status 500
+              :request-body   "Internal server error"}
+             (exception-data (can-connect?* get-500)))))))
 
 (deftest ^:parallel can-connect-header-auth-test
   (with-server [url [(make-route :get "/user"

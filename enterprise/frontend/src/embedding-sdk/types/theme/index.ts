@@ -180,6 +180,21 @@ export type MetabaseComponentTheme = {
     };
   };
 
+  /** Tooltip */
+  tooltip?: {
+    /** Tooltip text color. */
+    textColor?: string;
+
+    /** Secondary text color shown in the tooltip, e.g. for tooltip headers and percentage changes. */
+    secondaryTextColor?: string;
+
+    /** Tooltip background color. */
+    backgroundColor?: string;
+
+    /** Tooltip background color for focused rows. */
+    focusedBackgroundColor?: string;
+  };
+
   /** Popover */
   popover?: {
     /** z-index of the popover. Useful for embedding components in a modal. Defaults to 4. */

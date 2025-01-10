@@ -1,5 +1,4 @@
-import { connect } from "react-redux";
-
+import { connect } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { MetabotMode } from "metabase/visualizations/click-actions/modes/MetabotMode";

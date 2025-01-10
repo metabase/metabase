@@ -219,7 +219,8 @@
                                                                                   :min-value 10.0
                                                                                   :max-value 50.0
                                                                                   :num-bins  4
-                                                                                  :bin-width 10.0}}])
+                                                                                  :bin-width 10.0}}]
+                       :display_name "Latitude: 10°")
                 (-> (mt/run-mbql-query venues
                       {:aggregation [[:count]]
                        :breakout    [[:field %latitude {:binning {:strategy :default}}]]})
@@ -234,7 +235,8 @@
                                                                                   :min-value 7.5
                                                                                   :max-value 45.0
                                                                                   :num-bins  5
-                                                                                  :bin-width 7.5}}])
+                                                                                  :bin-width 7.5}}]
+                       :display_name "Latitude: 5 bins")
                 (-> (mt/run-mbql-query venues
                       {:aggregation [[:count]]
                        :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 5}}]]})

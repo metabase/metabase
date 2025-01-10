@@ -1,11 +1,4 @@
-import {
-  adhocQuestionHash,
-  createNativeQuestion,
-  openNativeEditor,
-  restore,
-  runNativeQuery,
-  withDatabase,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
 
@@ -22,17 +15,17 @@ describe("issue 11727", { tags: "@external" }, () => {
     },
   };
   beforeEach(() => {
-    restore("postgres-12");
+    H.restore("postgres-12");
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/database").as("getDatabases");
   });
 
   it("should cancel the native query via the keyboard shortcut (metabase#11727)", () => {
-    withDatabase(PG_DB_ID, () => {
-      cy.visit("/question#" + adhocQuestionHash(questionDetails));
+    H.withDatabase(PG_DB_ID, () => {
+      cy.visit("/question#" + H.adhocQuestionHash(questionDetails));
       cy.wait("@getDatabases");
 
-      runNativeQuery({ wait: false });
+      H.runNativeQuery({ wait: false });
       cy.findByText("Doing science...").should("be.visible");
       cy.get("body").type("{cmd}{enter}");
       cy.findByText("Here's where your results will appear").should(
@@ -44,7 +37,7 @@ describe("issue 11727", { tags: "@external" }, () => {
 
 describe("issue 16584", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
@@ -54,7 +47,7 @@ describe("issue 16584", () => {
     // - the issue is unrelated to using a date filter, using a text filter works too
     // - the issue is unrelated to whether or not the parameter is required or if default value is set
     // - the space at the end of the query is not needed to reproduce this issue
-    openNativeEditor()
+    H.openNativeEditor()
       .type(
         "SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 1",
         {
@@ -66,7 +59,7 @@ describe("issue 16584", () => {
 
     cy.findByPlaceholderText("Country").type("NL", { delay: 0 });
 
-    runNativeQuery();
+    H.runNativeQuery();
 
     cy.findByTestId("query-visualization-root")
       .findByText("NL")
@@ -94,12 +87,12 @@ describe("issue 38083", () => {
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should not show the revert to default icon when the default value is selected (metabase#38083)", () => {
-    createNativeQuestion(QUESTION, {
+    H.createNativeQuestion(QUESTION, {
       visitQuestion: true,
     });
 
@@ -114,13 +107,13 @@ describe("issue 38083", () => {
 
 describe("issue 33327", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
   it("should recover from a visualization error (metabase#33327)", () => {
     const query = "SELECT 1";
-    createNativeQuestion(
+    H.createNativeQuestion(
       { native: { query }, display: "scalar" },
       {
         visitQuestion: true,

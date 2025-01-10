@@ -1,8 +1,8 @@
-import { popover, restore } from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 describe("metabase > scenarios > navbar > new menu", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.visit("/");
@@ -11,7 +11,7 @@ describe("metabase > scenarios > navbar > new menu", () => {
   });
 
   it("question item opens question notebook editor", () => {
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Question").click();
     });
 
@@ -19,7 +19,7 @@ describe("metabase > scenarios > navbar > new menu", () => {
   });
 
   it("question item opens SQL query editor", () => {
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("SQL query").click();
     });
 
@@ -28,7 +28,7 @@ describe("metabase > scenarios > navbar > new menu", () => {
   });
 
   it("collection opens modal and redirects to a created collection after saving", () => {
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Collection").click();
     });
 

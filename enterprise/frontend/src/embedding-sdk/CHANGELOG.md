@@ -1,3 +1,72 @@
+## [0.51.13](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.12...embedding-sdk-0.51.13) (2024-12-18)
+
+
+### Bug Fixes
+
+* **sdk:** migrate to custom redux context to allow using the sdk on host apps that use redux ([#51415](https://github.com/metabase/metabase/issues/51415)) ([efa8fc3](https://github.com/metabase/metabase/commit/efa8fc3d4d01623251f42182f259a5035bd10d36))
+* **sdk:** update define function names in Next.js compat ([#51454](https://github.com/metabase/metabase/issues/51454)) ([2a2b744](https://github.com/metabase/metabase/commit/2a2b7441fe01a84d899dd445095728dcd12ef2b7))
+* **sdk:** wrap InteractiveDashboard with renderOnlyInSdkProvider ([#51224](https://github.com/metabase/metabase/issues/51224)) ([#51330](https://github.com/metabase/metabase/issues/51330)) ([2fd02f9](https://github.com/metabase/metabase/commit/2fd02f9142e8c4caa334a3838180a48eb3589e81))
+
+
+### Features
+
+* **sdk:** move non-auth config options to provider ([#50585](https://github.com/metabase/metabase/issues/50585)) ([#51067](https://github.com/metabase/metabase/issues/51067)) ([9c8a567](https://github.com/metabase/metabase/commit/9c8a5672c5474ca3b07ec610d48d2bad9bcece47))
+* **sdk:** rename prop names to be clear and explicit ([#50848](https://github.com/metabase/metabase/issues/50848)) ([97d25a0](https://github.com/metabase/metabase/commit/97d25a0b3ca172697261b315016a964f4c89aa27))
+* **sdk:** support sql parameters in interactive questions ([#51062](https://github.com/metabase/metabase/issues/51062)) ([b2112ff](https://github.com/metabase/metabase/commit/b2112ff83d214f4bbf4acf802b495ee43f4cf95c)), closes [#50728](https://github.com/metabase/metabase/issues/50728)
+* **sdk:** use metabase type prefix and re-export types ([#51073](https://github.com/metabase/metabase/issues/51073)) ([3308b15](https://github.com/metabase/metabase/commit/3308b1503c4ab7bbaedbbcba772c866edd0260ee)), closes [#50862](https://github.com/metabase/metabase/issues/50862)
+
+
+
+## [0.51.12](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.11...embedding-sdk-0.51.12) (2024-12-16)
+
+
+
+## [0.51.11](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.10...embedding-sdk-0.51.11) (2024-12-10)
+
+
+### Bug Fixes
+
+* **sdk:** introduce `.mb-wrapper` to scope down our css ([#50792](https://github.com/metabase/metabase/issues/50792)) ([f20b519](https://github.com/metabase/metabase/commit/f20b51906dffbc594dcccc13bbd4844a35c9d484)), closes [#50466](https://github.com/metabase/metabase/issues/50466)
+* **sdk:** remove Error.captureStackTrace as it errors on firefox ([#50773](https://github.com/metabase/metabase/issues/50773)) ([#50935](https://github.com/metabase/metabase/issues/50935)) ([c02224b](https://github.com/metabase/metabase/commit/c02224bbe8e357abdad3c768546e29f7e454c531))
+
+
+### Features
+
+* **sdk:** Add cross-version e2e tests using a published SDK package ([#50423](https://github.com/metabase/metabase/issues/50423)) ([#50594](https://github.com/metabase/metabase/issues/50594)) ([88fcdea](https://github.com/metabase/metabase/commit/88fcdea9b9195f73792529dee303b0e6bdd9f28e))
+* **sdk:** add withChartTypeSelector prop to InteractiveQuestion ([#50706](https://github.com/metabase/metabase/issues/50706)) ([0dd6eae](https://github.com/metabase/metabase/commit/0dd6eaee1491a30e87db4592d3e4c0844f3075c9)), closes [#50664](https://github.com/metabase/metabase/issues/50664)
+* **sdk:** detect if session.id is not a string ([#50890](https://github.com/metabase/metabase/issues/50890)) ([#51056](https://github.com/metabase/metabase/issues/51056)) ([7122360](https://github.com/metabase/metabase/commit/71223606e55254ea976a575b96649b7bcb5e230b))
+* **sdk:** make tooltips themeable ([#50457](https://github.com/metabase/metabase/issues/50457)) ([#50621](https://github.com/metabase/metabase/issues/50621)) ([fc77ed4](https://github.com/metabase/metabase/commit/fc77ed4b8fc97e3a32416dc6b3373e5dbfeae95f))
+* **sdk:** use public-facing question type in event handlers ([#50867](https://github.com/metabase/metabase/issues/50867)) ([#51038](https://github.com/metabase/metabase/issues/51038)) ([c2a2d47](https://github.com/metabase/metabase/commit/c2a2d4766c74c9ee8b2fd8665af4956ebd2833f8))
+* **sdk:** use string types for specifying entity ids instead of internal nanoid type ([#50847](https://github.com/metabase/metabase/issues/50847)) ([571b64f](https://github.com/metabase/metabase/commit/571b64fd81efb0afb3a69bb9e65aaa4febf960bb))
+
+
+
+## [0.51.10](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.9...embedding-sdk-0.51.10) (2024-11-28)
+
+
+### Bug Fixes
+
+* **sdk:** entity picker theming fixes ([#50449](https://github.com/metabase/metabase/issues/50449)) ([#50591](https://github.com/metabase/metabase/issues/50591)) ([7319d9d](https://github.com/metabase/metabase/commit/7319d9d474fbee0fd1b628e6af7fd9d03d6386e3))
+* **sdk:** Fix branch name for SDK e2e tests workflow ([#50464](https://github.com/metabase/metabase/issues/50464)) ([d72706b](https://github.com/metabase/metabase/commit/d72706bb1a30dfaae32541512728d4e4fd8e253a))
+* **sdk:** make modals use the correct portal ([#50565](https://github.com/metabase/metabase/issues/50565)) ([#50571](https://github.com/metabase/metabase/issues/50571)) ([d3a6533](https://github.com/metabase/metabase/commit/d3a6533d18de6f0c61cefa16f45306283fc9d0e7))
+* **sdk:** show loader right after visualizing in notebook editor for the first time ([#50411](https://github.com/metabase/metabase/issues/50411)) ([#50472](https://github.com/metabase/metabase/issues/50472)) ([2da7c1b](https://github.com/metabase/metabase/commit/2da7c1b598cf77bac73494c7d3157cae6e44bf90))
+
+
+
+## [0.51.9](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.8...embedding-sdk-0.51.9) (2024-11-22)
+
+
+### Bug Fixes
+
+* **sdk:** summarize sdk component crashes with stage index errors ([#50407](https://github.com/metabase/metabase/issues/50407)) ([a679201](https://github.com/metabase/metabase/commit/a679201bdb5be3cd2593cd8f0361a5f1377b84a7)), closes [#50400](https://github.com/metabase/metabase/issues/50400)
+
+
+### Features
+
+* **sdk:** Run e2e tests using published SDK package related to target release ([#49196](https://github.com/metabase/metabase/issues/49196)) ([ad2b6cd](https://github.com/metabase/metabase/commit/ad2b6cd6921eba6fd1beb17a64a649b160715c9c))
+
+
+
 ## [0.51.8](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.7...embedding-sdk-0.51.8) (2024-11-21)
 
 
@@ -26,7 +95,7 @@
 
 
 
-## [0.51.5](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.4...embedding-sdk-0.51.5) (2024-11-20)
+## [0.51.5](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.4...embedding-sdk-0.51.5) (2024-11-20)
 
 
 ### Bug Fixes
@@ -48,7 +117,7 @@
 
 
 
-## [1.51.4](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.3...embedding-sdk-1.51.4) (2024-11-12)
+## [0.51.4](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.3...embedding-sdk-0.51.4) (2024-11-12)
 
 
 ### Bug Fixes
@@ -68,7 +137,7 @@
 
 
 
-## [1.51.3](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.2...embedding-sdk-1.51.3) (2024-11-06)
+## [0.51.3](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.2...embedding-sdk-0.51.3) (2024-11-06)
 
 
 ### Bug Fixes
@@ -90,7 +159,7 @@
 
 
 
-## [1.51.2](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.40...embedding-sdk-1.51.2) (2024-10-24)
+## [0.51.2](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.40...embedding-sdk-0.51.2) (2024-10-24)
 
 
 ### Bug Fixes
@@ -116,7 +185,7 @@
 
 
 
-## [0.1.39](https://github.com/metabase/metabase/compare/embedding-sdk-1.51.0...embedding-sdk-0.1.39) (2024-10-16)
+## [0.1.39](https://github.com/metabase/metabase/compare/embedding-sdk-0.51.0...embedding-sdk-0.1.39) (2024-10-16)
 
 
 ### Bug Fixes

@@ -905,10 +905,23 @@
                            :id        "927e929"
                            :type      :temporal-unit
                            :sectionId "temporal-unit"
-                           :temporal_units ["week" "month"]}]]
+                           :temporal_units [:week :month]}]]
               (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:parameters params})
               (is (= params
-                     (t2/select-one-fn :parameters Dashboard :id (u/the-id dashboard)))))))))))
+                     (t2/select-one-fn :parameters Dashboard :id (u/the-id dashboard))))))
+
+          (testing "Update dashboard with parameters works (#50371)"
+            (let [put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
+                                                     {:archived :true})]
+              (is (=? {:archived true
+                       :parameters
+                       [{:name      "Time Unit"
+                         :slug      "time_unit"
+                         :id        "927e929"
+                         :type      "temporal-unit"
+                         :sectionId "temporal-unit"
+                         :temporal_units ["week" "month"]}]}
+                      put-response)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    UPDATING DASHBOARD CARD IN DASHCARD                                         |

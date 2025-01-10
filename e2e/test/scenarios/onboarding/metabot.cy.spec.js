@@ -1,19 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  describeWithSnowplow,
-  echartsContainer,
-  enableTracking,
-  expectGoodSnowplowEvents,
-  expectNoBadSnowplowEvents,
-  openCollectionItemMenu,
-  openQuestionActions,
-  resetSnowplow,
-  restore,
-  sidebar,
-  updateSetting,
-  visitModel,
-} from "e2e/support/helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -52,7 +39,7 @@ const PROMPT_RESPONSE = {
 
 describe.skip("scenarios > metabot", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/metabot/model/*", PROMPT_RESPONSE).as(
@@ -68,7 +55,7 @@ describe.skip("scenarios > metabot", () => {
 
   it("should not show metabot if it is disabled", () => {
     cy.visit("/admin");
-    sidebar().findByText("Metabot").should("not.exist");
+    H.sidebar().findByText("Metabot").should("not.exist");
 
     cy.visit("/metabot/database/1");
     cy.url().should("eq", `${location.origin}/`);
@@ -114,12 +101,12 @@ describe.skip("scenarios > metabot", () => {
   });
 });
 
-describeWithSnowplow.skip("scenarios > metabot", () => {
+H.describeWithSnowplow.skip("scenarios > metabot", () => {
   beforeEach(() => {
-    restore();
-    resetSnowplow();
+    H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
-    enableTracking();
+    H.enableTracking();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/metabot/database/*", PROMPT_RESPONSE).as(
       "databasePrompt",
@@ -130,13 +117,13 @@ describeWithSnowplow.skip("scenarios > metabot", () => {
   });
 
   afterEach(() => {
-    expectNoBadSnowplowEvents();
+    H.expectNoBadSnowplowEvents();
   });
 
   it("should send snowplow events when submitting metabot feedback", () => {
     cy.createQuestion(MODEL_DETAILS);
     enableMetabot();
-    resetSnowplow();
+    H.resetSnowplow();
     verifyHomeMetabot();
     verifyMetabotFeedback();
 
@@ -145,12 +132,12 @@ describeWithSnowplow.skip("scenarios > metabot", () => {
     // metabot_query_run
     // metabot_feedback_received
     // metabot_query_run
-    expectGoodSnowplowEvents(5);
+    H.expectGoodSnowplowEvents(5);
   });
 });
 
 const enableMetabot = () => {
-  updateSetting("is-metabot-enabled", true);
+  H.updateSetting("is-metabot-enabled", true);
 };
 
 const verifyTableVisibility = () => {
@@ -164,13 +151,13 @@ const verifyHomeMetabot = () => {
   cy.wait("@databasePrompt");
   cy.wait("@dataset");
   cy.findByDisplayValue(PROMPT).should("be.visible");
-  echartsContainer();
+  H.echartsContainer();
   cy.findByText("Gadget").should("be.visible");
   cy.findByText("Widget").should("be.visible");
   cy.findByLabelText("table2 icon").click();
   verifyTableVisibility();
   cy.findByLabelText("bar icon").click();
-  echartsContainer();
+  H.echartsContainer();
 };
 
 const verifyManualQueryEditing = () => {
@@ -180,7 +167,7 @@ const verifyManualQueryEditing = () => {
     .type(MANUAL_QUERY);
   cy.findByLabelText("Refresh").click();
   cy.wait("@dataset");
-  echartsContainer();
+  H.echartsContainer();
   cy.findByText("Gadget").should("be.visible");
   cy.findByText("Widget").should("not.exist");
 };
@@ -189,23 +176,23 @@ const verifyMetabotFeedback = () => {
   cy.findByRole("button", { name: "This isn’t valid SQL." }).click();
   cy.findByRole("button", { name: "Try again" }).click();
   cy.wait("@dataset");
-  echartsContainer();
+  H.echartsContainer();
 };
 
 const verifyCollectionMetabot = () => {
   cy.visit("/collection/root");
-  openCollectionItemMenu(MODEL_DETAILS.name);
+  H.openCollectionItemMenu(MODEL_DETAILS.name);
   cy.findByText("Ask Metabot").click();
   cy.findByPlaceholderText(/Ask something/).type(PROMPT);
   cy.findByLabelText("Get Answer").click();
   cy.wait("@modelPrompt");
   cy.wait("@dataset");
-  echartsContainer();
+  H.echartsContainer();
 };
 
 const verifyQueryBuilderMetabot = () => {
-  cy.get("@modelId").then(id => visitModel(id));
-  openQuestionActions();
+  cy.get("@modelId").then(id => H.visitModel(id));
+  H.openQuestionActions();
   cy.findByText("Ask Metabot").click();
   cy.findByPlaceholderText(/Ask something/).type(PROMPT);
   cy.findByLabelText("Get Answer").click();
@@ -222,12 +209,12 @@ const verifyNoHomeMetabot = () => {
 
 const verifyNoCollectionMetabot = () => {
   cy.visit("/collection/root");
-  openCollectionItemMenu(MODEL_DETAILS.name);
+  H.openCollectionItemMenu(MODEL_DETAILS.name);
   cy.findByText("Ask Metabot").should("not.exist");
 };
 
 const verifyNoQueryBuilderMetabot = ({ hasDataAccess = true } = {}) => {
-  cy.get("@modelId").then(id => visitModel(id, { hasDataAccess }));
-  openQuestionActions();
+  cy.get("@modelId").then(id => H.visitModel(id, { hasDataAccess }));
+  H.openQuestionActions();
   cy.findByText("Ask Metabot").should("not.exist");
 };

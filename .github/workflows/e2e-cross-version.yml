@@ -16,11 +16,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
+        if: github.base_ref == 'master'
         uses: dorny/paths-filter@v3.0.0
         id: changes
         with:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
+      - name: non-master stub
+        if: github.base_ref != 'master'
+        run: | # bash
+          echo ${{ github.base_ref }}
+          echo "Not targeting master, don't run cross-version tests"
+          echo "e2e_cross_version=false" >> $GITHUB_ENV
+          exit 0
 
   cross-version-testing:
     needs: files-changed

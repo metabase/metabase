@@ -2,7 +2,6 @@
 import cx from "classnames";
 import { dissoc } from "icepick";
 import { Component } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -21,6 +20,7 @@ import Dashboards from "metabase/entities/dashboards";
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
 import { color } from "metabase/lib/colors";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getMetadata } from "metabase/selectors/metadata";

@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { Component } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
 import type {
   BaseModalProps,
@@ -53,7 +54,13 @@ export class WindowModal extends Component<WindowModalProps> {
     if (props.zIndex != null) {
       this._modalElement.style.zIndex = String(props.zIndex);
     }
-    document.body.appendChild(this._modalElement);
+
+    const modalContainer =
+      window.document.querySelector(
+        `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+      ) || document.body;
+
+    modalContainer.appendChild(this._modalElement);
   }
 
   componentWillUnmount() {

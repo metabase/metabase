@@ -13,6 +13,12 @@ export const getNavLinkOverrides = (): MantineThemeOverride["components"] => ({
       icon: {
         color: theme.fn.themeColor("text-dark"),
       },
+      rightSection: {
+        // Apply default icon color for section icons when inactive
+        "&:not([data-active] &)": {
+          color: "var(--mb-color-text-primary)",
+        },
+      },
     }),
     variants: {
       default: () => ({

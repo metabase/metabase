@@ -7,24 +7,36 @@ import {
 } from "embedding-sdk/test/mocks/state";
 import { createMockState } from "metabase-types/store/mocks";
 
+import { SdkContextProvider } from "../SdkContext";
+
 import { PublicComponentWrapper } from "./PublicComponentWrapper";
 
-const setup = (status: LoginStatus = { status: "uninitialized" }) => {
+const setup = (
+  status: LoginStatus = { status: "uninitialized" },
+  insideProvider = true,
+) => {
   const state = createMockState({
     sdk: createMockSdkState({
       loginStatus: createMockLoginStatusState(status),
     }),
   });
 
-  renderWithProviders(
+  const jsx = insideProvider ? (
+    <SdkContextProvider>
+      <PublicComponentWrapper>
+        <div>My component</div>
+      </PublicComponentWrapper>
+    </SdkContextProvider>
+  ) : (
     <PublicComponentWrapper>
       <div>My component</div>
-    </PublicComponentWrapper>,
-    {
-      storeInitialState: state,
-      customReducers: sdkReducers,
-    },
+    </PublicComponentWrapper>
   );
+
+  return renderWithProviders(jsx, {
+    storeInitialState: state,
+    customReducers: sdkReducers,
+  });
 };
 
 describe("PublicComponentWrapper", () => {
@@ -53,5 +65,11 @@ describe("PublicComponentWrapper", () => {
     setup({ status: "success" });
     const component = screen.getByText("My component");
     expect(component).toBeInTheDocument();
+  });
+
+  it("should not render children when rendered outside of the provider (metabase#50736)", () => {
+    setup({ status: "success" }, false);
+    const component = screen.queryByText("My component");
+    expect(component).not.toBeInTheDocument();
   });
 });

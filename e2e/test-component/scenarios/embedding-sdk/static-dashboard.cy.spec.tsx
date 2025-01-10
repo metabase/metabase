@@ -1,31 +1,20 @@
+import { StaticDashboard } from "@metabase/embedding-sdk-react";
+
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { describeEE, getTextCardDetails } from "e2e/support/helpers";
 import {
-  getTextCardDetails,
-  restore,
-  setTokenFeatures,
-  visitFullAppEmbeddingUrl,
-} from "e2e/support/helpers";
-import {
-  EMBEDDING_SDK_STORY_HOST,
-  describeSDK,
-} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import {
-  JWT_SHARED_SECRET,
-  setupJwt,
-} from "e2e/support/helpers/e2e-jwt-helpers";
+  mockAuthProviderAndJwtSignIn,
+  mountSdkContent,
+  signInAsAdminAndEnableEmbeddingSdk,
+} from "e2e/support/helpers/component-testing-sdk";
+import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
-describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
+describeEE("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-    setTokenFeatures("all");
-    setupJwt();
-    cy.request("PUT", "/api/setting", {
-      "enable-embedding-sdk": true,
-    });
+    signInAsAdminAndEnableEmbeddingSdk();
 
     const textCard = getTextCardDetails({ col: 16, text: "Text text card" });
     const questionCard = {
@@ -50,37 +39,24 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
 
     cy.signOut();
 
+    mockAuthProviderAndJwtSignIn();
+
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-    cy.intercept("GET", "/api/user/current").as("getUser");
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
+  });
 
-    cy.get("@dashboardId").then(dashboardId => {
-      visitFullAppEmbeddingUrl({
-        url: EMBEDDING_SDK_STORY_HOST,
-        qs: { id: "embeddingsdk-staticdashboard--default", viewMode: "story" },
-        onBeforeLoad: window => {
-          window.JWT_SHARED_SECRET = JWT_SHARED_SECRET;
-          window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
-          window.DASHBOARD_ID = dashboardId;
-        },
-      });
-    });
-
-    cy.wait("@getUser").then(({ response }) => {
-      expect(response?.statusCode).to.equal(200);
+  it("should render dashboard content", () => {
+    cy.get<string>("@dashboardId").then(dashboardId => {
+      mountSdkContent(<StaticDashboard dashboardId={dashboardId} />);
     });
 
     cy.wait("@getDashboard").then(({ response }) => {
       expect(response?.statusCode).to.equal(200);
     });
 
-    cy.get("#metabase-sdk-root").should("be.visible");
-  });
-
-  it("should show dashboard content", () => {
-    cy.get("#metabase-sdk-root").within(() => {
+    getSdkRoot().within(() => {
       cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
 
       cy.findByText("Text text card").should("be.visible"); // text card content
@@ -91,7 +67,15 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
   });
 
   it("should show fullscreen mode control by default", () => {
-    cy.get("#metabase-sdk-root").within(() => {
+    cy.get<string>("@dashboardId").then(dashboardId => {
+      mountSdkContent(<StaticDashboard dashboardId={dashboardId} />);
+    });
+
+    cy.wait("@getDashboard").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+    });
+
+    getSdkRoot().within(() => {
       cy.icon("expand").should("be.visible"); // enter full screen control
     });
   });

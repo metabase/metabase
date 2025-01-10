@@ -1,8 +1,8 @@
 import PropTypes from "prop-types";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { connect } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   setQueryBuilderMode,

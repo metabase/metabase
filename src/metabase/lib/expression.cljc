@@ -69,7 +69,7 @@
           :lib/source          :source/expressions}
          (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
            {:metabase.lib.field/temporal-unit unit})
-         (when lib.metadata.calculation/*propagate-inherited-temoral-unit*
+         (when lib.metadata.calculation/*propagate-binning-and-bucketing*
            (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
              {:inherited-temporal-unit unit}))))
 

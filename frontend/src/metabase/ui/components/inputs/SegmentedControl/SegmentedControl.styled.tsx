@@ -51,10 +51,12 @@ export const getSegmentedControlOverrides =
             backgroundColor: theme.fn.themeColor("bg-medium"),
           },
           controlActive: {
-            backgroundColor: shouldAnimate ? theme.white : undefined,
+            backgroundColor: shouldAnimate
+              ? theme.fn.themeColor("bg-white")
+              : undefined,
           },
           indicator: {
-            backgroundColor: theme.white,
+            backgroundColor: theme.fn.themeColor("bg-white"),
           },
         };
       },

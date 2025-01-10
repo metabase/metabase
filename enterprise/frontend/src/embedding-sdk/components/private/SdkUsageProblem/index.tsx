@@ -1,17 +1,21 @@
 import { EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { useSdkUsageProblem } from "embedding-sdk/hooks/private/use-sdk-usage-problem";
-import type { SDKConfig } from "embedding-sdk/types";
+import type { MetabaseAuthConfig } from "embedding-sdk/types";
 import { Box, Portal } from "metabase/ui";
 
 import { SdkUsageProblemBanner } from "./SdkUsageProblemBanner";
 import S from "./SdkUsageProblemBanner.module.css";
 
 interface Props {
-  config: SDKConfig;
+  authConfig: MetabaseAuthConfig;
+  allowConsoleLog?: boolean;
 }
 
-export const SdkUsageProblemDisplay = ({ config }: Props) => {
-  const usageProblem = useSdkUsageProblem(config);
+export const SdkUsageProblemDisplay = ({
+  authConfig,
+  allowConsoleLog,
+}: Props) => {
+  const usageProblem = useSdkUsageProblem({ authConfig, allowConsoleLog });
 
   if (!usageProblem) {
     return null;

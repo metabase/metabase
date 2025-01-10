@@ -3,7 +3,6 @@ import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/testing-library";
 import { type ComponentProps, useEffect } from "react";
-import { Provider } from "react-redux";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
@@ -14,6 +13,7 @@ import {
   StringColumn,
 } from "__support__/visualizations";
 import { waitTimeContext } from "metabase/context/wait-time";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
@@ -54,9 +54,9 @@ export default {
 
 function ReduxDecorator(Story: StoryFn) {
   return (
-    <Provider store={store}>
+    <MetabaseReduxProvider store={store}>
       <Story />
-    </Provider>
+    </MetabaseReduxProvider>
   );
 }
 

@@ -5,10 +5,13 @@ import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Alert, Box, Icon } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import type { Collection } from "metabase-types/api";
+
+import { getDateFilterValue } from "../CleanupCollectionModal/utils";
 
 const TEXT = {
   CLEAN_THINGS_UP: c(
@@ -25,16 +28,19 @@ export const CollectionCleanupAlert = ({
   collection: Collection;
 }) => {
   const isAdmin = useSelector(getUserIsAdmin);
+  const shouldFetchStaleItems =
+    isAdmin && PLUGIN_COLLECTIONS.canCleanUp(collection);
 
   const {
     data: staleItems,
     isLoading,
     error,
   } = useListStaleCollectionItemsQuery(
-    isAdmin
+    shouldFetchStaleItems
       ? {
           id: collection.id,
           limit: 0, // only fetch pagination info
+          before_date: getDateFilterValue("three-months"), // set to 3 months ago
         }
       : skipToken,
   );

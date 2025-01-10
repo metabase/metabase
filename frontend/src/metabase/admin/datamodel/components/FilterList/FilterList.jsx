@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
-import { connect } from "react-redux";
 
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { Filter } from "../Filter";

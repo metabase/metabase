@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.audit :as audit]
    [metabase.config :as config]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -1089,3 +1090,31 @@
     [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}
                               {:target [:dimension [:field 33 {:temporal-unit :month}]]}
                               {:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]))
+
+(deftest update-does-not-break
+  ;; There's currently a footgun in Toucan2 - if 1) the result of `before-update` doesn't have an ID, 2) part of your
+  ;; `update` would change a subset of selected rows, and 3) part of your `update` would change *every* selected row
+  ;; (in this case, that's the `updated_at` we automatically set), then it emits an update without a `WHERE` clause.
+  ;;
+  ;;This can be removed after https://github.com/camsaul/toucan2/pull/196 is merged.
+  (mt/with-temp [:model/Card {card-1-id :id} {:name "Flippy"}
+                 :model/Card {card-2-id :id} {:name "Dog Man"}
+                 :model/Card {card-3-id :id} {:name "Petey"}]
+    (testing "only the two cards specified get updated"
+      (t2/update! :model/Card :id [:in [card-1-id card-2-id]]
+                  {:name "Flippy"})
+      (is (= "Petey" (t2/select-one-fn :name :model/Card :id card-3-id))))))
+
+(deftest ^:parallel query-description-in-metric-cards-test
+  (testing "Metric cards contain query_description key (#51303)"
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+      (mt/with-temp
+        [:model/Card
+         {id :id}
+         {:name "My metric"
+          :type :metric
+          :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/aggregate (lib/count))
+                             lib.convert/->legacy-MBQL)}]
+        (is (= "Orders, Count"
+               (:query_description (t2/select-one :model/Card :id id))))))))

@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
+import type { MetabasePluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/EditableDashboard.styled";
 import {
@@ -20,8 +20,8 @@ import { InteractiveDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 export type EditableDashboardProps = {
-  questionHeight?: number;
-  plugins?: SdkPluginsConfig;
+  drillThroughQuestionHeight?: number;
+  plugins?: MetabasePluginsConfig;
   className?: string;
   style?: CSSProperties;
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
@@ -29,9 +29,9 @@ export type EditableDashboardProps = {
 
 export const EditableDashboard = ({
   dashboardId,
-  initialParameterValues = {},
+  initialParameters = {},
   withDownloads = false,
-  questionHeight,
+  drillThroughQuestionHeight,
   plugins,
   onLoad,
   onLoadWithoutCards,
@@ -50,7 +50,7 @@ export const EditableDashboard = ({
     withDownloads,
     withTitle: true,
     hiddenParameters: undefined,
-    initialParameterValues,
+    initialParameters,
   });
 
   const {
@@ -72,8 +72,8 @@ export const EditableDashboard = ({
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
-          withTitle
-          height={questionHeight}
+          title={true}
+          height={drillThroughQuestionHeight}
           plugins={plugins}
           onNavigateBack={onNavigateBackToDashboard}
         />
@@ -85,7 +85,7 @@ export const EditableDashboard = ({
         >
           <ConnectedDashboard
             dashboardId={dashboardId}
-            parameterQueryParams={initialParameterValues}
+            parameterQueryParams={initialParameters}
             refreshPeriod={refreshPeriod}
             onRefreshPeriodChange={onRefreshPeriodChange}
             setRefreshElapsedHook={setRefreshElapsedHook}

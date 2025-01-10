@@ -294,6 +294,7 @@ interface PublicSettings {
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "application-name": string;
+  "application-favicon-url": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
   "bug-reporting-enabled": boolean;
@@ -359,6 +360,7 @@ export type UserSettings = {
   "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
+  "trial-banner-dismissal-timestamp"?: string | null;
 };
 
 export type Settings = InstanceSettings &

@@ -92,6 +92,14 @@
   --mb-color-icon-primary-disabled: var(--mb-base-color-gray-30);
   --mb-color-icon-secondary: var(--mb-base-color-brand-20);
   --mb-color-icon-secondary-disabled: var(--mb-base-color-gray-10);
+  --mb-color-tooltip-text: var(--mb-color-text-white);
+  --mb-color-tooltip-text-secondary: var(--mb-color-text-light);
+  --mb-color-tooltip-background: var(--mb-color-background-inverse);
+  --mb-color-tooltip-background-focused: color-mix(
+    in srgb,
+    var(--mb-color-tooltip-background) 50%,
+    #000
+  );
 
   /**
     * Base colors

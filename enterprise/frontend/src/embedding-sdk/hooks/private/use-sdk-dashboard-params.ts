@@ -13,7 +13,7 @@ import type { DashboardId } from "metabase-types/api";
 
 export type SdkDashboardDisplayProps = {
   dashboardId: DashboardId;
-  initialParameterValues?: Query;
+  initialParameters?: Query;
   withTitle?: boolean;
   withCardTitle?: boolean;
   withDownloads?: boolean;
@@ -25,7 +25,7 @@ export const useSdkDashboardParams = ({
   withDownloads,
   withTitle,
   hiddenParameters,
-  initialParameterValues = {},
+  initialParameters = {},
 }: SdkDashboardDisplayProps) => {
   // temporary name until we change `hideDownloadButton` to `downloads`
   const hideDownloadButton = !withDownloads;
@@ -44,7 +44,7 @@ export const useSdkDashboardParams = ({
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId,
-    parameterQueryParams: initialParameterValues,
+    parameterQueryParams: initialParameters,
   });
   const { isFullscreen, onFullscreenChange, ref } = useDashboardFullscreen();
   const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =

@@ -1,5 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import type React from "react";
 
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
@@ -9,7 +10,7 @@ import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image
  * This is to ensure that the SDK components are styled correctly,
  * even when rendered under a React portal.
  */
-export const PublicComponentStylesWrapper = styled.div`
+const PublicComponentStylesWrapperInner = styled.div`
   // Try to reset as much as possible to avoid css leaking from host app to our components
   all: initial;
   text-decoration: none;
@@ -25,7 +26,7 @@ export const PublicComponentStylesWrapper = styled.div`
 
   font-weight: 400;
   color: var(--mb-color-text-dark);
-  font-family: var(--mb-default-font-family), sans-serif;
+  font-family: var(--mb-default-font-family);
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -37,6 +38,18 @@ export const PublicComponentStylesWrapper = styled.div`
     display: inline;
   }
 `;
+
+export const PublicComponentStylesWrapper = (
+  props: React.ComponentProps<"div">,
+) => {
+  return (
+    <PublicComponentStylesWrapperInner
+      {...props}
+      // eslint-disable-next-line react/prop-types -- className is in div props :shrugs:
+      className={`mb-wrapper ${props.className}`}
+    />
+  );
+};
 /**
  * We can't apply a global css reset as it would leak into the host app but we
  * can't also apply our entire css reset scoped to this container, as it would
@@ -48,7 +61,7 @@ export const PublicComponentStylesWrapper = styled.div`
  * - -> our other code with specificity (0,1,0) will override this as they're loaded after
  */
 export const SCOPED_CSS_RESET = css`
-  ${PublicComponentStylesWrapper} *:where(button) {
+  ${PublicComponentStylesWrapperInner} *:where(button) {
     border: 0;
     background-color: transparent;
   }

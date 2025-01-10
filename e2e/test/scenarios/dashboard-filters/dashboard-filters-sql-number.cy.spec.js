@@ -1,16 +1,4 @@
-import {
-  clearFilterWidget,
-  editDashboard,
-  filterWidget,
-  getDashboardCard,
-  popover,
-  restore,
-  saveDashboard,
-  setFilter,
-  sidebar,
-  visitDashboard,
-  visitQuestion,
-} from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -25,35 +13,35 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
       "dashcardQuery",
     );
 
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
-        visitQuestion(card_id);
+        H.visitQuestion(card_id);
 
-        visitDashboard(dashboard_id);
+        H.visitDashboard(dashboard_id);
       },
     );
 
-    editDashboard();
+    H.editDashboard();
   });
 
   it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
 
-      setFilter("Number", filter);
+      H.setFilter("Number", filter);
 
       clickSelect();
-      popover().contains(filter).click();
+      H.popover().contains(filter).click();
     });
 
-    saveDashboard();
+    H.saveDashboard();
 
     Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
-        filterWidget().eq(index).click();
+        H.filterWidget().eq(index).click();
         addWidgetNumberFilter(value);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
@@ -61,31 +49,31 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
           cy.contains(representativeResult);
         });
 
-        clearFilterWidget(index);
+        H.clearFilterWidget(index);
         cy.wait("@dashcardQuery");
       },
     );
   });
 
   it("should work when set as the default filter", () => {
-    setFilter("Number", "Equal to");
-    sidebar().findByText("Default value").next().click();
+    H.setFilter("Number", "Equal to");
+    H.sidebar().findByText("Default value").next().click();
 
     addWidgetNumberFilter("3.8");
 
     clickSelect();
-    popover().contains("Equal to").click();
+    H.popover().contains("Equal to").click();
 
-    saveDashboard();
+    H.saveDashboard();
 
     cy.findByTestId("dashcard").within(() => {
       cy.contains("Small Marble Hat");
       cy.contains("Rustic Paper Wallet").should("not.exist");
     });
 
-    clearFilterWidget();
+    H.clearFilterWidget();
 
-    filterWidget().click();
+    H.filterWidget().click();
 
     addWidgetNumberFilter("4.6", { buttonLabel: "Update filter" });
 
@@ -153,7 +141,7 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
   };
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestionAndDashboard({
@@ -174,7 +162,7 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
         ],
       });
 
-      visitDashboard(dashboard_id);
+      H.visitDashboard(dashboard_id);
     });
   });
 
@@ -196,5 +184,5 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
 });
 
 function clickSelect() {
-  getDashboardCard().findByText("Select…").click();
+  H.getDashboardCard().findByText("Select…").click();
 }

@@ -155,8 +155,20 @@ export const createMockSettings = (
   "application-font-files": [],
   // eslint-disable-next-line no-literal-metabase-strings -- This is a mock
   "application-name": "Metabase",
+  "application-favicon-url": "",
   "available-fonts": [],
-  "available-locales": null,
+  "available-locales": [
+    // this is a subset of the locales we have in the real app
+    ["de", "German"],
+    ["en", "English"],
+    ["es", "Spanish"],
+    ["ko", "Korean"],
+    ["pt_BR", "Portuguese (Brazil)"],
+    ["zh", "Chinese"],
+    ["zh_CN", "Chinese (China)"],
+    ["zh_HK", "Chinese (Hong Kong SAR China)"],
+    ["zh_TW", "Chinese (Taiwan)"],
+  ],
   "bug-reporting-enabled": false,
   "bcc-enabled?": true,
   "cloud-gateway-ips": null,
@@ -274,5 +286,6 @@ export const createMockSettings = (
   "query-analysis-enabled": false,
   "check-for-updates": true,
   "update-channel": "latest",
+  "trial-banner-dismissal-timestamp": null,
   ...opts,
 });

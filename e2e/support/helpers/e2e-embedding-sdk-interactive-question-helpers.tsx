@@ -1,4 +1,8 @@
-import { entityPickerModal, modal, popover } from "e2e/support/helpers";
+import {
+  entityPickerModal,
+  modal,
+  popover,
+} from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 export function saveInteractiveQuestionAsNewQuestion(options: {
   questionName: string;
@@ -25,6 +29,8 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
     cy.findByTestId("collection-picker-button").click();
 
     entityPickerModal().within(() => {
+      cy.findByText("Collections").click();
+
       collectionPickerPath.forEach(collectionName =>
         cy.findByText(collectionName).click(),
       );

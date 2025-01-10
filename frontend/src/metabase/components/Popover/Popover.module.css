@@ -34,9 +34,9 @@
 }
 
 :global(.tippy-box[data-theme~="tooltip"]) {
-  color: white;
+  color: var(--mb-color-tooltip-text);
   font-weight: bold;
-  background-color: var(--mb-color-background-inverse);
+  background-color: var(--mb-color-tooltip-background);
   border: none;
   pointer-events: none;
   line-height: 1.26;

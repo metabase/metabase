@@ -20,14 +20,14 @@ To give you and idea of what's possible with the SDK, we've put together example
 
 ## Embedded analytics SDK prerequisites
 
-- React application. The SDK is tested to work with React 18 or higher, though it may work with earlier versions.
+- React application. The SDK is tested to work with React 18, though it may work with earlier versions.
 - [Metabase Pro or Enterprise subscription or free trial](https://www.metabase.com/pricing/).
 - Metabase version 1.51 or higher.
-- [Node.js 18.x LTS](https://nodejs.org/en) or higher.
+- [Node.js 20.x LTS](https://nodejs.org/en).
 
 ## Embedded analytics SDK on NPM
 
-Check out the Metabase Embedded analytics SDK on NPM: [metaba.se/sdk](https://metaba.se/sdk).
+Check out the Metabase Embedded analytics SDK on NPM: [https://www.npmjs.com/package/@metabase/embedding-sdk-react](https://www.npmjs.com/package/@metabase/embedding-sdk-react).
 
 ## Quickstart with CLI
 

@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useEffect } from "react";
 import type { ConnectedProps } from "react-redux";
-import { connect } from "react-redux";
 import type { Route, WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { useUnmount } from "react-use";
@@ -17,14 +16,14 @@ import {
   useDashboardUrlQuery,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
-import favicon from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
+import { useFavicon } from "metabase/hooks/use-favicon";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { parseHashOptions } from "metabase/lib/browser";
-import { useDispatch } from "metabase/lib/redux";
+import { connect, useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
@@ -109,6 +108,8 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
 
 const DashboardApp = (props: DashboardAppProps) => {
+  useFavicon({ favicon: props.pageFavicon });
+
   const {
     dashboard,
     isRunning,
@@ -121,7 +122,6 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   const {
     documentTitle: _documentTitle,
-    pageFavicon: _pageFavicon,
     isRunning: _isRunning,
     isLoadingComplete: _isLoadingComplete,
     children,
@@ -247,7 +247,6 @@ function getDashboardId({ dashboardId, params }: DashboardAppProps) {
 
 export const DashboardAppConnected = _.compose(
   connector,
-  favicon(({ pageFavicon }: Pick<ReduxProps, "pageFavicon">) => pageFavicon),
   title(
     ({
       dashboard,

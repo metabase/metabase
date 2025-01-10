@@ -1,13 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  getBinningButtonForDimension,
-  openTable,
-  popover,
-  restore,
-  summarize,
-  visitQuestionAdhoc,
-} from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
   SAMPLE_DATABASE;
@@ -102,7 +95,7 @@ const LONGITUDE_BUCKETS = [
 describe("scenarios > binning > binning options", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
-    restore();
+    H.restore();
     cy.signInAsAdmin();
   });
 
@@ -193,7 +186,7 @@ describe("scenarios > binning > binning options", () => {
   context("via time series footer (metabase#11183)", () => {
     // TODO: enable again when metabase#35546 is completed
     it.skip("should render time series binning options correctly", () => {
-      openTable({ table: ORDERS_ID });
+      H.openTable({ table: ORDERS_ID });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At").click();
@@ -278,8 +271,8 @@ describe("scenarios > binning > binning options", () => {
 });
 
 function chooseInitialBinningOption({ table, column, mode = null } = {}) {
-  openTable({ table, mode });
-  summarize({ mode });
+  H.openTable({ table, mode });
+  H.summarize({ mode });
 
   if (mode === "notebook") {
     cy.findByText("Count of rows").click();
@@ -294,9 +287,9 @@ function chooseInitialBinningOptionForExplicitJoin({
   baseTableQuery,
   column,
 } = {}) {
-  visitQuestionAdhoc({ dataset_query: baseTableQuery });
+  H.visitQuestionAdhoc({ dataset_query: baseTableQuery });
 
-  summarize();
+  H.summarize();
 
   cy.findByTestId("sidebar-right").within(() => {
     cy.findByText("Count"); // Test fails without this because of some weird race condition
@@ -305,7 +298,7 @@ function chooseInitialBinningOptionForExplicitJoin({
 }
 
 function openBinningListForDimension(column, binning) {
-  getBinningButtonForDimension({ name: column, isSelected: true })
+  H.getBinningButtonForDimension({ name: column, isSelected: true })
     .should("contain", binning)
     .click();
 }
@@ -321,7 +314,7 @@ function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
   // Custom question has two popovers open.
   // The binning options are in the latest (last) one.
   // Using `.last()` works even when only one popover is open so it covers both scenarios.
-  popover()
+  H.popover()
     .last()
     .within(() => {
       if (shouldExpandList) {

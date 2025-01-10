@@ -1,7 +1,6 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
 import { Component, createRef } from "react";
-import { connect } from "react-redux";
 import type { ResizableBox, ResizableBoxProps } from "react-resizable";
 import slugg from "slugg";
 import { t } from "ttag";
@@ -25,6 +24,7 @@ import Snippets from "metabase/entities/snippets";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import { isEventOverElement } from "metabase/lib/dom";
 import { getEngineNativeAceMode } from "metabase/lib/engine";
+import { connect } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";

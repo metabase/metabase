@@ -1,20 +1,5 @@
+import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
-import {
-  blockSnowplow,
-  describeEE,
-  describeWithSnowplow,
-  expectGoodSnowplowEvent,
-  expectGoodSnowplowEvents,
-  expectNoBadSnowplowEvents,
-  isEE,
-  main,
-  mockSessionProperty,
-  onlyOnEE,
-  popover,
-  resetSnowplow,
-  restore,
-  setTokenFeatures,
-} from "e2e/support/helpers";
 import { SUBSCRIBE_URL } from "metabase/setup/constants";
 
 const { admin } = USERS;
@@ -24,7 +9,7 @@ const locales = ["en", "xx"];
 
 describe("scenarios > setup", () => {
   locales.forEach(locale => {
-    beforeEach(() => restore("blank"));
+    beforeEach(() => H.restore("blank"));
 
     it(
       `should allow you to sign up using "${locale}" browser locale`,
@@ -207,7 +192,7 @@ describe("scenarios > setup", () => {
 
     cy.location("pathname").should("eq", "/");
 
-    main().findByText("Embed Metabase in your app").should("not.exist");
+    H.main().findByText("Embed Metabase in your app").should("not.exist");
 
     cy.wait("@subscribe").then(({ request }) => {
       const formData = request.body;
@@ -237,9 +222,9 @@ describe("scenarios > setup", () => {
   });
 
   it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
-    onlyOnEE();
-    setTokenFeatures("none");
-    mockSessionProperty("is-hosted?", true);
+    H.onlyOnEE();
+    H.setTokenFeatures("none");
+    H.mockSessionProperty("is-hosted?", true);
 
     cy.visit(
       "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
@@ -389,29 +374,29 @@ describe("scenarios > setup", () => {
 
     cy.location("pathname").should("eq", "/");
 
-    main()
+    H.main()
       .findByText("Get started with Embedding Metabase in your app")
       .should("exist");
 
     // should persist page loads
     cy.reload();
 
-    main()
+    H.main()
       .findByText("Get started with Embedding Metabase in your app")
       .should("exist");
 
-    main().findByText("Hide these").realHover();
+    H.main().findByText("Hide these").realHover();
 
-    popover().findByText("Embedding done, all good").click();
+    H.popover().findByText("Embedding done, all good").click();
 
-    main()
+    H.main()
       .findByText("Get started with Embedding Metabase in your app")
       .should("not.exist");
   });
 });
 
-describeEE("scenarios > setup (EE)", () => {
-  beforeEach(() => restore("blank"));
+H.describeEE("scenarios > setup (EE)", () => {
+  beforeEach(() => H.restore("blank"));
 
   it("should ask for a license token on self-hosted", () => {
     cy.visit("/setup");
@@ -444,7 +429,7 @@ describeEE("scenarios > setup (EE)", () => {
 
     cy.visit("/admin/settings/license");
 
-    main().findByText("Looking for more?").should("exist");
+    H.main().findByText("Looking for more?").should("exist");
 
     cy.wait("@tokenStatus").then(request => {
       expect(request.response?.body.valid).to.equal(true);
@@ -452,14 +437,14 @@ describeEE("scenarios > setup (EE)", () => {
   });
 });
 
-describeWithSnowplow("scenarios > setup", () => {
+H.describeWithSnowplow("scenarios > setup", () => {
   beforeEach(() => {
-    restore("blank");
-    resetSnowplow();
+    H.restore("blank");
+    H.resetSnowplow();
   });
 
   afterEach(() => {
-    expectNoBadSnowplowEvents();
+    H.expectNoBadSnowplowEvents();
   });
 
   it("should send snowplow events", () => {
@@ -470,7 +455,7 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.visit("/setup");
 
     goodEvents++; // 3 - setup/step_seen "welcome"
-    expectGoodSnowplowEvent({
+    H.expectGoodSnowplowEvent({
       event: "step_seen",
       step_number: 0,
       step: "welcome",
@@ -478,7 +463,7 @@ describeWithSnowplow("scenarios > setup", () => {
     skipWelcomePage();
 
     goodEvents++; // 4 - setup/step_seen  "language"
-    expectGoodSnowplowEvent({
+    H.expectGoodSnowplowEvent({
       event: "step_seen",
       step_number: 1,
       step: "language",
@@ -486,7 +471,7 @@ describeWithSnowplow("scenarios > setup", () => {
     selectPreferredLanguageAndContinue();
 
     goodEvents++; // 5 - setup/step_seen "user_info"
-    expectGoodSnowplowEvent({
+    H.expectGoodSnowplowEvent({
       event: "step_seen",
       step_number: 2,
       step: "user_info",
@@ -500,7 +485,7 @@ describeWithSnowplow("scenarios > setup", () => {
 
       cy.findByText("What will you use Metabase for?").should("exist");
       goodEvents++; // 6 - setup/step_seen "usage_question"
-      expectGoodSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "step_seen",
         step_number: 3,
         step: "usage_question",
@@ -508,13 +493,13 @@ describeWithSnowplow("scenarios > setup", () => {
       cy.button("Next").click();
 
       goodEvents++; // 7 - setup/usage_reason_selected
-      expectGoodSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "usage_reason_selected",
         usage_reason: "self-service-analytics",
       });
 
       goodEvents++; // 8 - setup/step_seen "db_connection"
-      expectGoodSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "step_seen",
         step_number: 4,
         step: "db_connection",
@@ -522,14 +507,14 @@ describeWithSnowplow("scenarios > setup", () => {
       cy.findByText("I'll add my data later").click();
 
       goodEvents++; // 9/10 - setup/add_data_later_clicked
-      expectGoodSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "add_data_later_clicked",
       });
 
       // This step is only visile on EE builds
-      if (isEE) {
+      if (H.isEE) {
         goodEvents++; // 10/11 - setup/step_seen "commercial_license"
-        expectGoodSnowplowEvent({
+        H.expectGoodSnowplowEvent({
           event: "step_seen",
           step_number: 5,
           step: "license_token",
@@ -537,16 +522,16 @@ describeWithSnowplow("scenarios > setup", () => {
 
         cy.button("Skip").click();
         goodEvents++; // 11/12 - setup/step_seen "commercial_license"
-        expectGoodSnowplowEvent({
+        H.expectGoodSnowplowEvent({
           event: "license_token_step_submitted",
           valid_token_present: false,
         });
       }
 
       goodEvents++; // 11/12 - setup/step_seen "data_usage"
-      expectGoodSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "step_seen",
-        step_number: isEE ? 6 : 5,
+        step_number: H.isEE ? 6 : 5,
         step: "data_usage",
       });
 
@@ -554,19 +539,19 @@ describeWithSnowplow("scenarios > setup", () => {
       goodEvents++; // 12/13- - new_user_created (from BE)
 
       goodEvents++; // 13/14- setup/step_seen "completed"
-      expectGoodSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "step_seen",
-        step_number: isEE ? 7 : 6,
+        step_number: H.isEE ? 7 : 6,
         step: "completed",
       });
 
-      expectGoodSnowplowEvents(goodEvents);
+      H.expectGoodSnowplowEvents(goodEvents);
 
       cy.findByText(
         "Get infrequent emails about new releases and feature updates.",
       ).click();
 
-      expectGoodSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "newsletter-toggle-clicked",
         triggered_from: "setup",
         event_detail: "opted-in",
@@ -576,7 +561,7 @@ describeWithSnowplow("scenarios > setup", () => {
         "Get infrequent emails about new releases and feature updates.",
       ).click();
 
-      expectGoodSnowplowEvent({
+      H.expectGoodSnowplowEvent({
         event: "newsletter-toggle-clicked",
         triggered_from: "setup",
         event_detail: "opted-out",
@@ -585,12 +570,12 @@ describeWithSnowplow("scenarios > setup", () => {
   });
 
   it("should ignore snowplow failures and work as normal", () => {
-    blockSnowplow();
+    H.blockSnowplow();
     cy.visit("/setup");
     skipWelcomePage();
 
     // 1 event is sent from the BE, which isn't blocked by blockSnowplow()
-    expectGoodSnowplowEvents(1);
+    H.expectGoodSnowplowEvents(1);
   });
 });
 
@@ -644,7 +629,7 @@ const fillUserAndContinue = ({
 };
 
 const skipLicenseStepOnEE = () => {
-  if (isEE) {
+  if (H.isEE) {
     cy.findByText("Activate your commercial license").should("exist");
     cy.button("Skip").click();
   }

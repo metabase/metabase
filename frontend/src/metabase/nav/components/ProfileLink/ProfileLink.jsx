@@ -1,7 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { useState } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -13,7 +12,7 @@ import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
-import { useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
   getApplicationName,

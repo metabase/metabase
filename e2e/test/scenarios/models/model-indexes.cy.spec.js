@@ -1,13 +1,5 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  commandPalette,
-  commandPaletteSearch,
-  openColumnOptions,
-  openQuestionActions,
-  popover,
-  restore,
-  sidebar,
-} from "e2e/support/helpers";
 import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
 const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -16,7 +8,7 @@ describe("scenarios > model indexes", () => {
   let modelId;
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/search?q=*").as("searchQuery");
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -45,7 +37,7 @@ describe("scenarios > model indexes", () => {
 
     editTitleMetadata();
 
-    sidebar()
+    H.sidebar()
       .findByLabelText(/surface individual records/i)
       .click({ force: true }); // needs to be forced because Mantine
 
@@ -63,7 +55,7 @@ describe("scenarios > model indexes", () => {
 
     editTitleMetadata();
 
-    sidebar()
+    H.sidebar()
       .findByLabelText(/surface individual records/i)
       .click({ force: true });
 
@@ -80,7 +72,7 @@ describe("scenarios > model indexes", () => {
 
     editTitleMetadata();
 
-    sidebar()
+    H.sidebar()
       .findByLabelText(/surface individual records/i)
       .click({ force: true });
 
@@ -104,18 +96,18 @@ describe("scenarios > model indexes", () => {
 
     editTitleMetadata();
 
-    sidebar()
+    H.sidebar()
       .findByLabelText(/surface individual records/i)
       .click({ force: true });
 
-    openColumnOptions("ID");
+    H.openColumnOptions("ID");
 
     // change the entity key to a foreign key so no key exists
-    sidebar()
+    H.sidebar()
       .findByText(/entity key/i)
       .click();
 
-    popover()
+    H.popover()
       .findByText(/foreign key/i)
       .click();
 
@@ -124,9 +116,9 @@ describe("scenarios > model indexes", () => {
     cy.wait("@cardUpdate");
 
     // search should fail
-    commandPaletteSearch("marble shoes", false);
+    H.commandPaletteSearch("marble shoes", false);
 
-    commandPalette()
+    H.commandPalette()
       .findByRole("option", { name: /No results for/ })
       .should("exist");
   });
@@ -136,8 +128,8 @@ describe("scenarios > model indexes", () => {
 
     cy.visit("/");
 
-    commandPaletteSearch("marble shoes", false);
-    commandPalette()
+    H.commandPaletteSearch("marble shoes", false);
+    H.commandPalette()
       .findByRole("option", { name: "Small Marble Shoes" })
       .click();
 
@@ -173,8 +165,8 @@ describe("scenarios > model indexes", () => {
 
     cy.visit("/");
 
-    commandPaletteSearch("anais", false);
-    commandPalette().findByRole("option", { name: "Anais Zieme" }).click();
+    H.commandPaletteSearch("anais", false);
+    H.commandPalette().findByRole("option", { name: "Anais Zieme" }).click();
 
     cy.wait("@dataset");
     cy.wait("@dataset"); // second query gets the additional record
@@ -190,8 +182,8 @@ describe("scenarios > model indexes", () => {
 
     cy.visit("/");
 
-    commandPaletteSearch("marble shoes", false);
-    commandPalette()
+    H.commandPaletteSearch("marble shoes", false);
+    H.commandPalette()
       .findByRole("option", { name: "Small Marble Shoes" })
       .click();
 
@@ -207,8 +199,8 @@ describe("scenarios > model indexes", () => {
 
     cy.get("body").type("{esc}");
 
-    commandPaletteSearch("silk coat", false);
-    commandPalette()
+    H.commandPaletteSearch("silk coat", false);
+    H.commandPalette()
       .findByRole("option", { name: "Ergonomic Silk Coat" })
       .click();
 
@@ -221,12 +213,12 @@ describe("scenarios > model indexes", () => {
 });
 
 function editTitleMetadata() {
-  openQuestionActions();
-  popover().findByText("Edit metadata").click();
+  H.openQuestionActions();
+  H.popover().findByText("Edit metadata").click();
   cy.url().should("include", "/metadata");
   cy.findByTestId("TableInteractive-root").findByTextEnsureVisible("Title");
 
-  openColumnOptions("Title");
+  H.openColumnOptions("Title");
 }
 
 const expectCardQueries = num =>

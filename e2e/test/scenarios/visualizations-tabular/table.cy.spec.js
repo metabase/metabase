@@ -1,61 +1,37 @@
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  enterCustomColumnDetails,
-  entityPickerModal,
-  entityPickerModalTab,
-  expressionEditorWidget,
-  getTable,
-  hovercard,
-  isScrollableHorizontally,
-  leftSidebar,
-  moveDnDKitElement,
-  openNativeEditor,
-  openOrdersTable,
-  openPeopleTable,
-  popover,
-  resetTestTable,
-  restore,
-  resyncDatabase,
-  selectFilterOperator,
-  sidebar,
-  startNewNativeQuestion,
-  summarize,
-  tableHeaderClick,
-  visitQuestionAdhoc,
-  visualize,
-} from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("GET", "/api/field/*/search/*").as("findSuggestions");
   });
 
   function joinTable(table) {
     cy.findByText("Join data").click();
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Tables").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
       cy.findByText(table).click();
     });
   }
 
   function selectFromDropdown(option, clickOpts) {
-    popover().last().findByText(option).click(clickOpts);
+    H.popover().last().findByText(option).click(clickOpts);
   }
 
   it("should allow changing column title when the field ref is the same except for the join-alias", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
-    openOrdersTable({ mode: "notebook" });
+    H.openOrdersTable({ mode: "notebook" });
     joinTable("Orders");
     selectFromDropdown("ID");
     selectFromDropdown("User ID");
-    visualize();
+    H.visualize();
 
     // Rename the first ID column, and make sure the second one is not updated
-    tableHeaderClick("ID");
-    popover().within(() => {
+    H.tableHeaderClick("ID");
+    H.popover().within(() => {
       cy.findByText("Filter by this column");
       cy.icon("gear").click();
       cy.findByLabelText("Column title").type(" updated");
@@ -68,7 +44,7 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should allow you to reorder and hide columns in the table header", () => {
-    openNativeEditor().type("select * from orders LIMIT 2");
+    H.openNativeEditor().type("select * from orders LIMIT 2");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.findByTestId("viz-settings-button").click();
@@ -90,18 +66,18 @@ describe("scenarios > visualizations > table", () => {
 
     headerCells().eq(1).should("contain.text", "TOTAL");
 
-    tableHeaderClick("QUANTITY");
-    popover().icon("eye_crossed_out").click();
+    H.tableHeaderClick("QUANTITY");
+    H.popover().icon("eye_crossed_out").click();
 
     headerCells().contains("QUANTITY").should("not.exist");
   });
 
   it("should allow to display any column as link with extrapolated url and text", () => {
-    openPeopleTable({ limit: 2 });
+    H.openPeopleTable({ limit: 2 });
 
-    tableHeaderClick("City");
+    H.tableHeaderClick("City");
 
-    popover().within(() => {
+    H.popover().within(() => {
       cy.icon("gear").click();
     });
 
@@ -136,12 +112,12 @@ describe("scenarios > visualizations > table", () => {
   it("should show field metadata in a hovercard when hovering over a table column header", () => {
     const ccName = "Foo";
 
-    openPeopleTable({ mode: "notebook", limit: 2 });
+    H.openPeopleTable({ mode: "notebook", limit: 2 });
 
     cy.findByLabelText("Custom column").click();
 
-    expressionEditorWidget().within(() => {
-      enterCustomColumnDetails({
+    H.expressionEditorWidget().within(() => {
+      H.enterCustomColumnDetails({
         formula: "concat([Name], [Name])",
         name: ccName,
       });
@@ -150,7 +126,7 @@ describe("scenarios > visualizations > table", () => {
     });
 
     cy.findByTestId("fields-picker").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.findByText("Select none").click();
       cy.findByText("City").click();
       cy.findByText("State").click();
@@ -161,7 +137,7 @@ describe("scenarios > visualizations > table", () => {
     // Click anywhere else to close the popover which is blocking the Visualize button
     cy.findByTestId("query-builder-root").click(0, 0);
 
-    visualize();
+    H.visualize();
 
     [
       [
@@ -231,21 +207,21 @@ describe("scenarios > visualizations > table", () => {
       // Add a delay here because there can be two popovers active for a very short time.
       cy.wait(250);
 
-      hovercard().within(() => {
+      H.hovercard().within(() => {
         test();
       });
 
       cy.get("[data-testid=cell-data]").contains(column).trigger("mouseout");
     });
 
-    summarize();
+    H.summarize();
 
     cy.findAllByTestId("dimension-list-item-name").contains(ccName).click();
 
     cy.wait("@dataset");
 
     cy.get("[data-testid=cell-data]").contains("Count").trigger("mouseover");
-    hovercard().within(() => {
+    H.hovercard().within(() => {
       cy.contains("Quantity");
       cy.findByText("No description");
     });
@@ -255,29 +231,29 @@ describe("scenarios > visualizations > table", () => {
     cy.get("[data-testid=cell-data]").contains(ccName).trigger("mouseover");
     cy.wait(250);
 
-    hovercard().within(() => {
+    H.hovercard().within(() => {
       cy.contains("No special type");
       cy.findByText("No description");
     });
   });
 
   it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
-    openOrdersTable({ limit: 2 });
+    H.openOrdersTable({ limit: 2 });
 
     cy.get("[data-testid=cell-data]")
       .contains("Product ID")
       .trigger("mouseover");
 
-    hovercard().within(() => {
+    H.hovercard().within(() => {
       cy.contains("Foreign Key");
       cy.contains("The product ID.");
     });
   });
 
   it("should show field metadata in a hovercard when hovering over a table column in the summarize sidebar", () => {
-    openOrdersTable({ limit: 2 });
+    H.openOrdersTable({ limit: 2 });
 
-    summarize();
+    H.summarize();
 
     cy.findAllByTestId("dimension-list-item")
       .contains("ID")
@@ -286,13 +262,13 @@ describe("scenarios > visualizations > table", () => {
         cy.findByLabelText("More info").realHover();
       });
 
-    hovercard().within(() => {
+    H.hovercard().within(() => {
       cy.contains("Entity Key");
     });
   });
 
   it("should show field metadata hovercards for native query tables", () => {
-    startNewNativeQuestion({ query: "select * from products limit 1" });
+    H.startNewNativeQuestion({ query: "select * from products limit 1" });
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.log("Wait for the table to load");
@@ -302,17 +278,17 @@ describe("scenarios > visualizations > table", () => {
 
     cy.log("Assert");
     cy.findAllByTestId("header-cell").filter(":contains(CATEGORY)").realHover();
-    hovercard()
+    H.hovercard()
       .should("contain", "No special type")
       .and("contain", "No description");
   });
 
   it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
-    openPeopleTable({ limit: 2 });
+    H.openPeopleTable({ limit: 2 });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("City").click();
-    popover().within(() => {
+    H.popover().within(() => {
       cy.icon("arrow_up");
       cy.icon("arrow_down");
       cy.icon("gear");
@@ -326,28 +302,28 @@ describe("scenarios > visualizations > table", () => {
     // Although arbitrary waiting is considered an anti-pattern and a really bad practice, I couldn't find any other way to reproduce this issue.
     // Cypress is too fast and is doing the assertions in that split second while popover is reloading which results in a false positive result.
     cy.wait(100);
-    popover().should("not.exist");
+    H.popover().should("not.exist");
   });
 
   it("popover should not be scrollable horizontally (metabase#31339)", () => {
-    openPeopleTable();
-    tableHeaderClick("Password");
+    H.openPeopleTable();
+    H.tableHeaderClick("Password");
 
-    popover().findByText("Filter by this column").click();
-    selectFilterOperator("Is");
-    popover().within(() => {
+    H.popover().findByText("Filter by this column").click();
+    H.selectFilterOperator("Is");
+    H.popover().within(() => {
       cy.findByPlaceholderText("Search by Password").type("e");
       cy.wait("@findSuggestions");
       cy.findByPlaceholderText("Search by Password").blur();
     });
 
-    popover().then($popover => {
-      expect(isScrollableHorizontally($popover[0])).to.be.false;
+    H.popover().then($popover => {
+      expect(H.isScrollableHorizontally($popover[0])).to.be.false;
     });
   });
 
   it("should show the slow loading text when the query is taking too long", () => {
-    openOrdersTable({ mode: "notebook" });
+    H.openOrdersTable({ mode: "notebook" });
 
     cy.intercept("POST", "/api/dataset", req => {
       req.on("response", res => {
@@ -369,10 +345,10 @@ describe("scenarios > visualizations > table", () => {
 describe("scenarios > visualizations > table > conditional formatting", () => {
   describe("rules", () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
 
-      visitQuestionAdhoc({
+      H.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
           query: {
@@ -414,7 +390,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
       });
 
       cy.findByTestId("viz-settings-button").click();
-      sidebar().findByText("Conditional Formatting").click();
+      H.sidebar().findByText("Conditional Formatting").click();
     });
 
     it("should be able to remove, add, and re-order rows", () => {
@@ -432,15 +408,15 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
 
       cy.findByRole("button", { name: /add a rule/i }).click();
       // popover should open automatically
-      popover().findByText("Subtotal").click();
+      H.popover().findByText("Subtotal").click();
       cy.realPress("Escape");
       cy.findByRole("button", { name: /is equal to/i }).click();
-      popover().findByText("is less than").click();
+      H.popover().findByText("is less than").click();
 
       cy.findByTestId("conditional-formatting-value-input").type("20");
       cy.findByTestId("conditional-formatting-color-selector").click();
 
-      popover()
+      H.popover()
         .findByRole("generic", { name: /#F2A86F/i })
         .click();
 
@@ -450,7 +426,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
         .first()
         .should("contain.text", "is less than 20");
 
-      moveDnDKitElement(cy.findAllByTestId("formatting-rule-preview").eq(2), {
+      H.moveDnDKitElement(cy.findAllByTestId("formatting-rule-preview").eq(2), {
         vertical: -300,
       });
 
@@ -462,54 +438,56 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
 
   describe("operators", () => {
     beforeEach(() => {
-      resetTestTable({ type: "postgres", table: "many_data_types" });
-      restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_data_types" });
+      H.restore("postgres-writable");
       cy.signInAsAdmin();
-      resyncDatabase({
+      H.resyncDatabase({
         dbId: WRITABLE_DB_ID,
         tableName: "many_data_types",
       });
 
-      getTable({ name: "many_data_types" }).then(({ id: tableId, fields }) => {
-        const booleanField = fields.find(field => field.name === "boolean");
-        const stringField = fields.find(field => field.name === "string");
-        const idField = fields.find(field => field.name === "id");
+      H.getTable({ name: "many_data_types" }).then(
+        ({ id: tableId, fields }) => {
+          const booleanField = fields.find(field => field.name === "boolean");
+          const stringField = fields.find(field => field.name === "string");
+          const idField = fields.find(field => field.name === "id");
 
-        visitQuestionAdhoc({
-          dataset_query: {
-            database: WRITABLE_DB_ID,
-            query: {
-              "source-table": tableId,
-              fields: [
-                ["field", idField.id, { "base-type": idField["base_type"] }],
-                [
-                  "field",
-                  stringField.id,
-                  { "base-type": stringField["base_type"] },
+          H.visitQuestionAdhoc({
+            dataset_query: {
+              database: WRITABLE_DB_ID,
+              query: {
+                "source-table": tableId,
+                fields: [
+                  ["field", idField.id, { "base-type": idField["base_type"] }],
+                  [
+                    "field",
+                    stringField.id,
+                    { "base-type": stringField["base_type"] },
+                  ],
+                  [
+                    "field",
+                    booleanField.id,
+                    { "base-type": booleanField["base_type"] },
+                  ],
                 ],
-                [
-                  "field",
-                  booleanField.id,
-                  { "base-type": booleanField["base_type"] },
-                ],
-              ],
+              },
+              type: "query",
             },
-            type: "query",
-          },
-          display: "table",
-        });
-      });
+            display: "table",
+          });
+        },
+      );
     });
 
     it("should work with boolean columns", { tags: ["@external"] }, () => {
       cy.findByTestId("viz-settings-button").click();
-      leftSidebar().findByText("Conditional Formatting").click();
+      H.leftSidebar().findByText("Conditional Formatting").click();
       cy.findByRole("button", { name: /add a rule/i }).click();
 
-      popover().findByRole("option", { name: "Boolean" }).click();
+      H.popover().findByRole("option", { name: "Boolean" }).click();
 
       //Dismiss popover
-      leftSidebar().findByText("Which columns should be affected?").click();
+      H.leftSidebar().findByText("Which columns should be affected?").click();
 
       //Check that is-true was applied by default to boolean field rule
       cy.findByTestId("conditional-formatting-value-operator-button").should(
@@ -536,7 +514,7 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
   `;
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
   });
 
@@ -552,9 +530,9 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
     );
 
     // Open the formatting menu
-    tableHeaderClick("CREATION_TIME");
+    H.tableHeaderClick("CREATION_TIME");
 
-    popover().icon("gear").click();
+    H.popover().icon("gear").click();
 
     cy.findByTestId("column-formatting-settings").within(() => {
       // Set to hours, minutes, seconds, 24-hour clock

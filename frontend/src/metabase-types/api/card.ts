@@ -25,7 +25,7 @@ type CreatorInfo = Pick<
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
   id: CardId;
-  entity_id: CardEntityId;
+  entity_id: BaseEntityId;
   created_at: string;
   updated_at: string;
   name: string;
@@ -275,7 +275,7 @@ export interface ModerationReview {
 export type VisualizationSettingKey = keyof VisualizationSettings;
 
 export type CardId = number;
-export type CardEntityId = BaseEntityId;
+
 export type ModerationReviewStatus = "verified" | null;
 
 export type CardFilterOption =

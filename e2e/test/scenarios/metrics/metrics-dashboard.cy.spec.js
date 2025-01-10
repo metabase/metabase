@@ -1,3 +1,4 @@
+import { H } from "e2e/support";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -5,24 +6,6 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import {
-  assertQueryBuilderRowCount,
-  cartesianChartCircle,
-  createQuestion,
-  echartsContainer,
-  editDashboard,
-  filterWidget,
-  getDashboardCard,
-  getDashboardCards,
-  modal,
-  openQuestionActions,
-  popover,
-  restore,
-  saveDashboard,
-  sidebar,
-  undoToastList,
-  visitDashboard,
-} from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -92,48 +75,50 @@ const PRODUCTS_TIMESERIES_METRIC = {
 
 describe("scenarios > metrics > dashboard", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should be possible to add metric to a dashboard via context menu (metabase#44220)", () => {
-    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: { id: metricId } }) => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.visit(`/metric/${metricId}`);
-      cy.wait("@dataset");
-      cy.findByTestId("scalar-value").should("have.text", "18,760");
+    H.createQuestion(ORDERS_SCALAR_METRIC).then(
+      ({ body: { id: metricId } }) => {
+        cy.intercept("POST", "/api/dataset").as("dataset");
+        cy.visit(`/metric/${metricId}`);
+        cy.wait("@dataset");
+        cy.findByTestId("scalar-value").should("have.text", "18,760");
 
-      cy.log("Add metric to a dashboard via context menu");
-      openQuestionActions();
-      popover().findByTextEnsureVisible("Add to dashboard").click();
-      modal().within(() => {
-        cy.findByRole("heading", {
-          name: "Add this metric to a dashboard",
-        }).should("be.visible");
-        cy.findByText("Orders in a dashboard").click();
-        cy.button("Select").click();
-      });
+        cy.log("Add metric to a dashboard via context menu");
+        H.openQuestionActions();
+        H.popover().findByTextEnsureVisible("Add to dashboard").click();
+        H.modal().within(() => {
+          cy.findByRole("heading", {
+            name: "Add this metric to a dashboard",
+          }).should("be.visible");
+          cy.findByText("Orders in a dashboard").click();
+          cy.button("Select").click();
+        });
 
-      cy.log("Assert it's been added before the save");
-      cy.location("pathname").should(
-        "eq",
-        `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
-      );
-      cy.location("hash").should("eq", `#add=${metricId}&edit`);
-      cy.findByTestId("scalar-value").should("have.text", "18,760");
+        cy.log("Assert it's been added before the save");
+        cy.location("pathname").should(
+          "eq",
+          `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
+        );
+        cy.location("hash").should("eq", `#add=${metricId}&edit`);
+        cy.findByTestId("scalar-value").should("have.text", "18,760");
 
-      cy.log("Assert we can save the dashboard with the metric");
-      saveDashboard();
-      getDashboardCards().should("have.length", 2);
-      cy.findByTestId("scalar-value").should("have.text", "18,760");
-    });
+        cy.log("Assert we can save the dashboard with the metric");
+        H.saveDashboard();
+        H.getDashboardCards().should("have.length", 2);
+        cy.findByTestId("scalar-value").should("have.text", "18,760");
+      },
+    );
   });
 
   it("should be possible to add metrics to a dashboard", () => {
-    createQuestion(ORDERS_SCALAR_METRIC);
-    createQuestion(ORDERS_TIMESERIES_METRIC);
-    visitDashboard(ORDERS_DASHBOARD_ID);
+    H.createQuestion(ORDERS_SCALAR_METRIC);
+    H.createQuestion(ORDERS_TIMESERIES_METRIC);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByTestId("dashboard-header").within(() => {
       cy.findByLabelText("Edit dashboard").click();
       cy.findByLabelText("Add questions").click();
@@ -144,13 +129,13 @@ describe("scenarios > metrics > dashboard", () => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
       cy.findByText(ORDERS_TIMESERIES_METRIC.name).click();
     });
-    getDashboardCard(1).within(() => {
+    H.getDashboardCard(1).within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByText("18,760").should("be.visible");
     });
-    getDashboardCard(2).within(() => {
+    H.getDashboardCard(2).within(() => {
       cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
-      echartsContainer().should("be.visible");
+      H.echartsContainer().should("be.visible");
     });
   });
 
@@ -158,23 +143,23 @@ describe("scenarios > metrics > dashboard", () => {
     cy.createDashboardWithQuestions({
       questions: [ORDERS_SCALAR_METRIC],
     }).then(({ dashboard }) => {
-      visitDashboard(dashboard.id);
+      H.visitDashboard(dashboard.id);
     });
-    getDashboardCard().findByText("18,760").should("be.visible");
+    H.getDashboardCard().findByText("18,760").should("be.visible");
     cy.findByTestId("dashboard-header").within(() => {
       cy.findByLabelText("Edit dashboard").click();
       cy.findByLabelText("Add a filter or parameter").click();
     });
-    popover().findByText("Text or Category").click();
-    getDashboardCard().findByText("Select…").click();
-    popover().findByText("Category").click();
-    saveDashboard();
-    filterWidget().click();
-    popover().within(() => {
+    H.popover().findByText("Text or Category").click();
+    H.getDashboardCard().findByText("Select…").click();
+    H.popover().findByText("Category").click();
+    H.saveDashboard();
+    H.filterWidget().click();
+    H.popover().within(() => {
       cy.findByText("Gadget").click();
       cy.button("Add filter").click();
     });
-    getDashboardCard().within(() => {
+    H.getDashboardCard().within(() => {
       cy.findByText("4,939").should("be.visible");
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
     });
@@ -190,39 +175,42 @@ describe("scenarios > metrics > dashboard", () => {
     cy.createDashboardWithQuestions({
       questions: [ORDERS_TIMESERIES_METRIC],
     }).then(({ dashboard }) => {
-      visitDashboard(dashboard.id);
+      H.visitDashboard(dashboard.id);
     });
-    getDashboardCard().within(() => {
-      cartesianChartCircle()
+    H.getDashboardCard().within(() => {
+      H.cartesianChartCircle()
         .eq(23) // random dot
         .click({ force: true });
     });
-    popover().findByText("See these Orders").click();
-    assertQueryBuilderRowCount(445);
+    H.popover().findByText("See these Orders").click();
+    H.assertQueryBuilderRowCount(445);
   });
 
   it("should be able to replace a card with a metric", () => {
-    createQuestion(ORDERS_SCALAR_METRIC);
-    visitDashboard(ORDERS_DASHBOARD_ID);
-    editDashboard();
-    getDashboardCard().realHover().findByLabelText("Replace").click();
-    modal().within(() => {
+    H.createQuestion(ORDERS_SCALAR_METRIC);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.getDashboardCard().realHover().findByLabelText("Replace").click();
+    H.modal().within(() => {
       cy.findByText("Metrics").click();
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
     });
-    undoToastList().last().findByText("Question replaced").should("be.visible");
-    getDashboardCard().within(() => {
+    H.undoToastList()
+      .last()
+      .findByText("Question replaced")
+      .should("be.visible");
+    H.getDashboardCard().within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByText("18,760").should("be.visible");
     });
-    getDashboardCard().realHover().findByLabelText("Replace").click();
-    modal().within(() => {
+    H.getDashboardCard().realHover().findByLabelText("Replace").click();
+    H.modal().within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByText("Questions").click();
       cy.findByText("Orders").click();
     });
-    undoToastList().last().findByText("Metric replaced").should("be.visible");
-    getDashboardCard().findByText("Orders").should("be.visible");
+    H.undoToastList().last().findByText("Metric replaced").should("be.visible");
+    H.getDashboardCard().findByText("Orders").should("be.visible");
   });
 
   it("should be able to combine scalar metrics on a dashcard", () => {
@@ -240,21 +228,21 @@ describe("scenarios > metrics > dashboard", () => {
     cy.createDashboardWithQuestions({
       questions: [ORDERS_TIMESERIES_METRIC],
     }).then(({ dashboard }) => {
-      visitDashboard(dashboard.id);
+      H.visitDashboard(dashboard.id);
     });
-    editDashboard();
-    getDashboardCard().realHover().findByLabelText("Click behavior").click();
-    sidebar().within(() => {
+    H.editDashboard();
+    H.getDashboardCard().realHover().findByLabelText("Click behavior").click();
+    H.sidebar().within(() => {
       cy.findByText("Go to a custom destination").click();
       cy.findByText("Saved question").click();
     });
-    modal().findByText("Orders").click();
-    sidebar().findByText("User ID").click();
-    popover().findByText("Count").click();
-    sidebar().button("Done").click();
-    saveDashboard();
-    getDashboardCard().within(() => {
-      cartesianChartCircle()
+    H.modal().findByText("Orders").click();
+    H.sidebar().findByText("User ID").click();
+    H.popover().findByText("Count").click();
+    H.sidebar().button("Done").click();
+    H.saveDashboard();
+    H.getDashboardCard().within(() => {
+      H.cartesianChartCircle()
         .eq(5) // random dot
         .click({ force: true });
     });
@@ -262,7 +250,7 @@ describe("scenarios > metrics > dashboard", () => {
     cy.findByTestId("qb-filters-panel")
       .findByText("User ID is 92")
       .should("be.visible");
-    assertQueryBuilderRowCount(8);
+    H.assertQueryBuilderRowCount(8);
   });
 
   it("should be able to view a model-based metric without data access", () => {
@@ -271,9 +259,9 @@ describe("scenarios > metrics > dashboard", () => {
       questions: [ORDERS_SCALAR_METRIC],
     }).then(({ dashboard }) => {
       cy.signIn("nodata");
-      visitDashboard(dashboard.id);
+      H.visitDashboard(dashboard.id);
     });
-    getDashboardCard()
+    H.getDashboardCard()
       .findByTestId("scalar-container")
       .findByText("18,760")
       .should("be.visible");
@@ -297,9 +285,9 @@ describe("scenarios > metrics > dashboard", () => {
       ],
     }).then(({ dashboard }) => {
       cy.signIn("nocollection");
-      visitDashboard(dashboard.id);
+      H.visitDashboard(dashboard.id);
     });
-    getDashboardCard()
+    H.getDashboardCard()
       .findByTestId("scalar-container")
       .findByText("18,760")
       .should("be.visible");
@@ -309,13 +297,13 @@ describe("scenarios > metrics > dashboard", () => {
 function combineAndVerifyMetrics(metric1, metric2) {
   cy.createDashboardWithQuestions({ questions: [metric1] }).then(
     ({ dashboard }) => {
-      createQuestion(metric2);
-      visitDashboard(dashboard.id);
+      H.createQuestion(metric2);
+      H.visitDashboard(dashboard.id);
     },
   );
-  editDashboard();
-  getDashboardCard().realHover().findByTestId("add-series-button").click();
-  modal().within(() => {
+  H.editDashboard();
+  H.getDashboardCard().realHover().findByTestId("add-series-button").click();
+  H.modal().within(() => {
     cy.findByText(metric2.name).click();
     cy.findByLabelText("Legend").within(() => {
       cy.findByText(metric1.name).should("be.visible");
@@ -323,8 +311,8 @@ function combineAndVerifyMetrics(metric1, metric2) {
     });
     cy.button("Done").click();
   });
-  saveDashboard();
-  getDashboardCard().within(() => {
+  H.saveDashboard();
+  H.getDashboardCard().within(() => {
     cy.findByLabelText("Legend").within(() => {
       cy.findByText(metric1.name).should("be.visible");
       cy.findByText(metric2.name).should("be.visible");

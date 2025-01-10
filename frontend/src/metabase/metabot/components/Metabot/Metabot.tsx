@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { connect } from "react-redux";
 
+import { connect } from "metabase/lib/redux";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { MetabotEntityId, MetabotEntityType } from "metabase-types/store";

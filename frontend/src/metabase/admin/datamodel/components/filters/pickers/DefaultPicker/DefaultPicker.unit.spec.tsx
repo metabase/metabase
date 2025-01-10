@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 import {
-  getByRole,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -96,7 +95,7 @@ describe("Filters > DefaultPicker", () => {
     expect(
       await screen.findByTestId("field-values-widget"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("combobox")).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
   });
 
@@ -107,7 +106,7 @@ describe("Filters > DefaultPicker", () => {
       await screen.findByTestId("field-values-widget"),
     ).toBeInTheDocument();
 
-    expect(screen.getByRole("combobox")).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
     expect(screen.getByText("Ugly Shoes")).toBeInTheDocument();
   });
 
@@ -117,7 +116,7 @@ describe("Filters > DefaultPicker", () => {
     expect(
       await screen.findByTestId("field-values-widget"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("combobox")).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
     const productTitles = [
       "Fancy Shoes",
       "Ugly Shoes",
@@ -145,9 +144,7 @@ describe("Filters > DefaultPicker", () => {
   it("should update values for a multi-value filter", async () => {
     const { setValuesSpy } = await setup({ filter: stringQuery.filters()[0] });
 
-    const combobox = screen.getByRole("combobox");
-    const input = getInput(combobox);
-
+    const input = screen.getByRole("textbox");
     await userEvent.type(input, "Fancy Sandals");
 
     expect(setValuesSpy).toHaveBeenLastCalledWith([
@@ -182,10 +179,3 @@ describe("Filters > DefaultPicker", () => {
     expect(onCommitSpy).toHaveBeenCalled();
   });
 });
-
-function getInput(parent: HTMLElement) {
-  /* eslint-disable-next-line testing-library/prefer-screen-queries */
-  const input = getByRole(parent, "searchbox");
-  expect(input).toBeInTheDocument();
-  return input;
-}

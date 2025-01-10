@@ -1,16 +1,20 @@
 import type { AnyAction, Store, ThunkDispatch } from "@reduxjs/toolkit";
 import type { TypedUseSelectorHook } from "react-redux";
 import {
-  useDispatch as useDispatchOriginal,
-  useSelector as useSelectorOriginal,
-  useStore as useStoreOriginal,
+  createDispatchHook,
+  createSelectorHook,
+  createStoreHook,
 } from "react-redux";
 
 import type { State } from "metabase-types/store";
 
-export const useStore: () => Store<State, AnyAction> = useStoreOriginal;
+import { MetabaseReduxContext } from "./custom-context";
+
+export const useStore: () => Store<State, AnyAction> =
+  createStoreHook(MetabaseReduxContext);
 export const useDispatch: () => ThunkDispatch<State, void, AnyAction> =
-  useDispatchOriginal;
-export const useSelector: TypedUseSelectorHook<State> = useSelectorOriginal;
+  createDispatchHook(MetabaseReduxContext);
+export const useSelector: TypedUseSelectorHook<State> =
+  createSelectorHook(MetabaseReduxContext);
 
 export type DispatchFn = ReturnType<typeof useDispatch>;

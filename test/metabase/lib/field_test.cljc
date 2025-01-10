@@ -416,10 +416,12 @@
                  (lib/available-binning-strategies query x)))
           (let [binned (lib/with-binning x (second expected-options))
                 query2 (lib/breakout query binned)]
-            (testing "when binned, should return the same available units, with :selected"
+            (testing "when binned, should return the same available units, with :selected apart from the default"
               (is (= (-> expected-options second :mbql)
                      (-> binned lib/binning (dissoc :lib/type :metadata-fn))))
-              (is (= (assoc-in expected-options [1 :selected] true)
+              (is (= (-> expected-options
+                         (assoc-in [1 :selected] true)
+                         (m/dissoc-in [0 :default]))
                      (lib/available-binning-strategies query2 binned))))
             (testing "shows :selected in display-info"
               (let [options (lib/available-binning-strategies query2 binned)]

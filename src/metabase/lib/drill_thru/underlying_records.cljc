@@ -63,18 +63,26 @@
   ;; - dimensions which is [{column: STATE, value: "MN"}]
   ;; - value: the aggregated value (the count, the sum, etc.)
   ;; So dimensions is exactly what we want.
-  ;; It returns the table name and row count, since that's used for pluralization of the name.
 
   ;; Clicking on a single-row aggregation, there's no dimensions, but we should support underlying records.
+
+  ;; Clicking on a table cell for an aggregated column when there are additional query stages (e.g. filters) after the
+  ;; underlying breakouts/aggregations stage results in a context like:
+  ;; - (:lib/source column) is NOT :source/aggregations
+  ;; - (:lib/source (lib.underlying/top-level-column query column) IS :source/aggregations
+  ;; - column-ref is similarly NOT an :aggregation ref
+  ;; - dimensions is constructed from row data in available-drill-thrus
 
   ;; Clicking on a chart legend for eg. COUNT(Orders) by Products.CATEGORY and Orders.CREATED_AT has a context like:
   ;; - column is nil
   ;; - value is nil
   ;; - dimensions holds only the legend's column, eg. Products.CATEGORY.
+
+  ;; This function returns the table name and row count, since that's used for pluralization of the name.
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              (lib.underlying/has-aggregation-or-breakout? query)
              ;; Either we clicked the aggregation, or there are dimensions.
-             (or (= (:lib/source column) :source/aggregations)
+             (or (lib.drill-thru.common/aggregation-sourced? query column)
                  (not-empty dimensions))
              ;; Either we need both column and value (cell/map/data point click) or neither (chart legend click).
              (or (and column (some? value))
@@ -93,7 +101,12 @@
                                               (some->> query lib.util/source-card-id  (lib.metadata/card  query)))]
                    (lib.metadata.calculation/display-name query stage-number table-or-card))
      :dimensions dimensions
-     :column-ref column-ref}))
+     ;; If the underlying column comes from an aggregation, then the column-ref needs to be updated as well to the
+     ;; corresponding aggregation ref so that [[drill-underlying-records]] knows to extract the filter implied by
+     ;; aggregations like sum-where.
+     :column-ref (if (lib.drill-thru.common/strictly-underlying-aggregation? query column)
+                   (lib.aggregation/column-metadata->aggregation-ref (lib.underlying/top-level-column query column))
+                   column-ref)}))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/underlying-records
   [_query _stage-number {:keys [row-count table-name]}]

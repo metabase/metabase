@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { humanizeCoercionStrategy } from "metabase/admin/datamodel/utils/humanizeCoercionStrategy";
@@ -16,6 +15,7 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import * as MetabaseCore from "metabase/lib/core";
+import { connect } from "metabase/lib/redux";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldValuesType } from "metabase-types/api";

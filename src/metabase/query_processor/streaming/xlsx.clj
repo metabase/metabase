@@ -440,12 +440,14 @@
 (defmulti ^:private add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
-  This is based on the equivalent function in Docjure, but adapted to support Metabase viz settings."
+  This is based on the equivalent function in Docjure: [[spreadsheet/add-row!]], but adapted to support Metabase viz
+  settings."
   {:arglists '([sheet values cols col-settings cell-styles typed-cell-styles]
                [sheet row-num values cols col-settings cell-styles typed-cell-styles])}
   (fn [sheet & _args]
     (class sheet)))
 
+;; TODO this add-row! and the one below (For XSSFSheet) should be consolidated
 (defmethod add-row! org.apache.poi.xssf.streaming.SXSSFSheet
   ([^SXSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
    (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
@@ -466,7 +468,8 @@
                id-or-name   (or (:id col) (:name col))
                settings     (or (get col-settings {::mb.viz/field-id id-or-name})
                                 (get col-settings {::mb.viz/column-name id-or-name}))
-               scaled-val   (if (and value (::mb.viz/scale settings))
+               ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
+               scaled-val   (if (and (number? value) (::mb.viz/scale settings))
                               (* value (::mb.viz/scale settings))
                               value)
                ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
@@ -499,7 +502,8 @@
                id-or-name   (or (:id col) (:name col))
                settings     (or (get col-settings {::mb.viz/field-id id-or-name})
                                 (get col-settings {::mb.viz/column-name id-or-name}))
-               scaled-val   (if (and value (::mb.viz/scale settings))
+               ;; value can be a column header (a string), so if the column is scaled, it'll try to do (* "count" 7)
+               scaled-val   (if (and (number? value) (::mb.viz/scale settings))
                               (* value (::mb.viz/scale settings))
                               value)
                ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
@@ -618,7 +622,7 @@
       (.addColumnLabel pivot-table DataConsolidateFunction/SUM #_(get aggregation-functions idx DataConsolidateFunction/SUM) idx))
     (doseq [[idx sort-setting] column-sort-order]
       (let [setting (case sort-setting
-                      :ascending STFieldSortType/ASCENDING
+                      :ascending  STFieldSortType/ASCENDING
                       :descending STFieldSortType/DESCENDING)]
         (when setting
           (-> pivot-table
@@ -698,26 +702,30 @@
             (vreset! typed-cell-styles (compute-typed-cell-styles workbook data-format)))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
-        (let [ordered-row        (vec (if output-order
-                                        (let [row-v (into [] row)]
-                                          (for [i output-order] (row-v i)))
-                                        row))
-              col-settings       (::mb.viz/column-settings viz-settings)
-              pivot-grouping-key @pivot-grouping-idx
-              group              (get row pivot-grouping-key)
-              modified-row       (cond->> ordered-row
-                                   pivot-grouping-key (m/remove-nth pivot-grouping-key))
-              {:keys [sheet]}    @workbook-data]
+        (let [ordered-row          (vec (if output-order
+                                          (let [row-v (into [] row)]
+                                            (for [i output-order] (row-v i)))
+                                          row))
+              col-settings         (::mb.viz/column-settings viz-settings)
+              pivot-grouping-key   @pivot-grouping-idx
+              group                (get row pivot-grouping-key)
+              [row' ordered-cols'] (cond->> [ordered-row ordered-cols]
+                                     pivot-grouping-key
+                                     ;; We need to remove the pivot-grouping key if it's there, because we don't show
+                                     ;; it in the export. `ordered-cols` is a parallel array, so we must remove the
+                                     ;; corresponding col.
+                                     (map #(m/remove-nth pivot-grouping-key %)))
+              {:keys [sheet]}      @workbook-data]
           (when (or (not group)
                     (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
-            (add-row! sheet (inc row-num) modified-row ordered-cols col-settings @cell-styles @typed-cell-styles)
+            (add-row! sheet (inc row-num) row' ordered-cols' col-settings @cell-styles @typed-cell-styles)
             (when (= (inc row-num) *auto-sizing-threshold*)
               (autosize-columns! sheet)))))
 
       (finish! [_ {:keys [row_count]}]
         (let [{:keys [workbook sheet]} @workbook-data]
           (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
-                ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
+            ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
             (autosize-columns! sheet))
           (try
             (spreadsheet/save-workbook-into-stream! os workbook)

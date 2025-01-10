@@ -1,3 +1,6 @@
+import type { ReactNode } from "react";
+
+import type { ParameterValues } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import type { Deferred } from "metabase/lib/promise";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
@@ -15,6 +18,7 @@ export interface LoadSdkQuestionParams {
   deserializedCard?: Card;
   cardId?: CardId | null;
   cancelDeferred?: Deferred;
+  initialSqlParameters?: ParameterValues;
 }
 
 export interface NavigateToNewCardParams {
@@ -23,3 +27,10 @@ export interface NavigateToNewCardParams {
   objectId: ObjectId;
   cancelDeferred?: Deferred;
 }
+
+export type SdkQuestionTitleProps =
+  | boolean
+  | undefined
+  | ReactNode
+  // TODO: turn this into (question: Question) => ReactNode once we have the public-facing question type (metabase#50487)
+  | (() => ReactNode);

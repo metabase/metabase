@@ -1,19 +1,49 @@
-import Markdown from "metabase/core/components/Markdown";
-import { Flex, type FlexProps } from "metabase/ui";
+import type { ReactNode } from "react";
 
-export const Banner = ({ children, ...props }: FlexProps) => {
-  const content =
-    typeof children === "string" ? <Markdown>{children}</Markdown> : children;
+import CS from "metabase/css/core/index.css";
+import type { FlexProps, IconName } from "metabase/ui";
+import { Flex, Group, Icon } from "metabase/ui";
 
+interface BaseBannerProps extends FlexProps {
+  icon?: IconName;
+  body: ReactNode;
+}
+
+type BannerProps =
+  | (BaseBannerProps & { closable: true; onClose: () => void })
+  | (BaseBannerProps & { closable?: false; onClose?: never });
+
+export const Banner = ({
+  icon,
+  body,
+  closable,
+  onClose,
+  bg,
+  ...flexProps
+}: BannerProps) => {
   return (
     <Flex
-      bg="bg-light"
-      c="text-medium"
       data-testid="app-banner"
-      p="0.75rem"
-      {...props}
+      align="center"
+      bg={bg || "bg-medium"}
+      py="sm"
+      justify="space-between"
+      pl="1.325rem"
+      pr="md"
+      {...flexProps}
     >
-      {content}
+      <Group spacing="xs">
+        {icon && <Icon name={icon} w={36} />}
+        {body}
+      </Group>
+      {closable && (
+        <Icon
+          className={CS.cursorPointer}
+          name="close"
+          onClick={onClose}
+          w={36}
+        />
+      )}
     </Flex>
   );
 };

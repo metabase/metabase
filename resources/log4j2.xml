@@ -32,6 +32,7 @@
     <Logger name="metabase.server.middleware" level="DEBUG"/>
     <Logger name="org.quartz" level="INFO"/>
     <Logger name="net.snowflake.client.jdbc.SnowflakeConnectString" level="ERROR"/>
+    <Logger name="net.snowflake.client.core.SessionUtil" level="FATAL"/>
 
     <Root level="WARN">
       <AppenderRef ref="STDOUT"/>

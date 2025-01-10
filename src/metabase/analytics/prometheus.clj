@@ -203,6 +203,10 @@
                        {:description "Number of successful SDK requests."})
    (prometheus/counter :metabase-sdk/response-error
                        {:description "Number of errors when responding to SDK requests."})
+   (prometheus/counter :metabase-embedding-iframe/response-ok
+                       {:description "Number of successful iframe embedding requests."})
+   (prometheus/counter :metabase-embedding-iframe/response-error
+                       {:description "Number of errors when responding to iframe embedding requests."})
    (prometheus/counter :metabase-scim/response-ok
                        {:description "Number of successful responses from SCIM endpoints"})
    (prometheus/counter :metabase-scim/response-error

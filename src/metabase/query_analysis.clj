@@ -108,12 +108,18 @@
      :native     (try
                    (nqa/references-for-native query)
                    (catch Exception e
-                     (log/debug e "Failed to analyze native query" query)))
+                     (log/debug e "Failed to analyze native query" query)
+                     {:error :query-analysis.error/exception, :context {:exception e}}))
      ;; For now, all model references are resolved transitively to the ultimate field ids.
      ;; We may want to change to record model references directly rather than resolving them.
      ;; This would remove the need to invalidate consuming cards when a given model changes.
      :query      (explicit-references (mbql.u/referenced-field-ids query))
      :mbql/query (explicit-references (lib.util/referenced-field-ids query)))))
+
+(defn- truncate-string [x]
+  (if (and (string? x) (> (count x) 254))
+    (subs x 0 254)
+    x))
 
 (defn- update-query-analysis-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
@@ -124,36 +130,40 @@
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
       (t2/with-transaction [_conn]
-        (let [analysis-id      (t2/insert-returning-pk! :model/QueryAnalysis {:card_id card-id :status "running"})
-              references       (query-references query query-type)
-              table->row       (fn [{:keys [schema table table-id]}]
-                                 {:card_id     card-id
-                                  :analysis_id analysis-id
-                                  :schema      schema
-                                  :table       table
-                                  :table_id    table-id})
-              field->row       (fn [{:keys [schema table column table-id field-id explicit-reference]}]
-                                 {:card_id            card-id
-                                  :analysis_id        analysis-id
-                                  :schema             schema
-                                  :table              table
-                                  :column             column
-                                  :table_id           table-id
-                                  :field_id           field-id
-                                  :explicit_reference explicit-reference})
-              success?         (some? references)]
-
-          (if-not success?
+        (let [analysis-id (t2/insert-returning-pk! :model/QueryAnalysis {:card_id card-id :status "running"})
+              result      (query-references query query-type)
+              safely      (fn [f] (fn [m] (update-vals (f m) truncate-string)))
+              table->row  (safely
+                           (fn [{:keys [schema table table-id]}]
+                             {:card_id     card-id
+                              :analysis_id analysis-id
+                              :schema      schema
+                              :table       table
+                              :table_id    table-id}))
+              field->row  (safely
+                           (fn [{:keys [schema table column table-id field-id explicit-reference]}]
+                             {:card_id            card-id
+                              :analysis_id        analysis-id
+                              :schema             schema
+                              :table              table
+                              :column             column
+                              :table_id           table-id
+                              :field_id           field-id
+                              :explicit_reference explicit-reference}))]
+          (if (contains? result :error)
+            ;; TODO we should track cases where the driver is disabled or not-supported differently.
             (t2/update! :model/QueryAnalysis analysis-id {:status "failed"})
             (do
-              (t2/insert! :model/QueryField (map field->row (:fields references)))
-              (t2/insert! :model/QueryTable (map table->row (:tables references)))
+              (t2/insert! :model/QueryField (map field->row (:fields result)))
+              (t2/insert! :model/QueryTable (map table->row (:tables result)))
               (t2/update! :model/QueryAnalysis analysis-id {:status "complete"})))
 
           (t2/delete! :model/QueryAnalysis
                       {:where [:and
                                [:= :card_id card-id]
-                               [:not= :id analysis-id]]}))))))
+                               [:not= :id analysis-id]]})
+
+          result)))))
 
 (defn- replaced-inner-query-for-native-card
   "Substitute new references for certain fields and tables, based upon the given mappings."
@@ -255,7 +265,11 @@
   "Assuming analysis is enabled, analyze the card immediately (and in the current thread)."
   [card-or-id]
   (when-not (= ::disabled (execution))
-    (analyze!* card-or-id)))
+    (try
+      (analyze!* card-or-id)
+      ;; Don't throw exceptions on the main thread path, analysis is best-effort.
+      (catch Exception e
+        (log/errorf e "Failure analysing card %s" (u/the-id card-or-id))))))
 
 (defn queue-analysis!
   "Synchronously hand off the given card for analysis, at a low priority. May block indefinitely, relies on consumer.

@@ -1,4 +1,4 @@
-import { openNativeEditor, restore } from "e2e/support/helpers";
+import { H } from "e2e/support";
 
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
 import {
@@ -60,12 +60,13 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
   }
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
 
-    openNativeEditor();
+    H.openNativeEditor();
+
     SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
@@ -121,12 +122,12 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
 describe("scenarios > filters > sql filters > field filter > Number", () => {
   const numericFilters = Object.entries(NUMBER_FILTER_SUBTYPES);
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
 
-    openNativeEditor();
+    H.openNativeEditor();
     SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
@@ -179,12 +180,12 @@ describe("scenarios > filters > sql filters > field filter > Number", () => {
 describe("scenarios > filters > sql filters > field filter > String", () => {
   const stringFilters = Object.entries(STRING_FILTER_SUBTYPES);
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
 
-    openNativeEditor();
+    H.openNativeEditor();
     SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{f}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();

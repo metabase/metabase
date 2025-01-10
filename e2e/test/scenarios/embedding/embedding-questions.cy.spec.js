@@ -1,20 +1,6 @@
+import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import {
-  assertEChartsTooltip,
-  cartesianChartCircle,
-  describeEE,
-  echartsContainer,
-  filterWidget,
-  main,
-  openStaticEmbeddingModal,
-  popover,
-  restore,
-  setTokenFeatures,
-  visitEmbeddedPage,
-  visitIframe,
-  visitQuestion,
-} from "e2e/support/helpers";
 
 import {
   joinedQuestion,
@@ -26,7 +12,7 @@ const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding > questions", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     // Remap Product ID -> Product Title
@@ -48,18 +34,18 @@ describe("scenarios > embedding > questions", () => {
     cy.createQuestion(regularQuestion).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
-      visitQuestion(id);
+      H.visitQuestion(id);
     });
 
-    openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
-    visitIframe();
+    H.visitIframe();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(title);
 
     cy.icon("info").realHover();
-    popover().contains(description);
+    H.popover().contains(description);
 
     // Data model: Renamed column
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -91,26 +77,26 @@ describe("scenarios > embedding > questions", () => {
     cy.createQuestion(questionWithAggregation).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
-      visitQuestion(id);
+      H.visitQuestion(id);
     });
 
-    openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
-    visitIframe();
+    H.visitIframe();
 
     assertOnXYAxisLabels({ xLabel: "Created At", yLabel: "Count" });
 
-    echartsContainer()
+    H.echartsContainer()
       .findAllByText(/2022/)
       .should("have.length", 5)
       .and("contain", "Apr 2022");
 
-    echartsContainer().should("contain", "60");
+    H.echartsContainer().should("contain", "60");
 
     // Check the tooltip for the last point on the line
-    cartesianChartCircle().last().trigger("mousemove");
+    H.cartesianChartCircle().last().trigger("mousemove");
 
-    assertEChartsTooltip({
+    H.assertEChartsTooltip({
       header: "Aug 2022",
       rows: [{ name: "2", value: "79" }],
     });
@@ -125,13 +111,13 @@ describe("scenarios > embedding > questions", () => {
       cy.createQuestion(nestedQuestion).then(({ body: { id: nestedId } }) => {
         cy.request("PUT", `/api/card/${nestedId}`, { enable_embedding: true });
 
-        visitQuestion(nestedId);
+        H.visitQuestion(nestedId);
       });
     });
 
-    openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
-    visitIframe();
+    H.visitIframe();
 
     // Global (Data model) settings should be preserved
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -162,12 +148,12 @@ describe("scenarios > embedding > questions", () => {
     cy.createQuestion(joinedQuestion).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
-      visitQuestion(id);
+      H.visitQuestion(id);
     });
 
-    openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
-    visitIframe();
+    H.visitIframe();
 
     // Base question assertions
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -204,11 +190,11 @@ describe("scenarios > embedding > questions", () => {
       enable_embedding: true,
     });
 
-    visitQuestion(ORDERS_QUESTION_ID);
+    H.visitQuestion(ORDERS_QUESTION_ID);
 
-    openStaticEmbeddingModal({ activeTab: "parameters" });
+    H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
-    visitIframe();
+    H.visitIframe();
 
     cy.url().then(url => {
       cy.visit({
@@ -219,20 +205,20 @@ describe("scenarios > embedding > questions", () => {
       });
     });
 
-    main().findByText("Februar 11, 2025, 9:40 PM");
-    main().findByText("Zeilen", { exact: false });
+    H.main().findByText("Februar 11, 2025, 9:40 PM");
+    H.main().findByText("Zeilen", { exact: false });
 
     cy.url().should("include", "locale=de");
   });
 });
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  echartsContainer().get("text").contains(xLabel);
+  H.echartsContainer().get("text").contains(xLabel);
 
-  echartsContainer().get("text").contains(yLabel);
+  H.echartsContainer().get("text").contains(yLabel);
 }
 
-describeEE("scenarios > embedding > questions > downloads", () => {
+H.describeEE("scenarios > embedding > questions > downloads", () => {
   const questionDetails = {
     name: "Simple SQL Query for Embedding",
     native: {
@@ -252,7 +238,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
     cy.intercept("PUT", "/api/card/*").as("publishChanges");
     cy.intercept("GET", "/api/embed/card/**/query").as("dl");
 
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestion(questionDetails, {
@@ -263,9 +249,9 @@ describeEE("scenarios > embedding > questions > downloads", () => {
   context("without token", () => {
     it("should not be possible to disable downloads", () => {
       cy.get("@questionId").then(questionId => {
-        visitQuestion(questionId);
+        H.visitQuestion(questionId);
 
-        openStaticEmbeddingModal({ activeTab: "lookAndFeel" });
+        H.openStaticEmbeddingModal({ activeTab: "lookAndFeel" });
 
         cy.log(
           "Embedding settings page should not show option to disable downloads",
@@ -291,14 +277,14 @@ describeEE("scenarios > embedding > questions > downloads", () => {
         cy.log(
           "Visit embedded question and set its filter through query parameters",
         );
-        visitEmbeddedPage(payload, {
+        H.visitEmbeddedPage(payload, {
           setFilters: { text: "Foo" },
         });
 
         cy.get("[data-testid=cell-data]").should("have.text", "Foo");
         cy.findByRole("contentinfo").icon("download").click();
 
-        popover().within(() => {
+        H.popover().within(() => {
           cy.findAllByText("Download").should("have.length", 2);
           cy.findByText(".csv");
           cy.findByText(".xlsx");
@@ -319,13 +305,13 @@ describeEE("scenarios > embedding > questions > downloads", () => {
   });
 
   context("premium token with paid features", () => {
-    beforeEach(() => setTokenFeatures("all"));
+    beforeEach(() => H.setTokenFeatures("all"));
 
     it("should be possible to disable downloads", () => {
       cy.get("@questionId").then(questionId => {
-        visitQuestion(questionId);
+        H.visitQuestion(questionId);
 
-        openStaticEmbeddingModal({
+        H.openStaticEmbeddingModal({
           activeTab: "lookAndFeel",
           acceptTerms: false,
         });
@@ -346,9 +332,9 @@ describeEE("scenarios > embedding > questions > downloads", () => {
           },
         });
 
-        visitIframe();
+        H.visitIframe();
 
-        filterWidget().type("Foo{enter}");
+        H.filterWidget().type("Foo{enter}");
         cy.get("[data-testid=cell-data]").should("have.text", "Foo");
 
         cy.location("search").should("eq", "?text=Foo");

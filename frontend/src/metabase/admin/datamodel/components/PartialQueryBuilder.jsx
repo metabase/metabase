@@ -2,7 +2,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,6 +9,7 @@ import Link from "metabase/core/components/Link";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
 import Query from "metabase-lib/v1/queries/Query";

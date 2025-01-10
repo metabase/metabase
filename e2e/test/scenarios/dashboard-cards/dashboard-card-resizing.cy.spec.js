@@ -1,18 +1,8 @@
 import _ from "underscore";
 
+import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createDashboard,
-  createQuestion,
-  editDashboard,
-  getDashboardCard,
-  popover,
-  resizeDashboardCard,
-  restore,
-  saveDashboard,
-  visitDashboard,
-} from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 
 const VISUALIZATION_SIZES = {
@@ -203,16 +193,16 @@ describe(
   { requestTimeout: 15000 },
   () => {
     beforeEach(() => {
-      restore();
+      H.restore();
       cy.signInAsAdmin();
     });
 
     it("should display all visualization cards with their default sizes", () => {
       TEST_QUESTIONS.forEach(question => {
-        createQuestion(question);
+        H.createQuestion(question);
       });
-      createDashboard().then(({ body: { id: dashId } }) => {
-        visitDashboard(dashId);
+      H.createDashboard().then(({ body: { id: dashId } }) => {
+        H.visitDashboard(dashId);
 
         cy.findByTestId("dashboard-header").within(() => {
           cy.findByLabelText("Edit dashboard").click();
@@ -242,7 +232,7 @@ describe(
           cy.wait("@cardQuery");
         });
 
-        saveDashboard();
+        H.saveDashboard();
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
           body.dashcards.forEach(({ card, size_x, size_y }) => {
@@ -257,11 +247,11 @@ describe(
     it("should not allow cards to be resized smaller than min height", () => {
       const cardIds = [];
       TEST_QUESTIONS.forEach(question => {
-        createQuestion(question).then(({ body: { id } }) => {
+        H.createQuestion(question).then(({ body: { id } }) => {
           cardIds.push(id);
         });
       });
-      createDashboard().then(({ body: { id: dashId } }) => {
+      H.createDashboard().then(({ body: { id: dashId } }) => {
         cy.request("PUT", `/api/dashboard/${dashId}`, {
           dashcards: cardIds.map((cardId, index) => ({
             id: index,
@@ -272,19 +262,19 @@ describe(
             size_y: 10,
           })),
         });
-        visitDashboard(dashId);
-        editDashboard();
+        H.visitDashboard(dashId);
+        H.editDashboard();
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
           body.dashcards.forEach(({ card }, index) => {
-            resizeDashboardCard({
-              card: getDashboardCard(index),
+            H.resizeDashboardCard({
+              card: H.getDashboardCard(index),
               x: -getDefaultSize(card.display).width * 200,
               y: -getDefaultSize(card.display).height * 200,
             });
           });
 
-          saveDashboard();
+          H.saveDashboard();
 
           cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
             body.dashcards.forEach(({ card, size_x, size_y }) => {
@@ -300,8 +290,8 @@ describe(
 );
 
 describe("issue 31701", () => {
-  const entityCard = () => getDashboardCard(0);
-  const customCard = () => getDashboardCard(1);
+  const entityCard = () => H.getDashboardCard(0);
+  const customCard = () => H.getDashboardCard(1);
 
   const editEntityLinkContainer = () =>
     cy.findByTestId("entity-edit-display-link");
@@ -314,37 +304,37 @@ describe("issue 31701", () => {
     cy.findByTestId("custom-view-text-link");
 
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
 
-    createQuestion({
+    H.createQuestion({
       name: TEST_QUESTION_NAME,
       query: {
         "source-table": ORDERS_ID,
       },
     });
 
-    createDashboard({
+    H.createDashboard({
       name: TEST_DASHBOARD_NAME,
     }).then(({ body: { id: dashId } }) => {
-      visitDashboard(dashId);
+      H.visitDashboard(dashId);
     });
 
-    editDashboard();
+    H.editDashboard();
 
     cy.log("Add first link card (connected to an entity");
     cy.findByLabelText("Add a link or iframe").click();
-    popover().findByText("Link").click();
-    getDashboardCard(0).as("entityCard").click().type(TEST_QUESTION_NAME);
-    popover()
+    H.popover().findByText("Link").click();
+    H.getDashboardCard(0).as("entityCard").click().type(TEST_QUESTION_NAME);
+    H.popover()
       .findAllByTestId("search-result-item-name")
       .first()
       .trigger("click");
 
     cy.log("Add second link card (text only)");
     cy.findByLabelText("Add a link or iframe").click();
-    popover().findByText("Link").click();
-    getDashboardCard(1)
+    H.popover().findByText("Link").click();
+    H.getDashboardCard(1)
       .as("customCard")
       .click()
       .type(TEST_QUESTION_NAME)
@@ -361,7 +351,7 @@ describe("issue 31701", () => {
       assertLinkCardOverflow(editCustomLinkContainer(), customCard());
     });
 
-    saveDashboard();
+    H.saveDashboard();
 
     cy.log("when viewing a saved dashboard");
     viewports.forEach(([width, height]) => {
