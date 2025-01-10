@@ -28,6 +28,7 @@ import {
   Description,
   Header,
   ItemCard,
+  ItemContainer,
   ItemIcon,
   ItemLink,
   Title,
@@ -111,69 +112,73 @@ function PinnedItemCard({
     (onCopy || onMove || createBookmark || deleteBookmark || collection);
 
   return (
-    <ItemLink
-      className={className}
-      to={item ? (modelToUrl(item) ?? "/") : undefined}
-      onClick={onClick}
-    >
-      <ItemCard flat>
-        <Body>
-          <Header>
-            <ItemIcon name={icon as unknown as IconName} />
-            <ActionsContainer h={item ? undefined : "2rem"}>
-              {item?.model === "dataset" && <ModelDetailLink model={item} />}
-              {hasActions && (
-                // This component is used within a `<Link>` component,
-                // so we must prevent events from triggering the activation of the link
-                <EventSandbox preventDefault sandboxedEvents={["onClick"]}>
-                  <ActionMenu
-                    databases={databases}
-                    bookmarks={bookmarks}
-                    createBookmark={createBookmark}
-                    deleteBookmark={deleteBookmark}
-                    item={item}
-                    collection={collection}
-                    onCopy={onCopy}
-                    onMove={onMove}
-                  />
-                </EventSandbox>
-              )}
-            </ActionsContainer>
-          </Header>
-          {item ? (
-            <>
-              <Tooltip
-                tooltip={item.name}
-                placement="bottom"
-                maxWidth={TOOLTIP_MAX_WIDTH}
-                isEnabled={showTitleTooltip}
-              >
-                <Title
-                  onMouseEnter={e => maybeEnableTooltip(e, setShowTitleTooltip)}
+    <ItemContainer>
+      <ItemLink
+        className={className}
+        to={item ? (modelToUrl(item) ?? "/") : undefined}
+        onClick={onClick}
+      >
+        <ItemCard flat>
+          <Body>
+            <Header>
+              <ItemIcon name={icon as unknown as IconName} />
+            </Header>
+            {item ? (
+              <>
+                <Tooltip
+                  tooltip={item.name}
+                  placement="bottom"
+                  maxWidth={TOOLTIP_MAX_WIDTH}
+                  isEnabled={showTitleTooltip}
                 >
-                  <Flex align="center" gap="0.5rem">
-                    {item.name}
-                    <PLUGIN_MODERATION.ModerationStatusIcon
-                      status={item.moderated_status}
-                      filled
-                      size={14}
-                    />
-                  </Flex>
-                </Title>
-              </Tooltip>
-              <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>
-                {item.description || DEFAULT_DESCRIPTION[item.model] || ""}
-              </Description>
-            </>
-          ) : (
-            <>
-              <Skeleton natural h="1.5rem" />
-              <Skeleton natural mt="xs" mb="4px" h="1rem" />
-            </>
-          )}
-        </Body>
-      </ItemCard>
-    </ItemLink>
+                  <Title
+                    onMouseEnter={e =>
+                      maybeEnableTooltip(e, setShowTitleTooltip)
+                    }
+                  >
+                    <Flex align="center" gap="0.5rem">
+                      {item.name}
+                      <PLUGIN_MODERATION.ModerationStatusIcon
+                        status={item.moderated_status}
+                        filled
+                        size={14}
+                      />
+                    </Flex>
+                  </Title>
+                </Tooltip>
+                <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>
+                  {item.description || DEFAULT_DESCRIPTION[item.model] || ""}
+                </Description>
+              </>
+            ) : (
+              <>
+                <Skeleton natural h="1.5rem" />
+                <Skeleton natural mt="xs" mb="4px" h="1rem" />
+              </>
+            )}
+          </Body>
+        </ItemCard>
+      </ItemLink>
+      <ActionsContainer h={item ? undefined : "2rem"}>
+        {item?.model === "dataset" && <ModelDetailLink model={item} />}
+        {hasActions && (
+          // This component is used within a `<Link>` component,
+          // so we must prevent events from triggering the activation of the link
+          <EventSandbox preventDefault sandboxedEvents={["onClick"]}>
+            <ActionMenu
+              databases={databases}
+              bookmarks={bookmarks}
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
+              item={item}
+              collection={collection}
+              onCopy={onCopy}
+              onMove={onMove}
+            />
+          </EventSandbox>
+        )}
+      </ActionsContainer>
+    </ItemContainer>
   );
 }
 

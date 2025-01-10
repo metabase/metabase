@@ -32,6 +32,9 @@ export const ActionsContainer = styled(Box)<BoxProps>`
   align-items: center;
   gap: 0.5rem;
   visibility: hidden;
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
 `;
 
 export const Title = styled.div`
@@ -59,10 +62,6 @@ export const Body = styled.div`
     ${Title} {
       color: var(--mb-color-brand);
     }
-
-    ${ActionsContainer} {
-      visibility: visible;
-    }
   }
 `;
 
@@ -71,4 +70,15 @@ export const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 2.75rem;
+`;
+
+export const ItemContainer = styled.div`
+  &:hover,
+  &:focus,
+  &:focus-within {
+    ${ActionsContainer} {
+      visibility: visible;
+    }
+  }
 `;
