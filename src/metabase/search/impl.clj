@@ -1,8 +1,6 @@
 (ns metabase.search.impl
   (:require
    [clojure.string :as str]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.core :as lib]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.data-permissions :as data-perms]
@@ -181,13 +179,9 @@
                                   (when collection_effective_ancestors
                                     {:effective_ancestors collection_effective_ancestors})))
          :scores          (remove-thunks all-scores))
-        (update :dataset_query (fn [dataset-query]
-                                 (when-let [query (some-> dataset-query json/decode)]
-                                   (if (get query "type")
-                                     (mbql.normalize/normalize query)
-                                     (not-empty (lib/normalize query))))))
         (dissoc
          :all-scores
+         :dataset_query
          :relevant-scores
          :collection_effective_ancestors
          :collection_id
