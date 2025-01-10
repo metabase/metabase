@@ -1018,14 +1018,16 @@ describe("issue 37374", () => {
 
     cy.log("changing the viz type to pivot table and running the query works");
     H.openVizTypeSidebar();
-    cy.findByTestId("chart-type-sidebar")
+    cy.findByTestId("chartsettings-sidebar")
       .findByTestId("Pivot Table-button")
       .click();
     cy.wait("@cardPivotQuery");
     cy.findByTestId("pivot-table").should("be.visible");
 
     cy.log("changing the viz type back to table and running the query works");
-    cy.findByTestId("chart-type-sidebar").findByTestId("Table-button").click();
+    cy.findByTestId("chartsettings-sidebar")
+      .findByTestId("Table-button")
+      .click();
     cy.wait("@cardQuery");
     H.tableInteractive().should("be.visible");
   });
@@ -1448,7 +1450,7 @@ describe("issue 44637", () => {
 
     H.assertQueryBuilderRowCount(0);
     H.queryBuilderMain().findByText("No results!").should("exist");
-    H.queryBuilderFooter().button("Visualization").click();
+    H.openVizTypeSidebar();
     H.leftSidebar().icon("bar").click();
     H.queryBuilderMain().within(() => {
       cy.findByText("No results!").should("exist");
@@ -2078,7 +2080,7 @@ describe("issue 41612", () => {
       { visitQuestion: true },
     );
 
-    H.queryBuilderMain().findByLabelText("Switch to data").click();
+    H.queryBuilderFooter().findByLabelText("Switch to data").click();
     H.queryBuilderHeader().button("Save").click();
     H.modal().button("Save").click();
 

@@ -50,6 +50,35 @@ jobs:
               const { WebClient } = require('@slack/web-api');
               const slack = new WebClient('${{ secrets.SLACK_BOT_TOKEN }}');
 
+              // find out which jobs failed
+              const { owner, repo } = context.repo;
+
+              const jobInfo = await github.rest.actions.listJobsForWorkflowRun({
+                owner,
+                repo,
+                run_id: ${{ github.event.workflow_run.id }},
+                per_page: 100,
+              });
+
+              const failedJobs = jobInfo.data.jobs
+                .filter(job => job.status === "completed" && job.conclusion === "failure");
+
+              // don't bother slack if only the flaky job failed
+              if (failedJobs.every(job => job.name.includes("flaky"))) {
+                return;
+              }
+
+              const failedJobsList = failedJobs.map(job => ({
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "link",
+                    "text": job.name,
+                    "url": job.html_url,
+                  }
+                ]
+              }));
+
               await slack.chat.postMessage({
                 channel: 'engineering-ci',
                 text: 'Failing tests',
@@ -70,9 +99,20 @@ jobs:
                       "type": "section",
                       "text": {
                         "type": "mrkdwn",
-                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on the <https://github.com/metabase/metabase/commits/${BRANCH}|\`${BRANCH}\`> branch. :sad-panda:`
-                      }
+                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on <https://github.com/${owner}/${repo}/commits/${BRANCH}|\`${BRANCH}\`>`
+                      },
                     },
+                    {
+                      "type": "rich_text",
+                      "block_id": "block1",
+                      "elements": [
+                        {
+                          "type": "rich_text_list",
+                          "style": "bullet",
+                          "elements": failedJobsList,
+                        },
+                      ],
+                    }
                   ]
                 }]
               });

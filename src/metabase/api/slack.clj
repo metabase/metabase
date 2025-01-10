@@ -69,6 +69,7 @@
                          :emoji true}
                   :url file-url}]}]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/settings"
   "Update Slack related settings. You must be a superuser to do this. Also updates the slack-cache.
   There are 3 cases where we alter the slack channel/user cache:
@@ -131,6 +132,7 @@
 (def ^:private slack-manifest
   (delay (slurp (io/resource "slack-manifest.yaml"))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/manifest"
   "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
   []
@@ -138,6 +140,7 @@
   @slack-manifest)
 
 ;; Handle bug report submissions to Slack
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/bug-report"
   "Send diagnostic information to the configured Slack channels."
   [:as {{:keys [diagnosticInfo]} :body}]

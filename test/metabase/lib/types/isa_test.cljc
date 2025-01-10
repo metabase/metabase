@@ -152,6 +152,7 @@
             [{:pred #'lib.types.isa/temporal?,           :positive :type/Date,              :negative :type/CreationDate}
              {:pred #'lib.types.isa/temporal?,           :positive :type/DateTime,          :negative :type/City}
              {:pred #'lib.types.isa/numeric?,            :positive :type/Integer,           :negative :type/FK}
+             {:pred #'lib.types.isa/numeric?,            :positive :type/Price,             :negative :type/CreationDate}
              {:pred #'lib.types.isa/boolean?,            :positive :type/Boolean,           :negative :type/PK}
              {:pred #'lib.types.isa/string?,             :positive :type/Text,              :negative :type/URL}
              {:pred #'lib.types.isa/string-like?,        :positive :type/TextLike,          :negative :type/Address}
@@ -166,14 +167,12 @@
              {:pred #'lib.types.isa/entity-name?,        :positive :type/Name,              :negative :type/Number}
              {:pred #'lib.types.isa/title?,              :positive :type/Title,             :negative :type/Name}
              {:pred #'lib.types.isa/any?,                :positive :type/*}
-             {:pred #'lib.types.isa/numeric-base-type?,  :positive :type/Integer,           :negative :type/String}
              {:pred #'lib.types.isa/date-or-datetime?,   :positive :type/Date,              :negative :type/Time}
              {:pred #'lib.types.isa/date-or-datetime?,   :positive :type/DateTime,          :negative :type/Interval}
              {:pred #'lib.types.isa/date-without-time?,  :positive :type/Date,              :negative :type/Time}
              {:pred #'lib.types.isa/creation-timestamp?, :positive :type/CreationTimestamp, :negative :type/CreationDate}
              {:pred #'lib.types.isa/creation-date?,      :positive :type/CreationDate,      :negative :type/CreationTimestamp}
              {:pred #'lib.types.isa/creation-time?,      :positive :type/CreationTime,      :negative :type/CreationTimestamp}
-             {:pred #'lib.types.isa/number?,             :positive :type/Number,            :negative :type/Text}
              {:pred #'lib.types.isa/time?,               :positive :type/Time,              :negative :type/Number}
              {:pred #'lib.types.isa/address?,            :positive :type/Address,           :negative :type/String}
              {:pred #'lib.types.isa/city?,               :positive :type/City,              :negative :type/ZipCode}

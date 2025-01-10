@@ -8,6 +8,7 @@
             [metabase.models.user-key-value.types :as types]
             [metabase.util.malli.schema :as ms]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/namespace/:namespace/key/:key"
   "Upsert a KV-pair for the user"
   [:as {{v :value
@@ -33,6 +34,7 @@
            (api/check-400 false))
          (throw e))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/namespace/:namespace/key/:key"
   "Get a value for the user"
   [namespace key]
@@ -40,12 +42,14 @@
    namespace ms/NonBlankString}
   (user-key-value/retrieve api/*current-user-id* namespace key))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/namespace/:namespace"
   "Returns all KV pairs in a given namespace for the current user"
   [namespace]
   {namespace ms/NonBlankString}
   (user-key-value/retrieve-all api/*current-user-id* namespace))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/namespace/:namespace/key/:key"
   "Deletes a KV-pair for the user"
   [namespace key]

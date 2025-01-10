@@ -18,6 +18,7 @@
    [metabase.http-client :as client]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -38,14 +39,13 @@
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
-   [metabase.test.util.public-settings :as tu.public-setings]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.log.capture]
    [metabase.util.random :as u.random]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -80,7 +80,7 @@
   schema-migrations-test.impl/keep-me
   sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
-  t2.with-temp/keepme
+  toucan2.tools.with-temp/keep-me
   test-runner.assert-exprs/keep-me
   test.persistence/keep-me
   test.redefs/keep-me
@@ -89,7 +89,6 @@
   tu.async/keep-me
   tu.log/keep-me
   tu.misc/keep-me
-  tu.public-setings/keep-me
   tu.thread-local/keep-me
   tu/keep-me
   tx.env/keep-me
@@ -97,7 +96,7 @@
   u.random/keep-me)
 
 ;; Add more stuff here as needed
-#_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
+#_{:clj-kondo/ignore [:discouraged-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -177,6 +176,11 @@
   dynamic-value
   with-dynamic-redefs]
 
+ [premium-features.test-util
+  with-premium-features
+  with-additional-premium-features
+  assert-has-premium-feature-error]
+
  [perms.test-util
   with-restored-data-perms!
   with-restored-data-perms-for-group!
@@ -235,7 +239,7 @@
   with-group-for-user
   with-test-user]
 
- [t2.with-temp
+ [toucan2.tools.with-temp
   with-temp
   with-temp-defaults]
 
@@ -293,11 +297,6 @@
   object-defaults
   with-clock
   with-single-admin-user]
-
- [tu.public-setings
-  with-premium-features
-  with-additional-premium-features
-  assert-has-premium-feature-error]
 
  [u.random
   random-name

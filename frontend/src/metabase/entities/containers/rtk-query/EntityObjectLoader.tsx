@@ -170,7 +170,7 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
   }, [dispatch, rtkError, requestStatePath, queryKey]);
 
   useEffect(() => {
-    if (data) {
+    if (data && !isFetching) {
       const transformed = transformResponse(data, finalQuery);
       const normalized = entityDefinition.normalize(transformed);
 
@@ -188,6 +188,7 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
     data,
     entityDefinition,
     finalQuery,
+    isFetching,
     transformResponse,
     requestStatePath,
     queryKey,
