@@ -141,8 +141,8 @@
 
        :else
        (SequenceInputStream.
-         (ByteArrayInputStream. (bytes/slice spec-array 0 spec-array-length))
-         input-stream)))))
+        (ByteArrayInputStream. (bytes/slice spec-array 0 spec-array-length))
+        input-stream)))))
 
 (defn decrypt
   "Decrypt string `s` using a `secret-key` (a 64-byte byte array), by default the hashed value of

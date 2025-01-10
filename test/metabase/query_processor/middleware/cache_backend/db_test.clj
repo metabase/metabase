@@ -16,9 +16,9 @@
   "Get the stored value from the query_cache"
   ^bytes [^Connection conn]
   (-> (jdbc/query {:connection conn} "select results from query_cache limit 1")
-    first
-    :results
-    byte-array))
+      first
+      :results
+      byte-array))
 
 (deftest encryption-test
   (testing "With no encryption, cache results should be stored plain text"
