@@ -141,7 +141,7 @@ describe("scenarios > dashboard", () => {
           .findByRole("tab", { name: /Collections/ })
           .click();
         H.entityPickerModal()
-          .findByText("Create a new collection")
+          .findByText("New collection")
           .click({ force: true });
         const NEW_COLLECTION = "Bar";
         H.collectionOnTheGoModal().within(() => {
@@ -199,7 +199,7 @@ describe("scenarios > dashboard", () => {
       H.entityPickerModal()
         .findByRole("tab", { name: /Dashboards/ })
         .click();
-      H.entityPickerModal().findByText("Create a new dashboard").click();
+      H.entityPickerModal().findByText("New dashboard").click();
       cy.findByTestId("create-dashboard-on-the-go").within(() => {
         cy.findByPlaceholderText("My new dashboard").type("Foo");
         cy.findByText("Create").click();
