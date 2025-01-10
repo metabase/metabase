@@ -10469,6 +10469,15 @@ databaseChangeLog:
                   type: ${timestamp_type}
                   remarks: The timestamp at which a user was deactivated
 
+  - changeSet:
+      id: v53.2025-01-10T16:22:30
+      author: nvoxland
+      comment: Drop `session_id` column from the `login_history` table
+      changes:
+        - dropColumn:
+            tableName: login_history
+            columnName: session_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
