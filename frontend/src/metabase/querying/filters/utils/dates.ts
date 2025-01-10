@@ -318,11 +318,11 @@ function formatMonth(month: number, year: number) {
   return dayjs()
     .year(year)
     .month(month - 1)
-    .format("MMMM");
+    .format("MMMM YYYY");
 }
 
 function formatQuarter(quarter: number, year: number) {
-  return dayjs().year(year).month(quarter).format("[Q]Q YYYY");
+  return dayjs().year(year).quarter(quarter).format("[Q]Q YYYY");
 }
 
 function formatExcludeUnit(value: number, unit: ExcludeDateFilterUnit) {
@@ -332,8 +332,10 @@ function formatExcludeUnit(value: number, unit: ExcludeDateFilterUnit) {
     case "day-of-week":
       return dayjs().isoWeekday(value).format("dddd");
     case "month-of-year":
-      return dayjs().isoWeekday(value).format("MMMM");
+      return dayjs()
+        .month(value - 1)
+        .format("MMMM");
     case "quarter-of-year":
-      return dayjs().isoWeekday(value).format("[Q]Q");
+      return dayjs().quarter(value).format("[Q]Q");
   }
 }
