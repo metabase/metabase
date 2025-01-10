@@ -1,3 +1,6 @@
+import { Code } from "@mantine/core";
+import { jt } from "ttag";
+
 import { useSdkSelector } from "embedding-sdk/store";
 import { getErrorComponent } from "embedding-sdk/store/selectors";
 import type { SdkErrorComponentProps } from "embedding-sdk/store/types";
@@ -31,3 +34,40 @@ const DefaultErrorMessage = ({ message }: SdkErrorComponentProps) => (
     </Alert>
   </Box>
 );
+
+interface ResourceNotFoundErrorProps {
+  id: string | number;
+}
+export function QuestionNotFoundError({ id }: ResourceNotFoundErrorProps) {
+  return (
+    <SdkError
+      message={jt`Question ${(
+        <Code
+          // TODO: replace this color with a semantic color from a design
+          bg="var(--mb-base-color-ocean-20)"
+          c="text-dark"
+          key="question-id"
+        >
+          {id}
+        </Code>
+      )} not found`}
+    />
+  );
+}
+
+export function DashboardNotFoundError({ id }: ResourceNotFoundErrorProps) {
+  return (
+    <SdkError
+      message={jt`Dashboard ${(
+        <Code
+          // TODO: replace this color with a semantic color from a design
+          bg="var(--mb-base-color-ocean-20)"
+          c="text-dark"
+          key="dashboard-id"
+        >
+          {id}
+        </Code>
+      )} not found`}
+    />
+  );
+}

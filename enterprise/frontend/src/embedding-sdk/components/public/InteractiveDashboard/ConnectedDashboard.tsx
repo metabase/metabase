@@ -1,13 +1,11 @@
-import { Code } from "@mantine/core";
 import type { Query } from "history";
 import { type ComponentType, type FC, useEffect } from "react";
 import type { ConnectedProps } from "react-redux";
-import { jt } from "ttag";
 import _ from "underscore";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import {
-  SdkError,
+  DashboardNotFoundError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
@@ -149,19 +147,7 @@ export const ConnectedDashboard = connector<
   }
 
   if (!resolvedDashboardId || errorPage?.status === 404) {
-    return (
-      <SdkError
-        message={jt`Dashboard ${(
-          <Code
-            bg="var(--mb-base-color-ocean-20)"
-            c="text-dark"
-            key="question-id"
-          >
-            {initialDashboardId}
-          </Code>
-        )} not found`}
-      />
-    );
+    return <DashboardNotFoundError id={initialDashboardId} />;
   }
 
   return (

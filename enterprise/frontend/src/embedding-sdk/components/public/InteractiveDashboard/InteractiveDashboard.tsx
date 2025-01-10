@@ -1,12 +1,10 @@
-import { Code } from "@mantine/core";
 import { type CSSProperties, type ReactNode, useEffect } from "react";
-import { jt } from "ttag";
 import _ from "underscore";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
-  SdkError,
+  DashboardNotFoundError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
@@ -162,17 +160,7 @@ export const InteractiveDashboard = renderOnlyInSdkProvider(
     if (!resolvedDashboardId || errorPage?.status === 404) {
       return (
         <StyledPublicComponentWrapper className={className} style={style}>
-          <SdkError
-            message={jt`Dashboard ${(
-              <Code
-                bg="var(--mb-base-color-ocean-20)"
-                c="text-dark"
-                key="question-id"
-              >
-                {initialDashboardId}
-              </Code>
-            )} not found`}
-          />
+          <DashboardNotFoundError id={initialDashboardId} />
         </StyledPublicComponentWrapper>
       );
     }

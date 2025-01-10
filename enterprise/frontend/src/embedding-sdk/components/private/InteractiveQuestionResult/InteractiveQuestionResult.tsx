@@ -1,11 +1,10 @@
-import { Code } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import {
-  SdkError,
+  QuestionNotFoundError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
@@ -67,20 +66,8 @@ export const InteractiveQuestionResult = ({
   }
 
   // `isCardError: true` when the entity ID couldn't be resolved
-  if (!question || isCardIdError) {
-    return (
-      <SdkError
-        message={jt`Question ${(
-          <Code
-            bg="var(--mb-base-color-ocean-20)"
-            c="text-dark"
-            key="question-id"
-          >
-            {originalId}
-          </Code>
-        )} not found`}
-      />
-    );
+  if ((!question || isCardIdError) && originalId) {
+    return <QuestionNotFoundError id={originalId} />;
   }
 
   const showSaveButton =

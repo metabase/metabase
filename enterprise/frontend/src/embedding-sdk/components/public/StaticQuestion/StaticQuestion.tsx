@@ -1,9 +1,9 @@
-import { Code } from "@mantine/core";
 import cx from "classnames";
 import { useMemo } from "react";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import {
+  QuestionNotFoundError,
   SdkError,
   SdkLoader,
   withPublicComponentWrapper,
@@ -90,19 +90,7 @@ const StaticQuestionInner = ({
   const isLoading = loading || (!result && !error) || isValidatingEntityId;
 
   if (!questionId || isResourceNotFoundError(error)) {
-    return (
-      <SdkError
-        message={jt`Question ${(
-          <Code
-            bg="var(--mb-base-color-ocean-20)"
-            c="text-dark"
-            key="question-id"
-          >
-            {initialQuestionId}
-          </Code>
-        )} not found`}
-      />
-    );
+    return <QuestionNotFoundError id={initialQuestionId} />;
   }
 
   if (error) {

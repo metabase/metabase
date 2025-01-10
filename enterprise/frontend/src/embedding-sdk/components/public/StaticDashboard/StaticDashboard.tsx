@@ -1,11 +1,9 @@
-import { Code } from "@mantine/core";
 import cx from "classnames";
 import { useEffect } from "react";
-import { jt } from "ttag";
 import _ from "underscore";
 
 import {
-  SdkError,
+  DashboardNotFoundError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
@@ -113,19 +111,7 @@ const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
     }
 
     if (!resolvedDashboardId || errorPage?.status === 404) {
-      return (
-        <SdkError
-          message={jt`Dashboard ${(
-            <Code
-              bg="var(--mb-base-color-ocean-20)"
-              c="text-dark"
-              key="question-id"
-            >
-              {initialDashboardId}
-            </Code>
-          )} not found`}
-        />
-      );
+      return <DashboardNotFoundError id={initialDashboardId} />;
     }
 
     return <StaticDashboardInner dashboardId={resolvedDashboardId} {...rest} />;
