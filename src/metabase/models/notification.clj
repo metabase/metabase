@@ -539,8 +539,7 @@
   "Unsubscribe a user from a notification."
   [notification-id user-id]
   (t2/delete! :model/NotificationRecipient
-              {:from  [[:notification_recipient :nr]]
-               :join  [[:notification_handler :nh] [:= :nh.id :nr.notification_handler_id]]
-               :where [:and
-                       [:= :nr.user_id user-id]
-                       [:= :nh.notification_id notification-id]]}))
+              :user_id user-id
+              :notification_handler_id [:in {:select [:id]
+                                             :from   [:notification_handler]
+                                             :where  [:= :notification_id notification-id]}]))
