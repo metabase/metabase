@@ -122,7 +122,7 @@ export type UserKeyValue = {
   value: string;
 };
 
-type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;
+export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;
 
 export type DeleteUserKeyValueRequest = UserKeyValueKey;
 

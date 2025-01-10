@@ -18,10 +18,10 @@ import {
   useUserKeyValue,
 } from "./use-user-key-value";
 
-function setup<ValueType extends UserKeyValue>({
+function setup({
   hookArgs,
 }: {
-  hookArgs: UseUserKeyValueParams<ValueType>;
+  hookArgs: UseUserKeyValueParams<UserKeyValue>;
 }) {
   const store = getStore(reducers, undefined, createMockState());
 
@@ -41,7 +41,11 @@ function setup<ValueType extends UserKeyValue>({
 describe("useUserKeyValue", () => {
   describe("value", () => {
     it("should return undefined until value has loaded", async () => {
-      setupGetUserKeyValueEndpoint("meow", "meow", "server-value");
+      setupGetUserKeyValueEndpoint({
+        namespace: "meow",
+        key: "meow",
+        value: "server-value",
+      });
       const result = setup({
         hookArgs: { namespace: "meow", key: "meow" },
       });
@@ -50,7 +54,11 @@ describe("useUserKeyValue", () => {
     });
 
     it("should return server value once loaded", async () => {
-      setupGetUserKeyValueEndpoint("meow", "meow", "server-value");
+      setupGetUserKeyValueEndpoint({
+        namespace: "meow",
+        key: "meow",
+        value: "server-value",
+      });
       const result = setup({
         hookArgs: { namespace: "meow", key: "meow" },
       });
@@ -62,7 +70,11 @@ describe("useUserKeyValue", () => {
     });
 
     it("should be able to set a default value", async () => {
-      setupGetUserKeyValueEndpoint("meow", "meow", "server-value");
+      setupGetUserKeyValueEndpoint({
+        namespace: "meow",
+        key: "meow",
+        value: "server-value",
+      });
       const result = setup({
         hookArgs: {
           namespace: "meow",
@@ -81,12 +93,16 @@ describe("useUserKeyValue", () => {
 
   describe("setValue", () => {
     it("should optimistically update the value and skip refetching", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint(
-        "meow",
-        "meow",
-        "before-value",
-      );
-      setupUpdateUserKeyValueEndpoint("meow", "meow", "after-value");
+      const mockedFetch = setupGetUserKeyValueEndpoint({
+        namespace: "meow",
+        key: "meow",
+        value: "before-value",
+      });
+      setupUpdateUserKeyValueEndpoint({
+        namespace: "meow",
+        key: "meow",
+        value: "after-value",
+      });
 
       const result = setup({
         hookArgs: { namespace: "meow", key: "meow" },
@@ -120,11 +136,11 @@ describe("useUserKeyValue", () => {
     });
 
     it("should revert optimisitic update if update fails", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint(
-        "meow",
-        "meow",
-        "before-value",
-      );
+      const mockedFetch = setupGetUserKeyValueEndpoint({
+        namespace: "meow",
+        key: "meow",
+        value: "before-value",
+      });
       fetchMock.put(`path:/api/user-key-value/namespace/meow/key/meow`, 400);
 
       const result = setup({
@@ -161,8 +177,12 @@ describe("useUserKeyValue", () => {
 
   describe("clearValue", () => {
     it("should optimistically delete a key and skip refetching its value", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint("meow", "meow", "value");
-      setupDeleteUserKeyValueEndpoint("meow", "meow");
+      const mockedFetch = setupGetUserKeyValueEndpoint({
+        namespace: "meow",
+        key: "meow",
+        value: "value",
+      });
+      setupDeleteUserKeyValueEndpoint({ namespace: "meow", key: "meow" });
 
       const result = setup({
         hookArgs: { namespace: "meow", key: "meow" },
@@ -196,11 +216,11 @@ describe("useUserKeyValue", () => {
     });
 
     it("should revert optimisitic delete if deletion fails", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint(
-        "meow",
-        "meow",
-        "before-value",
-      );
+      const mockedFetch = setupGetUserKeyValueEndpoint({
+        namespace: "meow",
+        key: "meow",
+        value: "before-value",
+      });
       fetchMock.delete(`path:/api/user-key-value/namespace/meow/key/meow`, 400);
 
       const result = setup({
