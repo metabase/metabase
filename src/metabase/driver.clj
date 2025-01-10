@@ -160,7 +160,6 @@
     (the-driver :baby)     ; -> Exception"
   [driver]
   {:pre [((some-fn keyword? string?) driver)]}
-  (classloader/the-classloader)
   (let [driver (keyword driver)]
     (driver.impl/load-driver-namespace-if-needed! driver)
     driver))
@@ -187,8 +186,12 @@
 (defn the-initialized-driver
   "Like [[the-driver]], but also initializes the driver if not already initialized."
   [driver]
-  (let [driver (the-driver driver)]
-    (driver.impl/initialize-if-needed! driver initialize!)
+  (let [driver (keyword driver)]
+    ;; Fastpath: an initialized driver `driver` is always already registered. Checking for `initialized?` is faster
+    ;; than doing the `registered?` check inside `load-driver-namespace-if-needed!`.
+    (when-not (driver.impl/initialized? driver)
+      (driver.impl/load-driver-namespace-if-needed! driver)
+      (driver.impl/initialize-if-needed! driver initialize!))
     driver))
 
 (defn dispatch-on-initialized-driver

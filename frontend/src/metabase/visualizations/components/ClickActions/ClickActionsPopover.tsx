@@ -1,8 +1,8 @@
 import { Component } from "react";
-import { connect } from "react-redux";
 import type * as tippy from "tippy.js";
 
 import { getEventTarget } from "metabase/lib/dom";
+import { connect } from "metabase/lib/redux";
 import { performAction } from "metabase/visualizations/lib/action";
 import type {
   ClickObject,

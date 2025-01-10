@@ -1,7 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { useState } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -22,7 +21,7 @@ import {
 } from "metabase/home/selectors";
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
-import { useSelector } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { openDiagnostics } from "metabase/redux/app";
 import {
@@ -199,7 +198,6 @@ function ProfileLink({
           )}
         </Modal>
       ) : null}
-
       {modalOpen === "diagnostic" && (
         <ErrorDiagnosticModalWrapper isModalOpen={true} onClose={closeModal} />
       )}

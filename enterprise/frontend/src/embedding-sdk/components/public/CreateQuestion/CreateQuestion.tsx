@@ -10,7 +10,7 @@ import {
   type InteractiveQuestionProps,
 } from "../InteractiveQuestion";
 
-type CreateQuestionProps = Partial<
+export type CreateQuestionProps = Partial<
   Omit<InteractiveQuestionProps, "questionId" | "children">
 >;
 

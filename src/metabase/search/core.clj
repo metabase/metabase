@@ -58,7 +58,7 @@
   (reduce (partial merge-with max)
           nil
           (for [e (search.engine/active-engines)]
-            (search.engine/reindex! e))))
+            (search.engine/reindex! e nil))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."

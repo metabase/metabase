@@ -1,14 +1,13 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
 import PropTypes from "prop-types";
 import { Fragment, useCallback } from "react";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { PermissionsApi } from "metabase/services";

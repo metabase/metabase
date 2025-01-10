@@ -614,7 +614,7 @@ describe("issue 35290", () => {
       H.createQuestion(questionDetails, { visitQuestion: true });
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar")
       // verify panel is shown
       .should("contain", "Add or remove columns")
@@ -742,10 +742,10 @@ describe("Custom columns visualization settings", () => {
       viewAsDropdown.click();
     });
 
-    cy.findByLabelText("Email link").click();
+    cy.findAllByRole("option", { name: "Email link" }).click();
 
     H.popover().within(() => {
-      cy.findByText("Email link").should("exist");
+      cy.findByDisplayValue("Email link").should("exist");
     });
 
     saveModifiedQuestion();
@@ -781,6 +781,6 @@ function saveModifiedQuestion() {
 }
 
 function goToExpressionSidebarVisualizationSettings() {
-  cy.findByTestId("viz-settings-button").click();
+  H.openVizSettingsSidebar();
   cy.findByTestId(`${EXPRESSION_NAME}-settings-button`).click();
 }

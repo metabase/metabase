@@ -39,6 +39,7 @@
     :model/QueryExecution
     :model/QueryField
     :model/QueryTable
+    :model/SearchIndexMetadata
     :model/TaskHistory})
 
 (defn- all-model-names []

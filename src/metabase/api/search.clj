@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [compojure.core :refer [GET]]
    [java-time.api :as t]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
@@ -14,6 +15,7 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
 
@@ -132,30 +134,37 @@
    ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    calculate_available_models          [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
-  (search/search
-   (search/search-context
-    {:archived                            archived
-     :context                             context
-     :created-at                          created_at
-     :created-by                          (set created_by)
-     :current-user-id                     api/*current-user-id*
-     :is-impersonated-user?               (premium-features/impersonated-user?)
-     :is-sandboxed-user?                  (premium-features/sandboxed-user?)
-     :is-superuser?                       api/*is-superuser?*
-     :current-user-perms                  @api/*current-user-permissions-set*
-     :filter-items-in-personal-collection filter_items_in_personal_collection
-     :last-edited-at                      last_edited_at
-     :last-edited-by                      (set last_edited_by)
-     :limit                               mw.offset-paging/*limit*
-     :model-ancestors?                    model_ancestors
-     :models                              (not-empty (set models))
-     :offset                              mw.offset-paging/*offset*
-     :search-engine                       search_engine
-     :search-native-query                 search_native_query
-     :search-string                       q
-     :table-db-id                         table_db_id
-     :verified                            verified
-     :ids                                 (set ids)
-     :calculate-available-models?         calculate_available_models})))
+  (try
+    (u/prog1 (search/search
+              (search/search-context
+               {:archived                            archived
+                :context                             context
+                :created-at                          created_at
+                :created-by                          (set created_by)
+                :current-user-id                     api/*current-user-id*
+                :is-impersonated-user?               (premium-features/impersonated-user?)
+                :is-sandboxed-user?                  (premium-features/sandboxed-user?)
+                :is-superuser?                       api/*is-superuser?*
+                :current-user-perms                  @api/*current-user-permissions-set*
+                :filter-items-in-personal-collection filter_items_in_personal_collection
+                :last-edited-at                      last_edited_at
+                :last-edited-by                      (set last_edited_by)
+                :limit                               mw.offset-paging/*limit*
+                :model-ancestors?                    model_ancestors
+                :models                              (not-empty (set models))
+                :offset                              mw.offset-paging/*offset*
+                :search-engine                       search_engine
+                :search-native-query                 search_native_query
+                :search-string                       q
+                :table-db-id                         table_db_id
+                :verified                            verified
+                :ids                                 (set ids)
+                :calculate-available-models?         calculate_available_models}))
+      (prometheus/inc! :metabase-search/response-ok))
+    (catch Exception e
+      (let [status-code (:status-code (ex-data e))]
+        (when (or (not status-code) (= 5 (quot status-code 100)))
+          (prometheus/inc! :metabase-search/response-error)))
+      (throw e))))
 
 (api/define-routes +engine-cookie)

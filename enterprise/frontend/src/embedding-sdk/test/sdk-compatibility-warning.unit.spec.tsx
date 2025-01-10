@@ -26,7 +26,7 @@ const AUTH_PROVIDER_URL = "http://auth-provider/metabase-sso";
 const defaultAuthConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
   authProviderUri: AUTH_PROVIDER_URL,
-  fetchRequestToken: _ =>
+  fetchRequestToken: () =>
     Promise.resolve({
       id: "123",
       exp: Number.MAX_SAFE_INTEGER,

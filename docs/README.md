@@ -141,7 +141,8 @@ Metabase's reference documentation.
 - [Managing people and groups](./people-and-groups/managing.md)
 - [Password complexity](./people-and-groups/changing-password-complexity.md)
 - [Session expiration](./people-and-groups/changing-session-expiration.md)
-- [Google Sign-In or LDAP](./people-and-groups/google-and-ldap.md)
+- [Google Sign-In](./people-and-groups/google-sign-in.md)
+- [LDAP](./people-and-groups/ldap.md)
 - [API keys](./people-and-groups/api-keys.md)
 
 #### Paid SSO options
@@ -207,7 +208,7 @@ Metabase's reference documentation.
 ### Metabase API
 
 - [Metabase API documentation](./api-documentation.md)
-- [API tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//metabase-api)
+- [API tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api)
 
 ### Troubleshooting
 
@@ -263,7 +264,7 @@ We tweet stuff.
 
 Follow us on GitHub.
 
-### [List of releases](./releases.md)
+### [List of releases](https://github.com/metabase/metabase/releases)
 
 A list of all Metabase releases, including both the Enterprise Edition and the Open Source Edition.
 

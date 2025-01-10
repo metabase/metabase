@@ -108,12 +108,9 @@
   This is different from the `:drill-thru/zoom` type, which is for showing the details of a single object."
   [query                                         :- ::lib.schema/query
    _stage-number                                 :- :int
-   {:keys [column dimensions row], :as _context} :- ::lib.schema.drill-thru/context]
+   {:keys [dimensions], :as _context}            :- ::lib.schema.drill-thru/context]
   ;; For multi-stage queries, we want the stage-number of the underlying stage with breakouts or aggregations.
-  ;; In such cases, the FE will not pass dimensions, so use the row data instead, if available.
-  (let [stage-number (lib.underlying/top-level-stage-number query)
-        dimensions   (or (not-empty dimensions)
-                         (lib.drill-thru.common/dimensions-from-breakout-columns query column row))]
+  (let [stage-number (lib.underlying/top-level-stage-number query)]
     (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
                dimensions)
       (when-let [{:keys [value column-ref], :as dimension}

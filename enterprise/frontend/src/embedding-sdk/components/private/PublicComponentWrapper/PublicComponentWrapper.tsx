@@ -7,9 +7,9 @@ import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapp
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus, getUsageProblem } from "embedding-sdk/store/selectors";
 
-import { useIsInSdkProvider } from "../SdkContext";
+import { RenderOnlyInSdkProvider } from "../SdkContext";
 
-type PublicComponentWrapperProps = {
+export type PublicComponentWrapperProps = {
   children: React.ReactNode;
   className?: string;
   style?: CSSProperties;
@@ -51,13 +51,9 @@ export const PublicComponentWrapper = React.forwardRef<
   HTMLDivElement,
   PublicComponentWrapperProps
 >(function PublicComponentWrapper(props, ref) {
-  // metabase##50736: make sure we don't break the host app if for a render the
-  // sdk components is rendered outside of the sdk provider
-  const isInSdkProvider = useIsInSdkProvider();
-  if (!isInSdkProvider) {
-    // eslint-disable-next-line no-literal-metabase-strings -- error message
-    return "This component requires the MetabaseProvider parent component. Please wrap it within <MetabaseProvider>...</MetabaseProvider> in your component tree.";
-  }
-
-  return <PublicComponentWrapperInner ref={ref} {...props} />;
+  return (
+    <RenderOnlyInSdkProvider>
+      <PublicComponentWrapperInner ref={ref} {...props} />
+    </RenderOnlyInSdkProvider>
+  );
 });

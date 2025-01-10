@@ -6,17 +6,17 @@ import type {
 import type { JSX, ReactNode } from "react";
 
 import type {
-  EmbeddingSessionToken,
-  FetchRequestTokenFn,
   MetabaseAuthConfig,
+  MetabaseEmbeddingSessionToken,
+  MetabaseFetchRequestTokenFn,
 } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
-import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import type { MetabasePluginsConfig } from "embedding-sdk/lib/plugins";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
-  token: EmbeddingSessionToken | null;
+  token: MetabaseEmbeddingSessionToken | null;
   loading: boolean;
   error: SerializedError | null;
 };
@@ -52,12 +52,12 @@ export type SdkState = {
   metabaseInstanceUrl: MetabaseAuthConfig["metabaseInstanceUrl"];
   token: EmbeddingSessionTokenState;
   loginStatus: LoginStatus;
-  plugins: null | SdkPluginsConfig;
+  plugins: null | MetabasePluginsConfig;
   eventHandlers: null | SdkEventHandlersConfig;
   usageProblem: null | SdkUsageProblem;
   loaderComponent: null | (() => JSX.Element);
   errorComponent: null | SdkErrorComponent;
-  fetchRefreshTokenFn: null | FetchRequestTokenFn;
+  fetchRefreshTokenFn: null | MetabaseFetchRequestTokenFn;
 };
 
 export interface SdkStoreState extends State {

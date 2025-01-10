@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
@@ -19,6 +18,7 @@ import Collections, {
 import { Form, FormProvider } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
+import { connect } from "metabase/lib/redux";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

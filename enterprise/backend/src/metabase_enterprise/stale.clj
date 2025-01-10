@@ -1,8 +1,10 @@
 (ns metabase-enterprise.stale
   (:require [malli.experimental.time]
             [metabase.embed.settings :as embed.settings]
+            [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
             [metabase.util.honey-sql-2 :as h2x]
+            [metabase.util.i18n :refer [deferred-tru]]
             [metabase.util.malli :as mu]
             [toucan2.core :as t2]))
 
@@ -145,3 +147,11 @@
                 (map (fn [v] (update v :model #(keyword "model" %)))))
                (t2/query (rows-query args)))
    :total (:count (t2/query-one (total-query args)))})
+
+(defsetting dismissed-collection-cleanup-banner
+  (deferred-tru "Was the collection cleanup banner dismissed?")
+  :user-local :only
+  :visibility :authenticated
+  :type :boolean
+  :default false
+  :export? false)
