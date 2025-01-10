@@ -1,90 +1,43 @@
-import { useEffect, useState } from "react";
-import { c, t } from "ttag";
+import { useState } from "react";
+import { jt, t } from "ttag";
 
-import { skipToken } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import {
-  Box,
-  Button,
-  Center,
-  Divider,
-  Flex,
-  Modal,
-  Text,
-  TextInput,
-} from "metabase/ui";
-import {
-  useGetGsheetsOauthStatusQuery,
-  useInitiateOauthMutation,
-  useSaveGsheetsFolderLinkMutation,
-} from "metabase-enterprise/api";
-
-const AUTH_COMPLETE_POLL_INTERVAL = 2000;
-
-type Step =
-  | "no-auth"
-  | "auth-started" // loading
-  | "auth-complete"
-  | "setting-folder"
-  | "folder-saved";
+import { CopyButton } from "metabase/components/CopyButton";
+import { Box, Button, Flex, Icon, Modal, Text, TextInput } from "metabase/ui";
+import { useSaveGsheetsFolderLinkMutation } from "metabase-enterprise/api";
 
 export function GSheetManagement() {
-  const [step, setStep] = useState<Step>("no-auth");
   const gSheetsSetting = useSetting("gsheets");
-  const gSheetsEnabled = useSetting("show-google-sheets-integration");
+  const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    setStep(gSheetsSetting?.status ?? "no-auth");
-  }, [gSheetsSetting]);
+  // const gSheetsEnabled = useSetting("show-google-sheets-integration");
+  const gSheetsEnabled = true; // FIXME testing
 
-  const showModal = !["no-auth", "folder-saved"].includes(step);
-  const showButton = step !== "folder-saved";
-  const showStatus = step === "folder-saved";
+  // TODO: should we limit this to admin only?
 
-  if (!gSheetsEnabled) {
+  if (!gSheetsEnabled || !gSheetsSetting) {
     return null;
   }
+
+  const { status, folder_url } = gSheetsSetting;
 
   return (
     <>
       <Box py="lg" mx="md">
-        <Divider />
-        <Box py="lg">
-          <Box>
-            {showStatus && (
-              <Text
-                mb="md"
-                color="text-medium"
-                component="a"
-                href={gSheetsSetting?.folder_url ?? ""}
-              >
-                {c("{0} is the name of a google drive folder")
-                  .t`Folder is connected`}
-              </Text>
-            )}
-            {showButton && (
-              <Button
-                variant="filled"
-                onClick={() =>
-                  setStep(
-                    step === "auth-complete"
-                      ? "setting-folder"
-                      : "auth-started",
-                  )
-                }
-              >
-                {t`Connect Google Sheets Folder`}
-              </Button>
-            )}
-          </Box>
-        </Box>
-        <Divider />
+        <Button
+          variant="subtle"
+          leftIcon={<Icon name="google_sheet" />}
+          onClick={() => setShowModal(true)}
+        >
+          {status === "not-connected"
+            ? t`Connect Google Sheets`
+            : t`Google Sheets connected`}
+        </Button>
       </Box>
       {showModal && (
         <GoogleSheetsConnectModal
-          step={step}
-          setStep={setStep}
-          onClose={() => setStep("no-auth") /* FIXME this is more complex */}
+          onClose={() => setShowModal(false)}
+          folderUrl={folder_url}
         />
       )}
     </>
@@ -98,85 +51,82 @@ const ModalWrapper = ({
   children: React.ReactNode;
   onClose: () => void;
 }) => (
-  <Modal
-    opened
-    title={t`Connect Google Sheets Folder`}
-    onClose={onClose}
-    size="lg"
-  >
-    <Flex py="lg" gap="md" direction="column">
+  <Modal opened onClose={onClose} size="lg">
+    <Flex px="lg" pb="lg" gap="md" direction="column">
       {children}
     </Flex>
   </Modal>
 );
 
 function GoogleSheetsConnectModal({
-  step,
-  setStep,
   onClose,
+  folderUrl,
 }: {
-  step: Step;
-  setStep: (newStep: Step) => void;
   onClose: () => void;
+  folderUrl: string | null;
 }) {
-  const [folderLink, setFolderLink] = useState("");
-
-  const { data: oauthStatus } = useGetGsheetsOauthStatusQuery(
-    step === "auth-started" ? undefined : skipToken,
-    {
-      pollingInterval: AUTH_COMPLETE_POLL_INTERVAL,
-      skipPollingIfUnfocused: true,
-    },
-  );
-
-  const [initiateOauth, { isLoading: isLoadingOauthLink, data: oauthLink }] =
-    useInitiateOauthMutation();
+  const [folderLink, setFolderLink] = useState(folderUrl ?? "");
 
   const [saveFolderLink, { isLoading: isSavingFolderLink }] =
     useSaveGsheetsFolderLinkMutation();
 
-  useEffect(() => {
-    if (step === "auth-started" && oauthStatus?.oauth_setup) {
-      setStep("auth-complete");
-    }
-  }, [step, setStep, oauthStatus]);
+  // TODO get this from the api
+  const serviceAccount = "metabase-service38u329@metabase.com";
 
-  useEffect(() => {
-    if (step === "auth-started") {
-      initiateOauth({ redirect_url: window.location.href });
-    }
-  }, [initiateOauth, step, setStep, oauthStatus]);
-
-  if (step === "auth-started") {
+  if (isSavingFolderLink) {
     return (
       <ModalWrapper onClose={onClose}>
-        <Center>
-          <Button
-            loading={isLoadingOauthLink || !oauthLink}
-            variant="filled"
-            component="a"
-            href={oauthLink?.oauth_url ?? undefined}
-            target="_blank"
-          >
-            {isLoadingOauthLink
-              ? t`Getting authorization link`
-              : t`Authorize Google Sheets`}
-          </Button>
-        </Center>
+        {t`Connecting to Google Sheets...`}
       </ModalWrapper>
     );
   }
 
-  if (step === "auth-complete") {
-    return (
-      <ModalWrapper onClose={onClose}>
+  return (
+    <ModalWrapper onClose={onClose}>
+      <Text size="lg" fw="bold">
+        {
+          // eslint-disable-next-line no-literal-metabase-strings -- admin only string
+          t`Share the Google Drive folder that contains your Google Sheets with Metabase`
+        }
+      </Text>
+      <Flex
+        bg="bg-light"
+        style={{ borderRadius: "0.5rem" }}
+        p="md"
+        direction="column"
+        gap="md"
+      >
+        <Box>
+          <Text>
+            1. {t`In Google Drive, right-click on the folder → Share`}
+          </Text>
+        </Box>
+        <Flex align="center" justify="space-between">
+          <Text>2. {jt`Enter: ${(<strong>{serviceAccount}</strong>)}`}</Text>
+          <CopyButton value={serviceAccount}></CopyButton>
+        </Flex>
+        <Box>
+          <Text>3. {t`Click on Done`} </Text>
+        </Box>
+      </Flex>
+      <Box>
+        <Text
+          size="lg"
+          fw="bold"
+        >{t`Paste the sharing link for the folder`}</Text>
         <TextInput
+          my="sm"
           disabled={isSavingFolderLink}
-          label={t`Google Drive folder url`}
           value={folderLink}
           onChange={e => setFolderLink(e.target.value)}
           placeholder="https://drive.google.com/drive/folders/abc123-xyz456"
         />
+        <Text
+          size="sm"
+          color="secondary"
+        >{t`In Google Drive, right-click on the folder → Share → Copy link`}</Text>
+      </Box>
+      <Flex justify="flex-end" mt="sm">
         <Button
           variant="filled"
           loading={isSavingFolderLink}
@@ -187,15 +137,16 @@ function GoogleSheetsConnectModal({
             }).unwrap();
 
             if (response.success) {
-              setStep("folder-saved");
+              // TODO: refresh settings?
+              onClose();
+            } else {
+              // TODO: show error
             }
           }}
         >
-          {t`Sync folder`}
+          {t`Import Google Sheets`}
         </Button>
-      </ModalWrapper>
-    );
-  }
-
-  return null;
+      </Flex>
+    </ModalWrapper>
+  );
 }
