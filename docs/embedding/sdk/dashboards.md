@@ -2,7 +2,7 @@
 title: "Embedded analytics SDK - dashboards"
 ---
 
-## Embedded analytics SDK - dashboards
+# Embedded analytics SDK - dashboards
 
 {% include beta-blockquote.html %}
 
@@ -23,7 +23,7 @@ You can embed a dashboard using the one of the dashboard components:
 ## Dashboard component props
 
 | Prop                         | Type                                            | Description                                                                                                                                                                                                                                                                                                                      |
-|------------------------------| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ---------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | dashboardId                  | `number \| string`                              | The ID of the dashboard. This is either:<br>- the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`<br>- the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data |
 | initialParameters            | `Record<string, string \| string[]>`            | Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.                                                                                                                                                                                                   |
 | withTitle                    | `boolean`                                       | Whether the dashboard should display a title.                                                                                                                                                                                                                                                                                    |
@@ -89,10 +89,13 @@ To customize the question layout, pass a `renderDrillThroughQuestion` prop to th
 with the custom view as the child component.
 
 ```typescript
-<InteractiveQuestion questionId={95} renderDrillThroughQuestion={QuestionView} />
+<InteractiveQuestion
+  questionId={95}
+  renderDrillThroughQuestion={QuestionView}
+/>;
 
 // You can use namespaced components to build the question's layout.
-const QuestionView = () => <InteractiveQuestion.Title />
+const QuestionView = () => <InteractiveQuestion.Title />;
 ```
 
 The questionView prop accepts a React component that will be rendered in the question view, which
