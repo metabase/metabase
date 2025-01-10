@@ -10569,6 +10569,7 @@ databaseChangeLog:
         - sqlFile:
             dbms: h2
             path: instance_analytics_views/alerts/v1/h2-alerts.sql
+            relativeToChangelogFile: true
 
   - changeSet:
       id: v53.2024-12-27T17:33:54
