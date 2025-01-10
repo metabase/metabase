@@ -220,13 +220,12 @@ export const resetParameterMapping = createThunkAction(
         return;
       }
 
-      const newDashcardAttributes =
-        getDashcardAttributesWithoutParameterMapping(
-          dashboard,
-          questions,
-          parameterId,
-          () => true,
-        );
+      const newDashcardAttributes = getDashcardAttributesWithParameterMapping(
+        dashboard,
+        questions,
+        parameterId,
+        () => true,
+      );
       dispatch(
         setMultipleDashCardAttributes({ dashcards: newDashcardAttributes }),
       );
@@ -279,28 +278,27 @@ export const setParameterType = createThunkAction(
 
       const hasSectionChanged = parameter.sectionId !== sectionId;
       const hasTypeChanged = parameter.type !== type;
-      const newDashcardAttributes =
-        getDashcardAttributesWithoutParameterMapping(
-          dashboard,
-          questions,
-          parameterId,
-          question => {
-            // reset mappings to all cards if the main type has changed,
-            // e.g. from a `string` to `number`
-            if (hasSectionChanged) {
-              return true;
-            }
-
-            // reset mappings to native queries only if only the operator has
-            // changed, e.g. from `number/=` to `number/between`
-            if (hasTypeChanged && question != null) {
-              const queryInfo = Lib.queryDisplayInfo(question.query());
-              return !queryInfo.isNative;
-            }
-
+      const newDashcardAttributes = getDashcardAttributesWithParameterMapping(
+        dashboard,
+        questions,
+        parameterId,
+        question => {
+          // reset mappings to all cards if the main type has changed,
+          // e.g. from a `string` to `number`
+          if (hasSectionChanged) {
             return false;
-          },
-        );
+          }
+
+          // reset mappings to native queries only if only the operator has
+          // changed, e.g. from `number/=` to `number/between`
+          if (hasTypeChanged && question != null) {
+            const queryInfo = Lib.queryDisplayInfo(question.query());
+            return !queryInfo.isNative;
+          }
+
+          return true;
+        },
+      );
 
       const hasDashcardChanges = newDashcardAttributes.length > 0;
       if (hasDashcardChanges) {
@@ -331,7 +329,7 @@ export const setParameterType = createThunkAction(
     },
 );
 
-function getDashcardAttributesWithoutParameterMapping(
+function getDashcardAttributesWithParameterMapping(
   dashboard: Dashboard,
   questionById: Record<CardId, Question>,
   parameterId: ParameterId,
