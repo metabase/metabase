@@ -293,7 +293,7 @@ export const setParameterType = createThunkAction(
 
             // reset mappings to native queries only if only the operator has
             // changed, e.g. from `number/=` to `number/between`
-            if (hasTypeChanged) {
+            if (hasTypeChanged && question != null) {
               const queryInfo = Lib.queryDisplayInfo(question.query());
               return !queryInfo.isNative;
             }
@@ -335,7 +335,7 @@ function getDashcardAttributesWithoutParameterMapping(
   dashboard: Dashboard,
   questionById: Record<CardId, Question>,
   parameterId: ParameterId,
-  questionFilter: (question: Question) => boolean,
+  questionFilter: (question: Question | undefined) => boolean,
 ) {
   const dashcards = dashboard?.dashcards ?? [];
 
@@ -351,7 +351,6 @@ function getDashcardAttributesWithoutParameterMapping(
           const question = questionById[parameterMapping.card_id];
           return (
             parameterMapping.parameter_id !== parameterId ||
-            !question ||
             questionFilter(question)
           );
         },
