@@ -285,7 +285,7 @@ export const setParameterType = createThunkAction(
           questions,
           parameterId,
           question => {
-            // reset mappings to all queries if the main type has changed,
+            // reset mappings to all cards if the main type has changed,
             // e.g. from a `string` to `number`
             if (hasSectionChanged) {
               return true;
