@@ -959,13 +959,10 @@ describe("Question", () => {
               dissoc(card, "id"),
               ["dataset_query", "query", "filter"],
               [
-                "=",
-                [
-                  "field",
-                  3,
-                  { "base-type": "type/BigInteger", "temporal-unit": "month" },
-                ],
+                "between",
+                ["field", 3, { "base-type": "type/BigInteger" }],
                 "2017-05-01",
+                "2017-05-31",
               ],
             ),
             original_card_id: card.id,
