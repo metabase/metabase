@@ -28,9 +28,9 @@ import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
 import { ViewFooter } from "../../ViewFooter";
 import ViewSidebar from "../../ViewSidebar";
+import { ChartSettingsSidebar } from "../../sidebars/ChartSettingsSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
-import { ViewLeftSidebarContainer } from "../ViewLeftSidebarContainer";
 import { ViewMainContainer } from "../ViewMainContainer";
 import { ViewRightSidebarContainer } from "../ViewRightSidebarContainer";
 
@@ -77,12 +77,6 @@ const ViewInner = props => {
     onOpenModal,
     originalQuestion,
     isShowingChartSettingsSidebar,
-    onCloseChartSettings,
-    addField,
-    initialChartSetting,
-    onReplaceAllVisualizationSettings,
-    visualizationSettings,
-    showSidebarTitle,
     isShowingSummarySidebar,
     isShowingTemplateTagsEditor,
     isShowingDataReference,
@@ -206,19 +200,9 @@ const ViewInner = props => {
             />
           )}
           <ViewSidebar side="left" isOpen={showLeftSidebar}>
-            <ViewLeftSidebarContainer
-              question={question}
-              result={result}
-              isShowingChartSettingsSidebar={isShowingChartSettingsSidebar}
-              onCloseChartSettings={onCloseChartSettings}
-              addField={addField}
-              initialChartSetting={initialChartSetting}
-              onReplaceAllVisualizationSettings={
-                onReplaceAllVisualizationSettings
-              }
-              visualizationSettings={visualizationSettings}
-              showSidebarTitle={showSidebarTitle}
-            />
+            {isShowingChartSettingsSidebar && (
+              <ChartSettingsSidebar question={question} result={result} />
+            )}
           </ViewSidebar>
           <ViewMainContainer
             showLeftSidebar={showLeftSidebar}
