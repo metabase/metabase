@@ -55,6 +55,7 @@ export const InteractiveQuestionProvider = ({
   entityTypeFilter,
   saveToCollectionId,
   initialSqlParameters,
+  onVisualizationClick,
 }: InteractiveQuestionProviderProps) => {
   const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
     type: "card",
@@ -145,6 +146,7 @@ export const InteractiveQuestionProvider = ({
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
     isSaveEnabled,
     saveToCollectionId,
+    onVisualizationClick,
   };
 
   useEffect(() => {

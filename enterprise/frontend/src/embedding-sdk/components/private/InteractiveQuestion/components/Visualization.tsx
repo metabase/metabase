@@ -7,8 +7,10 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { FlexibleSizeProps } from "embedding-sdk/components/public/FlexibleSizeComponent";
 import { FlexibleSizeComponent } from "embedding-sdk/components/public/FlexibleSizeComponent";
+import { transformSdkClickObject } from "embedding-sdk/lib/custom-click-actions";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import type { ClickObject } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionContext } from "../context";
@@ -28,6 +30,7 @@ export const QuestionVisualization = ({
     navigateToNewCard,
     onNavigateBack,
     updateQuestion,
+    onVisualizationClick,
   } = useInteractiveQuestionContext();
 
   // When visualizing a question for the first time, there is no query result yet.
@@ -66,6 +69,12 @@ export const QuestionVisualization = ({
         onNavigateBack={onNavigateBack}
         onUpdateQuestion={(question: Question) =>
           updateQuestion(question, { run: false })
+        }
+        handleVisualizationClick={
+          onVisualizationClick
+            ? (clicked: ClickObject) =>
+                onVisualizationClick(transformSdkClickObject(clicked))
+            : undefined
         }
       />
     </FlexibleSizeComponent>

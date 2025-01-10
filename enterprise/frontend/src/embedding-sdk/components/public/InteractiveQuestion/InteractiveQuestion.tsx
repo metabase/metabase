@@ -45,6 +45,7 @@ export type InteractiveQuestionProps = PropsWithChildren<{
     | "isSaveEnabled"
     | "saveToCollectionId"
     | "initialSqlParameters"
+    | "onVisualizationClick"
   >;
 
 export const _InteractiveQuestion = ({
@@ -64,6 +65,7 @@ export const _InteractiveQuestion = ({
   saveToCollectionId,
   withChartTypeSelector = true,
   initialSqlParameters,
+  onVisualizationClick,
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps &
   FlexibleSizeProps): JSX.Element | null => (
@@ -76,6 +78,7 @@ export const _InteractiveQuestion = ({
     isSaveEnabled={isSaveEnabled}
     saveToCollectionId={saveToCollectionId}
     initialSqlParameters={initialSqlParameters}
+    onVisualizationClick={onVisualizationClick}
   >
     {children ?? (
       <InteractiveQuestionResult
@@ -119,7 +122,6 @@ const InteractiveQuestion = withPublicComponentWrapper(
   Breakout: typeof Breakout;
   BreakoutDropdown: typeof BreakoutDropdown;
 };
-
 InteractiveQuestion.BackButton = BackButton;
 InteractiveQuestion.Filter = Filter;
 InteractiveQuestion.FilterDropdown = FilterDropdown;
