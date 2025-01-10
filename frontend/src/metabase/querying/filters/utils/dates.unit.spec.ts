@@ -18,6 +18,51 @@ describe("getDateFilterClause", () => {
 
   it.each<DateFilterClauseCase>([
     {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 1, 2)],
+        hasTime: false,
+      },
+      displayName: "Created At is on Feb 2, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 1, 2)],
+        hasTime: true,
+      },
+      displayName: "Created At is Feb 2, 2024, 12:00 AM",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: ">",
+        values: [new Date(2024, 1, 2)],
+        hasTime: false,
+      },
+      displayName: "Created At is after Feb 2, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "<",
+        values: [new Date(2024, 1, 2)],
+        hasTime: false,
+      },
+      displayName: "Created At is before Feb 2, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "between",
+        values: [new Date(2024, 1, 2), new Date(2024, 11, 20)],
+        hasTime: false,
+      },
+      displayName: "Created At is Feb 2 – Dec 20, 2024",
+    },
+    {
       value: { type: "relative", value: "current", unit: "day" },
       displayName: "Created At is today",
     },
@@ -49,6 +94,23 @@ describe("getDateFilterClause", () => {
       },
       displayName:
         "Created At is in the next 4 months, starting 2 quarters from now",
+    },
+    {
+      value: { type: "exclude", operator: "is-null", values: [] },
+      displayName: "Created At is empty",
+    },
+    {
+      value: { type: "exclude", operator: "not-null", values: [] },
+      displayName: "Created At is not empty",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "!=",
+        values: [23],
+        unit: "hour-of-day",
+      },
+      displayName: "Created At excludes the hour of 11 PM",
     },
     {
       value: { type: "month", year: 2024, month: 1 },
