@@ -32,9 +32,7 @@
                :query {:source-table 8,
                        :aggregation [[:count]],
                        :breakout [[:field 58 {:base-type :type/Text}]],
-                       :order-by [[:asc [:aggregation 0]]],
-                       :aggregation-idents {:0 "TBwdYMnlfpE4wIW1QwtxZ"},
-                       :breakout-idents {:0 "_II7X6UsFBqw6sY3B3VIG"}},
+                       :order-by [[:asc [:aggregation 0]]]},
                :parameters []}]
         (is (= (query-hash-hex q)
                (query-hash-hex q)))))))
@@ -78,18 +76,14 @@
          :query {:source-table 8,
                  :aggregation [[:count] [:cum-count]],
                  :breakout [[:field 58 {:base-type :type/Text}]],
-                 :order-by [[:asc [:aggregation 0]]],
-                 :aggregation-idents {:0 "TBwdYMnlfpE4wIW1QwtxZ"},
-                 :breakout-idents {:0 "_II7X6UsFBqw6sY3B3VIG"}},
+                 :order-by [[:asc [:aggregation 0]]]},
          :parameters []}
         {:database 1,
          :type :query,
          :query {:source-table 8,
                  :aggregation [[:count] [:cum-count]],
                  :breakout [[:field 58 {:base-type :type/Text}]],
-                 :order-by [[:asc [:aggregation 1]]],
-                 :aggregation-idents {:0 "TBwdYMnlfpE4wIW1QwtxZ"},
-                 :breakout-idents {:0 "_II7X6UsFBqw6sY3B3VIG"}},
+                 :order-by [[:asc [:aggregation 1]]]},
          :parameters []}
 
         {:database 1,
@@ -97,18 +91,14 @@
          :query {:source-table 8,
                  :aggregation [[:count] [:cum-count]],
                  :breakout [[:field 58 {:base-type :type/Text}]],
-                 :order-by [[:asc [:field 57 {:base-type :type/Text}]]],
-                 :aggregation-idents {:0 "TBwdYMnlfpE4wIW1QwtxZ"},
-                 :breakout-idents {:0 "_II7X6UsFBqw6sY3B3VIG"}},
+                 :order-by [[:asc [:field 57 {:base-type :type/Text}]]]},
          :parameters []}
         {:database 1,
          :type :query,
          :query {:source-table 8,
                  :aggregation [[:count] [:cum-count]],
                  :breakout [[:field 58 {:base-type :type/Text}]],
-                 :order-by [[:asc [:field 58 {:base-type :type/Text}]]],
-                 :aggregation-idents {:0 "TBwdYMnlfpE4wIW1QwtxZ"},
-                 :breakout-idents {:0 "_II7X6UsFBqw6sY3B3VIG"}},
+                 :order-by [[:asc [:field 58 {:base-type :type/Text}]]]},
          :parameters []}))))
 
 (deftest ^:parallel query-hash-test-3
