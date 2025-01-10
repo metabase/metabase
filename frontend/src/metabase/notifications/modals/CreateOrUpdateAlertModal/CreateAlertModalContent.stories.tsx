@@ -14,6 +14,7 @@ import {
   createMockUser,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+import { createMockNotification } from "metabase-types/api/mocks/notification";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
@@ -75,6 +76,16 @@ export const Default = {
 
   args: {
     onAlertCreated: action("onAlertCreated"),
+    onCancel: action("onCancel"),
+  },
+};
+
+export const EditMode = {
+  render: Template,
+
+  args: {
+    editingNotification: createMockNotification(),
+    onAlertUpdated: action("onAlertUpdated"),
     onCancel: action("onCancel"),
   },
 };

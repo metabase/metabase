@@ -35,6 +35,7 @@ export const getDefaultQuestionAlertRequest = ({
         {
           type: "notification-recipient/user",
           user_id: userId,
+          details: null,
         },
       ]
     : [];

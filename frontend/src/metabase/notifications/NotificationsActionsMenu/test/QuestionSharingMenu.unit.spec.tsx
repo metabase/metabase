@@ -70,7 +70,7 @@ describe("QuestionSharingMenu", () => {
         expect(await screen.findByText("Edit alerts")).toBeInTheDocument();
       });
 
-      it("clicking to edit alerts should open the alert popover", async () => {
+      it("clicking to edit alerts should open the alert modal", async () => {
         setupQuestionSharingMenu({
           isAdmin: true,
           isEmailSetup: true,
@@ -79,7 +79,7 @@ describe("QuestionSharingMenu", () => {
         await openMenu();
         await userEvent.click(screen.getByText("Edit alerts"));
         expect(
-          await screen.findByTestId("alert-list-popover"),
+          await screen.findByTestId("alert-list-modal"),
         ).toBeInTheDocument();
       });
     });
@@ -105,7 +105,7 @@ describe("QuestionSharingMenu", () => {
         expect(screen.getByText("Edit alerts")).toBeInTheDocument();
       });
 
-      it("clicking to edit alerts should open the alert popover", async () => {
+      it("clicking to edit alerts should open the alert modal", async () => {
         setupQuestionSharingMenu({
           isAdmin: false,
           isEmailSetup: true,
@@ -114,7 +114,7 @@ describe("QuestionSharingMenu", () => {
         await openMenu();
         await userEvent.click(screen.getByText("Edit alerts"));
         expect(
-          await screen.findByTestId("alert-list-popover"),
+          await screen.findByTestId("alert-list-modal"),
         ).toBeInTheDocument();
       });
     });

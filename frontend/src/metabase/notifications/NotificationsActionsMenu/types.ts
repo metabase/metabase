@@ -1,5 +1,3 @@
-export type QuestionNotificationsModalType =
-  | "question-alert"
-  | "question-subscription";
+export type QuestionNotificationsModalType = "question-alert";
 
 export type DashboardNotificationsModalType = "dashboard-subscription";

@@ -49,12 +49,6 @@ export const NotificationChannelsPicker = ({
   const { data: notificationChannels = [] } = useListChannelsQuery();
   const user = useSelector(getUser);
 
-  console.log("NotificationChannelsPicker", {
-    notificationHandlers,
-    channels: nullableChannels,
-    notificationChannels,
-  });
-
   const addChannel = (channel: ChannelToAddOption) => {
     const newChannel: NotificationHandler = {
       channel_type: channel.type,

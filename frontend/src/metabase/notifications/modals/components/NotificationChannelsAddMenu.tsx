@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { t } from "ttag";
 
 import { Button, Group, Icon, type IconName, Menu, Text } from "metabase/ui";

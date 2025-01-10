@@ -7,11 +7,6 @@ import { isObject } from "metabase-types/guards";
 import type { Card } from "./card";
 import type { User } from "./user";
 
-export type NotificationRecipient = {
-  id: string;
-  email: string;
-};
-
 export type Channel = {
   channel_type: string;
   details?: Record<string, string>;

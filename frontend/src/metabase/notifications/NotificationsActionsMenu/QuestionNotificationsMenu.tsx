@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { QuestionAlertsMenuItem } from "metabase/notifications/NotificationsActionsMenu/QuestionAlertsMenuItem";
-import { QuestionSubscriptionsMenuItem } from "metabase/notifications/NotificationsActionsMenu/QuestionSubscriptionsMenuItem";
 import type { QuestionNotificationsModalType } from "metabase/notifications/NotificationsActionsMenu/types";
 import { setUIControls } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -59,10 +58,6 @@ export function QuestionNotificationsMenu({
         <QuestionAlertsMenuItem
           question={question}
           onClick={() => setModalType("question-alert")}
-        />
-        <QuestionSubscriptionsMenuItem
-          question={question}
-          onClick={() => setModalType("question-subscription")}
         />
       </NotificationsMenu>
       <NotificationsModals

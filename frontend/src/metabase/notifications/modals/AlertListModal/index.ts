@@ -1,2 +1,2 @@
-export { AlertListModal } from "./AlertListModal";
-export { AlertListModalContent } from "./AlertListModalContent";
+export { NotificationsListModal } from "./NotificationsListModal";
+export { NotificationsListModalContent } from "./NotificationsListModalContent";

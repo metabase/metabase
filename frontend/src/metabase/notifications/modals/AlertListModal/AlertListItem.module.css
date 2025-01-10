@@ -1,0 +1,24 @@
+.notificationListItem {
+  position: relative;
+}
+
+.notificationListItemEditable {
+  border-radius: 0.25rem;
+
+  &:hover {
+    background: var(--mb-base-color-brand-10);
+    cursor: pointer;
+
+    .itemTitle {
+      color: var(--mb-color-brand)
+    }
+  }
+}
+
+.hoverActionButton {
+  position: absolute;
+
+  right: 0.75rem;
+  top: 1.5rem;
+  color: var(--mb-color-brand);
+}

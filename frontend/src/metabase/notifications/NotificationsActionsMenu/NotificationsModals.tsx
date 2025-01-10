@@ -2,7 +2,7 @@ import type {
   DashboardNotificationsModalType,
   QuestionNotificationsModalType,
 } from "metabase/notifications/NotificationsActionsMenu/types";
-import { AlertListModal } from "metabase/notifications/modals/AlertListModal/AlertListModal";
+import { NotificationsListModal } from "metabase/notifications/modals/AlertListModal/NotificationsListModal";
 import type Question from "metabase-lib/v1/Question";
 import type { Dashboard } from "metabase-types/api";
 
@@ -36,23 +36,7 @@ export const NotificationsModals = ({
   dashboard,
 }: NotificationsModalsProps) => {
   if (modalType === "question-alert") {
-    return (
-      <AlertListModal
-        notificationType="alert"
-        question={question}
-        onClose={onClose}
-      />
-    );
-  }
-
-  if (modalType === "question-subscription") {
-    return (
-      <AlertListModal
-        notificationType="subscription"
-        question={question}
-        onClose={onClose}
-      />
-    );
+    return <NotificationsListModal question={question} onClose={onClose} />;
   }
 
   if (modalType === "dashboard-subscription") {

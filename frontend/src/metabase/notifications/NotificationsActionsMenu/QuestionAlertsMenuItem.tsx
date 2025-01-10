@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import { skipToken, useListCardAlertsQuery } from "metabase/api";
+import { skipToken, useListNotificationsQuery } from "metabase/api";
 import { CommonNotificationsMenuItem } from "metabase/notifications/NotificationsActionsMenu/CommonNotificationsMenuItem";
-import { isAlert } from "metabase/notifications/utils";
 import type Question from "metabase-lib/v1/Question";
 
 export function QuestionAlertsMenuItem({
@@ -12,23 +11,15 @@ export function QuestionAlertsMenuItem({
   question: Question;
   onClick: () => void;
 }) {
-  // const visualizationSettings = useSelector(getVisualizationSettings);
-
-  const { data: questionNotifications, isLoading } = useListCardAlertsQuery({
-    id: question.id() ?? skipToken,
+  const { data: questionNotifications, isLoading } = useListNotificationsQuery({
+    card_id: question.id() ?? skipToken,
   });
 
-  // const canAddAlertOnThisQuestion = hasProperGoalForAlert({
-  //   question,
-  //   visualizationSettings,
-  // });
-
-  if (isLoading /*|| !canAddAlertOnThisQuestion*/) {
+  if (isLoading) {
     return null;
   }
 
-  const alerts = questionNotifications?.filter(isAlert);
-  const hasAlerts = !!alerts?.length;
+  const hasAlerts = !!questionNotifications?.length;
 
   return (
     <CommonNotificationsMenuItem

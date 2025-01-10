@@ -4,52 +4,58 @@ import { jt, t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { unsubscribeFromAlert } from "metabase/notifications/redux/alert";
+import {
+  deleteAlert,
+  unsubscribeFromAlert,
+} from "metabase/notifications/redux/alert";
 import { getUser } from "metabase/selectors/user";
-import { Icon } from "metabase/ui";
-import type { Alert } from "metabase-types/api";
+import { Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
+import type { Notification } from "metabase-types/api";
 
 import { AlertCreatorTitle } from "./AlertCreatorTitle";
-import { AlertScheduleText } from "./AlertScheduleText";
+import S from "./AlertListItem.module.css";
 
 type AlertListItemProps = {
-  alert: Alert;
-  highlight: boolean;
-  onUnsubscribe: (alert: Alert) => void;
+  alert: Notification;
+  onUnsubscribe: (alert: Notification) => void;
+  canEdit: boolean;
   onEdit: () => void;
 };
 
-// Used when a slack channel is present on an alert. This value is hardcoded
-// to 1 because each alert can only be sent to a single slack channel. Additional channels
-// would require their own alert.
-const SLACK_CHANNEL_COUNT = 1;
-
 export const AlertListItem = ({
   alert,
-  highlight,
   onUnsubscribe,
+  canEdit,
   onEdit,
 }: AlertListItemProps) => {
   const user = useSelector(getUser);
 
   const dispatch = useDispatch();
 
-  const [unsubscribingProgress, setUnsubscribingProgress] = useState<
-    string | null
-  >(null);
+  const [showHoverActions, setShowHoverActions] = useState(false);
 
   const handleUnsubscribe = async () => {
     try {
-      setUnsubscribingProgress(t`Unsubscribing...`);
       await dispatch(unsubscribeFromAlert(alert));
       onUnsubscribe(alert);
     } catch (e) {
-      setUnsubscribingProgress(t`Failed to unsubscribe`);
+      // TODO: error message
     }
   };
 
-  const isAdmin = user && user.is_superuser;
-  const isCurrentUser = user && alert.creator.id === user.id;
+  const handleDelele = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    await dispatch(deleteAlert(alert.id));
+  };
+
+  const handleMouseEnter = () => {
+    setShowHoverActions(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowHoverActions(false);
+  };
 
   const emailChannel = alert.channels.find(c => c.channel_type === "email");
   const emailEnabled = emailChannel && emailChannel.enabled;
@@ -58,73 +64,50 @@ export const AlertListItem = ({
   const httpChannels = alert.channels.filter(c => c.channel_type === "http");
 
   return (
-    <li
-      className={cx(CS.flex, CS.p3, CS.textMedium, CS.borderBottom, {
-        [CS.bgLightBlue]: highlight,
-      })}
+    <Stack
+      className={cx(
+        S.notificationListItem,
+        canEdit && S.notificationListItemEditable,
+      )}
+      w="100%"
+      py="0.5rem"
+      px="0.75rem"
+      spacing="sm"
+      onClick={onEdit}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      <Icon name="alert" size="20" />
-      <div className={cx(CS.full, CS.ml2)}>
-        <div className={cx(CS.flex, "align-top")}>
-          <div>{user && <AlertCreatorTitle alert={alert} user={user} />}</div>
-          <div
-            className={cx(CS.mlAuto, CS.textBold, CS.textSmall)}
-            style={{
-              transform: `translateY(4px)`,
-            }}
-          >
-            {(isAdmin || isCurrentUser) && (
-              <a className={CS.link} onClick={onEdit}>{jt`Edit`}</a>
-            )}
-            {!isAdmin && !unsubscribingProgress && (
-              <a
-                className={cx(CS.link, CS.ml2)}
-                onClick={handleUnsubscribe}
-              >{jt`Unsubscribe`}</a>
-            )}
-            {!isAdmin && unsubscribingProgress && (
-              <span> {unsubscribingProgress}</span>
-            )}
-          </div>
-        </div>
-
-        <ul className={cx(CS.flex, CS.mt2, CS.textSmall)}>
-          <li className={cx(CS.flex, CS.alignCenter)}>
-            <Icon name="clock" size="12" className={CS.mr1} />{" "}
-            <AlertScheduleText
-              schedule={alert.channels[0]}
-              verbose={!isAdmin}
-            />
-          </li>
-          {isAdmin && emailEnabled && emailChannel.recipients && (
-            <li
-              className={cx(CS.ml3, CS.flex, CS.alignCenter)}
-              aria-label={t`Number of email recipients`}
-            >
-              <Icon name="mail" className={CS.mr1} />
-              {emailChannel.recipients.length}
-            </li>
-          )}
-          {isAdmin && slackEnabled && (
-            <li
-              className={cx(CS.ml3, CS.flex, CS.alignCenter)}
-              aria-label={t`Number of Slack channels`}
-            >
-              <Icon name="slack" size={16} className={CS.mr1} />
-              {SLACK_CHANNEL_COUNT}
-            </li>
-          )}
-          {isAdmin && httpChannels.length > 0 && (
-            <li
-              className={cx(CS.ml3, CS.flex, CS.alignCenter)}
-              aria-label={t`Number of HTTP channels`}
-            >
-              <Icon name="webhook" size={16} className={CS.mr1} />
-              {httpChannels.length}
-            </li>
-          )}
-        </ul>
+      <div>
+        <Text
+          className={S.itemTitle}
+          size="md"
+          lineClamp={1}
+          weight="bold"
+        >{t`Alert`}</Text>
       </div>
-    </li>
+
+      <Group spacing="md" align="center" c="text-medium">
+        {emailEnabled && <Icon name="mail" />}
+        {slackEnabled && <Icon name="slack" size={16} />}
+        {httpChannels.length > 0 && <Icon name="webhook" size={16} />}
+        {user && <AlertCreatorTitle alert={alert} user={user} />}
+      </Group>
+
+      {showHoverActions && (
+        <div className={S.hoverActionButton}>
+          {canEdit && (
+            <Tooltip label={t`Delete this alert`}>
+              <Icon name="trash" onClick={handleDelele} />
+            </Tooltip>
+          )}
+          {!canEdit && (
+            <a
+              className={cx(CS.link, CS.ml2)}
+              onClick={handleUnsubscribe}
+            >{jt`Unsubscribe`}</a>
+          )}
+        </div>
+      )}
+    </Stack>
   );
 };

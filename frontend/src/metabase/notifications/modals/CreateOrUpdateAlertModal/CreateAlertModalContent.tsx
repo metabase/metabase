@@ -73,12 +73,12 @@ type CreateAlertModalContentProps = {
   | {
       editingNotification?: undefined;
       onAlertCreated: () => void;
-      onAlertUpdated?: never;
+      onAlertUpdated?: () => void;
     }
   | {
       editingNotification: Notification;
       onAlertUpdated: () => void;
-      onAlertCreated?: never;
+      onAlertCreated?: () => void;
     }
 );
 

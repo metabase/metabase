@@ -1,38 +1,31 @@
 import { useState } from "react";
 
-import { useListCardAlertsQuery } from "metabase/api";
+import { useListNotificationsQuery } from "metabase/api";
 import Modal from "metabase/components/Modal";
-import { isAlert, isSubscription } from "metabase/notifications/utils";
 import type Question from "metabase-lib/v1/Question";
 import type { Notification } from "metabase-types/api";
 
 import { CreateAlertModalContent } from "../index";
 
-import { AlertListModalContent } from "./AlertListModalContent";
+import { NotificationsListModalContent } from "./NotificationsListModalContent";
 
 type AlertModalMode = "list-modal" | "create-modal" | "update-modal";
 
-export const AlertListModal = ({
-  notificationType,
+export const NotificationsListModal = ({
   question,
   onClose,
 }: {
-  notificationType: "alert" | "subscription";
   question: Question;
   onClose: () => void;
 }) => {
   const [editingItem, setEditingItem] = useState<Notification | null>(null);
 
-  const { data: questionNotifications } = useListCardAlertsQuery({
-    id: question.id(),
+  const { data: questionNotifications } = useListNotificationsQuery({
+    card_id: question.id(),
   });
 
-  const filteredByTypeNotifications = questionNotifications?.filter(
-    notificationType === "alert" ? isAlert : isSubscription,
-  );
-
   const [showingElement, setShowingElement] = useState<AlertModalMode>(
-    filteredByTypeNotifications && filteredByTypeNotifications.length === 0
+    !questionNotifications || questionNotifications.length === 0
       ? "create-modal"
       : "list-modal",
   );
@@ -44,9 +37,8 @@ export const AlertListModal = ({
   return (
     <>
       <Modal isOpen={showingElement === "list-modal"} onClose={onClose}>
-        <AlertListModalContent
-          notificationType={notificationType}
-          questionAlerts={filteredByTypeNotifications}
+        <NotificationsListModalContent
+          questionAlerts={questionNotifications}
           onCreate={() => setShowingElement("create-modal")}
           onEdit={(notification: Notification) => {
             setEditingItem(notification);
@@ -71,6 +63,7 @@ export const AlertListModal = ({
           }
           onCancel={onClose}
           onAlertCreated={onClose}
+          onAlertUpdated={onClose}
         />
       </Modal>
     </>
