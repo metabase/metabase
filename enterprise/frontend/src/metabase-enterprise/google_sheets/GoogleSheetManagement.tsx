@@ -1,21 +1,43 @@
 import { useState } from "react";
 import { jt, t } from "ttag";
 
+import { reloadSettings } from "metabase/admin/settings/settings";
 import { useSetting } from "metabase/common/hooks";
 import { CopyButton } from "metabase/components/CopyButton";
-import { Box, Button, Flex, Icon, Modal, Text, TextInput } from "metabase/ui";
-import { useSaveGsheetsFolderLinkMutation } from "metabase-enterprise/api";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import {
+  Box,
+  Button,
+  Center,
+  Flex,
+  Icon,
+  Modal,
+  Stack,
+  Text,
+  TextInput,
+} from "metabase/ui";
+import {
+  useDeleteGsheetsFolderLinkMutation,
+  useGetServiceAccountQuery,
+  useSaveGsheetsFolderLinkMutation,
+} from "metabase-enterprise/api";
 
 export function GSheetManagement() {
   const gSheetsSetting = useSetting("gsheets");
   const [showModal, setShowModal] = useState(false);
+  const userIsAdmin = useSelector(getUserIsAdmin);
+  const { data: { email: serviceAccountEmail } = {} } =
+    useGetServiceAccountQuery();
 
-  // const gSheetsEnabled = useSetting("show-google-sheets-integration");
-  const gSheetsEnabled = true; // FIXME testing
+  const gSheetsEnabled = useSetting("show-google-sheets-integration");
 
-  // TODO: should we limit this to admin only?
-
-  if (!gSheetsEnabled || !gSheetsSetting) {
+  if (
+    !gSheetsEnabled ||
+    !gSheetsSetting ||
+    !userIsAdmin ||
+    !serviceAccountEmail
+  ) {
     return null;
   }
 
@@ -34,12 +56,19 @@ export function GSheetManagement() {
             : t`Google Sheets connected`}
         </Button>
       </Box>
-      {showModal && (
-        <GoogleSheetsConnectModal
-          onClose={() => setShowModal(false)}
-          folderUrl={folder_url}
-        />
-      )}
+      {showModal &&
+        (status === "connected" ? (
+          <GoogleSheetsDisconnectModal
+            onClose={() => setShowModal(false)}
+            reconnect={true}
+          />
+        ) : (
+          <GoogleSheetsConnectModal
+            onClose={() => setShowModal(false)}
+            serviceAccountEmail={serviceAccountEmail}
+            folderUrl={folder_url}
+          />
+        ))}
     </>
   );
 }
@@ -61,25 +90,30 @@ const ModalWrapper = ({
 function GoogleSheetsConnectModal({
   onClose,
   folderUrl,
+  serviceAccountEmail,
 }: {
   onClose: () => void;
   folderUrl: string | null;
+  serviceAccountEmail: string;
 }) {
+  const dispatch = useDispatch();
   const [folderLink, setFolderLink] = useState(folderUrl ?? "");
 
   const [saveFolderLink, { isLoading: isSavingFolderLink }] =
     useSaveGsheetsFolderLinkMutation();
 
-  // TODO get this from the api
-  const serviceAccount = "metabase-service38u329@metabase.com";
+  const onSave = async () => {
+    const response = await saveFolderLink({
+      url: folderLink.trim(),
+    }).unwrap();
 
-  if (isSavingFolderLink) {
-    return (
-      <ModalWrapper onClose={onClose}>
-        {t`Connecting to Google Sheets...`}
-      </ModalWrapper>
-    );
-  }
+    if (response.success) {
+      dispatch(reloadSettings());
+      onClose();
+    } else {
+      // TODO: show error
+    }
+  };
 
   return (
     <ModalWrapper onClose={onClose}>
@@ -102,8 +136,10 @@ function GoogleSheetsConnectModal({
           </Text>
         </Box>
         <Flex align="center" justify="space-between">
-          <Text>2. {jt`Enter: ${(<strong>{serviceAccount}</strong>)}`}</Text>
-          <CopyButton value={serviceAccount}></CopyButton>
+          <Text>
+            2. {jt`Enter: ${(<strong>{serviceAccountEmail}</strong>)}`}
+          </Text>
+          <CopyButton value={serviceAccountEmail}></CopyButton>
         </Flex>
         <Box>
           <Text>3. {t`Click on Done`} </Text>
@@ -131,21 +167,79 @@ function GoogleSheetsConnectModal({
           variant="filled"
           loading={isSavingFolderLink}
           disabled={folderLink.length < 3}
-          onClick={async () => {
-            const response = await saveFolderLink({
-              url: folderLink.trim(),
-            }).unwrap();
-
-            if (response.success) {
-              // TODO: refresh settings?
-              onClose();
-            } else {
-              // TODO: show error
-            }
-          }}
+          onClick={onSave}
         >
           {t`Import Google Sheets`}
         </Button>
+      </Flex>
+    </ModalWrapper>
+  );
+}
+
+function GoogleSheetsDisconnectModal({
+  onClose,
+  reconnect = false,
+}: {
+  onClose: () => void;
+  reconnect: boolean;
+}) {
+  const dispatch = useDispatch();
+
+  const [deleteFolderLink, { isLoading: isDeletingFolderLink }] =
+    useDeleteGsheetsFolderLinkMutation();
+
+  const onDelete = async () => {
+    const response = await deleteFolderLink().unwrap();
+
+    if (response.success) {
+      dispatch(reloadSettings());
+      // if we're reconnecting, leave the modal open
+      if (!reconnect) {
+        onClose();
+      }
+    } else {
+      // TODO: show error
+    }
+  };
+
+  return (
+    <ModalWrapper onClose={onClose}>
+      <Flex justify="center" align="center" direction="column" gap="md" p="xl">
+        <Center
+          bg="bg-light"
+          style={{ borderRadius: "50%" }}
+          w="6rem"
+          h="6rem"
+          p="md"
+        >
+          {/* FIXME this icon needs help */}
+          <Icon name="folder_disconnect" size={64} />
+        </Center>
+        <Text size="lg" fw="bold">
+          {reconnect
+            ? t`To add a new Google Drive folder, the existing one needs to be disconnected first.`
+            : t`Disconnect from Google Drive?`}
+        </Text>
+        <Text>
+          {reconnect
+            ? // eslint-disable-next-line no-literal-metabase-strings -- admin only string
+              t`Only one folder can be synced with Metabase at a time. Your tables and Google Sheets will remain in place.`
+            : t`Your existing tables and Google Sheets will remain in place but they will no longer be updated automatically.`}
+        </Text>
+        <Stack mt="sm" w="13rem">
+          <Button
+            fullWidth
+            variant="filled"
+            color="danger"
+            loading={isDeletingFolderLink}
+            onClick={onDelete}
+          >
+            {t`Disconnect`}
+          </Button>
+          <Button fullWidth variant="outline" onClick={onClose}>
+            {t`Keep connected`}
+          </Button>
+        </Stack>
       </Flex>
     </ModalWrapper>
   );
