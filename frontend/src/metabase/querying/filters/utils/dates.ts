@@ -271,20 +271,15 @@ export function formatDateFilter(value: DateFilterValue) {
         return `${formatDate(start, hasTime)} - ${formatDate(end, hasTime)}`;
       },
     )
-    .with(
-      {
-        type: "relative",
-      },
-      ({ value, unit, offsetValue, offsetUnit }) => {
-        if (offsetValue != null && offsetUnit != null) {
-          const prefix = Lib.describeTemporalInterval(value, unit);
-          const suffix = Lib.describeRelativeDatetime(offsetValue, offsetUnit);
-          return t`${prefix}, starting ${suffix}`;
-        } else {
-          return Lib.describeTemporalInterval(value, unit);
-        }
-      },
-    )
+    .with({ type: "relative" }, ({ value, unit, offsetValue, offsetUnit }) => {
+      if (offsetValue != null && offsetUnit != null) {
+        const prefix = Lib.describeTemporalInterval(value, unit);
+        const suffix = Lib.describeRelativeDatetime(offsetValue, offsetUnit);
+        return t`${prefix}, starting ${suffix}`;
+      } else {
+        return Lib.describeTemporalInterval(value, unit);
+      }
+    })
     .with({ type: "exclude", operator: "!=" }, ({ values, unit }) => {
       if (values.length <= 2 && unit != null) {
         const parts = values.map(value => formatExcludeUnit(value, unit));
@@ -304,13 +299,30 @@ export function formatDateFilter(value: DateFilterValue) {
     .with({ type: "exclude", operator: "not-null" }, () => {
       return t`Not empty`;
     })
-    .otherwise(() => "");
+    .with({ type: "month" }, ({ month, year }) => {
+      return formatMonth(month, year);
+    })
+    .with({ type: "quarter" }, ({ quarter, year }) => {
+      return formatQuarter(quarter, year);
+    })
+    .exhaustive();
 }
 
 function formatDate(date: Date, hasTime: boolean) {
   return hasTime
     ? dayjs(date).format("MMMM D, YYYY hh:mm A")
     : dayjs(date).format("MMMM D, YYYY");
+}
+
+function formatMonth(month: number, year: number) {
+  return dayjs()
+    .year(year)
+    .month(month - 1)
+    .format("MMMM");
+}
+
+function formatQuarter(quarter: number, year: number) {
+  return dayjs().year(year).month(quarter).format("[Q]Q YYYY");
 }
 
 function formatExcludeUnit(value: number, unit: ExcludeDateFilterUnit) {
