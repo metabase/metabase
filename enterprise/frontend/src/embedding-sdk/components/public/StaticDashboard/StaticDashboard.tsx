@@ -107,7 +107,7 @@ const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
     }, [dispatch, resolvedDashboardId]);
 
     if (isLoading) {
-      <SdkLoader />;
+      return <SdkLoader />;
     }
 
     if (!resolvedDashboardId || errorPage?.status === 404) {
