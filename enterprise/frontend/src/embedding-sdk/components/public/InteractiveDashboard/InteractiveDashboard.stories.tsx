@@ -2,6 +2,10 @@ import type { StoryFn } from "@storybook/react";
 
 import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import {
+  dashboardIdArgType,
+  dashboardIds,
+} from "embedding-sdk/test/storybook-id-args";
 import { Stack } from "metabase/ui";
 
 import {
@@ -9,13 +13,7 @@ import {
   type InteractiveDashboardProps,
 } from "./InteractiveDashboard";
 
-const ENTITY_ID = "xBLdW9FsgRuB2HGhWiBa_";
-const ONE_TOO_MANY_ENTITY_ID = ENTITY_ID + "1";
-const WRONG_ENTITY_ID = ENTITY_ID.slice(0, -1) + "1";
-const NUMBER_ID = 1;
-const WRONG_NUMBER_ID = 99999999;
-
-const DASHBOARD_ID = ENTITY_ID;
+const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 export default {
   title: "EmbeddingSDK/InteractiveDashboard",
@@ -25,25 +23,7 @@ export default {
   },
   decorators: [CommonSdkStoryWrapper],
   argTypes: {
-    dashboardId: {
-      options: [
-        ENTITY_ID,
-        ONE_TOO_MANY_ENTITY_ID,
-        WRONG_ENTITY_ID,
-        NUMBER_ID,
-        WRONG_NUMBER_ID,
-      ],
-      control: {
-        type: "select",
-        labels: {
-          [ENTITY_ID]: "Entity ID",
-          [ONE_TOO_MANY_ENTITY_ID]: "One Too Many Entity ID",
-          [WRONG_ENTITY_ID]: "Wrong Entity ID",
-          [NUMBER_ID]: "Number ID",
-          [WRONG_NUMBER_ID]: "Wrong Number ID",
-        },
-      },
-    },
+    dashboardId: dashboardIdArgType,
   },
 };
 
