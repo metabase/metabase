@@ -20,7 +20,6 @@ export const ActivityApi = {
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
-  attributes: GET("/api/mt/user/attributes"),
   validate: POST("/api/mt/gtap/validate"),
 };
 
@@ -429,6 +428,7 @@ export const SetupApi = {
 export const UserApi = {
   list: GET("/api/user/recipients"),
   current: GET("/api/user/current"),
+  attributes: GET("/api/user/attributes"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
 };
 

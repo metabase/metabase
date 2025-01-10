@@ -523,6 +523,15 @@
                      mt/boolean-ids-and-timestamps
                      (dissoc :is_qbnewb :last_login :user_group_memberships)))))))))
 
+(deftest get-user-attributes-test
+  (testing "returns set of user attributes keys"
+    (mt/with-temp
+      [:model/User _ {:login_attributes {:foo "bar"}}
+       :model/User _ {:login_attributes {:foo "baz"
+                                         :miz "bar"}}]
+      (is (= ["foo" "miz"]
+             (mt/user-http-request :crowberto :get 200 "user/attributes"))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+

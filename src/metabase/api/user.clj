@@ -1,6 +1,7 @@
 (ns metabase.api.user
   "/api/user endpoints"
   (:require
+   [clojure.set :as set]
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -352,6 +353,21 @@
       (validation/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id))
       (t2/hydrate :user_group_memberships)))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/attributes"
+  "Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for
+  existing Users and returns those."
+  []
+  (api/check-superuser)
+  (->>
+   ;; look at the `login_attributes` for the first 1000 users that have them set. Then make a set of the keys
+   (for [login-attributes (t2/select-fn-set :login_attributes :model/User :login_attributes [:not= nil] {:limit 1000})
+         :when (seq login-attributes)]
+     (set (keys login-attributes)))
+   ;; combine all the sets of attribute keys into a single set
+   (reduce set/union #{})))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |

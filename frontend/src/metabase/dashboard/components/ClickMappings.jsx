@@ -10,10 +10,9 @@ import CS from "metabase/css/core/index.css";
 import { getParameters } from "metabase/dashboard/selectors";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { connect } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
-import { GTAPApi } from "metabase/services";
+import { UserApi } from "metabase/services";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -332,9 +331,7 @@ export function withUserAttributes(ComposedComponent) {
     state = { userAttributes: [] };
 
     async componentDidMount() {
-      if (MetabaseSettings.enhancementsEnabled()) {
-        this.setState({ userAttributes: await GTAPApi.attributes() });
-      }
+      this.setState({ userAttributes: await UserApi.attributes() });
     }
 
     render() {
