@@ -88,8 +88,10 @@ export interface DashCardProps {
   onChangeLocation: (location: LocationDescriptor) => void;
 
   downloadsEnabled: boolean;
+
   /* Auto-scroll to this card on mount */
   autoScroll: boolean;
+  reportAutoScrolledToDashcard: () => void;
 }
 
 function DashCardInner({
@@ -119,6 +121,7 @@ function DashCardInner({
   onReplaceAllDashCardVisualizationSettings,
   downloadsEnabled,
   autoScroll,
+  reportAutoScrolledToDashcard,
 }: DashCardProps) {
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
@@ -144,7 +147,7 @@ function DashCardInner({
 
     if (autoScroll) {
       cardRootRef?.current?.scrollIntoView({ block: "nearest" });
-      window.location.hash = "";
+      reportAutoScrolledToDashcard();
     }
   });
 

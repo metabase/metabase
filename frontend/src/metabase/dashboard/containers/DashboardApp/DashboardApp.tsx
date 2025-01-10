@@ -133,7 +133,7 @@ const DashboardApp = (props: DashboardAppProps) => {
   const dashboardId = getDashboardId(props);
 
   const locationHash = window.location.hash;
-  const { editingOnLoad, addCardOnLoad, scrollToCardOnLoad } = useMemo(() => {
+  const { editingOnLoad, addCardOnLoad } = useMemo(() => {
     const dashcards = dashboard?.dashcards || [];
     return getDashboardUrlHashOptions(locationHash, dashcards);
   }, [locationHash, dashboard?.dashcards]);
@@ -212,6 +212,8 @@ const DashboardApp = (props: DashboardAppProps) => {
     onFullscreenChange,
     setRefreshElapsedHook,
     onRefreshPeriodChange,
+    autoScrollToDashcardId,
+    reportAutoScrolledToDashcard,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
   useDashboardUrlQuery(router, location);
@@ -227,7 +229,8 @@ const DashboardApp = (props: DashboardAppProps) => {
         dashboardId={dashboardId}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
-        scrollToCardOnLoad={scrollToCardOnLoad}
+        autoScrollToDashcardId={autoScrollToDashcardId}
+        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
         isFullscreen={isFullscreen}
         refreshPeriod={refreshPeriod}
         isNightMode={isNightMode}

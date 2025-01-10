@@ -87,7 +87,7 @@ export type DashboardProps = {
   isNavigatingBackToDashboard: boolean;
   addCardOnLoad?: DashCardId;
   editingOnLoad?: string | string[] | boolean;
-  scrollToCardOnLoad?: DashCardId;
+  autoScrollToDashcardId: DashCardId | undefined;
   dashboardId: DashboardId;
   parameterQueryParams: Query;
 
@@ -171,12 +171,15 @@ export type DashboardProps = {
     reload?: boolean;
     clearCache?: boolean;
   }) => void;
+
+  reportAutoScrolledToDashcard: () => void;
 } & DashboardDisplayOptionControls;
 
 function Dashboard(props: DashboardProps) {
   const {
     addCardOnLoad,
     addCardToDashboard,
+    autoScrollToDashcardId,
     cancelFetchDashboardCardData,
     closeNavbar,
     dashboard,
@@ -192,7 +195,7 @@ function Dashboard(props: DashboardProps) {
     isSharing,
     onRefreshPeriodChange,
     parameterValues,
-    scrollToCardOnLoad,
+    reportAutoScrolledToDashcard,
     selectedTabId,
     setEditingDashboard,
     setErrorPage,
@@ -393,7 +396,8 @@ function Dashboard(props: DashboardProps) {
         selectedTabId={selectedTabId}
         onEditingChange={handleSetEditing}
         downloadsEnabled={downloadsEnabled}
-        scrollToCardOnLoad={scrollToCardOnLoad}
+        autoScrollToDashcardId={autoScrollToDashcardId}
+        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
       />
     );
   };
