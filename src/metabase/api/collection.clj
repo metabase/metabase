@@ -911,17 +911,21 @@
                      :order-by sql-order}
         ;; We didn't implement collection pagination for snippets namespace for root/items
         ;; Rip out the limit for now and put it back in when we want it
+        limit       (request/limit)
+        offset      (request/offset)
         limit-query (if (or
-                         (nil? (request/limit))
-                         (nil? (request/offset))
+                         (nil? limit)
+                         (nil? offset)
                          (= (:collection-namespace options) "snippets"))
                       rows-query
                       (assoc rows-query
-                             :limit  (request/limit)
+                             :limit  (if (zero? limit) (inc limit) limit)
                              :offset (request/offset)))
         rows         (mdb.query/query limit-query)
         res         {:total  (->> rows first :total_count)
-                     :data   (->> rows (post-process-rows options collection))
+                     :data   (->> rows
+                                  (post-process-rows options collection)
+                                  (take limit))
                      :models models}
         limit-res   (assoc res
                            :limit  (request/limit)
