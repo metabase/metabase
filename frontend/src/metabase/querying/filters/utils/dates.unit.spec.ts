@@ -2,7 +2,7 @@ import type { DateFilterValue } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
-import { getDateFilterClause } from "./dates";
+import { getDateFilterClause, getDateFilterTitle } from "./dates";
 
 type DateFilterClauseCase = {
   value: DateFilterValue;
@@ -135,6 +135,37 @@ describe("getDateFilterClause", () => {
       expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
         displayName,
       });
+    },
+  );
+});
+
+type DateFilterTitleCase = {
+  value: DateFilterValue;
+  title: string;
+};
+
+describe("getDateFilterTitle", () => {
+  it.each<DateFilterTitleCase>([
+    {
+      value: { type: "relative", value: "current", unit: "day" },
+      title: "Today",
+    },
+    {
+      value: { type: "relative", value: "current", unit: "year" },
+      title: "This Year",
+    },
+    {
+      value: { type: "relative", value: -1, unit: "day" },
+      title: "Yesterday",
+    },
+    {
+      value: { type: "relative", value: -1, unit: "year" },
+      title: "Previous Year",
+    },
+  ])(
+    "should generate a title for a relative date filter",
+    ({ value, title }) => {
+      expect(getDateFilterTitle(value)).toEqual(title);
     },
   );
 });

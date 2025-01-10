@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { match } from "ts-pattern";
 
 import {
   DATE_PICKER_EXTRACTION_UNITS,
@@ -43,6 +44,26 @@ export function isDatePickerExtractionUnit(
 ): unit is DatePickerExtractionUnit {
   const units: ReadonlyArray<string> = DATE_PICKER_EXTRACTION_UNITS;
   return units.includes(unit);
+}
+
+export function getDatePickerOperators(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): DatePickerOperator[] {
+  return Lib.filterableColumnOperators(column)
+    .map(operator => Lib.displayInfo(query, stageIndex, operator).shortName)
+    .filter(isDatePickerOperator);
+}
+
+export function getDatePickerUnits(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): DatePickerUnit[] {
+  return Lib.availableTemporalBuckets(query, stageIndex, column)
+    .map(operator => Lib.displayInfo(query, stageIndex, operator).shortName)
+    .filter(isDatePickerUnit);
 }
 
 export function getDatePickerValue(
@@ -222,22 +243,10 @@ function getQuarterYearFilterClause(
   });
 }
 
-export function getDatePickerOperators(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-): DatePickerOperator[] {
-  return Lib.filterableColumnOperators(column)
-    .map(operator => Lib.displayInfo(query, stageIndex, operator).shortName)
-    .filter(isDatePickerOperator);
-}
-
-export function getDatePickerUnits(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-): DatePickerUnit[] {
-  return Lib.availableTemporalBuckets(query, stageIndex, column)
-    .map(operator => Lib.displayInfo(query, stageIndex, operator).shortName)
-    .filter(isDatePickerUnit);
+export function getDateFilterTitle(value: DateFilterValue) {
+  return match(value)
+    .with({ type: "relative" }, value =>
+      Lib.describeTemporalInterval(value.value, value.unit),
+    )
+    .otherwise(() => "");
 }
