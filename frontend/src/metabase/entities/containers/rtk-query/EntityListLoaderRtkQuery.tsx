@@ -1,7 +1,6 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
-import { useLatest } from "react-use";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
@@ -44,6 +43,7 @@ interface ChildrenProps<Entity, EntityWrapper> {
   list: EntityWrapper[] | Entity[] | undefined;
   metadata: ListMetadata | undefined;
   reload: () => void;
+  total: number | undefined;
 }
 
 interface LoadingAndErrorWrapperProps {
@@ -70,7 +70,6 @@ interface Props<Entity, EntityWrapper> {
   reloadInterval?: ReloadInterval | ReloadIntervalSelector<Entity>;
   selectorName?: "getList" | "getListUnfiltered";
   wrapped?: boolean;
-  onLoaded?: (response: EntityListQueryResponse<Entity[]>) => void;
 }
 
 const transformResponse = <Entity extends object>(
@@ -118,7 +117,6 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   reloadInterval: reloadIntervalProp,
   selectorName = "getList",
   wrapped = false,
-  onLoaded,
   ...props
 }: Props<Entity, EntityWrapper>) {
   const dispatch = useDispatch();
@@ -298,20 +296,13 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     setHasMorePages,
   ]);
 
-  const onLoadedRef = useLatest(onLoaded);
-
-  useEffect(() => {
-    if (data) {
-      onLoadedRef.current?.(data);
-    }
-  }, [data, onLoadedRef]);
-
   // merge props passed in from stacked Entity*Loaders:
   const allError = error || (allErrorProp ?? null);
   const allFetched = fetched && (allFetchedProp ?? true);
   const allLoaded = loaded && (allLoadedProp ?? true);
   const allLoading = loading || (allLoadingProp ?? false);
   const finalListName = listName || entityDefinition.nameMany;
+  const total = Array.isArray(data) ? undefined : data?.total;
 
   const actionCreators = useMemo(() => {
     return bindActionCreators(entityDefinition.actions, dispatch);
@@ -338,6 +329,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       loading={loading || isFetching}
       metadata={metadata}
       reload={refetch}
+      total={total}
     />
   );
 

@@ -53,8 +53,8 @@ export function ModelUploadModal({
   });
 
   const uploadableModels = useMemo(
-    () => models.data?.filter(model => !!model.based_on_upload) ?? [],
-    [models.data],
+    () => models?.data?.filter(model => !!model.based_on_upload),
+    [models],
   );
 
   useEffect(
@@ -71,12 +71,14 @@ export function ModelUploadModal({
 
   const handleUpload = () => {
     if (uploadMode !== UploadMode.create && tableId) {
-      const modelForTableId = uploadableModels.find(
+      const modelForTableId = uploadableModels?.find(
         model => model.based_on_upload === Number(tableId),
       );
+      const modelId = modelForTableId?.id;
+
       return onUpload({
         tableId: Number(tableId),
-        modelId: modelForTableId?.id,
+        modelId,
         uploadMode: uploadMode,
       });
     }
@@ -87,7 +89,7 @@ export function ModelUploadModal({
   useEffect(() => {
     // if we trigger the modal, and there's no uploadable models, just
     // automatically upload a new one
-    if (opened && uploadableModels.length === 0) {
+    if (opened && uploadableModels?.length === 0) {
       onUpload({ collectionId, uploadMode: UploadMode.create });
       onClose();
     }
