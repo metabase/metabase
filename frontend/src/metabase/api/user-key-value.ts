@@ -6,7 +6,6 @@ import type {
 
 import { Api } from "./api";
 
-// TODO: add types
 export const userKeyValueApi = Api.injectEndpoints({
   endpoints: builder => ({
     getUserKeyValue: builder.query<any, GetUserKeyValueRequest>({

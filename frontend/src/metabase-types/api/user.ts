@@ -115,24 +115,19 @@ export type UpdateUserRequest = {
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
 };
 
-export type UserKeyValueNamespace = string; // TODO;
-export type UserKeyValueKey = string; // TODO;
-
-export type DeleteUserKeyValueRequest = {
-  namespace: UserKeyValueNamespace;
-  key: UserKeyValueKey;
+// NOTE: remove silly value namespace/key from FE once we add a real feature
+export type UserKeyValue = {
+  namespace: "meow";
+  key: "meow";
+  value: string;
 };
 
-export type GetUserKeyValueRequest = {
-  namespace: UserKeyValueNamespace;
-  key: UserKeyValueKey;
-};
+type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;
 
-export type UpdateUserKeyValueRequest = {
-  namespace: UserKeyValueNamespace;
-  key: UserKeyValueKey;
-  // TODO: type
-  // TODO: send as v
-  value: any;
+export type DeleteUserKeyValueRequest = UserKeyValueKey;
+
+export type GetUserKeyValueRequest = UserKeyValueKey;
+
+export type UpdateUserKeyValueRequest = UserKeyValue & {
   expires_at?: string;
 };

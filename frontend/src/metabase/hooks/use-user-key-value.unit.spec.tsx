@@ -10,6 +10,7 @@ import { waitFor } from "__support__/ui";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { mainReducers as reducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
+import type { UserKeyValue } from "metabase-types/api";
 import { createMockState } from "metabase-types/store/mocks";
 
 import {
@@ -17,7 +18,7 @@ import {
   useUserKeyValue,
 } from "./use-user-key-value";
 
-function setup<ValueType = any>({
+function setup<ValueType extends UserKeyValue>({
   hookArgs,
 }: {
   hookArgs: UseUserKeyValueParams<ValueType>;
@@ -40,197 +41,197 @@ function setup<ValueType = any>({
 describe("useUserKeyValue", () => {
   describe("value", () => {
     it("should return undefined until value has loaded", async () => {
-      setupGetUserKeyValueEndpoint("test", "test", "server-value");
+      setupGetUserKeyValueEndpoint("meow", "meow", "server-value");
       const result = setup({
-        hookArgs: { namespace: "test", key: "test" },
+        hookArgs: { namespace: "meow", key: "meow" },
       });
-      expect(result.current[0]).toBe(undefined);
-      expect(result.current[2]?.isLoading).toBe(true);
+      expect(result.current.value).toBe(undefined);
+      expect(result.current?.isLoading).toBe(true);
     });
 
     it("should return server value once loaded", async () => {
-      setupGetUserKeyValueEndpoint("test", "test", "server-value");
+      setupGetUserKeyValueEndpoint("meow", "meow", "server-value");
       const result = setup({
-        hookArgs: { namespace: "test", key: "test" },
+        hookArgs: { namespace: "meow", key: "meow" },
       });
-      expect(result.current[2]?.isLoading).toBe(true);
+      expect(result.current?.isLoading).toBe(true);
       await waitFor(() => {
-        expect(result.current[2]?.isLoading).toBe(false);
+        expect(result.current?.isLoading).toBe(false);
       });
-      expect(result.current[0]).toBe("server-value");
+      expect(result.current.value).toBe("server-value");
     });
 
     it("should be able to set a default value", async () => {
-      setupGetUserKeyValueEndpoint("test", "test", "server-value");
+      setupGetUserKeyValueEndpoint("meow", "meow", "server-value");
       const result = setup({
         hookArgs: {
-          namespace: "test",
-          key: "test",
+          namespace: "meow",
+          key: "meow",
           defaultValue: "default-value",
         },
       });
-      expect(result.current[0]).toBe("default-value");
-      expect(result.current[2]?.isLoading).toBe(true);
+      expect(result.current.value).toBe("default-value");
+      expect(result.current?.isLoading).toBe(true);
       await waitFor(() => {
-        expect(result.current[2]?.isLoading).toBe(false);
+        expect(result.current?.isLoading).toBe(false);
       });
-      expect(result.current[0]).toBe("server-value");
+      expect(result.current.value).toBe("server-value");
     });
   });
 
   describe("setValue", () => {
     it("should optimistically update the value and skip refetching", async () => {
       const mockedFetch = setupGetUserKeyValueEndpoint(
-        "test",
-        "test",
+        "meow",
+        "meow",
         "before-value",
       );
-      setupUpdateUserKeyValueEndpoint("test", "test", "after-value");
+      setupUpdateUserKeyValueEndpoint("meow", "meow", "after-value");
 
       const result = setup({
-        hookArgs: { namespace: "test", key: "test" },
+        hookArgs: { namespace: "meow", key: "meow" },
       });
 
       // assert initial value
       await waitFor(() => {
-        expect(result.current[2]?.isLoading).toBe(false);
+        expect(result.current?.isLoading).toBe(false);
       });
-      expect(result.current[0]).toBe("before-value");
+      expect(result.current.value).toBe("before-value");
 
       // set new value
       expect(mockedFetch.calls().length).toBe(1);
       act(() => {
-        result.current[1]("after-value");
+        result.current.setValue("after-value");
       });
 
       // assert optimisitic update occurred
-      expect(result.current[0]).toBe("after-value");
-      expect(result.current[2]?.isMutating).toBe(true);
+      expect(result.current.value).toBe("after-value");
+      expect(result.current?.isMutating).toBe(true);
       await waitFor(() => {
-        expect(result.current[2]?.isMutating).toBe(false);
+        expect(result.current?.isMutating).toBe(false);
       });
-      expect(result.current[2]?.isLoading).toBe(false);
+      expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
+        mockedFetch.calls(`path:/api/user-key-value/namespace/meow/key/meow`, {
           method: "GET",
         }),
       ).toHaveLength(1);
-      expect(result.current[0]).toBe("after-value");
+      expect(result.current.value).toBe("after-value");
     });
 
     it("should revert optimisitic update if update fails", async () => {
       const mockedFetch = setupGetUserKeyValueEndpoint(
-        "test",
-        "test",
+        "meow",
+        "meow",
         "before-value",
       );
-      fetchMock.put(`path:/api/user-key-value/namespace/test/key/test`, 400);
+      fetchMock.put(`path:/api/user-key-value/namespace/meow/key/meow`, 400);
 
       const result = setup({
-        hookArgs: { namespace: "test", key: "test" },
+        hookArgs: { namespace: "meow", key: "meow" },
       });
 
       // assert initial value is correct
       await waitFor(() => {
-        expect(result.current[2]?.isLoading).toBe(false);
+        expect(result.current?.isLoading).toBe(false);
       });
-      expect(result.current[0]).toBe("before-value");
+      expect(result.current.value).toBe("before-value");
 
       // set new value
       expect(mockedFetch.calls().length).toBe(1);
       act(() => {
-        result.current[1]("after-value");
+        result.current.setValue("after-value");
       });
 
       // assert optimisitic update works as expected
-      expect(result.current[0]).toBe("after-value");
-      expect(result.current[2]?.isMutating).toBe(true);
+      expect(result.current.value).toBe("after-value");
+      expect(result.current?.isMutating).toBe(true);
       await waitFor(() => {
-        expect(result.current[2]?.isMutating).toBe(false);
+        expect(result.current?.isMutating).toBe(false);
       });
-      expect(result.current[2]?.isLoading).toBe(false);
+      expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
+        mockedFetch.calls(`path:/api/user-key-value/namespace/meow/key/meow`, {
           method: "GET",
         }),
       ).toHaveLength(1);
-      expect(result.current[0]).toBe("before-value");
+      expect(result.current.value).toBe("before-value");
     });
   });
 
   describe("clearValue", () => {
     it("should optimistically delete a key and skip refetching its value", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint("test", "test", "value");
-      setupDeleteUserKeyValueEndpoint("test", "test");
+      const mockedFetch = setupGetUserKeyValueEndpoint("meow", "meow", "value");
+      setupDeleteUserKeyValueEndpoint("meow", "meow");
 
       const result = setup({
-        hookArgs: { namespace: "test", key: "test" },
+        hookArgs: { namespace: "meow", key: "meow" },
       });
 
       // assert initial value
       await waitFor(() => {
-        expect(result.current[2]?.isLoading).toBe(false);
+        expect(result.current?.isLoading).toBe(false);
       });
-      expect(result.current[0]).toBe("value");
+      expect(result.current.value).toBe("value");
 
       // set new value
       expect(mockedFetch.calls().length).toBe(1);
       act(() => {
-        result.current[2].clearValue();
+        result.current.clearValue();
       });
 
       // assert optimisitic deletion worked
-      expect(result.current[0]).toBe(undefined);
-      expect(result.current[2]?.isMutating).toBe(true);
+      expect(result.current.value).toBe(undefined);
+      expect(result.current?.isMutating).toBe(true);
       await waitFor(() => {
-        expect(result.current[2]?.isMutating).toBe(false);
+        expect(result.current?.isMutating).toBe(false);
       });
-      expect(result.current[2]?.isLoading).toBe(false);
+      expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
+        mockedFetch.calls(`path:/api/user-key-value/namespace/meow/key/meow`, {
           method: "GET",
         }),
       ).toHaveLength(1);
-      expect(result.current[0]).toBe(undefined);
+      expect(result.current.value).toBe(undefined);
     });
 
     it("should revert optimisitic delete if deletion fails", async () => {
       const mockedFetch = setupGetUserKeyValueEndpoint(
-        "test",
-        "test",
+        "meow",
+        "meow",
         "before-value",
       );
-      fetchMock.delete(`path:/api/user-key-value/namespace/test/key/test`, 400);
+      fetchMock.delete(`path:/api/user-key-value/namespace/meow/key/meow`, 400);
 
       const result = setup({
-        hookArgs: { namespace: "test", key: "test" },
+        hookArgs: { namespace: "meow", key: "meow" },
       });
 
       // assert initial value is correct
       await waitFor(() => {
-        expect(result.current[2]?.isLoading).toBe(false);
+        expect(result.current?.isLoading).toBe(false);
       });
-      expect(result.current[0]).toBe("before-value");
+      expect(result.current.value).toBe("before-value");
 
       // set new value
       expect(mockedFetch.calls().length).toBe(1);
       act(() => {
-        result.current[2].clearValue();
+        result.current.clearValue();
       });
 
       // assert optimisitic deletion was reverted
-      expect(result.current[0]).toBe(undefined);
-      expect(result.current[2]?.isMutating).toBe(true);
+      expect(result.current.value).toBe(undefined);
+      expect(result.current?.isMutating).toBe(true);
       await waitFor(() => {
-        expect(result.current[2]?.isMutating).toBe(false);
+        expect(result.current?.isMutating).toBe(false);
       });
-      expect(result.current[2]?.isLoading).toBe(false);
+      expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
+        mockedFetch.calls(`path:/api/user-key-value/namespace/meow/key/meow`, {
           method: "GET",
         }),
       ).toHaveLength(1);
-      expect(result.current[0]).toBe("before-value");
+      expect(result.current.value).toBe("before-value");
     });
   });
 });

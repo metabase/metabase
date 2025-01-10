@@ -5,29 +5,28 @@ import {
   useGetUserKeyValueQuery,
   useUpdateKeyValueMutation,
 } from "metabase/api";
+import type { UserKeyValue } from "metabase-types/api";
 
-export interface UseUserKeyValueParams<ValueType> {
-  namespace: string;
-  key: string;
-  defaultValue?: ValueType;
+export interface UseUserKeyValueParams<T extends UserKeyValue> {
+  namespace: T["namespace"];
+  key: T["key"];
+  defaultValue?: T["value"];
 }
 
-export type UseUserKeyValueResult<ValueType> = [
-  value: ValueType,
-  setValue: (value: ValueType) => Promise<{ data?: unknown; error?: unknown }>,
-  {
-    isLoading: boolean;
-    isMutating: boolean;
-    error: unknown;
-    clearValue: () => Promise<{ data?: unknown; error?: unknown }>;
-  },
-];
+export type UseUserKeyValueResult<T extends UserKeyValue> = {
+  value: T["value"];
+  setValue: (value: T["value"]) => Promise<{ data?: unknown; error?: unknown }>;
+  isLoading: boolean;
+  isMutating: boolean;
+  error: unknown;
+  clearValue: () => Promise<{ data?: unknown; error?: unknown }>;
+};
 
-export function useUserKeyValue<ValueType>({
+export function useUserKeyValue<T extends UserKeyValue>({
   namespace,
   key,
   defaultValue,
-}: UseUserKeyValueParams<ValueType>): UseUserKeyValueResult<ValueType> {
+}: UseUserKeyValueParams<T>): UseUserKeyValueResult<T> {
   const {
     data: value = defaultValue,
     isLoading,
@@ -36,7 +35,7 @@ export function useUserKeyValue<ValueType>({
 
   const [setMutation, setMutationReq] = useUpdateKeyValueMutation();
   const setValue = useCallback(
-    async (value: ValueType) => {
+    async (value: T["value"]) => {
       return await setMutation({ namespace, key, value });
     },
     [setMutation, namespace, key],
@@ -47,14 +46,12 @@ export function useUserKeyValue<ValueType>({
     return await clearMutation({ namespace, key });
   }, [clearMutation, namespace, key]);
 
-  return [
+  return {
     value,
     setValue,
-    {
-      isLoading,
-      isMutating: setMutationReq.isLoading || clearMutationReq.isLoading,
-      error: fetchError ?? setMutationReq.error ?? clearMutationReq.error,
-      clearValue,
-    },
-  ];
+    clearValue,
+    isLoading,
+    isMutating: setMutationReq.isLoading || clearMutationReq.isLoading,
+    error: fetchError ?? setMutationReq.error ?? clearMutationReq.error,
+  };
 }
