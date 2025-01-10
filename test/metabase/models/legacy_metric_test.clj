@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.models.revision :as revision]
    [metabase.test :as mt]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,8 +19,8 @@
 
 (deftest update-test
   (testing "Updating"
-    (t2.with-temp/with-temp [:model/LegacyMetric {:keys [id]} {:creator_id (mt/user->id :rasta)
-                                                               :table_id   (mt/id :checkins)}]
+    (mt/with-temp [:model/LegacyMetric {:keys [id]} {:creator_id (mt/user->id :rasta)
+                                                     :table_id   (mt/id :checkins)}]
       (testing "you should not be able to change the creator_id of a Metric"
         (is (thrown-with-msg?
              Exception

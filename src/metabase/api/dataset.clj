@@ -80,6 +80,7 @@
                                       rff)
             (qp/process-query (update query :info merge info) rff)))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
@@ -124,6 +125,7 @@
     json-key
     (keyword json-key)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
   [export-format :as {{:keys [query visualization_settings pivot_results format_rows]
@@ -155,12 +157,14 @@
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/query_metadata"
   "Get all of the required query metadata for an ad-hoc query."
   [:as {{:keys [database] :as query} :body}]
   {database ms/PositiveInt}
   (api.query-metadata/batch-fetch-query-metadata [query]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
   [:as {{:keys [database pretty] :as query} :body}]
@@ -174,6 +178,7 @@
       (cond-> compiled
         (not (false? pretty)) (update :query prettify)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
   [:as {{:keys [database] :as query} :body}]
@@ -214,6 +219,7 @@
    parameter query
    (fn [] (parameter-field-values field-ids query))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
   [:as {{:keys [parameter field_ids]} :body}]
@@ -221,6 +227,7 @@
    field_ids [:maybe [:sequential ms/PositiveInt]]}
   (parameter-values parameter field_ids nil))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
   [query :as {{:keys [parameter field_ids]} :body}]

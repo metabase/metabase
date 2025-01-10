@@ -2,13 +2,13 @@
   "QueryExecution is a log of very time a query is executed, and other information such as the User who executed it, run
   time, context it was executed in, etc."
   (:require
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.analytics.sdk :as sdk]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.disallow :as t2.disallow]))
@@ -24,7 +24,7 @@
    :context    mi/transform-keyword})
 
 (defn- validate-context [context]
-  (when-let [error (me/humanize (mc/explain ::lib.schema.info/context context))]
+  (when-let [error (me/humanize (mr/explain ::lib.schema.info/context context))]
     (throw (ex-info (tru "Invalid query execution context: {0}" (pr-str error))
                     {:error error}))))
 

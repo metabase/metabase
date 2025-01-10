@@ -23,16 +23,15 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
-    (t2.with-temp/with-temp [:model/Card      {card-id :id} {}
-                             :model/Dashboard dash-1        {}
-                             :model/Dashboard dash-2        {}]
+    (mt/with-temp [:model/Card      {card-id :id} {}
+                   :model/Dashboard dash-1        {}
+                   :model/Dashboard dash-2        {}]
       (letfn [(add-card-to-dash! [dash]
                 (t2/insert! :model/DashboardCard
                             {:card_id      card-id
@@ -67,23 +66,23 @@
         card-params    (fn [card-id] (merge default-params {:values_source_type "card"
                                                             :values_source_config {:card_id card-id}}))]
     (testing "With no associated cards"
-      (t2.with-temp/with-temp [:model/Card card]
+      (mt/with-temp [:model/Card card]
         (is (zero? (hydrated-count card)))))
     (testing "With one"
-      (t2.with-temp/with-temp [:model/Card      {card-id :id :as card} {}
-                               :model/Dashboard _                      {:parameters [(card-params card-id)]}]
+      (mt/with-temp [:model/Card      {card-id :id :as card} {}
+                     :model/Dashboard _                      {:parameters [(card-params card-id)]}]
         (is (= 1 (hydrated-count card)))))
     (testing "With several"
-      (t2.with-temp/with-temp [:model/Card      {card-id :id :as card} {}
-                               :model/Dashboard _                      {:parameters [(card-params card-id)]}
-                               :model/Dashboard _                      {:parameters [(card-params card-id)]}
-                               :model/Dashboard _                      {:parameters [(card-params card-id)]}]
+      (mt/with-temp [:model/Card      {card-id :id :as card} {}
+                     :model/Dashboard _                      {:parameters [(card-params card-id)]}
+                     :model/Dashboard _                      {:parameters [(card-params card-id)]}
+                     :model/Dashboard _                      {:parameters [(card-params card-id)]}]
         (is (= 3 (hydrated-count card)))))))
 
 (deftest public-sharing-test
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
-      (t2.with-temp/with-temp [:model/Card card {:public_uuid (str (random-uuid))}]
+      (mt/with-temp [:model/Card card {:public_uuid (str (random-uuid))}]
         (is (=? u/uuid-regex
                 (:public_uuid card)))))))
 
@@ -91,7 +90,7 @@
   (testing "test that a Card's :public_uuid comes back if public sharing is enabled..."
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
-        (t2.with-temp/with-temp [:model/Card card {:public_uuid (str (random-uuid))}]
+        (mt/with-temp [:model/Card card {:public_uuid (str (random-uuid))}]
           (is (= nil
                  (:public_uuid card))))))))
 
@@ -101,9 +100,9 @@
    :native   {:query "SELECT count(*) FROM toucan_sightings;"}})
 
 (deftest database-id-test
-  (t2.with-temp/with-temp [:model/Card {:keys [id]} {:name          "some name"
-                                                     :dataset_query (dummy-dataset-query (mt/id))
-                                                     :database_id   (mt/id)}]
+  (mt/with-temp [:model/Card {:keys [id]} {:name          "some name"
+                                           :dataset_query (dummy-dataset-query (mt/id))
+                                           :database_id   (mt/id)}]
     (testing "before update"
       (is (= {:name "some name", :database_id (mt/id)}
              (into {} (t2/select-one [:model/Card :name :database_id] :id id)))))
@@ -148,8 +147,8 @@
   (mt/with-actions-enabled
     (testing "unhappy paths\n"
       (testing "should not attempt to delete if it's not a model"
-        (t2.with-temp/with-temp [:model/Card {id :id} {:type          :question
-                                                       :dataset_query (mt/mbql-query users)}]
+        (mt/with-temp [:model/Card {id :id} {:type          :question
+                                             :dataset_query (mt/mbql-query users)}]
           (with-redefs [card/disable-implicit-action-for-model! (fn [& _args]
                                                                   (throw (ex-info "Should not be called" {})))]
             (is (= 1 (t2/update! :model/Card :id id {:dataset_query (mt/mbql-query users {:limit 1})})))))))))
@@ -198,7 +197,7 @@
 
 (deftest circular-reference-test
   (testing "Should throw an Exception if saving a Card that references itself"
-    (t2.with-temp/with-temp [:model/Card card (card-with-source-table (mt/id :venues))]
+    (mt/with-temp [:model/Card card (card-with-source-table (mt/id :venues))]
       ;; now try to make the Card reference itself. Should throw Exception
       (is (thrown?
            Exception
@@ -207,8 +206,8 @@
 
 (deftest circular-reference-test-2
   (testing "Do the same stuff with circular reference between two Cards... (A -> B -> A)"
-    (t2.with-temp/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
-                             :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))]
+    (mt/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
+                   :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))]
       (is (thrown?
            Exception
            (t2/update! :model/Card (u/the-id card-a)
@@ -216,30 +215,30 @@
 
 (deftest circular-reference-test-3
   (testing "ok now try it with A -> C -> B -> A"
-    (t2.with-temp/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
-                             :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))
-                             :model/Card card-c (card-with-source-table (str "card__" (u/the-id card-b)))]
+    (mt/with-temp [:model/Card card-a (card-with-source-table (mt/id :venues))
+                   :model/Card card-b (card-with-source-table (str "card__" (u/the-id card-a)))
+                   :model/Card card-c (card-with-source-table (str "card__" (u/the-id card-b)))]
       (is (thrown?
            Exception
            (t2/update! :model/Card (u/the-id card-a)
                        (card-with-source-table (str "card__" (u/the-id card-c)))))))))
 
 (deftest validate-collection-namespace-test
-  (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
+  (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Card in a non-normal Collection"
       (let [card-name (mt/random-name)]
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Card can only go in Collections in the \"default\" or :analytics namespace."
-               (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card) :collection_id collection-id, :name card-name))))
+               (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id collection-id, :name card-name))))
           (finally
             (t2/delete! :model/Card :name card-name)))))))
 
 (deftest validate-collection-namespace-test-2
-  (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
+  (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to move a Card to a non-normal Collection"
-      (t2.with-temp/with-temp [:model/Card {card-id :id}]
+      (mt/with-temp [:model/Card {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\" or :analytics namespace."
@@ -248,19 +247,19 @@
 (deftest ^:parallel normalize-result-metadata-test
   (testing "Should normalize result metadata keys when fetching a Card from the DB"
     (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))]
-      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query venues)
-                                                          :result_metadata metadata}]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query venues)
+                                                :result_metadata metadata}]
         (is (= (mt/derecordize metadata)
                (mt/derecordize (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))
 
 (deftest populate-result-metadata-if-needed-test
   (doseq [[creating-or-updating f]
           {"creating" (fn [properties f]
-                        (t2.with-temp/with-temp [:model/Card {card-id :id} properties]
+                        (mt/with-temp [:model/Card {card-id :id} properties]
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))
            "updating" (fn [changes f]
-                        (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query checkins)
-                                                                            :result_metadata (qp.preprocess/query->expected-cols (mt/mbql-query checkins))}]
+                        (mt/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query checkins)
+                                                                  :result_metadata (qp.preprocess/query->expected-cols (mt/mbql-query checkins))}]
                           (t2/update! :model/Card card-id changes)
                           (f (t2/select-one-fn :result_metadata :model/Card :id card-id))))}]
 
@@ -365,7 +364,7 @@
 (deftest normalize-visualization-settings-test
   (test-visualization-settings-normalization
    (fn [original expected]
-     (t2.with-temp/with-temp [:model/Card card {:visualization_settings original}]
+     (mt/with-temp [:model/Card card {:visualization_settings original}]
        (is (= expected
               (t2/select-one-fn :visualization_settings :model/Card :id (u/the-id card))))))))
 
@@ -427,9 +426,9 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""
-             (t2.with-temp/with-temp [:model/Card _ bad-card-data]))))
+             (mt/with-temp [:model/Card _ bad-card-data]))))
       (testing "Should not be able to update a Card to have a filter with the wrong Database ID"
-        (t2.with-temp/with-temp [:model/Card {card-id :id} good-card-data]
+        (mt/with-temp [:model/Card {card-id :id} good-card-data]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""
@@ -443,15 +442,15 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #":parameters must be a sequence of maps with :id and :type keys"
-           (t2.with-temp/with-temp [:model/Card _ {:parameters {:a :b}}])))
-      (t2.with-temp/with-temp [:model/Card card {:parameters [{:id   "valid-id"
-                                                               :type "id"}]}]
+           (mt/with-temp [:model/Card _ {:parameters {:a :b}}])))
+      (mt/with-temp [:model/Card card {:parameters [{:id   "valid-id"
+                                                     :type "id"}]}]
         (is (some? card))))))
 
 (deftest validate-parameters-test-2
   (testing "Should validate Card :parameters when"
     (testing "updating"
-      (t2.with-temp/with-temp [:model/Card {:keys [id]} {:parameters []}]
+      (mt/with-temp [:model/Card {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
@@ -464,8 +463,8 @@
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
       (testing (format "target = %s" (pr-str target))
-        (t2.with-temp/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
-                                                                                  :target target}]}]
+        (mt/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id     "_CATEGORY_NAME_"
+                                                                        :target target}]}]
 
           (is (= [{:parameter_id     "_CATEGORY_NAME_"
                    :target expected}]
@@ -477,15 +476,15 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
-           (t2.with-temp/with-temp [:model/Card _ {:parameter_mappings {:a :b}}])))
-      (t2.with-temp/with-temp [:model/Card card {:parameter_mappings [{:parameter_id "valid-id"
-                                                                       :target       [:field 1000 nil]}]}]
+           (mt/with-temp [:model/Card _ {:parameter_mappings {:a :b}}])))
+      (mt/with-temp [:model/Card card {:parameter_mappings [{:parameter_id "valid-id"
+                                                             :target       [:field 1000 nil]}]}]
         (is (some? card))))))
 
 (deftest validate-parameter-mappings-test-2
   (testing "Should validate Card :parameter_mappings when"
     (testing "updating"
-      (t2.with-temp/with-temp [:model/Card {:keys [id]} {:parameter_mappings []}]
+      (mt/with-temp [:model/Card {:keys [id]} {:parameter_mappings []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
@@ -495,9 +494,9 @@
 
 (deftest normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
-                                                                              :card_id      1
-                                                                              :target       [:dimension [:field-id 1]]}]}]
+    (mt/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
+                                                                    :card_id      1
+                                                                    :target       [:dimension [:field-id 1]]}]}]
       (is (= [{:parameter_id "22486e00"
                :card_id      1
                :target       [:dimension [:field 1 nil]]}]
@@ -518,11 +517,11 @@
                         :id         "_CATEGORY_NAME_"
                         :type       "category"}]
     (testing "parameter with source is card create ParameterCard"
-      (t2.with-temp/with-temp [:model/Card  {source-card-id-1 :id} {}
-                               :model/Card  {source-card-id-2 :id} {}
-                               :model/Card  {card-id :id}          {:parameters [(merge default-params
-                                                                                        {:values_source_type    "card"
-                                                                                         :values_source_config {:card_id source-card-id-1}})]}]
+      (mt/with-temp [:model/Card  {source-card-id-1 :id} {}
+                     :model/Card  {source-card-id-2 :id} {}
+                     :model/Card  {card-id :id}          {:parameters [(merge default-params
+                                                                              {:values_source_type    "card"
+                                                                               :values_source_config {:card_id source-card-id-1}})]}]
         (is (=? [{:card_id                   source-card-id-1
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id
@@ -550,13 +549,13 @@
                         :id         "_CATEGORY_NAME_"
                         :type       "category"}]
     (testing "Delete a card will delete any ParameterCard that linked to it"
-      (t2.with-temp/with-temp [:model/Card  {source-card-id :id} {}
-                               :model/Card  {card-id-1 :id}      {:parameters [(merge default-params
-                                                                                      {:values_source_type    "card"
-                                                                                       :values_source_config {:card_id source-card-id}})]}
-                               :model/Card  {card-id-2 :id}      {:parameters [(merge default-params
-                                                                                      {:values_source_type    "card"
-                                                                                       :values_source_config {:card_id source-card-id}})]}]
+      (mt/with-temp [:model/Card  {source-card-id :id} {}
+                     :model/Card  {card-id-1 :id}      {:parameters [(merge default-params
+                                                                            {:values_source_type    "card"
+                                                                             :values_source_config {:card_id source-card-id}})]}
+                     :model/Card  {card-id-2 :id}      {:parameters [(merge default-params
+                                                                            {:values_source_type    "card"
+                                                                             :values_source_config {:card_id source-card-id}})]}]
         ;; makes sure we have ParameterCard to start with
         (is (=? [{:card_id                   source-card-id
                   :parameterized_object_type :card
@@ -698,11 +697,11 @@
   (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
         query    (mt/mbql-query venues)]
     (testing "every card retains result_metadata"
-      (t2.with-temp/with-temp [:model/Card {card1-id :id} {:dataset_query   query
-                                                           :result_metadata metadata}
-                               :model/Card {card2-id :id} {:type            :model
-                                                           :dataset_query   query
-                                                           :result_metadata metadata}]
+      (mt/with-temp [:model/Card {card1-id :id} {:dataset_query   query
+                                                 :result_metadata metadata}
+                     :model/Card {card2-id :id} {:type            :model
+                                                 :dataset_query   query
+                                                 :result_metadata metadata}]
         (doseq [card-id [card1-id card2-id]]
           (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
             ;; card2 is model, but card1 is not
@@ -717,7 +716,7 @@
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
+    (mt/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
       (is (= {:version 2
               :pie.show_legend true
               :pie.percent_visibility "inside"}
@@ -725,7 +724,7 @@
 
 (deftest upgrade-to-v2-db-test-2
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
+    (mt/with-temp [:model/Card {card-id :id} {:visualization_settings {:pie.show_legend true}}]
       (t2/update! :model/Card card-id {:name "Favorite Toucan Foods"})
       (is (= {:version 2
               :pie.show_legend true
@@ -760,7 +759,7 @@
     "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."))
 
 (deftest ^:parallel diff-cards-str-update-collection--test
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [:model/Collection {coll-id-1 :id} {:name "Old collection"}
      :model/Collection {coll-id-2 :id} {:name "New collection"}]
     (are [x y expected] (= expected
@@ -794,7 +793,7 @@
     :is-creation? is-creation?}))
 
 (deftest record-revision-and-description-completeness-test
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [:model/Database   db   {:name "random db"}
      :model/Dashboard  dashboard {:name "dashboard"}
      :model/Card       base-card {}
@@ -868,7 +867,7 @@
   ;; test tracking result_metadata for models
   (let [card-info (mt/card-with-source-metadata-for-query
                    (mt/mbql-query venues))]
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Card card card-info]
       (let [before  (select-keys card [:result_metadata])
             changes (update before :result_metadata drop-last)]
@@ -887,7 +886,7 @@
 
 (deftest storing-metabase-version
   (testing "Newly created Card should know a Metabase version used to create it"
-    (t2.with-temp/with-temp [:model/Card card {}]
+    (mt/with-temp [:model/Card card {}]
       (is (= config/mb-version-string (:metabase_version card)))
 
       (with-redefs [config/mb-version-string "blablabla"]
@@ -1103,36 +1102,36 @@
     (mt/with-model-cleanup [:model/Card]
       (testing "You can't insert a card with a collection_id different than its dashboard's collection_id"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                              (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                              (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                                              :dashboard_id dash-id
                                                              :collection_id other-coll-id))))
         (testing "including if it's `nil`"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                                (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                                                :dashboard_id dash-id
                                                                :collection_id nil)))))
         (testing "But you can insert a card with the *same* collection_id"
-          (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+          (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                          :dashboard_id dash-id
                                          :collection_id coll-id)))
         (testing "... or no collection_id"
-          (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+          (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                          :dashboard_id dash-id))))
       (testing "You can't insert a card with a type other than `:question` as a dashboard-internal card"
         (testing "invalid"
           (doseq [invalid-type (disj card/card-types :question)]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                                  (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                  (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                                                  :dashboard_id dash-id
                                                                  :type invalid-type))))))
         (testing "these are valid"
           (doseq [valid-type [:question "question"]]
-            (is (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+            (is (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                                :dashboard_id dash-id
                                                :type valid-type))))))
       (testing "You can't insert a dashboard-internal card with a collection_position"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                              (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                              (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
                                                              :dashboard_id dash-id
                                                              :collection_position 5))))))))
 

@@ -4,7 +4,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]))

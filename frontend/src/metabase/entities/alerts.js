@@ -1,6 +1,11 @@
 import { t } from "ttag";
 
-import { alertApi, skipToken, useGetAlertQuery } from "metabase/api";
+import {
+  alertApi,
+  skipToken,
+  useGetAlertQuery,
+  useListAlertsQuery,
+} from "metabase/api";
 import {
   createEntity,
   entityCompatibleQuery,
@@ -22,6 +27,7 @@ const Alerts = createEntity({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
+    useListQuery: useListAlertsQuery,
   },
 
   api: {

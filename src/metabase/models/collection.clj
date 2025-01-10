@@ -20,7 +20,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.util :as perms.u]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]

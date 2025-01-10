@@ -16,6 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/db/:id"
   "Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single
@@ -65,6 +66,7 @@
                         :schema_name schema-name
                         :table_name  table-name}))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/db/attached_datawarehouse"
   "Sync the attached datawarehouse. Can provide in the body:
   - table_name and schema_name: both strings. Will look for an existing table and sync it, otherwise will try to find a
@@ -87,6 +89,7 @@
         (find-and-sync-new-table database table_name schema_name))))
   {:success true})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/db/:id/new-table"
   "Sync a new table without running a full database sync. Requires `schema_name` and `table_name`. Will throw an error
   if the table already exists in Metabase or cannot be found."

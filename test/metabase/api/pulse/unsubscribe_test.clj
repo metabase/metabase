@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.email.messages :as messages]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (deftest unsubscribe-hash-test
   (mt/with-temporary-setting-values [site-uuid-for-unsubscribing-url "08534993-94c6-4bac-a1ad-86c9668ee8f5"]
@@ -52,10 +51,10 @@
   (mt/with-premium-features #{:audit-app}
     (mt/with-model-cleanup [:model/User]
       (testing "Valid hash and email returns event."
-        (t2.with-temp/with-temp [:model/Pulse        {pulse-id :id} {}
-                                 :model/PulseChannel _              {:pulse_id     pulse-id
-                                                                     :channel_type "email"
-                                                                     :details      {:emails ["test@metabase.com"]}}]
+        (mt/with-temp [:model/Pulse        {pulse-id :id} {}
+                       :model/PulseChannel _              {:pulse_id     pulse-id
+                                                           :channel_type "email"
+                                                           :details      {:emails ["test@metabase.com"]}}]
           (mt/client :post 200 "pulse/unsubscribe" {:pulse-id pulse-id
                                                     :email    "test@metabase.com"
                                                     :hash     (messages/generate-pulse-unsubscribe-hash pulse-id "test@metabase.com")})
@@ -98,8 +97,8 @@
     (mt/with-premium-features #{:audit-app}
       (mt/with-model-cleanup [:model/User]
         (testing "Undoing valid hash and email returns event"
-          (t2.with-temp/with-temp [:model/Pulse        {pulse-id :id} {}
-                                   :model/PulseChannel _              {:pulse_id pulse-id}]
+          (mt/with-temp [:model/Pulse        {pulse-id :id} {}
+                         :model/PulseChannel _              {:pulse_id pulse-id}]
             (mt/client :post 200 "pulse/unsubscribe/undo" {:pulse-id pulse-id
                                                            :email    "test@metabase.com"
                                                            :hash     (messages/generate-pulse-unsubscribe-hash pulse-id "test@metabase.com")})

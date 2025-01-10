@@ -2,7 +2,7 @@
   (:require
    [compojure.core :as compojure :refer [context]]
    [metabase-enterprise.api.routes.common :as ee.api.common]
-   [metabase-enterprise.content-verification.api.review :as review]
+   [metabase-enterprise.content-verification.api.moderation-review :as review]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.util.i18n :refer [deferred-tru]]))
 

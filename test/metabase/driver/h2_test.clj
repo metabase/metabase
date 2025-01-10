@@ -19,8 +19,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -113,7 +112,7 @@
 
 (deftest disallow-admin-accounts-test
   (testing "Check that we're not allowed to run SQL against an H2 database with a non-admin account"
-    (t2.with-temp/with-temp [:model/Database db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
+    (mt/with-temp [:model/Database db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"

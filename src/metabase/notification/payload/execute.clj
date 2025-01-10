@@ -108,7 +108,7 @@
     ;; If there's no heading text, the heading is empty, so we return nil.
     (when (get-in dashcard [:visualization_settings :text])
       (update-in dashcard [:visualization_settings :text]
-                 #(str "## " (shared.params/escape-chars % shared.params/escaped-chars-regex))))
+                 #(str "## " %)))
     dashcard))
 
 (defn- escape-markdown-chars?

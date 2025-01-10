@@ -18,7 +18,7 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]

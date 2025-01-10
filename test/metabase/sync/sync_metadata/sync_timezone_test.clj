@@ -11,8 +11,7 @@
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,7 +74,7 @@
       (let [details (mt/dbdef->connection-details :mysql :db {:database-name "sync_timezone_test"})
             spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
         (mysql-test/drop-if-exists-and-create-db! "sync_timezone_test")
-        (t2.with-temp/with-temp [:model/Database database {:engine :mysql, :details (assoc details :dbname "sync_timezone_test")}]
+        (mt/with-temp [:model/Database database {:engine :mysql, :details (assoc details :dbname "sync_timezone_test")}]
           (let [global-time-zone (-> (jdbc/query spec ["SELECT @@GLOBAL.time_zone;"])
                                      first
                                      (get (keyword "@@global.time_zone")))]
