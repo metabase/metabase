@@ -909,23 +909,25 @@
                      :select   [:* [[:over [[:count :*] {} :total_count]]]]
                      :from     [[{:union-all queries} :dummy_alias]]
                      :order-by sql-order}
-        ;; We didn't implement collection pagination for snippets namespace for root/items
-        ;; Rip out the limit for now and put it back in when we want it
         limit       (request/limit)
         offset      (request/offset)
+        ;; We didn't implement collection pagination for snippets namespace for root/items
+        ;; Rip out the limit for now and put it back in when we want it
         limit-query (if (or
                          (nil? limit)
                          (nil? offset)
                          (= (:collection-namespace options) "snippets"))
                       rows-query
                       (assoc rows-query
-                             :limit  (if (zero? limit) (inc limit) limit)
-                             :offset (request/offset)))
-        rows         (mdb.query/query limit-query)
+                             ;; If limit is 0, we still execute the query with a limit of 1 so that we fetch a
+                             ;; :total_count
+                             :limit  (if (zero? limit) 1 limit)
+                             :offset offset))
+        rows        (mdb.query/query limit-query)
         res         {:total  (->> rows first :total_count)
-                     :data   (->> rows
-                                  (post-process-rows options collection)
-                                  (take limit))
+                     :data   (if (= limit 0)
+                               []
+                               (post-process-rows options collection rows))
                      :models models}
         limit-res   (assoc res
                            :limit  (request/limit)
