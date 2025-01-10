@@ -89,8 +89,9 @@ export interface DashCardProps {
 
   downloadsEnabled: boolean;
 
-  /* Auto-scroll to this card on mount */
+  /** Auto-scroll to this card on mount */
   autoScroll: boolean;
+  /** Callback to execute when the dashcard has auto-scrolled to itself */
   reportAutoScrolledToDashcard: () => void;
 }
 
