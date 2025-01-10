@@ -24,6 +24,18 @@ describe("scenarios > question > saved", () => {
     H.popover().findByText("Count of rows").click();
     H.addSummaryGroupingField({ field: "Total" });
 
+    // Test save modal and nested entity picker can be closed via consecutive escape key presses
+    H.queryBuilderHeader().button("Save").click();
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByTestId("dashboard-and-collection-picker-button").click();
+    });
+    H.entityPickerModal().should("exist");
+    cy.realPress("{esc}");
+    H.entityPickerModal().should("not.exist");
+    cy.findByTestId("save-question-modal").should("exist");
+    cy.realPress("{esc}");
+    cy.findByTestId("save-question-modal").should("not.exist");
+
     // Save the question
     H.queryBuilderHeader().button("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
