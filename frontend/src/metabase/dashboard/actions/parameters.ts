@@ -309,7 +309,7 @@ export const setParameterType = createThunkAction(
         );
       }
 
-      const haveRestoredParameterMappingsToPristine =
+      const hasRestoredParameterMappingsToPristine =
         hasSectionChanged &&
         restoreParameterMappingsIfNeeded(
           getState,
@@ -318,7 +318,7 @@ export const setParameterType = createThunkAction(
           sectionId,
         );
 
-      if (!haveRestoredParameterMappingsToPristine) {
+      if (!hasRestoredParameterMappingsToPristine) {
         // update to default
         updateParameter(dispatch, getState, parameterId, parameter =>
           setParamType(parameter, type, sectionId),
