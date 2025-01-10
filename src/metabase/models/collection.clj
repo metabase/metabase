@@ -606,7 +606,7 @@
                                                      (seq (user->personal-collection-and-descendant-ids current-user-id))]
                                             {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
                                              :from   [[:collection :c]]
-                                             :where  [:in :id personal-collection-and-descendant-ids]})])}
+                                             :where  [:in :id [:inline personal-collection-and-descendant-ids]]})])}
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
