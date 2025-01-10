@@ -43,7 +43,7 @@ const mapEntityTypeFilterToDataPickerModels = (
 };
 
 export const InteractiveQuestionProvider = ({
-  cardId: initId,
+  cardId: initialQuestionId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -62,7 +62,7 @@ export const InteractiveQuestionProvider = ({
     isError: isCardIdError,
   } = useValidatedEntityId({
     type: "card",
-    id: initId,
+    id: initialQuestionId,
   });
 
   const handleCreateQuestion = useCreateQuestion();
@@ -130,7 +130,7 @@ export const InteractiveQuestionProvider = ({
   }, [question, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
-    originalId: initId,
+    originalId: initialQuestionId,
     isQuestionLoading: isQuestionLoading || isLoadingValidatedId,
     isQueryRunning,
     resetQuestion: loadAndQueryQuestion,

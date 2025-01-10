@@ -71,7 +71,7 @@ const StaticQuestionVisualizationSelector = ({
 };
 
 const StaticQuestionInner = ({
-  questionId: initId,
+  questionId: initialQuestionId,
   withChartTypeSelector,
   height,
   initialSqlParameters,
@@ -79,7 +79,7 @@ const StaticQuestionInner = ({
   const { isLoading: isValidatingEntityId, id: questionId } =
     useValidatedEntityId({
       type: "card",
-      id: initId,
+      id: initialQuestionId,
     });
 
   const metadata = useSelector(getMetadata);
@@ -98,7 +98,7 @@ const StaticQuestionInner = ({
             c="text-dark"
             key="question-id"
           >
-            {initId}
+            {initialQuestionId}
           </Code>
         )} not found`}
       />
