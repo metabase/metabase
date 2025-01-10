@@ -15,8 +15,8 @@ export function openSeriesSettings(field, isBreakout = false) {
         }
       })
       .closest("[data-testid=chartsettings-field-picker]")
-      .find(".Icon-ellipsis")
-      .click();
+      .icon("ellipsis")
+      .click({ force: true });
   }
 }
 
