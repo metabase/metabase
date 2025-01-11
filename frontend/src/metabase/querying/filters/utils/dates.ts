@@ -8,6 +8,7 @@ import {
   DATE_PICKER_TRUNCATION_UNITS,
 } from "metabase/querying/filters/constants";
 import type {
+  DateFilterDisplayOpts,
   DateFilterValue,
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -245,30 +246,34 @@ function getQuarterYearFilterClause(
   });
 }
 
-export function formatDateFilter(value: DateFilterValue) {
+export function getDateFilterDisplayName(
+  value: DateFilterValue,
+  { withPrefix }: DateFilterDisplayOpts = {},
+) {
   return match(value)
     .with(
       { type: "specific", operator: "=" },
-      ({ values: [value], hasTime }) => {
-        return formatDate(value, hasTime);
+      ({ values: [date], hasTime }) => {
+        const dateText = formatDate(date, hasTime);
+        return withPrefix ? t`On ${dateText}` : dateText;
       },
     )
     .with(
       { type: "specific", operator: "<" },
-      ({ values: [value], hasTime }) => {
-        return t`Before ${formatDate(value, hasTime)}`;
+      ({ values: [date], hasTime }) => {
+        return t`Before ${formatDate(date, hasTime)}`;
       },
     )
     .with(
       { type: "specific", operator: ">" },
-      ({ values: [value], hasTime }) => {
-        return t`After ${formatDate(value, hasTime)}`;
+      ({ values: [date], hasTime }) => {
+        return t`After ${formatDate(date, hasTime)}`;
       },
     )
     .with(
       { type: "specific", operator: "between" },
-      ({ values: [start, end], hasTime }) => {
-        return `${formatDate(start, hasTime)} - ${formatDate(end, hasTime)}`;
+      ({ values: [startDate, endDate], hasTime }) => {
+        return `${formatDate(startDate, hasTime)} - ${formatDate(endDate, hasTime)}`;
       },
     )
     .with({ type: "relative" }, ({ value, unit, offsetValue, offsetUnit }) => {
