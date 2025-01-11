@@ -146,9 +146,13 @@ jobs:
         edition: [oss, ee]
         java-version: [11, 17, 21]
         job:
-          - name: AppDB Tests
+          - name: AppDB Tests (Part 1)
             test-args: >-
-              :exclude-tags [:mb/driver-tests]
+              :exclude-tags [:mb/driver-tests] :partition/total 2 :partition/index 0
+            build-static-viz: true
+          - name: AppDB Tests (Part 2)
+            test-args: >-
+              :exclude-tags [:mb/driver-tests] partition/total 2 :partition/index 1
             build-static-viz: true
           - name: H2 Driver Tests
             test-args: >-
@@ -218,7 +222,8 @@ jobs:
         edition: [oss, ee]
         java-version: [11, 17, 21]
         job:
-          - name: AppDB Tests
+          - name: AppDB Tests (Part 1)
+          - name: AppDB Tests (Part 2)
           - name: H2 Driver Tests
     name: "Backend Tests (Java ${{ matrix.java-version }}, ${{ matrix.edition }}, ${{ matrix.job.name }})"
     steps:
