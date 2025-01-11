@@ -291,8 +291,7 @@
    honeysql.format        {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.helpers       {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.types         {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
-   honeysql.util          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
-   metabase.util.jvm      {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}}
+   honeysql.util          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}}
 
   :unresolved-var
   {:exclude
@@ -368,6 +367,7 @@
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
     metabase.notification          #{metabase.notification.core
+                                     metabase.notification.init
                                      metabase.notification.payload.core}
     metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
     metabase.plugins               #{metabase.plugins

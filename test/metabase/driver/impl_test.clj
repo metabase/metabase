@@ -2,11 +2,12 @@
   (:require
    [clojure.core.async :as a]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.test.util.async :as tu.async]
-   [metabase.util :as u])
+   [metabase.util.jvm :as u.jvm])
   (:import
    (com.vladsch.flexmark.ast Heading)
    (com.vladsch.flexmark.parser Parser)
@@ -79,7 +80,8 @@
 (defn- collect-metadatas
   "List metadata for all defmultis of driver namespaces."
   []
-  (let [nss (filter #(re-find #"^metabase\.driver" (name %)) u/metabase-namespace-symbols)]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (let [nss (filter #(str/starts-with? % "metabase.driver") u.jvm/metabase-namespace-symbols)]
     (apply require nss)
     (->> (map ns-publics nss)
          (mapcat vals)

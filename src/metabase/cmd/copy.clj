@@ -4,7 +4,6 @@
   data from an application database to any empty application database for all combinations of supported application
   database types."
   (:require
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
    [metabase.config :as config]
@@ -13,6 +12,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -394,7 +394,7 @@
   ;;
   ;; TODO -- THIS IS NOT A TEST!!
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (doseq [ns-symb u/metabase-namespace-symbols]
+  (doseq [ns-symb u.jvm/metabase-namespace-symbols]
     (classloader/require ns-symb))
   ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))

@@ -7,7 +7,6 @@
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
    [metabase.task.analyze-queries]
-   [metabase.task.bootstrap]
    [metabase.task.cache]
    [metabase.task.creator-sentiment-emails]
    [metabase.task.email-remove-legacy-pulse]
@@ -20,7 +19,6 @@
    [metabase.task.search-index]
    [metabase.task.send-anonymous-stats]
    [metabase.task.send-pulses]
-   [metabase.task.setup.query-analysis-setup]
    [metabase.task.sweep-query-analysis]
    [metabase.task.sync-databases]
    [metabase.task.task-history-cleanup]
