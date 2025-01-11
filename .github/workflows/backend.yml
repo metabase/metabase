@@ -152,7 +152,7 @@ jobs:
             build-static-viz: true
           - name: AppDB Tests (Part 2)
             test-args: >-
-              :exclude-tags [:mb/driver-tests] partition/total 2 :partition/index 1
+              :exclude-tags [:mb/driver-tests] :partition/total 2 :partition/index 1
             build-static-viz: true
           - name: H2 Driver Tests
             test-args: >-
