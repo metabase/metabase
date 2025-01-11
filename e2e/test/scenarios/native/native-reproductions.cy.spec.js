@@ -94,7 +94,8 @@ describe("issue 16886", () => {
 
   it("shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)", () => {
     H.openNativeEditor();
-    cy.wait(1000); // attempt to decrease flakinesscy.realType(ORIGINAL_QUERY);
+    cy.wait(1000); // attempt to decrease flakiness
+    // cy.realType(ORIGINAL_QUERY);
     cy.realPress("Home");
     Cypress._.range(SELECTED_TEXT.length).forEach(() =>
       cy.realPress(["Shift", "ArrowRight"]),
