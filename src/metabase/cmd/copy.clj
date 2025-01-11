@@ -391,6 +391,9 @@
    target-db-type     :- [:enum :h2 :postgres :mysql]
    target-data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   ;; make sure the entire system is loaded before running this test, to make sure we account for all the models.
+  ;;
+  ;; TODO -- THIS IS NOT A TEST!!
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (doseq [ns-symb u/metabase-namespace-symbols]
     (classloader/require ns-symb))
   ;; make sure the source database is up-do-date
