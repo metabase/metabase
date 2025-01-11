@@ -211,9 +211,11 @@ describe("scenarios > question > native", () => {
     H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left")
       .as("sidebar")
-      .contains(/hidden/i)
-      .siblings("[data-testid$=hide-button]")
-      .click();
+      .within(() => {
+        cy.findByTestId("draggable-item-HIDDEN")
+          .icon("eye_outline")
+          .click({ force: true });
+      });
     cy.get("@editor").type("{movetoend}, 3 as added");
     cy.get("@runQuery").click();
     cy.get("@sidebar").contains(/added/i);

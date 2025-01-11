@@ -215,9 +215,12 @@ describe("binning related reproductions", () => {
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("Table-button").click();
       cy.findByTextEnsureVisible("Table options");
-      cy.findByText("Created At: Month")
-        .siblings("[data-testid$=hide-button]")
-        .click();
+      cy.findByTestId("draggable-item-Created At: Month")
+        .findByText("Created At: Month")
+        .should("be.visible");
+      cy.findByTestId("draggable-item-Created At: Month")
+        .icon("eye_outline")
+        .click({ force: true });
       cy.button("Done").click();
     });
 

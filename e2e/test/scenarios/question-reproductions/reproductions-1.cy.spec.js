@@ -616,7 +616,9 @@ function openVisualizationOptions() {
 
 function hideColumn(columnName) {
   cy.findByTestId("chartsettings-sidebar").within(() => {
-    cy.findByText(columnName).siblings("[data-testid$=hide-button]").click();
+    cy.findByTestId(`draggable-item-${columnName}`)
+      .icon("eye_outline")
+      .click({ force: true });
   });
 }
 
