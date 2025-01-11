@@ -10,7 +10,7 @@ export const SearchFilterDateDisplay = ({
   label,
   value,
 }: SearchFilterDateDisplayProps) => {
-  const dateFilter = deserializeDateFilter(value);
+  const dateFilter = value ? deserializeDateFilter(value) : undefined;
 
   return (
     <Text c="inherit" fw={700} truncate>
