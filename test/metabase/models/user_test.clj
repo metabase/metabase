@@ -588,3 +588,16 @@
                                           :sso_source "jwt"}
                                          default-invitor
                                          false))))))
+
+(deftest deactivated-at-test
+  (testing "deactivated_at is set when a user is deactivated and unset when reactivated (#51728)"
+    (mt/with-temp [:model/User {user-id :id :as user} {}]
+      (is (nil? (:deactivated_at user)))
+
+      (t2/update! :model/User user-id {:is_active false})
+      (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
+        (is (instance? java.time.OffsetDateTime deactivated-at)))
+
+      (t2/update! :model/User user-id {:is_active true})
+      (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
+        (is (nil? deactivated-at))))))
