@@ -251,6 +251,67 @@ describe("getDateFilterDisplayName", () => {
       },
       displayName: "Next 3 Months, starting 1 year from now",
     },
+    {
+      value: {
+        type: "exclude",
+        operator: "!=",
+        values: [0, 23],
+        unit: "hour-of-day",
+      },
+      displayName: "Exclude 12 AM, 11 PM",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "!=",
+        values: [0, 11, 23],
+        unit: "hour-of-day",
+      },
+      displayName: "Exclude 3 selections",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "!=",
+        values: [1, 7],
+        unit: "day-of-week",
+      },
+      displayName: "Exclude Monday, Sunday",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "!=",
+        values: [1, 12],
+        unit: "month-of-year",
+      },
+      displayName: "Exclude January, December",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "!=",
+        values: [1, 4],
+        unit: "quarter-of-year",
+      },
+      displayName: "Exclude Q1, Q4",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "is-null",
+        values: [],
+      },
+      displayName: "Is empty",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "not-null",
+        values: [],
+      },
+      displayName: "Not empty",
+    },
   ])(
     "should format a relative date filter",
     ({ value, displayName, withPrefix }) => {

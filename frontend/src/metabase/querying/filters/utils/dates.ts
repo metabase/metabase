@@ -293,7 +293,7 @@ export function getDateFilterDisplayName(
         const count = values.length;
         return ngettext(
           msgid`Exclude ${count} selection`,
-          msgid`Exclude ${count} selections`,
+          `Exclude ${count} selections`,
           count,
         );
       }
