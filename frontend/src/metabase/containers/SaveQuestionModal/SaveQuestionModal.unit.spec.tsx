@@ -17,6 +17,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -732,8 +733,8 @@ describe("SaveQuestionModal", () => {
     });
   });
 
-  describe("new collection modal", () => {
-    const collDropdown = () =>
+  describe("create new modals", () => {
+    const saveLocDropdown = () =>
       screen.getByLabelText(/Where do you want to save this/);
     const newCollBtn = () =>
       screen.getByRole("button", {
@@ -742,6 +743,11 @@ describe("SaveQuestionModal", () => {
     const questionModalTitle = () =>
       screen.getByRole("heading", { name: /new question/i });
     const cancelBtn = () => screen.getByRole("button", { name: /cancel/i });
+
+    const newDashBtn = () =>
+      screen.getByRole("button", {
+        name: /new dashboard/i,
+      });
 
     const COLLECTION = {
       USER: BOBBY_TEST_COLLECTION,
@@ -796,58 +802,119 @@ describe("SaveQuestionModal", () => {
       jest.restoreAllMocks();
     });
 
-    it("should have a new collection button in the collection picker", async () => {
-      await setup(getQuestion());
-      await userEvent.click(collDropdown());
-      await waitFor(() => {
-        expect(newCollBtn()).toBeInTheDocument();
-      });
-    });
-
-    it("should open new collection modal and return to dashboard modal when clicking close", async () => {
-      await setup(getQuestion());
-      await userEvent.click(collDropdown());
-      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
-      await userEvent.click(newCollBtn());
-      await screen.findByText("Give it a name");
-      await userEvent.click(cancelBtn());
-      await userEvent.click(cancelBtn());
-      await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
-    });
-
-    describe("new collection location", () => {
-      beforeEach(async () => {
-        await setup(getQuestion(), null, {
-          collectionEndpoints: {
-            collections: Object.values(COLLECTION),
-            rootCollection: COLLECTION.ROOT,
-          },
+    describe("new collection modal", () => {
+      it("should have a new collection button in the collection picker", async () => {
+        await setup(getQuestion());
+        await userEvent.click(saveLocDropdown());
+        await waitFor(() => {
+          expect(newCollBtn()).toBeInTheDocument();
         });
       });
 
-      it("should create collection inside nested folder", async () => {
-        await userEvent.click(collDropdown());
+      it("should open new collection modal and return to dashboard modal when clicking close", async () => {
+        await setup(getQuestion());
+        await userEvent.click(saveLocDropdown());
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
-        await userEvent.click(
-          await screen.findByRole("button", {
-            name: new RegExp(BOBBY_TEST_COLLECTION.name),
-          }),
-        );
         await userEvent.click(newCollBtn());
         await screen.findByText("Give it a name");
+        await userEvent.click(cancelBtn());
+        await userEvent.click(cancelBtn());
+        await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
       });
 
-      it("should create collection inside root folder", async () => {
-        await userEvent.click(collDropdown());
-        await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
-        await userEvent.click(newCollBtn());
-        await waitFor(async () =>
-          expect(
-            await screen.findByRole("heading", {
-              name: "Create a new collection",
+      describe("new collection location", () => {
+        beforeEach(async () => {
+          await setup(getQuestion(), null, {
+            collectionEndpoints: {
+              collections: Object.values(COLLECTION),
+              rootCollection: COLLECTION.ROOT,
+            },
+          });
+        });
+
+        it("should create collection inside nested folder", async () => {
+          await userEvent.click(saveLocDropdown());
+          await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+          await userEvent.click(
+            await screen.findByRole("button", {
+              name: new RegExp(BOBBY_TEST_COLLECTION.name),
             }),
-          ).toBeInTheDocument(),
-        );
+          );
+          await userEvent.click(newCollBtn());
+          await screen.findByText("Give it a name");
+        });
+
+        it("should create collection inside root folder", async () => {
+          await userEvent.click(saveLocDropdown());
+          await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+          await userEvent.click(newCollBtn());
+          await waitFor(async () => {
+            expect(
+              await screen.findByRole("heading", {
+                name: "Create a new collection",
+              }),
+            ).toBeInTheDocument();
+          });
+        });
+      });
+    });
+
+    describe("new dashboard modal", () => {
+      it("should have a new dashboard button in the collection picker", async () => {
+        await setup(getQuestion());
+        await userEvent.click(saveLocDropdown());
+        await waitFor(() => {
+          expect(newDashBtn()).toBeInTheDocument();
+        });
+      });
+
+      it("should open new dashboard modal and return to dashboard modal when clicking close", async () => {
+        await setup(getQuestion());
+        await userEvent.click(saveLocDropdown());
+        await waitFor(() => expect(newDashBtn()).toBeInTheDocument());
+        await userEvent.click(newDashBtn());
+        await screen.findByText("Give it a name");
+        await within(
+          await screen.findByTestId("create-dashboard-on-the-go"),
+        ).findByRole("button", { name: /cancel/i });
+        await userEvent.click(cancelBtn());
+        await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
+      });
+
+      describe("new dashboard location", () => {
+        beforeEach(async () => {
+          await setup(getQuestion(), null, {
+            collectionEndpoints: {
+              collections: Object.values(COLLECTION),
+              rootCollection: COLLECTION.ROOT,
+            },
+          });
+        });
+
+        it("should create dashboard inside nested folder", async () => {
+          await userEvent.click(saveLocDropdown());
+          await waitFor(() => expect(newDashBtn()).toBeInTheDocument());
+          await userEvent.click(
+            await screen.findByRole("button", {
+              name: new RegExp(BOBBY_TEST_COLLECTION.name),
+            }),
+          );
+          await userEvent.click(newDashBtn());
+          await screen.findByText("Give it a name");
+        });
+
+        it("should create dashboard inside root folder", async () => {
+          await userEvent.click(saveLocDropdown());
+          await waitFor(() => expect(newDashBtn()).toBeInTheDocument());
+          await userEvent.click(newDashBtn());
+          await waitFor(async () => {
+            expect(
+              await screen.findByRole("heading", {
+                name: "Create a new dashboard",
+              }),
+            ).toBeInTheDocument();
+          });
+        });
       });
     });
   });
