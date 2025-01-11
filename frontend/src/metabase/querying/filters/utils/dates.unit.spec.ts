@@ -139,28 +139,93 @@ describe("getDateFilterClause", () => {
   );
 });
 
-type DateFilterTitleCase = {
+type DateFilterDisplayNameCase = {
   value: DateFilterValue;
-  title: string;
+  displayName: string;
+  withPrefix?: boolean;
 };
 
-describe("formatDateFilter", () => {
-  it.each<DateFilterTitleCase>([
+describe("getDateFilterDisplayName", () => {
+  it.each<DateFilterDisplayNameCase>([
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 2, 5)],
+        hasTime: false,
+      },
+      displayName: "March 5, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 2, 5, 10, 20)],
+        hasTime: true,
+      },
+      displayName: "March 5, 2024 10:20 AM",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 2, 5)],
+        hasTime: false,
+      },
+      withPrefix: true,
+      displayName: "On March 5, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: ">",
+        values: [new Date(2024, 2, 5)],
+        hasTime: false,
+      },
+      displayName: "After March 5, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "<",
+        values: [new Date(2024, 2, 5)],
+        hasTime: false,
+      },
+      displayName: "Before March 5, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "between",
+        values: [new Date(2024, 0, 1), new Date(2024, 11, 31)],
+        hasTime: false,
+      },
+      displayName: "January 1, 2024 - December 31, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "between",
+        values: [new Date(2024, 0, 1, 10, 20), new Date(2024, 11, 31, 23, 15)],
+        hasTime: true,
+      },
+      displayName: "January 1, 2024 10:20 AM - December 31, 2024 11:15 PM",
+    },
     {
       value: { type: "relative", value: "current", unit: "day" },
-      title: "Today",
+      displayName: "Today",
     },
     {
       value: { type: "relative", value: "current", unit: "year" },
-      title: "This Year",
+      displayName: "This Year",
     },
     {
       value: { type: "relative", value: -1, unit: "day" },
-      title: "Yesterday",
+      displayName: "Yesterday",
     },
     {
-      value: { type: "relative", value: -1, unit: "year" },
-      title: "Previous Year",
+      value: { type: "relative", value: -2, unit: "year" },
+      displayName: "Previous 2 Years",
     },
     {
       value: {
@@ -170,9 +235,28 @@ describe("formatDateFilter", () => {
         offsetValue: -1,
         offsetUnit: "year",
       },
-      title: "Previous 3 Months, starting 1 year ago",
+      displayName: "Previous 3 Months, starting 1 year ago",
     },
-  ])("should format a relative date filter", ({ value, title }) => {
-    expect(getDateFilterDisplayName(value)).toEqual(title);
-  });
+    {
+      value: { type: "relative", value: 2, unit: "month" },
+      displayName: "Next 2 Months",
+    },
+    {
+      value: {
+        type: "relative",
+        value: 3,
+        unit: "month",
+        offsetValue: 1,
+        offsetUnit: "year",
+      },
+      displayName: "Next 3 Months, starting 1 year from now",
+    },
+  ])(
+    "should format a relative date filter",
+    ({ value, displayName, withPrefix }) => {
+      expect(getDateFilterDisplayName(value, { withPrefix })).toEqual(
+        displayName,
+      );
+    },
+  );
 });
