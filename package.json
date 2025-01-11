@@ -10,6 +10,9 @@
     "yarn": "^1.12.3"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.18.4",
+    "@codemirror/language": "^6.10.7",
+    "@codemirror/lint": "^6.8.4",
     "@dnd-kit/core": "^6.0.8",
     "@dnd-kit/modifiers": "^6.0.1",
     "@dnd-kit/sortable": "^8.0.0",
@@ -18,6 +21,7 @@
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
     "@juggle/resize-observer": "^3.4.0",
+    "@lezer/highlight": "^1.2.1",
     "@mantine/core": "^6.0.13",
     "@mantine/dates": "^6.0.13",
     "@mantine/hooks": "^6.0.13",
@@ -28,6 +32,7 @@
     "@tippyjs/react": "^4.2.6",
     "@types/react-router": "3.0.27",
     "@types/redux-auth-wrapper": "^2.0.16",
+    "@uiw/react-codemirror": "^4.23.7",
     "@visx/axis": "^3.10.1",
     "@visx/clip-path": "^3.3.0",
     "@visx/grid": "^3.5.0",
@@ -144,6 +149,7 @@
     "@emotion/babel-plugin": "^11.11.0",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
     "@inquirer/prompts": "^5.3.8",
+    "@lezer/generator": "^1.7.2",
     "@loki/create-async-callback": "^0.35.0",
     "@peculiar/webcrypto": "^1.5.0",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
@@ -445,7 +451,8 @@
     "type-check": "yarn clean:cljs && yarn build:cljs && yarn type-check-pure",
     "type-check-pure": "tsc --noEmit",
     "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
-    "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done"
+    "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done",
+    "generate:expression-parser": "lezer-generator frontend/src/metabase/query_builder/components/expressions/Editor/custom-expression.grammar -o frontend/src/metabase/query_builder/components/expressions/Editor/parser.js"
   },
   "lint-staged": {
     "+(frontend|enterprise)/**/*.styled.tsx": [
