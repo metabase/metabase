@@ -164,7 +164,7 @@ describe("issue 49529", () => {
 
     H.openVizSettingsSidebar();
 
-    cy.findAllByTestId("chartsettings-field-picker-select")
+    cy.findAllByTestId("chart-setting-select")
       .eq(0)
       .as("dimensionSelect")
       .click();
