@@ -392,9 +392,8 @@
    target-data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   ;; make sure the entire system is loaded before running this test, to make sure we account for all the models.
   ;;
-  ;; TODO -- THIS IS NOT A TEST!!
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (doseq [ns-symb u.jvm/metabase-namespace-symbols]
+  ;; TODO -- THIS IS NOT A TEST!! WHAT ARE THESE COMMENTS TALKING ABOUT!
+  (doseq [ns-symb #_{:clj-kondo/ignore [:deprecated-var]} u.jvm/metabase-namespace-symbols]
     (classloader/require ns-symb))
   ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))

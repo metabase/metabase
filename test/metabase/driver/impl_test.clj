@@ -80,8 +80,7 @@
 (defn- collect-metadatas
   "List metadata for all defmultis of driver namespaces."
   []
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (let [nss (filter #(str/starts-with? % "metabase.driver") u.jvm/metabase-namespace-symbols)]
+  (let [nss (filter #(str/starts-with? % "metabase.driver") #_{:clj-kondo/ignore [:deprecated-var]} u.jvm/metabase-namespace-symbols)]
     (apply require nss)
     (->> (map ns-publics nss)
          (mapcat vals)
