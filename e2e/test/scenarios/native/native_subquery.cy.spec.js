@@ -68,7 +68,9 @@ describe("scenarios > question > native subquery", () => {
         collection_id: ADMIN_PERSONAL_COLLECTION_ID,
       }).then(({ body: { id: questionId2 } }) => {
         H.openNativeEditor();
-        cy.get(".ace_editor").should("be.visible").realType("{{#people");
+        cy.get(".ace_editor").should("be.visible");
+        cy.wait(1000); // attempt to decrease flakiness
+        cy.realType("{{#people");
 
         // Wait until another explicit autocomplete is triggered
         // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)

@@ -36,7 +36,6 @@ import {
   Warning,
 } from "./DashCardCardParameterMapper.styled";
 import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";
-import { useResetParameterMapping } from "./hooks";
 
 const mapStateToProps = (
   state: State,
@@ -83,12 +82,6 @@ export function DashCardCardParameterMapper({
   const hasSeries = isQuestion && dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
   const isNative = isQuestion && isNativeDashCard(dashcard);
-
-  useResetParameterMapping({
-    editingParameter,
-    isNative,
-    dashcardId: dashcard.id,
-  });
 
   const selectedMappingOption = getMappingOptionByTarget(
     mappingOptions,
