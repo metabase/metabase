@@ -7,6 +7,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.breakout.metadata :as lib.breakout.metadata]
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
@@ -109,10 +110,11 @@
   with-binning]
  [lib.breakout
   breakout
-  breakout-column
-  breakoutable-columns
   breakouts
-  breakouts-metadata
+  breakouts-metadata]
+ [lib.breakout.metadata
+  breakoutable-columns
+  breakout-column
   remove-all-breakouts]
  [lib.column-group
   columns-group-columns

@@ -29,6 +29,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.breakout.metadata :as lib.breakout.metadata]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
@@ -56,7 +57,7 @@
              (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/comment?     column))
              (not (lib.types.isa/description? column))
-             (not (lib.breakout/breakout-column? query (lib.underlying/top-level-stage-number query) column)))
+             (not (lib.breakout.metadata/breakout-column? query (lib.underlying/top-level-stage-number query) column)))
     {:lib/type  :metabase.lib.drill-thru/drill-thru
      :type      :drill-thru/distribution
      :column    column}))

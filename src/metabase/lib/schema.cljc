@@ -12,6 +12,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.actions :as actions]
    [metabase.lib.schema.aggregation :as aggregation]
+   [metabase.lib.schema.columns :as columns]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
@@ -182,7 +183,17 @@
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::id/table]]
     [:source-card  {:optional true} [:ref ::id/card]]
-    [:page         {:optional true} [:ref ::page]]]
+    [:page         {:optional true} [:ref ::page]]
+    [:lib.columns/source         {:optional true} [:ref ::columns/columns-map]]
+    [:lib.columns/synthetic      {:optional true} [:ref ::columns/columns-map]]
+    [:lib.columns/breakout       {:optional true} [:ref ::columns/columns-map]]
+    [:lib.columns/aggregation    {:optional true} [:ref ::columns/columns-map]]
+    [:lib.columns/expressions    {:optional true} [:ref ::columns/columns-map]]
+    ;; TODO: This might need more details about the implicit joins than just their column maps?
+    ;; So maybe there's an extra layer of maps here:
+    ;; {:lib.columns/implicit-joins {"FK ident" {:lib/type           :mbql.join/implicit
+    ;;                                           :lib.columns/joined {"ident" {...}}}}}
+    [:lib.columns/implicit-joins {:optional true} [:ref ::columns/nested-columns-maps]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]

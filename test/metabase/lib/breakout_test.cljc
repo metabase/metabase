@@ -3,12 +3,14 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.breakout :as lib.breakout]
+   [metabase.lib.breakout.metadata :as lib.breakout.metadata]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.generators :as lib.tu.gen]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
@@ -653,7 +655,7 @@
               (meta/id :people :latitude)]
              [:field {:temporal-unit :month}
               (meta/id :people :latitude)]]
-            (lib.breakout/existing-breakouts query -1 (meta/field-metadata :people :latitude))))))
+            (lib.breakout.metadata/existing-breakouts query -1 (meta/field-metadata :people :latitude))))))
 
 (deftest ^:parallel existing-breakouts-multiple-implicit-joins-test
   (let [base   (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
@@ -675,10 +677,10 @@
       (testing "are not considered 'existing breakouts'"
         (is (nil? (-> base
                       (lib/breakout name-by-created-by)
-                      (lib.breakout/existing-breakouts -1 name-by-updated-by))))
+                      (lib.breakout.metadata/existing-breakouts -1 name-by-updated-by))))
         (is (nil? (-> base
                       (lib/breakout name-by-updated-by)
-                      (lib.breakout/existing-breakouts -1 name-by-created-by))))))))
+                      (lib.breakout.metadata/existing-breakouts -1 name-by-created-by))))))))
 
 (deftest ^:parallel existing-breakouts-multiple-explicit-joins-test
   (let [base (-> (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
@@ -705,10 +707,10 @@
       (testing "are not considered 'existing breakouts'"
         (is (nil? (-> base
                       (lib/breakout name-by-created-by)
-                      (lib.breakout/existing-breakouts -1 name-by-updated-by))))
+                      (lib.breakout.metadata/existing-breakouts -1 name-by-updated-by))))
         (is (nil? (-> base
                       (lib/breakout name-by-updated-by)
-                      (lib.breakout/existing-breakouts -1 name-by-created-by))))))))
+                      (lib.breakout.metadata/existing-breakouts -1 name-by-created-by))))))))
 
 (deftest ^:parallel remove-existing-breakouts-for-column-test
   (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
@@ -717,14 +719,14 @@
                    (lib/breakout (lib/with-binning (meta/field-metadata :people :latitude) {:strategy :bin-width, :bin-width 1}))
                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :latitude) :month))
                    (lib/breakout (meta/field-metadata :people :longitude)))
-        query' (lib.breakout/remove-existing-breakouts-for-column query (meta/field-metadata :people :latitude))]
+        query' (lib.breakout.metadata/remove-existing-breakouts-for-column query (meta/field-metadata :people :latitude))]
     (is (=? {:stages [{:aggregation [[:count {}]]
                        :breakout    [[:field {} (meta/id :people :longitude)]]}]}
             query'))
     (testing "Don't explode if there are no existing breakouts"
       (is (=? {:stages [{:aggregation [[:count {}]]
                          :breakout    [[:field {} (meta/id :people :longitude)]]}]}
-              (lib.breakout/remove-existing-breakouts-for-column query' (meta/field-metadata :people :latitude)))))))
+              (lib.breakout.metadata/remove-existing-breakouts-for-column query' (meta/field-metadata :people :latitude)))))))
 
 (deftest ^:parallel breakout-column-test
   (testing "should find the correct column"
@@ -738,9 +740,9 @@
       (is (= 2
              (count breakouts)))
       (is (=? category
-              (lib.breakout/breakout-column query (first breakouts))))
+              (lib/breakout-column query (first breakouts))))
       (is (=? price
-              (lib.breakout/breakout-column query (second breakouts)))))))
+              (lib/breakout-column query (second breakouts)))))))
 
 (deftest ^:parallel breakout-column-test-2
   (testing "should set the binning strategy from the breakout clause"
@@ -764,3 +766,22 @@
       (is (=? {:unit :month}
               (->> (lib/breakout-column query breakout)
                    (lib/temporal-bucket)))))))
+
+(deftest ^:parallel columns-map-test
+  (testing ":lib.columns/breakout map"
+    (doseq [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib.tu.gen/random-queries-from 30))
+            sn    (range (lib/stage-count query))]
+      (if-let [brks (not-empty (lib/breakouts query sn))]
+        (testing "is present and correct on stages with breakouts"
+          (let [col-map  (:lib.columns/breakout (lib.util/query-stage query sn))
+                _        (is (map? col-map))
+                brk-cols (map #(lib/breakout-column query sn %) brks)
+                by-pos   (sort-by :position (vals col-map))]
+            (is (=? (into #{} (map lib.options/ident) brks)
+                    (set (keys col-map))))
+            (is (nil? by-pos))
+            #_(is (=? (map #(select-keys % [:id :name :ident :lib/source]) brk-cols)
+                    (map #(select-keys % [:id :name :ident :lib/source]) by-pos)))))
+        (testing "is absent on stages without breakouts"
+          (is (= false (contains? (lib.util/query-stage query sn) :lib.columns/breakout))))))))

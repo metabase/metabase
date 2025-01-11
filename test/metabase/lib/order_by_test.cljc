@@ -12,6 +12,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
@@ -155,20 +156,16 @@
       (lib.metadata.calculation/describe-top-level-key -1 :order-by)))
 
 (deftest ^:parallel describe-order-by-test
-  (let [query {:database (meta/id)
-               :type     :query
-               :query    {:source-table (meta/id :venues)
-                          :order-by     [[:asc [:field (meta/id :venues :category-id) nil]]]}}]
+  (let [query (lib.tu.macros/mbql-query venues
+                {:order-by [[:asc $category-id]]})]
     (is (= "Sorted by Category ID ascending"
            (describe-legacy-query-order-by query)))))
 
 (deftest ^:parallel describe-order-by-aggregation-reference-test
-  (let [query {:database (meta/id)
-               :type     :query
-               :query    {:source-table (meta/id :venues)
-                          :aggregation  [[:count]]
-                          :breakout     [[:field (meta/id :venues :category-id) nil]]
-                          :order-by     [[:asc [:aggregation 0]]]}}]
+  (let [query (lib.tu.macros/mbql-query venues
+                {:aggregation        [[:count]]
+                 :breakout           [$category-id]
+                 :order-by           [[:asc [:aggregation 0]]]})]
     (is (= "Sorted by Count ascending"
            (describe-legacy-query-order-by query)))))
 
