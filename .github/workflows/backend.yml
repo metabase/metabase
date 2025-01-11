@@ -143,22 +143,42 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        edition: [oss, ee]
         java-version: [11, 17, 21]
         job:
-          - name: AppDB Tests (Part 1)
+          - name: OSS AppDB Tests (Part 1)
+            edition: oss
             test-args: >-
-              :exclude-tags [:mb/driver-tests] :partition/total 2 :partition/index 0
-            build-static-viz: true
-          - name: AppDB Tests (Part 2)
+              :exclude-tags [:mb/driver-tests]
+              :partition/total 2
+              :partition/index 0
+          - name: OSS AppDB Tests (Part 2)
+            edition: oss
             test-args: >-
-              :exclude-tags [:mb/driver-tests] :partition/total 2 :partition/index 1
-            build-static-viz: true
-          - name: H2 Driver Tests
+              :exclude-tags [:mb/driver-tests]
+              :partition/total 2
+              :partition/index 1
+          - name: EE AppDB Tests (Part 1)
+            edition: ee
             test-args: >-
-              :only-tags [:mb/driver-tests]
-            build-static-viz: false
-    name: "Backend Tests (Java ${{ matrix.java-version }}, ${{ matrix.edition }}, ${{ matrix.job.name }})"
+              :only ["test" ".clj-kondo/test"]
+              :exclude-tags [:mb/driver-tests]
+              :partition/total 2
+              :partition/index 0
+          - name: EE AppDB Tests (Part 2)
+            edition: ee
+            test-args: >-
+              :only ["test" ".clj-kondo/test"]
+              :exclude-tags [:mb/driver-tests]
+              :partition/total 2
+              :partition/index 1
+          - name: EE Tests
+            edition: ee
+            test-args: >-
+              :only "enterprise/backend/test"
+              :exclude-tags [:mb/driver-tests]
+              :partition/total 2
+              :partition/index 1
+    name: "Backend Tests (Java ${{ matrix.java-version }}, ${{ matrix.job.name }})"
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -172,10 +192,8 @@ jobs:
       # Depending on which files changed, we might either have to build static-viz
       # from scratch or download the previously built artifact
       - name: Build static-viz frontend
-        if: ${{ matrix.job.build-static-viz && needs.files-changed.outputs.backend_all == 'true' }}
         run: yarn build-static-viz
       - name: Download Static Viz Bundle Artifact
-        if: ${{ matrix.job.build-static-viz && needs.static-viz-files-changed.outputs.static_viz == 'true' }}
         uses: actions/download-artifact@v4
         with:
           name: static-viz-bundle-${{ github.sha }}
