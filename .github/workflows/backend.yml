@@ -160,21 +160,21 @@ jobs:
           - name: EE AppDB Tests (Part 1)
             edition: ee
             test-args: >-
-              :only ["test" ".clj-kondo/test"]
+              :only '["test" ".clj-kondo/test"]'
               :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0
           - name: EE AppDB Tests (Part 2)
             edition: ee
             test-args: >-
-              :only ["test" ".clj-kondo/test"]
+              :only '["test" ".clj-kondo/test"]'
               :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 1
           - name: EE Tests
             edition: ee
             test-args: >-
-              :only "enterprise/backend/test"
+              :only '"enterprise/backend/test"'
               :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 1
