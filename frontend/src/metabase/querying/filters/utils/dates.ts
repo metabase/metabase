@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { match } from "ts-pattern";
-import { msgid, ngettext, t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 
 import {
   DATE_PICKER_EXTRACTION_UNITS,
@@ -23,6 +23,13 @@ import type {
 } from "metabase/querying/filters/types";
 import type { ExcludeDateFilterUnit } from "metabase-lib";
 import * as Lib from "metabase-lib";
+
+const TRANSLATION_CONTEXT = {
+  quarter:
+    'This is a "dayjs" format string (https://day.js.org/docs/en/plugin/advanced-format). It should include "Q" for the quarter number, and raw text can be escaped by brackets. For example, "[Quarter] Q" will be rendered as "Quarter 1".',
+  quarterAndYear:
+    'This is a "dayjs" format string (https://day.js.org/docs/en/plugin/advanced-format). It should include "Q" for the quarter number, YYYY for the year, and raw text can be escaped by brackets. For example, "[Quarter] Q YYYY" will be rendered as "Quarter 1 2024".',
+};
 
 export function isDatePickerOperator(
   operator: string,
@@ -327,7 +334,10 @@ function formatMonth(month: number, year: number) {
 }
 
 function formatQuarter(quarter: number, year: number) {
-  return dayjs().year(year).quarter(quarter).format("[Q]Q YYYY");
+  return dayjs()
+    .year(year)
+    .quarter(quarter)
+    .format(c(TRANSLATION_CONTEXT.quarterAndYear).t`[Q]Q YYYY`);
 }
 
 function formatExcludeUnit(value: number, unit: ExcludeDateFilterUnit) {
@@ -341,6 +351,8 @@ function formatExcludeUnit(value: number, unit: ExcludeDateFilterUnit) {
         .month(value - 1)
         .format("MMMM");
     case "quarter-of-year":
-      return dayjs().quarter(value).format("[Q]Q");
+      return dayjs()
+        .quarter(value)
+        .format(c(TRANSLATION_CONTEXT.quarter).t`[Q]Q`);
   }
 }
