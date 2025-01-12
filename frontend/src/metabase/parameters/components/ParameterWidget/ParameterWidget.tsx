@@ -2,6 +2,7 @@ import { type PropsWithChildren, type ReactNode, useState } from "react";
 
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
+import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -18,23 +19,25 @@ import {
 type ParameterWidgetProps = PropsWithChildren<
   {
     parameter: UiParameter;
-  } & Partial<{
-    setValue: (value: any) => void;
-    question?: Question;
-    dashboard?: Dashboard | null;
+  } & Partial<
+    {
+      setValue: (value: any) => void;
+      question: Question;
+      dashboard: Dashboard | null;
 
-    editingParameter: Parameter | null | undefined;
-    commitImmediately: boolean;
-    parameters: UiParameter[];
-    setParameterValueToDefault?: (parameterId: ParameterId) => void;
-    enableParameterRequiredBehavior?: boolean;
-    isSortable?: boolean;
-    isEditing?: boolean;
-    className?: string;
-    isFullscreen?: boolean;
-    setEditingParameter?: (parameterId: ParameterId | null) => void;
-    dragHandle: ReactNode;
-  }>
+      editingParameter: Parameter | null;
+      commitImmediately: boolean;
+      parameters: UiParameter[];
+      setParameterValueToDefault: (parameterId: ParameterId) => void;
+      enableParameterRequiredBehavior: boolean;
+      isSortable: boolean;
+      isEditing: boolean;
+      className: string;
+      isFullscreen: boolean;
+      setEditingParameter: (parameterId: ParameterId | null) => void;
+      dragHandle: ReactNode;
+    } & Pick<DashboardFullscreenControls, "isFullscreen">
+  >
 >;
 
 const EditParameterWidget = ({
@@ -102,6 +105,7 @@ export const ParameterWidget = ({
           legend={legend}
           required={enableParameterRequiredBehavior && parameter.required}
           noPadding={true}
+          isFullscreen={isFullscreen}
           fieldHasValueOrFocus={fieldHasValueOrFocus}
           className={className}
         >

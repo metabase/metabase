@@ -10,6 +10,7 @@ import { isEmbeddingSdk } from "metabase/env";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
+import { themeChangeTransitionStyles } from "metabase/styled-components/theme/styles";
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
 export const DashboardLoadingAndErrorWrapper = styled(
@@ -115,14 +116,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   top: 0;
   left: 0;
 
-  ${({ isFullscreen }) =>
-    isFullscreen &&
-    css`
-      transition:
-        background-color 1s linear,
-        border-color 1s linear,
-        color 1s linear;
-    `}
+  ${({ isFullscreen }) => isFullscreen && themeChangeTransitionStyles}
 
   /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
   ${({ isNightMode, isSticky, hasScroll }) =>

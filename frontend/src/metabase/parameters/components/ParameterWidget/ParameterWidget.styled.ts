@@ -2,23 +2,26 @@ import styled from "@emotion/styled";
 
 import { FieldSet } from "metabase/components/FieldSet";
 import { color } from "metabase/lib/colors";
+import { themeChangeTransitionStyles } from "metabase/styled-components/theme/styles";
 import { Icon } from "metabase/ui";
 
 interface ParameterFieldSetProps {
-  fieldHasValueOrFocus?: boolean;
+  fieldHasValueOrFocus: boolean;
+  isFullscreen: boolean | undefined;
 }
 
 export const ParameterFieldSet = styled(FieldSet)<ParameterFieldSetProps>`
   background: var(--mb-color-background);
   display: flex;
   align-items: center;
-  transition: opacity 500ms linear;
   border: 2px solid
     ${props =>
       props.fieldHasValueOrFocus ? color("brand") : "var(--mb-color-border)"};
   margin: 0.5em 0;
   padding: 0.25em 1em;
   width: 100%;
+
+  ${({ isFullscreen }) => isFullscreen && themeChangeTransitionStyles}
 
   legend {
     text-transform: none;
