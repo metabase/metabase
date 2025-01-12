@@ -1,10 +1,18 @@
+:root {
+  --transition-theme-change: background-color 1s linear, border-color 1s linear,
+    color 1s linear;
+}
+
 .transitionColor {
   transition: color 0.3s linear;
 }
 
 .transitionThemeChange {
-  transition:
-    background-color 1s linear,
-    border-color 1s linear,
-    color 1s linear;
+  transition: var(--transition-theme-change);
+}
+
+@media (prefers-reduced-motion) {
+  :root {
+    --transition-theme-change: none;
+  }
 }
