@@ -14,6 +14,7 @@ export const createMockTable = (opts?: Partial<Table>): Table => {
     initial_sync_status: "complete",
     segments: [],
     is_upload: false,
+    is_gsheet: false,
     created_at: "2021-05-01T00:00:00",
     updated_at: "2021-05-01T00:00:00",
     ...opts,
