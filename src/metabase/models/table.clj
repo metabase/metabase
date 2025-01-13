@@ -283,7 +283,7 @@
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter]
+               :database_require_filter :is_gsheet]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
                :db_id      (serdes/fk :model/Database :name)}})

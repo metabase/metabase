@@ -138,11 +138,10 @@
 (api/defendpoint DELETE "/folder"
   "Disconnect the google service account"
   []
-  (if-let [conn-id (get-gdrive-connection)]
-    (let [[status resp] (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" conn-id))]
-      (if (= status :ok)
-        (gsheets! {:status "not-connected"})
-        (throw (ex-info "Unable to disconnect google service account" {:hm/resp resp}))))
-    (throw (ex-info "No google service account to disconnect" {}))))
+  (let [conn-id (get-gdrive-connection)
+        [status resp] (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" conn-id))]
+    (if (= status :ok)
+      (gsheets! {:status "not-connected"})
+      (throw (ex-info "Unable to disconnect google service account" {:hm/resp resp})))))
 
 (api/define-routes)
