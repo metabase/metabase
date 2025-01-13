@@ -21,7 +21,7 @@ When you view the question for the first time, Metabase will check for stored re
 
 If you run the question half an hour later, Metabase will return those stored results.
 
-If you run the question over an hour after that initial run, Metabase will notice that the stored results are older than your caching policy allows. Metabase will delete the stored results, run the query against your database, return the results, and store them for the future queries. This cache will remain valid for the next hour, according to the duration policy you set. To always refresh the cache when results expire, see [refresh cache automatically](#refresh-cache-automatically).
+If you run the question over an hour after that initial run, Metabase will notice that the stored results are older than your caching policy allows. Metabase will delete the stored results, run the query against your database, return the results, and store them for the future queries. This cache will remain valid for the next hour, according to the duration policy you set. To always refresh the cache when results expire, see [Refresh cache automatically](#refresh-cache-automatically).
 
 See how [different caching policies interact](#how-dashboard-question-database-and-default-caching-policies-interact).
 
