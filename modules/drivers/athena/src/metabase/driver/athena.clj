@@ -77,7 +77,7 @@
                :db :catalog :metabase.driver.athena/schema
                ;; Remove 2.x jdbc driver version options from details. Those are mapped to appropriate 3.x keys few
                ;; on preceding lines
-               :region :access_key :secret_key :s3_staging_dir :workgroup :catalog))
+               :region :access_key :secret_key :s3_staging_dir :workgroup))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
 (defmethod sql-jdbc.conn/data-source-name :athena
