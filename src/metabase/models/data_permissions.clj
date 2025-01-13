@@ -889,14 +889,18 @@
                                                       :db_id       db-id
                                                       :table_id    (u/the-id table)
                                                       :schema_name schema-name}]
-                                        (if (and (db-level-group-ids group-id)
-                                                 (= new-value :blocked))
-                                           ;; Perms that are being added at the table-level for a group currently set at the DB
-                                           ;; level. This should only happen when adding a table to a DB where some existing
-                                           ;; tables are sandboxed, because the DB might have `:unrestricted` DB-level perms which
-                                           ;; need to be split out to table-level perms.
+                                        (cond
+                                          ;; Perms that are being added at the table-level for a group currently set at the DB
+                                          ;; level. This should only happen when adding a table to a DB where some existing
+                                          ;; tables are sandboxed, because the DB might have `:unrestricted` DB-level perms which
+                                          ;; need to be split out to table-level perms.
+                                          (and (db-level-group-ids group-id)
+                                               (= new-value :blocked))
                                           (update new-perms :going-granular conj new-perm)
-                                           ;; Perms that can be
+
+                                          ;; Otherwise, we only add a new table-level permission row if existing perms
+                                          ;; are table-level
+                                          (not (db-level-group-ids group-id))
                                           (update new-perms :simple-perms conj new-perm))))
                                     {:simple-perms [] :going-granular []}
                                     group-ids)
