@@ -12,7 +12,6 @@
    [metabase.search.impl :as search.impl]
    [metabase.search.in-place.legacy :as search.legacy]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel parse-engine-test
@@ -276,19 +275,3 @@
           (test-search "thisyear" new-result)
           (test-search "past1years-from-12months" old-result)
           (test-search "today" new-result))))))
-
-(deftest ^:parallel serialize-test
-  (testing "It normalizes dataset queries from strings"
-    (let [query  {:type     :query
-                  :query    {:source-query {:source-table 1}}
-                  :database 1}
-          result {:name          "card"
-                  :model         "card"
-                  :dataset_query (json/encode query)
-                  :all-scores {}
-                  :relevant-scores {}}]
-      (is (= query (-> result search.impl/serialize :dataset_query)))))
-  (testing "Doesn't error on other models without a query"
-    (is (nil? (-> {:name "dash" :model "dashboard" :all-scores {} :relevant-scores {}}
-                  search.impl/serialize
-                  :dataset_query)))))
