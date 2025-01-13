@@ -16,7 +16,9 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   ChannelApiResponse,
   CreateNotificationRequest,
+  Notification,
   NotificationCardSendCondition,
+  NotificationChannelType,
   NotificationHandler,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -218,3 +220,18 @@ export function getAlertTriggerOptions({
 
   return ["has_result"];
 }
+
+type NotificationEnabledChannelsMap = {
+  [key in NotificationChannelType]?: true;
+};
+export const getNotificationEnabledChannelsMap = (
+  notification: Notification,
+): NotificationEnabledChannelsMap => {
+  const result: NotificationEnabledChannelsMap = {};
+
+  notification.handlers.forEach(handler => {
+    result[handler.channel_type] = true;
+  });
+
+  return result;
+};

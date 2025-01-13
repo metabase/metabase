@@ -3,6 +3,7 @@ import { useState } from "react";
 import { jt, t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { getNotificationEnabledChannelsMap } from "metabase/lib/notifications";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   deleteAlert,
@@ -34,6 +35,8 @@ export const AlertListItem = ({
 
   const [showHoverActions, setShowHoverActions] = useState(false);
 
+  const enabledChannelsMap = getNotificationEnabledChannelsMap(alert);
+
   const handleUnsubscribe = async () => {
     try {
       await dispatch(unsubscribeFromAlert(alert));
@@ -56,12 +59,6 @@ export const AlertListItem = ({
   const handleMouseLeave = () => {
     setShowHoverActions(false);
   };
-
-  const emailChannel = alert.channels.find(c => c.channel_type === "email");
-  const emailEnabled = emailChannel && emailChannel.enabled;
-  const slackChannel = alert.channels.find(c => c.channel_type === "slack");
-  const slackEnabled = slackChannel && slackChannel.enabled;
-  const httpChannels = alert.channels.filter(c => c.channel_type === "http");
 
   return (
     <Stack
@@ -87,9 +84,11 @@ export const AlertListItem = ({
       </div>
 
       <Group spacing="md" align="center" c="text-medium">
-        {emailEnabled && <Icon name="mail" />}
-        {slackEnabled && <Icon name="slack" size={16} />}
-        {httpChannels.length > 0 && <Icon name="webhook" size={16} />}
+        {enabledChannelsMap["channel/email"] && <Icon name="mail" />}
+        {enabledChannelsMap["channel/slack"] && <Icon name="slack" size={16} />}
+        {enabledChannelsMap["channel/http"] && (
+          <Icon name="webhook" size={16} />
+        )}
         {user && <AlertCreatorTitle alert={alert} user={user} />}
       </Group>
 
