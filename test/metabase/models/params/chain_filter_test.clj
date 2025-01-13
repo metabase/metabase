@@ -686,12 +686,12 @@
                                 :fk :users}]
                               []]]
       (mt/$ids nil
-        (mt/with-dynamic-redefs [chain-filter/database-fk-relationships @#'chain-filter/database-fk-relationships*
-                                 chain-filter/find-joins                (fn
-                                                                          ([a b c]
-                                                                           (#'chain-filter/find-joins* a b c false))
-                                                                          ([a b c d]
-                                                                           (#'chain-filter/find-joins* a b c d)))]
+        (mt/with-dynamic-fn-redefs [chain-filter/database-fk-relationships @#'chain-filter/database-fk-relationships*
+                                    chain-filter/find-joins                (fn
+                                                                             ([a b c]
+                                                                              (#'chain-filter/find-joins* a b c false))
+                                                                             ([a b c d]
+                                                                              (#'chain-filter/find-joins* a b c d)))]
           (testing "receiver_id is active and should be used for the join"
             (is (= [{:lhs {:table $$messages, :field %messages.receiver_id}
                      :rhs {:table $$users, :field %users.id}}]
