@@ -5,12 +5,15 @@ import {
   isDateParameter,
   isNumberParameter,
   isStringParameter,
+  isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   ParameterTarget,
   ParameterType,
   ParameterValueOrArray,
+  StructuredParameterDimensionTarget,
 } from "metabase-types/api";
+import { isStructuredDimensionTarget } from "metabase-types/guards";
 
 import { deserializeDateFilter } from "./dates";
 
@@ -37,17 +40,31 @@ const NUMBER_OPERATORS: Partial<
   "number/between": "between",
 };
 
-export function applyFilterParameter(
+export function applyParameter(
   query: Lib.Query,
   stageIndex: number,
   type: ParameterType,
-  target: ParameterTarget,
-  value: ParameterValueOrArray,
-): Lib.Query {
-  if (target == null || value == null) {
+  target: ParameterTarget | null,
+  value: ParameterValueOrArray | null,
+) {
+  if (target == null || value == null || !isStructuredDimensionTarget(target)) {
     return query;
   }
 
+  if (isTemporalUnitParameter(type)) {
+    return applyTemporalUnitParameter(query, stageIndex, target, value);
+  } else {
+    return applyFilterParameter(query, stageIndex, type, target, value);
+  }
+}
+
+function applyFilterParameter(
+  query: Lib.Query,
+  stageIndex: number,
+  type: ParameterType,
+  target: StructuredParameterDimensionTarget,
+  value: ParameterValueOrArray,
+): Lib.Query {
   const column = getParameterFilterColumn(query, stageIndex, target);
   if (column == null) {
     return query;
@@ -64,12 +81,8 @@ export function applyFilterParameter(
 function getParameterFilterColumn(
   query: Lib.Query,
   stageIndex: number,
-  target: ParameterTarget,
+  target: StructuredParameterDimensionTarget,
 ) {
-  if (target[0] !== "dimension" || target[1][0] === "template-tag") {
-    return;
-  }
-
   const columnRef = target[1];
   const columns = Lib.filterableColumns(query, stageIndex);
   const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
@@ -198,4 +211,39 @@ function getDateParameterFilterClause(
   }
 
   return getDateFilterClause(column, filter);
+}
+
+function applyTemporalUnitParameter(
+  query: Lib.Query,
+  stageIndex: number,
+  target: StructuredParameterDimensionTarget,
+  value: ParameterValueOrArray,
+): Lib.Query {
+  const breakouts = Lib.breakouts(query, stageIndex);
+  const columns = breakouts.map(breakout =>
+    Lib.breakoutColumn(query, stageIndex, breakout),
+  );
+  const columnRef = target[1];
+  const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    stageIndex,
+    columns,
+    [columnRef],
+  );
+  if (columnIndex < 0) {
+    return query;
+  }
+
+  const column = columns[columnIndex];
+  const breakout = breakouts[columnIndex];
+  const buckets = Lib.availableTemporalBuckets(query, stageIndex, column);
+  const bucket = buckets.find(
+    bucket => Lib.displayInfo(query, stageIndex, bucket).shortName === value,
+  );
+  if (!bucket) {
+    return query;
+  }
+
+  const columnWithBucket = Lib.withTemporalBucket(column, bucket);
+  return Lib.replaceClause(query, stageIndex, breakout, columnWithBucket);
 }

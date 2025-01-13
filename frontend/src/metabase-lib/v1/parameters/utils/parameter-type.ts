@@ -47,11 +47,11 @@ export function isCategoryParameter(parameter: Parameter | string) {
   return type === "category";
 }
 
-export function isFilterParameter(parameter: Parameter) {
+export function isFilterParameter(parameter: Parameter | string) {
   return !isTemporalUnitParameter(parameter);
 }
 
-export function isTemporalUnitParameter(parameter: Parameter) {
+export function isTemporalUnitParameter(parameter: Parameter | string) {
   const type = getParameterType(parameter);
   return type === "temporal-unit";
 }
