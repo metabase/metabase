@@ -4,9 +4,11 @@
    [clojure.test :refer :all]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
+   [metabase.channel.shared :as channel.shared]
    [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.send :as pulse.send]
@@ -219,7 +221,10 @@
 ;;; |                                                     Tests                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def execute-dashboard (requiring-resolve 'metabase.notification.payload.execute/execute-dashboard))
+(defn execute-dashboard
+  [& args]
+  (let [dashboard-result (apply notification.payload.execute/execute-dashboard args)]
+    (map channel.shared/realize-data-rows dashboard-result)))
 
 (deftest ^:parallel execute-dashboard-test
   (testing "it runs for each non-virtual card"
@@ -973,15 +978,16 @@
                (pulse.test-util/thunk->boolean pulse-results))))}}))
 
 (defn- result-attachment
-  [{{{:keys [rows]} :data, :as result} :result}]
-  (when (seq rows)
-    [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
-       (with-open [os baos]
-         (#'email.result-attachment/stream-api-results-to-export-format os {:export-format :csv :format-rows? true} result)
-         (let [output-string (.toString baos "UTF-8")]
-           {:type         :attachment
-            :content-type :csv
-            :content      output-string})))]))
+  [part]
+  (let [{{{:keys [rows]} :data, :as result} :result} (channel.shared/realize-data-rows part)]
+    (when (seq rows)
+      [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
+         (with-open [os baos]
+           (#'email.result-attachment/stream-api-results-to-export-format os {:export-format :csv :format-rows? true} result)
+           (let [output-string (.toString baos "UTF-8")]
+             {:type         :attachment
+              :content-type :csv
+              :content      output-string})))])))
 
 (defn- metadata->field-ref
   [{:keys [name field_ref]} enabled?]

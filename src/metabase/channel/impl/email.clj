@@ -6,6 +6,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
@@ -69,7 +70,7 @@
   [timezone part options]
   (case (:type part)
     :card
-    (channel.render/render-pulse-section timezone part options)
+    (channel.render/render-pulse-section timezone (channel.shared/realize-data-rows part) options)
 
     :text
     {:content (markdown/process-markdown (:text part) :html)}
@@ -111,6 +112,7 @@
 (defn- email-attachment
   [rendered-cards parts]
   (filter some?
+          ;; maybe we need to rewrite this into a transducer?
           (concat (map make-message-attachment (apply merge (map :attachments (u/one-or-many rendered-cards))))
                   (mapcat email.result-attachment/result-attachment parts))))
 
@@ -245,7 +247,7 @@
                 parameters
                 dashboard]} payload
         timezone            (some->> dashboard_parts (some :card) channel.render/defaulted-timezone)
-        rendered-cards      (mapv #(render-part timezone % {:channel.render/include-title? true}) dashboard_parts)
+        rendered-cards      (map #(render-part timezone % {:channel.render/include-title? true}) dashboard_parts)
         icon-attachment     (apply make-message-attachment (icon-bundle :dashboard))
         attachments         (concat
                              [icon-attachment]

@@ -1,8 +1,8 @@
 ---
-title: Running Metabase
+title: Troubleshooting memory and JVM issues
 ---
 
-# Running Metabase
+# Troubleshooting memory and JVM issues
 
 Metabase runs on the Java Virtual Machine (JVM), and depending on how it's configured, it may use the server's filesystem to store some information. Problems with either the JVM or the filesystem can therefore prevent Metabase from running.
 
@@ -10,7 +10,7 @@ Metabase runs on the Java Virtual Machine (JVM), and depending on how it's confi
 
 Make sure you're using a Java version of 11 or higher.
 
-# Metabase's memory usage
+## Metabase's memory usage
 
 Metabase ships as a JAR file that runs on the Java Virtual Machine (JVM).
 

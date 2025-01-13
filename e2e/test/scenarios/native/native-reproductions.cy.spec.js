@@ -97,6 +97,7 @@ describe("issue 16886", () => {
     { tags: "@flaky" },
     () => {
       H.openNativeEditor();
+      cy.wait(1000); // attempt to decrease flakiness
       cy.realType(ORIGINAL_QUERY);
       cy.realPress("Home");
       Cypress._.range(SELECTED_TEXT.length).forEach(() =>
