@@ -70,6 +70,18 @@ On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.meta
 
 If you select "Don't cache results" for a question, dashboard, or database, Metabase won't cache its results; it'll always run the query against the database to refresh results.
 
+## Automatic cache refresh
+
+{% include plans-blockquote.html feature="Automatic cache refresh" %}
+
+If you turn on automatic cache refresh, Metabase will rerun the query as soon as the cache is invalidated by whichever caching policy you've set. Normally, Metabase only refreshes the cache when someone views the item _after_ its cache has expired. So, normally, when the cache has expired, the next person to view the question will be stuck waiting for the query to run and refresh the cache. But by automatically refreshing results to update the cache, the loading times will always be as fast as possible, and people will always get valid, cached results.
+
+### How automatic cache refresh handles parameter values
+
+When automatically refreshing results, Metabase will always apply the default parameter values (if any). Metabase will also cache results of up to ten of the most frequently applied parameter values that were applied _during the last caching period_ (as defined by your caching policy). If your question or dashboard has multiple parameters, Metabase will cache up to ten of the most frequently applied _combinations_ of parameter values.
+
+For example, let's say you have a dashboard with a category filter (default value: `Doohickey`) that's set to cache results every 24 hours. During the last 24 hours, people who viewed that dashboard applied the following values to the category filter: `Widget`, `Gizmo`. When Metabase next refreshes the cache, it will cache three sets of results, each set with one of those parameters applied: `Doohickey` (the default value), `Widget`, and `Gizmo`. If, however, _no one_ runs the query in that last 24 hours, Metabase will only refresh the cache for the results with the default parameter's value applied.
+
 ## Set caching policies for dashboards, questions, and databases
 
 You can set caching policies for different entities.
