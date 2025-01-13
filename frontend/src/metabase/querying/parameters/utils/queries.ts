@@ -39,6 +39,14 @@ const NUMBER_OPERATORS: Partial<
   "number/between": "between",
 };
 
+const BOOLEAN_OPERATORS: Partial<
+  Record<ParameterType, Lib.BooleanFilterOperator>
+> = {
+  id: "=",
+  category: "=",
+  "string/=": "=",
+};
+
 export function applyParameter(
   query: Lib.Query,
   stageIndex: number,
@@ -170,6 +178,11 @@ function getBooleanParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
+  const operator = BOOLEAN_OPERATORS[type];
+  if (operator == null) {
+    return;
+  }
+
   const values = getValueAsArray(value)
     .filter(value => typeof value === "boolean")
     .map(Boolean);
@@ -177,18 +190,7 @@ function getBooleanParameterFilterClause(
     return;
   }
 
-  switch (type) {
-    case "id":
-    case "category":
-    case "string/=":
-      return Lib.booleanFilterClause({ operator: "=", column, values });
-    case "string/!=":
-      return Lib.booleanFilterClause({
-        operator: "=",
-        column,
-        values: values.map(value => !value),
-      });
-  }
+  return Lib.booleanFilterClause({ operator, column, values });
 }
 
 function getDateParameterFilterClause(
