@@ -5,7 +5,7 @@ export const POPOVER_ELEMENT =
 
 export function popover(testid) {
   const selector = `${POPOVER_ELEMENT}${testid ? `[data-testid=${testid}]` : ""}`;
-  return cy.get(selector).should("be.visible");
+  return cy.get(selector).filter(":visible").should("be.visible");
 }
 
 const HOVERCARD_ELEMENT = ".mantine-HoverCard-dropdown[role='dialog']:visible";

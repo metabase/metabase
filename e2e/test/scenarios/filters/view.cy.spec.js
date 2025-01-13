@@ -81,12 +81,12 @@ describe("scenarios > question > view", () => {
       cy.findByText("This question is written in SQL.");
       cy.findAllByText("VENDOR").first().click();
       H.dashboardParametersPopover().within(() => {
-        H.multiAutocompleteInput().type("Balistreri-Muller");
+        H.fieldValuesInput().type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
       cy.findAllByText("CATEGORY").first().click();
       H.dashboardParametersPopover().within(() => {
-        H.multiAutocompleteInput().type("Widget");
+        H.fieldValuesInput().type("Widget");
         cy.findByText("Add filter").click();
       });
 
