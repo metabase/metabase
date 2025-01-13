@@ -8,6 +8,7 @@
    [metabase.config :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.initialization-status :as init-status]
+   [metabase.core.init]
    [metabase.db :as mdb]
    [metabase.driver.h2]
    [metabase.driver.mysql]
@@ -36,6 +37,7 @@
 (set! *warn-on-reflection* true)
 
 (comment
+  metabase.core.init/keep-me
   ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
   metabase.driver.h2/keep-me
   metabase.driver.mysql/keep-me
