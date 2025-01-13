@@ -9,11 +9,6 @@ const {
 const isOpenMode = args["--open"];
 
 const runCypress = async (baseUrl, exitFunction) => {
-  await executeYarnCommand({
-    command: "yarn run clean-cypress-artifacts",
-    message: "Removing the existing Cypress artifacts\n",
-  });
-
   const defaultConfig = {
     browser: "chrome",
     configFile: "e2e/support/cypress.config.js",
