@@ -1,7 +1,8 @@
-import { type TagsInputProps, Tooltip, ComboboxItem } from "@mantine/core";
+import { type ComboboxItem, type TagsInputProps, Tooltip } from "@mantine/core";
 import { useUncontrolled } from "@mantine/hooks";
 import type { ClipboardEvent, FocusEvent } from "react";
-import React, { useMemo, useRef, useState } from "react";
+import type React from "react";
+import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -152,13 +153,15 @@ export function MultiAutocomplete({
       role="combobox"
       nothingFoundMessage={nothingFoundMessage}
       comboboxProps={{
-        ...props.comboboxProps,
+        withinPortal: false,
+        floatingStrategy: "fixed",
         styles: {
           empty: {
             padding: "1.5rem 0.5rem",
             color: "var(--mb-color-text-light)",
           },
         },
+        ...props.comboboxProps,
       }}
     />
   );
