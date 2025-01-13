@@ -66,7 +66,6 @@
     "immer": "^9.0.17",
     "inflection": "^1.7.1",
     "inquirer-toggle": "^1.0.1",
-    "invariant": "^2.2.4",
     "js-cookie": "^2.1.2",
     "jspdf": "^2.5.2",
     "jsrsasign": "^11.0.0",
