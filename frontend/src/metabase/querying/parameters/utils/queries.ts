@@ -1,9 +1,6 @@
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
-import {
-  isDateParameter,
-  isTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/parameter-type";
+import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   ParameterTarget,
   ParameterType,
@@ -110,15 +107,16 @@ function getParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ) {
-  if (isDateParameter(type) && Lib.isDateOrDateTime(column)) {
+  if (Lib.isDateOrDateTime(column)) {
     return getDateParameterFilterClause(column, value);
   }
-
   if (Lib.isBoolean(column)) {
     return getBooleanParameterFilterClause(type, column, value);
-  } else if (Lib.isNumeric(column)) {
+  }
+  if (Lib.isNumeric(column)) {
     return getNumberParameterFilterClause(type, column, value);
-  } else if (Lib.isString(column)) {
+  }
+  if (Lib.isString(column)) {
     return getStringParameterFilterClause(type, column, value);
   }
 }
