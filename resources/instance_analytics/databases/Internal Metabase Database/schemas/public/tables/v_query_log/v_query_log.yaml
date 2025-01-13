@@ -7,6 +7,7 @@ schema: public
 entity_type: entity/EventTable
 active: true
 is_upload: false
+is_gsheet: false
 field_order: database
 visibility_type: null
 show_in_getting_started: false
