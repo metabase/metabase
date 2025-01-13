@@ -44,7 +44,7 @@
   [binding]
   (update-keys (into {} (partition-all 2) binding) sym->var))
 
-(defmacro with-dynamic-redefs
+(defmacro with-dynamic-fn-redefs
   "A thread-safe version of with-redefs. It only supports functions, and adds a fair amount of overhead.
    It works by replacing each original definition with a proxy the first time it is redefined.
    This proxy uses a dynamic mapping to check whether the function is currently redefined."
