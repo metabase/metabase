@@ -50,6 +50,22 @@ export default function RootLayout({
                     <Link href="/components/radio">Radio</Link>
                   </Box>
                 </Box>
+
+                <Box>
+                  <Title order={4}>Overlays</Title>
+                  <Box>
+                    <Link href="/components/modal">Modal</Link>
+                  </Box>
+                </Box>
+
+                <Box my="md">
+                  <Title order={4}>Patterns</Title>
+                  <Box>
+                    <Link href="/patterns/for-your-consideration">
+                      For your consideration
+                    </Link>
+                  </Box>
+                </Box>
               </Navbar>
             }
             header={
