@@ -25,6 +25,8 @@ export type DateParameterType =
   | "date/quarter-year"
   | "date/all-options";
 
+export type IdParameterType = "id";
+
 export type CategoryParameterType = "category";
 
 export type TemporalUnitParameterType = "temporal-unit";
@@ -33,6 +35,7 @@ export type ParameterType =
   | StringParameterType
   | NumberParameterType
   | DateParameterType
+  | IdParameterType
   | CategoryParameterType
   | TemporalUnitParameterType;
 

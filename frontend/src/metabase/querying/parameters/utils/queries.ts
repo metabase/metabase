@@ -1,10 +1,7 @@
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import {
-  isCategoryParameter,
   isDateParameter,
-  isNumberParameter,
-  isStringParameter,
   isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
@@ -20,6 +17,7 @@ import { deserializeDateFilter } from "./dates";
 const STRING_OPERATORS: Partial<
   Record<ParameterType, Lib.StringFilterOperator>
 > = {
+  id: "=",
   category: "=",
   "string/=": "=",
   "string/!=": "!=",
@@ -32,6 +30,7 @@ const STRING_OPERATORS: Partial<
 const NUMBER_OPERATORS: Partial<
   Record<ParameterType, Lib.NumberFilterOperator>
 > = {
+  id: "=",
   category: "=",
   "number/=": "=",
   "number/!=": "!=",
@@ -103,22 +102,16 @@ function getParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ) {
-  if (isStringParameter(type) || isCategoryParameter(type)) {
-    if (Lib.isBoolean(column)) {
-      return getBooleanParameterFilterClause(type, column, value);
-    } else if (Lib.isNumeric(column)) {
-      return getNumberParameterFilterClause(type, column, value);
-    } else if (Lib.isString(column)) {
-      return getStringParameterFilterClause(type, column, value);
-    }
-  }
-
-  if (isNumberParameter(type) && Lib.isNumeric(column)) {
-    return getNumberParameterFilterClause(type, column, value);
-  }
-
   if (isDateParameter(type) && Lib.isDateOrDateTime(column)) {
     return getDateParameterFilterClause(column, value);
+  }
+
+  if (Lib.isBoolean(column)) {
+    return getBooleanParameterFilterClause(type, column, value);
+  } else if (Lib.isNumeric(column)) {
+    return getNumberParameterFilterClause(type, column, value);
+  } else if (Lib.isString(column)) {
+    return getStringParameterFilterClause(type, column, value);
   }
 }
 
@@ -185,6 +178,7 @@ function getBooleanParameterFilterClause(
   }
 
   switch (type) {
+    case "id":
     case "category":
     case "string/=":
       return Lib.booleanFilterClause({ operator: "=", column, values });

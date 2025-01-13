@@ -42,11 +42,6 @@ export function isStringParameter(parameter: Parameter | string) {
   return type === "string";
 }
 
-export function isCategoryParameter(parameter: Parameter | string) {
-  const type = getParameterType(parameter);
-  return type === "category";
-}
-
 export function isFilterParameter(parameter: Parameter | string) {
   return !isTemporalUnitParameter(parameter);
 }
