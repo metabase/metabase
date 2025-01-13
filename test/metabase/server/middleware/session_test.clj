@@ -8,15 +8,14 @@
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
    [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,7 +34,7 @@
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
-          (t2.with-temp/with-temp [:model/User {user-id :id}]
+          (mt/with-temp [:model/User {user-id :id}]
             (let [session-id (str (random-uuid))]
               (t2/insert! (t2/table-name :model/Session) {:id session-id, :user_id user-id, :created_at created-at})
               (let [session (#'mw.session/current-user-info-for-session session-id nil)]
@@ -99,11 +98,11 @@
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-id :uri]))))))
 
 (deftest current-user-info-for-api-key-test
-  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key"
-                                            :user_id       (mt/user->id :lucky)
-                                            :creator_id    (mt/user->id :lucky)
-                                            :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  (u.secret/secret "mb_foobar")}]
+  (mt/with-temp [:model/ApiKey _ {:name          "An API Key"
+                                  :user_id       (mt/user->id :lucky)
+                                  :creator_id    (mt/user->id :lucky)
+                                  :updated_by_id (mt/user->id :lucky)
+                                  :unhashed_key  (u.secret/secret "mb_foobar")}]
     (testing "A valid API key works, and user info is added to the request"
       (let [req {:headers {"x-api-key" "mb_foobar"}}]
         (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
@@ -122,11 +121,11 @@
         ;; no key at all
         {:headers {}})))
 
-  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key without an internal user"
-                                            :user_id       nil
-                                            :creator_id    (mt/user->id :lucky)
-                                            :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  (u.secret/secret "mb_foobar")}]
+  (mt/with-temp [:model/ApiKey _ {:name          "An API Key without an internal user"
+                                  :user_id       nil
+                                  :creator_id    (mt/user->id :lucky)
+                                  :updated_by_id (mt/user->id :lucky)
+                                  :unhashed_key  (u.secret/secret "mb_foobar")}]
     (testing "An API key without an internal user (e.g. a SCIM key) should not modify the request"
       (let [req {:headers {"x-api-key" "mb_foobar"}}]
         (is (= req (#'mw.session/merge-current-user-info req)))))))
@@ -148,16 +147,16 @@
      (fn [e] (throw e)))))
 
 (deftest user-data-is-correctly-bound-for-api-keys
-  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key"
-                                            :user_id       (mt/user->id :lucky)
-                                            :creator_id    (mt/user->id :lucky)
-                                            :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  (u.secret/secret "mb_foobar")}
-                           :model/ApiKey _ {:name          "A superuser API Key"
-                                            :user_id       (mt/user->id :crowberto)
-                                            :creator_id    (mt/user->id :lucky)
-                                            :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  (u.secret/secret "mb_superuser")}]
+  (mt/with-temp [:model/ApiKey _ {:name          "An API Key"
+                                  :user_id       (mt/user->id :lucky)
+                                  :creator_id    (mt/user->id :lucky)
+                                  :updated_by_id (mt/user->id :lucky)
+                                  :unhashed_key  (u.secret/secret "mb_foobar")}
+                 :model/ApiKey _ {:name          "A superuser API Key"
+                                  :user_id       (mt/user->id :crowberto)
+                                  :creator_id    (mt/user->id :lucky)
+                                  :updated_by_id (mt/user->id :lucky)
+                                  :unhashed_key  (u.secret/secret "mb_superuser")}]
     (testing "A valid API key works, and user info is added to the request"
       (is (= {:is-superuser?     false
               :is-group-manager? false
@@ -328,7 +327,7 @@
 
     (testing "w/ Session"
       (testing "for user with no `:locale`"
-        (t2.with-temp/with-temp [:model/User {user-id :id}]
+        (mt/with-temp [:model/User {user-id :id}]
           (let [session-id (str (random-uuid))]
             (t2/insert! :model/Session {:id session-id, :user_id user-id})
             (is (= nil
@@ -339,7 +338,7 @@
                      (session-locale session-id :headers {"x-metabase-locale" "es-mx"})))))))
 
       (testing "for user *with* `:locale`"
-        (t2.with-temp/with-temp [:model/User {user-id :id} {:locale "es-MX"}]
+        (mt/with-temp [:model/User {user-id :id} {:locale "es-MX"}]
           (let [session-id (str (random-uuid))]
             (t2/insert! :model/Session {:id session-id, :user_id user-id, :created_at :%now})
             (is (= "es_MX"

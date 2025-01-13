@@ -47,6 +47,7 @@
    [:fn decode-base64-json]
    (deferred-tru "value couldn''t be parsed as base64 encoded JSON")))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards ordered by interestingness."
   [id]
@@ -144,6 +145,7 @@
     (-> (->entity entity entity-id-or-query)
         (xrays/automagic-analysis {:show (coerce-show show)}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `id`."
   [entity entity-id-or-query show]
@@ -153,6 +155,7 @@
            (deferred-tru "Invalid entity type"))}
   (get-automagic-dashboard entity entity-id-or-query show))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:entity/:entity-id-or-query/query_metadata"
   "Return all metadata for an automagic dashboard for entity `entity` with id `id`."
   [entity entity-id-or-query]
@@ -248,6 +251,7 @@
                                             :dashcard.background false
                                             :text.align_vertical :bottom}}])}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/model_index/:model-index-id/primary_key/:pk-id"
   "Return an automagic dashboard for an entity detail specified by `entity`
   with id `id` and a primary key of `indexed-value`."
@@ -269,6 +273,7 @@
                                 :model-index       model-index
                                 :model-index-value model-index-value}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
   [entity entity-id-or-query prefix dashboard-template show]
@@ -281,6 +286,7 @@
       (xrays/automagic-analysis {:show               (coerce-show show)
                                  :dashboard-template ["table" prefix dashboard-template]})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query"
   "Return an automagic dashboard analyzing cell in  automagic dashboard for entity `entity`
    defined by
@@ -294,6 +300,7 @@
       (xrays/automagic-analysis {:show       (coerce-show show)
                                  :cell-query (decode-base64-json cell-query)})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-query` using dashboard-template `dashboard-template`."
@@ -309,6 +316,7 @@
                                  :dashboard-template ["table" prefix dashboard-template]
                                  :cell-query         (decode-base64-json cell-query)})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`"
@@ -324,6 +332,7 @@
                                                   :comparison?  true})]
     (xrays/comparison-dashboard dashboard left right {})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;
    compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
@@ -342,6 +351,7 @@
                                                   :comparison?        true})]
     (xrays/comparison-dashboard dashboard left right {})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `id` defined by query `cell-query`; compared with entity `comparison-entity` with id
@@ -359,6 +369,7 @@
                                                   :comparison?  true})]
     (xrays/comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `id` defined by query `cell-query` using dashboard-template `dashboard-template`; compared with entity

@@ -20,8 +20,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (com.google.cloud.bigquery TableResult)))
 
@@ -700,13 +699,13 @@
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Querying a different project-id works"
-      (t2.with-temp/with-temp [:model/Database
-                               {db-id :id :as temp-db}
-                               {:engine  :bigquery-cloud-sdk
-                                :details (-> (:details (mt/db))
-                                             (assoc :project-id "bigquery-public-data"
-                                                    :dataset-filters-type "inclusion"
-                                                    :dataset-filters-patterns "chicago_taxi_trips"))}]
+      (mt/with-temp [:model/Database
+                     {db-id :id :as temp-db}
+                     {:engine  :bigquery-cloud-sdk
+                      :details (-> (:details (mt/db))
+                                   (assoc :project-id "bigquery-public-data"
+                                          :dataset-filters-type "inclusion"
+                                          :dataset-filters-patterns "chicago_taxi_trips"))}]
         (mt/with-db temp-db
           (testing " for sync"
             (sync/sync-database! temp-db {:scan :schema})
@@ -1026,7 +1025,7 @@
                        mt/process-query))))))))))
 
 (defn- synced-tables [db-attributes]
-  (t2.with-temp/with-temp [:model/Database db db-attributes]
+  (mt/with-temp [:model/Database db db-attributes]
     (sync/sync-database! db {:scan :schema})
     (t2/select :model/Table :db_id (u/the-id db))))
 

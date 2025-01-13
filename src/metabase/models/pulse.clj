@@ -19,7 +19,6 @@
   pulses that are a collection of cards, not dashboard."
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.events :as events]
@@ -30,6 +29,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -49,7 +49,7 @@
   {:parameters mi/transform-json})
 
 (defn- assert-valid-parameters [{:keys [parameters]}]
-  (when-not (mc/validate [:maybe
+  (when-not (mr/validate [:maybe
                           [:sequential
                            [:and
                             [:map [:id ms/NonBlankString]]

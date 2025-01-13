@@ -19,12 +19,9 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     // switch to a pin map visualization
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+    H.openVizTypeSidebar();
     cy.icon("pinmap").click();
-    cy.findByTestId("Map-container").within(() => {
-      cy.icon("gear").click();
-    });
+    H.openVizSettingsSidebar({ isSidebarOpen: true });
 
     toggleFieldSelectElement("Map type");
     H.popover().findByText("Pin map").click();
@@ -74,7 +71,7 @@ describe("scenarios > visualizations > maps", () => {
       { visitQuestion: true },
     );
 
-    cy.button("Visualization").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("display-options-sensible").as("sensibleOptions");
 
     cy.get("@sensibleOptions").within(() => {

@@ -5,12 +5,12 @@
   #?(:clj
      (:require
       [clojure.test :refer [deftest is testing]]
-      [malli.core :as mc]
       [malli.error :as me]
       [metabase.test :as mt]
       [metabase.util.i18n :refer [deferred-tru]]
       [metabase.util.malli :as mu]
-      [metabase.util.malli.describe :as umd])))
+      [metabase.util.malli.describe :as umd]
+      [metabase.util.malli.registry :as mr])))
 
 #?(:clj
    (deftest with-api-error-message
@@ -22,10 +22,10 @@
                                     (deferred-tru "Special Number that has to be less than four error"))]
 
            (is (= [(deferred-tru "Special Number that has to be less than four error")]
-                  (me/humanize (mc/explain special-lt-4-schema 8))))
+                  (me/humanize (mr/explain special-lt-4-schema 8))))
 
            (is (= ["Special Number that has to be less than four error, received: 8"]
-                  (me/humanize (mc/explain special-lt-4-schema 8) {:wrap #'mu/humanize-include-value})))
+                  (me/humanize (mr/explain special-lt-4-schema 8) {:wrap #'mu/humanize-include-value})))
 
            (testing "should be user-localized"
              (is (= "Special Number that has to be less than four description"
@@ -42,17 +42,17 @@
                         (umd/describe special-lt-4-schema)))
 
                  (is (= ["Número especial que tiene que ser menos de cuatro errores, recibió: 8"]
-                        (me/humanize (mc/explain special-lt-4-schema 8) {:wrap #'mu/humanize-include-value}))))))))
+                        (me/humanize (mr/explain special-lt-4-schema 8) {:wrap #'mu/humanize-include-value}))))))))
 
        (testing "inner schema"
          (let [special-lt-4-schema [:map [:ltf-key (mu/with-api-error-message
                                                     [:fn less-than-four-fxn]
                                                     (deferred-tru "Special Number that has to be less than four"))]]]
            (is (= {:ltf-key ["missing required key"]}
-                  (me/humanize (mc/explain special-lt-4-schema {}))))
+                  (me/humanize (mr/explain special-lt-4-schema {}))))
 
            (is (= {:ltf-key [(deferred-tru "Special Number that has to be less than four")]}
-                  (me/humanize (mc/explain special-lt-4-schema {:ltf-key 8}))))
+                  (me/humanize (mr/explain special-lt-4-schema {:ltf-key 8}))))
 
            (is (= "map where {:ltf-key -> <Special Number that has to be less than four>}"
                   (umd/describe special-lt-4-schema))))))))
@@ -62,7 +62,7 @@
      (testing "with a schema"
        (is (= {:a 1 :b "b"} (mu/validate-throw [:map [:a :int] [:b :string]] {:a 1 :b "b"})))
        (is (thrown-with-msg? Exception #"Value does not match schema" (mu/validate-throw [:map [:a :int] [:b :string]] "1"))))
-     (let [map-validator (mc/validator [:map [:a :int] [:b :string]])]
+     (let [map-validator (mr/validator [:map [:a :int] [:b :string]])]
        (testing "with a schema"
          (is (= {:a 1 :b "b"} (mu/validate-throw map-validator {:a 1 :b "b"}))
              (is (thrown-with-msg? Exception #"Value does not match schema" (mu/validate-throw map-validator "1"))))))))

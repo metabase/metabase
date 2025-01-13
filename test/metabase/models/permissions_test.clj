@@ -8,8 +8,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -225,9 +224,9 @@
           (u/the-id (t2/select-one :model/Collection :personal_owner_id (mt/user->id :lucky))))))
 
     (testing "(should apply to descendants as well)"
-      (t2.with-temp/with-temp [:model/Collection collection {:location (collection/children-location
-                                                                        (collection/user->personal-collection
-                                                                         (mt/user->id :lucky)))}]
+      (mt/with-temp [:model/Collection collection {:location (collection/children-location
+                                                              (collection/user->personal-collection
+                                                               (mt/user->id :lucky)))}]
         (is (thrown-with-msg?
              Exception
              #"You cannot edit permissions for a Personal Collection or its descendants."
@@ -235,15 +234,15 @@
 
 (deftest revoke-collection-permissions-test
   (testing "Should be able to revoke permissions for non-personal Collections"
-    (t2.with-temp/with-temp [:model/Collection {collection-id :id}]
+    (mt/with-temp [:model/Collection {collection-id :id}]
       (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (testing "Collection should still exist"
         (is (some? (t2/select-one :model/Collection :id collection-id)))))))
 
 (deftest disallow-granting-personal-collection-perms-test
-  (t2.with-temp/with-temp [:model/Collection collection {:location (collection/children-location
-                                                                    (collection/user->personal-collection
-                                                                     (mt/user->id :lucky)))}]
+  (mt/with-temp [:model/Collection collection {:location (collection/children-location
+                                                          (collection/user->personal-collection
+                                                           (mt/user->id :lucky)))}]
     (doseq [[perms-type f] {"read"  perms/grant-collection-read-permissions!
                             "write" perms/grant-collection-readwrite-permissions!}]
       (testing (format "Should throw Exception if you use the helper function to grant %s perms for a Personal Collection"
@@ -259,7 +258,7 @@
                (f (perms-group/all-users) collection))))))))
 
 (deftest grant-revoke-root-collection-permissions-test
-  (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id}]
+  (mt/with-temp [:model/PermissionsGroup {group-id :id}]
     (letfn [(perms []
               (t2/select-fn-set :object :model/Permissions {:where [:and
                                                                     [:like :object "/collection/%"]
@@ -292,7 +291,7 @@
                (perms)))))))
 
 (deftest grant-revoke-application-permissions-test
-  (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id}]
+  (mt/with-temp [:model/PermissionsGroup {group-id :id}]
     (letfn [(perms []
               (t2/select-fn-set :object :model/Permissions
                                 {:where [:and [:= :group_id group-id]

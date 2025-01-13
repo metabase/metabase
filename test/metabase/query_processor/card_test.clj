@@ -10,8 +10,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util.json :as json]))
 
 (defn run-query-for-card
   "Run query for Card synchronously."
@@ -73,19 +72,19 @@
 
 (deftest ^:parallel card-template-tag-parameters-test
   (testing "Card with a Field filter parameter"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
       (is (= {"date" :date/all-options}
              (#'qp.card/card-template-tag-parameters card-id))))))
 
 (deftest ^:parallel card-template-tag-parameters-test-2
   (testing "Card with a non-Field-filter parameter"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query (non-field-filter-query)}]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (non-field-filter-query)}]
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id))))))
 
 (deftest ^:parallel card-template-tag-parameters-test-3
   (testing "Should ignore native query snippets and source card IDs"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query (non-parameter-template-tag-query)}]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (non-parameter-template-tag-query)}]
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id))))))
 
@@ -98,7 +97,7 @@
          (#'qp.card/infer-parameter-name {:target [:field 1000 nil]}))))
 
 (deftest ^:parallel validate-card-parameters-test
-  (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Should disallow parameters that aren't actually part of the Card"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -109,7 +108,7 @@
                                                          :value "2016-01-01"}]))))))
 
 (deftest ^:parallel validate-card-parameters-test-2
-  (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Should disallow parameters that aren't actually part of the Card"
       (testing "As an API request"
         (is (=? {:message            #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\".+"
@@ -122,7 +121,7 @@
                                                      :value "2016-01-01"}]})))))))
 
 (deftest ^:parallel validate-card-parameters-test-3
-  (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Should disallow parameters with types not allowed for the widget type"
       (letfn [(validate [param-type]
                 (#'qp.card/validate-card-parameters card-id [{:id    "_DATE_"
@@ -147,7 +146,7 @@
                          (validate disallowed-type))))))))))))
 
 (deftest ^:parallel validate-card-parameters-test-4
-  (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Happy path -- API request should succeed if parameter is valid"
       (is (= [1000]
              (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
@@ -158,24 +157,24 @@
 
 (deftest ^:parallel bad-viz-settings-should-still-work-test
   (testing "We should still be able to run a query that has Card bad viz settings referencing a column not in the query (#34950)"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query
-                                                        (mt/mbql-query venues
-                                                          {:aggregation [[:count]]})
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                              (mt/mbql-query venues
+                                                {:aggregation [[:count]]})
 
-                                                        :visualization_settings
-                                                        {:column_settings {(json/encode
-                                                                            [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]])
-                                                                           {:date_abbreviate true
-                                                                            :some_other_key  [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]]}}}}]
+                                              :visualization_settings
+                                              {:column_settings {(json/encode
+                                                                  [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]])
+                                                                 {:date_abbreviate true
+                                                                  :some_other_key  [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]]}}}}]
       (is (= [[100]]
              (mt/rows (run-query-for-card card-id)))))))
 
 (deftest ^:parallel pivot-tables-should-not-override-the-run-function
   (testing "Pivot tables should not override the run function (#44160)"
-    (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query
-                                                        (mt/mbql-query venues
-                                                          {:aggregation [[:count]]})
-                                                        :display :pivot}]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                              (mt/mbql-query venues
+                                                {:aggregation [[:count]]})
+                                              :display :pivot}]
       (let [result (run-query-for-card card-id)]
         (is (=? {:status :completed}
                 result))

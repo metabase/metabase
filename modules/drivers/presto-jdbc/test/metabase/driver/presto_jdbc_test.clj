@@ -17,8 +17,7 @@
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.io File)))
 
@@ -215,7 +214,7 @@
                        (format "DROP SCHEMA IF EXISTS %s" s)
                        (format "CREATE SCHEMA %s" s)
                        (format "CREATE TABLE %s.%s (pk INTEGER, val1 VARCHAR(512))" s t)])
-        (t2.with-temp/with-temp [:model/Database db {:engine :presto-jdbc, :name "Temp Presto JDBC Schema DB", :details with-schema}]
+        (mt/with-temp [:model/Database db {:engine :presto-jdbc, :name "Temp Presto JDBC Schema DB", :details with-schema}]
           (mt/with-db db
             ;; same as test_data, but with schema, so should NOT pick up venues, users, etc.
             (sync/sync-database! db)

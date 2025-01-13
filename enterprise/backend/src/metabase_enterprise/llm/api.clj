@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.util.malli.schema :as ms]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/card/summarize"
   "Summarize a question."
   [:as {{:keys [collection_id collection_position dataset dataset_query description display
@@ -27,6 +28,7 @@
   ;(check-data-permissions-for-query dataset_query)
   {:summary (describe-question body)})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/dashboard/summarize/:id"
   "Provide a summary of a dashboard."
   [id]

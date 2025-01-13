@@ -30,7 +30,7 @@
   ([]
    (analyze-cards-without-complete-analysis! query-analysis/queue-analysis!))
   ([analyze-fn]
-   (let [cards (t2/reducible-select [:model/Card :id]
+   (let [cards (t2/reducible-select [:model/Card :id :dataset_query :entity_id :collection_id :name :created_at]
                                     {:left-join [[:query_analysis :qa]
                                                  [:and
                                                   [:= :qa.card_id :report_card.id]
@@ -45,7 +45,7 @@
    (analyze-cards-without-complete-analysis! query-analysis/queue-analysis!))
   ([analyze-fn]
    ;; TODO once we are storing the hash of the query used for analysis, we'll be able to filter this properly.
-   (let [cards (t2/reducible-select [:model/Card :id])]
+   (let [cards (t2/reducible-select [:model/Card :id :dataset_query :entity_id :collection_id :name :created_at])]
      (run-realized!  analyze-fn cards))))
 
 (defn- delete-orphan-analysis! []

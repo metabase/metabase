@@ -10,8 +10,7 @@
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,11 +55,11 @@
 
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"
-    (t2.with-temp/with-temp [:model/Pulse        {pulse-id :id}   {:name "Lodi Dodi"}
-                             :model/PulseChannel {channel-id :id} {:pulse_id pulse-id
-                                                                   :details  {:other  "stuff"
-                                                                              :emails ["foo@bar.com"]}}
-                             :model/Card         {card-id :id}    {:name "Test Card"}]
+    (mt/with-temp [:model/Pulse        {pulse-id :id}   {:name "Lodi Dodi"}
+                   :model/PulseChannel {channel-id :id} {:pulse_id pulse-id
+                                                         :details  {:other  "stuff"
+                                                                    :emails ["foo@bar.com"]}}
+                   :model/Card         {card-id :id}    {:name "Test Card"}]
       (t2/insert! :model/PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
       (t2/insert! :model/PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (mt/user->id :rasta))
       (is (= (merge
@@ -124,7 +123,7 @@
 ;; create-pulse!
 ;; simple example with a single card
 (deftest create-pulse-test
-  (t2.with-temp/with-temp [:model/Card card {:name "Test Card"}]
+  (mt/with-temp [:model/Card card {:name "Test Card"}]
     (mt/with-model-cleanup [:model/Pulse]
       (is (= (merge
               pulse-defaults
@@ -161,7 +160,7 @@
 
 (deftest create-pulse-event-test
   (testing "Creating pulse also logs event."
-    (t2.with-temp/with-temp [:model/Card card {:name "Test Card"}]
+    (mt/with-temp [:model/Card card {:name "Test Card"}]
       (mt/with-model-cleanup [:model/Pulse]
         (mt/with-premium-features #{:audit-app}
           (let [pulse (models.pulse/create-pulse! [(models.pulse/card->ref card)]
@@ -221,9 +220,9 @@
 ;;  7. subscription-update event is called
 (deftest update-pulse-test
   (mt/with-premium-features #{:audit-app}
-    (t2.with-temp/with-temp [:model/Pulse pulse  {}
-                             :model/Card  card-1 {:name "Test Card"}
-                             :model/Card  card-2 {:name "Bar Card" :display :bar}]
+    (mt/with-temp [:model/Pulse pulse  {}
+                   :model/Card  card-1 {:name "Test Card"}
+                   :model/Card  card-2 {:name "Bar Card" :display :bar}]
       (is (= (merge pulse-defaults
                     {:creator_id (mt/user->id :rasta)
                      :name       "We like to party"
@@ -355,9 +354,9 @@
       (testing "still sent to a Slack channel"
         (do-with-objects
          (fn [{:keys [archived? user-id pulse-id]}]
-           (t2.with-temp/with-temp [:model/PulseChannel _ {:channel_type "slack"
-                                                           :details      {:channel "#general"}
-                                                           :pulse_id     pulse-id}]
+           (mt/with-temp [:model/PulseChannel _ {:channel_type "slack"
+                                                 :details      {:channel "#general"}
+                                                 :pulse_id     pulse-id}]
              (testing "make the User inactive"
                (is (pos? (t2/update! :model/User user-id {:is_active false}))))
              (testing "Pulse should not be archived"
@@ -374,9 +373,9 @@
         (testing "emails on a different channel\n"
           (do-with-objects
            (fn [{:keys [archived? user-id pulse-id]}]
-             (t2.with-temp/with-temp [:model/PulseChannel _ {:channel_type "email"
-                                                             :details      {:emails ["foo@bar.com"]}
-                                                             :pulse_id     pulse-id}]
+             (mt/with-temp [:model/PulseChannel _ {:channel_type "email"
+                                                   :details      {:emails ["foo@bar.com"]}
+                                                   :pulse_id     pulse-id}]
                (testing "make the User inactive"
                  (is (pos? (t2/update! :model/User user-id {:is_active false}))))
                (testing "Pulse should not be archived"
@@ -432,19 +431,19 @@
       ~@body)))
 
 (deftest validate-collection-namespace-test
-  (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
+  (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Pulse in a non-normal Collection"
       (let [pulse-name (mt/random-name)]
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Pulse can only go in Collections in the \"default\" or :analytics namespace."
-               (t2/insert! :model/Pulse (assoc (t2.with-temp/with-temp-defaults :model/Pulse) :collection_id collection-id, :name pulse-name))))
+               (t2/insert! :model/Pulse (assoc (mt/with-temp-defaults :model/Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
             (t2/delete! :model/Pulse :name pulse-name)))))
 
     (testing "Shouldn't be able to move a Pulse to a non-normal Collection"
-      (t2.with-temp/with-temp [:model/Pulse {card-id :id}]
+      (mt/with-temp [:model/Pulse {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Pulse can only go in Collections in the \"default\" or :analytics namespace."

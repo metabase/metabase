@@ -18,6 +18,7 @@
 
 ;; TODO - not sure we need this endpoint now that we're just letting you edit from the regular `PUT /api/user/:id
 ;; endpoint
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id/attributes"
   "Update the `login_attributes` for a User."
   [id :as {{:keys [login_attributes]} :body}]
@@ -26,6 +27,7 @@
   (api/check-404 (t2/select-one :model/User :id id))
   (pos? (t2/update! :model/User id {:login_attributes login_attributes})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/attributes"
   "Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for
   existing Users and returns those. "

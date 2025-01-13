@@ -14,6 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types])
   (:import
@@ -27,7 +28,7 @@
 ;;; |                                              DOCSTRING GENERATION                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn handle-nonstandard-namespaces
+(defn- handle-nonstandard-namespaces
   "HACK to make sure some enterprise endpoints are consistent with the code.
    The right way to fix this is to move them -- see #22687"
   [name]
@@ -95,13 +96,13 @@
     ;; we can ignore the warning printed by umd/describe when schema is `nil`.
     (binding [*out* (new java.io.StringWriter)]
       (umd/describe schema))
-    (catch Exception _
-      (ex-data
-       (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
-         (log/warn
-          (u/format-color 'red "Invalid Malli Schema: %s defined at %s"
-                          (u/pprint-to-str schema)
-                          (u/add-period route-str)))))
+    (catch Exception e
+      (when (and schema config/is-dev?) ; schema is nil for any var without a schema. That's ok!
+        (log/warn
+         e
+         (u/format-color 'red "Invalid Malli Schema: %s defined at %s"
+                         (u/pprint-to-str schema)
+                         (u/add-period route-str))))
       "")))
 
 (defn- param-name
@@ -138,7 +139,7 @@
        (format-route-schema-dox param->schema route-str)))
 
 (defn- contains-superuser-check?
-  "Does the BODY of this `defendpoint` form contain a call to `check-superuser`?"
+  "Does the `body` of this `defendpoint` form contain a call to `check-superuser`?"
   [body]
   (let [body (set body)]
     (or (contains? body '(check-superuser))
@@ -343,13 +344,13 @@
 (defn validate-param
   "Validate a parameter against its respective malli schema, or throw an Exception."
   [field-name value schema]
-  (when-not (mc/validate schema value)
+  (when-not (mr/validate schema value)
     (throw (ex-info (tru "Invalid m field: {0}" field-name)
                     {:status-code 400
                      :errors      {(keyword field-name) (umd/describe schema)}
                      :specific-errors {(keyword field-name)
                                        (-> schema
-                                           (mc/explain value)
+                                           (mr/explain value)
                                            me/with-spell-checking
                                            (me/humanize {:wrap mu/humanize-include-value}))}}))))
 

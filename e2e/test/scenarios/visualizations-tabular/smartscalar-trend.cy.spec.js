@@ -40,7 +40,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").findByText("Data").click();
 
     // primary number
@@ -171,7 +171,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("comparison-list").children().should("have.length", 1);
 
     cy.findByTestId("scalar-previous-value").within(() => {
@@ -261,7 +261,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // Selecting the main column ("Mega Count") to be the comparison column
     // The "Another column (Mega Count)" comparison should disappear
@@ -336,7 +336,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     });
     cy.wait("@dataset");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("Sum of Total").should("not.exist");
       cy.findByText("Previous month").should("exist").click();
@@ -366,7 +366,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       "color",
       Color(colors.error).string(),
     );
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("Display").click();
       cy.findByLabelText("Switch positive / negative colors?").click({
@@ -490,7 +490,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     });
 
     // check that we can switch visualizations and no longer have the error show
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Line-button").click();
     cy.icon("warning").should("not.exist");
     H.cartesianChartCircle().should("have.length", 3);

@@ -7,8 +7,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
 
@@ -17,13 +16,13 @@
   the permissions we *should* need, either `:read` or `:write`."
   [required-perms has-perms?]
   (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-    (t2.with-temp/with-temp [:model/Collection      normal-collection {:name "Normal Collection", :namespace "snippets"}]
+    (mt/with-temp [:model/Collection      normal-collection {:name "Normal Collection", :namespace "snippets"}]
       ;; A user needs native query permissions on *any* database (among other things, in EE) to read/edit/create a NativeQuerySnippet
       (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
       ;; run tests with both a normal Collection and the Root Collection
       (doseq [{collection-name :name, :as collection} [normal-collection root-collection]]
         (testing (format "\nSnippet in %s" collection-name)
-          (t2.with-temp/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
+          (mt/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id collection)}]
             (testing "\nShould be allowed regardless if EE features aren't enabled"
               (mt/with-premium-features #{}
                 (is (= true
@@ -104,7 +103,7 @@
           ;; A user needs native query permissions on *any* database (among other things, in EE) to read/edit/create a NativeQuerySnippet
           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
           (doseq [source-collection [source root-collection]]
-            (t2.with-temp/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id source-collection)}]
+            (mt/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id source-collection)}]
               (doseq [dest-collection [dest root-collection]]
                 (letfn [(has-perms? []
                           ;; make sure the Snippet is back in the original Collection if it was changed
