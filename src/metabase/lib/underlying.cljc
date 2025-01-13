@@ -64,7 +64,7 @@
   [:map
    [:rename-superflous-options? {:optional true} :boolean]])
 
-(mu/defn top-level-column :- ::lib.schema.metadata/column
+(mu/defn top-level-column :- [:maybe ::lib.schema.metadata/column]
   "Given a column, returns the \"top-level\" equivalent.
 
   Top-level means to find the corresponding column in the [[top-level-query]], which requires walking back through the
