@@ -62,7 +62,7 @@
                            :get
                            ;; This is the endpoint that harbormaster uses to check if service-account is setup.
                            ;; n.b. try to ignore that it has 'oauth' in there.
-                           "/api/v2/mb/connections-google-oauth/service-account")]
+                           "/api/v2/mb/connections-google/service-account")]
     (if (= status :ok)
       (:email response)
       false)))
