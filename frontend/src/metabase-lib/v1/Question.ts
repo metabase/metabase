@@ -5,7 +5,7 @@ import slugg from "slugg";
 import _ from "underscore";
 
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { applyParameter } from "metabase/querying/parameters/utils/queries";
+import { applyParameter } from "metabase/querying/parameters/utils/apply";
 import * as Lib from "metabase-lib";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,

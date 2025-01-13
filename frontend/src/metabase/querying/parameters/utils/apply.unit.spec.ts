@@ -18,7 +18,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { applyParameter } from "./queries";
+import { applyParameter } from "./apply";
 
 type FilterParameterCase = {
   type: ParameterType;
