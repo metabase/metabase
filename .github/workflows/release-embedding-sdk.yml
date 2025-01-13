@@ -105,76 +105,76 @@ jobs:
             exit 0
           fi
 
-  # test:
-  #   needs: check-git-tag
-  #   runs-on: ubuntu-22.04
-  #   timeout-minutes: 20
-  #   steps:
-  #     - name: Check out the code using the provided branch
-  #       uses: actions/checkout@v4
-  #       with:
-  #         ref: ${{ inputs.branch }}
+  test:
+    needs: check-git-tag
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the code using the provided branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
-  #     - name: Prepare front-end environment
-  #       uses: ./.github/actions/prepare-frontend
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
 
-  #     - name: Prepare back-end environment
-  #       uses: ./.github/actions/prepare-backend
-  #       with:
-  #         m2-cache-key: "release-sdk"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "release-sdk"
 
-  #     - name: Run unit tests
-  #       run: yarn embedding-sdk:test-unit
+      - name: Run unit tests
+        run: yarn embedding-sdk:test-unit
 
-  # build-sdk:
-  #   needs: [test, determine-version]
-  #   runs-on: ubuntu-22.04
-  #   timeout-minutes: 20
-  #   steps:
-  #     - name: Check out the code using the provided branch
-  #       uses: actions/checkout@v4
-  #       with:
-  #         ref: ${{ inputs.branch }}
-  #         fetch-depth: 0
-  #         fetch-tags: true
+  build-sdk:
+    needs: [test, determine-version]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the code using the provided branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+          fetch-tags: true
 
-  #     - name: Prepare front-end environment
-  #       uses: ./.github/actions/prepare-frontend
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
 
-  #     - name: Prepare back-end environment
-  #       uses: ./.github/actions/prepare-backend
-  #       with:
-  #         m2-cache-key: "release-sdk"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "release-sdk"
 
-  #     - name: Bump published npm package version
-  #       # NOTE: this should happen before "Build SDK bundle" as we inject SDK version into the code during build step
-  #       run: |
-  #         ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-version.outputs.sdk_version }}
+      - name: Bump published npm package version
+        # NOTE: this should happen before "Build SDK bundle" as we inject SDK version into the code during build step
+        run: |
+          ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-version.outputs.sdk_version }}
 
-  #     - name: Update changelog
-  #       run: |
-  #         yarn embedding-sdk:generate-changelog -o changelog-diff
+      - name: Update changelog
+        run: |
+          yarn embedding-sdk:generate-changelog -o changelog-diff
 
-  #     - name: Build SDK bundle
-  #       run: yarn run build-embedding-sdk
+      - name: Build SDK bundle
+        run: yarn run build-embedding-sdk
 
-  #     - name: Generate SDK package.json in the build directory
-  #       run: yarn run embedding-sdk:generate-package
+      - name: Generate SDK package.json in the build directory
+        run: yarn run embedding-sdk:generate-package
 
-  #     - name: Upload built SDK package as artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: metabase-sdk
-  #         path: ./resources/embedding-sdk
+      - name: Upload built SDK package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: metabase-sdk
+          path: ./resources/embedding-sdk
 
-  #     - name: Upload changelog diff
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: sdk-changelog-diff
-  #         path: ./changelog-diff
+      - name: Upload changelog diff
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-changelog-diff
+          path: ./changelog-diff
 
   publish-npm:
-    needs: [check-git-tag, determine-version]
+    needs: [build-sdk, determine-version]
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     env:
@@ -199,30 +199,29 @@ jobs:
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ env.sdk_version }}
 
-      # - name: Retrieve SDK changelog diff
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: sdk-changelog-diff
+      - name: Retrieve SDK changelog diff
+        uses: actions/download-artifact@v4
+        with:
+          name: sdk-changelog-diff
 
       - name: Update changelog
         run: |
-          echo mock changelog > new-changelog
+          cat changelog-diff enterprise/frontend/src/embedding-sdk/CHANGELOG.md > new-changelog
           mv new-changelog enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+
+      - name: "TODO: Remove this step once github includes the new gh CLI version 2.65.0"
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew install gh
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
-          echo Log gh CLI version
-          gh --version
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew install gh
-          echo Log gh CLI version again
-          gh --version
           git checkout -b update-sdk-version-${{ env.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
           git push origin HEAD
           gh pr create --base ${{ inputs.branch }}\
                        --assignee "${GITHUB_ACTOR}"\
-                       --title "Update SDK version to ${{ env.sdk_version }}"\
+                       --title "docs(sdk): Update SDK version to ${{ env.sdk_version }}"\
                        --body "Update Readme version references and published npm package version to ${{ env.sdk_version }}"
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -251,43 +250,43 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
-      # - name: Retrieve build SDK package artifact
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: metabase-sdk
-      #     path: sdk
+      - name: Retrieve build SDK package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: metabase-sdk
+          path: sdk
 
-      # - name: Publish to NPM
-      #   working-directory: sdk
-      #   run: |
-      #     echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
-      #     # Please keep the value in sync with `inputs.branch`'s release branch
-      #     npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable", "release-x.52.x": "52-stable"}')[inputs.branch]}}
+      - name: Publish to NPM
+        working-directory: sdk
+        run: |
+          echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
+          # Please keep the value in sync with `inputs.branch`'s release branch
+          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable", "release-x.52.x": "52-stable"}')[inputs.branch]}}
 
-      # - name: Add `latest` tag to the latest release branch (`release-x.52.x`) deployment
-      #   if: ${{ inputs.branch == 'release-x.52.x' }}
-      #   working-directory: sdk
-      #   run: |
-      #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+      - name: Add `latest` tag to the latest release branch (`release-x.52.x`) deployment
+        if: ${{ inputs.branch == 'release-x.52.x' }}
+        working-directory: sdk
+        run: |
+          npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
 
-  # git-tag:
-  #   needs: [publish-npm, determine-version]
-  #   runs-on: ubuntu-22.04
-  #   timeout-minutes: 20
-  #   env:
-  #     tag: embedding-sdk-${{ needs.determine-version.outputs.sdk_version }}
-  #   steps:
-  #     - name: Check out the code using the provided branch
-  #       uses: actions/checkout@v4
-  #       with:
-  #         ref: ${{ inputs.branch }}
+  git-tag:
+    needs: [publish-npm, determine-version]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      tag: embedding-sdk-${{ needs.determine-version.outputs.sdk_version }}
+    steps:
+      - name: Check out the code using the provided branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
-  #     # Lightweight tags don't need committer name and email
-  #     - name: Create a new git tag
-  #       run: |
-  #         git tag ${{ env.tag }}
+      # Lightweight tags don't need committer name and email
+      - name: Create a new git tag
+        run: |
+          git tag ${{ env.tag }}
 
-  #     - name: Push the new tag
-  #       id: push-tag
-  #       run: |
-  #         git push origin ${{ env.tag }}
+      - name: Push the new tag
+        id: push-tag
+        run: |
+          git push origin ${{ env.tag }}
