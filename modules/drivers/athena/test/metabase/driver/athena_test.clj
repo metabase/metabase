@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.athena-test
   (:require
-   #_[clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -20,9 +19,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan2.core :as t2])
-  #_(:import
-   (java.sql Connection)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -260,13 +257,13 @@
                 ;; If this test fails and .getColumns returns results, the athena JDBC driver has been fixed and we can
                 ;; undo the changes in https://github.com/metabase/metabase/pull/44032
                 (is (seq (sql-jdbc.execute/do-with-connection-with-options
-                             :athena
-                             db
-                             nil
-                             (fn [^Connection conn]
-                               (let [metadata (.getMetaData conn)]
-                                 (with-open [rs (.getColumns metadata catalog (:schema table) (:name table) nil)]
-                                   (jdbc/metadata-result rs))))))))
+                          :athena
+                          db
+                          nil
+                          (fn [^Connection conn]
+                            (let [metadata (.getMetaData conn)]
+                              (with-open [rs (.getColumns metadata catalog (:schema table) (:name table) nil)]
+                                (jdbc/metadata-result rs))))))))
             (testing "`describe-table` returns the fields anyway"
               (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
 

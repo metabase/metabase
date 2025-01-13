@@ -123,39 +123,6 @@
 
 ;;; ------------------------------------------------ sql-jdbc execute ------------------------------------------------
 
-(defmethod sql-jdbc.execute/read-column-thunk [:athena java.sql.Types/VARCHAR]
-  [driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta ^Integer i]
-  ;; since TIME and TIMESTAMP WITH TIME ZONE are not really real types (or at least not ones that you can store), they
-  ;; come back in a weird way -- they come back as a string, but the database type is `time` or `timestamp with time
-  ;; zone`, respectively. In those cases we can use `.getObject` to get a
-  ;; `java.time.LocalTime`/`java.time.ZonedDateTime` and it seems to work like we'd expect.
-  (condp = (u/lower-case-en (.getColumnTypeName rsmeta i))
-    ;; TODO: Confirm this is actually dead code.
-    "time"
-    (fn read-column-as-LocalTime [] (.getObject rs i java.time.LocalTime))
-
-    ;; TODO: Confirm this is actually dead code.
-    "uuid"
-    (fn read-column-as-UUID []
-      (when-let [s (.getObject rs i)]
-        (try
-          (UUID/fromString s)
-          (catch IllegalArgumentException _
-            s))))
-
-    ;; TODO: Confirm this is actually dead code.
-    "timestamp with time zone"
-    (fn read-column-as-ZonedDateTime []
-      (when-let [s (.getString rs i)]
-        (try
-          (u.date/parse s)
-          ;; better to catch and log the error here than to barf completely, right?
-          (catch Throwable e
-            (log/errorf e "Error parsing timestamp with time zone string %s: %s" (pr-str s) (ex-message e))
-            nil))))
-
-    ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc java.sql.Types/VARCHAR]) driver rs rsmeta i)))
-
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/OTHER]
   [driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta ^Integer i]
   (case (u/lower-case-en (.getColumnTypeName rsmeta i))
@@ -485,7 +452,7 @@
 
 #_:clj-kondo/ignore
 (comment
-  ;; Script on next lines was used to get available table types, used in the `get-tables` implementation.
+  ;; Script on following lines was used to get available table types, used in the `get-tables` implementation.
   (with-open [conn (clojure.java.jdbc/get-connection
                     (sql-jdbc.conn/connection-details->spec
                      :athena
@@ -506,8 +473,7 @@
                        (recur (conj rows (mapv (fn [idx]
                                                  (.getObject table-types idx))
                                                (map inc (range (.getColumnCount table-types-meta))))))))]
-          [columns rows]))))
-  )
+          [columns rows])))))
 
 (defn- fast-active-tables
   "Required because we're calling our own custom private get-tables method to support Athena.
