@@ -43,9 +43,16 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 ;; Disable the search index, as older schemas may not be compatible with ingestion.
-(use-fixtures :each (fn [thunk]
-                      (binding [search.ingestion/*disable-updates* true]
-                        (thunk))))
+(use-fixtures :each
+  (fn [thunk]
+    (binding [search.ingestion/*disable-updates* true]
+      (thunk)))
+  ;; these tests are marked `^:mb/driver-tests` because they use [[mt/test-driver]] and what not, but we don't want them
+  ;; to run against the non-core drivers because they are S.L.O.W.!!!! If `DRIVERS` is set to a non-core driver, skip
+  ;; all the tests in this namespace.
+  (fn [thunk]
+    (when (seq (set/intersection (tx.env/test-drivers) #{:h2 :postgres :mysql}))
+      (thunk))))
 
 (deftest rollback-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
