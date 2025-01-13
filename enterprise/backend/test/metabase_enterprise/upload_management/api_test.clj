@@ -81,9 +81,9 @@
 
             (testing "The archive_cards argument is passed through"
               (let [passed-value (atom nil)]
-                (mt/with-dynamic-redefs [upload/delete-upload! (fn [_ & {:keys [archive-cards?]}]
-                                                                 (reset! passed-value archive-cards?)
-                                                                 :done)]
+                (mt/with-dynamic-fn-redefs [upload/delete-upload! (fn [_ & {:keys [archive-cards?]}]
+                                                                    (reset! passed-value archive-cards?)
+                                                                    :done)]
                   (let [table-id (:id (oss-test/create-csv!))]
                     (is (mt/user-http-request :crowberto :delete 200 (delete-url table-id) :archive-cards true))
                     (is (true? @passed-value))))))))))))

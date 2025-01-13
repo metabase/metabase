@@ -1201,7 +1201,7 @@
                      (last (snowplow-test/pop-event-data-and-user-id!)))))
 
            (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
-             (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+             (mt/with-dynamic-fn-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
                (try (do-with-uploaded-example-csv! {} identity)
                     (catch Throwable _
                       nil))
@@ -1282,7 +1282,7 @@
               {:db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"}
               identity))))
       (testing "Uploads must be supported"
-        (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
+        (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
           (is (thrown-with-msg?
                java.lang.Exception
                #"^Uploads are not supported on \w+ databases\."
@@ -1478,7 +1478,7 @@
                       :data    {:status-code 422}}
                      (catch-ex-info (update-csv-with-defaults! action :file (csv-file-with []))))))
             (testing "Uploads must be supported"
-              (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
+              (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
                 (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
                         :data    {:status-code 422}}
                        (catch-ex-info (update-csv-with-defaults! action))))))))))))
@@ -1582,8 +1582,8 @@
         (with-mysql-local-infile-on-and-off
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for all possible CSV column types"
-              (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
-                                       upload/current-database    (constantly (mt/db))]
+              (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
+                                          upload/current-database    (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -1799,7 +1799,7 @@
                 (io/delete-file file)))
 
             (testing "Failures when appending to CSV Uploads will publish statistics to Snowplow"
-              (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+              (mt/with-dynamic-fn-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
                 (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
                       file     (csv-file-with csv-rows (mt/random-name))]
                   (try
@@ -2460,7 +2460,7 @@
         expected [:%ce%b1bcd%  :%_b59bccce :%ce%b1bc_2 :%ce%b1bc_3]
         displays ["αbcdεf" "αbcdεfg" "αbc 2 etc" "αbc 3 xyz"]]
     (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))
-    (mt/with-dynamic-redefs [upload/max-bytes (constantly 10)]
+    (mt/with-dynamic-fn-redefs [upload/max-bytes (constantly 10)]
       (is (= displays
              ;; The whitespace linter rejects capital greek characters that look like their roman equivalents.
              ;; This is the easiest way to work around the capitalization of alpha.

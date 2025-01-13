@@ -1,8 +1,5 @@
 (ns metabase.models
   (:require
-   [clojure.string :as str]
-   [environ.core :as env]
-   [metabase.config :as config]
    [metabase.models.action :as action]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.bookmark :as bookmark]
@@ -160,20 +157,10 @@
   (search/update! instance true)
   instance)
 
-;; Hidden behind an obscure environment variable, as it may cause performance problems.
-;; See https://github.com/camsaul/toucan2/issues/195
-(defn- update-hook-enabled? []
-  (or config/is-dev?
-      config/is-test?
-      (when-let [setting (:mb-experimental-search-index-realtime-updates env/env)]
-        (and (not (str/blank? setting))
-             (not= "false" setting)))))
-
-(when (update-hook-enabled?)
-  (t2/define-after-update :hook/search-index
-    [instance]
-    (search/update! instance)
-    nil))
+(t2/define-after-update :hook/search-index
+  [instance]
+  (search/update! instance)
+  nil)
 
 ;; Too much of a performance risk.
 #_(t2/define-before-delete :metabase/model

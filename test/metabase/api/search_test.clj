@@ -1744,7 +1744,7 @@
 (deftest prometheus-response-metrics-test
   (testing "Prometheus counters get incremented for error responses"
     (let [calls (atom nil)]
-      (mt/with-dynamic-redefs [prometheus/inc! #(swap! calls conj %)]
+      (mt/with-dynamic-fn-redefs [prometheus/inc! #(swap! calls conj %)]
         (testing "Success response"
           (search-request :crowberto :q "test")
           (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
@@ -1757,7 +1757,7 @@
           (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
 
         (testing "Unexpected server error (500)"
-          (mt/with-dynamic-redefs [search/search (fn [& _] (throw (Exception.)))]
+          (mt/with-dynamic-fn-redefs [search/search (fn [& _] (throw (Exception.)))]
             (mt/user-http-request :crowberto :get 500 "/search" :q "test")
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
