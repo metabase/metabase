@@ -130,9 +130,11 @@
   ;; zone`, respectively. In those cases we can use `.getObject` to get a
   ;; `java.time.LocalTime`/`java.time.ZonedDateTime` and it seems to work like we'd expect.
   (condp = (u/lower-case-en (.getColumnTypeName rsmeta i))
+    ;; TODO: Confirm this is actually dead code.
     "time"
     (fn read-column-as-LocalTime [] (.getObject rs i java.time.LocalTime))
 
+    ;; TODO: Confirm this is actually dead code.
     "uuid"
     (fn read-column-as-UUID []
       (when-let [s (.getObject rs i)]
@@ -141,6 +143,7 @@
           (catch IllegalArgumentException _
             s))))
 
+    ;; TODO: Confirm this is actually dead code.
     "timestamp with time zone"
     (fn read-column-as-ZonedDateTime []
       (when-let [s (.getString rs i)]
@@ -153,38 +156,59 @@
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc java.sql.Types/VARCHAR]) driver rs rsmeta i)))
 
+(defmethod sql-jdbc.execute/read-column-thunk [:athena Types/OTHER]
+  [driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta ^Integer i]
+  (case (u/lower-case-en (.getColumnTypeName rsmeta i))
+
+    "uuid"
+    (fn read-column-as-UUID []
+      (when-let [s (.getObject rs i)]
+        (try
+          (UUID/fromString s)
+          (catch IllegalArgumentException _
+            s))))
+
+    ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
+
+(defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
   [_driver ^ResultSet rs _rs-meta ^Long i]
   (fn []
-    ;; Using OffsetDateTime to be consistent with :sql-jdbc implementation
-    (let [^Timestamp timestamp (.getObject rs i Timestamp)
-          timestamp-instant (.toInstant timestamp)
-          results-timezone (qp.timezone/results-timezone-id)]
-      (try
-        (.toOffsetDateTime (t/zoned-date-time timestamp-instant (t/zone-id results-timezone)))
-        (catch Throwable _
-          (log/warnf "Failed to construct ZonedDateTime from `%s` using `%s` timezone."
-                     (pr-str timestamp-instant)
-                     (pr-str results-timezone))
-          (try
-            (t/offset-date-time timestamp-instant results-timezone)
-            (catch Throwable _
-              (log/warnf "Failed to construct OffsetDateTime from `%s` using `%s` offset. Using `Z` fallback."
-                         (pr-str timestamp-instant)
-                         (pr-str results-timezone))
-              (t/offset-date-time timestamp-instant "Z"))))))))
+    ;; Using ZonedDateTime if available to conform tests first. OffsetDateTime if former is not available.
+    (when-some [^Timestamp timestamp (.getObject rs i Timestamp)]
+      (let [timestamp-instant (.toInstant timestamp)
+            results-timezone (qp.timezone/results-timezone-id)]
+        (try
+          (t/zoned-date-time timestamp-instant (t/zone-id results-timezone))
+          (catch Throwable _
+            (log/warnf "Failed to construct ZonedDateTime from `%s` using `%s` timezone."
+                       (pr-str timestamp-instant)
+                       (pr-str results-timezone))
+            (try
+              (t/offset-date-time timestamp-instant results-timezone)
+              (catch Throwable _
+                (log/warnf "Failed to construct OffsetDateTime from `%s` using `%s` offset. Using `Z` fallback."
+                           (pr-str timestamp-instant)
+                           (pr-str results-timezone))
+                (t/offset-date-time timestamp-instant "Z")))))))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP]
   [_driver ^ResultSet rs _rs-meta ^Long i]
-  (fn [] (.toLocalDateTime ^Timestamp (.getObject rs i Timestamp))))
+  (fn [] (some-> ^Timestamp (.getObject rs i Timestamp)
+                 (t/local-date-time))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/DATE]
   [_driver ^ResultSet rs _rs-meta ^Long i]
-  (fn [] (.toLocalDate ^Date (.getObject rs i Date))))
+  (fn [] (some-> ^Date (.getObject rs i Date)
+                 (t/local-date))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIME]
   [_driver ^ResultSet rs _rs-meta ^Long i]
-  (fn [] (.toLocalTime ^Time (.getObject rs i Time))))
+  (fn [] (some-> ^Time (.getObject rs i Time)
+                 (t/local-time))))
 
 ;;; ------------------------------------------------- date functions -------------------------------------------------
 
