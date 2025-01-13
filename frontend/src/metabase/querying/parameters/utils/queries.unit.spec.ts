@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import type {
@@ -5,6 +6,13 @@ import type {
   ParameterType,
   ParameterValueOrArray,
 } from "metabase-types/api";
+import { createMockField } from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  createOrdersTable,
+  createProductsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { applyParameter } from "./queries";
 
@@ -15,8 +23,33 @@ type FilterParameterCase = {
   expectedDisplayName: string;
 };
 
+const BOOLEAN_FIELD = createMockField({
+  id: 102,
+  table_id: ORDERS_ID,
+  name: "IS_TRIAL",
+  display_name: "Is trial",
+  base_type: "type/Boolean",
+  effective_type: "type/Boolean",
+  semantic_type: "type/Category",
+});
+
+const ORDERS_TABLE = createOrdersTable();
+
+const METADATA = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      tables: [
+        createOrdersTable({
+          fields: [...(ORDERS_TABLE.fields ?? []), BOOLEAN_FIELD],
+        }),
+        createProductsTable(),
+      ],
+    }),
+  ],
+});
+
 describe("applyParameter", () => {
-  const query = createQuery();
+  const query = createQuery({ metadata: METADATA });
   const stageIndex = 0;
   const filterableColumns = Lib.filterableColumns(query, stageIndex);
   const findFilterableColumn = columnFinder(query, filterableColumns);
@@ -138,6 +171,24 @@ describe("applyParameter", () => {
       target: getFilterColumnTarget("ORDERS", "TOTAL"),
       value: [10.2, 20.4],
       expectedDisplayName: "Total is between 10.2 and 20.4",
+    },
+    {
+      type: "id",
+      target: getFilterColumnTarget("ORDERS", "IS_TRIAL"),
+      value: [true],
+      expectedDisplayName: "Is trial is true",
+    },
+    {
+      type: "category",
+      target: getFilterColumnTarget("ORDERS", "IS_TRIAL"),
+      value: [true],
+      expectedDisplayName: "Is trial is true",
+    },
+    {
+      type: "string/=",
+      target: getFilterColumnTarget("ORDERS", "IS_TRIAL"),
+      value: [false],
+      expectedDisplayName: "Is trial is false",
     },
     {
       type: "date/single",
