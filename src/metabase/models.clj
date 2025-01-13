@@ -1,8 +1,5 @@
 (ns metabase.models
   (:require
-   [clojure.string :as str]
-   [environ.core :as env]
-   [metabase.config :as config]
    [metabase.models.action :as action]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.bookmark :as bookmark]
