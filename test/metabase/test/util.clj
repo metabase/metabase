@@ -1555,3 +1555,8 @@
 (methodical/defmethod =?/=?-diff [(Class/forName "[B") (Class/forName "[B")]
   [expected actual]
   (=?/=?-diff (seq expected) (seq actual)))
+
+(defn random-string
+  "Returns a string of `n` random alphanumeric characters."
+  [n]
+  (apply str (take n (repeatedly #(rand-nth "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))))
