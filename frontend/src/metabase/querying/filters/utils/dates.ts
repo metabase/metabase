@@ -255,19 +255,23 @@ export function getDateFilterDisplayName(
       { type: "specific", operator: "=" },
       ({ values: [date], hasTime }) => {
         const dateText = formatDate(date, hasTime);
-        return withPrefix ? t`On ${dateText}` : dateText;
+        return withPrefix
+          ? c("On a date. Example: On Jan 20.").t`On ${dateText}`
+          : dateText;
       },
     )
     .with(
       { type: "specific", operator: "<" },
       ({ values: [date], hasTime }) => {
-        return t`Before ${formatDate(date, hasTime)}`;
+        return c("Before a date. Example: Before Jan 20.")
+          .t`Before ${formatDate(date, hasTime)}`;
       },
     )
     .with(
       { type: "specific", operator: ">" },
       ({ values: [date], hasTime }) => {
-        return t`After ${formatDate(date, hasTime)}`;
+        return c("After a date. Example: After Jan 20.")
+          .t`After ${formatDate(date, hasTime)}`;
       },
     )
     .with(
@@ -280,7 +284,9 @@ export function getDateFilterDisplayName(
       if (offsetValue != null && offsetUnit != null) {
         const prefix = Lib.describeTemporalInterval(value, unit);
         const suffix = Lib.describeRelativeDatetime(offsetValue, offsetUnit);
-        return t`${prefix}, starting ${suffix}`;
+        return c(
+          "Describes a relative date interval. Example: Previous 2 months, starting 1 year ago.",
+        ).t`${prefix}, starting ${suffix}`;
       } else {
         return Lib.describeTemporalInterval(value, unit);
       }
