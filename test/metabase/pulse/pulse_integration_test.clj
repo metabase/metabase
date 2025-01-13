@@ -10,7 +10,7 @@
    [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.email :as email]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
