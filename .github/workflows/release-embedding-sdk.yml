@@ -213,6 +213,10 @@ jobs:
         run: |
           echo Log gh CLI version
           gh --version
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew install gh
+          echo Log gh CLI version again
+          gh --version
           git checkout -b update-sdk-version-${{ env.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
           git push origin HEAD
