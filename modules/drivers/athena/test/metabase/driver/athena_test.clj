@@ -104,7 +104,7 @@
               (is (= #t "05:03"
                      t)))))))))
 
-(deftest ^:parallel set-time-and-timestamp-with-time-zone-test
+(deftest ^:synchronized set-time-and-timestamp-with-time-zone-test
   ;; The 3.3.0 Athena jdbc driver returns timestamp not as java.sql.Types/VARCHAR but is using dedicated temporal types.
   ;; The class that represents temporal value is java.sql.Timestamp. Hence the read-column-thunk implementation uses
   ;; `qp.timezone/results-timezone-id` to convert returned value into appropriate timezone.
