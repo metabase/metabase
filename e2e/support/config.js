@@ -62,7 +62,7 @@ const defaultConfig = {
     }
 
     on("before:run", () => {
-      console.log("🧹 Cleaning up the existing Cypress artifacts 🧹");
+      console.log("🧹 Clean up the existing Cypress artifacts 🧹");
       fs.rmSync(path.join(config.projectRoot + "/cypress"), {
         recursive: true,
         force: true,
