@@ -17,7 +17,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- get-notification
+(defn get-notification
+  "Get a notification by id."
   [id]
   (-> (t2/select-one :model/Notification id)
       api/check-404
@@ -27,16 +28,9 @@
   [notification]
   (= :notification/card (:payload_type notification)))
 
-(api/defendpoint GET "/"
-  "List notifications.
-  - `creator_id`: if provided returns only notifications created by this user
-  - `recipient_id`: if provided returns only notification that has recipient_id as a recipient
-  - `card_id`: if provided returns only notification that has card_id as payload"
-  [creator_id recipient_id card_id include_inactive]
-  {creator_id       [:maybe ms/PositiveInt]
-   recipient_id     [:maybe ms/PositiveInt]
-   card_id          [:maybe ms/PositiveInt]
-   include_inactive [:maybe ms/BooleanValue]}
+(defn list-notifications
+  "List notifications. See `GET /` for parameters."
+  [{:keys [creator_id recipient_id card_id payload_type include_inactive active]}]
   (->> (t2/reducible-select :model/Notification
                             (cond-> {}
                               creator_id
@@ -57,12 +51,36 @@
                                    :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
                                   (sql.helpers/where [:= :notification_recipient.user_id recipient_id]))
 
-                              (not (true? include_inactive))
-                              (sql.helpers/where [:= :notification.active true])))
+                              (and (nil? active) (not (true? include_inactive)))
+                              (sql.helpers/where [:= :notification.active true])
+
+                              payload_type
+                              (sql.helpers/where [:= :notification.payload_type (u/qualified-name payload_type)])
+
+                              (some? active)
+                              (sql.helpers/where [:= :notification.active active])))
        (into [] (comp
                  (map t2.realize/realize)
                  (filter mi/can-read?)))
        models.notification/hydrate-notification))
+
+(api/defendpoint GET "/"
+  "List notifications.
+  - `creator_id`: if provided returns only notifications created by this user
+  - `recipient_id`: if provided returns only notification that has recipient_id as a recipient
+  - `card_id`: if provided returns only notification that has card_id as payload
+  - `include_inactive`: if true, include inactive notifications
+  - `payload_type`: if provided, returns only notifications with this payload type"
+  [creator_id recipient_id card_id include_inactive payload_type]
+  {creator_id       [:maybe ms/PositiveInt]
+   recipient_id     [:maybe ms/PositiveInt]
+   card_id          [:maybe ms/PositiveInt]
+   include_inactive [:maybe ms/BooleanValue]
+   payload_type     (into [:enum] models.notification/notification-types)}
+  (list-notifications {:creator_id creator_id
+                       :recipient_id recipient_id
+                       :card_id card_id
+                       :include_inactive include_inactive}))
 
 (api/defendpoint GET "/:id"
   "Get a notification by id."
@@ -164,18 +182,24 @@
   (api/create-check :model/Notification body)
   (notification/send-notification! body :notification/sync? true))
 
-(api/defendpoint POST "/:id/unsubscribe"
-  "Unsubscribe current user from a notification."
-  [id]
-  {id ms/PositiveInt}
-  (let [notification (get-notification id)]
+(defn unsubscribe-user!
+  "Unsubscribe a user from a notification."
+  [notification-id user-id]
+  (let [notification (get-notification notification-id)]
     (api/check-403 (models.notification/current-user-is-recipient? notification))
-    (models.notification/unsubscribe-user! id api/*current-user-id*)
-    (u/prog1 (get-notification id)
+    (models.notification/unsubscribe-user! notification-id user-id)
+    (u/prog1 (get-notification notification-id)
       (when (card-notification? <>)
         (u/ignore-exceptions
           (messages/send-you-unsubscribed-notification-card-email!
            (update <> :payload t2/hydrate :card)
            [(:email @api/*current-user*)]))))))
+
+(api/defendpoint POST "/:id/unsubscribe"
+  "Unsubscribe current user from a notification."
+  [id]
+  {id ms/PositiveInt}
+  (unsubscribe-user! id api/*current-user-id*)
+  nil)
 
 (api/define-routes)

@@ -2,6 +2,7 @@
   "Tests for `/api/alert` endpoints."
   (:require
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.http-client :as client]
@@ -9,11 +10,13 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as models.pulse]
    [metabase.models.pulse-test :as pulse-test]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -148,6 +151,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; by default, archived Alerts should be excluded
+
+(with-alert-in-collection! [_ _ alert]
+  (metabase.models.pulse/retrieve-alert (:id alert))
+  #_(mt/user-http-request :crowberto :get 200 (format "alert/%d" (:id alert))))
 
 (deftest get-alerts-test
   (testing "archived alerts should be excluded"
@@ -904,3 +911,83 @@
                 :model_id nil
                 :details  {:email "rasta@metabase.com"}}
                (mt/latest-audit-log-entry :alert-unsubscribe)))))))
+
+(defn- remove-timestamp
+  [x]
+  (walk/postwalk
+   (fn [x]
+     (if (map? x)
+       (dissoc x :id :created_at :updated_at)
+       x))
+   x))
+
+(defn- santize
+  [x]
+  (->> x
+       (walk/postwalk
+        (fn [x]
+          (if (map? x)
+            (-> x
+                (dissoc :id :created_at :updated_at)
+                (update-vals (fn [v] (if (keyword? v)
+                                       (u/qualified-name v)
+                                       v))))
+            x)))))
+
+(deftest wrapper-get-alert-test
+  (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel]
+    (notification.tu/with-card-notification
+      [notification {:notification-card {:send_condition :goal_above
+                                         :send_once      true}
+                     :subscriptions     [{:type :notification-subscription/cron
+                                          ;; daily at 14:00
+                                          :cron_schedule "0 0 14 ? * 4 *"}]
+                     :handlers         [{:channel_type :channel/email
+                                         :recipients   [{:type :notification-recipient/user
+                                                         :user_id     (mt/user->id :rasta)}
+                                                        {:type :notification-recipient/raw-value
+                                                         :details {:value "ngoc@metabase.com"}}]}
+                                        {:channel_type :channel/slack
+                                         :recipients   [{:type :notification-recipient/raw-value
+                                                         :details {:value "#general"}}]}
+                                        {:channel_type :channel/http
+                                         :channel_id   chn-id}]}]
+
+      (let [schedule (dissoc (u.cron/cron-string->schedule-map "0 0 14 ? * 4 *") :schedule_minute)]
+        (mt/with-temp [:model/Card card (basic-alert-query)
+                       :model/Pulse alert {:name             nil
+                                           :alert_condition  "goal"
+                                           :alert_above_goal true
+                                           :alert_first_only true
+                                           :skip_if_empty    true
+                                           :creator_id       (mt/user->id :crowberto)}
+                       :model/PulseCard _  {:card_id     (:id card)
+                                            :pulse_id    (:id alert)
+                                            :include_csv true}
+                       :model/PulseChannel email-channel (merge
+                                                          schedule
+                                                          {:pulse_id (:id alert)
+                                                           :channel_type :email
+                                                           :details {:emails ["ngoc@metabase.com"]}
+                                                           :enabled true})
+                       :model/PulseChannelRecipient _ (recipient email-channel :rasta)
+
+                       :model/PulseChannel slack-channel (merge schedule
+                                                                {:pulse_id (:id alert)
+                                                                 :channel_type :slack
+                                                                 :details {:channel "#general"}
+                                                                 :enabled true})
+                       :model/PulseChannel http-channel (merge schedule
+                                                               {:pulse_id (:id alert)
+                                                                :channel_type "http"
+                                                                :channel_id chn-id
+                                                                :enabled true})]
+
+          (def notification (remove-timestamp
+                             (mt/user-http-request :crowberto :get 200 (alert-url (:id notification)))))
+          (def alert (remove-timestamp
+                      (models.pulse/retrieve-alert alert)))
+          (is (= (remove-timestamp
+                  (mt/user-http-request :crowberto :get 200 (alert-url (:id notification))))
+                 (remove-timestamp
+                  (models.pulse/retrieve-alert alert)))))))))
