@@ -36,9 +36,9 @@
                         nil)
             sent-notis (atom [])]
         (testing "publishing event will send all the actively subscribed notifciations"
-          (mt/with-dynamic-redefs
-            [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
-             events.notification/supported-topics #{:event/test-notification}]
+          (with-redefs
+           [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
+            events.notification/supported-topics #{:event/test-notification}]
             (events/publish-event! topic {::hi true})
             (is (=? [[(:id n-1) {:event_info {::hi true}}]
                      [(:id n-2) {:event_info {::hi true}}]]
@@ -58,9 +58,9 @@
            :event_name topic}]
          nil)
         (testing "publish an event that is not supported for notifications will not send any notifications"
-          (mt/with-dynamic-redefs
-            [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
-             events.notification/supported-topics #{}]
+          (with-redefs
+           [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
+            events.notification/supported-topics #{}]
             (events/publish-event! :event/unsupported-topic {::hi true})
             (is (empty? @sent-notis))))))))
 

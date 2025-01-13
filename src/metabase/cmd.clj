@@ -34,6 +34,7 @@
 (defn- system-exit!
   "Proxy function to System/exit to enable the use of `with-redefs`."
   [return-code]
+  (flush)
   (System/exit return-code))
 
 (defn- cmd->var
@@ -144,6 +145,13 @@
   (println "System timezone:" (System/getProperty "user.timezone"))
   (println "Language:"        (System/getProperty "user.language"))
   (println "File encoding:"   (System/getProperty "file.encoding")))
+
+(defn ^:command api-documentation
+  "Generate a markdown file containing documentation for all API endpoints. This is written to a file called
+  `docs/api-documentation.md`."
+  []
+  (classloader/require 'metabase.cmd.endpoint-dox)
+  ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
 (defn ^:command environment-variables-documentation
   "Generates a markdown file containing documentation for environment variables relevant to configuring Metabase.
@@ -315,6 +323,7 @@
   [& messages]
   (doseq [msg messages]
     (println (u/format-color 'red msg)))
+  (flush)
   (System/exit 1))
 
 (defn run-cmd
@@ -333,7 +342,9 @@
       (apply @(cmd->var command-name) args)
       (catch Throwable e
         (when (:cmd/exit (ex-data e)) ;; fast-track for commands that have their own error handling
+          (flush)
           (System/exit 1))
         (.printStackTrace e)
         (fail! (str "Command failed with exception: " (.getMessage e))))))
+  (flush)
   (System/exit 0))
