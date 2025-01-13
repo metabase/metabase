@@ -6,14 +6,6 @@ function printBold(message) {
   console.log(chalk.bold(message));
 }
 
-function printYellow(message) {
-  console.log(chalk.yellow(message));
-}
-
-function printCyan(message) {
-  console.log(chalk.cyan(message));
-}
-
 const args = arg(
   {
     "--open": [Boolean], // Run Cypress in open mode or not? Doesn't accept additional arguments
@@ -38,8 +30,6 @@ async function parseArguments(args) {
 
 module.exports = {
   printBold,
-  printYellow,
-  printCyan,
   parseArguments,
   args,
 };
