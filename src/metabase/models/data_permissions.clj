@@ -874,14 +874,14 @@
             new-perms              (reduce
                                     (fn [new-perms group-id]
                                       (let [new-value (or
-                                                         ;; Make sure we set `blocked` data access if we're on EE and *any*
-                                                         ;; other table in the DB has `blocked` or `sandboxed`
+                                                       ;; Make sure we set `blocked` data access if we're on EE and *any*
+                                                       ;; other table in the DB has `blocked` or `sandboxed`
                                                        (and (= perm-type :perms/view-data)
                                                             (new-table-view-data-permission-level db-id group-id))
-                                                         ;; Otherwise, if all tables in the schema have the same
-                                                         ;; value, use that value for the new table
+                                                       ;; Otherwise, if all tables in the schema have the same
+                                                       ;; value, use that value for the new table
                                                        (schema-permission-value db-id group-id schema-name perm-type)
-                                                         ;; Otherwise
+                                                       ;; Otherwise, use the default value passed in
                                                        default-value)
                                             new-perm {:perm_type   perm-type
                                                       :group_id    group-id
