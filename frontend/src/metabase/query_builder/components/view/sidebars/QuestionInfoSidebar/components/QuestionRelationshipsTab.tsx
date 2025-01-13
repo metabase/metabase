@@ -5,7 +5,7 @@ import { Box, Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { ModelUsageDetails } from "./ModelUsageDetails";
-import { QuestionSourcesStacked } from "./QuestionSourcesStacked";
+import { QuestionSourceTables } from "./QuestionSourceTables";
 
 export const QuestionRelationshipsTab = ({
   question,
@@ -22,7 +22,7 @@ export const QuestionRelationshipsTab = ({
         </SidesheetCard>
       )}
       <SidesheetCard title={t`Parent tables`}>
-        <QuestionSourcesStacked />
+        <QuestionSourceTables />
       </SidesheetCard>
     </Stack>
   );
