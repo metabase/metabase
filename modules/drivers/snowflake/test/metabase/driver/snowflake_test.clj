@@ -529,7 +529,7 @@
                                        :advanced-options    false
                                        :schema-filters-type "all"
                                        :account             account
-                                       :private-key-value   (mt/bytes->base64-data-uri private-key-value)
+                                       :private-key-value   (mt/bytes->base64-data-uri (u/string-to-bytes private-key-value))
                                        :tunnel-enabled      false
                                        :user                user}}]
       (testing "Database can be created using _default_ `nil` role"
