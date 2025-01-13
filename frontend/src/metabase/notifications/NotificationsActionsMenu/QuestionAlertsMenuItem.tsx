@@ -19,12 +19,10 @@ export function QuestionAlertsMenuItem({
     return null;
   }
 
-  const hasAlerts = !!questionNotifications?.length;
-
   return (
     <CommonNotificationsMenuItem
-      title={hasAlerts ? t`Edit alerts` : t`Create alerts`}
-      iconName={hasAlerts ? "alert_filled" : "alert"}
+      title={questionNotifications?.length ? t`Edit alerts` : t`Create alerts`}
+      iconName={"alert"}
       onClick={onClick}
     />
   );
