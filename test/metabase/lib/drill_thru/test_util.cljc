@@ -159,6 +159,35 @@
      (assert (some? column-to-filter) (str "Failed to find " column-name " in " query))
      (lib/filter query' (column-filter-fn column-to-filter)))))
 
+(mu/defn append-filter-stage-to-test-expectation :- :map
+  "Like [[append-filter-stage]] but for test expectations rather than full queries.
+
+  If you called [[append-filter-stage]] to modify the query under tests,
+  then [[append-filter-stage-to-test-expectation]] might be useful to update the test expectation.
+
+  `expected-query` is something you'd pass to ?= to match a query. It should have a `:stages` key.
+
+  `field-matcher-or-filter-expr` is either a vector, in which case it will be used as the filter expression directly,
+  or else something that should match in a filter clause like
+
+    [:> {} [:field {} field-matcher] -1]
+
+  The default filter here intentionally matches the one added by [[append-filter-stage]], so that
+
+    (append-filter-stage query my-column-name)
+    (append-filter-stage-to-test-expectation expected-query my-column-name)
+
+  are matching pairs."
+  ([expected-query               :- :map
+    field-matcher-or-filter-expr :- [:or :string fn? vector?]]
+   (assert (vector? (:stages expected-query))
+           "expected-query should have a :stages key mapped to a vector")
+   (let [default-filter (fn [field-matcher] [:> {} [:field {} field-matcher] -1])
+         filter-expr    (cond-> field-matcher-or-filter-expr
+                          (not (vector? field-matcher-or-filter-expr))
+                          default-filter)]
+     (update expected-query :stages conj {:filters [filter-expr]}))))
+
 (mu/defn prepend-filter-to-stage :- :map
   "Prepend `filter-expr` to the filters in `expected-query`.
 

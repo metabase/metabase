@@ -66,8 +66,10 @@
 (defn- update-index! []
   (when (search/supports-index?)
     (while true
-      (let [timer    (u/start-timer)
-            report   (search/process-next-batch! Long/MAX_VALUE 100)
+      (let [batch    (search/get-next-batch! Long/MAX_VALUE 100)
+            _        (log/trace "Processing batch" batch)
+            timer    (u/start-timer)
+            report   (search/bulk-ingest! batch)
             duration (u/since-ms timer)]
         (when (seq report)
           (report->prometheus! duration report)
