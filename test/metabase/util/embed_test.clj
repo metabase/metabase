@@ -5,14 +5,12 @@
    [crypto.random :as crypto-random]
    [java-time.api :as t]
    [metabase.config :as config]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
+   [metabase.premium-features.token-check :as token-check]
+   [metabase.premium-features.token-check-test :as token-check-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (def ^:private ^String token-with-alg-none
   "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhZG1pbiI6dHJ1ZX0.3Dbtd6Z0yuSfw62fOzBGHyiL0BJp3pod_PZE-BBdR-I")
@@ -42,12 +40,12 @@
             (is (not (embed/show-static-embed-terms)))))
         (when config/ee-available?
           (testing "should return false when an EE user has a valid token"
-            (with-redefs [premium-features/fetch-token-status (fn [_x]
-                                                                {:valid    true
-                                                                 :status   "fake"
-                                                                 :features ["test" "fixture"]
-                                                                 :trial    false})]
-              (mt/with-temporary-setting-values [premium-embedding-token (premium-features-test/random-token)]
+            (with-redefs [token-check/fetch-token-status (fn [_x]
+                                                           {:valid    true
+                                                            :status   "fake"
+                                                            :features ["test" "fixture"]
+                                                            :trial    false})]
+              (mt/with-temporary-setting-values [premium-embedding-token (token-check-test/random-token)]
                 (is (not (embed/show-static-embed-terms)))
                 (embed/show-static-embed-terms! false)
                 (is (not (embed/show-static-embed-terms))))))
@@ -63,21 +61,21 @@
   (let [now #t "2022-09-01T12:34:56Z"]
     (doseq [model [:model/Card :model/Dashboard]]
       (testing "should populate `initially_published_at` when a Card's enable_embedding is changed to true"
-        (t2.with-temp/with-temp [model card {:enable_embedding false}]
+        (mt/with-temp [model card {:enable_embedding false}]
           (is (nil? (:initially_published_at card)))
           (t2/update! model (u/the-id card) {:enable_embedding true})
           (is (some? (t2/select-one-fn :initially_published_at model :id (u/the-id card))))))
       (testing "should keep `initially_published_at` value when a Card's enable_embedding is changed to false"
-        (t2.with-temp/with-temp [model card {:enable_embedding true :initially_published_at now}]
+        (mt/with-temp [model card {:enable_embedding true :initially_published_at now}]
           (is (some? (:initially_published_at card)))
           (t2/update! model (u/the-id card) {:enable_embedding false})
           (is (= (t/offset-date-time now) (t2/select-one-fn :initially_published_at model :id (u/the-id card))))))
       (testing "should keep `initially_published_at` value when `enable_embedding` is already set to true"
-        (t2.with-temp/with-temp [model card {:enable_embedding true :initially_published_at now}]
+        (mt/with-temp [model card {:enable_embedding true :initially_published_at now}]
           (t2/update! model (u/the-id card) {:enable_embedding true})
           (is (= (t/offset-date-time now) (t2/select-one-fn :initially_published_at model :id (u/the-id card))))))
       (testing "should keep `initially_published_at` value when `enable_embedding` is already set to false"
-        (t2.with-temp/with-temp [model card {:enable_embedding false}]
+        (mt/with-temp [model card {:enable_embedding false}]
           (is (nil? (:initially_published_at card)))
           (t2/update! model (u/the-id card) {:enable_embedding false})
           (is (nil? (t2/select-one-fn :initially_published_at model :id (u/the-id card)))))))))

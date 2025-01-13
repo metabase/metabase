@@ -14,7 +14,6 @@ export const createMockQueryBuilderUIControlsState = (
   isRunning: false,
   isQueryComplete: false,
   isShowingSummarySidebar: false,
-  isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionDetailsSidebar: false,
   isShowingQuestionInfoSidebar: false,

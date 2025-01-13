@@ -13,7 +13,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.cache-config :as cache-config]
    [metabase.models.query :as query]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -267,7 +267,7 @@
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
   (let [card       (api/read-check (t2/select-one [:model/Card :id :name :dataset_query :database_id :collection_id
                                                    :type :result_metadata :visualization_settings :display
-                                                   :cache_invalidated_at]
+                                                   :cache_invalidated_at :entity_id :created_at]
                                                   :id card-id))
         dash-viz   (when (and (not= context :question)
                               dashcard-id)

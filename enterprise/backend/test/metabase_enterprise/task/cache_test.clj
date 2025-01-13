@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.task.cache :as task.cache]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -510,8 +510,8 @@
                                           :refresh_automatically true
                                           :config {:schedule "0 0 * * * ?"}}]
       (let [call-count (atom 0)]
-        (mt/with-dynamic-redefs [task.cache/refresh-schedule-cache! (fn [_] (swap! call-count inc))
-                                 task.cache/maybe-refresh-duration-caches! (fn [] (swap! call-count inc))]
+        (mt/with-dynamic-fn-redefs [task.cache/refresh-schedule-cache! (fn [_] (swap! call-count inc))
+                                    task.cache/maybe-refresh-duration-caches! (fn [] (swap! call-count inc))]
           (@#'task.cache/refresh-cache-configs!)
           (is (= 0 @call-count))
 

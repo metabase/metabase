@@ -10,8 +10,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.task :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])

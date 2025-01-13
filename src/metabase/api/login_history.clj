@@ -17,6 +17,7 @@
               :user_id (u/the-id user-or-id)
               {:order-by [[:timestamp :desc]]})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/current"
   "Fetch recent logins for the current user."
   []

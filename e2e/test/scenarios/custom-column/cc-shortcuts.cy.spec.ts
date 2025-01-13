@@ -179,7 +179,8 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
     cy.button("Summarize").click();
     H.popover().findByText("Count of rows").click();
 
-    H.addCustomColumn();
+    // add custom column
+    cy.findAllByTestId("action-buttons").first().icon("add_data").click();
     selectExtractColumn();
 
     cy.findAllByTestId("dimension-list-item").contains("Created At").click();
@@ -317,26 +318,6 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
 
   it("should pick the correct default separator based on the type of the first column", () => {
     H.openOrdersTable({ mode: "notebook" });
-    H.addCustomColumn();
-    selectCombineColumns();
-
-    selectColumn(0, "User", "Email");
-
-    H.expressionEditorWidget().within(() => {
-      cy.findByText("Separated by (empty)").should("exist");
-      cy.findByText(/Separated by/).click();
-
-      cy.findByLabelText("Separator").should("have.value", "");
-    });
-  });
-
-  it("should be possible to edit a previous stages' columns when there is an aggregation (metabase#43226)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-
-    cy.button("Summarize").click();
-
-    H.popover().findByText("Count of rows").click();
-
     H.addCustomColumn();
     selectCombineColumns();
 

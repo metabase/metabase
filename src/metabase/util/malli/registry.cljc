@@ -9,6 +9,22 @@
 
 (defonce ^:private cache (atom {}))
 
+(defn- schema-cache-key
+  "Make schemas that aren't `=` to identical ones e.g.
+
+    [:re #\"\\d{4}\"]
+
+  work correctly as cache keys instead of creating new entries every time the code is evaluated."
+  [x]
+  (if (and (vector? x)
+           (= (first x) :re))
+    (into (empty x)
+          (map (fn [child]
+                 (cond-> child
+                   (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) child) str)))
+          x)
+    x))
+
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
   with [[metabase.util.malli.registry/def]]. If value doesn't exist, `value-thunk` is used to calculate (and cache)
@@ -17,10 +33,11 @@
   You generally shouldn't use this outside of this namespace unless you have a really good reason to do so! Make sure
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
-  (or (get (get @cache k) schema) ; get-in is terribly inefficient
-      (let [v (value-thunk)]
-        (swap! cache assoc-in [k schema] v)
-        v)))
+  (let [schema-key (schema-cache-key schema)]
+    (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
+        (let [v (value-thunk)]
+          (swap! cache assoc-in [k schema-key] v)
+          v))))
 
 (defn validator
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
@@ -28,6 +45,7 @@
   [schema]
   (letfn [(make-validator []
             (try
+              #_{:clj-kondo/ignore [:discouraged-var]}
               (mc/validator schema)
               (catch #?(:clj Throwable :cljs :default) e
                 (throw (ex-info (str "Error making validator for " (pr-str schema) ":" (ex-message e))

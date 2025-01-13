@@ -23,6 +23,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
@@ -33,6 +34,7 @@
 (defn- system-exit!
   "Proxy function to System/exit to enable the use of `with-redefs`."
   [return-code]
+  (flush)
   (System/exit return-code))
 
 (defn- cmd->var
@@ -259,6 +261,22 @@
       (log/error e "ERROR ROTATING KEY.")
       (system-exit! 1))))
 
+(defn ^:command remove-encryption
+  "Decrypts data in the metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
+  the current key"
+  []
+  (classloader/require 'metabase.cmd.remove-encryption)
+  (when-not (encryption/default-encryption-enabled?)
+    (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
+    (system-exit! 1))
+  (try
+    ((resolve 'metabase.cmd.remove-encryption/remove-encryption!))
+    (log/info "Encryption removed OK.")
+    (system-exit! 0)
+    (catch Throwable e
+      (log/error e "ERROR REMOVING ENCRYPTION.")
+      (system-exit! 1))))
+
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
 
 (defn- arg-list-count-ok? [arg-list arg-count]
@@ -305,6 +323,7 @@
   [& messages]
   (doseq [msg messages]
     (println (u/format-color 'red msg)))
+  (flush)
   (System/exit 1))
 
 (defn run-cmd
@@ -323,7 +342,9 @@
       (apply @(cmd->var command-name) args)
       (catch Throwable e
         (when (:cmd/exit (ex-data e)) ;; fast-track for commands that have their own error handling
+          (flush)
           (System/exit 1))
         (.printStackTrace e)
         (fail! (str "Command failed with exception: " (.getMessage e))))))
+  (flush)
   (System/exit 0))

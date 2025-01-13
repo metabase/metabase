@@ -20,7 +20,7 @@ ModelEducationalModal.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-const EDUCATION_URL = getLearnUrl("getting-started/models");
+const EDUCATION_URL = getLearnUrl("metabase-basics/getting-started/models");
 
 export function ModelEducationalModal({ isOpen, onClose }) {
   return (
