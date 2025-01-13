@@ -145,7 +145,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     });
 
     cy.findByTestId("chartsettings-sidebar").findByText("(Mega Count)").click();
-    H.menu().findByLabelText("Column").click();
+    H.menu().findByRole("textbox", { name: "Column" }).click();
     H.popover().findByText("Count").click();
     H.menu().button("Done").click();
 
@@ -290,7 +290,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     H.popover().button("Done").click();
 
     cy.findByTestId("chartsettings-field-picker")
-      .find('input[type="search"]')
+      .findByRole("textbox")
       .should("have.value", "Mega Count")
       .click();
 

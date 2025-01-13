@@ -47,11 +47,16 @@ export const ChartSettingSelect = ({
       dropdownComponent={dropdownComponent}
       disabled={disabled}
       value={value}
-      onChange={onChange}
+      //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
+      onChange={v => onChange(v)}
       placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
       initiallyOpened={isInitiallyOpen}
       searchable={!!searchProp}
       rightSectionWidth="10px"
+      comboboxProps={{
+        withinPortal: false,
+        floatingStrategy: "fixed",
+      }}
       styles={{
         input: {
           fontWeight: "bold",
