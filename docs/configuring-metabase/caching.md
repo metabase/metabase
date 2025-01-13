@@ -82,6 +82,10 @@ When automatically refreshing results, Metabase will always apply the default pa
 
 For example, let's say you have a dashboard with a category filter (default value: `Doohickey`) that's set to cache results every 24 hours. During the last 24 hours, people who viewed that dashboard applied the following values to the category filter: `Widget`, `Gizmo`. When Metabase next refreshes the cache, it will cache three sets of results, each set with one of those parameters applied: `Doohickey` (the default value), `Widget`, and `Gizmo`. If, however, _no one_ runs the query in that last 24 hours, Metabase will only refresh the cache for the results with the default parameter's value applied.
 
+### Automatic caching logs
+
+To view the queries Metabase ran to automatically refresh the cache, check out the [query log](../usage-and-performance-tools/usage-analytics.md#query-log-model) and filter the `Query source` by `cache-refresh`.
+
 ## Set caching policies for dashboards, questions, and databases
 
 You can set caching policies for different entities.
