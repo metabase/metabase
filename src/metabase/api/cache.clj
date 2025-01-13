@@ -4,7 +4,7 @@
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.models.cache-config :as cache-config]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -74,6 +74,7 @@
                        "question" :model/Card)
                      id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Return cache configuration."
   [:as {{:strs [model collection id]
@@ -91,6 +92,7 @@
   (check-cache-access (first model) id)
   {:data (cache-config/get-list model collection id)})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/"
   "Store cache configuration."
   [:as {{:keys [model model_id strategy] :as config} :body}]
@@ -101,6 +103,7 @@
   (check-cache-access model model_id)
   {:id (cache-config/store! api/*current-user-id* config)})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/"
   "Delete cache configurations."
   [:as {{:keys [model model_id]} :body}]
@@ -111,6 +114,7 @@
   (cache-config/delete! api/*current-user-id* model model_id)
   nil)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/invalidate"
   "Invalidate cache entries.
 

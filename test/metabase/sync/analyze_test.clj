@@ -17,8 +17,7 @@
    [metabase.test.data :as data]
    [metabase.test.sync :refer [sync-survives-crash?!]]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest skip-analysis-of-fields-with-current-fingerprint-version-test
   (testing "Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current"
@@ -41,9 +40,9 @@
 
 ;; ...but they *SHOULD* get analyzed if they ARE newly created (expcept for PK which we skip)
 (deftest analyze-table-test
-  (t2.with-temp/with-temp [:model/Database db         {:engine "h2",       :details (:details (data/db))}
-                           :model/Table    categories {:name "CATEGORIES", :db_id (:id db) :schema "PUBLIC"}
-                           :model/Table    venues     {:name "VENUES",     :db_id (:id db) :schema "PUBLIC"}]
+  (mt/with-temp [:model/Database db         {:engine "h2",       :details (:details (data/db))}
+                 :model/Table    categories {:name "CATEGORIES", :db_id (:id db) :schema "PUBLIC"}
+                 :model/Table    venues     {:name "VENUES",     :db_id (:id db) :schema "PUBLIC"}]
     (sync-metadata/sync-table-metadata! categories)
     ;; sync the metadata, but DON't do analysis YET
     (sync-metadata/sync-table-metadata! venues)
@@ -62,23 +61,23 @@
 (deftest mark-fields-as-analyzed-test
   (testing "Make sure that only the correct Fields get marked as recently analyzed"
     (with-redefs [i/*latest-fingerprint-version* Short/MAX_VALUE]
-      (t2.with-temp/with-temp [:model/Table table {}
-                               :model/Field _ {:table_id            (u/the-id table)
-                                               :name                "Current fingerprint, not analyzed"
-                                               :fingerprint_version Short/MAX_VALUE
-                                               :last_analyzed       nil}
-                               :model/Field _ {:table_id            (u/the-id table)
-                                               :name                "Current fingerprint, already analzed"
-                                               :fingerprint_version Short/MAX_VALUE
-                                               :last_analyzed       #t "2017-08-09T00:00Z"}
-                               :model/Field _ {:table_id            (u/the-id table)
-                                               :name                "Old fingerprint, not analyzed"
-                                               :fingerprint_version (dec Short/MAX_VALUE)
-                                               :last_analyzed       nil}
-                               :model/Field _ {:table_id            (u/the-id table)
-                                               :name                "Old fingerprint, already analzed"
-                                               :fingerprint_version (dec Short/MAX_VALUE)
-                                               :last_analyzed       #t "2017-08-09T00:00Z"}]
+      (mt/with-temp [:model/Table table {}
+                     :model/Field _ {:table_id            (u/the-id table)
+                                     :name                "Current fingerprint, not analyzed"
+                                     :fingerprint_version Short/MAX_VALUE
+                                     :last_analyzed       nil}
+                     :model/Field _ {:table_id            (u/the-id table)
+                                     :name                "Current fingerprint, already analzed"
+                                     :fingerprint_version Short/MAX_VALUE
+                                     :last_analyzed       #t "2017-08-09T00:00Z"}
+                     :model/Field _ {:table_id            (u/the-id table)
+                                     :name                "Old fingerprint, not analyzed"
+                                     :fingerprint_version (dec Short/MAX_VALUE)
+                                     :last_analyzed       nil}
+                     :model/Field _ {:table_id            (u/the-id table)
+                                     :name                "Old fingerprint, already analzed"
+                                     :fingerprint_version (dec Short/MAX_VALUE)
+                                     :last_analyzed       #t "2017-08-09T00:00Z"}]
         (#'analyze/update-fields-last-analyzed! table)
         (is (= #{"Current fingerprint, not analyzed"}
                (t2/select-fn-set :name :model/Field :table_id (u/the-id table), :last_analyzed [:> #t "2018-01-01"])))))))

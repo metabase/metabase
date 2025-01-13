@@ -9,8 +9,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import (com.fasterxml.jackson.core JsonParseException)))
 
 ;; let's make sure the `transform-metabase-query`/`transform-metric-segment-definition`/`transform-parameters-list`
@@ -79,7 +78,7 @@
 
 (deftest timestamped-property-test
   (testing "Make sure updated_at gets updated for timestamped models"
-    (t2.with-temp/with-temp [:model/Table table {:updated_at #t "2023-02-02T01:00:00"}]
+    (mt/with-temp [:model/Table table {:updated_at #t "2023-02-02T01:00:00"}]
       (let [updated-at (:updated_at table)
             new-name   (u/qualified-name ::a-new-name)]
         (is (= 1
@@ -91,7 +90,7 @@
 
 (deftest timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
-    (t2.with-temp/with-temp [:model/Field field]
+    (mt/with-temp [:model/Field field]
       (testing "Nothing specified: use now() for both"
         (is (=? {:created_at java.time.temporal.Temporal
                  :updated_at java.time.temporal.Temporal}
@@ -99,12 +98,12 @@
     (let [t                  #t "2022-10-13T19:21:00Z"
           expected-timestamp (t/offset-date-time "2022-10-13T19:21:00Z")]
       (testing "Explicitly specify :created_at"
-        (t2.with-temp/with-temp [:model/Field field {:created_at t}]
+        (mt/with-temp [:model/Field field {:created_at t}]
           (is (=? {:created_at expected-timestamp
                    :updated_at java.time.temporal.Temporal}
                   field))))
       (testing "Explicitly specify :updated_at"
-        (t2.with-temp/with-temp [:model/Field field {:updated_at t}]
+        (mt/with-temp [:model/Field field {:updated_at t}]
           (is (=? {:created_at java.time.temporal.Temporal
                    :updated_at expected-timestamp}
                   field)))))))

@@ -25,8 +25,7 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -66,7 +65,7 @@
   (let [m (merge (when-not (:dataset_query m)
                    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
                  m)]
-    (t2.with-temp/with-temp [:model/Card card m]
+    (mt/with-temp [:model/Card card m]
       (f card))))
 
 (defmacro with-temp-card {:style/indent 1} [[binding & [card]] & body]
@@ -497,7 +496,7 @@
   (testing "GET /api/embed/card/:token/query with default values for params"
     (with-embedding-enabled-and-new-secret-key!
       (testing "if the param is enabled"
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :enabled})]
           (testing "the default should apply if no param value is provided"
             (is (= [[107]]
@@ -512,7 +511,7 @@
             (is (= [[1000]]
                    (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date nil}}))))))))
       (testing "if the param is disabled"
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :disabled})]
           (testing "the default should apply if no param is provided"
             (is (= [[107]]
@@ -521,7 +520,7 @@
             (is (= "You're not allowed to specify a value for :date."
                    (client/client :get 400 (str (card-query-url card "") "?date=")))))))
       (testing "if the param is locked"
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :locked})]
           (testing "an empty value with `nil` as the param's value is invalid and should result in an error"
             (is (= "You must specify a value for :date in the JWT."
@@ -548,7 +547,7 @@
 (deftest csv-reports-count
   (testing "make sure CSV (etc.) downloads take editable params into account (#6407)"
     (with-embedding-enabled-and-new-secret-key!
-      (t2.with-temp/with-temp [:model/Card card (card-with-date-field-filter)]
+      (mt/with-temp [:model/Card card (card-with-date-field-filter)]
         (is (= "count\n107\n"
                (client/client :get 200 (str (card-query-url card "/csv") "&date=Q1-2014"))))))))
 
@@ -569,7 +568,7 @@
 
 (deftest it-should-be-possible-to-call-this-endpoint-successfully
   (with-embedding-enabled-and-new-secret-key!
-    (t2.with-temp/with-temp [:model/Dashboard dash {:enable_embedding true}]
+    (mt/with-temp [:model/Dashboard dash {:enable_embedding true}]
       (is (= successful-dashboard-info
              (dissoc-id-and-name
               (client/client :get 200 (dashboard-url dash)))))
@@ -586,20 +585,20 @@
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
   (with-embedding-enabled-and-new-secret-key!
-    (t2.with-temp/with-temp [:model/Dashboard dash {:enable_embedding true}]
+    (mt/with-temp [:model/Dashboard dash {:enable_embedding true}]
       (is (re= #"^Token is expired.*"
                (client/client :get 400 (dashboard-url dash {:exp (buddy-util/to-timestamp yesterday)})))))))
 
 (deftest check-that-the-dashboard-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (mt/with-temporary-setting-values [enable-embedding false]
     (with-new-secret-key!
-      (t2.with-temp/with-temp [:model/Dashboard dash]
+      (mt/with-temp [:model/Dashboard dash]
         (is (= "Embedding is not enabled."
                (client/client :get 400 (dashboard-url dash))))))))
 
 (deftest check-that-if-embedding--is--enabled-globally-but-not-for-the-dashboard-the-request-fails
   (with-embedding-enabled-and-new-secret-key!
-    (t2.with-temp/with-temp [:model/Dashboard dash]
+    (mt/with-temp [:model/Dashboard dash]
       (is (= "Embedding is not enabled for this object."
              (client/client :get 400 (dashboard-url dash)))))))
 
@@ -607,19 +606,19 @@
   (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are signed "
                 "with the wrong key")
     (with-embedding-enabled-and-new-secret-key!
-      (t2.with-temp/with-temp [:model/Dashboard dash {:enable_embedding true}]
+      (mt/with-temp [:model/Dashboard dash {:enable_embedding true}]
         (is (= "Message seems corrupt or manipulated"
                (client/client :get 400 (with-new-secret-key! (dashboard-url dash)))))))))
 
 (deftest only-enabled-params-that-are-not-present-in-the-jwt-come-back
   (testing "check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
     (with-embedding-enabled-and-new-secret-key!
-      (t2.with-temp/with-temp [:model/Dashboard dash {:enable_embedding true
-                                                      :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}
-                                                      :parameters       [{:id "_a", :slug "a", :name "a", :type "date"}
-                                                                         {:id "_b", :slug "b", :name "b", :type "date"}
-                                                                         {:id "_c", :slug "c", :name "c", :type "date"}
-                                                                         {:id "_d", :slug "d", :name "d", :type "date"}]}]
+      (mt/with-temp [:model/Dashboard dash {:enable_embedding true
+                                            :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}
+                                            :parameters       [{:id "_a", :slug "a", :name "a", :type "date"}
+                                                               {:id "_b", :slug "b", :name "b", :type "date"}
+                                                               {:id "_c", :slug "c", :name "c", :type "date"}
+                                                               {:id "_d", :slug "d", :name "d", :type "date"}]}]
         (is (=? [{:id "_d", :slug "d", :name "d", :type "date"}]
                 (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}})))))
         (is (=? [{:id "_d", :slug "d", :name "d", :type "date"}]
@@ -652,26 +651,26 @@
 (deftest locked-params-removes-values-fields-and-mappings-test
   (testing "check that locked params are removed in parameter mappings, param_values, and param_fields"
     (with-embedding-enabled-and-new-secret-key!
-      (t2.with-temp/with-temp [:model/Dashboard     dashboard     {:enable_embedding true
-                                                                   :embedding_params {:venue_name "locked"}
-                                                                   :name             "Test Dashboard"
-                                                                   :parameters       [{:name      "venue_name"
-                                                                                       :slug      "venue_name"
-                                                                                       :id        "foo"
-                                                                                       :type      :string/=
-                                                                                       :sectionId "string"}]}
-                               :model/Card          {card-id :id} {:name "Dashboard Test Card"}
-                               :model/DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
-                                                                   :card_id            card-id
-                                                                   :parameter_mappings [{:card_id      card-id
-                                                                                         :slug         "venue_name"
-                                                                                         :parameter_id "foo"
-                                                                                         :target       [:dimension
-                                                                                                        [:field (mt/id :venues :name) nil]]}
-                                                                                        {:card_id      card-id
-                                                                                         :parameter_id "bar"
-                                                                                         :target       [:dimension
-                                                                                                        [:field (mt/id :categories :name) nil]]}]}]
+      (mt/with-temp [:model/Dashboard     dashboard     {:enable_embedding true
+                                                         :embedding_params {:venue_name "locked"}
+                                                         :name             "Test Dashboard"
+                                                         :parameters       [{:name      "venue_name"
+                                                                             :slug      "venue_name"
+                                                                             :id        "foo"
+                                                                             :type      :string/=
+                                                                             :sectionId "string"}]}
+                     :model/Card          {card-id :id} {:name "Dashboard Test Card"}
+                     :model/DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
+                                                         :card_id            card-id
+                                                         :parameter_mappings [{:card_id      card-id
+                                                                               :slug         "venue_name"
+                                                                               :parameter_id "foo"
+                                                                               :target       [:dimension
+                                                                                              [:field (mt/id :venues :name) nil]]}
+                                                                              {:card_id      card-id
+                                                                               :parameter_id "bar"
+                                                                               :target       [:dimension
+                                                                                              [:field (mt/id :categories :name) nil]]}]}]
         (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
           (is (= nil
                  (-> embedding-dashboard
@@ -706,33 +705,33 @@
 (deftest locked-params-removes-values-fields-when-not-used-in-enabled-params
   (testing "check that locked params are not removed in parameter mappings, param_values, and param_fields when an enabled param uses them (#37914)"
     (with-embedding-enabled-and-new-secret-key!
-      (t2.with-temp/with-temp [:model/Dashboard     dashboard     {:enable_embedding true
-                                                                   :embedding_params {:venue_name   "locked"
-                                                                                      :venue_name_2 "enabled"}
-                                                                   :name             "Test Dashboard"
-                                                                   :parameters       [{:name      "venue_name"
-                                                                                       :slug      "venue_name"
-                                                                                       :id        "foo"
-                                                                                       :type      :string/=
-                                                                                       :sectionId "string"}
-                                                                                      {:name      "venue_name_2"
-                                                                                       :slug      "venue_name_2"
-                                                                                       :id        "bar"
-                                                                                       :type      :string/=
-                                                                                       :sectionId "string"}]}
-                               :model/Card          {card-id :id} {:name "Dashboard Test Card"}
-                               :model/DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
-                                                                   :card_id            card-id
-                                                                   :parameter_mappings [{:card_id      card-id
-                                                                                         :slug         "venue_name"
-                                                                                         :parameter_id "foo"
-                                                                                         :target       [:dimension
-                                                                                                        [:field (mt/id :venues :name) nil]]}
-                                                                                        {:card_id      card-id
-                                                                                         :slug         "venue_name_2"
-                                                                                         :parameter_id "bar"
-                                                                                         :target       [:dimension
-                                                                                                        [:field (mt/id :venues :name) nil]]}]}]
+      (mt/with-temp [:model/Dashboard     dashboard     {:enable_embedding true
+                                                         :embedding_params {:venue_name   "locked"
+                                                                            :venue_name_2 "enabled"}
+                                                         :name             "Test Dashboard"
+                                                         :parameters       [{:name      "venue_name"
+                                                                             :slug      "venue_name"
+                                                                             :id        "foo"
+                                                                             :type      :string/=
+                                                                             :sectionId "string"}
+                                                                            {:name      "venue_name_2"
+                                                                             :slug      "venue_name_2"
+                                                                             :id        "bar"
+                                                                             :type      :string/=
+                                                                             :sectionId "string"}]}
+                     :model/Card          {card-id :id} {:name "Dashboard Test Card"}
+                     :model/DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
+                                                         :card_id            card-id
+                                                         :parameter_mappings [{:card_id      card-id
+                                                                               :slug         "venue_name"
+                                                                               :parameter_id "foo"
+                                                                               :target       [:dimension
+                                                                                              [:field (mt/id :venues :name) nil]]}
+                                                                              {:card_id      card-id
+                                                                               :slug         "venue_name_2"
+                                                                               :parameter_id "bar"
+                                                                               :target       [:dimension
+                                                                                              [:field (mt/id :venues :name) nil]]}]}]
         (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
           (is (some?
                (-> embedding-dashboard
@@ -767,33 +766,33 @@
 (deftest linked-param-to-locked-removes-param-values-test
   (testing "Check that a linked parameter to a locked params we remove the param_values."
     (with-embedding-enabled-and-new-secret-key!
-      (t2.with-temp/with-temp [:model/Dashboard     dashboard     {:enable_embedding true
-                                                                   :embedding_params {:venue_name "locked" :category_name "enabled"}
-                                                                   :name             "Test Dashboard"
-                                                                   :parameters       [{:name      "venue_name"
-                                                                                       :slug      "venue_name"
-                                                                                       :id        "foo"
-                                                                                       :type      :string/=
-                                                                                       :sectionId "string"}
-                                                                                      {:name                "category_name"
-                                                                                       :filteringParameters ["foo"]
-                                                                                       :slug                "category_name"
-                                                                                       :id                  "bar"
-                                                                                       :type                :string/=
-                                                                                       :sectionId           "string"}]}
-                               :model/Card          {card-id :id} {:name "Dashboard Test Card"}
-                               :model/DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
-                                                                   :card_id            card-id
-                                                                   :parameter_mappings [{:card_id      card-id
-                                                                                         :slug         "venue_name"
-                                                                                         :parameter_id "foo"
-                                                                                         :target       [:dimension
-                                                                                                        [:field (mt/id :venues :name) nil]]}
-                                                                                        {:card_id      card-id
-                                                                                         :slug         "category_name"
-                                                                                         :parameter_id "bar"
-                                                                                         :target       [:dimension
-                                                                                                        [:field (mt/id :categories :name) nil]]}]}]
+      (mt/with-temp [:model/Dashboard     dashboard     {:enable_embedding true
+                                                         :embedding_params {:venue_name "locked" :category_name "enabled"}
+                                                         :name             "Test Dashboard"
+                                                         :parameters       [{:name      "venue_name"
+                                                                             :slug      "venue_name"
+                                                                             :id        "foo"
+                                                                             :type      :string/=
+                                                                             :sectionId "string"}
+                                                                            {:name                "category_name"
+                                                                             :filteringParameters ["foo"]
+                                                                             :slug                "category_name"
+                                                                             :id                  "bar"
+                                                                             :type                :string/=
+                                                                             :sectionId           "string"}]}
+                     :model/Card          {card-id :id} {:name "Dashboard Test Card"}
+                     :model/DashboardCard {_ :id}       {:dashboard_id       (:id dashboard)
+                                                         :card_id            card-id
+                                                         :parameter_mappings [{:card_id      card-id
+                                                                               :slug         "venue_name"
+                                                                               :parameter_id "foo"
+                                                                               :target       [:dimension
+                                                                                              [:field (mt/id :venues :name) nil]]}
+                                                                              {:card_id      card-id
+                                                                               :slug         "category_name"
+                                                                               :parameter_id "bar"
+                                                                               :target       [:dimension
+                                                                                              [:field (mt/id :categories :name) nil]]}]}]
         (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
           (is (= []
                  (-> embedding-dashboard
@@ -987,7 +986,7 @@
 (deftest dashboard-native-query-params-with-default-test
   (testing "GET api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id with default values for params"
     (with-embedding-enabled-and-new-secret-key!
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Card      card      (card-with-date-field-filter-default)
          :model/Dashboard dashboard {:enable_embedding true
                                      :embedding_params {:date "enabled"}
@@ -1044,13 +1043,13 @@
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"
     (with-embedding-enabled-and-new-secret-key!
-      (t2.with-temp/with-temp [:model/Card series-card {:dataset_query {:database (mt/id)
-                                                                        :type     :query
-                                                                        :query    {:source-table (mt/id :venues)}}}]
+      (mt/with-temp [:model/Card series-card {:dataset_query {:database (mt/id)
+                                                              :type     :query
+                                                              :query    {:source-table (mt/id :venues)}}}]
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
-          (t2.with-temp/with-temp [:model/DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
-                                                                 :card_id          (u/the-id series-card)
-                                                                 :position         0}]
+          (mt/with-temp [:model/DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
+                                                       :card_id          (u/the-id series-card)
+                                                       :position         0}]
             (is (= "completed"
                    (:status (client/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/the-id series-card))))))))))))))
 
@@ -1068,8 +1067,8 @@
 
 (defn- do-with-embedding-enabled-and-temp-card-referencing! [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key!
-    (t2.with-temp/with-temp [:model/Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
-                                                     :enable_embedding true)]
+    (mt/with-temp [:model/Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
+                                           :enable_embedding true)]
       (f card))))
 
 (defmacro ^:private with-embedding-enabled-and-temp-card-referencing!
@@ -1784,18 +1783,18 @@
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
     (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key!
-        (t2.with-temp/with-temp [:model/Card {card-id :id, :as card} {:dataset_query    (mt/native-query
-                                                                                          {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                                                                                           :template-tags {"NAME"
-                                                                                                           {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
-                                                                                                            :name         "NAME"
-                                                                                                            :display-name "Name"
-                                                                                                            :type         :dimension
-                                                                                                            :dimension    [:field (mt/id :people :name) nil]
-                                                                                                            :widget-type  :string/=
-                                                                                                            :default      nil}}})
-                                                                      :enable_embedding true
-                                                                      :embedding_params {:NAME "enabled"}}]
+        (mt/with-temp [:model/Card {card-id :id, :as card} {:dataset_query    (mt/native-query
+                                                                                {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                                 :template-tags {"NAME"
+                                                                                                 {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
+                                                                                                  :name         "NAME"
+                                                                                                  :display-name "Name"
+                                                                                                  :type         :dimension
+                                                                                                  :dimension    [:field (mt/id :people :name) nil]
+                                                                                                  :widget-type  :string/=
+                                                                                                  :default      nil}}})
+                                                            :enable_embedding true
+                                                            :embedding_params {:NAME "enabled"}}]
           (testing "Card"
             (is (= [[1]]
                    (mt/rows (client/client :get 202 (card-query-url card "") :NAME "Hudson Borer"))
@@ -1822,13 +1821,13 @@
   (testing "Embedded numeric params should work with numeric (as opposed to string) values in the JWT (#20845)"
     (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key!
-        (t2.with-temp/with-temp [:model/Card card {:dataset_query    (mt/native-query
-                                                                       {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
-                                                                        :template-tags {"qty_locked" {:name         "qty_locked"
-                                                                                                      :display-name "Quantity (Locked)"
-                                                                                                      :type         :number}}})
-                                                   :enable_embedding true
-                                                   :embedding_params {:qty_locked "locked"}}]
+        (mt/with-temp [:model/Card card {:dataset_query    (mt/native-query
+                                                             {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
+                                                              :template-tags {"qty_locked" {:name         "qty_locked"
+                                                                                            :display-name "Quantity (Locked)"
+                                                                                            :type         :number}}})
+                                         :enable_embedding true
+                                         :embedding_params {:qty_locked "locked"}}]
           (is (= [3443]
                  (mt/first-row (client/client :get 202 (card-query-url card "" {:params {:qty_locked 1}}))))))))))
 
@@ -1840,12 +1839,12 @@
           output-helper {:csv  (fn [output] (->> output csv/read-csv last))
                          :json (fn [output] (->> output (map (juxt :NUMBER :DATE)) last))}]
       (with-embedding-enabled-and-new-secret-key!
-        (t2.with-temp/with-temp [:model/Card {card-id :id} {:enable_embedding true
-                                                            :display :table :dataset_query q}
-                                 :model/Dashboard {dashboard-id :id} {:enable_embedding true
-                                                                      :embedding_params {:name "enabled"}}
-                                 :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
-                                                                         :card_id      card-id}]
+        (mt/with-temp [:model/Card {card-id :id} {:enable_embedding true
+                                                  :display :table :dataset_query q}
+                       :model/Dashboard {dashboard-id :id} {:enable_embedding true
+                                                            :embedding_params {:name "enabled"}}
+                       :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                               :card_id      card-id}]
           (doseq [[export-format apply-formatting? expected] [[:csv true ["2,000" "March 26, 2024"]]
                                                               [:csv false ["2000" "2024-03-26"]]
                                                               [:json true ["2,000" "March 26, 2024"]]
@@ -1868,35 +1867,35 @@
   (testing "Filter linked to locked filter works in various common configurations."
     (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key!
-        (t2.with-temp/with-temp [:model/Card {card-id :id} {:enable_embedding true
-                                                            :display          :table
-                                                            :dataset_query    {:database (mt/id)
-                                                                               :type     :query
-                                                                               :query    {:source-table (mt/id :products)}}}
-                                 :model/Dashboard {dashboard-id :id} {:enable_embedding true
-                                                                      :parameters
-                                                                      [{:name      "Category"
-                                                                        :slug      "category"
-                                                                        :id        "ad5f614b"
-                                                                        :type      :string/=
-                                                                        :sectionId "string"}
-                                                                       {:name                "Title"
-                                                                        :slug                "title"
-                                                                        :id                  "7ef6f58c"
-                                                                        :type                :string/=
-                                                                        :sectionId           "string"
-                                                                        :filteringParameters ["ad5f614b"]}]
-                                                                      :embedding_params {:category "locked"
-                                                                                         :title    "enabled"}}
-                                 :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
-                                                                         :card_id      card-id
-                                                                         :parameter_mappings
-                                                                         [{:parameter_id "ad5f614b"
-                                                                           :card_id      card-id
-                                                                           :target       [:dimension [:field (mt/id :products :category) {:base-type :type/Text}]]}
-                                                                          {:parameter_id "7ef6f58c"
-                                                                           :card_id      card-id
-                                                                           :target       [:dimension [:field (mt/id :products :title) {:base-type :type/Text}]]}]}]
+        (mt/with-temp [:model/Card {card-id :id} {:enable_embedding true
+                                                  :display          :table
+                                                  :dataset_query    {:database (mt/id)
+                                                                     :type     :query
+                                                                     :query    {:source-table (mt/id :products)}}}
+                       :model/Dashboard {dashboard-id :id} {:enable_embedding true
+                                                            :parameters
+                                                            [{:name      "Category"
+                                                              :slug      "category"
+                                                              :id        "ad5f614b"
+                                                              :type      :string/=
+                                                              :sectionId "string"}
+                                                             {:name                "Title"
+                                                              :slug                "title"
+                                                              :id                  "7ef6f58c"
+                                                              :type                :string/=
+                                                              :sectionId           "string"
+                                                              :filteringParameters ["ad5f614b"]}]
+                                                            :embedding_params {:category "locked"
+                                                                               :title    "enabled"}}
+                       :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                               :card_id      card-id
+                                                               :parameter_mappings
+                                                               [{:parameter_id "ad5f614b"
+                                                                 :card_id      card-id
+                                                                 :target       [:dimension [:field (mt/id :products :category) {:base-type :type/Text}]]}
+                                                                {:parameter_id "7ef6f58c"
+                                                                 :card_id      card-id
+                                                                 :target       [:dimension [:field (mt/id :products :title) {:base-type :type/Text}]]}]}]
           (doseq [{:keys [test-str params]}
                   [{:test-str "Locked filter is not set in the token, so requests should fail."
                     :params   {}}

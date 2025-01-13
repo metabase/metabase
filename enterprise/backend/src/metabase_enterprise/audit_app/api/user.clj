@@ -11,6 +11,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/audit-info"
   "Gets audit info for the current user if he has permissions to access the audit collection.
   Otherwise return an empty map."
@@ -26,6 +27,7 @@
        {(u/slugify (:name question-overview)) (:id question-overview)
         (u/slugify (:name dashboard-overview)) (:id dashboard-overview)}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id/subscriptions"
   "Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).
   Archive all Alerts and DashboardSubscriptions created by the User. Only allowed for admins or for the current user."

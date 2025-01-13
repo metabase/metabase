@@ -247,7 +247,7 @@
   (lib/concat column "__concat"))
 
 (defn- gen-expression [columns]
-  (let [numbers (map #(vector gen-expression:number %) (filter lib.types.isa/number? columns))
+  (let [numbers (map #(vector gen-expression:number %) (filter lib.types.isa/numeric? columns))
         strings (map #(vector gen-expression:string %) (filter lib.types.isa/string? columns))
         [f col] (gen.u/choose (concat numbers strings))]
     (when (and f col)

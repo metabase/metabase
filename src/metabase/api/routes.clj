@@ -1,10 +1,9 @@
 (ns metabase.api.routes
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
-   [compojure.core :refer [GET]]
    [compojure.route :as route]
    [metabase.api.action :as api.action]
    [metabase.api.activity :as api.activity]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.alert :as api.alert]
    [metabase.api.api-key :as api.api-key]
    [metabase.api.automagic-dashboards :as api.magic]
@@ -15,10 +14,11 @@
    [metabase.api.channel :as api.channel]
    [metabase.api.cloud-migration :as api.cloud-migration]
    [metabase.api.collection :as api.collection]
-   [metabase.api.common :as api :refer [defroutes context]]
+   [metabase.api.common :refer [context defroutes]]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.database :as api.database]
    [metabase.api.dataset :as api.dataset]
+   [metabase.api.docs :as api.docs]
    [metabase.api.email :as api.email]
    [metabase.api.embed :as api.embed]
    [metabase.api.field :as api.field]
@@ -35,11 +35,11 @@
    [metabase.api.premium-features :as api.premium-features]
    [metabase.api.preview-embed :as api.preview-embed]
    [metabase.api.public :as api.public]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.pulse :as api.pulse]
    [metabase.api.pulse.unsubscribe :as api.pulse.unsubscribe]
    [metabase.api.revision :as api.revision]
-   [metabase.api.routes.common
-    :refer [+auth +message-only-exceptions +public-exceptions +static-apikey]]
+   [metabase.api.routes.common :refer [+auth +message-only-exceptions +public-exceptions +static-apikey]]
    [metabase.api.search :as api.search]
    [metabase.api.segment :as api.segment]
    [metabase.api.session :as api.session]
@@ -57,9 +57,7 @@
    [metabase.api.util :as api.util]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [ring.middleware.content-type :as content-type]
-   [ring.util.response :as response]))
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (when config/ee-available?
   (classloader/require 'metabase-enterprise.api.routes))
@@ -76,35 +74,8 @@
     (fn [_request respond _raise]
       (respond nil))))
 
-(api/defendpoint GET "/docs*"
-  "OpenAPI 3.1.0 JSON and UI
-
-  https://spec.openapis.org/oas/latest.html"
-  [:as {:keys [params uri]}]
-  (let [path    (:* params)
-        respond (fn [path]
-                  (-> (response/resource-response (str "openapi/" path))
-                      (content-type/content-type-response {:uri path})))]
-    (case path
-      ""                {:status  302
-                         :headers {"Location" (str uri "/")}
-                         :body    ""}
-      "/"               (-> (respond "index.html")
-                            ;; Better would be to append this to our CSP, but there is no good way right now and it's
-                            ;; just a single page. Necessary for Scalar to work, script injects styles in runtime.
-                            (assoc-in [:headers "Content-Security-Policy"] "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net"))
-      "/openapi.json"   (merge
-                         (api/openapi-object (resolve 'metabase.api.routes/routes))
-                         {:openapi "3.1.0"
-                          :info    {:title   "Metabase API"
-                                    :version (:tag config/mb-version-info)}
-                          :servers [{:url         "/api"
-                                     :description "Metabase API"}]})
-      (respond path))))
-
 (defroutes ^{:doc "Ring routes for API endpoints.", :arglists '([request] [request respond raise])} routes
   ee-routes
-  #'GET_docs*
   (context "/action"               [] (+auth api.action/routes))
   (context "/activity"             [] (+auth api.activity/routes))
   (context "/alert"                [] (+auth api.alert/routes))
@@ -118,6 +89,7 @@
   (context "/dashboard"            [] (+auth api.dashboard/routes))
   (context "/database"             [] (+auth api.database/routes))
   (context "/dataset"              [] (+auth api.dataset/routes))
+  (context "/docs"                 [] api.docs/routes)
   (context "/email"                [] (+auth api.email/routes))
   (context "/embed"                [] (+message-only-exceptions api.embed/routes))
   (context "/field"                [] (+auth api.field/routes))

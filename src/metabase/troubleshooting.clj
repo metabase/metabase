@@ -4,7 +4,7 @@
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -48,4 +48,4 @@
      {:airgap-token       :enabled
       :max-users          (premium-features/max-users-allowed)
       :current-user-count (premium-features/active-users-count)
-      :valid-thru         (some-> (premium-features/premium-embedding-token) premium-features/fetch-token-status :valid-thru)})))
+      :valid-thru         (:valid-thru (premium-features/token-status))})))

@@ -17,6 +17,7 @@
    [environ.core :as env]
    [metabase.db :as mdb]
    [metabase.plugins.classloader :as classloader]
+   [metabase.task.bootstrap]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -81,62 +82,11 @@
         (log/errorf e "Error initializing task %s" k)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                      Quartz Scheduler Connection Provider                                      |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; Custom `ConnectionProvider` implementation that uses our application DB connection pool to provide connections.
-
-(defrecord ^:private ConnectionProvider []
-  org.quartz.utils.ConnectionProvider
-  (initialize [_])
-  (getConnection [_]
-    ;; get a connection from our application DB connection pool. Quartz will close it (i.e., return it to the pool)
-    ;; when it's done
-    ;;
-    ;; very important! Fetch a new connection from the connection pool rather than using currently bound Connection if
-    ;; one already exists -- because Quartz will close this connection when done, we don't want to screw up the
-    ;; calling block
-    ;;
-    ;; in a perfect world we could just check whether we're creating a new Connection or not, and if using an existing
-    ;; Connection, wrap it in a delegating proxy wrapper that makes `.close()` a no-op but forwards all other methods.
-    ;; Now that would be a useful macro!
-    (.getConnection (mdb/app-db)))
-  (shutdown [_]))
-
-(when-not *compile-files*
-  (System/setProperty "org.quartz.dataSource.db.connectionProvider.class" (.getName ConnectionProvider)))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Quartz Scheduler Class Load Helper                                       |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- load-class ^Class [^String class-name]
-  (Class/forName class-name true (classloader/the-classloader)))
-
-(defrecord ^:private ClassLoadHelper []
-  org.quartz.spi.ClassLoadHelper
-  (initialize [_])
-  (getClassLoader [_]
-    (classloader/the-classloader))
-  (loadClass [_ class-name]
-    (load-class class-name))
-  (loadClass [_ class-name _]
-    (load-class class-name)))
-
-(when-not *compile-files*
-  (System/setProperty "org.quartz.scheduler.classLoadHelper.class" (.getName ClassLoadHelper)))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          STARTING/STOPPING SCHEDULER                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- set-jdbc-backend-properties!
-  "Set the appropriate system properties needed so Quartz can connect to the JDBC backend. (Since we don't know our DB
-  connection properties ahead of time, we'll need to set these at runtime rather than setting them in the
-  `quartz.properties` file.)"
-  []
-  (when (= (mdb/db-type) :postgres)
-    (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
+(defn- set-jdbc-backend-properties! []
+  (metabase.task.bootstrap/set-jdbc-backend-properties! (mdb/db-type)))
 
 (defn- delete-jobs-with-no-class!
   "Delete any jobs that have been scheduled but whose class is no longer available."
