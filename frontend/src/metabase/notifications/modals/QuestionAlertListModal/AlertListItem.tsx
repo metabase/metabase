@@ -4,11 +4,7 @@ import { jt, t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { getNotificationEnabledChannelsMap } from "metabase/lib/notifications";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import {
-  deleteAlert,
-  unsubscribeFromAlert,
-} from "metabase/notifications/redux/alert";
+import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import { Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
 import type { Notification } from "metabase-types/api";
@@ -19,6 +15,7 @@ import S from "./AlertListItem.module.css";
 type AlertListItemProps = {
   alert: Notification;
   onUnsubscribe: (alert: Notification) => void;
+  onDelete: () => void;
   canEdit: boolean;
   onEdit: () => void;
 };
@@ -28,10 +25,9 @@ export const AlertListItem = ({
   onUnsubscribe,
   canEdit,
   onEdit,
+  onDelete,
 }: AlertListItemProps) => {
   const user = useSelector(getUser);
-
-  const dispatch = useDispatch();
 
   const [showHoverActions, setShowHoverActions] = useState(false);
 
@@ -39,17 +35,18 @@ export const AlertListItem = ({
 
   const handleUnsubscribe = async () => {
     try {
-      await dispatch(unsubscribeFromAlert(alert));
+      // TODO: implement
+      // await dispatch(unsubscribeFromAlert(alert));
       onUnsubscribe(alert);
     } catch (e) {
       // TODO: error message
     }
   };
 
-  const handleDelele = async (e: React.MouseEvent) => {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    await dispatch(deleteAlert(alert.id));
+    onDelete();
   };
 
   const handleMouseEnter = () => {
@@ -83,7 +80,7 @@ export const AlertListItem = ({
         >{t`Alert`}</Text>
       </div>
 
-      <Group spacing="md" align="center" c="text-medium">
+      <Group spacing="0.75rem" align="center" c="text-medium">
         {enabledChannelsMap["channel/email"] && <Icon name="mail" />}
         {enabledChannelsMap["channel/slack"] && <Icon name="slack" size={16} />}
         {enabledChannelsMap["channel/http"] && (
@@ -96,7 +93,7 @@ export const AlertListItem = ({
         <div className={S.hoverActionButton}>
           {canEdit && (
             <Tooltip label={t`Delete this alert`}>
-              <Icon name="trash" onClick={handleDelele} />
+              <Icon name="trash" onClick={handleDelete} />
             </Tooltip>
           )}
           {!canEdit && (

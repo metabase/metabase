@@ -10,7 +10,7 @@ import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { CreateAlertModalContent } from "metabase/notifications/modals";
+import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/updateQuestion";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
@@ -202,13 +202,11 @@ export function QueryModals({
       );
     case MODAL_TYPES.CREATE_ALERT:
       return (
-        <Modal medium onClose={onCloseModal}>
-          <CreateAlertModalContent
-            notificationType="alert"
-            onCancel={onCloseModal}
-            onAlertCreated={onCloseModal}
-          />
-        </Modal>
+        <CreateOrEditQuestionAlertModal
+          opened
+          onAlertCreated={onCloseModal}
+          onClose={onCloseModal}
+        />
       );
     case MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED:
       return (

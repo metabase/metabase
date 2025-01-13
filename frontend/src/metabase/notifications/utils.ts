@@ -1,4 +1,4 @@
-import type { NotificationTriggerOption } from "metabase/notifications/modals/CreateOrUpdateAlertModal/types";
+import type { NotificationTriggerOption } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/types";
 import type {
   CardId,
   ChannelApiResponse,

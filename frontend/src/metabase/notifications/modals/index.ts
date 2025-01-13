@@ -1,5 +1,4 @@
-export { CreateAlertModalContent } from "./CreateOrUpdateAlertModal/CreateAlertModalContent";
-export { UpdateAlertModalContent } from "./CreateOrUpdateAlertModal/UpdateAlertModalContent";
+export { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
 export { AlertEditForm } from "./AlertEditForm";
 export { AlertModalTitle } from "./AlertModalTitle";
 export { AlertAboveGoalToggle } from "./AlertAboveGoalToggle";

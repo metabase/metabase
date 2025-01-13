@@ -13,6 +13,7 @@ export function QuestionAlertsMenuItem({
 }) {
   const { data: questionNotifications, isLoading } = useListNotificationsQuery({
     card_id: question.id() ?? skipToken,
+    include_inactive: false,
   });
 
   if (isLoading) {

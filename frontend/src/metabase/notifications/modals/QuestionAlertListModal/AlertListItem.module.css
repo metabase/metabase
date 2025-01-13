@@ -2,6 +2,10 @@
   position: relative;
 }
 
+.itemTitle {
+  line-height: 1rem;
+}
+
 .notificationListItemEditable {
   border-radius: 0.25rem;
 
@@ -10,7 +14,7 @@
     cursor: pointer;
 
     .itemTitle {
-      color: var(--mb-color-brand)
+      color: var(--mb-color-brand);
     }
   }
 }

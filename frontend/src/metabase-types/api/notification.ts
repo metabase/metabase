@@ -25,16 +25,7 @@ type NotificationCardPayload = {
   payload_id?: number;
 };
 
-// type NotificationDashboardPayload = {
-//   payload_type: "notification/dashboard";
-//   payload: {
-//     id?: number;
-//     send_once: boolean;
-//   };
-// };
-
-type NotificationPayload = NotificationCardPayload;
-// | NotificationDashboardPayload;
+type NotificationPayload = NotificationCardPayload; // will be populated with more variants later on
 
 //#endregion
 
@@ -131,27 +122,21 @@ export interface ListNotificationsRequest extends PaginationRequest {
   permission_group_id?: number;
 }
 
-export type CreateNotificationRequest = NotificationPayload & {
-  handlers: NotificationHandler[];
-  subscriptions: NotificationCronSubscription[];
-};
-
 export type CreateAlertNotificationRequest = NotificationCardPayload & {
   handlers: NotificationHandler[];
   subscriptions: NotificationCronSubscription[];
 };
 
-export type UpdateNotificationRequest = NotificationCardPayload & {
+export type CreateNotificationRequest = CreateAlertNotificationRequest; // will be populated with more variants later on
+
+export type UpdateAlertNotificationRequest = NotificationCardPayload & {
   id: NotificationId;
+  active: boolean;
   handlers: NotificationHandler[];
   subscriptions: NotificationCronSubscription[];
 };
 
-export type UpdateAlertNotificationRequest = NotificationCardPayload & {
-  id: NotificationId;
-  handlers: NotificationHandler[];
-  subscriptions: NotificationCronSubscription[];
-};
+export type UpdateNotificationRequest = UpdateAlertNotificationRequest; // will be populated with more variants later on
 
 export type Notification = NotificationPayload & {
   id: NotificationId;

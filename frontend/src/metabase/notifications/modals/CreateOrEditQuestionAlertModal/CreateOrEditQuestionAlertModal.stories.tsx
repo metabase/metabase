@@ -4,7 +4,6 @@ import { type ComponentProps, useState } from "react";
 import { Provider } from "react-redux";
 
 import { createMockEntitiesState } from "__support__/store";
-import Modal from "metabase/components/Modal";
 import api from "metabase/lib/api";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
@@ -18,11 +17,11 @@ import { createMockNotification } from "metabase-types/api/mocks/notification";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
-import { CreateAlertModalContent } from "./CreateAlertModalContent";
+import { CreateOrEditQuestionAlertModal } from "./CreateOrEditQuestionAlertModal";
 
 export default {
-  title: "Notifications/CreateAlertModalContent",
-  component: CreateAlertModalContent,
+  title: "Notifications/CreateOrEditQuestionAlertModal",
+  component: CreateOrEditQuestionAlertModal,
   decorators: [ReduxDecorator],
 };
 
@@ -60,14 +59,19 @@ function ReduxDecorator(Story: StoryFn) {
 }
 
 const Template: StoryFn<
-  ComponentProps<typeof CreateAlertModalContent>
+  ComponentProps<typeof CreateOrEditQuestionAlertModal>
 > = args => {
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <Modal isOpen={isOpen} onClose={() => setIsOpen(false)}>
-      <CreateAlertModalContent {...args} />
-    </Modal>
+    <CreateOrEditQuestionAlertModal
+      {...args}
+      opened={isOpen}
+      onClose={() => {
+        args.onClose();
+        setIsOpen(false);
+      }}
+    />
   );
 };
 
@@ -76,7 +80,7 @@ export const Default = {
 
   args: {
     onAlertCreated: action("onAlertCreated"),
-    onCancel: action("onCancel"),
+    onClose: action("onClose"),
   },
 };
 
@@ -86,6 +90,6 @@ export const EditMode = {
   args: {
     editingNotification: createMockNotification(),
     onAlertUpdated: action("onAlertUpdated"),
-    onCancel: action("onCancel"),
+    onClose: action("onClose"),
   },
 };

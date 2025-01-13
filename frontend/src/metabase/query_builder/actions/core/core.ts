@@ -10,7 +10,6 @@ import { createThunkAction } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { copy } from "metabase/lib/utils";
-import { fetchAlertsForQuestion } from "metabase/notifications/redux/alert";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -289,9 +288,7 @@ export const apiUpdateQuestion = (
       },
     );
 
-    // reload the question alerts for the current question
-    // (some of the old alerts might be removed during update)
-    await dispatch(fetchAlertsForQuestion(updatedQuestion.id()));
+    // TODO: invalidate question notifications RTK cache
 
     await dispatch({
       type: API_UPDATE_QUESTION,

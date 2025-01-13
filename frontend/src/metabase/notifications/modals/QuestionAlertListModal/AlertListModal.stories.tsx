@@ -2,25 +2,27 @@ import { action } from "@storybook/addon-actions";
 import type { StoryFn } from "@storybook/react";
 import { type ComponentProps, useState } from "react";
 
-import Modal from "metabase/components/Modal";
 import { createMockNotification } from "metabase-types/api/mocks/notification";
 
-import { NotificationsListModalContent } from "./NotificationsListModalContent";
+import { AlertListModal } from "./AlertListModal";
 
 export default {
-  title: "Notifications/NotificationsListModalContent",
-  component: NotificationsListModalContent,
+  title: "Notifications/AlertListModal",
+  component: AlertListModal,
 };
 
-const Template: StoryFn<
-  ComponentProps<typeof NotificationsListModalContent>
-> = args => {
+const Template: StoryFn<ComponentProps<typeof AlertListModal>> = args => {
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <Modal isOpen={isOpen} onClose={() => setIsOpen(false)}>
-      <NotificationsListModalContent {...args} />
-    </Modal>
+    <AlertListModal
+      {...args}
+      opened={isOpen}
+      onClose={() => {
+        args.onClose();
+        setIsOpen(false);
+      }}
+    />
   );
 };
 

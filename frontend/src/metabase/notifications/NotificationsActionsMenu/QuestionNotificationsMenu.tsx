@@ -5,6 +5,7 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { QuestionAlertsMenuItem } from "metabase/notifications/NotificationsActionsMenu/QuestionAlertsMenuItem";
 import type { QuestionNotificationsModalType } from "metabase/notifications/NotificationsActionsMenu/types";
+import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import { setUIControls } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
@@ -15,7 +16,6 @@ import {
   NotificationsMenu,
   NotificationsMenuTriggerButton,
 } from "./NotificationsMenu";
-import { NotificationsModals } from "./NotificationsModals";
 
 export function QuestionNotificationsMenu({
   question,
@@ -57,14 +57,16 @@ export function QuestionNotificationsMenu({
       <NotificationsMenu>
         <QuestionAlertsMenuItem
           question={question}
-          onClick={() => setModalType("question-alert")}
+          onClick={() => setModalType("question-alert-list")}
         />
       </NotificationsMenu>
-      <NotificationsModals
-        modalType={modalType}
-        question={question}
-        onClose={() => setModalType(null)}
-      />
+
+      {modalType === "question-alert-list" && (
+        <QuestionAlertListModal
+          question={question}
+          onClose={() => setModalType(null)}
+        />
+      )}
     </Flex>
   );
 }
