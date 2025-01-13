@@ -167,9 +167,11 @@ jobs:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
 
-      - name: Run tests
+      - name: Run App DB tests
         id: run-java-tests
-        run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+        run: >-
+          clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+          :exclude-tags [:mb/driver-tests]
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
