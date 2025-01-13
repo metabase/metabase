@@ -64,7 +64,7 @@ jobs:
                 .filter(job => job.status === "completed" && job.conclusion === "failure");
 
               // don't bother slack if only the flaky job failed
-              if (failedJobs.every(job => job.name.includes("flaky"))) {
+              if (failedJobs.every(job => job.name.toLowerCase().includes("flaky"))) {
                 return;
               }
 

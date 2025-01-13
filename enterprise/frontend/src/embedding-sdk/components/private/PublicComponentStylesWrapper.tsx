@@ -63,4 +63,10 @@ export const SCOPED_CSS_RESET = css`
     border: 0;
     background-color: transparent;
   }
+
+  // fonts.styled.ts has a reset for list padding and margin in the main app, so we need to do it here
+  ${PublicComponentStylesWrapperInner} *:where(ul) {
+    padding: 0;
+    margin: 0;
+  }
 `;
