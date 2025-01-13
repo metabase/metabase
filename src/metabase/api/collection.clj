@@ -117,7 +117,8 @@
                              [:= :type collection/trash-collection-type] 1
                              :else 2]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+    exclude-other-user-collections
+    (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -424,12 +425,7 @@
                                              [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :collection_id
-                                                                {:include-archived-items :all
-                                                                 :permission-level (if archived?
-                                                                                     :write
-                                                                                     :read)
-                                                                 :archive-operation-id nil})
+                   (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
@@ -558,12 +554,7 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :collection_id
-                                                                {:include-archived-items :all
-                                                                 :archive-operation-id nil
-                                                                 :permission-level (if archived?
-                                                                                     :write
-                                                                                     :read)})
+                   (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
@@ -720,7 +711,7 @@
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
 (defn- remove-unwanted-keys [row]
-  (dissoc row :collection_type :model_ranking :archived_directly))
+  (dissoc row :collection_type :model_ranking :archived_directly :total_count))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
@@ -864,7 +855,7 @@
        (into [])))
 
 (defn- collection-children*
-  [collection models {:keys [sort-info] :as options}]
+  [collection models {:keys [sort-info archived?] :as options}]
   (let [sql-order   (children-sort-clause sort-info (mdb/db-type))
         models      (sort (map keyword models))
         queries     (for [model models
@@ -877,23 +868,32 @@
                       (-> query
                           (update select-clause-type add-missing-columns all-select-columns)
                           (update select-clause-type add-model-ranking model)))
-        total-query {:select [[:%count.* :count]]
-                     :from   [[{:union-all queries} :dummy_alias]]}
-        rows-query  {:select   [:*]
+        viz-config  {:include-archived-items :all
+                     :archive-operation-id nil
+                     :permission-level (if archived? :write :read)}
+        rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
+                     :select   [:* [[:over [[:count :*] {} :total_count]]]]
                      :from     [[{:union-all queries} :dummy_alias]]
                      :order-by sql-order}
+        limit       mw.offset-paging/*limit*
+        offset      mw.offset-paging/*offset*
         ;; We didn't implement collection pagination for snippets namespace for root/items
         ;; Rip out the limit for now and put it back in when we want it
         limit-query (if (or
-                         (nil? mw.offset-paging/*limit*)
-                         (nil? mw.offset-paging/*offset*)
+                         (nil? limit)
+                         (nil? offset)
                          (= (:collection-namespace options) "snippets"))
                       rows-query
                       (assoc rows-query
-                             :limit  mw.offset-paging/*limit*
-                             :offset mw.offset-paging/*offset*))
-        res         {:total  (->> (mdb.query/query total-query) first :count)
-                     :data   (->> (mdb.query/query limit-query) (post-process-rows collection))
+                             ;; If limit is 0, we still execute the query with a limit of 1 so that we fetch a
+                             ;; :total_count
+                             :limit  (if (zero? limit) 1 limit)
+                             :offset offset))
+        rows        (mdb.query/query limit-query)
+        res         {:total  (->> rows first :total_count)
+                     :data   (if (= limit 0)
+                               []
+                               (post-process-rows collection rows))
                      :models models}
         limit-res   (assoc res
                            :limit  mw.offset-paging/*limit*
