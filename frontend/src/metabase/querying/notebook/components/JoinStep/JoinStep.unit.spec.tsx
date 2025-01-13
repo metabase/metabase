@@ -238,9 +238,10 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(
       within(screen.getByLabelText("Right table")).getByRole("button"),
     );
-    const modal = await screen.findByTestId("entity-picker-modal");
 
     await waitForLoaderToBeRemoved();
+
+    const modal = await screen.findByTestId("entity-picker-modal");
 
     expect(within(modal).getByText("Products")).toBeInTheDocument();
     expect(within(modal).getByText("People")).toBeInTheDocument();
@@ -253,9 +254,10 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(
       within(screen.getByLabelText("Right table")).getByRole("button"),
     );
-    const modal = await screen.findByTestId("entity-picker-modal");
 
     await waitForLoaderToBeRemoved();
+
+    const modal = await screen.findByTestId("entity-picker-modal");
 
     expect(
       within(modal).queryByText(ANOTHER_DATABASE.name),
@@ -288,9 +290,10 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(
       within(screen.getByLabelText("Right table")).getByRole("button"),
     );
-    const modal = await screen.findByTestId("entity-picker-modal");
 
     await waitForLoaderToBeRemoved();
+
+    const modal = await screen.findByTestId("entity-picker-modal");
 
     expect(within(modal).getByText("Recents")).toBeInTheDocument();
     expect(
