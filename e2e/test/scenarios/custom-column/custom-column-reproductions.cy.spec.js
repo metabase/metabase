@@ -288,7 +288,7 @@ describe("issue 18747", () => {
   function addValueToParameterFilter() {
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.multiAutocompleteInput().type("14");
+      H.fieldValuesInput().type("14");
       cy.button("Add filter").click();
     });
   }

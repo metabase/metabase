@@ -1199,7 +1199,7 @@ describe("issue 22482", () => {
 
   it("should round relative date range (metabase#22482)", () => {
     cy.findByLabelText("Interval").clear().type(15);
-    cy.findByLabelText("Unit").click();
+    cy.findByRole("textbox", { name: "Unit" }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("months").click();
 
@@ -1242,7 +1242,7 @@ describe("issue 22788", () => {
   function addFilterAndAssert() {
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.multiAutocompleteInput().type("Gizmo");
+      H.fieldValuesInput().type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -2162,7 +2162,7 @@ describe("issue 27768", () => {
 
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.multiAutocompleteInput().type("Gizmo");
+      H.fieldValuesInput().type("Gizmo");
       cy.button("Add filter").click();
     });
 

@@ -124,13 +124,17 @@ export function NumberInputWidget({
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
             data={customLabelOptions.concat(valueOptions)}
-            filter={({ options }: { options: any[] }) => {
+            filter={({
+              options,
+              search,
+            }: {
+              options: any[];
+              search: string;
+            }) => {
               return options.filter(item =>
                 Boolean(
-                  item.value !== "" &&
-                    item.label
-                      ?.toLowerCase()
-                      .startsWith(item.value.toLowerCase()),
+                  search !== "" &&
+                    item.label?.toLowerCase().startsWith(search.toLowerCase()),
                 ),
               );
             }}
