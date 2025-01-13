@@ -42,6 +42,7 @@
     {:reactions (encode-reactions (metabot-v3.envelope/reactions env))
      :history (metabot-v3.envelope/history env)}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/agent"
   "Send a chat message to the LLM via the AI Proxy."
   [:as {{:keys [message context history session_id] :as _body} :body}]

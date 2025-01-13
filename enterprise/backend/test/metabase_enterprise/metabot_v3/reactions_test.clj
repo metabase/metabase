@@ -1,18 +1,18 @@
 (ns metabase-enterprise.metabot-v3.reactions-test
   (:require
    [clojure.test :refer :all]
-   [malli.core :as mc]
-   [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]))
+   [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel reaction-schema-test
   (testing "Known/registered reactions"
-    (is (mc/validate
+    (is (mr/validate
          ::metabot-v3.reactions/reaction
          {:type :metabot.reaction/message, :message "Hello"}))
-    (is (not (mc/validate
+    (is (not (mr/validate
               ::metabot-v3.reactions/reaction
               {:type :metabot.reaction/message}))))
   (testing "Should allow unregistered reactions"
-    (mc/validate
+    (mr/validate
      ::metabot-v3.reactions/reaction
      {:type :metabot.reaction/unknown-does-not-exist})))
