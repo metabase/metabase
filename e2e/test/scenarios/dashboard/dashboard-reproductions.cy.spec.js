@@ -1584,7 +1584,7 @@ describe("issue 47170", () => {
 describe("issue 49556", () => {
   const TAB = { id: 1, name: "Tab" };
 
-  const CREATED_AT_FIELD_REF = [
+  const PEOPLE_NAME_FIELD_REF = [
     "field",
     PEOPLE.NAME,
     { "base-type": "type/Text" },
@@ -1625,7 +1625,7 @@ describe("issue 49556", () => {
               card_id: ORDERS_QUESTION_ID,
               target: [
                 "dimension",
-                CREATED_AT_FIELD_REF,
+                PEOPLE_NAME_FIELD_REF,
                 { "stage-number": 0 },
               ],
             },
@@ -1634,7 +1634,7 @@ describe("issue 49556", () => {
               card_id: ORDERS_QUESTION_ID,
               target: [
                 "dimension",
-                CREATED_AT_FIELD_REF,
+                PEOPLE_NAME_FIELD_REF,
                 { "stage-number": 0 },
               ],
             },
