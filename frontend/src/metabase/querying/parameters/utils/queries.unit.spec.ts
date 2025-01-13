@@ -18,14 +18,14 @@ type FilterParameterCase = {
 describe("applyParameter", () => {
   const query = createQuery();
   const stageIndex = 0;
+  const filterableColumns = Lib.filterableColumns(query, stageIndex);
+  const findFilterableColumn = columnFinder(query, filterableColumns);
 
-  function getColumnTarget(
+  function getFilterColumnTarget(
     tableName: string,
     columnName: string,
   ): ParameterTarget {
-    const columns = Lib.filterableColumns(query, stageIndex);
-    const findColumn = columnFinder(query, columns);
-    const column = findColumn(tableName, columnName);
+    const column = findFilterableColumn(tableName, columnName);
     const columnRef = Lib.legacyRef(query, stageIndex, column);
     return ["dimension", columnRef] as ParameterTarget;
   }
@@ -33,9 +33,27 @@ describe("applyParameter", () => {
   it.each<FilterParameterCase>([
     {
       type: "category",
-      target: getColumnTarget("PRODUCTS", "CATEGORY"),
+      target: getFilterColumnTarget("PRODUCTS", "CATEGORY"),
       value: "Gadget",
       expectedDisplayName: "Category is Gadget",
+    },
+    {
+      type: "string/=",
+      target: getFilterColumnTarget("PRODUCTS", "CATEGORY"),
+      value: "Widget",
+      expectedDisplayName: "Category is Widget",
+    },
+    {
+      type: "string/=",
+      target: getFilterColumnTarget("PRODUCTS", "CATEGORY"),
+      value: ["Widget", "Gadget"],
+      expectedDisplayName: "Category is 2 selections",
+    },
+    {
+      type: "string/!=",
+      target: getFilterColumnTarget("PRODUCTS", "CATEGORY"),
+      value: ["Widget"],
+      expectedDisplayName: "Category is not Widget",
     },
   ])(
     "should apply a filter parameter",
