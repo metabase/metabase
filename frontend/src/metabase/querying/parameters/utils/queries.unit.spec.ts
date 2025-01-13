@@ -280,18 +280,23 @@ describe("applyParameter", () => {
         value: "abc",
         expectedDisplayName: "Created At: Month",
       },
-    ])("s", ({ value, expectedDisplayName }) => {
-      const newQuery = applyParameter(
-        query,
-        stageIndex,
-        "temporal-unit",
-        target,
-        value,
-      );
-      const [newBreakout] = Lib.breakouts(newQuery, stageIndex);
-      expect(Lib.displayInfo(newQuery, stageIndex, newBreakout)).toMatchObject({
-        displayName: expectedDisplayName,
-      });
-    });
+    ])(
+      "should apply a temporal unit parameter",
+      ({ value, expectedDisplayName }) => {
+        const newQuery = applyParameter(
+          query,
+          stageIndex,
+          "temporal-unit",
+          target,
+          value,
+        );
+        const [newBreakout] = Lib.breakouts(newQuery, stageIndex);
+        expect(
+          Lib.displayInfo(newQuery, stageIndex, newBreakout),
+        ).toMatchObject({
+          displayName: expectedDisplayName,
+        });
+      },
+    );
   });
 });
