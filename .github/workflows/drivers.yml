@@ -1060,11 +1060,11 @@ jobs:
 
             console.log('Needs:', needs);
 
-            const jobs = Object.fromEntries(needs.map(
+            const jobs = Object.fromEntries(needs).map(
               ([jobName, jobValues]) => ({
                 name: jobName,
                 result: jobValues.result
-              })));
+              }));
 
             console.log('Jobs:', jobs);
 
