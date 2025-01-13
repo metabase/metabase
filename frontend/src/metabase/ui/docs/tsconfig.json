@@ -25,7 +25,8 @@
       "metabase-types/*": ["../../../metabase-types/*"],
       "embedding-sdk/*": [
         "../../../../../enterprise/frontend/src/embedding-sdk/*"
-      ]
+      ],
+      "metabase/css/*": ["../../css/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
