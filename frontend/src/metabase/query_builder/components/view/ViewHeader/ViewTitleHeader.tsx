@@ -154,8 +154,7 @@ export function ViewTitleHeader({
         data-testid="qb-header"
         isNavBarOpen={isNavBarOpen}
       >
-        <DashboardBackButton />
-
+        <DashboardBackButton mr="sm" />
         {isSaved ? (
           <SavedQuestionLeftSide
             question={question}

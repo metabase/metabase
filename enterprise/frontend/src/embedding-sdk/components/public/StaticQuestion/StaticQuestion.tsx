@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -15,7 +16,8 @@ import { useSelector } from "metabase/lib/redux";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import {
   ChartTypeSettings,
-  useChartTypeVisualizations,
+  getSensibleVisualizations,
+  useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Group } from "metabase/ui";
@@ -41,16 +43,16 @@ const StaticQuestionVisualizationSelector = ({
   result,
   onUpdateQuestion,
 }: StaticQuestionVisualizationSelectorProps) => {
-  const {
-    selectedVisualization,
-    updateQuestionVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
-  } = useChartTypeVisualizations({
-    question,
-    result,
-    onUpdateQuestion,
-  });
+  const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
+    () => getSensibleVisualizations({ result }),
+    [result],
+  );
+
+  const { selectedVisualization, updateQuestionVisualization } =
+    useQuestionVisualizationState({
+      question,
+      onUpdateQuestion,
+    });
 
   return (
     <Box w="355px">
