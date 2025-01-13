@@ -102,7 +102,7 @@
 (def default-card-name "Card notification test card")
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defn with-temp-notification
+(defn- with-temp-notification
   "Create a temporary notification for testing."
   [{:keys [notification handlers subscriptions]} thunk]
   (let [notification (models.notification/create-notification!
