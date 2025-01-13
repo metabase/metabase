@@ -5,6 +5,7 @@ import slugg from "slugg";
 import _ from "underscore";
 
 import { utf8_to_b64url } from "metabase/lib/encoding";
+import { applyFilterParameter } from "metabase/querying/parameters/utils/filters";
 import * as Lib from "metabase-lib";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -16,10 +17,7 @@ import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import {
-  applyFilterParameter,
-  applyTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/mbql";
+import { applyTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/mbql";
 import {
   isFilterParameter,
   isTemporalUnitParameter,
@@ -783,7 +781,13 @@ class Question {
           isDimensionTarget(parameter.target) && !isComposed
             ? getParameterDimensionTargetStageIndex(parameter.target)
             : -1;
-        return applyFilterParameter(query, stageIndex, parameter);
+        return applyFilterParameter(
+          query,
+          stageIndex,
+          parameter.type,
+          parameter.target,
+          parameter.value,
+        );
       } else if (isTemporalUnitParameter(parameter)) {
         const stageIndex =
           isDimensionTarget(parameter.target) && !isComposed

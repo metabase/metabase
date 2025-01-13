@@ -25,17 +25,20 @@ export type DateParameterType =
   | "date/quarter-year"
   | "date/all-options";
 
+export type CategoryParameterType = "category";
+
 export type TemporalUnitParameterType = "temporal-unit";
 
 export type ParameterType =
   | StringParameterType
   | NumberParameterType
   | DateParameterType
+  | CategoryParameterType
   | TemporalUnitParameterType;
 
 export type ParameterId = string;
 
-export type ActionParameterValue = string | number;
+export type ActionParameterValue = string | number | boolean;
 
 export interface Parameter extends ParameterValuesConfig {
   id: ParameterId;
@@ -99,7 +102,11 @@ export type StructuredParameterDimensionTarget =
       DimensionTargetOptions,
     ];
 
-export type ParameterValueOrArray = string | number | boolean | Array<any>;
+export type ParameterValueOrArray =
+  | string
+  | number
+  | boolean
+  | Array<string | number | boolean>;
 
 export type HumanReadableParameterValue = string;
 export type NotRemappedParameterValue = [RowValue];

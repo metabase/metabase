@@ -32,14 +32,19 @@ export function isDateParameter(parameter: Parameter | string) {
   return type === "date";
 }
 
-export function isNumberParameter(parameter: Parameter) {
+export function isNumberParameter(parameter: Parameter | string) {
   const type = getParameterType(parameter);
   return type === "number";
 }
 
-export function isStringParameter(parameter: Parameter) {
+export function isStringParameter(parameter: Parameter | string) {
   const type = getParameterType(parameter);
   return type === "string";
+}
+
+export function isCategoryParameter(parameter: Parameter | string) {
+  const type = getParameterType(parameter);
+  return type === "category";
 }
 
 export function isFilterParameter(parameter: Parameter) {
