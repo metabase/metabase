@@ -161,7 +161,7 @@ export const removeParameter = createThunkAction(
 
     updateParameters(dispatch, getState, parameters => {
       return parameters
-        .filter(p => p.id !== parameterId)
+        .filter(parameter => parameter.id !== parameterId)
         .map(parameter => {
           if (parameter.filteringParameters) {
             const filteringParameters = parameter.filteringParameters.filter(
