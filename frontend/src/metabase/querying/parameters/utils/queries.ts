@@ -15,6 +15,7 @@ const STRING_OPERATORS: Partial<
   Record<ParameterType, Lib.StringFilterOperator>
 > = {
   id: "=",
+  text: "=",
   category: "=",
   "string/=": "=",
   "string/!=": "!=",
@@ -28,6 +29,7 @@ const NUMBER_OPERATORS: Partial<
   Record<ParameterType, Lib.NumberFilterOperator>
 > = {
   id: "=",
+  text: "=",
   category: "=",
   "number/=": "=",
   "number/!=": "!=",
@@ -40,8 +42,10 @@ const BOOLEAN_OPERATORS: Partial<
   Record<ParameterType, Lib.BooleanFilterOperator>
 > = {
   id: "=",
+  text: "=",
   category: "=",
   "string/=": "=",
+  "string/!=": "=",
 };
 
 export function applyParameter(
@@ -183,8 +187,9 @@ function getBooleanParameterFilterClause(
 
   const values = getValueAsArray(value)
     .filter(value => typeof value === "boolean")
-    .map(Boolean);
-  if (values.length !== 1) {
+    .map(Boolean)
+    .map(value => (type === "string/!=" ? !value : value));
+  if (values.length === 0) {
     return;
   }
 
