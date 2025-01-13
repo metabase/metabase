@@ -6,16 +6,9 @@
    [clojure.set :as set]
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.notification :as api.notification]
    [metabase.config :as config]
-   [metabase.email :as email]
-   [metabase.email.messages :as messages]
-   [metabase.events :as events]
-   [metabase.models.interface :as mi]
-   [metabase.models.pulse :as models.pulse]
    [metabase.plugins.classloader :as classloader]
-   [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -28,7 +21,6 @@
 (defn- notification->pulse
   "Convert a notification to the legacy pulse structure for backward compatibility."
   [notification]
-  (def notification notification)
   (let [subscription      (-> notification :subscriptions first)
         notification-card (-> notification :payload)
         card              (->> notification :payload :card_id (t2/select-one :model/Card))]
@@ -45,13 +37,14 @@
       :parameters          []
       :dashboard_id        nil
       :card                (merge
-                            (select-keys #p card [:name :description :collection_id :display])
+                            (select-keys card [:name :description :collection_id :display])
                             {:format_rows       true
                              :include_xls       false
                              :include_csv       true
                              :pivot_results     false
                              :dashboard_id      nil
-                             :dashboard_card_id nil})
+                             :dashboard_card_id nil
+                             :parameter_mappings nil})
       :channels            (map (fn [handler]
                                   (let [user-recipients  (->> handler
                                                               :recipients
@@ -61,20 +54,25 @@
                                         ;; for external emails and slack channel
                                         value-recipients (->> handler
                                                               :recipients
-                                                              (filter #(= :notification-recipient/value (:type %)))
+                                                              (filter #(= :notification-recipient/raw-value (:type %)))
                                                               (map :details))]
                                     (merge
-                                     (u.cron/cron-string->schedule-map (:cron_schedule subscription))
+                                     (select-keys (u.cron/cron-string->schedule-map (:cron_schedule subscription))
+                                                  [:schedule_type :schedule_hour :schedule_day :schedule_frame])
                                      {:id           (:id handler)
-                                      :recipients   (concat user-recipients (map #(set/rename-keys % {:value :email}) value-recipients))
+                                      :recipients   (if (= :channel/email (:channel_type handler))
+                                                      (concat (map #(set/rename-keys % {:value :email}) value-recipients) user-recipients)
+                                                      [])
                                       :channel_type (name (:channel_type handler))
                                       :channel_id   (:channel_id handler)
                                       :enabled      (:active handler)
-                                      :details      (if (= :channel/slack (:channel_type handler))
+                                      :details      (case (:channel_type handler)
+                                                      :channel/slack
                                                       {:channel (-> value-recipients first :value)}
-                                                      nil)})))
-                                (:handlers notification))
-      :can_write           (mi/can-update? notification {})})))
+                                                      :channel/email
+                                                      {:emails (map :value value-recipients)}
+                                                      {})})))
+                                (:handlers notification))})))
 
 (api/defendpoint GET "/"
   "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.
@@ -86,9 +84,9 @@
                   user_id
                   api/*current-user-id*)]
     (->> (api.notification/list-notifications
-          {:payload_type  :notification/card
-           :creator_id    user-id
-           :active        (not archived)})
+          {:payload_type   :notification/card
+           :legacy-user-id user-id
+           :legacy-active  (not archived)})
          (map notification->pulse)
          (remove nil?))))
 
@@ -104,6 +102,7 @@
   "For users to unsubscribe themselves from the given alert."
   [id]
   {id ms/PositiveInt}
-  (api.notification/unsubscribe-user! id api/*current-user-id*))
+  (api.notification/unsubscribe-user! id api/*current-user-id*)
+  api/generic-204-no-content)
 
 (api/define-routes)

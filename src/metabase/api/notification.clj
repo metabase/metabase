@@ -30,7 +30,7 @@
 
 (defn list-notifications
   "List notifications. See `GET /` for parameters."
-  [{:keys [creator_id recipient_id card_id payload_type include_inactive active]}]
+  [{:keys [creator_id recipient_id card_id payload_type include_inactive legacy-active legacy-user-id]}]
   (->> (t2/reducible-select :model/Notification
                             (cond-> {}
                               creator_id
@@ -51,14 +51,25 @@
                                    :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
                                   (sql.helpers/where [:= :notification_recipient.user_id recipient_id]))
 
-                              (and (nil? active) (not (true? include_inactive)))
+                              (and (nil? legacy-active) (not (true? include_inactive)))
                               (sql.helpers/where [:= :notification.active true])
 
                               payload_type
                               (sql.helpers/where [:= :notification.payload_type (u/qualified-name payload_type)])
 
-                              (some? active)
-                              (sql.helpers/where [:= :notification.active active])))
+                              ;; legacy-active and legacy-user-id only used by alert api, will be removed soon
+                              (some? legacy-active)
+                              (sql.helpers/where [:= :notification.active legacy-active])
+
+                              legacy-user-id
+                              (-> (sql.helpers/left-join
+                                   :notification_handler [:= :notification_handler.notification_id :notification.id])
+                                  (sql.helpers/left-join
+                                   :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
+                                  (sql.helpers/where [:or
+                                                      [:= :notification_recipient.user_id legacy-user-id]
+                                                      [:= :notification.creator_id legacy-user-id]]))))
+
        (into [] (comp
                  (map t2.realize/realize)
                  (filter mi/can-read?)))

@@ -9,7 +9,7 @@
    [compojure.core :refer [GET POST PUT]]
    [hiccup.core :refer [html]]
    [hiccup.page :refer [html5]]
-   [metabase.api.alert :as api.alert]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.channel.render.core :as channel.render]
@@ -40,6 +40,11 @@
 (when config/ee-available?
   (classloader/require 'metabase-enterprise.sandbox.api.util
                        'metabase-enterprise.advanced-permissions.common))
+
+(defn- email-channel
+  "Get email channel from an alert."
+  [alert]
+  (m/find-first #(= :email (keyword (:channel_type %))) (:channels alert)))
 
 (defn- maybe-filter-pulses-recipients
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
@@ -163,7 +168,7 @@
   (if (premium-features/sandboxed-or-impersonated-user?)
     (let [recipients-to-add (filter
                              (fn [{id :id}] (and id (not= id api/*current-user-id*)))
-                             (:recipients (api.alert/email-channel pulse-before-update)))]
+                             (:recipients (email-channel pulse-before-update)))]
       (assoc pulse-updates :channels
              (for [channel (:channels pulse-updates)]
                (if (= "email" (:channel_type channel))
@@ -196,8 +201,8 @@
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
     ;; update pulse's recipients
     (when (premium-features/enable-advanced-permissions?)
-      (let [to-add-recipients (difference (set (map :id (:recipients (api.alert/email-channel pulse-updates))))
-                                          (set (map :id (:recipients (api.alert/email-channel pulse-before-update)))))
+      (let [to-add-recipients (difference (set (map :id (:recipients (email-channel pulse-updates))))
+                                          (set (map :id (:recipients (email-channel pulse-before-update)))))
             current-user-has-application-permissions?
             (and (premium-features/enable-advanced-permissions?)
                  (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
