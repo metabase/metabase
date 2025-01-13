@@ -8,7 +8,11 @@ Metabase runs on the Java Virtual Machine (JVM), and depending on how it's confi
 
 ## Java version
 
-Make sure you're using a Java version of 11 or higher.
+If you're running version >52, then you should be using Java 21. For versions below that one, make sure you're using a Java version of 11 or higher.
+
+When searching for versions of Java, always use the latest minor version of the major version you're choosing. E.g.: when choosing between Java 11.0.9 and Java 11.0.25 (this is the latest minor version of Java 11), choose the latter.
+
+Also, although it's possible to run several Java versions on a single server, try not to, as you might end up with unknown effects on the applications. Consider using containers for this, as they were meant to solve this problem, or ensure that you can run all your applications with a unique Java version.
 
 ## Metabase's memory usage
 
