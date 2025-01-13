@@ -87,11 +87,12 @@
    recipient_id     [:maybe ms/PositiveInt]
    card_id          [:maybe ms/PositiveInt]
    include_inactive [:maybe ms/BooleanValue]
-   payload_type     (into [:enum] models.notification/notification-types)}
-  (list-notifications {:creator_id creator_id
-                       :recipient_id recipient_id
-                       :card_id card_id
-                       :include_inactive include_inactive}))
+   payload_type     [:maybe (into [:enum] models.notification/notification-types)]}
+  (list-notifications {:creator_id       creator_id
+                       :recipient_id     recipient_id
+                       :card_id          card_id
+                       :include_inactive include_inactive
+                       :payload_type     payload_type}))
 
 (api/defendpoint GET "/:id"
   "Get a notification by id."
