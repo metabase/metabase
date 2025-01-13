@@ -1058,15 +1058,11 @@ jobs:
           script: | # js
             const needs = JSON.parse(process.env.needs);
 
-            console.log('Needs:', needs);
-
             const jobs = Object.entries(needs).map(
               ([jobName, jobValues]) => ({
                 name: jobName,
                 result: jobValues.result
               }));
-
-            console.log('Jobs:', jobs);
 
             // are all jobs skipped?
             if (jobs.every(job => job.result === 'skipped')) {
@@ -1083,9 +1079,9 @@ jobs:
             // otherwise, something failed
             console.log('Some drivers jobs failed');
 
-            jobs.forEach(() => {
-              if (job.result === 'failure') {
-                console.log(`${job.name} failed`);
+            jobs.forEach((job) => {
+              if (job.result !== 'success') {
+                console.log(`${job.name} - ${job.result}`);
               }
             });
 
