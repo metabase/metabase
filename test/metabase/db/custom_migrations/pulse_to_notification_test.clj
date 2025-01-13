@@ -65,6 +65,7 @@
         (testing "has one subscription, one email handler with one recipient"
           (let [alert-id (create-alert! {} card-id [{:channel_type "email"
                                                      :recipients  [{:user_id (mt/user->id :rasta)}]}])
+                alert    (t2/select-one :model/Pulse alert-id)
                 notification (first (migrate-alert! alert-id))]
             (is (=? {:payload_type :notification/card
                      :active       true
@@ -73,7 +74,9 @@
                                       :cron_schedule cron-daily-6-am}]
                      :handlers      [{:channel_type :channel/email
                                       :recipients   [{:type :notification-recipient/user
-                                                      :user_id (mt/user->id :rasta)}]}]}
+                                                      :user_id (mt/user->id :rasta)}]}]
+                     :created_at   (:created_at alert)
+                     :updated_at   (:updated_at alert)}
                     notification))))))))
 
 (deftest migrate-alert-http-test

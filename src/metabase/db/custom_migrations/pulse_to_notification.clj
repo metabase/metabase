@@ -101,15 +101,15 @@
                                                                "goal_above"
                                                                "goal_below")
                                                              "has_result")
-                                           :created_at     :%now
-                                           :updated_at     :%now}
+                                           :created_at     (:created_at pulse)
+                                           :updated_at     (:updated_at pulse)}
                             :active       (not (:archived pulse))
                             :creator_id   (:creator_id pulse)
-                            :created_at   :%now
-                            :updated_at   :%now}
+                            :created_at   (:created_at pulse)
+                            :updated_at   (:updated_at pulse)}
              subscriptions [{:type          "notification-subscription/cron"
                              :cron_schedule (schedule-map->cron-string (first pcs))
-                             :created_at    :%now}]
+                             :created_at    (:created_at (first pcs))}]
              handlers      (map (fn [pc]
                                   (merge
                                    {:active (:enabled pc)}
