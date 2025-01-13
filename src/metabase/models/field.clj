@@ -310,7 +310,7 @@
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
   (conj (vec (if-let [parent (t2/select-one :model/Field :id parent-id)]
                (qualified-name-components parent)
-               (let [{table-name :name, schema :schema} (t2/select-one ['Table :name :schema], :id table-id)]
+               (let [{table-name :name, schema :schema} (t2/select-one [:model/Table :name :schema], :id table-id)]
                  (conj (when schema
                          [schema])
                        table-name))))
@@ -339,7 +339,7 @@
   "Return the `Table` associated with this `Field`."
   {:arglists '([field])}
   [{:keys [table_id]}]
-  (t2/select-one 'Table, :id table_id))
+  (t2/select-one :model/Table, :id table_id))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

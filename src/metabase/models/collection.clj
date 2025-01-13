@@ -339,7 +339,7 @@
   [user-or-id user-or-site]
   (let [{first-name :first_name
          last-name  :last_name
-         email      :email} (t2/select-one ['User :first_name :last_name :email]
+         email      :email} (t2/select-one [:model/User :first_name :last_name :email]
                                            :id (u/the-id user-or-id))]
     (format-personal-collection-name first-name last-name email user-or-site)))
 

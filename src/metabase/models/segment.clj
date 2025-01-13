@@ -64,7 +64,7 @@
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
   (let [table (or (:table segment)
-                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
+                  (t2/select-one [:model/Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
 (mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]

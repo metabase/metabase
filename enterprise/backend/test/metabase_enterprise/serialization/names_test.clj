@@ -101,5 +101,5 @@
                    :model/Card       {card-id :id}       {:name         "A Card"
                                                           :collection_id collection-id}]
       (are [model s id] (= (format s id) (names/name-for-logging (t2/select-one model :id id)))
-        'Collection ":model/Collection \"A Collection\" (ID %d)" collection-id
-        'Card       ":model/Card \"A Card\" (ID %d)" card-id))))
+        :model/Collection ":model/Collection \"A Collection\" (ID %d)" collection-id
+        :model/Card       ":model/Card \"A Card\" (ID %d)" card-id))))

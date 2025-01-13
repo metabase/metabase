@@ -413,7 +413,7 @@
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)
-    (t2/update! 'User api/*current-user-id* {:settings (json/encode @@*user-local-values*)})))
+    (t2/update! :model/User api/*current-user-id* {:settings (json/encode @@*user-local-values*)})))
 
 (def ^:dynamic *enforce-setting-access-checks*
   "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be

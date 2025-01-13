@@ -38,6 +38,6 @@
   row."
   []
   (doseq [model-name (concat serdes.models/exported-models serdes.models/inlined-models)
-          :let [model (t2.model/resolve-model (symbol model-name))]
+          :let [model (t2.model/resolve-model (keyword "model" model-name))]
           :when (has-entity-id? model)]
     (backfill-ids-for! model)))

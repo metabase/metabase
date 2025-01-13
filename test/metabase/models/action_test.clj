@@ -236,14 +236,14 @@
                :database_type              "UUID"
                :name                       "uuid"
                :semantic_type              :type/PK}]
-             (t2/select ['Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
+             (t2/select [:model/Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
                         :table_id (mt/id :default_uuid))))
       (is (= [{:database_is_auto_increment false
                :database_required          true
                :database_type              "UUID"
                :name                       "uuid"
                :semantic_type              :type/PK}]
-             (t2/select ['Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
+             (t2/select [:model/Field :name :database_type :database_required :database_is_auto_increment :semantic_type]
                         :table_id (mt/id :required_uuid)))))
     (mt/with-actions-enabled
       (testing "PK with a default should be excluded from implicit create action parameters"

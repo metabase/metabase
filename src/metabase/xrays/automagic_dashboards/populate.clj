@@ -31,18 +31,18 @@
   "Create and return a new collection."
   [title description parent-collection-id]
   (first (t2/insert-returning-instances!
-          'Collection
+          :model/Collection
           (merge
            {:name        title
             :description description}
            (when parent-collection-id
-             {:location (collection/children-location (t2/select-one ['Collection :location :id]
+             {:location (collection/children-location (t2/select-one [:model/Collection :location :id]
                                                                      :id parent-collection-id))})))))
 
 (defn get-or-create-root-container-collection
   "Get or create container collection for automagic dashboards in the root collection."
   []
-  (or (t2/select-one 'Collection
+  (or (t2/select-one :model/Collection
                      :name     "Automatically Generated Dashboards"
                      :location "/")
       (create-collection! "Automatically Generated Dashboards" nil nil)))

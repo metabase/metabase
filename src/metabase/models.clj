@@ -140,6 +140,8 @@
 (methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
   "Handle models deriving from :metabase/model."
   [symb]
+  (when config/is-dev?
+    (throw (ex-info (format "Using symbol with toucan2 is deprecated, use keyword instead. E.g: :model/%s" symb) {:symbol symb})))
   (or
    (when (simple-symbol? symb)
      (let [metabase-models-keyword (keyword "model" (name symb))]

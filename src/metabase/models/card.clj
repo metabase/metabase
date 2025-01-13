@@ -427,7 +427,7 @@
                                                                      :where     [:in :field.id (set field-ids)]})]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
-                                    (format "%d %s" db-id (pr-str (t2/select-one-fn :name 'Database :id db-id))))]
+                                    (format "%d %s" db-id (pr-str (t2/select-one-fn :name :model/Database :id db-id))))]
                             (tru "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
@@ -546,7 +546,7 @@
     (let [parameter-cards (t2/select :model/ParameterCard :card_id id)]
       (doseq [[[po-type po-id] param-cards]
               (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
-        (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
+        (let [model                  (case po-type :card :model/Card :dashboard :model/Dashboard)
               {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
               affected-param-ids-set (cond
                                       ;; update all parameters that use this card as source
@@ -807,8 +807,8 @@
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
   (t2/delete! :model/ParameterCard :card_id id)
-  (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (t2/delete! 'Revision :model "Card", :model_id id))
+  (t2/delete! :model/ModerationReview :moderated_item_type "card", :moderated_item_id id)
+  (t2/delete! :model/Revision :model "Card", :model_id id))
 
 ;; NOTE: The columns required for this hashing must be kept in sync with [[ensure-clause-idents]].
 (defmethod serdes/hash-fields :model/Card

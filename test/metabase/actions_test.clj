@@ -500,8 +500,8 @@
         (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
           (with-actions-test-data-and-actions-permissively-enabled!
             (let [ssh-port (.getPort ^SshServer ssh-server)]
-              (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
-                (t2/update! 'Database (mt/id)
+              (let [details (t2/select-one-fn :details :model/Database :id (mt/id))]
+                (t2/update! :model/Database (mt/id)
                             ;; enable ssh tunnel
                             {:details (assoc details
                                              :tunnel-enabled true

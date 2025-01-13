@@ -327,12 +327,12 @@
   (mt/test-driver :h2
     (when config/ee-available?
       (let [audit-db-expected-id 13371337
-            original-audit-db    (t2/select-one 'Database :is_audit true)]
+            original-audit-db    (t2/select-one :model/Database :is_audit true)]
         (is (not= ::mbc/noop (mbc/ensure-audit-db-installed!))
             "Make sure we call the right ensure-audit-db-installed! impl")
         (try
           (testing "spec obtained from audit db has no connection string, and that works OK."
-            (let [audit-db-id (t2/select-one-fn :id 'Database :is_audit true)]
+            (let [audit-db-id (t2/select-one-fn :id :model/Database :is_audit true)]
               (is (= audit-db-expected-id audit-db-id))
               (let [audit-db-pooled-spec (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)]
                 (is (= "com.mchange.v2.c3p0.PoolBackedDataSource" (pr-str (type (:datasource audit-db-pooled-spec)))))

@@ -30,8 +30,7 @@
                   :display_name [:metabase_database.initial_sync_status :initial-sync-status]
                   [:visibility_type :visibility_type]
                   [:metabase_database.name :database-name]])
-   (let [model-symb (symbol (str/capitalize model))
-         self-qualify #(mdb.query/qualify model-symb %)]
+   (let [self-qualify #(mdb.query/qualify (keyword "model" (str/capitalize model)) %)]
      {:where [:in (self-qualify :id) ids]
       :left-join (case model
                    "table" [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]
