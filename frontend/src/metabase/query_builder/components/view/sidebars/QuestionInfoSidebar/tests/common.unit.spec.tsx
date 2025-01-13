@@ -11,6 +11,8 @@ import {
 
 import { setup } from "./setup";
 
+const DESCRIPTION = "abc";
+
 describe("QuestionInfoSidebar", () => {
   describe("description", () => {
     it.each([
