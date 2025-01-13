@@ -87,8 +87,8 @@ export const LookAndFeelSettings = ({
               data={[
                 {
                   label: t`Use instance font`,
-                  // @ts-expect-error Mantine v6 and v7 both expect value to be a string
-                  value: null,
+                  // TODO: Mantine V7 requires a non-null value or it throws an error
+                  value: "",
                 },
                 ...availableFonts?.map(font => ({
                   label: font,

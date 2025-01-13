@@ -894,7 +894,7 @@ H.describeEE("scenarios > embedding > full app", () => {
         "not.exist",
       );
       H.dashboardGrid()
-        .findByText("Rows 1-6 of first 2000")
+        .findByText("Rows 1-7 of first 2000")
         .should("be.visible");
     });
 
@@ -924,7 +924,7 @@ H.describeEE("scenarios > embedding > full app", () => {
         "not.exist",
       );
       H.dashboardGrid()
-        .findByText("Rows 1-6 of first 2000")
+        .findByText("Rows 1-7 of first 2000")
         .should("be.visible");
       H.goToTab(SECOND_TAB.name);
       cy.findByTestId("dashboard-parameters-and-cards")

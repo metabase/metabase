@@ -123,7 +123,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
     it("should work", () => {
       cy.findByLabelText("City").click();
       H.dashboardParametersPopover().within(() => {
-        H.multiAutocompleteInput().type("Flagstaff{enter}");
+        H.fieldValuesInput().type("Flagstaff{enter}");
         cy.findByText("Add filter").click();
       });
 
