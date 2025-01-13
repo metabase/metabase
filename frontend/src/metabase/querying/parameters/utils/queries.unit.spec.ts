@@ -85,6 +85,60 @@ describe("applyParameter", () => {
       value: "abc",
       expectedDisplayName: "Vendor ends with abc",
     },
+    {
+      type: "id",
+      target: getFilterColumnTarget("ORDERS", "ID"),
+      value: 10,
+      expectedDisplayName: "ID is 10",
+    },
+    {
+      type: "id",
+      target: getFilterColumnTarget("ORDERS", "ID"),
+      value: ["10"],
+      expectedDisplayName: "ID is 10",
+    },
+    {
+      type: "id",
+      target: getFilterColumnTarget("ORDERS", "ID"),
+      value: ["10", "abc", "20"],
+      expectedDisplayName: "ID is 2 selections",
+    },
+    {
+      type: "category",
+      target: getFilterColumnTarget("ORDERS", "QUANTITY"),
+      value: 5,
+      expectedDisplayName: "Quantity is equal to 5",
+    },
+    {
+      type: "number/=",
+      target: getFilterColumnTarget("ORDERS", "TOTAL"),
+      value: 10.2,
+      expectedDisplayName: "Total is equal to 10.2",
+    },
+    {
+      type: "number/!=",
+      target: getFilterColumnTarget("ORDERS", "TOTAL"),
+      value: 10.2,
+      expectedDisplayName: "Total is not equal to 10.2",
+    },
+    {
+      type: "number/>=",
+      target: getFilterColumnTarget("ORDERS", "TOTAL"),
+      value: 10.2,
+      expectedDisplayName: "Total is greater than or equal to 10.2",
+    },
+    {
+      type: "number/<=",
+      target: getFilterColumnTarget("ORDERS", "TOTAL"),
+      value: 10.2,
+      expectedDisplayName: "Total is less than or equal to 10.2",
+    },
+    {
+      type: "number/between",
+      target: getFilterColumnTarget("ORDERS", "TOTAL"),
+      value: [10.2, 20.4],
+      expectedDisplayName: "Total is between 10.2 and 20.4",
+    },
   ])(
     "should apply a filter parameter",
     ({ type, target, value, expectedDisplayName }) => {
