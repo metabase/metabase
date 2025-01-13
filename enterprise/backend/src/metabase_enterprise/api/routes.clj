@@ -48,9 +48,9 @@
       "/billing" []
       billing/routes)
     (context
-        "/gsheets" []
+      "/gsheets" []
       ;;TEMP (gsheets):
-      ;; The dev token doesn't get the :attached-dwh feature, so we can't require it here yet:
+      ;; The dev token doesn't get the :attached-dwh feature, so we can't require it here yet, but we will:
       ;;(ee.api.common/+require-premium-feature :attached-dwh (deferred-tru "Google Sheets Integration"))
       gsheets.api/routes)
     (context
