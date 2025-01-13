@@ -8,7 +8,7 @@
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
