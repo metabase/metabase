@@ -178,14 +178,30 @@
 
 (defenterprise new-table-view-data-permission-level
   "Returns the view-data permission level to set for a new table in a given group and database. This is `blocked`
-  if the group has `blocked` for the DB or any table in the DB; otherwise it is `unrestricted`."
+  if the group has `blocked` for the database or any table in the DB, if any connection impersonation policies or
+  sandboxes exist for the database and group. otherwise it is `unrestricted`."
   :feature :advanced-permissions
   [db-id group-id]
-  (if (t2/exists? :model/DataPermissions
-                  :db_id db-id
-                  :perm_type :perms/view-data
-                  :perm_value :blocked
-                  :group_id group-id)
+  ;; We don't check for connection impersonations here, because impersonations are set at the DB-level, so a new table
+  ;; should get `:unrestricted` permissions and then inherit the DB-level impersonation policy.
+  (if (or
+       (and
+        (premium-features/enable-advanced-permissions?)
+        (t2/exists? :model/DataPermissions
+                    :db_id db-id
+                    :perm_type :perms/view-data
+                    :perm_value :blocked
+                    :group_id group-id))
+       (and
+        (premium-features/enable-sandboxes?)
+        (t2/exists?
+         :model/GroupTableAccessPolicy
+         {:select [:s.id]
+          :from [[(t2/table-name :model/GroupTableAccessPolicy) :s]]
+          :join [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
+          :where [:and
+                  [:= :s.group_id group-id]
+                  [:= :t.db_id db-id]]})))
     :blocked
     :unrestricted))
 
