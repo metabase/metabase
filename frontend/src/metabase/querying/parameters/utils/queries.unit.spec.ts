@@ -32,6 +32,12 @@ describe("applyParameter", () => {
 
   it.each<FilterParameterCase>([
     {
+      type: "id",
+      target: getFilterColumnTarget("PRODUCTS", "CATEGORY"),
+      value: "Gadget",
+      expectedDisplayName: "Category is Gadget",
+    },
+    {
       type: "category",
       target: getFilterColumnTarget("PRODUCTS", "CATEGORY"),
       value: "Gadget",
@@ -54,6 +60,30 @@ describe("applyParameter", () => {
       target: getFilterColumnTarget("PRODUCTS", "CATEGORY"),
       value: ["Widget"],
       expectedDisplayName: "Category is not Widget",
+    },
+    {
+      type: "string/contains",
+      target: getFilterColumnTarget("PRODUCTS", "EAN"),
+      value: ["123"],
+      expectedDisplayName: "Ean contains 123",
+    },
+    {
+      type: "string/does-not-contain",
+      target: getFilterColumnTarget("PRODUCTS", "EAN"),
+      value: ["123"],
+      expectedDisplayName: "Ean does not contain 123",
+    },
+    {
+      type: "string/starts-with",
+      target: getFilterColumnTarget("PRODUCTS", "VENDOR"),
+      value: "abc",
+      expectedDisplayName: "Vendor starts with abc",
+    },
+    {
+      type: "string/ends-with",
+      target: getFilterColumnTarget("PRODUCTS", "VENDOR"),
+      value: "abc",
+      expectedDisplayName: "Vendor ends with abc",
     },
   ])(
     "should apply a filter parameter",
