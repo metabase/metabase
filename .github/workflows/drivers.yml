@@ -1064,15 +1064,9 @@ jobs:
                 result: jobValues.result
               }));
 
-            // are all jobs skipped?
-            if (jobs.every(job => job.result === 'skipped')) {
-              console.log('All jobs are skipped');
-              process.exit(0);
-            }
-
-            // are all jobs successful?
-            if (jobs.every(job => job.result === 'success')) {
-              console.log('All jobs are successful');
+            // are all jobs skipped or successful?
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+              console.log('All jobs are skipped or successful');
               process.exit(0);
             }
 
