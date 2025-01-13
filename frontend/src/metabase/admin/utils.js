@@ -1,7 +1,7 @@
 import { replace, routerActions } from "react-router-redux";
-import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { connectedReduxRedirect } from "metabase/auth-wrapper";
 import { connect } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 

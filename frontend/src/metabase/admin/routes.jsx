@@ -1,7 +1,6 @@
 import { Fragment } from "react";
 import { IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
-import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
@@ -40,6 +39,7 @@ import {
   createAdminRedirect,
   createAdminRouteGuard,
 } from "metabase/admin/utils";
+import { connectedReduxRedirect } from "metabase/auth-wrapper";
 import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
