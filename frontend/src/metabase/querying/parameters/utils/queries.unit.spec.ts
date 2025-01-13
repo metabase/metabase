@@ -139,6 +139,42 @@ describe("applyParameter", () => {
       value: [10.2, 20.4],
       expectedDisplayName: "Total is between 10.2 and 20.4",
     },
+    {
+      type: "date/single",
+      target: getFilterColumnTarget("ORDERS", "CREATED_AT"),
+      value: "2024-04-02",
+      expectedDisplayName: "Created At is on Apr 2, 2024",
+    },
+    {
+      type: "date/range",
+      target: getFilterColumnTarget("ORDERS", "CREATED_AT"),
+      value: "2024-04-02~2024-05-20",
+      expectedDisplayName: "Created At is Apr 2 – May 20, 2024",
+    },
+    {
+      type: "date/month-year",
+      target: getFilterColumnTarget("ORDERS", "CREATED_AT"),
+      value: "2020-12",
+      expectedDisplayName: "Created At is Dec 1–31, 2020",
+    },
+    {
+      type: "date/quarter-year",
+      target: getFilterColumnTarget("ORDERS", "CREATED_AT"),
+      value: "Q3-2020",
+      expectedDisplayName: "Created At is Jul 1 – Sep 30, 2020",
+    },
+    {
+      type: "date/relative",
+      target: getFilterColumnTarget("ORDERS", "CREATED_AT"),
+      value: "past1days",
+      expectedDisplayName: "Created At is yesterday",
+    },
+    {
+      type: "date/all-options",
+      target: getFilterColumnTarget("ORDERS", "CREATED_AT"),
+      value: "~2020-05-20",
+      expectedDisplayName: "Created At is before May 20, 2020",
+    },
   ])(
     "should apply a filter parameter",
     ({ type, target, value, expectedDisplayName }) => {
