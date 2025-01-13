@@ -1019,40 +1019,64 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  # Dummy job generator to spit out fake runs for matrix jobs we skipped. See
-  # https://github.com/orgs/community/discussions/9141 and
-  # https://metaboat.slack.com/archives/C0669P4AF9N/p1732315370301059
-  be-driver-tests-skipped-stub:
-    needs: files-changed
-    if: |
-      !cancelled() &&
-      (github.event.pull_request.draft == true ||
-      needs.files-changed.outputs.backend_all == 'false')
-    strategy:
-      matrix:
-        job:
-          -  "Test Postgres 12.x (App DB Tests)"
-          -  "Test Postgres 12.x (Driver Tests)"
-          -  "Test Postgres Latest (App DB Tests)"
-          -  "Test Postgres Latest (Driver Tests)"
-          -  "be-tests-mariadb-10-2-ee (0)"
-          -  "be-tests-mariadb-10-2-ee (1)"
-          -  "be-tests-mariadb-10-2-ee (2)"
-          -  "be-tests-mariadb-10-2-ee (3)"
-          -  "be-tests-mariadb-latest-ee (0)"
-          -  "be-tests-mariadb-latest-ee (1)"
-          -  "be-tests-mariadb-latest-ee (2)"
-          -  "be-tests-mariadb-latest-ee (3)"
-          -  "be-tests-mysql-8-0-ee (0)"
-          -  "be-tests-mysql-8-0-ee (1)"
-          -  "be-tests-mysql-8-0-ee (2)"
-          -  "be-tests-mysql-8-0-ee (3)"
-          -  "be-tests-mysql-latest-ee (0)"
-          -  "be-tests-mysql-latest-ee (1)"
-          -  "be-tests-mysql-latest-ee (2)"
-          -  "be-tests-mysql-latest-ee (3)"
-    name: ${{ matrix.job }}
-    runs-on: ubuntu-22.04
+  drivers-tests-result:
+    needs:
+      # if you add a driver job, you must add it to this list for it to be a required check
+      - be-tests-athena-ee
+      - be-tests-bigquery-cloud-sdk-ee
+      - be-tests-druid-ee
+      - be-tests-databricks-ee
+      - be-tests-druid-jdbc-ee
+      - be-tests-mysql-mariadb
+      - be-tests-mongo-4-4-ee
+      - be-tests-mongo-4-4-ssl-ee
+      - be-tests-mongo-5-0-ee
+      - be-tests-mongo-5-0-ssl-ee
+      - be-tests-mongo-latest-ee
+      - be-tests-mongo-sharded-cluster-ee
+      - be-tests-oracle-18-4-ee
+      - be-tests-oracle-21-3-ee
+      - be-tests-postgres-ee
+      - be-tests-presto-jdbc-ee
+      - be-tests-redshift-ee
+      - be-tests-snowflake-ee
+      - be-tests-sparksql-ee
+      - be-tests-sqlite-ee
+      - be-tests-sqlserver-2017-ee
+      - be-tests-sqlserver-2022-ee
+      - be-tests-vertica-ee
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    name: drivers-tests-result
+    if: always() && !cancelled()
     steps:
-      - run: >-
-          echo 'Skipping job due to conditional filtering'
+      - name: Check job status
+        uses: actions/github-script@v7
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            // are all jobs skipped or successful?
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+              console.log('All jobs are skipped or successful');
+              process.exit(0);
+            }
+
+            // otherwise, something failed
+            console.log('Some drivers jobs failed');
+
+            jobs.forEach((job) => {
+              if (job.result !== 'success') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+
+            process.exit(1);
