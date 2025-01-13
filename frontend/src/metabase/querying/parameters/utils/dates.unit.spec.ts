@@ -305,6 +305,7 @@ describe("serializeDateFilter", () => {
     "exclude-quarters-5",
     "exclude-quarters-abc",
     "2024-ab",
+    "Q5-2020",
   ])("should ignore invalid input %s", text => {
     expect(deserializeDateFilter(text)).toBeUndefined();
   });
