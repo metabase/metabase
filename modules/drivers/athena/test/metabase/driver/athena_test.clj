@@ -252,18 +252,16 @@
         (mt/with-temp [:model/Database db {:engine :athena, :details details}]
           (sync/sync-database! db {:scan :schema})
           (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
-            ;; TODO: Resolve what's in the following comment!
-            #_(testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
+            (testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
                 ;; If this test fails and .getColumns returns results, the athena JDBC driver has been fixed and we can
                 ;; undo the changes in https://github.com/metabase/metabase/pull/44032
-                (is (seq (sql-jdbc.execute/do-with-connection-with-options
-                          :athena
-                          db
-                          nil
-                          (fn [^Connection conn]
-                            (let [metadata (.getMetaData conn)]
-                              (with-open [rs (.getColumns metadata catalog (:schema table) (:name table) nil)]
-                                (jdbc/metadata-result rs))))))))
+              (is (empty? (sql-jdbc.execute/do-with-connection-with-options
+                           :athena
+                           db
+                           nil
+                           (fn [^java.sql.Connection conn]
+                             (let [metadata (.getMetaData conn)]
+                               (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
             (testing "`describe-table` returns the fields anyway"
               (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
 
