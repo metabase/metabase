@@ -1583,11 +1583,13 @@ describe("issue 47170", () => {
 
 describe("issue 49556", () => {
   const TAB = { id: 1, name: "Tab" };
+
   const CREATED_AT_FIELD_REF = [
     "field",
     PEOPLE.NAME,
     { "base-type": "type/Text" },
   ];
+
   const TARGET_PARAMETER = {
     id: "d7988e02",
     name: "Target",
@@ -1595,6 +1597,7 @@ describe("issue 49556", () => {
     type: "category",
     filteringParameters: ["d7988e03"],
   };
+
   const SOURCE_PARAMETER = {
     id: "d7988e03",
     name: "Source",
