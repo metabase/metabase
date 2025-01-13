@@ -67,7 +67,6 @@
       (:email response)
       false)))
 
-#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- service-account-email [gsheets]
   ;; When google drive service-account exists, set the gsheets setting to be auth-complete.
   (or
@@ -115,7 +114,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (api/defendpoint GET "/service-account"
-  "Checks to see if service-account is setup or not, delegates to HM only if we haven't set it up before."
+  "Checks to see if service-account is setup or not, delegates to HM only if we haven't set it from a metabase cluster
+  before."
   [] {}
   (api/check-superuser)
   (when-not (api.auth/show-google-sheets-integration)
@@ -131,7 +131,9 @@
       (u/prog1 {:status "connected"
                 :folder_url url}
         (gsheets! <>))
-      (throw (ex-info "Unable to setup drive folder sync" {})))))
+      (throw (ex-info (str/join ["Unable to setup drive folder sync.\n"
+                                 "Please check that the folder is shared with the proper service account email "
+                                 "and sharing permissions."]) {})))))
 
 (api/defendpoint DELETE "/folder"
   "Disconnect the google service account"
