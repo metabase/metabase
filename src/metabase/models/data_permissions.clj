@@ -901,7 +901,10 @@
                                           ;; Otherwise, we only add a new table-level permission row if existing perms
                                           ;; are table-level
                                           (not (db-level-group-ids group-id))
-                                          (update new-perms :simple-perms conj new-perm))))
+                                          (update new-perms :simple-perms conj new-perm)
+
+                                          :else
+                                          new-perms)))
                                     {:simple-perms [] :going-granular []}
                                     group-ids)
             {:keys [going-granular
