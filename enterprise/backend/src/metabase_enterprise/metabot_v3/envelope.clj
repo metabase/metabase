@@ -21,8 +21,7 @@
    :context context
    :max-round-trips max-round-trips
    :round-trips-remaining max-round-trips
-   :dummy-history []
-   :query-id->query {}})
+   :dummy-history []})
 
 (defn- decode-json
   [s]
@@ -41,6 +40,28 @@
                                 (and (not stringify-content?) (string? content)) decode-json)))
         (into (:dummy-history e)
               (:history e)))))
+
+(defn is-tool-call-response?
+  "Is this message a response to a tool call?"
+  [{:keys [role tool-call-id]}]
+  (and (= role :tool)
+       tool-call-id))
+
+(defn- is-query? [content]
+  (and (map? content)
+       (contains? #{:query "query"} (:type content))))
+
+(defn llm-history
+  "History shaped for the LLM"
+  [e]
+  (->> (full-history e)
+       (mapv (fn [{:as msg :keys [content]}]
+               (cond-> msg
+                 (and (is-tool-call-response? msg)
+                      (is-query? content)) (update :content dissoc :query))))
+       (mapv (fn [{:keys [content] :as msg}]
+               (assoc msg :content (cond-> content
+                                     (map? content) json/encode))))))
 
 (defn session-id
   "Get the session ID from the envelope"
@@ -104,6 +125,18 @@
   [e msg]
   (update e :dummy-history conj msg))
 
+(defn add-dummy-tool-response
+  "Adds the dummy messages to the dummy history, updates context, and the query store, if necessary."
+  [e tool-call-id {:keys [output context reactions] :as res}]
+  (when (or
+         (some? context)
+         (some? reactions))
+    (throw (ex-info "dummy tool calls cannot result in reactions or context changes" res)))
+  (-> e
+      (add-dummy-message {:role :tool
+                          :tool-call-id tool-call-id
+                          :content output})))
+
 (defn update-context
   "Given a new context, set it in the envelope."
   [e context]
@@ -130,22 +163,15 @@
   [{:keys [tool-calls]}]
   (boolean (seq tool-calls)))
 
-(defn is-tool-call-response?
-  "Is this message a response to a tool call?"
-  [{:keys [role tool-call-id]}]
-  (and (= role :tool)
-       tool-call-id))
-
 (defn find-query
   "Given an envelope and a query-id, find the query in the history."
   [e query-id]
-  (->> (full-history e {:stringify-content? false})
+  (->> e
+       full-history
        (filter is-tool-call-response?)
        (keep :content)
-
        (filter #(contains? #{:query "query"} (:type %)))
-       (filter #(or (= (:query-id %) query-id)
-                    (= (:query_id %) query-id)))
+       (filter #(= (:query-id %) query-id))
        first
        :query))
 
