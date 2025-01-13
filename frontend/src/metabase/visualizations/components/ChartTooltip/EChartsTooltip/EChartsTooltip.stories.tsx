@@ -1,5 +1,5 @@
 import { SdkVisualizationWrapper } from "__support__/storybook";
-import type { MetabaseTheme } from "metabase/embedding-sdk/types/theme";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box, Flex } from "metabase/ui";
 
 import { EChartsTooltip, type EChartsTooltipProps } from "./EChartsTooltip";

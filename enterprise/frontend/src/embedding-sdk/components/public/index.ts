@@ -1,5 +1,5 @@
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
-import type { MetabaseTheme } from "embedding-sdk/types/theme";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 export { StaticQuestion, type StaticQuestionProps } from "./StaticQuestion";
 export {

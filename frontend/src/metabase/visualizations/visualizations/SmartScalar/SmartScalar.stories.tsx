@@ -4,7 +4,7 @@ import {
   SdkVisualizationWrapper,
   VisualizationWrapper,
 } from "__support__/storybook";
-import type { MetabaseTheme } from "metabase/embedding-sdk/types/theme";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 

@@ -25,6 +25,6 @@ export type {
   MetabaseTheme,
   MetabaseColors,
   MetabaseComponentTheme,
-} from "./types/theme";
+} from "metabase/embedding-sdk/theme";
 
 export type { Dashboard as MetabaseDashboard } from "metabase-types/api";

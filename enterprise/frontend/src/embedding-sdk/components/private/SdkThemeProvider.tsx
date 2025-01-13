@@ -3,10 +3,8 @@ import { useMemo } from "react";
 
 import type { MetabaseTheme } from "embedding-sdk";
 import { DEFAULT_FONT } from "embedding-sdk/config";
-import {
-  getEmbeddingThemeOverride,
-  setGlobalEmbeddingColors,
-} from "embedding-sdk/lib/theme";
+import { getEmbeddingThemeOverride } from "embedding-sdk/lib/theme";
+import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { useSelector } from "metabase/lib/redux";
 import { getSettings } from "metabase/selectors/settings";
 import { getFont } from "metabase/styled-components/selectors";
