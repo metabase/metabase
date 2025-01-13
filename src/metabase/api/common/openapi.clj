@@ -6,6 +6,7 @@
    [malli.json-schema :as mjs]
    [medley.core :as m]
    [metabase.api.macros :as api.macros]
+   [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
@@ -263,7 +264,10 @@
                                     (defendpoint->path-item tag path route))]
                             (catch Exception e
                               (throw (ex-info (str "Exception at " path) {} e))))))]
-      {:paths      paths
+      {:openapi    "3.1.0"
+       :info       {:title   "Metabase API"
+                    :version (:tag config/mb-version-info)}
+       :paths      paths
        :components {:schemas (update-vals @*definitions* fix-json-schema)}})))
 
 (comment

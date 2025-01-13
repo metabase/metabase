@@ -2,7 +2,7 @@ import type { DateFilterValue } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
-import { getDateFilterClause } from "./dates";
+import { getDateFilterClause, getDateFilterDisplayName } from "./dates";
 
 type DateFilterClauseCase = {
   value: DateFilterValue;
@@ -135,6 +135,189 @@ describe("getDateFilterClause", () => {
       expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
         displayName,
       });
+    },
+  );
+});
+
+type DateFilterDisplayNameCase = {
+  value: DateFilterValue;
+  displayName: string;
+  withPrefix?: boolean;
+};
+
+describe("getDateFilterDisplayName", () => {
+  it.each<DateFilterDisplayNameCase>([
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 2, 5)],
+        hasTime: false,
+      },
+      displayName: "March 5, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 2, 5, 10, 20)],
+        hasTime: true,
+      },
+      displayName: "March 5, 2024 10:20 AM",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "=",
+        values: [new Date(2024, 2, 5)],
+        hasTime: false,
+      },
+      withPrefix: true,
+      displayName: "On March 5, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: ">",
+        values: [new Date(2024, 2, 5)],
+        hasTime: false,
+      },
+      displayName: "After March 5, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "<",
+        values: [new Date(2024, 2, 5)],
+        hasTime: false,
+      },
+      displayName: "Before March 5, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "between",
+        values: [new Date(2024, 0, 1), new Date(2024, 11, 31)],
+        hasTime: false,
+      },
+      displayName: "January 1, 2024 - December 31, 2024",
+    },
+    {
+      value: {
+        type: "specific",
+        operator: "between",
+        values: [new Date(2024, 0, 1, 10, 20), new Date(2024, 11, 31, 23, 15)],
+        hasTime: true,
+      },
+      displayName: "January 1, 2024 10:20 AM - December 31, 2024 11:15 PM",
+    },
+    {
+      value: { type: "relative", value: "current", unit: "day" },
+      displayName: "Today",
+    },
+    {
+      value: { type: "relative", value: "current", unit: "year" },
+      displayName: "This Year",
+    },
+    {
+      value: { type: "relative", value: -1, unit: "day" },
+      displayName: "Yesterday",
+    },
+    {
+      value: { type: "relative", value: -2, unit: "year" },
+      displayName: "Previous 2 Years",
+    },
+    {
+      value: {
+        type: "relative",
+        value: -3,
+        unit: "month",
+        offsetValue: -1,
+        offsetUnit: "year",
+      },
+      displayName: "Previous 3 Months, starting 1 year ago",
+    },
+    {
+      value: { type: "relative", value: 2, unit: "month" },
+      displayName: "Next 2 Months",
+    },
+    {
+      value: {
+        type: "relative",
+        value: 3,
+        unit: "month",
+        offsetValue: 1,
+        offsetUnit: "year",
+      },
+      displayName: "Next 3 Months, starting 1 year from now",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "!=",
+        values: [0, 23],
+        unit: "hour-of-day",
+      },
+      displayName: "Exclude 12 AM, 11 PM",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "!=",
+        values: [0, 11, 23],
+        unit: "hour-of-day",
+      },
+      displayName: "Exclude 3 selections",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "!=",
+        values: [1, 7],
+        unit: "day-of-week",
+      },
+      displayName: "Exclude Monday, Sunday",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "!=",
+        values: [1, 12],
+        unit: "month-of-year",
+      },
+      displayName: "Exclude January, December",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "!=",
+        values: [1, 4],
+        unit: "quarter-of-year",
+      },
+      displayName: "Exclude Q1, Q4",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "is-null",
+        values: [],
+      },
+      displayName: "Is empty",
+    },
+    {
+      value: {
+        type: "exclude",
+        operator: "not-null",
+        values: [],
+      },
+      displayName: "Not empty",
+    },
+  ])(
+    "should format a relative date filter",
+    ({ value, displayName, withPrefix }) => {
+      expect(getDateFilterDisplayName(value, { withPrefix })).toEqual(
+        displayName,
+      );
     },
   );
 });
