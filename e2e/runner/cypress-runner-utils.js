@@ -1,5 +1,3 @@
-const { exec } = require("child_process");
-
 const arg = require("arg");
 const chalk = require("chalk");
 const cypress = require("cypress");
@@ -14,23 +12,6 @@ function printYellow(message) {
 
 function printCyan(message) {
   console.log(chalk.cyan(message));
-}
-
-function executeYarnCommand({ command, message } = {}) {
-  return new Promise((resolve, reject) => {
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error(stderr);
-
-        reject(error);
-        return;
-      }
-
-      printBold(message);
-
-      resolve(stdout);
-    });
-  });
 }
 
 const args = arg(
@@ -59,7 +40,6 @@ module.exports = {
   printBold,
   printYellow,
   printCyan,
-  executeYarnCommand,
   parseArguments,
   args,
 };

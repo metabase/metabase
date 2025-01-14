@@ -1,6 +1,6 @@
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import type { GroupItem } from "metabase/querying/filters/types";
-import { getGroupName } from "metabase/querying/filters/utils";
+import { getGroupName } from "metabase/querying/filters/utils/groups";
 import * as Lib from "metabase-lib";
 
 export function getGroupItems(query: Lib.Query): GroupItem[] {
