@@ -22,6 +22,7 @@
     channel
     (dissoc channel :details)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Get all channels"
   [:as {{:keys [include_inactive]} :body}]
@@ -36,6 +37,7 @@
     #(= "channel" (namespace (keyword %)))]
    (deferred-tru "Must be a namespaced channel. E.g: channel/http")))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a channel"
   [:as {{:keys [name description type active details] :as body} :body}]
@@ -51,12 +53,14 @@
   (u/prog1 (t2/insert-returning-instance! :model/Channel body)
     (events/publish-event! :event/channel-create {:object <> :user-id api/*current-user-id*})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Get a channel"
   [id]
   {id ms/PositiveInt}
   (-> (t2/select-one :model/Channel id) api/check-404 remove-details-if-needed))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update a channel"
   [id :as {{:keys [name type description details active] :as body} :body}]
@@ -89,6 +93,7 @@
        :body   {:message     (ex-message e)
                 :data        (ex-data e)}})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/test"
   "Test a channel connection"
   [:as {{:keys [type details]} :body}]

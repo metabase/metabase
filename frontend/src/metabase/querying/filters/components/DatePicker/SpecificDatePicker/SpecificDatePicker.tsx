@@ -1,19 +1,18 @@
 import { useMemo, useState } from "react";
 
-import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
-
 import type {
   DatePickerOperator,
   DatePickerUnit,
   SpecificDatePickerValue,
-} from "../types";
+} from "metabase/querying/filters/types";
+import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 
 import { DateRangePicker, type DateRangePickerValue } from "./DateRangePicker";
 import {
   SingleDatePicker,
   type SingleDatePickerValue,
 } from "./SingleDatePicker";
-import { TabList } from "./SpecificDatePicker.styled";
+import S from "./SpecificDatePicker.modules.css";
 import {
   canSetTime,
   coerceValue,
@@ -28,9 +27,9 @@ import {
 
 interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
-  availableOperators: ReadonlyArray<DatePickerOperator>;
-  availableUnits: ReadonlyArray<DatePickerUnit>;
-  isNew: boolean;
+  availableOperators: DatePickerOperator[];
+  availableUnits: DatePickerUnit[];
+  submitButtonLabel: string;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
 }
@@ -39,7 +38,7 @@ export function SpecificDatePicker({
   value: initialValue,
   availableOperators,
   availableUnits,
-  isNew,
+  submitButtonLabel,
   onChange,
   onBack,
 }: SpecificDatePickerProps) {
@@ -73,13 +72,13 @@ export function SpecificDatePicker({
     <Tabs value={value.operator} onTabChange={handleTabChange}>
       <Flex>
         <PopoverBackButton p="sm" onClick={onBack} />
-        <TabList>
+        <Tabs.List className={S.TabList}>
           {tabs.map(tab => (
             <Tabs.Tab key={tab.operator} value={tab.operator}>
               {tab.label}
             </Tabs.Tab>
           ))}
-        </TabList>
+        </Tabs.List>
       </Flex>
       <Divider />
       {tabs.map(tab => (
@@ -87,7 +86,7 @@ export function SpecificDatePicker({
           {isDateRange(value.values) ? (
             <DateRangePicker
               value={{ dateRange: value.values, hasTime: value.hasTime }}
-              isNew={isNew}
+              submitButtonLabel={submitButtonLabel}
               hasTimeToggle={hasTimeToggle}
               onChange={handleDateRangeChange}
               onSubmit={handleSubmit}
@@ -95,7 +94,7 @@ export function SpecificDatePicker({
           ) : (
             <SingleDatePicker
               value={{ date: getDate(value), hasTime: value.hasTime }}
-              isNew={isNew}
+              submitButtonLabel={submitButtonLabel}
               hasTimeToggle={hasTimeToggle}
               onChange={handleDateChange}
               onSubmit={handleSubmit}

@@ -152,7 +152,7 @@ describe("issue 8030 + 32444", () => {
             cy.findByText(filterDetails.name).click();
             H.popover().within(() => {
               // the filter is connected only to the first card
-              H.multiAutocompleteInput().type("1{enter}");
+              cy.findByPlaceholderText("Enter an ID").type("1");
               cy.button("Add filter").click();
             });
             cy.wait("@getCardQuery1");
@@ -1174,7 +1174,7 @@ describe("issue 21528", () => {
 
 describe("issue 22482", () => {
   function getFormattedRange(start, end) {
-    return `${start.format("MMM D, YYYY")} - ${end.format("MMM D, YYYY")}`;
+    return `${start.format("MMM D, YYYY")} – ${end.format("MMM D, YYYY")}`;
   }
 
   beforeEach(() => {
@@ -1194,12 +1194,12 @@ describe("issue 22482", () => {
 
     H.filterWidget().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates...").click();
+    cy.findByText("Relative dates…").click();
   });
 
   it("should round relative date range (metabase#22482)", () => {
-    cy.findByTestId("relative-datetime-value").clear().type(15);
-    cy.findByTestId("relative-datetime-unit").click();
+    cy.findByLabelText("Interval").clear().type(15);
+    cy.findByLabelText("Unit").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("months").click();
 
@@ -1242,7 +1242,7 @@ describe("issue 22788", () => {
   function addFilterAndAssert() {
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByRole("searchbox").type("Gizmo");
+      cy.findByPlaceholderText("Enter some text").type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -1362,7 +1362,7 @@ describe("issue 24235", () => {
     cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
   });
 
-  it("should remove filter when all exclude options are selected (metabase#24235)", () => {
+  it("should not allow to add a filter when all exclude options are selected (metabase#24235)", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         mapParameterToDashboardCard({ id, card_id, dashboard_id });
@@ -1372,8 +1372,8 @@ describe("issue 24235", () => {
 
     H.filterWidget().contains(parameter.name).click();
     H.popover().within(() => {
-      cy.findByText("Exclude...").click();
-      cy.findByText("Days of the week...").click();
+      cy.findByText("Exclude…").click();
+      cy.findByText("Days of the week…").click();
       cy.findByText("Select all").click();
       cy.findByText("Add filter").click();
     });
@@ -1381,14 +1381,8 @@ describe("issue 24235", () => {
     H.filterWidget().click();
     H.popover().within(() => {
       cy.findByText("Select none").click();
-      cy.findByText("Update filter").click();
+      cy.button("Update filter").should("be.disabled");
     });
-
-    cy.wait("@getCardQuery");
-    cy.get("[data-testid=cell-data]").should(
-      "contain",
-      "Price, Schultz and Daniel",
-    );
   });
 });
 
@@ -2166,7 +2160,7 @@ describe("issue 27768", () => {
 
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByRole("searchbox").type("Gizmo");
+      H.fieldValuesInput().type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -2989,8 +2983,8 @@ describe("issue 27579", () => {
     H.saveDashboard();
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByText("Exclude...").click();
-      cy.findByText("Hours of the day...").click();
+      cy.findByText("Exclude…").click();
+      cy.findByText("Hours of the day…").click();
       cy.findByText("Select all").click();
       cy.findByLabelText("12 AM").should("be.checked");
 

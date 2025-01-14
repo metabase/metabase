@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.task.cache :as task.cache]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -60,16 +60,17 @@
 
 (defn- query-execution-defaults
   [query]
-  {:hash         (qp.util/query-hash query)
-   :cache_hash   (qp.util/query-hash query)
-   :running_time 1
-   :result_rows  1
-   :native       false
-   :is_sandboxed false
-   :executor_id  nil
-   :card_id      nil
-   :context      :ad-hoc
-   :started_at   (t/offset-date-time)})
+  {:hash          (qp.util/query-hash query)
+   :cache_hash    (qp.util/query-hash query)
+   :running_time  1
+   :result_rows   1
+   :native        false
+   :is_sandboxed  false
+   :executor_id   nil
+   :card_id       nil
+   :context       :ad-hoc
+   :parameterized false
+   :started_at    (t/offset-date-time)})
 
 (deftest scheduled-queries-to-rerun-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
@@ -509,8 +510,8 @@
                                           :refresh_automatically true
                                           :config {:schedule "0 0 * * * ?"}}]
       (let [call-count (atom 0)]
-        (mt/with-dynamic-redefs [task.cache/refresh-schedule-cache! (fn [_] (swap! call-count inc))
-                                 task.cache/maybe-refresh-duration-caches! (fn [] (swap! call-count inc))]
+        (mt/with-dynamic-fn-redefs [task.cache/refresh-schedule-cache! (fn [_] (swap! call-count inc))
+                                    task.cache/maybe-refresh-duration-caches! (fn [] (swap! call-count inc))]
           (@#'task.cache/refresh-cache-configs!)
           (is (= 0 @call-count))
 

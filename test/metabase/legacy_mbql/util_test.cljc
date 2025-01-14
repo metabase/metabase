@@ -1,12 +1,15 @@
 (ns ^:mb/once metabase.legacy-mbql.util-test
   (:require
-   #?@(:clj (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt]))
+   #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt])
+       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.types]))
 
 (comment metabase.types/keep-me)
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (t/deftest ^:parallel simplify-compound-filter-test
   (t/is (= [:= [:field 1 nil] 2]
@@ -230,6 +233,28 @@
                           :expressions  {"negated" [:* [:field 1 nil] -1]}}}
               stage-number
               [:= [:field 2 nil] 200])))))
+
+(t/deftest ^:parallel map-stages-test
+  (let [test-fn (fn [inner-query stage-number]
+                  (assoc inner-query ::stage-number stage-number))]
+    (t/is (=? {:source-table  1
+               :filter        [:= [:field 1 nil] 100]
+               :aggregation   [[:count]]
+               ::stage-number 0}
+              (mbql.u/map-stages test-fn {:source-table 1
+                                          :filter       [:= [:field 1 nil] 100]
+                                          :aggregation  [[:count]]})))
+    (t/is (=? {:source-query  {:source-table  1
+                               :filter        [:= [:field 1 nil] 100]
+                               :aggregation   [[:count]]
+                               ::stage-number 0}
+               :expressions   {"negated" [:* [:field 1 nil] -1]}
+
+               ::stage-number 1}
+              (mbql.u/map-stages test-fn {:source-query  {:source-table  1
+                                                          :filter        [:= [:field 1 nil] 100]
+                                                          :aggregation   [[:count]]}
+                                          :expressions   {"negated" [:* [:field 1 nil] -1]}})))))
 
 (t/deftest ^:parallel desugar-time-interval-test
   (t/is (= [:between

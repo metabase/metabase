@@ -16,9 +16,8 @@
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
-   [metabase.models.user :refer [User]]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -190,9 +189,9 @@
      (concat
       (all-admin-recipients)
       (when (seq user-ids)
-        (t2/select-fn-set :email User {:where [:and
-                                               [:= :is_active true]
-                                               [:in :id user-ids]]}))))))
+        (t2/select-fn-set :email :model/User {:where [:and
+                                                      [:= :is_active true]
+                                                      [:in :id user-ids]]}))))))
 
 (defn send-persistent-model-error-email!
   "Format and send an email informing the user about errors in the persistent model refresh task."

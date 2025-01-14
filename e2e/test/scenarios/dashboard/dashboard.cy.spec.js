@@ -94,6 +94,10 @@ describe("scenarios > dashboard", () => {
       H.queryBuilderHeader().findByText("Save").click();
       cy.findByTestId("save-question-modal").within(modal => {
         cy.findByLabelText("Name").clear().type(newQuestionName);
+        cy.findByLabelText("Where do you want to save this?").should(
+          "contain.text",
+          dashboardName,
+        );
         cy.findByText("Save").click();
       });
       cy.wait("@createQuestion");
@@ -137,7 +141,7 @@ describe("scenarios > dashboard", () => {
           .findByRole("tab", { name: /Collections/ })
           .click();
         H.entityPickerModal()
-          .findByText("Create a new collection")
+          .findByText("New collection")
           .click({ force: true });
         const NEW_COLLECTION = "Bar";
         H.collectionOnTheGoModal().within(() => {
@@ -195,7 +199,7 @@ describe("scenarios > dashboard", () => {
       H.entityPickerModal()
         .findByRole("tab", { name: /Dashboards/ })
         .click();
-      H.entityPickerModal().findByText("Create a new dashboard").click();
+      H.entityPickerModal().findByText("New dashboard").click();
       cy.findByTestId("create-dashboard-on-the-go").within(() => {
         cy.findByPlaceholderText("My new dashboard").type("Foo");
         cy.findByText("Create").click();
@@ -1198,7 +1202,10 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
     H.popover().findByText("Link").click();
 
     cy.wait("@recentViews");
-    cy.findByTestId("custom-edit-text-link").click().type("Orders");
+
+    cy.findByTestId("custom-edit-text-link")
+      .findByPlaceholderText("https://example.com")
+      .type("Orders");
 
     H.popover().within(() => {
       cy.findByText(/Loading/i).should("not.exist");

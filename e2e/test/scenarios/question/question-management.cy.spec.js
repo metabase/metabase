@@ -109,7 +109,7 @@ describe(
                       cy.findByRole("tab", { name: /Browse/ }).click();
                     }
                     cy.findByText(/Personal Collection/).click();
-                    cy.findByText("Create a new collection").click();
+                    cy.findByText("New collection").click();
                   });
 
                   cy.findByTestId("create-collection-on-the-go").within(() => {

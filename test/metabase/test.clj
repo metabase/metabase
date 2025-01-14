@@ -9,6 +9,7 @@
    [mb.hawk.init]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
+   [metabase.core.init]
    [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
@@ -18,6 +19,7 @@
    [metabase.http-client :as client]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -38,14 +40,13 @@
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
-   [metabase.test.util.public-settings :as tu.public-setings]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.log.capture]
    [metabase.util.random :as u.random]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -70,6 +71,7 @@
   lib.metadata.jvm/keep-me
   mb.hawk.init/keep-me
   mdb.test-util/keep-me
+  metabase.core.init/keep-me
   metabase.request.core/keep-me
   metabase.test.util.dynamic-redefs/keep-me
   metabase.util.log.capture/keep-me
@@ -80,7 +82,7 @@
   schema-migrations-test.impl/keep-me
   sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
-  t2.with-temp/keepme
+  toucan2.tools.with-temp/keep-me
   test-runner.assert-exprs/keep-me
   test.persistence/keep-me
   test.redefs/keep-me
@@ -89,7 +91,6 @@
   tu.async/keep-me
   tu.log/keep-me
   tu.misc/keep-me
-  tu.public-setings/keep-me
   tu.thread-local/keep-me
   tu/keep-me
   tx.env/keep-me
@@ -97,7 +98,7 @@
   u.random/keep-me)
 
 ;; Add more stuff here as needed
-#_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
+#_{:clj-kondo/ignore [:discouraged-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -175,7 +176,12 @@
 
  [metabase.test.util.dynamic-redefs
   dynamic-value
-  with-dynamic-redefs]
+  with-dynamic-fn-redefs]
+
+ [premium-features.test-util
+  with-premium-features
+  with-additional-premium-features
+  assert-has-premium-feature-error]
 
  [perms.test-util
   with-restored-data-perms!
@@ -235,7 +241,7 @@
   with-group-for-user
   with-test-user]
 
- [t2.with-temp
+ [toucan2.tools.with-temp
   with-temp
   with-temp-defaults]
 
@@ -246,7 +252,6 @@
   discard-setting-changes
   doall-recursive
   file->bytes
-  is-uuid-string?
   latest-audit-log-entry
   let-url
   obj->json->obj
@@ -294,11 +299,6 @@
   object-defaults
   with-clock
   with-single-admin-user]
-
- [tu.public-setings
-  with-premium-features
-  with-additional-premium-features
-  assert-has-premium-feature-error]
 
  [u.random
   random-name

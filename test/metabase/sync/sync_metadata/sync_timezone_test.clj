@@ -7,13 +7,11 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.models.database :refer [Database]]
    [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,7 +40,7 @@
       "US/Pacific")))
 
 (defn- db-timezone [db-or-id]
-  (t2/select-one-fn :timezone Database :id (u/the-id db-or-id)))
+  (t2/select-one-fn :timezone :model/Database :id (u/the-id db-or-id)))
 
 (deftest sync-timezone-test
   (mt/test-drivers #{:h2 :postgres}
@@ -51,7 +49,7 @@
       (mt/dataset test-data
         (let [db                               (mt/db)
               tz-on-load                       (db-timezone db)
-              _                                (t2/update! Database (:id db) {:timezone nil})
+              _                                (t2/update! :model/Database (:id db) {:timezone nil})
               tz-after-update                  (db-timezone db)
               ;; It looks like we can get some stale timezone information depending on which thread is used for querying the
               ;; database in sync. Clearing the connection pool to ensure we get the most updated TZ data
@@ -76,7 +74,7 @@
       (let [details (mt/dbdef->connection-details :mysql :db {:database-name "sync_timezone_test"})
             spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
         (mysql-test/drop-if-exists-and-create-db! "sync_timezone_test")
-        (t2.with-temp/with-temp [:model/Database database {:engine :mysql, :details (assoc details :dbname "sync_timezone_test")}]
+        (mt/with-temp [:model/Database database {:engine :mysql, :details (assoc details :dbname "sync_timezone_test")}]
           (let [global-time-zone (-> (jdbc/query spec ["SELECT @@GLOBAL.time_zone;"])
                                      first
                                      (get (keyword "@@global.time_zone")))]

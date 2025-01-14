@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { RefObject } from "react";
 import { Fragment } from "react";
 import { t } from "ttag";
@@ -5,7 +6,8 @@ import { t } from "ttag";
 import { useDocsUrl } from "metabase/common/hooks";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Box, Icon } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Box, Icon, Text } from "metabase/ui";
 import { getHelpDocsUrl } from "metabase-lib/v1/expressions/helper-text-strings";
 import type { HelpText } from "metabase-lib/v1/expressions/types";
 
@@ -52,14 +54,14 @@ export const ExpressionEditorHelpTextContent = ({
               (
               {args.map(({ name }, index) => (
                 <span key={name}>
-                  <Box
+                  <Text
                     component="span"
                     className={
                       ExpressionEditorHelpTextS.FunctionHelpCodeArgument
                     }
                   >
                     {name}
-                  </Box>
+                  </Text>
                   {index + 1 < args.length && ", "}
                 </span>
               ))}
@@ -69,7 +71,7 @@ export const ExpressionEditorHelpTextContent = ({
         </Box>
         <Box className={ExpressionEditorHelpTextS.Divider} />
 
-        <div>{description}</div>
+        <Text>{description}</Text>
 
         {args != null && (
           <Box
@@ -78,10 +80,15 @@ export const ExpressionEditorHelpTextContent = ({
           >
             {args.map(({ name, description: argDescription }) => (
               <Fragment key={name}>
-                <Box className={ExpressionEditorHelpTextS.ArgumentTitle}>
+                <Box
+                  className={cx(
+                    ExpressionEditorHelpTextS.ArgumentTitle,
+                    CS.textMonospace,
+                  )}
+                >
                   {name}
                 </Box>
-                <div>{argDescription}</div>
+                <Text lh="normal">{argDescription}</Text>
               </Fragment>
             ))}
           </Box>
@@ -90,7 +97,12 @@ export const ExpressionEditorHelpTextContent = ({
         <Box
           className={ExpressionEditorHelpTextS.BlockSubtitleText}
         >{t`Example`}</Box>
-        <Box className={ExpressionEditorHelpTextS.ExampleCode}>
+        <Box
+          className={cx(
+            ExpressionEditorHelpTextS.ExampleCode,
+            CS.textMonospace,
+          )}
+        >
           {helpText.example}
         </Box>
         {showMetabaseLinks && (

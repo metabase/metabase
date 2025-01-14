@@ -115,6 +115,9 @@ export const GRAPH_DATA_SETTINGS = {
             : null,
         columns: data.cols,
         fieldSettingWidgets: [],
+        // When this prop is passed it will only show the
+        // column settings for any index that is included in the array
+        showColumnSettingForIndicies: [0],
       };
     },
     writeDependencies: ["graph.metrics"],
@@ -314,7 +317,6 @@ export const TOOLTIP_SETTINGS = {
   },
   "graph.tooltip_columns": {
     section: t`Display`,
-
     title: t`Additional tooltip metrics`,
     placeholder: t`Enter metric names`,
     widget: "multiselect",

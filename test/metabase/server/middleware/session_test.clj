@@ -8,16 +8,14 @@
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models :refer [PermissionsGroupMembership Session User]]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
    [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,9 +34,9 @@
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
-          (t2.with-temp/with-temp [User {user-id :id}]
+          (mt/with-temp [:model/User {user-id :id}]
             (let [session-id (str (random-uuid))]
-              (t2/insert! (t2/table-name Session) {:id session-id, :user_id user-id, :created_at created-at})
+              (t2/insert! (t2/table-name :model/Session) {:id session-id, :user_id user-id, :created_at created-at})
               (let [session (#'mw.session/current-user-info-for-session session-id nil)]
                 (if expected
                   (is (nil? session))
@@ -100,11 +98,11 @@
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-id :uri]))))))
 
 (deftest current-user-info-for-api-key-test
-  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key"
-                                            :user_id       (mt/user->id :lucky)
-                                            :creator_id    (mt/user->id :lucky)
-                                            :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  (u.secret/secret "mb_foobar")}]
+  (mt/with-temp [:model/ApiKey _ {:name          "An API Key"
+                                  :user_id       (mt/user->id :lucky)
+                                  :creator_id    (mt/user->id :lucky)
+                                  :updated_by_id (mt/user->id :lucky)
+                                  :unhashed_key  (u.secret/secret "mb_foobar")}]
     (testing "A valid API key works, and user info is added to the request"
       (let [req {:headers {"x-api-key" "mb_foobar"}}]
         (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
@@ -123,11 +121,11 @@
         ;; no key at all
         {:headers {}})))
 
-  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key without an internal user"
-                                            :user_id       nil
-                                            :creator_id    (mt/user->id :lucky)
-                                            :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  (u.secret/secret "mb_foobar")}]
+  (mt/with-temp [:model/ApiKey _ {:name          "An API Key without an internal user"
+                                  :user_id       nil
+                                  :creator_id    (mt/user->id :lucky)
+                                  :updated_by_id (mt/user->id :lucky)
+                                  :unhashed_key  (u.secret/secret "mb_foobar")}]
     (testing "An API key without an internal user (e.g. a SCIM key) should not modify the request"
       (let [req {:headers {"x-api-key" "mb_foobar"}}]
         (is (= req (#'mw.session/merge-current-user-info req)))))))
@@ -149,16 +147,16 @@
      (fn [e] (throw e)))))
 
 (deftest user-data-is-correctly-bound-for-api-keys
-  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key"
-                                            :user_id       (mt/user->id :lucky)
-                                            :creator_id    (mt/user->id :lucky)
-                                            :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  (u.secret/secret "mb_foobar")}
-                           :model/ApiKey _ {:name          "A superuser API Key"
-                                            :user_id       (mt/user->id :crowberto)
-                                            :creator_id    (mt/user->id :lucky)
-                                            :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  (u.secret/secret "mb_superuser")}]
+  (mt/with-temp [:model/ApiKey _ {:name          "An API Key"
+                                  :user_id       (mt/user->id :lucky)
+                                  :creator_id    (mt/user->id :lucky)
+                                  :updated_by_id (mt/user->id :lucky)
+                                  :unhashed_key  (u.secret/secret "mb_foobar")}
+                 :model/ApiKey _ {:name          "A superuser API Key"
+                                  :user_id       (mt/user->id :crowberto)
+                                  :creator_id    (mt/user->id :lucky)
+                                  :updated_by_id (mt/user->id :lucky)
+                                  :unhashed_key  (u.secret/secret "mb_superuser")}]
     (testing "A valid API key works, and user info is added to the request"
       (is (= {:is-superuser?     false
               :is-group-manager? false
@@ -179,20 +177,20 @@
     ;; for some reason Toucan seems to be busted with models with non-integer IDs and `with-temp` doesn't seem to work
     ;; the way we'd expect :/
     (try
-      (t2/insert! Session {:id (str test-uuid), :user_id (mt/user->id :lucky)})
+      (t2/insert! :model/Session {:id (str test-uuid), :user_id (mt/user->id :lucky)})
       (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (t2/delete! Session :id (str test-uuid))))))
+        (t2/delete! :model/Session :id (str test-uuid))))))
 
 (deftest current-user-info-for-session-test-2
   (testing "superusers should come back as `:is-superuser?`"
     (try
-      (t2/insert! Session {:id (str test-uuid), :user_id (mt/user->id :crowberto)})
+      (t2/insert! :model/Session {:id (str test-uuid), :user_id (mt/user->id :crowberto)})
       (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :is-group-manager? false, :user-locale nil}
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (t2/delete! Session :id (str test-uuid))))))
+        (t2/delete! :model/Session :id (str test-uuid))))))
 
 (deftest current-user-info-for-session-test-3
   (testing "If user is a group manager of at least one group, `:is-group-manager?` "
@@ -200,10 +198,10 @@
       (mt/with-user-in-groups [group-1 {:name "New Group 1"}
                                group-2 {:name "New Group 2"}
                                user    [group-1 group-2]]
-        (t2/update! PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
+        (t2/update! :model/PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
                     {:is_group_manager true})
-        (t2/insert! Session {:id      (str test-uuid)
-                             :user_id (:id user)})
+        (t2/insert! :model/Session {:id      (str test-uuid)
+                                    :user_id (:id user)})
         (testing "is `false` if advanced-permisison is disabled"
           (mt/with-premium-features #{}
             (is (= false
@@ -216,69 +214,69 @@
             (is (= true
                    (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil)))))))
       (finally
-        (t2/delete! Session :id (str test-uuid))))))
+        (t2/delete! :model/Session :id (str test-uuid))))))
 
 (deftest current-user-info-for-session-test-4
   (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
     (try
-      (t2/insert! Session {:id              (str test-uuid)
-                           :user_id         (mt/user->id :lucky)
-                           :anti_csrf_token test-anti-csrf-token})
+      (t2/insert! :model/Session {:id              (str test-uuid)
+                                  :user_id         (mt/user->id :lucky)
+                                  :anti_csrf_token test-anti-csrf-token})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (t2/delete! Session :id (str test-uuid))))
+        (t2/delete! :model/Session :id (str test-uuid))))
 
     (testing "...but if we do specifiy the token, they should come back"
       (try
-        (t2/insert! Session {:id              (str test-uuid)
-                             :user_id         (mt/user->id :lucky)
-                             :anti_csrf_token test-anti-csrf-token})
+        (t2/insert! :model/Session {:id              (str test-uuid)
+                                    :user_id         (mt/user->id :lucky)
+                                    :anti_csrf_token test-anti-csrf-token})
         (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
                (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
         (finally
-          (t2/delete! Session :id (str test-uuid))))
+          (t2/delete! :model/Session :id (str test-uuid))))
 
       (testing "(unless the token is wrong)"
         (try
-          (t2/insert! Session {:id              (str test-uuid)
-                               :user_id         (mt/user->id :lucky)
-                               :anti_csrf_token test-anti-csrf-token})
+          (t2/insert! :model/Session {:id              (str test-uuid)
+                                      :user_id         (mt/user->id :lucky)
+                                      :anti_csrf_token test-anti-csrf-token})
           (is (= nil
                  (#'mw.session/current-user-info-for-session (str test-uuid) (str/join (reverse test-anti-csrf-token)))))
           (finally
-            (t2/delete! Session :id (str test-uuid))))))))
+            (t2/delete! :model/Session :id (str test-uuid))))))))
 
 (deftest current-user-info-for-session-test-5
   (testing "if we specify an anti-csrf token we shouldn't get back a session without that token"
     (try
-      (t2/insert! Session {:id      (str test-uuid)
-                           :user_id (mt/user->id :lucky)})
+      (t2/insert! :model/Session {:id      (str test-uuid)
+                                  :user_id (mt/user->id :lucky)})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
       (finally
-        (t2/delete! Session :id (str test-uuid))))))
+        (t2/delete! :model/Session :id (str test-uuid))))))
 
 (deftest current-user-info-for-session-test-6
   (testing "shouldn't fetch expired sessions"
     (try
-      (t2/insert! Session {:id      (str test-uuid)
-                           :user_id (mt/user->id :lucky)})
+      (t2/insert! :model/Session {:id      (str test-uuid)
+                                  :user_id (mt/user->id :lucky)})
         ;; use low-level `execute!` because updating is normally disallowed for Sessions
       (t2/query-one {:update :core_session, :set {:created_at (t/instant 1000)}, :where [:= :id (str test-uuid)]})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (t2/delete! Session :id (str test-uuid))))))
+        (t2/delete! :model/Session :id (str test-uuid))))))
 
 (deftest current-user-info-for-session-test-7
   (testing "shouldn't fetch sessions for inactive users"
     (try
-      (t2/insert! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
+      (t2/insert! :model/Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
-        (t2/delete! Session :id (str test-uuid))))))
+        (t2/delete! :model/Session :id (str test-uuid))))))
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns our bound variables for users
 (defn- user-bound-handler [request]
@@ -329,9 +327,9 @@
 
     (testing "w/ Session"
       (testing "for user with no `:locale`"
-        (t2.with-temp/with-temp [User {user-id :id}]
+        (mt/with-temp [:model/User {user-id :id}]
           (let [session-id (str (random-uuid))]
-            (t2/insert! Session {:id session-id, :user_id user-id})
+            (t2/insert! :model/Session {:id session-id, :user_id user-id})
             (is (= nil
                    (session-locale session-id)))
 
@@ -340,9 +338,9 @@
                      (session-locale session-id :headers {"x-metabase-locale" "es-mx"})))))))
 
       (testing "for user *with* `:locale`"
-        (t2.with-temp/with-temp [User {user-id :id} {:locale "es-MX"}]
+        (mt/with-temp [:model/User {user-id :id} {:locale "es-MX"}]
           (let [session-id (str (random-uuid))]
-            (t2/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
+            (t2/insert! :model/Session {:id session-id, :user_id user-id, :created_at :%now})
             (is (= "es_MX"
                    (session-locale session-id)))
 

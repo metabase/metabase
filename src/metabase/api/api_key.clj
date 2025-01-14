@@ -50,6 +50,7 @@
 (defn- with-creator [api-key]
   (assoc api-key :creator_id api/*current-user-id*))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new API key (and an associated `User`) with the provided name and group ID."
   [:as {{:keys [group_id name] :as _body} :body}]
@@ -81,12 +82,14 @@
                                   :user-id api/*current-user-id*})
           (present-api-key (assoc api-key :unmasked_key unhashed-key)))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/count"
   "Get the count of API keys in the DB with the default scope."
   [:as _body]
   (api/check-superuser)
   (t2/count :model/ApiKey :scope nil))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update an API key by changing its group and/or its name"
   [id :as {{:keys [group_id name] :as _body} :body}]
@@ -114,6 +117,7 @@
                                                     :user-id         api/*current-user-id*})
       (present-api-key updated-api-key))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id/regenerate"
   "Regenerate an API Key"
   [id]
@@ -136,6 +140,7 @@
                             :unmasked_key unhashed-key
                             :masked_key (api-key/mask unhashed-key)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Get a list of API keys with the default scope. Non-paginated."
   []
@@ -143,6 +148,7 @@
   (let [api-keys (t2/hydrate (t2/select :model/ApiKey :scope nil) :group :updated_by)]
     (map present-api-key api-keys)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id"
   "Delete an ApiKey"
   [id]

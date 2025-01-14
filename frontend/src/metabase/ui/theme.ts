@@ -1,7 +1,7 @@
 import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 
-import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
+import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 
 import {
   getAccordionOverrides,
@@ -14,6 +14,7 @@ import {
   getCardOverrides,
   getCheckboxOverrides,
   getChipOverrides,
+  getCodeOverrides,
   getDateInputOverrides,
   getDatePickerOverrides,
   getDividerOverrides,
@@ -23,6 +24,7 @@ import {
   getListOverrides,
   getMenuOverrides,
   getModalOverrides,
+  getMonthPickerOverrides,
   getMultiSelectOverrides,
   getNavLinkOverrides,
   getOverlayOverrides,
@@ -123,6 +125,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getCardOverrides(),
     ...getCheckboxOverrides(),
     ...getChipOverrides(),
+    ...getCodeOverrides(),
     ...getDateInputOverrides(),
     ...getDatePickerOverrides(),
     ...getDividerOverrides(),
@@ -130,6 +133,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getInputOverrides(),
     ...getMenuOverrides(),
     ...getModalOverrides(),
+    ...getMonthPickerOverrides(),
     ...getMultiSelectOverrides(),
     ...getNavLinkOverrides(),
     ...getOverlayOverrides(),

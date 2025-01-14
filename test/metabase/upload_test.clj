@@ -18,7 +18,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models :refer [Field]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
@@ -543,7 +542,7 @@
     (map-indexed (fn [i row] (cons (inc i) row)))))
 
 (defn- column-position [table column-name]
-  (t2/select-one-fn :database_position Field :%lower.name (u/lower-case-en column-name) :table_id (:id table)))
+  (t2/select-one-fn :database_position :model/Field :%lower.name (u/lower-case-en column-name) :table_id (:id table)))
 
 (deftest create-from-csv-test
   (doseq [[separator lines] example-files]
@@ -690,7 +689,7 @@
           (testing "Fields exists after sync"
             (testing "Check the datetime column the correct base_type"
               (is (=? :type/DateTime
-                      (t2/select-one-fn :base_type Field :%lower.name "datetime" :table_id (:id table)))))
+                      (t2/select-one-fn :base_type :model/Field :%lower.name "datetime" :table_id (:id table)))))
             (is (some? table))))))))
 
 (deftest create-from-csv-offset-datetime-test
@@ -716,7 +715,7 @@
                           :file (csv-file-with (into ["offset_datetime"] csv-strs)))]
                   (testing "Check the offset datetime column the correct base_type"
                     (is (=? :type/DateTimeWithLocalTZ
-                            (t2/select-one-fn :base_type Field :%lower.name "offset_datetime" :table_id (:id table)))))
+                            (t2/select-one-fn :base_type :model/Field :%lower.name "offset_datetime" :table_id (:id table)))))
                   (let [position (column-position table "offset_datetime")
                         values   (map #(nth % position) (rows-for-table table))]
                     (is (= expected
@@ -750,7 +749,7 @@
           (testing "Table and Fields exist after sync"
             (testing "Check the boolean column has a boolean base_type"
               (is (= :type/Boolean
-                     (t2/select-one-fn :base_type Field :%lower.name "bool" :table_id (:id table)))))
+                     (t2/select-one-fn :base_type :model/Field :%lower.name "bool" :table_id (:id table)))))
             (testing "Check the data was uploaded into the table correctly"
               (let [position    (column-position table "bool")
                     bool-column (map #(nth % position) (rows-for-table table))
@@ -890,7 +889,7 @@
                      :base_type                  :type/BigInteger
                      :database_is_auto_increment false}
                     (let [pos (if (auto-pk-column?) 1 0)]
-                      (t2/select-one Field :database_position pos :table_id (:id table)))))))))))
+                      (t2/select-one :model/Field :database_position pos :table_id (:id table)))))))))))
 
 (deftest create-from-csv-auto-pk-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :upload-with-auto-pk)
@@ -1146,7 +1145,7 @@
                (is (= "complete"
                       (:initial_sync_status (t2/select-one :model/Table (:id new-table))))
                    "The table is synced and marked as complete")
-               (is (t2/exists? Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
+               (is (t2/exists? :model/Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
                    "The sync actually runs")))))
         (finally
           (t2/update! :model/Database db-id original-sync-values))))))
@@ -1178,7 +1177,7 @@
        {}
        (fn [model]
          (with-upload-table! [table (card->table model)]
-           (let [new-field (t2/select-one Field :table_id (:id table) :name "_mb_row_id")]
+           (let [new-field (t2/select-one :model/Field :table_id (:id table) :name "_mb_row_id")]
              (is (= "_mb_row_id"
                     (:name new-field)
                     (:display_name new-field))))))))))
@@ -1202,7 +1201,7 @@
                      (last (snowplow-test/pop-event-data-and-user-id!)))))
 
            (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
-             (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+             (mt/with-dynamic-fn-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
                (try (do-with-uploaded-example-csv! {} identity)
                     (catch Throwable _
                       nil))
@@ -1250,8 +1249,8 @@
                   0xFF      ; Operating system (unknown)
                   0x03 0    ; Compressed data (empty block)
                   0 0 0 0   ; CRC32
-                  0 0 0 0   ; Input size
-                  ]))
+                  0 0 0 0]))   ; Input size
+
     file))
 
 (defmethod driver/database-supports? [::driver/driver ::create-csv-upload!-failure-test]
@@ -1283,7 +1282,7 @@
               {:db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"}
               identity))))
       (testing "Uploads must be supported"
-        (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
+        (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
           (is (thrown-with-msg?
                java.lang.Exception
                #"^Uploads are not supported on \w+ databases\."
@@ -1479,7 +1478,7 @@
                       :data    {:status-code 422}}
                      (catch-ex-info (update-csv-with-defaults! action :file (csv-file-with []))))))
             (testing "Uploads must be supported"
-              (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
+              (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
                 (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
                         :data    {:status-code 422}}
                        (catch-ex-info (update-csv-with-defaults! action))))))))))))
@@ -1583,8 +1582,8 @@
         (with-mysql-local-infile-on-and-off
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for all possible CSV column types"
-              (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
-                                       upload/current-database    (constantly (mt/db))]
+              (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
+                                          upload/current-database    (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -1800,7 +1799,7 @@
                 (io/delete-file file)))
 
             (testing "Failures when appending to CSV Uploads will publish statistics to Snowplow"
-              (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+              (mt/with-dynamic-fn-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
                 (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
                       file     (csv-file-with csv-rows (mt/random-name))]
                   (try
@@ -2461,7 +2460,7 @@
         expected [:%ce%b1bcd%  :%_b59bccce :%ce%b1bc_2 :%ce%b1bc_3]
         displays ["αbcdεf" "αbcdεfg" "αbc 2 etc" "αbc 3 xyz"]]
     (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))
-    (mt/with-dynamic-redefs [upload/max-bytes (constantly 10)]
+    (mt/with-dynamic-fn-redefs [upload/max-bytes (constantly 10)]
       (is (= displays
              ;; The whitespace linter rejects capital greek characters that look like their roman equivalents.
              ;; This is the easiest way to work around the capitalization of alpha.

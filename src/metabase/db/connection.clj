@@ -142,9 +142,16 @@
                     ;; top-level transaction, commit
                     (.commit connection))
                   result)
-                (catch Throwable e
-                  (.rollback connection savepoint)
-                  (throw e)))))]
+                (catch Throwable txn-e
+                  (try
+                    (.rollback connection savepoint)
+                    (catch Exception rollback-e
+                      (throw (ex-info
+                              (str "Error rolling back after previous error: " (ex-message txn-e))
+                              {:rollback-error rollback-e}
+                              txn-e))))
+
+                  (throw txn-e)))))]
     ;; optimization: don't set and unset autocommit if it's already false
     (if (.getAutoCommit connection)
       (try

@@ -1,0 +1,32 @@
+.ColorButton {
+  border: none;
+  transition: background 300ms;
+  color: var(--notebook-action-button-color);
+  background-color: color-mix(
+    in srgb,
+    var(--notebook-action-button-color),
+    transparent 80%
+  );
+
+  &.secondary {
+    color: var(--mb-color-text-secondary);
+    background-color: var(--mb-color-notebook-step-bg);
+
+    &:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-notebook-step-bg),
+        black 10%
+      );
+    }
+  }
+
+  &:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--notebook-action-button-color),
+      transparent 35%
+    );
+    color: color-mix(in srgb, var(--notebook-action-button-color), black 11.5%);
+  }
+}

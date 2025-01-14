@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.models.field :refer [Field]]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -24,7 +23,7 @@
               (m/index-by :id (venues-cols-from-query)))))
 
     (testing ":details-only fields should not be returned in normal queries"
-      (tu/with-temp-vals-in-db Field (mt/id :venues :price) {:visibility_type :details-only}
+      (tu/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :details-only}
         (is (=? (m/index-by :id (for [col (qp.test-util/expected-cols :venues)]
                                   (if (= (mt/id :venues :price) (u/the-id col))
                                     (assoc col :visibility_type :details-only)

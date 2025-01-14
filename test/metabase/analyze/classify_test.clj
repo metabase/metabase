@@ -3,12 +3,11 @@
    [clojure.test :refer :all]
    [metabase.analyze :as analyze]
    [metabase.analyze.classifiers.core :as classifiers]
-   [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]))
 
 (defn- ->field [field]
   (mi/instance
-   Field
+   :model/Field
    (merge {:semantic_type nil}
           field)))
 

@@ -1,0 +1,6 @@
+.ColumnGrid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--column-grid-rows), 1fr);
+  gap: var(--column-grid-gap);
+}

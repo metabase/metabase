@@ -19,11 +19,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def Query
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/Query)
-
 (methodical/defmethod t2/table-name :model/Query [_model] :query)
 (methodical/defmethod t2.model/primary-keys :model/Query [_model] [:query_hash])
 
@@ -39,7 +34,7 @@
    Returns `nil` if no information is available."
   ^Integer [^bytes query-hash]
   {:pre [(instance? (Class/forName "[B") query-hash)]}
-  (t2/select-one-fn :average_execution_time Query :query_hash query-hash))
+  (t2/select-one-fn :average_execution_time :model/Query :query_hash query-hash))
 
 (defn- int-casting-type
   "Return appropriate type for use in SQL `CAST(x AS type)` statement.
@@ -61,13 +56,13 @@
     (or
      ;; if it DOES NOT have a query (yet) set that. In 0.31.0 we added the query.query column, and it gets set for all
      ;; new entries, so at some point in the future we can take this out, and save a DB call.
-     (pos? (t2/update! Query
+     (pos? (t2/update! :model/Query
                        {:query_hash query-hash, :query nil}
                        {:query                 (json/encode query)
                         :average_execution_time avg-execution-time}))
      ;; if query is already set then just update average_execution_time. (We're doing this separate call to avoid
      ;; updating query on every single UPDATE)
-     (pos? (t2/update! Query
+     (pos? (t2/update! :model/Query
                        {:query_hash query-hash}
                        {:average_execution_time avg-execution-time})))))
 
@@ -75,7 +70,7 @@
   "Record a query and its execution time for a `query` with `query-hash` that's not already present in the DB.
   `execution-time-ms` is used as a starting point."
   [query ^bytes query-hash ^Integer execution-time-ms]
-  (first (t2/insert-returning-instances! Query
+  (first (t2/insert-returning-instances! :model/Query
                                          :query                  query
                                          :query_hash             query-hash
                                          :average_execution_time execution-time-ms)))

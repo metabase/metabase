@@ -3,23 +3,19 @@
   (:require
    [malli.core :as mc]
    [mb.hawk.parallel]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-   [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.user :refer [User]]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util :as u]))
 
 (defn do-with-user-attributes! [test-user-name-or-user-id attributes-map thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-user-attributes!")
   (let [user-id (test.users/test-user-name-or-user-id->user-id test-user-name-or-user-id)]
-    (tu/with-temp-vals-in-db User user-id {:login_attributes attributes-map}
+    (tu/with-temp-vals-in-db :model/User user-id {:login_attributes attributes-map}
       (thunk))))
 
 (defmacro with-user-attributes!
@@ -37,15 +33,15 @@
     (f)
     (let [do-with-card (fn [f]
                          (if query
-                           (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query query}]
+                           (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
                              (f card-id))
                            (f nil)))]
       (do-with-card
        (fn [card-id]
-         (t2.with-temp/with-temp [GroupTableAccessPolicy _gtap {:group_id             (u/the-id group)
-                                                                :table_id             (data/id table-kw)
-                                                                :card_id              card-id
-                                                                :attribute_remappings remappings}]
+         (mt/with-temp [:model/GroupTableAccessPolicy _gtap {:group_id             (u/the-id group)
+                                                             :table_id             (data/id table-kw)
+                                                             :card_id              card-id
+                                                             :attribute_remappings remappings}]
            (data-perms/set-database-permission! group (data/id) :perms/view-data :unrestricted)
            (data-perms/set-table-permission! group (data/id table-kw) :perms/create-queries :query-builder)
            (do-with-gtap-defs! group more f)))))))
