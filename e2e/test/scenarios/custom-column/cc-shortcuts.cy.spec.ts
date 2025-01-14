@@ -179,7 +179,8 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
     cy.button("Summarize").click();
     H.popover().findByText("Count of rows").click();
 
-    H.addCustomColumn();
+    // add custom column
+    cy.findAllByTestId("action-buttons").first().icon("add_data").click();
     selectExtractColumn();
 
     cy.findAllByTestId("dimension-list-item").contains("Created At").click();

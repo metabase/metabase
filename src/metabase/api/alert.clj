@@ -15,7 +15,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as models.pulse]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -26,6 +26,7 @@
 (when config/ee-available?
   (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.
   The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users."
@@ -40,6 +41,7 @@
       (filter mi/can-read? <>)
       (t2/hydrate <> :can_write))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Fetch an alert by ID"
   [id]
@@ -47,6 +49,7 @@
   (-> (api/read-check (models.pulse/retrieve-alert id))
       (t2/hydrate :can_write)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/question/:id"
   "Fetch all alerts for the given question (`Card`) id"
   [id archived]
@@ -76,6 +79,7 @@
     (assoc card :include_csv true)
     card))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new Alert."
   [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal]
@@ -98,6 +102,7 @@
     ;; return our new Alert
     new-alert))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update a `Alert` with ID."
   [id :as {{:keys [alert_condition alert_first_only alert_above_goal card channels archived]
@@ -170,6 +175,7 @@
       ;; Finally, return the updated Alert
       updated-alert)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [id]

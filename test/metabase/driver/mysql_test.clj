@@ -30,8 +30,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -67,7 +66,7 @@
                      "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
           (jdbc/execute! spec [sql]))
         ;; create & sync MB DB
-        (t2.with-temp/with-temp [:model/Database database {:engine "mysql", :details details}]
+        (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
           (sync/sync-database! database)
           (mt/with-db database
             ;; run the query
@@ -86,7 +85,7 @@
         (jdbc/execute! spec [(format "CREATE TABLE same_table_name (%s_a integer, %s_b integer, %s_c integer);" dbname dbname dbname)]))
       (doseq [details [(tx/dbdef->connection-details :mysql :db {:database-name "dbone"})
                        (set/rename-keys (tx/dbdef->connection-details :mysql :db {:database-name "dbone"}) {:db :dbname})]]
-        (t2.with-temp/with-temp [:model/Database database {:engine "mysql", :details details}]
+        (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
           (sync/sync-database! database)
           (is (= #{"dbone_a" "dbone_b" "dbone_c"}
                  (into #{} (map :name) (driver/describe-fields :mysql database)))))))))
@@ -159,9 +158,9 @@
                (db->fields (mt/db)))))
 
       (testing "if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead"
-        (t2.with-temp/with-temp [:model/Database db {:engine  "mysql"
-                                                     :details (assoc (:details (mt/db))
-                                                                     :additional-options "tinyInt1isBit=false")}]
+        (mt/with-temp [:model/Database db {:engine  "mysql"
+                                           :details (assoc (:details (mt/db))
+                                                           :additional-options "tinyInt1isBit=false")}]
           (sync/sync-database! db)
           (is (= #{{:name "number-of-cans", :base_type :type/Integer, :semantic_type :type/Quantity}
                    {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
@@ -350,7 +349,7 @@
                           false
                           (throw se))))]
         (when compat
-          (t2.with-temp/with-temp [:model/Database database {:engine "mysql", :details details}]
+          (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
             (sync/sync-database! database)
             (is (= [{:name   "src1"
                      :fields [{:name      "id"
@@ -511,7 +510,7 @@
                                                                        [4 6 "{\"int_turn_string\":5}"]]]
                                         (format "INSERT INTO `json_table` (first_id, second_id, json_val) VALUES (%d, %d, '%s');" first-id second-id json)))]
               (jdbc/execute! spec [statement]))
-            (t2.with-temp/with-temp
+            (mt/with-temp
               [:model/Database database {:name "composite_pks_test" :engine driver/*driver* :details details}]
               (mt/with-db database
                 (sync-tables/sync-tables-and-database! database)
@@ -658,7 +657,7 @@
                       "INSERT INTO mytable (id, column1, column2)
                       VALUES  (1, 'A', 'A'), (2, 'B', 'B');"]]
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details) [stmt]))
-        (t2.with-temp/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+        (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
           (mt/with-db database
             (sync/sync-database! database)
             (mt/with-actions-enabled

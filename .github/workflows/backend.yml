@@ -167,9 +167,11 @@ jobs:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
 
-      - name: Run tests
+      - name: Run App DB tests
         id: run-java-tests
-        run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+        run: >-
+          clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+          :exclude-tags [:mb/driver-tests]
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -194,23 +196,6 @@ jobs:
           list-tests: failed
           fail-on-error: false
 
-  be-tests-stub:
-    needs: [files-changed, static-viz-files-changed, be-tests]
-    if: |
-      always() &&
-      github.event.pull_request.draft == false && needs.be-tests.result == 'skipped'
-    runs-on: ubuntu-22.04
-    name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
-    timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        edition: [oss, ee]
-        java-version: [11, 17, 21]
-    steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
-
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
@@ -234,22 +219,6 @@ jobs:
       - name: Check namespaces
         run: clojure -M:ee:drivers:check
 
-  be-check-stub:
-    needs: [files-changed, static-viz-files-changed, be-check]
-    if: |
-      always() &&
-      github.event.pull_request.draft == false &&
-      needs.be-check.result == 'skipped'
-    runs-on: ubuntu-22.04
-    name: be-check-java-${{ matrix.java-version }}
-    timeout-minutes: 10
-    strategy:
-      matrix:
-        java-version: [11, 17, 21]
-    steps:
-      - run: |
-          echo "Didn't run due to conditional filtering"
-
   be-cljfmt:
     needs: [files-changed]
     if: |
@@ -264,3 +233,44 @@ jobs:
           m2-cache-key: 'cljfmt'
       - name: Run cljfmt
         run: clojure -T:cljfmt check
+
+  be-tests-result:
+    needs:
+      - be-linter-eastwood
+      - be-linter-clj-kondo
+      - be-cljfmt
+      - be-check
+      - be-tests
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      needs: ${{ toJson(needs) }}
+    steps:
+      - name: Check backend job status
+        uses: actions/github-script@v7
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            // are all jobs skipped or successful?
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+              console.log('All jobs are skipped or successful');
+              process.exit(0);
+            }
+
+            // otherwise, something failed
+            console.log('Some backend jobs failed');
+            jobs.forEach((job) => {
+              if (job.result !== 'success') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+            process.exit(1);

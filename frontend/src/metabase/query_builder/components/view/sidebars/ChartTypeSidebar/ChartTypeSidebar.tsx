@@ -1,17 +1,8 @@
-import cx from "classnames";
 import { useMemo } from "react";
-import { t } from "ttag";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
-import {
-  onCloseChartType,
-  onOpenChartSettings,
-  setUIControls,
-  updateQuestion,
-} from "metabase/query_builder/actions";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
 import {
   ChartTypeSettings,
   type GetSensibleVisualizationsProps,
@@ -61,31 +52,15 @@ export const ChartTypeSidebar = ({
     updateQuestionVisualization(display);
   };
 
-  const onOpenVizSettings = () => {
-    dispatch(
-      onOpenChartSettings({
-        initialChartSettings: { section: t`Data` },
-        showSidebarTitle: true,
-      }),
-    );
-  };
-
   return (
-    <SidebarContent
-      className={cx(CS.fullHeight, CS.px1)}
-      onDone={() => dispatch(onCloseChartType())}
-      data-testid="chart-type-sidebar"
-    >
-      <ChartTypeSettings
-        selectedVisualization={selectedVisualization}
-        onSelectVisualization={handleSelectVisualization}
-        sensibleVisualizations={sensibleVisualizations}
-        nonSensibleVisualizations={nonSensibleVisualizations}
-        onOpenSettings={onOpenVizSettings}
-        spacing={0}
-        w="100%"
-        p="lg"
-      />
-    </SidebarContent>
+    <ChartTypeSettings
+      selectedVisualization={selectedVisualization}
+      onSelectVisualization={handleSelectVisualization}
+      sensibleVisualizations={sensibleVisualizations}
+      nonSensibleVisualizations={nonSensibleVisualizations}
+      spacing={0}
+      w="100%"
+      p="lg"
+    />
   );
 };

@@ -10,8 +10,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -260,7 +259,7 @@
                              (:cause
                               (mt/user-http-request :crowberto :post 400 "action" initial-action))))))
                   (testing "a plain card instead of a model"
-                    (t2.with-temp/with-temp [:model/Card {plain-card-id :id} {:dataset_query (mt/mbql-query users)}]
+                    (mt/with-temp [:model/Card {plain-card-id :id} {:dataset_query (mt/mbql-query users)}]
                       (is (= "Actions must be made with models, not cards."
                              (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :model_id plain-card-id)))))))
                 (let [created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
@@ -312,8 +311,8 @@
 (deftest implicit-actions-on-non-raw-model-test
   (testing "Implicit actions are not supported on models that have clauses (aggregation, sort, breakout, ...)"
     (mt/with-actions-enabled
-      (t2.with-temp/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})
-                                                           :type          :model}]
+      (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query users {:aggregation [[:count]]})
+                                                 :type          :model}]
         (is (= "Implicit actions are not supported for models with clauses."
                (mt/user-http-request :crowberto :post 400 "action"
                                      {:name       "Implicit example"
@@ -326,7 +325,7 @@
   (snowplow-test/with-fake-snowplow-collector
     (mt/with-actions-enabled
       (testing "Should send a snowplow event when"
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/Card {card-id :id} {:type :model :dataset_query (mt/mbql-query users)}]
           (doseq [{:keys [type parameters] :as action} (all-actions-default card-id)]
             (let [new-action (mt/user-http-request :crowberto :post 200 "action" action)]

@@ -10,8 +10,7 @@
    [metabase.query-analysis :as query-analysis]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -106,7 +105,7 @@
 
 (deftest replace-fields-and-tables!-test
   (testing "fields and tables in a native card can be replaced"
-    (t2.with-temp/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
+    (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
       (let [replacements {:fields {(mt/id :orders :total) (mt/id :people :name)}
                           :tables {(mt/id :orders) (mt/id :people)}}]
         (is (= "SELECT NAME FROM PEOPLE"
@@ -116,7 +115,7 @@
   (str/replace (apply str (repeatedly 10 random-uuid)) "-" "_"))
 
 (defmacro with-analysis-on [& body]
-  `(mt/with-dynamic-redefs [query-analysis/enabled-type? (constantly true)]
+  `(mt/with-dynamic-fn-redefs [query-analysis/enabled-type? (constantly true)]
      (query-analysis/with-immediate-analysis
        ~@body)))
 
@@ -156,7 +155,7 @@
 (deftest analysis-error-test
   (with-analysis-on
     (testing "Errors analyzing queries will not prevent cards being created or updated"
-      (mt/with-dynamic-redefs [query-analysis/update-query-analysis-for-card! throw-empty-exception]
+      (mt/with-dynamic-fn-redefs [query-analysis/update-query-analysis-for-card! throw-empty-exception]
         (mt/with-temp [:model/Card {c-id :id} {:dataset_query (mt/native-query {:query "SELECT c FROM t"})}]
           (testing "The card was created"
             (is (t2/exists? :model/Card c-id)))

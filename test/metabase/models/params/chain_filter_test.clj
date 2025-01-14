@@ -7,8 +7,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (defn shorthand->constraint [field-id v]
   (if-not (vector? v)
@@ -586,7 +585,7 @@
           (testing "no FieldValues"
             (thunk))
           (testing "with FieldValues for myfield"
-            (t2.with-temp/with-temp [:model/FieldValues _ {:field_id %myfield, :values ["value" nil ""]}]
+            (mt/with-temp [:model/FieldValues _ {:field_id %myfield, :values ["value" nil ""]}]
               (mt/with-temp-vals-in-db :model/Field %myfield {:has_field_values "auto-list"}
                 (testing "Sanity check: make sure we will actually use the cached FieldValues"
                   (is (field-values/field-should-have-field-values? %myfield))
@@ -687,12 +686,12 @@
                                 :fk :users}]
                               []]]
       (mt/$ids nil
-        (mt/with-dynamic-redefs [chain-filter/database-fk-relationships @#'chain-filter/database-fk-relationships*
-                                 chain-filter/find-joins                (fn
-                                                                          ([a b c]
-                                                                           (#'chain-filter/find-joins* a b c false))
-                                                                          ([a b c d]
-                                                                           (#'chain-filter/find-joins* a b c d)))]
+        (mt/with-dynamic-fn-redefs [chain-filter/database-fk-relationships @#'chain-filter/database-fk-relationships*
+                                    chain-filter/find-joins                (fn
+                                                                             ([a b c]
+                                                                              (#'chain-filter/find-joins* a b c false))
+                                                                             ([a b c d]
+                                                                              (#'chain-filter/find-joins* a b c d)))]
           (testing "receiver_id is active and should be used for the join"
             (is (= [{:lhs {:table $$messages, :field %messages.receiver_id}
                      :rhs {:table $$users, :field %users.id}}]

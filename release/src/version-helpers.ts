@@ -154,6 +154,44 @@ export const getSdkVersionFromReleaseBranchName = async ({
   return sdkVersion;
 };
 
+export const getDotXs = (version: string, number: number) => {
+  const pieces = version.replace(/-.+/, '').split("."); // ignore any -suffixes
+  return pieces.slice(0, number + 1).join(".") + ".x";
+}
+
+export const getDotXVersion = (version: string) => {
+  const versionType = getVersionType(version);
+
+  if(versionType === "major") {
+    return getDotXs(version, 1);
+  }
+
+  return getDotXs(version, 2);
+}
+
+export const getExtraTagsForVersion = ({ version }: { version: string}) => {
+  const ossVerion = getOSSVersion(version);
+  const eeVersion = getEnterpriseVersion(version);
+  const versionType = getVersionType(version);
+
+  // eg. v0.23.x / v1.23.x
+  const tags = [
+    getDotXs(ossVerion, 1),
+    getDotXs(eeVersion, 1),
+  ];
+
+  if (versionType === "major") {
+    return tags;
+  }
+
+  // eg. v0.23.4.x / v1.23.4.x
+  return [
+    ...tags,
+    getDotXs(ossVerion, 2),
+    getDotXs(eeVersion, 2),
+  ];
+}
+
 /**
  * queries the github api to get all embedding sdk version tags
  */
@@ -313,6 +351,7 @@ export function getLastReleaseFromTags({
 }) {
   return tags
     .map(tag => tag.ref.replace("refs/tags/", ""))
+    .filter(tag => !tag.includes(".x"))
     .filter(ignorePreReleases ? tag => !isPreReleaseVersion(tag) : () => true)
     .filter(ignorePatches ? v => !isPatchVersion(v) : () => true)
     .sort(versionSort)

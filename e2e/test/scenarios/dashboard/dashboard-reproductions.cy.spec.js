@@ -876,9 +876,7 @@ describe("issue 31766", () => {
 
     cy.log("Update viz settings");
 
-    cy.findByTestId("view-footer")
-      .findByRole("button", { name: "Visualization" })
-      .click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Detail-button").click();
 
     saveUpdatedQuestion();
@@ -1252,7 +1250,7 @@ describe("issue 39863", () => {
   function setDateFilter() {
     cy.findByLabelText("Date filter").click();
     H.popover()
-      .findByText(/Last 12 months/i)
+      .findByText(/Previous 12 months/i)
       .click();
   }
 
@@ -1508,7 +1506,7 @@ describe("issue 42165", () => {
       H.visitDashboard(dashboardId);
 
       H.filterWidget().click();
-      H.popover().findByText("Last 30 days").click();
+      H.popover().findByText("Previous 30 days").click();
       cy.wait("@dashcardQuery");
 
       H.getDashboardCard(0).findByText("fooBarQuestion").click();
