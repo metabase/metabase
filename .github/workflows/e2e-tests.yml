@@ -132,6 +132,7 @@ jobs:
     with:
       name: Flaky
       tags: "@flaky"
+      specs: "./e2e/test/scenarios/**/*.cy.spec.*"
 
   e2e-tests-result:
     needs:

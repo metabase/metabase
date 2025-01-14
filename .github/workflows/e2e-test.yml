@@ -96,6 +96,13 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
+      - name: Generate database snapshots
+        run: |
+          yarn test-cypress-run \
+            --config-file e2e/support/cypress-snapshots.config.js \
+            --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
+            --spec "e2e/snapshot-creators/*.cy.snap.*"
+
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
         if: ${{ !inputs.specs }}
         env:
@@ -105,8 +112,9 @@ jobs:
         shell: bash
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@slow+-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+            --config-file e2e/support/cypress.config.js \
+            --env grepTags="-@slow+-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
+            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
         if: ${{ inputs.specs }}
