@@ -5,10 +5,11 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.models.notification :as models.notification]
-   [metabase.channel.impl.http-test :as channel.http-test]
-   [metabase.http-client :as client]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.pulse :as models.pulse]
+   [metabase.notification.test-util :as notification.tu]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [toucan2.core :as t2]))
 
