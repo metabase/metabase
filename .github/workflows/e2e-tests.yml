@@ -64,41 +64,41 @@ jobs:
               node_version: requirements.node,
             };
 
-  build:
-    needs: [files-changed, get-build-requirements]
-    if: |
-      !cancelled() &&
-      github.event.pull_request.draft == false &&
-      needs.files-changed.outputs.e2e_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 25
-    strategy:
-      matrix:
-        edition: [oss, ee]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-      # make sure that builds on release branches get licenses, because we use them for releases
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 11 }}"
+  # build:
+  #   needs: [files-changed, get-build-requirements]
+  #   if: |
+  #     !cancelled() &&
+  #     github.event.pull_request.draft == false &&
+  #     needs.files-changed.outputs.e2e_all == 'true'
+  #   runs-on: ubuntu-22.04
+  #   timeout-minutes: 25
+  #   strategy:
+  #     matrix:
+  #       edition: [oss, ee]
+  #   env:
+  #     MB_EDITION: ${{ matrix.edition }}
+  #     INTERACTIVE: false
+  #     # make sure that builds on release branches get licenses, because we use them for releases
+  #     SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Prepare front-end environment
+  #       uses: ./.github/actions/prepare-frontend
+  #       with:
+  #         node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
+  #     - name: Prepare back-end environment
+  #       uses: ./.github/actions/prepare-backend
+  #       with:
+  #         m2-cache-key: uberjar
+  #         java-version: "${{ needs.get-build-requirements.outputs.java_version || 11 }}"
 
-      - name: Build uberjar with ./bin/build.sh
-        run: ./bin/build.sh
+  #     - name: Build uberjar with ./bin/build.sh
+  #       run: ./bin/build.sh
 
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+  #     - name: Prepare uberjar artifact
+  #       uses: ./.github/actions/prepare-uberjar-artifact
+  #       with:
+  #         name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
   e2e-tests:
     name: ${{ matrix.name }}-${{ matrix.edition }}
@@ -160,10 +160,10 @@ jobs:
             exit 1
           fi
 
-  pr-env:
-    needs: [build]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit
+  # pr-env:
+  #   needs: [build]
+  #   if: |
+  #     !cancelled() &&
+  #     contains(github.event.pull_request.labels.*.name, 'PR-Env')
+  #   uses: ./.github/workflows/pr-env.yml
+  #   secrets: inherit
