@@ -88,7 +88,7 @@ describe("normalizeDateParameterValue", () => {
       value: "Q3-2020",
       expectedValue: { type: "quarter", year: 2020, quarter: 3 },
     },
-  ])("should normalize boolean parameter value", ({ value, expectedValue }) => {
+  ])("should normalize date parameter value", ({ value, expectedValue }) => {
     expect(normalizeDateParameterValue(value)).toEqual(expectedValue);
   });
 });
