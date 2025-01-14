@@ -98,7 +98,7 @@
   [driver]
   (let [conn-props-fn (get-method driver/connection-properties driver)]
     (when (fn? conn-props-fn)
-      (->> (filter #(= :secret (keyword (:type %)))  (conn-props-fn driver))
+      (->> (filter #(= :secret (keyword (:type %))) (conn-props-fn driver))
            (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})
            not-empty))))
 
