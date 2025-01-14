@@ -136,7 +136,7 @@ Remember to drop the old user:
 DROP USER 'metabase'@'localhost';
 ```
 
-Note: if you see that you can't connect to the database but the user, host and password are correct, then try adding `trustServerCertificate=true` to the additional JDBC options. This will tell the Metabase driver to trust the server certificate even though it does not have a root certificate installed and it will establish a secure connection.
+If you can't connect to the database, but the user, host, and password are correct, try adding `trustServerCertificate=true` to the additional JDBC options. This option will tell the Metabase driver to trust the server certificate even though it doesn't have a root certificate installed, and it should establish a secure connection.
 
 ## Syncing records that include JSON
 
