@@ -8,12 +8,12 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
+env:
+  SPLIT_CHUNKS: 50
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
-
-env:
-  SPLIT_CHUNKS: 50
 
 jobs:
   files-changed:
