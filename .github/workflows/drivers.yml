@@ -257,7 +257,24 @@ jobs:
             image: mysql:latest
             env:
               enable-ssl-tests: 'true'
-        partition-index: [0, 1, 2, 3]
+        job:
+          - name: Driver Tests
+            build-static-viz: false
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+          - name: App DB Tests (Part 1)
+            build-static-viz: true
+            test-args: >-
+              :exclude-tags [:mb/driver-tests]
+              :partition/total 2
+              :partition/index 0
+          - name: App DB Tests (Part 2)
+            build-static-viz: true
+            test-args: >-
+              :exclude-tags [:mb/driver-tests]
+              :partition/total 2
+              :partition/index 1
+
     services:
       mysql:
         image: ${{ matrix.version.image }}
@@ -292,17 +309,16 @@ jobs:
       MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
     # for historic reasons (I don't want to mess around with required jobs) the job name should be something like
     # "be-tests-mariadb-10-2-ee (0)"
-    name: "${{ matrix.version.junit-name }} (${{ matrix.partition-index }})"
+    name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }}
         uses: ./.github/actions/test-driver
         with:
-          build-static-viz: true
+          build-static-viz: ${{ matrix.job.build-static-viz }}
           junit-name: ${{ matrix.version.junit-name }}
           test-args: >-
-            :partition/total 4
-            :partition/index ${{ matrix.partition-index }}
+            ${{ matrix.job.test-args }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -683,11 +699,19 @@ jobs:
             build-static-viz: false
             test-args: >-
               :only-tags [:mb/driver-tests]
-          - name: App DB Tests
+          - name: App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
               :exclude-tags [:mb/driver-tests]
-    name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
+              :partition/total 2
+              :partition/index 0
+          - name: App DB Tests (Part 2)
+            build-static-viz: true
+            test-args: >-
+              :exclude-tags [:mb/driver-tests]
+              :partition/total 2
+              :partition/index 1
+    name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
       CI: 'true'
       DRIVERS: postgres
