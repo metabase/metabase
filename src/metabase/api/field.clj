@@ -12,7 +12,6 @@
    [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.query-processor :as qp]
-   [metabase.related :as related]
    [metabase.request.core :as request]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
@@ -21,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays.core :as xrays]
    [toucan2.core :as t2])
   (:import
    (java.text NumberFormat)))
@@ -455,6 +455,6 @@
   "Return related entities."
   [id]
   {id ms/PositiveInt}
-  (-> (t2/select-one :model/Field :id id) api/read-check related/related))
+  (-> (t2/select-one :model/Field :id id) api/read-check xrays/related))
 
 (api/define-routes)
