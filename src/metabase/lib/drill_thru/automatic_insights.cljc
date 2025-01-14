@@ -28,7 +28,7 @@
              (lib.metadata/setting query :enable-xrays)
              (not-empty dimensions)
              ;; Disabled because xrays do not work with multi-stage queries (metabase#52129).
-             (not (lib.drill-thru.common/strictly-underlying-aggregation? query column)))
+             (not (lib.underlying/strictly-underlying-aggregation? query column)))
     {:lib/type   :metabase.lib.drill-thru/drill-thru
      :type       :drill-thru/automatic-insights
      :column-ref column-ref
