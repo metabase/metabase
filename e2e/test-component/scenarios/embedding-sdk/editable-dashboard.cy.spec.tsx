@@ -95,7 +95,7 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
         mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
 
         getSdkRoot().within(() => {
-          const expectedErrorMessage = `Dashboard ${dashboardId} not found`;
+          const expectedErrorMessage = `Dashboard ${dashboardId} not found. Make sure you pass the correct ID.`;
           cy.findByRole("alert").should("have.text", expectedErrorMessage);
 
           cy.findByDisplayValue("Embedding SDK Test Dashboard").should(

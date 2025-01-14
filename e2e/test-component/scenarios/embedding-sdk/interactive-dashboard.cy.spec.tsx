@@ -119,7 +119,7 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
         mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
 
         getSdkRoot().within(() => {
-          const expectedErrorMessage = `Dashboard ${dashboardId} not found`;
+          const expectedErrorMessage = `Dashboard ${dashboardId} not found. Make sure you pass the correct ID.`;
           cy.findByRole("alert").should("have.text", expectedErrorMessage);
 
           cy.findByText("Orders in a dashboard").should("not.exist");

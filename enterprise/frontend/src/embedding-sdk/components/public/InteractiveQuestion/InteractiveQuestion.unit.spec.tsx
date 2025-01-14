@@ -70,6 +70,7 @@ function InteractiveQuestionCustomLayout({
   );
 }
 
+const TEST_CARD = createMockCard({ name: "My Question" });
 const setup = ({
   isValidCard = true,
   title,
@@ -85,7 +86,6 @@ const setup = ({
     currentUser: TEST_USER,
   });
 
-  const TEST_CARD = createMockCard({ name: "My Question" });
   if (isValidCard) {
     setupCardEndpoints(TEST_CARD);
     setupCardQueryMetadataEndpoint(
@@ -150,7 +150,7 @@ describe("InteractiveQuestion", () => {
     // Simulate drilling down by re-running the query again
     act(() => screen.getByText("Run Query").click());
 
-    expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(
       within(await screen.findByRole("gridcell")).getByText("Test Row"),
@@ -178,7 +178,7 @@ describe("InteractiveQuestion", () => {
     await waitForLoaderToBeRemoved();
 
     expect(screen.queryByText("Error")).not.toBeInTheDocument();
-    expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("should render an error if a question isn't found", async () => {
@@ -186,7 +186,9 @@ describe("InteractiveQuestion", () => {
 
     await waitForLoaderToBeRemoved();
 
-    expect(screen.getByText("Question not found")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      `Question ${TEST_CARD.id} not found. Make sure you pass the correct ID.`,
+    );
   });
 
   it.each([

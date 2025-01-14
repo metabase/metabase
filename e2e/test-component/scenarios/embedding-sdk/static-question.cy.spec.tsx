@@ -85,7 +85,7 @@ describeEE("scenarios > embedding-sdk > static-question", () => {
         mountStaticQuestion({ questionId }, { shouldAssertCardQuery: false });
 
         getSdkRoot().within(() => {
-          const expectedErrorMessage = `Question ${questionId} not found`;
+          const expectedErrorMessage = `Question ${questionId} not found. Make sure you pass the correct ID.`;
           cy.findByRole("alert").should("have.text", expectedErrorMessage);
           cy.findByText("Product ID").should("not.exist");
           cy.findByText("Max of Quantity").should("not.exist");

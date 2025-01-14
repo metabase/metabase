@@ -50,7 +50,7 @@ export function QuestionNotFoundError({ id }: ResourceNotFoundErrorProps) {
         >
           {id}
         </Code>
-      )} not found`}
+      )} not found. Make sure you pass the correct ID.`}
     />
   );
 }
@@ -66,7 +66,7 @@ export function DashboardNotFoundError({ id }: ResourceNotFoundErrorProps) {
         >
           {id}
         </Code>
-      )} not found`}
+      )} not found. Make sure you pass the correct ID.`}
     />
   );
 }
