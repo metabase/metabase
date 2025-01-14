@@ -50,7 +50,7 @@
         :query-table "ORDERS"
         :column-name column-name}))))
 
-(deftest ^:parallel distribution-not-returned-for-aggregate-or-breakout-cols-for-multi-stage-queries-test
+(deftest ^:parallel distribution-not-returned-for-aggregate-or-breakout-cols-for-multi-stage-query-test
   (doseq [column-name ["PRODUCT_ID" "CREATED_AT" "count" "sum" "max"]]
     (testing (str "distribution drill not returned for ORDERS." column-name)
       (lib.drill-thru.tu/test-drill-not-returned

@@ -70,7 +70,7 @@
         :query-table "ORDERS"
         :column-name column-name}))))
 
-(deftest ^:parallel summarize-column-not-returned-for-aggregate-or-breakout-cols-for-multi-stage-queries-test
+(deftest ^:parallel summarize-column-not-returned-for-aggregate-or-breakout-cols-for-multi-stage-query-test
   (doseq [column-name ["PRODUCT_ID" "count"]]
     (testing (str "summarize-column drill not returned for ORDERS." column-name)
       (lib.drill-thru.tu/test-drill-not-returned
