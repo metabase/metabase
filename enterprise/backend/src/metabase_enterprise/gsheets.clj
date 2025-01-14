@@ -2,15 +2,17 @@
   "/api/gsheets endpoints"
   (:require
    [clojure.string :as str]
-   [compojure.core :refer [PUT]]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.api.auth :as api.auth]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (defsetting gsheets
   #_"Information about Google Sheets Integration.
@@ -32,6 +34,11 @@
   :getter (fn [] (or (setting/get-value-of-type :json :gsheets)
                      (do (setting/set-value-of-type! :json :gsheets {:status "not-connected"})
                          {:status "not-connected"}))))
+
+(mr/def ::gsheets [:map
+                   [:status                      [:enum "not-connected" "connected"]]
+                   [:email      {:optional true} ms/NonBlankString]
+                   [:folder_url {:optional true} ms/NonBlankString]])
 
 (defn- ->config
   "This config is needed to call [[hm.client/make-request]].
@@ -68,14 +75,12 @@
       false)))
 
 (defn- service-account-email [gsheets]
-  ;; When google drive service-account exists, set the gsheets setting to be auth-complete.
   (or
-   (:email gsheets) ;; It's already set up! no need to ask HM or update the status:
-   (if-let [email (hm-service-account-setup?)]
+   (:email gsheets) ;; It's already set-up! no need to ask HM or update the status:
+   (when-let [email (hm-service-account-setup?)]
      ;; When harbormaster says service-account exists, set the gsheets status to `auth-complete`:
-     (do (gsheets! {:status "connected" :email email})
-         email)
-     false)))
+     (gsheets! {:status "connected" :email email})
+     email)))
 
 (mu/defn- setup-drive-folder-sync :- [:tuple [:enum :ok :error] :map]
   "Start the sync w/ drive folder"
@@ -113,29 +118,26 @@
 ;; FE <-> MB APIs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(api/defendpoint GET "/service-account"
+(api.macros/defendpoint :get "/service-account" :- [:map [:status [:maybe :string]]]
   "Checks to see if service-account is setup or not, delegates to HM only if we haven't set it from a metabase cluster
   before."
-  [] {}
+  []
   (api/check-superuser)
   (when-not (api.auth/show-google-sheets-integration)
     (throw (ex-info "Google Sheets integration is not enabled." {})))
   {:email (service-account-email (gsheets))})
 
-(api/defendpoint POST "/folder"
+(api.macros/defendpoint :post "/folder" :- ::gsheets
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
-  [:as {{url :url} :body}]
-  {url :string}
+  [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
   (let [[status _resp] (setup-drive-folder-sync url)]
-    (if (= status :ok)
-      (u/prog1 {:status "connected"
-                :folder_url url}
-        (gsheets! <>))
-      (throw (ex-info (str/join ["Unable to setup drive folder sync.\n"
-                                 "Please check that the folder is shared with the proper service account email "
-                                 "and sharing permissions."]) {})))))
+      (if (= status :ok)
+        (u/prog1 {:status "connected" :folder_url url} (gsheets! <>))
+        (throw (ex-info (str/join ["Unable to setup drive folder sync.\n"
+                                   "Please check that the folder is shared with the proper service account email "
+                                   "and sharing permissions."]) {})))))
 
-(api/defendpoint DELETE "/folder"
+(api.macros/defendpoint :delete "/folder"
   "Disconnect the google service account"
   []
   (let [conn-id (get-gdrive-connection)
