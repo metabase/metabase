@@ -4,8 +4,10 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { updateSettings } from "metabase/admin/settings/settings";
+import { skipToken, useListSyncableDatabaseSchemasQuery } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Alert from "metabase/core/components/Alert";
 import Input from "metabase/core/components/Input";
 import Link from "metabase/core/components/Link";
@@ -13,12 +15,10 @@ import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
-import Schemas from "metabase/entities/schemas";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Group, Stack, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { UploadsSettings } from "metabase-types/api/settings";
 import type { State } from "metabase-types/store";
 
@@ -161,6 +161,14 @@ export function UploadSettingsFormView({
     dbId && databases.find(db => db.id === dbId)?.engine === "h2",
   );
 
+  const {
+    data: schemas,
+    error: schemasError,
+    isFetching: schemasIsFetching,
+  } = useListSyncableDatabaseSchemasQuery(
+    showSchema && dbId != null ? dbId : skipToken,
+  );
+
   return (
     <PaddedForm aria-label={t`Upload Settings Form`}>
       <Header />
@@ -185,28 +193,33 @@ export function UploadSettingsFormView({
             }}
           />
         </Stack>
-        {showSchema && (
-          <Schemas.ListLoader query={{ dbId, getAll: true }}>
-            {({ list: schemaList }: { list: Schema[] }) => (
-              <Stack>
-                <SectionTitle>{t`Schema`}</SectionTitle>
-                {schemaList?.length ? (
-                  <Select
-                    value={schemaName ?? ""}
-                    placeholder={t`Select a schema`}
-                    options={getSchemaOptions(schemaList)}
-                    onChange={(e: SelectChangeEvent<string>) => {
-                      resetButtons();
-                      setSchemaName(e.target.value);
-                    }}
-                  />
-                ) : (
-                  <EmptyState message={t`We couldn't find any schema.`} />
-                )}
-              </Stack>
-            )}
-          </Schemas.ListLoader>
+
+        {showSchema && (schemasError || schemasIsFetching) && (
+          <LoadingAndErrorWrapper
+            error={schemasError}
+            loading={schemasIsFetching}
+          />
         )}
+
+        {showSchema && !schemasError && !schemasIsFetching && (
+          <Stack>
+            <SectionTitle>{t`Schema`}</SectionTitle>
+            {schemas?.length ? (
+              <Select
+                value={schemaName ?? ""}
+                placeholder={t`Select a schema`}
+                options={getSchemaOptions(schemas)}
+                onChange={(e: SelectChangeEvent<string>) => {
+                  resetButtons();
+                  setSchemaName(e.target.value);
+                }}
+              />
+            ) : (
+              <EmptyState message={t`We couldn't find any schema.`} />
+            )}
+          </Stack>
+        )}
+
         {showPrefix && (
           <Stack>
             <SectionTitle>{t`Upload Table Prefix (optional)`}</SectionTitle>
