@@ -277,3 +277,11 @@ Please follow these steps:
 - If the fix required a source-code change (either backend of frontend), please open a regular PR instead and let the CI run all tests first. After this,
   you can trigger the stress-test workflow manually, as explained above, and it will automatically download newly built artifact from this CI run. Please,
   keep in mind that CI needs to fully finish running first. The workflow uses GitHub REST API which doesn't see artifacts otherwise.
+
+## Reports
+
+Individual Mocha reports are automatically generated per spec. They are stored in `cypress/reports/mochareports`. Please keep in mind that the root level `cypress/` folder is git ignored!
+
+When tests run _in CI_ we do some extra steps by merging these individual reports (using `mochawesome-merge`), formatting them, and then generating customized GitHub Actions job summaries.
+
+On an off chance that you need a unified test report _while running tests locally_, you can achieve that by invoking `yarn generate-cypress-html-report`.

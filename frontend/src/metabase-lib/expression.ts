@@ -5,7 +5,7 @@ import type {
   ColumnMetadata,
   ExpressionArg,
   ExpressionClause,
-  ExpressionOperatorName,
+  ExpressionOperator,
   ExpressionOptions,
   ExpressionParts,
   FilterClause,
@@ -57,7 +57,7 @@ export function expressionParts(
 }
 
 export function expressionClause(
-  operator: ExpressionOperatorName,
+  operator: ExpressionOperator,
   args: (ExpressionArg | AggregationClause | ExpressionClause | FilterClause)[],
   options: ExpressionOptions | null = null,
 ): ExpressionClause {

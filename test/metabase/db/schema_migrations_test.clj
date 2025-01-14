@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.db.schema-migrations-test
+(ns metabase.db.schema-migrations-test
   "Tests for the schema migrations defined in the Liquibase YAML files. The basic idea is:
 
   1. Create a temporary H2/Postgres/MySQL/MariaDB database
@@ -10,7 +10,6 @@
   See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
@@ -24,13 +23,11 @@
    [metabase.db.liquibase :as liquibase]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.driver :as driver]
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
-   [metabase.test.data.env :as tx.env]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -482,8 +479,8 @@
         (is (= #{true} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
                                          :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new]])))))))
 
-(deftest fks-are-indexed-test
-  (mt/test-driver :postgres
+(deftest ^:parallel fks-are-indexed-test
+  (when (= (mdb/db-type) :postgres)
     (let [excluded-fks #{{:table_name  "field_usage"
                           :column_name "query_execution_id"}
                          {:table_name  "pulse_channel"
@@ -561,9 +558,9 @@
                    clojure.lang.ExceptionInfo
                    (t2/query (str "SELECT 1 FROM " view-name))))))))))
 
-(deftest activity-data-migration-test
+(deftest activity-data-migration-postgres-mysql-test
   (testing "Migration v48.00-049"
-    (mt/test-drivers [:postgres :mysql]
+    (when (#{:postgres :mysql} (mdb/db-type))
       (impl/test-migrations "v48.00-049" [migrate!]
         (create-raw-user! (mt/random-email))
        ;; Use raw :activity keyword as table name since the model has since been removed
@@ -593,9 +590,11 @@
                   :model_id 2
                   :details {:database_id 1
                             :table_id 6}}
-                 (t2/select-one :model/AuditLog)))))))
+                 (t2/select-one :model/AuditLog)))))))))
 
-    (mt/test-drivers [:h2]
+(deftest activity-data-migration-h2-test
+  (testing "Migration v48.00-049"
+    (when (= (mdb/db-type) :h2)
       (impl/test-migrations "v48.00-049" [migrate!]
         (create-raw-user! (mt/random-email))
         (let [_activity-1 (t2/insert-returning-pks! "activity"
@@ -751,8 +750,8 @@
         (is (t2/exists? :pulse :id alert-id))
         (is (not (t2/exists? :pulse :id legacy-pulse-id)))))))
 
-(deftest no-tiny-int-columns
-  (mt/test-driver :mysql
+(deftest ^:parallel no-tiny-int-columns
+  (when (= (mdb/db-type) :mysql)
     (testing "All boolean columns in mysql, mariadb should be bit(1)"
       (is (= [{:table_name "DATABASECHANGELOGLOCK" :column_name "LOCKED"}] ;; outlier because this is liquibase's table
              (t2/query
@@ -799,7 +798,7 @@
 
 (deftest fix-multiple-revistion-most-recent-test
   (testing "Migrations v49.2024-05-07T10:00:00: Set revision.most_recent = true ensures that there is only one most recent revision per model_id"
-    (mt/test-driver :mysql
+    (when (= (mdb/db-type) :mysql)
       (impl/test-migrations "v49.2024-05-07T10:00:00" [migrate!]
         (let [user-id         (:id (create-raw-user! (mt/random-email)))
               old             (t/minus (t/local-date-time) (t/hours 1))
@@ -2121,7 +2120,7 @@
 
 (deftest sandboxing-rollback-test
   ;; Rollback tests flake on MySQL, so only run on Postgres/H2
-  (mt/test-drivers [:postgres :h2]
+  (when (#{:postgres :h2} (mdb/db-type))
     (testing "Can we rollback to 49 when sandboxing is configured"
       (impl/test-migrations ["v50.2024-01-10T03:27:29" "v50.2024-06-20T13:21:30"] [migrate!]
         (clear-permissions!)
@@ -2321,85 +2320,84 @@
 
 (deftest populate-is-defective-duplicate-test
   (testing "Migration v49.2024-06-27T00:00:02 populates is_defective_duplicate correctly"
-    (mt/test-drivers #{:postgres :h2 :mysql}
-      (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
-        (when (= driver/*driver* :postgres)
+    (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
+      (when (= (mdb/db-type) :postgres)
           ;; This is to test what happens when Postgres is rolled back to 48 from 49, and
           ;; then rolled back to 49 again. The rollback to 48 will cause the
           ;; idx_uniq_field_table_id_parent_id_name_2col index to be dropped
-          (t2/query "DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;"))
-        (let [db-id (t2/insert-returning-pk! :metabase_database
-                                             {:details    "{}"
-                                              :created_at :%now
-                                              :updated_at :%now
-                                              :engine     "h2"
-                                              :is_sample  false
-                                              :name       "populate-is-defective-duplicate-test-db"})
-              table! (fn []
-                       (t2/insert-returning-instance! :metabase_table
-                                                      {:db_id      db-id
-                                                       :name       (mt/random-name)
-                                                       :created_at :%now
-                                                       :updated_at :%now
-                                                       :active     true}))
-              field! (fn [table values]
-                       (t2/insert-returning-instance! :metabase_field
-                                                      (merge {:table_id      (:id table)
-                                                              :parent_id     nil
-                                                              :base_type     "type/Text"
-                                                              :database_type "TEXT"
-                                                              :created_at    :%now
-                                                              :updated_at    :%now}
-                                                             values)))
-              earlier #t "2023-01-01T00:00:00"
-              later   #t "2024-01-01T00:00:00"
+        (t2/query "DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;"))
+      (let [db-id (t2/insert-returning-pk! :metabase_database
+                                           {:details    "{}"
+                                            :created_at :%now
+                                            :updated_at :%now
+                                            :engine     "h2"
+                                            :is_sample  false
+                                            :name       "populate-is-defective-duplicate-test-db"})
+            table! (fn []
+                     (t2/insert-returning-instance! :metabase_table
+                                                    {:db_id      db-id
+                                                     :name       (mt/random-name)
+                                                     :created_at :%now
+                                                     :updated_at :%now
+                                                     :active     true}))
+            field! (fn [table values]
+                     (t2/insert-returning-instance! :metabase_field
+                                                    (merge {:table_id      (:id table)
+                                                            :parent_id     nil
+                                                            :base_type     "type/Text"
+                                                            :database_type "TEXT"
+                                                            :created_at    :%now
+                                                            :updated_at    :%now}
+                                                           values)))
+            earlier #t "2023-01-01T00:00:00"
+            later   #t "2024-01-01T00:00:00"
               ; 1.
-              table-1 (table!)
-              cases-1 {; field                                                                                 ; is_defective_duplicate
-                       (field! table-1 {:name "F1", :active true,  :nfc_path "NOT NULL", :created_at later})   false
-                       (field! table-1 {:name "F1", :active false, :nfc_path nil,        :created_at earlier}) true}
+            table-1 (table!)
+            cases-1 {; field                                                                                 ; is_defective_duplicate
+                     (field! table-1 {:name "F1", :active true,  :nfc_path "NOT NULL", :created_at later})   false
+                     (field! table-1 {:name "F1", :active false, :nfc_path nil,        :created_at earlier}) true}
               ; 2.
-              table-2 (table!)
-              cases-2 {(field! table-2 {:name "F2", :active true,  :nfc_path nil,        :created_at later})   false
-                       (field! table-2 {:name "F2", :active true,  :nfc_path "NOT NULL", :created_at earlier}) true}
+            table-2 (table!)
+            cases-2 {(field! table-2 {:name "F2", :active true,  :nfc_path nil,        :created_at later})   false
+                     (field! table-2 {:name "F2", :active true,  :nfc_path "NOT NULL", :created_at earlier}) true}
               ; 3.
-              table-3 (table!)
-              cases-3 {(field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at earlier}) false
-                       (field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at later})   true}
+            table-3 (table!)
+            cases-3 {(field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at earlier}) false
+                     (field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at later})   true}
               ; 4.
-              table-4 (table!)
-              cases-4 {(field! table-4 {:name "F4", :active true,  :nfc_path nil,        :created_at earlier}) false
-                       (field! table-4 {:name "F4", :active false, :nfc_path nil,        :created_at later})   true
-                       (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at earlier}) true
-                       (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at later})   true}
+            table-4 (table!)
+            cases-4 {(field! table-4 {:name "F4", :active true,  :nfc_path nil,        :created_at earlier}) false
+                     (field! table-4 {:name "F4", :active false, :nfc_path nil,        :created_at later})   true
+                     (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at earlier}) true
+                     (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at later})   true}
               ; 5.
-              table-5 (table!)
-              field-no-parent-1   (field! table-5 {:name "F5", :active true,  :parent_id nil})
-              field-no-parent-2   (field! table-5 {:name "F5", :active false, :parent_id nil})
-              field-with-parent-1 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-1)})
-              field-with-parent-2 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-2)})
-              cases-5 {field-no-parent-1 false
-                       field-no-parent-2 true
-                       field-with-parent-1 false
-                       field-with-parent-2 false}
-              assert-defective-cases (fn [field->defective?]
-                                       (doseq [[field-before defective?] field->defective?]
-                                         (let [field-after (t2/select-one :metabase_field :id (:id field-before))]
-                                           (is (= defective? (:is_defective_duplicate field-after))))))]
-          (migrate!)
-          (testing "1. Active is 1st preference"
-            (assert-defective-cases cases-1))
-          (testing "2. NULL nfc_path is 2nd preference"
-            (assert-defective-cases cases-2))
-          (testing "3. Earlier created_at is 3rd preference"
-            (assert-defective-cases cases-3))
-          (testing "4. More than two fields can be defective"
-            (assert-defective-cases cases-4))
-          (testing "5. Fields with different parent_id's are not defective duplicates"
-            (assert-defective-cases cases-5))
-          (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
-            (testing "Migrate down succeeds"
-              (migrate! :down 48))))))))
+            table-5 (table!)
+            field-no-parent-1   (field! table-5 {:name "F5", :active true,  :parent_id nil})
+            field-no-parent-2   (field! table-5 {:name "F5", :active false, :parent_id nil})
+            field-with-parent-1 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-1)})
+            field-with-parent-2 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-2)})
+            cases-5 {field-no-parent-1 false
+                     field-no-parent-2 true
+                     field-with-parent-1 false
+                     field-with-parent-2 false}
+            assert-defective-cases (fn [field->defective?]
+                                     (doseq [[field-before defective?] field->defective?]
+                                       (let [field-after (t2/select-one :metabase_field :id (:id field-before))]
+                                         (is (= defective? (:is_defective_duplicate field-after))))))]
+        (migrate!)
+        (testing "1. Active is 1st preference"
+          (assert-defective-cases cases-1))
+        (testing "2. NULL nfc_path is 2nd preference"
+          (assert-defective-cases cases-2))
+        (testing "3. Earlier created_at is 3rd preference"
+          (assert-defective-cases cases-3))
+        (testing "4. More than two fields can be defective"
+          (assert-defective-cases cases-4))
+        (testing "5. Fields with different parent_id's are not defective duplicates"
+          (assert-defective-cases cases-5))
+        (when (not= (mdb/db-type) :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+          (testing "Migrate down succeeds"
+            (migrate! :down 48)))))))
 
 (deftest is-defective-duplicate-constraint-test
   (testing "Migrations for H2 and MySQL to prevent duplicate fields"
@@ -2437,7 +2435,7 @@
             clean-up-fields!      (fn []
                                     (t2/delete! :metabase_field :id [:in (map :id @fields-to-clean-up)])
                                     (reset! fields-to-clean-up []))]
-        (if (= driver/*driver* :postgres)
+        (if (= (mdb/db-type) :postgres)
           (testing "Before the migrations, Postgres does not allow fields to have the same table, name, but different parent_id"
             (doseq [[defective? field-thunk] defective+field-thunk]
               (if defective?
@@ -2459,7 +2457,7 @@
               (let [field (field-thunk)]
                 (is (some? field))
                 (swap! fields-to-clean-up conj field)))))
-        (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+        (when (not= (mdb/db-type) :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
           (testing "Migrate down succeeds"
             (migrate! :down 48))
           (clean-up-fields!)
@@ -2479,8 +2477,8 @@
     ;; 2. migrate, adding constraints around is_defective_duplicate to prevent duplicates
     ;; 3. test load-from-h2 works successfully by migrating to MySQL or Postgres
     ;; 4. test you can downgrade and upgrade again after that
-    (when-let [test-drivers (set/intersection (tx.env/test-drivers) #{:mysql :postgres})]
-      (mt/with-driver :h2
+    (when (#{:mysql :postgres} (mdb/db-type))
+      (let [original-app-db-type (mdb/db-type)]
         (impl/test-migrations-for-driver!
          :h2
          ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"]
@@ -2519,22 +2517,21 @@
              (mt/with-temp-dir [dir nil]
                (let [h2-filename (str dir "/dump")]
                  (dump-to-h2/dump-to-h2! h2-filename) ; this migrates the DB back to the newest and creates a dump
-                 (mt/test-drivers test-drivers
-                   (let [db-def      {:database-name "field-test-db"}
-                         data-source (load-from-h2-test/get-data-source driver/*driver* db-def)]
-                     (load-from-h2-test/create-current-database! driver/*driver* db-def data-source)
-                     (binding [mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
-                       (load-from-h2/load-from-h2! h2-filename)
-                       (testing "The defective field should still exist after loading from H2"
-                         (is (= #{defective-field-id}
-                                (t2/select-pks-set (t2/table-name :model/Field) :is_defective_duplicate true)))))
-                     (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
-                       (testing "Migrating down to 48 should still work"
-                         (migrate! :down 48))
-                       (testing "The defective field should still exist after loading from H2 and downgrading"
-                         (is (t2/exists? (t2/table-name :model/Field) :id defective-field-id)))
-                       (testing "Migrating up again should still work"
-                         (migrate!))))))))))))))
+                 (let [db-def      {:database-name "field-test-db"}
+                       data-source (load-from-h2-test/get-data-source original-app-db-type db-def)]
+                   (load-from-h2-test/create-current-database! original-app-db-type db-def data-source)
+                   (binding [mdb.connection/*application-db* (mdb.connection/application-db original-app-db-type data-source)]
+                     (load-from-h2/load-from-h2! h2-filename)
+                     (testing "The defective field should still exist after loading from H2"
+                       (is (= #{defective-field-id}
+                              (t2/select-pks-set (t2/table-name :model/Field) :is_defective_duplicate true)))))
+                   (when-not (= original-app-db-type :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+                     (testing "Migrating down to 48 should still work"
+                       (migrate! :down 48))
+                     (testing "The defective field should still exist after loading from H2 and downgrading"
+                       (is (t2/exists? (t2/table-name :model/Field) :id defective-field-id)))
+                     (testing "Migrating up again should still work"
+                       (migrate!)))))))))))))
 
 (deftest deactivate-defective-duplicates-test
   (testing "Migration v49.2024-06-27T00:00:09"

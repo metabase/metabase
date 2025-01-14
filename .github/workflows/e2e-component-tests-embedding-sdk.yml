@@ -190,12 +190,14 @@ jobs:
         with:
           script: | #js
             const {
+               generateReport,
                parseReport,
                formatSummary
              } = require("./.github/scripts/handle-mochawesome-report.js");
 
-             const report = parseReport();
-             const summary = formatSummary(report);
+             const report = await generateReport();
+             const results = parseReport(report);
+             const summary = formatSummary(results);
 
              await core.summary.addRaw(summary).write();
 

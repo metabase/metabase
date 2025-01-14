@@ -88,7 +88,7 @@ function parseParameterValueForFields(
   fields: Field[],
 ): ParameterValueOrArray {
   if (Array.isArray(value)) {
-    return value.map(v => parseParameterValueForFields(v, fields));
+    return value.flatMap(v => parseParameterValueForFields(v, fields));
   }
 
   // unix dates fields are numeric but query params shouldn't be parsed as numbers
