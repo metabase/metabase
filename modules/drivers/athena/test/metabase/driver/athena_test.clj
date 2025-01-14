@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.athena-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -20,15 +19,13 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan2.core :as t2])
-  (:import
-   (java.sql Connection)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private nested-schema
-  [{:col_name "key", :data_type "int"}
-   {:col_name "data", :data_type "struct<name:string>"}])
+  [{:_col0 "key\tint\t"}
+   {:_col0 "data\tstruct<name:string>\t"}])
 
 (def ^:private flat-schema-columns
   [{:column_name "id", :type_name  "string"}
@@ -82,7 +79,10 @@
     {:s3_staging_dir ""}                                           nil
     {}                                                             nil))
 
-(deftest ^:parallel read-time-and-timestamp-with-time-zone-columns-test
+(deftest ^:synchronized read-time-and-timestamp-with-time-zone-columns-test
+  ;; The 3.3.0 Athena jdbc driver returns timestamp not as java.sql.Types/VARCHAR but is using dedicated temporal types.
+  ;; The class that represents temporal value is java.sql.Timestamp. Hence the read-column-thunk implementation uses
+  ;; `qp.timezone/results-timezone-id` to convert returned value into appropriate timezone.
   (mt/test-driver :athena
     (testing "We should return TIME and TIMESTAMP WITH TIME ZONE columns correctly"
       ;; these both come back as `java.sql.type/VARCHAR` for some wacko reason from the JDBC driver, so let's make sure
@@ -95,14 +95,19 @@
             query        (-> (mt/native-query {:query sql, :params args})
                              (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
-          (let [[ts t] (mt/first-row (qp/process-query query))]
-            (is (#{#t "2022-11-16T04:21:00.000-08:00[America/Los_Angeles]"
-                   #t "2022-11-16T04:21:00.000-08:00[US/Pacific]"}
-                 ts))
-            (is (= #t "05:03"
-                   t))))))))
+          (mt/with-results-timezone-id "America/Los_Angeles"
+            (let [[ts t]
+                  (mt/first-row (qp/process-query query))]
+              (is (#{#t "2022-11-16T04:21:00.000-08:00[America/Los_Angeles]"
+                     #t "2022-11-16T04:21:00.000-08:00[US/Pacific]"}
+                   ts))
+              (is (= #t "05:03"
+                     t)))))))))
 
-(deftest ^:parallel set-time-and-timestamp-with-time-zone-test
+(deftest ^:synchronized set-time-and-timestamp-with-time-zone-test
+  ;; The 3.3.0 Athena jdbc driver returns timestamp not as java.sql.Types/VARCHAR but is using dedicated temporal types.
+  ;; The class that represents temporal value is java.sql.Timestamp. Hence the read-column-thunk implementation uses
+  ;; `qp.timezone/results-timezone-id` to convert returned value into appropriate timezone.
   (mt/test-driver :athena
     (testing "We should be able to handle TIME and TIMESTAMP WITH TIME ZONE parameters correctly"
       (let [timestamp-tz #t "2022-11-16T04:21:00.000-08:00[America/Los_Angeles]"
@@ -114,7 +119,8 @@
                              (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           (is (= [#t "2022-11-16T04:21:00.000-08:00[America/Los_Angeles]" #t "05:03"]
-                 (mt/first-row (qp/process-query query)))))))))
+                 (mt/with-results-timezone-id "America/Los_Angeles"
+                   (mt/first-row (qp/process-query query))))))))))
 
 (deftest ^:parallel add-interval-to-timestamp-with-time-zone-test
   (mt/test-driver :athena
@@ -143,7 +149,7 @@
       (testing "Not specifying access-key will use credential chain"
         (is (contains?
              (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
-             :AwsCredentialsProviderClass)))))
+             :CredentialsProvider)))))
   (testing "When hosted"
     (with-redefs [premium-features/is-hosted? (constantly true)]
       (testing "Specifying access-key will not use credential chain"
@@ -253,10 +259,9 @@
                            :athena
                            db
                            nil
-                           (fn [^Connection conn]
+                           (fn [^java.sql.Connection conn]
                              (let [metadata (.getMetaData conn)]
-                               (with-open [rs (.getColumns metadata catalog (:schema table) (:name table) nil)]
-                                 (jdbc/metadata-result rs))))))))
+                               (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
             (testing "`describe-table` returns the fields anyway"
               (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
 

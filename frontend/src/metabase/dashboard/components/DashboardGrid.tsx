@@ -35,10 +35,6 @@ import { addUndo } from "metabase/redux/undo";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
-import {
-  MOBILE_DEFAULT_CARD_HEIGHT,
-  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
-} from "metabase/visualizations/shared/utils/sizes";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import {
   type BaseDashboardCard,
@@ -354,11 +350,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
   getLayouts(cards: BaseDashboardCard[]) {
     const desktop = cards.map(this.getLayoutForDashCard);
-    const mobile = generateMobileLayout({
-      desktopLayout: desktop,
-      defaultCardHeight: MOBILE_DEFAULT_CARD_HEIGHT,
-      heightByDisplayType: MOBILE_HEIGHT_BY_DISPLAY_TYPE,
-    });
+    const mobile = generateMobileLayout(desktop);
     return { desktop, mobile };
   }
 

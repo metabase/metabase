@@ -1,12 +1,12 @@
 import { merge } from "icepick";
 
-import type { MetabaseComponentTheme } from "embedding-sdk";
+import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
 import {
   EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID,
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
-} from "embedding-sdk/config";
-import type { DeepPartial } from "embedding-sdk/types/utils";
-import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
+} from "metabase/embedding-sdk/config";
+import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
+import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
 import type { MantineThemeOverride } from "metabase/ui";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
