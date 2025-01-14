@@ -208,7 +208,7 @@
 (defn string-to-bytes
   "Converts a string into UTF-8 bytes"
   ^bytes [^String input]
-  (.getBytes input "UTF-8"))
+  (.getBytes input StandardCharsets/UTF_8))
 
 (defn encode-base64
   "Encodes the UTF-8 encoding of the string `input` to a Base64 string."
