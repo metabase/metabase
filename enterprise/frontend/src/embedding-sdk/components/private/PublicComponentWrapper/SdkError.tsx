@@ -1,4 +1,3 @@
-import { Code } from "@mantine/core";
 import { jt } from "ttag";
 
 import { useSdkSelector } from "embedding-sdk/store";
@@ -6,7 +5,7 @@ import { getErrorComponent } from "embedding-sdk/store/selectors";
 import type { SdkErrorComponentProps } from "embedding-sdk/store/types";
 import Alert from "metabase/core/components/Alert";
 import { color } from "metabase/lib/colors";
-import { Box, Center } from "metabase/ui";
+import { Box, Center, Code } from "metabase/ui";
 
 export const SdkError = ({ message }: SdkErrorComponentProps) => {
   const CustomError = useSdkSelector(getErrorComponent);
