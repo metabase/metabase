@@ -56,8 +56,8 @@
   );
   --mb-color-success: #84bb4c;
   --mb-color-summarize: #88bf4d;
-  --mb-color-error: #ed6e6e;
-  --mb-color-danger: #ed6e6e;
+  --mb-color-error: var(--mb-base-color-lobster-50);
+  --mb-color-danger: var(--mb-base-color-lobster-50);
   --mb-color-text-dark: #4c5773;
   --mb-color-text-medium: #696e7b;
   --mb-color-text-light: #949aab;
@@ -66,7 +66,7 @@
   --mb-color-bg-medium: #edf2f5;
   --mb-color-bg-light: var(--mb-base-color-gray-5);
   --mb-color-bg-white: var(--mb-base-color-white);
-  --mb-color-bg-error: #ed6e6e55;
+  --mb-color-bg-error: var(--mb-base-color-lobster-10);
   --mb-color-bg-night: #42484e;
   --mb-color-shadow: rgba(0, 0, 0, 0.13);
   --mb-color-border: #eeecec;

@@ -2,7 +2,6 @@
 /* eslint-disable import/no-commonjs */
 /* eslint-disable import/order */
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
-const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
@@ -125,17 +124,14 @@ module.exports = env => {
       "react/jsx-runtime": "react/jsx-runtime",
     },
 
-    optimization: !isDevMode
-      ? {
-          minimizer: [
-            new TerserPlugin({
-              minify: TerserPlugin.swcMinify,
-              parallel: true,
-              test: /\.(tsx?|jsx?)($|\?)/i,
-            }),
-          ],
-        }
-      : undefined,
+    optimization: {
+      // The default `moduleIds: 'named'` setting breaks Cypress tests when `development` mode is enabled,
+      // so we use a different value instead
+      moduleIds: isDevMode ? "natural" : undefined,
+
+      minimize: !isDevMode,
+      minimizer: mainConfig.optimization.minimizer,
+    },
 
     plugins: [
       new webpack.BannerPlugin({
