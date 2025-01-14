@@ -204,12 +204,15 @@ function useListQuery(query = {}, options) {
     return {
       ...collectionItemsQuery,
       data: collectionItemsQuery.data
-        ? collectionItemsQuery.data.data.map(item => ({
-            collection_id: canonicalCollectionId(query.collection),
-            archived: query.archived || false,
-            ...item,
-          }))
-        : [],
+        ? {
+            ...collectionItemsQuery.data,
+            data: collectionItemsQuery.data.data.map(item => ({
+              collection_id: canonicalCollectionId(query.collection),
+              archived: query.archived || false,
+              ...item,
+            })),
+          }
+        : undefined,
     };
   }, [collectionItemsQuery, query]);
 
@@ -221,16 +224,19 @@ function useListQuery(query = {}, options) {
     return {
       ...searchQuery,
       data: searchQuery.data
-        ? searchQuery.data.data.map(item => {
-            const collectionKey = item.collection
-              ? { collection_id: item.collection.id }
-              : {};
-            return {
-              ...collectionKey,
-              ...item,
-            };
-          })
-        : [],
+        ? {
+            ...searchQuery.data,
+            data: searchQuery.data.data.map(item => {
+              const collectionKey = item.collection
+                ? { collection_id: item.collection.id }
+                : {};
+              return {
+                ...collectionKey,
+                ...item,
+              };
+            }),
+          }
+        : undefined,
     };
   }, [searchQuery]);
 
