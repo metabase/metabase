@@ -4033,7 +4033,11 @@
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
         (testing "The card is still in the old dashboard and not the new one"
-          (is (= [{:name other-dash-name :collection_id forbidden-coll-id :id other-dash-id}]
+          (is (= [{:name other-dash-name
+                   :collection_id forbidden-coll-id
+                   :id other-dash-id
+                   :description nil
+                   :archived false}]
                  (:in_dashboards (t2/hydrate (t2/select-one :model/Card :id card-id) :in_dashboards))))
           (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))))
   (testing "Moving an archived card to a Dashboard unarchives and autoplaces it"
@@ -4057,7 +4061,8 @@
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (is (= [{:id dash-id :name "My Dashboard"}]
+      (is (= [{:id dash-id
+               :name "My Dashboard"}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
 
   (testing "card in no dashboards"

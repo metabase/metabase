@@ -143,18 +143,16 @@
                 (t2/query {:select [:card_id
                                     :name
                                     :collection_id
-                                    :id]
+                                    :description
+                                    :id
+                                    :archived]
                            :from [[{:union-all [{:select [[:dc.card_id :card_id]
-                                                          [:d.name :name]
-                                                          [:d.collection_id :collection_id]
-                                                          [:d.id :id]]
+                                                          :d.*]
                                                  :from [[:report_dashboardcard :dc]]
                                                  :join [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
                                                  :where [:in :dc.card_id (map :id cards)]}
                                                 {:select [[:dcs.card_id :card_id]
-                                                          [:d.name :name]
-                                                          [:d.collection_id :collection_id]
-                                                          [:d.id :id]]
+                                                          :d.*]
                                                  :from [[:dashboardcard_series :dcs]]
                                                  :join [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
                                                         [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
@@ -1196,6 +1194,20 @@
                  (set (keys card-updates)))
       (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*}))
     card))
+
+(defn sole-dashboard-id
+  "Given a card, returns the dashboard_id of the *sole* dashboard it's in, or `nil` if it's not in exactly one dashboard."
+  [card]
+  (when-not (contains? card :in_dashboards)
+    (throw (ex-info "`automovable?` must be called with a card hydrated with `:in_dashboards`"
+                    {:card-id (:id card)})))
+  (let [[dashboard :as dashboards] (:in_dashboards card)]
+    (when (and (= 1 (count dashboards))
+               (= (:collection_id card)
+                  (:collection_id dashboard))
+               (not (:archived dashboard))
+               (not (:archived card)))
+      (:id dashboard))))
 
 (methodical/defmethod mi/to-json :model/Card
   [card json-generator]

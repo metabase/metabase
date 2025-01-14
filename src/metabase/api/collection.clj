@@ -11,12 +11,14 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection.graph :as graph]
@@ -34,6 +36,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -1041,6 +1044,52 @@
                                                                                               true
                                                                                               (boolean official_collections_first))}})
       (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
+
+(mr/def ::DashboardQuestionCandidate
+  [:map
+   [:id pos-int?]
+   [:name string?]
+   [:description [:maybe string?]]
+   [:sole_dashboard_info
+    [:map
+     [:id pos-int?]
+     [:name string?]
+     [:description [:maybe string?]]]]])
+
+(mr/def ::DashboardQuestionCandidatesResponse
+  [:map
+   [:data [:sequential ::DashboardQuestionCandidate]]
+   [:count integer?]])
+
+(mu/defn- dashboard-question-candidates
+  "Implementation for the `dashboard-question-candidates` endpoints."
+  [collection-id :- [:maybe ms/PositiveInt]
+   sort-direction :- [:enum :asc :desc]]
+  (api/check-403 api/*is-superuser?*)
+  (let [cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:= :collection_id collection-id]
+                                                                :order-by [[:%lower.name sort-direction]]}) :in_dashboards)
+        dashboard-question-candidates (filter card/sole-dashboard-id cards-in-collection)
+        present-card (fn [{:keys [in_dashboards] :as card}]
+                       (-> card
+                           (select-keys [:id :name :description])
+                           (assoc :sole_dashboard_info (-> in_dashboards first (select-keys [:id :name :description])))))]
+    {:data (map present-card dashboard-question-candidates)
+     :count (count dashboard-question-candidates)}))
+
+(api.macros/defendpoint :get "/:id/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
+  "Find cards in this collection that can be moved into dashboards in this collection.
+
+  To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a dashboard question."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [sort_direction]} :- [:map [:sort_direction {:default :asc} [:enum :asc :desc]]]]
+  (api/read-check :model/Collection id)
+  (dashboard-question-candidates id sort_direction))
+
+(api.macros/defendpoint :get "/root/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
+  "Find cards in the root collection that can be moved into dashboards in the root collection. (Same as the above endpoint, but for the root collection)"
+  [_route-params
+   {:keys [sort_direction]} :- [:map [:sort_direction {:default :asc} [:enum :asc :desc]]]]
+  (dashboard-question-candidates nil sort_direction))
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
