@@ -211,7 +211,7 @@
  ;; https://ask.clojure.org/index.php/12367/support-mvn-repos-inside-an-alias -- if we could, this could go in the
  ;; `:drivers` alias instead.
  :mvn/repos
- {"athena"   {:url "https://s3.amazonaws.com/maven-athena"}
+ {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"}
   "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}
   ;; for metabase/saml20-clj
   "opensaml" {:url "https://build.shibboleth.net/nexus/content/repositories/releases/"}}
