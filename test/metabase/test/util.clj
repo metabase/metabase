@@ -1454,7 +1454,7 @@
 (defn file-path->bytes
   "Reads a file at `file-path` completely into a byte array, returning that array."
   [^String file-path]
-  (let [f   (File. file-path)]
+  (let [f (File. file-path)]
     (file->bytes f)))
 
 (defn bytes->base64-data-uri
