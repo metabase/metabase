@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupSchemaEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Database } from "metabase-types/api";
@@ -565,6 +565,13 @@ describe("Admin > Settings > UploadSetting", () => {
 
     expect(
       screen.getByText(/uploads to the Sample Database are for testing only/i),
+    ).toBeInTheDocument();
+
+    await userEvent.hover(screen.getByText("Additional terms apply."));
+    expect(
+      within(screen.getByRole("tooltip")).getByText(
+        /By enabling uploads to the Sample Database, you agree that you will not upload or otherwise transmit any individually identifiable information/,
+      ),
     ).toBeInTheDocument();
   });
 });
