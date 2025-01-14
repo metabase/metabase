@@ -13,8 +13,7 @@
 
   The passed make-encrypt-fn is used to generate the encryption/decryption function to use by passing versions of encryption/maybe-encrypt to it."
   [db-type data-source encrypting?]
-  (with-redefs [mi/transform-encrypted-json {:in  #'mi/encrypted-json-in
-                                             :out #'mi/encrypted-json-out}]
+  (binding [mi/*enable-json-caching* false]
     (t2/with-transaction [conn {:datasource data-source}]
       (doseq [[id details] (t2/select-pk->fn :details :model/Database)]
         (when (encryption/possibly-encrypted-string? details)

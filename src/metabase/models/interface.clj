@@ -332,9 +332,16 @@
           (log/error e "Error parsing JSON"))  ; same message as in `json-out`
         v))))
 
+(def ^:dynamic *enable-json-caching*
+  "Disable when changing the encryption key, so the wrong encrypted version is not used."
+  true)
+
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
 ;; cache the decrypted JSON for one hour
-(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
+(def ^:private cached-encrypted-json-out
+  (if *enable-json-caching*
+    (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000))
+    encrypted-json-out))
 
 (def transform-encrypted-json
   "Transform for encrypted json."
