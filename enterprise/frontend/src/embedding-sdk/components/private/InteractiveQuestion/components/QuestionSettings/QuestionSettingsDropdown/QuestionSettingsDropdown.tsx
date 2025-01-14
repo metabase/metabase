@@ -14,7 +14,6 @@ export const QuestionSettingsDropdown = ({
   <Popover position="bottom-end">
     <Popover.Target>
       <ToolbarButton
-        data-testid="chart-type-selector-button"
         isHighlighted={false}
         variant="default"
         px="sm"
