@@ -1,0 +1,27 @@
+.root {
+  height: 100%;
+  padding: 0 0.75em;
+  text-align: right;
+  color: var(--mb-color-text-light);
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  cursor: pointer;
+}
+
+.rowNumber {
+  display: block;
+}
+
+.root:hover > .rowNumber {
+  display: none;
+}
+
+.expandIcon {
+  display: none;
+}
+
+.root:hover > .expandIcon {
+  display: block;
+}
