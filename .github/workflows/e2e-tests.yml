@@ -8,9 +8,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
-env:
-  SPLIT_CHUNKS: 50
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
@@ -34,7 +31,7 @@ jobs:
   e2e-matrix-builder:
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
-      chunks: ${{ env.SPLIT_CHUNKS }}
+      chunks: 50
 
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
