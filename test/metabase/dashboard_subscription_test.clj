@@ -510,27 +510,27 @@
        (is (every?
             true?
             (-> (mt/summarize-multipart-single-email email
-                                                     #"https://metabase\.com/testmb/collection/\d+"
+                                                     #"https://testmb\.com/collection/\d+"
                                                      #"Linked collection name"
                                                      #"Linked collection desc"
 
-                                                     #"https://metabase\.com/testmb/browse/\d+"
+                                                     #"https://testmb\.com/browse/\d+"
                                                      #"Linked database name"
                                                      #"Linked database desc"
 
-                                                     #"https://metabase\.com/testmb/question\?db=\d+table=\d+"
+                                                     #"https://testmb\.com/question\?db=\d+table=\d+"
                                                      #"Linked table dname"
                                                      #"Linked table desc"
 
-                                                     #"https://metabase\.com/testmb/question/\d+"
+                                                     #"https://testmb\.com/question/\d+"
                                                      #"Linked card name"
                                                      #"Linked card desc"
 
-                                                     #"https://metabase\.com/testmb/question/\d+"
+                                                     #"https://testmb\.com/question/\d+"
                                                      #"Linked model name"
                                                      #"Linked model desc"
 
-                                                     #"https://metabase\.com/testmb/dashboard/\d+"
+                                                     #"https://testmb\.com/dashboard/\d+"
                                                      #"Linked Dashboard name"
                                                      #"Linked Dashboard desc")
                 (get "rasta@metabase.com")
@@ -551,7 +551,7 @@
                      {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
                    {:type "section", :fields [{:type "mrkdwn",
                                                :text
-                                               #"<https://metabase\.com/testmb/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\ \| \*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
+                                               #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\ \| \*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
 
                  {:title "Test card",
                   :rendered-info {:attachments false, :content true, :render/text true},
@@ -563,28 +563,28 @@
                   [{:type "section",
                     :text
                     {:type "mrkdwn",
-                     :text #"\*<https://metabase\.com/testmb/collection/\d+\|Linked collection name>\*\nLinked collection desc"}}]}
+                     :text #"\*<https://testmb\.com/collection/\d+\|Linked collection name>\*\nLinked collection desc"}}]}
                  {:blocks
                   [{:type "section",
                     :text
-                    {:type "mrkdwn", :text #"\*<https://metabase\.com/testmb/browse/\d+\|Linked database name>\*\nLinked database desc"}}]}
-                 {:blocks
-                  [{:type "section",
-                    :text
-                    {:type "mrkdwn",
-                     :text #"\*<https://metabase\.com/testmb/question\?db=\d+&table=\d+\|Linked table dname>\*\nLinked table desc"}}]}
+                    {:type "mrkdwn", :text #"\*<https://testmb\.com/browse/\d+\|Linked database name>\*\nLinked database desc"}}]}
                  {:blocks
                   [{:type "section",
                     :text
                     {:type "mrkdwn",
-                     :text #"\*<https://metabase\.com/testmb/dashboard/\d+\|Linked Dashboard name>\*\nLinked Dashboard desc"}}]}
-                 {:blocks
-                  [{:type "section",
-                    :text {:type "mrkdwn", :text #"\*<https://metabase\.com/testmb/question/\d+\|Linked card name>\*\nLinked card desc"}}]}
+                     :text #"\*<https://testmb\.com/question\?db=\d+&table=\d+\|Linked table dname>\*\nLinked table desc"}}]}
                  {:blocks
                   [{:type "section",
                     :text
-                    {:type "mrkdwn", :text #"\*<https://metabase\.com/testmb/question/\d+\|Linked model name>\*\nLinked model desc"}}]}
+                    {:type "mrkdwn",
+                     :text #"\*<https://testmb\.com/dashboard/\d+\|Linked Dashboard name>\*\nLinked Dashboard desc"}}]}
+                 {:blocks
+                  [{:type "section",
+                    :text {:type "mrkdwn", :text #"\*<https://testmb\.com/question/\d+\|Linked card name>\*\nLinked card desc"}}]}
+                 {:blocks
+                  [{:type "section",
+                    :text
+                    {:type "mrkdwn", :text #"\*<https://testmb\.com/question/\d+\|Linked model name>\*\nLinked model desc"}}]}
                  {:blocks
                   [{:type "section", :text {:type "mrkdwn", :text "*<https://metabase.com|https://metabase.com>*"}}]}]}
                (pulse.test-util/thunk->boolean pulse-results))))}}))
@@ -961,7 +961,7 @@
                     [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
                      {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
                    {:type "section", :fields [{:type "mrkdwn"
-                                               :text #"<https://metabase\.com/testmb/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021 \| \*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
+                                               :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021 \| \*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
 
                  {:blocks [{:type "section", :text {:type "mrkdwn", :text "*The first tab*"}}]}
                  {:title "Test card",
