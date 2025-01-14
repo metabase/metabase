@@ -180,18 +180,24 @@
                  :model/PermissionsGroupMembership _                        {:user_id user-2-g1 :group_id group-id-1}
                  :model/PermissionsGroupMembership _                        {:user_id user-3-g1-inacitve :group_id group-id-1}
                  :model/PermissionsGroupMembership _                        {:user_id user-1-g2 :group_id group-id-2}]
-    (testing "hydrate members only return active users for each group"
-      (is (=? [[{:id user-1-g1}
-                {:id user-2-g1}]
-               [{:id user-1-g2}]]
-              (map :members (t2/hydrate (t2/select :model/PermissionsGroup :id [:in [group-id-1 group-id-2]])
-                                        :members)))))
+    (let [group-id->members (fn []
+                              (as-> (t2/select :model/PermissionsGroup :id [:in [group-id-1 group-id-2]]) results
+                                (t2/hydrate results :members)
+                                (map (juxt :id :members) results)
+                                (into {} results)
+                                (update-vals results (fn [members]
+                                                       (set (map #(select-keys % [:id :is_group_manager]) members))))))]
 
-    (testing "return is_group_manager for each group if premium features are enabled"
-      (when config/ee-available?
-        (mt/with-premium-features #{:advanced-permissions}
-          (is (=? [[{:id user-1-g1 :is_group_manager true}
-                    {:id user-2-g1 :is_group_manager false}]
-                   [{:id user-1-g2 :is_group_manager false}]]
-                  (map :members (t2/hydrate (t2/select :model/PermissionsGroup :id [:in [group-id-1 group-id-2]])
-                                            :members)))))))))
+      (testing "hydrate members only return active users for each group"
+        (is (= {group-id-1 #{{:id user-1-g1}
+                             {:id user-2-g1}}
+                group-id-2 #{{:id user-1-g2}}}
+               (group-id->members))))
+
+      (testing "return is_group_manager for each group if premium features are enabled"
+        (when config/ee-available?
+          (mt/with-premium-features #{:advanced-permissions}
+            (is (= {group-id-1 #{{:id user-1-g1 :is_group_manager true}
+                                 {:id user-2-g1 :is_group_manager false}}
+                    group-id-2 #{{:id user-1-g2 :is_group_manager false}}}
+                   (group-id->members)))))))))
