@@ -1,4 +1,4 @@
-(ns metabase.core
+(ns metabase.core.core
   (:require
    [clojure.string :as str]
    [clojure.tools.trace :as trace]
@@ -216,7 +216,7 @@
 ;;; ------------------------------------------------ App Entry Point -------------------------------------------------
 
 (defn entrypoint
-  "Launch Metabase in standalone mode. (Main application entrypoint is [[metabase.bootstrap/-main]].)"
+  "Launch Metabase in standalone mode. (Main application entrypoint is [[metabase.core.bootstrap/-main]].)"
   [& [cmd & args]]
   (maybe-enable-tracing)
   (if cmd

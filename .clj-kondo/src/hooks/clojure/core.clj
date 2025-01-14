@@ -55,7 +55,7 @@
      metabase.api.public-test/add-card-to-dashboard!
      metabase.cmd.dump-to-h2/dump-to-h2!
      metabase.cmd.load-from-h2/load-from-h2!
-     metabase.core/ensure-audit-db-installed!
+     metabase.core.core/ensure-audit-db-installed!
      metabase.db.schema-migrations-test.impl/run-migrations-in-range!
      metabase.db.setup/migrate!
      metabase.db.setup/setup-db!

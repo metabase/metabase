@@ -1,4 +1,4 @@
-(ns metabase.bootstrap
+(ns metabase.core.bootstrap
   (:gen-class)
   (:require [clojure.java.io :as io]))
 
