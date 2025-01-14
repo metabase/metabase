@@ -10,7 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.util.spec-update :as models.u.spec-update]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
