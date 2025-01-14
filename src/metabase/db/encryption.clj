@@ -60,11 +60,11 @@
     (throw (ex-info "Cannot encrypt database with an empty key" {})))
   (if (nil? to-key)
     (do-encryption db-type data-source true)
-    (with-redefs [encryption/default-encryption-key (encryption/validate-and-hash-secret-key to-key)]
+    (binding [encryption/*default-encryption-key* (encryption/validate-and-hash-secret-key to-key)]
       (do-encryption db-type data-source true))))
 
 (defn decrypt-db
   "Decrypts the database using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data"
   [db-type data-source]
-  (with-redefs [encryption/default-encryption-key nil]
+  (binding [encryption/*default-encryption-key* nil]
     (do-encryption db-type data-source false)))
