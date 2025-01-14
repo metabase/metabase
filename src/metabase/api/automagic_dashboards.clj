@@ -10,7 +10,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.xrays :as xrays]
+   [metabase.xrays.core :as xrays]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 

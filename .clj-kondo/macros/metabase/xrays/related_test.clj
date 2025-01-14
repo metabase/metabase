@@ -1,4 +1,4 @@
-(ns macros.metabase.related-test
+(ns macros.metabase.xrays.related-test
   (:require [macros.common]))
 
 (defmacro with-world [& body]
