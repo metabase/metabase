@@ -310,7 +310,7 @@ describe("scenarios > question > new", () => {
         .findByRole("tab", { name: /Browse/ })
         .click();
 
-      H.entityPickerModal().findByText("Create a new collection").click();
+      H.entityPickerModal().findByText("New collection").click();
 
       const NEW_COLLECTION = "Foo";
       H.collectionOnTheGoModal().within(() => {
@@ -331,6 +331,57 @@ describe("scenarios > question > new", () => {
       });
 
       cy.get("header").findByText(NEW_COLLECTION);
+    },
+  );
+
+  it(
+    "should be able to save a question to a dashboard created on the go",
+    { tags: "@smoke" },
+    () => {
+      H.visitCollection(THIRD_COLLECTION_ID);
+
+      cy.findByLabelText("Navigation bar").findByText("New").click();
+      H.popover().findByText("Question").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      cy.findByTestId("qb-header").findByText("Save").click();
+
+      cy.log("should be able to tab through fields (metabase#41683)");
+      cy.realPress("Tab").realPress("Tab");
+      cy.findByLabelText("Description").should("be.focused");
+
+      cy.findByTestId("save-question-modal")
+        .findByLabelText(/Where do you want to save/)
+        .click();
+
+      H.entityPickerModal()
+        .findByRole("tab", { name: /Browse/ })
+        .click();
+
+      H.entityPickerModal().findByText("New dashboard").click();
+
+      const NEW_DASHBOARD = "Foo Dashboard";
+      H.dashboardOnTheGoModal().within(() => {
+        cy.findByLabelText(/Give it a name/).type(NEW_DASHBOARD);
+        cy.findByText("Create").click();
+      });
+      H.entityPickerModal().within(() => {
+        cy.findByText(NEW_DASHBOARD).click();
+        cy.button(/Select/).click();
+      });
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByText("Save new question");
+        cy.findByLabelText(/Where do you want to save/).should(
+          "have.text",
+          NEW_DASHBOARD,
+        );
+        cy.findByText("Save").click();
+      });
+
+      cy.get("header").findByText(NEW_DASHBOARD);
+      cy.url().should("include", "/dashboard/");
     },
   );
 
@@ -456,7 +507,7 @@ describe("scenarios > question > new", () => {
         );
         cy.findByText(collectionInRoot.name).should("be.visible");
         cy.findByText(dashboardInRoot.name).should("be.visible");
-        cy.findByText("Create a new dashboard").should("be.visible");
+        cy.findByText("New dashboard").should("be.visible");
       });
     });
 
@@ -493,7 +544,7 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal().within(() => {
           H.entityPickerModalTab("Dashboards").click();
           H.entityPickerModalItem(1, "Collection in root collection").click();
-          cy.button(/Create a new dashboard/).click();
+          cy.button(/New dashboard/).click();
         });
 
         cy.findByRole("dialog", { name: "Create a new dashboard" }).within(
@@ -525,7 +576,7 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal().within(() => {
           H.entityPickerModalTab("Dashboards").click();
           H.entityPickerModalItem(1, "First collection").click();
-          cy.button(/Create a new dashboard/).click();
+          cy.button(/New dashboard/).click();
         });
 
         cy.findByRole("dialog", { name: "Create a new dashboard" }).within(
@@ -557,7 +608,7 @@ describe("scenarios > question > new", () => {
         H.entityPickerModal().within(() => {
           H.entityPickerModalTab("Dashboards").click();
           H.entityPickerModalItem(1, "Orders in a dashboard").click();
-          cy.button(/Create a new dashboard/).click();
+          cy.button(/New dashboard/).click();
         });
 
         cy.findByRole("dialog", { name: "Create a new dashboard" }).within(

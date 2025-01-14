@@ -144,7 +144,7 @@ describe("DateFilterEditor", () => {
     const { query, filter } = createQueryWithFilter(
       defaultQuery,
       stageIndex,
-      Lib.specificDateFilterClause(defaultQuery, stageIndex, {
+      Lib.specificDateFilterClause({
         operator: "=",
         column,
         values: [new Date(2020, 1, 15)],
