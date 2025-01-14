@@ -9,6 +9,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.util.log :as log]
    [potemkin :as p]))
 
 (comment
@@ -57,10 +58,13 @@
   "Populate a new index, and make it active. Simultaneously updates the current index."
   [& {:as opts}]
   ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
-  (reduce (partial merge-with max)
-          nil
-          (for [e (search.engine/active-engines)]
-            (search.engine/reindex! e opts))))
+  (try
+    (reduce (partial merge-with max)
+            nil
+            (for [e (search.engine/active-engines)]
+              (search.engine/reindex! e opts)))
+    (catch Throwable e
+      (log/fatal e "Error reindexing search indexes."))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."
