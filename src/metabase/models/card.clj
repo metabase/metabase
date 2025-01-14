@@ -795,7 +795,7 @@
       (cond-> #_changes
        (or (empty? (:result_metadata card))
            (not verified-result-metadata?))
-       card.metadata/populate-result-metadata)
+        card.metadata/populate-result-metadata)
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at))
@@ -1004,28 +1004,28 @@
            (progress? display))
        (< 1 (count (get-in new-card [:dataset_query :query :breakout])))))
 
-(defn- delete-alert-and-notify!
+(defn delete-alert-and-notify!
   "Removes all of the alerts and notifies all of the email recipients of the alerts change."
-  [topic actor card-notifications card]
-  (when (pos? (t2/delete! :model/Notification :id [:in (map :id card-notifications)]))
+  [topic actor card]
+  (when-let [card-notifications (seq (models.notification/notifications-for-card (:id card)))]
+    (t2/delete! :model/Notification :id [:in (map :id card-notifications)])
     (events/publish-event! topic {:card          card
                                   :actor         actor
                                   :notifications card-notifications})))
 
 (defn- delete-alerts-if-needed! [& {:keys [old-card new-card actor]}]
-  (when-let [card-notifications (seq (models.notification/notifications-for-card (:id new-card)))]
-    (cond
-      (card-archived? old-card new-card)
-      (delete-alert-and-notify! :event/card-update.notification-deleted.card-archived actor card-notifications new-card)
+  (cond
+    (card-archived? old-card new-card)
+    (delete-alert-and-notify! :event/card-update.notification-deleted.card-archived actor new-card)
 
-      (or (display-change-broke-alert? old-card new-card)
-          (goal-missing? old-card new-card)
-          (multiple-breakouts? new-card))
-      (delete-alert-and-notify! :event/card-update.notification-deleted.card-became-invalid actor card-notifications new-card)
+    (or (display-change-broke-alert? old-card new-card)
+        (goal-missing? old-card new-card)
+        (multiple-breakouts? new-card))
+    (delete-alert-and-notify! :event/card-update.notification-deleted.card-became-invalid actor new-card)
 
-     ;; The change doesn't invalidate the alert, do nothing
-      :else
-      nil)))
+    ;; The change doesn't invalidate the alert, do nothing
+    :else
+    nil))
 
 (defn- card-is-verified?
   "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent
