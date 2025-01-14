@@ -1,16 +1,17 @@
-import React, { useEffect, useRef, forwardRef } from "react";
-import { useId, useMergedRef, useUncontrolled } from "@mantine/hooks";
 import {
-  TagsInputProps,
+  Combobox,
+  OptionsDropdown,
   Pill,
   PillsInput,
-  Combobox,
-  useCombobox,
-  getParsedComboboxData,
-  OptionsDropdown,
+  type TagsInputProps,
   __BaseInputProps,
   __InputStylesNames,
+  getParsedComboboxData,
+  useCombobox,
 } from "@mantine/core";
+import { useId, useMergedRef, useUncontrolled } from "@mantine/hooks";
+import type React from "react";
+import { forwardRef, useEffect, useRef } from "react";
 
 import { filterPickedTags } from "./filter-picked-tags";
 import { getSplittedTags } from "./get-splitted-tags";
@@ -312,7 +313,7 @@ export const MetabaseTagsInput = forwardRef(function _MetabaseTagsInput(
             id={_id}
             mod={mod}
           >
-            <Pill.Group disabled={disabled} unstyled={unstyled}>
+            <Pill.Group disabled={disabled} unstyled={unstyled} role="list">
               {values}
               <Combobox.EventsTarget /* autoComplete={autoComplete} */>
                 <PillsInput.Field

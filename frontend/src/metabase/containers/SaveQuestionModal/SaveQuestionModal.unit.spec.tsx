@@ -844,7 +844,7 @@ describe("SaveQuestionModal", () => {
           await userEvent.click(saveLocDropdown());
           await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
           await userEvent.click(
-            await screen.findByRole("button", {
+            await screen.findByRole("link", {
               name: new RegExp(BOBBY_TEST_COLLECTION.name),
             }),
           );
@@ -903,7 +903,7 @@ describe("SaveQuestionModal", () => {
           await userEvent.click(saveLocDropdown());
           await waitFor(() => expect(newDashBtn()).toBeInTheDocument());
           await userEvent.click(
-            await screen.findByRole("button", {
+            await screen.findByRole("link", {
               name: new RegExp(BOBBY_TEST_COLLECTION.name),
             }),
           );
