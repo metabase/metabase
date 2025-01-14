@@ -9,6 +9,12 @@ import { MetabaseReduxContext } from "./lib/redux";
 
 describe("route-guards", () => {
   describe("patched redux-auth-wrapper", () => {
+    it("connectedReduxRedirect should throw an error if no context is provided", async () => {
+      expect(() => connectedReduxRedirect({} as any)).toThrow(
+        "you must provide a custom context",
+      );
+    });
+
     it("connectedReduxRedirect should be able to use same context as the main application", async () => {
       let selectorState: any;
       const RouteGuard = setupRouteGuard({
