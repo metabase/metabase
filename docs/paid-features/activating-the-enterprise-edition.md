@@ -53,13 +53,15 @@ Depending on your organization’s setup, you may need to take additional config
 
 ## IP addresses to whitelist
 
-If you're hosting Metabase behind a firewall that blocks outgoing connections, you'll need to allow these IP addresses to ensure access to `token-check.metabase.com` to verify your license.
+If you're hosting Metabase behind a firewall that blocks outgoing connections, **you must allow outbound stateful connections to port 443 on the all of the following IP addresses**:
 
 ```
 23.23.111.13
 44.199.18.109
 44.212.138.188
 ```
+
+To verify your license with a token check to `token-check.metabase.com`, your Metabase will make GET HTTP requests to these IP addresses and parse their responses. If you can't allow outbound connections for security reasons, please [contact us](https://www.metabase.com/help/premium).
 
 ## Note about Zscaler deployments
 
