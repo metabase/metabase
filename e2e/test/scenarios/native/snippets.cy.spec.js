@@ -271,7 +271,7 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
 
     H.modal().findByTestId("collection-picker-button").click();
     H.entityPickerModal()
-      .findByRole("button", { name: /Create a new collection/ })
+      .findByRole("button", { name: /New collection/ })
       .click();
     H.collectionOnTheGoModal()
       .findByLabelText("Give it a name")

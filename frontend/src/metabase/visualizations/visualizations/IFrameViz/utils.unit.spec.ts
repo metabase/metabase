@@ -14,11 +14,28 @@ describe("getAllowedIframeAttributes", () => {
       });
     });
 
+    it("should preserve parameter placeholders in YouTube watch URLs", () => {
+      const input =
+        "https://www.youtube.com/watch?v={{video}}&list={{playlist}}";
+      const result = getAllowedIframeAttributes(input);
+      expect(result).toStrictEqual({
+        src: "https://www.youtube.com/embed/{{video}}?list={{playlist}}",
+      });
+    });
+
     it("should transform YouTube short link to embed link", () => {
       const input = "https://youtu.be/dQw4w9WgXcQ";
       const result = getAllowedIframeAttributes(input);
       expect(result).toStrictEqual({
         src: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      });
+    });
+
+    it("should preserve parameter placeholders in YouTube short URLs", () => {
+      const input = "https://youtu.be/{{video}}?list={{playlist}}";
+      const result = getAllowedIframeAttributes(input);
+      expect(result).toStrictEqual({
+        src: "https://www.youtube.com/embed/{{video}}?list={{playlist}}",
       });
     });
 
@@ -46,11 +63,35 @@ describe("getAllowedIframeAttributes", () => {
       });
     });
 
+    it("should preserve parameter placeholders in Loom URLs", () => {
+      const input = "https://www.loom.com/share/{{loom}}";
+      const result = getAllowedIframeAttributes(input);
+      expect(result).toStrictEqual({
+        src: "https://www.loom.com/embed/{{loom}}",
+      });
+    });
+
+    it("should preserve parameter placeholders with query params", () => {
+      const input = "https://www.loom.com/share/{{loom}}?param={{param}}";
+      const result = getAllowedIframeAttributes(input);
+      expect(result).toStrictEqual({
+        src: "https://www.loom.com/embed/{{loom}}?param={{param}}",
+      });
+    });
+
     it("should transform Vimeo link to embed link", () => {
       const input = "https://vimeo.com/123456789";
       const result = getAllowedIframeAttributes(input);
       expect(result).toStrictEqual({
         src: "https://player.vimeo.com/video/123456789",
+      });
+    });
+
+    it("should preserve parameter placeholders in Vimeo URLs", () => {
+      const input = "https://vimeo.com/{{video}}?param={{param}}";
+      const result = getAllowedIframeAttributes(input);
+      expect(result).toStrictEqual({
+        src: "https://player.vimeo.com/video/{{video}}",
       });
     });
   });

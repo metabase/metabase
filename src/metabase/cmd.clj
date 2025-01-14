@@ -21,6 +21,7 @@
    [environ.core :as env]
    [metabase.config :as config]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.models]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -29,11 +30,17 @@
 
 (set! *warn-on-reflection* true)
 
+;; Fool the linters into thinking these namespaces are used
+(comment
+  metabase.models ; without importing models, table names are not correctly converted
+  )
+
 ;; Command processing and option parsing utilities, etc.
 
 (defn- system-exit!
   "Proxy function to System/exit to enable the use of `with-redefs`."
   [return-code]
+  (flush)
   (System/exit return-code))
 
 (defn- cmd->var
@@ -322,6 +329,7 @@
   [& messages]
   (doseq [msg messages]
     (println (u/format-color 'red msg)))
+  (flush)
   (System/exit 1))
 
 (defn run-cmd
@@ -340,7 +348,9 @@
       (apply @(cmd->var command-name) args)
       (catch Throwable e
         (when (:cmd/exit (ex-data e)) ;; fast-track for commands that have their own error handling
+          (flush)
           (System/exit 1))
         (.printStackTrace e)
         (fail! (str "Command failed with exception: " (.getMessage e))))))
+  (flush)
   (System/exit 0))

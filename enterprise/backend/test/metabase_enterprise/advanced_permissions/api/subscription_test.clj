@@ -6,7 +6,8 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defmacro ^:private with-subscription-disabled-for-all-users
   "Temporarily remove `subscription` permission for group `All Users`, execute `body` then re-grant it.

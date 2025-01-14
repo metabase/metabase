@@ -27,7 +27,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.openSeriesSettings("Count");
 
     H.echartsContainer()
@@ -56,7 +56,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.openSeriesSettings("Count");
 
     H.popover().within(() => {
@@ -88,7 +88,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.openSeriesSettings("Count");
 
     H.popover().within(() => {
@@ -107,11 +107,11 @@ describe("scenarios > visualizations > line chart", () => {
       display: "area",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.openSeriesSettings("Count");
     cy.icon("bar").click();
 
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar({ isSidebarOpen: true });
 
     cy.icon("line").click();
 
@@ -139,7 +139,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
 
     cy.icon("line").click();
 
@@ -202,7 +202,7 @@ describe("scenarios > visualizations > line chart", () => {
     // The chart is pinned to zero by default: 0 tick should exist
     H.echartsContainer().findByText("0");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("Axes").click();
       cy.findByText("Unpin from zero").click();
@@ -311,7 +311,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // Make sure we can update input with some existing value
     H.openSeriesSettings("cat1", true);
@@ -415,7 +415,7 @@ describe("scenarios > visualizations > line chart", () => {
       .findByText("(empty)")
       .should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").findByText("(empty)");
   });
 
@@ -735,7 +735,7 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findAllByTestId("legend-item").should("contain", "Doohickey");
 
       cy.log("Ensure that legend is hidden when not dealing with multi series");
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       cy.findByTestId("remove-CATEGORY").click();
       H.queryBuilderMain().should("not.contain", "Doohickey");
     });

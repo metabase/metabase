@@ -175,7 +175,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]

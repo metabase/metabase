@@ -90,6 +90,7 @@
          (map notification->pulse)
          (remove nil?))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Fetch an alert by ID"
   [id]
@@ -98,6 +99,7 @@
       api/read-check
       notification->pulse))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [id]

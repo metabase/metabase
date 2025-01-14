@@ -31,8 +31,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -205,9 +204,9 @@
 
 (deftest check-that-we-can-export-the-results-of-a-nested-query
   (mt/with-temp-copy-of-db
-    (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database (mt/id)
-                                                               :type     :native
-                                                               :native   {:query "SELECT * FROM USERS;"}}}]
+    (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
+                                                     :type     :native
+                                                     :native   {:query "SELECT * FROM USERS;"}}}]
       (letfn [(do-test []
                 (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                                    :query (json/encode
@@ -257,7 +256,7 @@
 
           ;; Let metadata-provider-with-cards-with-metadata-for-queries calculate the result-metadata.
           metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])]
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Card card (assoc {:dataset_query native-query}
                                  :result_metadata
                                  (-> (lib.metadata.protocols/metadatas metadata-provider :metadata/card [1])
@@ -649,7 +648,7 @@
                                :has_more_values false}]
       (with-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
         (testing "if value-field not found in source card"
-          (t2.with-temp/with-temp [:model/Card {source-card-id :id}]
+          (mt/with-temp [:model/Card {source-card-id :id}]
             (is (= mock-default-result
                    (mt/user-http-request :crowberto :post 200 "dataset/parameter/values"
                                          {:parameter  {:values_source_type   "card"
@@ -660,7 +659,7 @@
                                                        :id                   "abc"}})))))
 
         (testing "if value-field not found in source card"
-          (t2.with-temp/with-temp [:model/Card {source-card-id :id} {:archived true}]
+          (mt/with-temp [:model/Card {source-card-id :id} {:archived true}]
             (is (= mock-default-result
                    (mt/user-http-request :crowberto :post 200 "dataset/parameter/values"
                                          {:parameter  {:values_source_type   "card"

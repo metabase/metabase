@@ -5,7 +5,6 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -404,7 +403,7 @@
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
-  (let [validator (mc/validator u.cron/CronScheduleString)]
+  (let [validator (mr/validator u.cron/CronScheduleString)]
     (partial mu/validate-throw validator)))
 
 (def transform-cron-string

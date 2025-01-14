@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.shared :as channel.shared]
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
    [metabase.models.params.shared :as shared.params]
@@ -147,7 +148,7 @@
   [parts]
   (let [channel-id (slack/files-channel)]
     (for [part  parts
-          :let  [attachment (part->attachment-data part channel-id)]
+          :let  [attachment (part->attachment-data (channel.shared/realize-data-rows part) channel-id)]
           :when attachment]
       attachment)))
 

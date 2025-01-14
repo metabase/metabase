@@ -2875,11 +2875,11 @@ function customizeLinkText(text) {
 }
 
 function verifyVizTypeIsLine() {
-  cy.findByTestId("viz-type-button").click();
+  H.openVizTypeSidebar();
   cy.findByTestId("sidebar-content")
     .findByTestId("Line-container")
     .should("have.attr", "aria-selected", "true");
-  cy.findByTestId("viz-type-button").click();
+  H.closeVizSettingsSidebar();
 }
 
 function getClickMapping(columnName) {

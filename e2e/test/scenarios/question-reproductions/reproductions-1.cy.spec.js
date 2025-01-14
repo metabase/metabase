@@ -515,44 +515,48 @@ describe("issue 17514", () => {
       });
     });
 
-    it("should not show the run overlay when we apply dashboard filter on a question with removed column and then click through its title (metabase#17514-1)", () => {
-      H.editDashboard();
+    it(
+      "should not show the run overlay when we apply dashboard filter on a question with removed column and then click through its title (metabase#17514-1)",
+      { tags: "@flaky" },
+      () => {
+        H.editDashboard();
 
-      openVisualizationOptions();
+        openVisualizationOptions();
 
-      hideColumn("Products → Ean");
+        hideColumn("Products → Ean");
 
-      closeModal();
+        closeModal();
 
-      H.saveDashboard();
+        H.saveDashboard();
 
-      H.filterWidget().click();
-      setAdHocFilter({ timeBucket: "years" });
+        H.filterWidget().click();
+        setAdHocFilter({ timeBucket: "years" });
 
-      cy.location("search").should("eq", "?date_filter=past30years");
-      cy.wait("@cardQuery");
+        cy.location("search").should("eq", "?date_filter=past30years");
+        cy.wait("@cardQuery");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Previous 30 Years");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Previous 30 Years");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("17514").click();
-      cy.wait("@dataset");
-      cy.findByTextEnsureVisible("Subtotal");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("17514").click();
+        cy.wait("@dataset");
+        cy.findByTextEnsureVisible("Subtotal");
 
-      // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("79.37").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this value");
-    });
+        // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("79.37").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Filter by this value");
+      },
+    );
   });
 
   describe("scenario 2", () => {
     beforeEach(() => {
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       moveColumnToTop("Subtotal");
 
@@ -804,15 +808,11 @@ describe("issue 18207", () => {
     H.visualize();
 
     // Why is it not a table?
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+    H.openVizTypeSidebar();
     H.leftSidebar().within(() => {
       cy.icon("table2").click();
-      cy.findByTestId("Table-button").realHover();
-      cy.icon("gear").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Done").click();
+    H.closeVizSettingsSidebar();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Zemlak-Wiegand");
@@ -897,7 +897,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
     assertIsNotAdHoc();
 
     cy.log("Make sure user can change visualization but not save the question");
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Number-button").click();
     cy.findByTestId("scalar-value").should("exist");
     assertSaveIsDisabled();

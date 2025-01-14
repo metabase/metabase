@@ -15,7 +15,7 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-export const PickerInPopover = {
+export const SettingsInPopover = {
   render() {
     return (
       <Box p="lg">

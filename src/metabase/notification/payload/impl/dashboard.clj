@@ -4,7 +4,7 @@
    [metabase.models.params.shared :as shared.params]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 

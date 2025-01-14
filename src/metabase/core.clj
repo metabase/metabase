@@ -7,6 +7,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config :as config]
    [metabase.core.config-from-file :as config-from-file]
+   [metabase.core.init]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.h2]
@@ -21,8 +22,8 @@
    [metabase.notification.core :as notification]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.sample-data :as sample-data]
    [metabase.server.core :as server]
    [metabase.setup :as setup]
@@ -36,6 +37,7 @@
 (set! *warn-on-reflection* true)
 
 (comment
+  metabase.core.init/keep-me
   ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
   metabase.driver.h2/keep-me
   metabase.driver.mysql/keep-me

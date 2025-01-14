@@ -35,7 +35,6 @@ function executeYarnCommand({ command, message } = {}) {
 
 const args = arg(
   {
-    "--folder": String, // The name of the folder to run files from
     "--open": [Boolean], // Run Cypress in open mode or not? Doesn't accept additional arguments
   },
   { permissive: true }, // Passes all other flags and args to the Cypress parser

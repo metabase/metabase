@@ -334,6 +334,11 @@ export interface CreateCardRequest {
   cache_ttl?: number;
 }
 
+export interface CreateCardFromCsvRequest {
+  collection_id?: CollectionId;
+  file: File;
+}
+
 export interface UpdateCardRequest {
   id: CardId;
   name?: string;
