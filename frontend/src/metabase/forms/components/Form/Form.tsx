@@ -1,27 +1,26 @@
 import { useFormikContext } from "formik";
-import type { FormHTMLAttributes, Ref, SyntheticEvent } from "react";
+import type { ElementType, Ref, SyntheticEvent } from "react";
 import { forwardRef } from "react";
 
-import type { BoxProps } from "metabase/ui";
 import { Box } from "metabase/ui";
 
-export interface FormProps
-  extends BoxProps,
-    FormHTMLAttributes<HTMLFormElement> {
+export type FormProps<C extends ElementType> = {
+  as?: C;
   disabled?: boolean;
-}
+  component?: string;
+} & Omit<React.ComponentPropsWithRef<C>, "as" | "disabled" | "component">;
 
-export const Form = forwardRef(function Form(
-  { disabled, ...props }: FormProps,
-  ref: Ref<HTMLFormElement>,
-) {
+export const Form = forwardRef(function Form<
+  C extends ElementType = typeof Box,
+>({ as, disabled, component = "form", ...props }: FormProps<C>, ref: Ref<any>) {
   const { handleSubmit, handleReset } = useFormikContext();
+  const Component = as || Box;
 
   return (
-    <Box
+    <Component
       {...props}
       ref={ref}
-      component="form"
+      component={component}
       onSubmit={!disabled ? handleSubmit : handleDisabledEvent}
       onReset={!disabled ? handleReset : handleDisabledEvent}
     />
