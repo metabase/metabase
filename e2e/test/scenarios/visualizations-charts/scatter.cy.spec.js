@@ -216,6 +216,7 @@ select 10 as size, 2 as x, 5 as y`,
 
       columnsToRemove.map(columnName => {
         cy.findByRole("combobox")
+          .parent()
           .findByText(columnName)
           .siblings("button")
           .click();

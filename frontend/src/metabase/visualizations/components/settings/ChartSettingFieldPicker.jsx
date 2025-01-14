@@ -90,11 +90,11 @@ export const ChartSettingFieldPicker = ({
         pl="sm"
         pr="xs"
         w="100%"
-        isInitiallyOpen={autoOpenWhenUnset && value === undefined}
+        defaultDropdownOpened={autoOpenWhenUnset && value === undefined}
         options={options}
         value={value}
         onChange={onChange}
-        icon={
+        leftSection={
           showDragHandle || (showColorPicker && seriesKey) ? (
             <Group noWrap spacing="sm" p="xs" ml="sm">
               {showDragHandle && (
@@ -122,9 +122,9 @@ export const ChartSettingFieldPicker = ({
         placeholderNoOptions={t`No valid fields`}
         placeholder={t`Select a field`}
         iconWidth="auto"
-        rightSectionWidth="auto"
+        rightSectionWidth={60}
         rightSection={
-          <Group noWrap spacing="sm" p="xs" mr="sm">
+          <Group wrap="nowrap" gap="sm" p="xs" mr="sm">
             {!disabled && (
               <ActionIcon c="text-medium" size="sm" radius="xl" p={0}>
                 <Icon name="chevrondown" />
