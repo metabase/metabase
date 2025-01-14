@@ -249,8 +249,12 @@
 ;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
 (defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended
   for use by various routines that load related namespaces, such as task and events
-  initialization."}
-  metabase-namespace-symbols
+  initialization.
+
+  DEPRECATED: Using this is an anti-pattern, it messes up our ability to analyze the code and find dependencies between
+  namespaces or to topographically sort them correctly during compilation. See
+  https://metaboat.slack.com/archives/CKZEMT1MJ/p1734635053499399 or ask Cam for more info."}
+  ^:deprecated metabase-namespace-symbols
   (vec (sort (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
                    :when   (and (str/starts-with? ns-symb "metabase")
                                 (not (str/includes? ns-symb "test")))]
