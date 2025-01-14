@@ -46,6 +46,7 @@ describe("normalizeNumberParameterValue", () => {
     { value: 1.5, expectedValue: [1.5] },
     { value: "1.5", expectedValue: [1.5] },
     { value: [1, 2, 3], expectedValue: [1, 2, 3] },
+    { value: ["1", "2", "3"], expectedValue: [1, 2, 3] },
   ])("should normalize number parameter value", ({ value, expectedValue }) => {
     expect(normalizeNumberParameterValue(value)).toEqual(expectedValue);
   });
