@@ -132,7 +132,7 @@
             (let [[email] (notification.tu/with-mock-inbox-email!
                             (with-send-messages-sync!
                               (mt/user-http-request :crowberto :post 200 "notification" notification)))
-                  a-card-url (format "<a href=\"https://metabase.com/testmb/question/%d\">My Card</a>." card-id)]
+                  a-card-url (format "<a href=\"https://testmb.com/question/%d\">My Card</a>." card-id)]
               (testing (format "send email with %s condition" send_condition)
                 (is (=? {:bcc     #{"rasta@metabase.com" "ngoc@metabase.com" "crowberto@metabase.com"}
                          :subject "Crowberto Corv added you to an alert"
@@ -784,7 +784,7 @@
           (let [[email] (notification.tu/with-mock-inbox-email!
                           (with-send-messages-sync!
                             (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))))
-                a-href (format "<a href=\"https://metabase.com/testmb/question/%d\">My Card</a>."
+                a-href (format "<a href=\"https://testmb.com/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
             (testing "sends unsubscribe confirmation email"
               (is (=? {:bcc     #{"lucky@metabase.com"}
@@ -807,7 +807,7 @@
                                                                 {:type    :notification-recipient/raw-value
                                                                  :details {:value "test@metabase.com"}}]}]}
               make-card-url-tag (fn [notification]
-                                  (format "<a href=\"https://metabase.com/testmb/question/%d\">Test Card</a>."
+                                  (format "<a href=\"https://testmb.com/question/%d\">Test Card</a>."
                                           (-> notification :payload :card_id)))
               update-notification! (fn [noti-id notification updates]
                                      (notification.tu/with-mock-inbox-email!
