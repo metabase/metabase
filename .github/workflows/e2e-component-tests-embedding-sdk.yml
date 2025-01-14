@@ -129,11 +129,6 @@ jobs:
         with:
           name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
-      - name: Get the version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
-
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
@@ -190,12 +185,14 @@ jobs:
         with:
           script: | #js
             const {
+               generateReport,
                parseReport,
                formatSummary
              } = require("./.github/scripts/handle-mochawesome-report.js");
 
-             const report = parseReport();
-             const summary = formatSummary(report);
+             const report = await generateReport();
+             const results = parseReport(report);
+             const summary = formatSummary(results);
 
              await core.summary.addRaw(summary).write();
 

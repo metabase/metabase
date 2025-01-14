@@ -2,7 +2,7 @@ import slugg from "slugg";
 
 import { stringifyHashOptions } from "metabase/lib/browser";
 import MetabaseSettings from "metabase/lib/settings";
-import type { Dashboard, DashboardTabId } from "metabase-types/api";
+import type { DashCardId, Dashboard, DashboardTabId } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
 
@@ -10,11 +10,17 @@ type DashboardUrlBuilderOpts = {
   addCardWithId?: number;
   editMode?: boolean;
   tabId?: DashboardTabId | undefined;
+  scrollToDashcard?: DashCardId | undefined;
 };
 
 export function dashboard(
   dashboard: Pick<Dashboard, "id" | "name">,
-  { addCardWithId, editMode, tabId }: DashboardUrlBuilderOpts = {},
+  {
+    addCardWithId,
+    editMode,
+    tabId,
+    scrollToDashcard,
+  }: DashboardUrlBuilderOpts = {},
 ) {
   // x-ray dashboards have ids as urls
   const path =
@@ -29,6 +35,7 @@ export function dashboard(
   const hash = stringifyHashOptions({
     ...(addCardWithId ? { add: addCardWithId } : {}),
     ...(editMode ? { edit: editMode } : {}),
+    ...(scrollToDashcard ? { scrollTo: scrollToDashcard } : {}),
   });
 
   return `${path}${query ? "?" + query : ""}${hash ? "#" + hash : ""}`;

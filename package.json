@@ -402,7 +402,7 @@
     "embedding-sdk:dev:webpack": "SKIP_DTS=true yarn build-embedding-sdk:watch",
     "embedding-sdk:dev:fixup": "yarn embedding-sdk:fixup-types-imports --watch",
     "eslint-fix": "yarn lint-eslint --fix",
-    "generate-cypress-html-report": "mochawesome-merge cypress/reports/mochareports/*.json > cypress/reports/cypress-test-report.json && marge cypress/reports/cypress-test-report.json -o cypress/reports/mochareports --inline",
+    "generate-cypress-html-report": "mochawesome-merge cypress/reports/mochareports/*.json > cypress/reports/cypress-test-report.json && marge cypress/reports/cypress-test-report.json -o cypress/reports --inline",
     "lint": "yarn lint-eslint && yarn lint-prettier && yarn lint-docs-links && yarn lint-yaml && yarn type-check",
     "lint-docs-links": "yarn && ./bin/verify-doc-links",
     "lint-eslint": "yarn build:cljs && yarn lint-eslint-pure",
