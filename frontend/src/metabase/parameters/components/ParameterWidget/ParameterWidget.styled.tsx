@@ -1,8 +1,10 @@
 import styled from "@emotion/styled";
+import cx from "classnames";
+import type { ComponentPropsWithoutRef } from "react";
 
 import { FieldSet } from "metabase/components/FieldSet";
+import TransitionS from "metabase/css/core/transitions.module.css";
 import { color } from "metabase/lib/colors";
-import { themeChangeTransitionStyles } from "metabase/styled-components/theme/styles";
 import { Icon } from "metabase/ui";
 
 interface ParameterFieldSetProps {
@@ -10,7 +12,20 @@ interface ParameterFieldSetProps {
   isFullscreen: boolean | undefined;
 }
 
-export const ParameterFieldSet = styled(FieldSet)<ParameterFieldSetProps>`
+export const ParameterFieldSet = styled(
+  ({
+    isFullscreen,
+    className,
+    ...props
+  }: ComponentPropsWithoutRef<typeof FieldSet> & ParameterFieldSetProps) => (
+    <FieldSet
+      className={cx(className, {
+        [TransitionS.transitionThemeChange]: isFullscreen,
+      })}
+      {...props}
+    />
+  ),
+)`
   background: var(--mb-color-background);
   display: flex;
   align-items: center;
@@ -20,8 +35,6 @@ export const ParameterFieldSet = styled(FieldSet)<ParameterFieldSetProps>`
   margin: 0.5em 0;
   padding: 0.25em 1em;
   width: 100%;
-
-  ${({ isFullscreen }) => isFullscreen && themeChangeTransitionStyles}
 
   legend {
     text-transform: none;

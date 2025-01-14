@@ -5,12 +5,12 @@ import type { ComponentPropsWithoutRef } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
+import TransitionS from "metabase/css/core/transitions.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { isEmbeddingSdk } from "metabase/env";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
-import { themeChangeTransitionStyles } from "metabase/styled-components/theme/styles";
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
 export const DashboardLoadingAndErrorWrapper = styled(
@@ -100,12 +100,25 @@ export function getDashboardBodyBgColor(isNightMode: boolean) {
   return isNightMode ? "var(--mb-color-bg-black)" : "var(--mb-color-bg-light)";
 }
 
-export const ParametersWidgetContainer = styled(FullWidthContainer)<{
-  isSticky: boolean;
-  hasScroll: boolean;
-  isNightMode: boolean;
-  isFullscreen: boolean;
-}>`
+export const ParametersWidgetContainer = styled(
+  ({
+    isFullscreen,
+    className,
+    ...props
+  }: ComponentPropsWithoutRef<typeof FullWidthContainer> & {
+    isSticky: boolean;
+    hasScroll: boolean;
+    isNightMode: boolean;
+    isFullscreen: boolean;
+  }) => (
+    <FullWidthContainer
+      className={cx(className, {
+        [TransitionS.transitionThemeChange]: isFullscreen,
+      })}
+      {...props}
+    />
+  ),
+)`
   background-color: ${props => getDashboardBodyBgColor(props.isNightMode)};
   border-bottom: 1px solid
     ${props => getDashboardBodyBgColor(props.isNightMode)};
@@ -115,8 +128,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   z-index: 3;
   top: 0;
   left: 0;
-
-  ${({ isFullscreen }) => isFullscreen && themeChangeTransitionStyles}
 
   /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
   ${({ isNightMode, isSticky, hasScroll }) =>
@@ -129,7 +140,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
           : getDashboardBodyBgColor(isNightMode)};
     `}
 
-    ${({ isNightMode }) =>
+  ${({ isNightMode }) =>
     isNightMode &&
     css`
       --mb-color-text-secondary: color-mix(
