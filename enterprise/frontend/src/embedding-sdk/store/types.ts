@@ -11,8 +11,8 @@ import type {
   MetabaseFetchRequestTokenFn,
 } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
-import type { MetabasePluginsConfig } from "embedding-sdk/lib/plugins";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
+import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
