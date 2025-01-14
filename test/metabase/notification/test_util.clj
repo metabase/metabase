@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.core :as channel]
+   [metabase.email :as email]
    [metabase.events.notification :as events.notification]
    [metabase.integrations.slack :as slack]
    [metabase.models.notification :as models.notification]
@@ -45,6 +46,7 @@
   `(binding [notification/*default-options* {:notification/sync? true}]
      ~@body))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-captured-channel-send!
   [thunk]
   (with-send-notification-sync
@@ -202,6 +204,25 @@
                                          :rendered-info
                                          (fn [ri] (m/map-vals some? ri)))
                                  attachment-info))))
+
+(defn do-with-mock-inbox-email!
+  "Helper function that mocks email/send-email! to capture emails in a vector and returns them."
+  [thunk]
+  (let [emails (atom [])]
+    (with-redefs [email/send-email! (fn [_ email]
+                                      (swap! emails conj email))]
+      (thunk)
+      @emails)))
+
+(defmacro with-mock-inbox-email!
+  "Macro that mocks email/send-email! to capture emails in a vector and returns them.
+   Example:
+   (with-mock-inbox-email
+     (email/send-email! {:to \"test@test.com\"})
+     (email/send-email! {:to \"test2@test.com\"}))
+   ;; => [{:to \"test@test.com\"} {:to \"test2@test.com\"}]"
+  [& body]
+  `(do-with-mock-inbox-email! (fn [] ~@body)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Dummy Data                                              ;;

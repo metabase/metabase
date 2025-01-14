@@ -213,9 +213,10 @@
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
    notification-handlers k
-   #(t2/select-fn->fn :id identity :model/Channel
-                      :id [:in (map :channel_id notification-handlers)]
-                      :active true)
+   #(when-let [channel-ids (seq (keep :channel_id notification-handlers))]
+      (t2/select-fn->fn :id identity :model/Channel
+                        :id [:in channel-ids]
+                        :active true))
    :channel_id
    {:default nil}))
 
@@ -224,8 +225,9 @@
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
    notification-handlers k
-   #(t2/select-fn->fn :id identity :model/ChannelTemplate
-                      :id [:in (map :template_id notification-handlers)])
+   #(when-let [template-ids (seq (keep :template_id notification-handlers))]
+      (t2/select-fn->fn :id identity :model/ChannelTemplate
+                        :id [:in template-ids]))
    :template_id
    {:default nil}))
 
@@ -456,7 +458,7 @@
                          [:payload ::NotificationCard]]]
     [::mc/default       :any]]])
 
-(mu/defn hydrate-notification :- ::FullyHydratedNotification
+(mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
   [notification-or-notifications]
   (t2/hydrate notification-or-notifications
@@ -529,3 +531,12 @@
   "Update an existing notification with `new-notification`."
   [existing-notification new-notification]
   (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))
+
+(defn unsubscribe-user!
+  "Unsubscribe a user from a notification."
+  [notification-id user-id]
+  (t2/delete! :model/NotificationRecipient
+              :user_id user-id
+              :notification_handler_id [:in {:select [:id]
+                                             :from   [:notification_handler]
+                                             :where  [:= :notification_id notification-id]}]))
