@@ -200,7 +200,13 @@ export const BaseChartSettings = ({
                 // tab should stay at the same position even when number of tabs
                 // change. e.g. 2 tabs to 3 tabs -> layout should not change
                 flexBasis: "25%",
-                maxWidth: "50%", // show ... for long tab names
+
+                // last element in english is "conditional formatting" which is
+                // longer than 25% of the tab to avoid having ... displayed with
+                // the cropped text, we show it fully
+                "&:last-of-type": {
+                  maxWidth: "100%",
+                },
               },
               tabsList: {
                 flexWrap: "nowrap",
