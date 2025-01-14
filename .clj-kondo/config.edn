@@ -56,6 +56,7 @@
   ;;
   ;; globally-enabled custom linters
   ;;
+  :metabase/check-defmulti-arglists                    {:level :warning}
   :metabase/check-me-humanize                          {:level :warning}
   :metabase/defsetting-must-specify-export             {:level :warning}
   :metabase/mbql-query-first-arg                       {:level :warning}
@@ -866,6 +867,7 @@
   {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
+   clojure.core/defmulti                                                                                                     hooks.clojure.core/lint-defmulti
    clojure.core/ns                                                                                                           hooks.clojure.core/lint-ns
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is

@@ -250,7 +250,8 @@
   "Register a metabase model as a search-model.
   Once we're trying up the fulltext search project, we can inline a detailed explanation.
   For now, see its schema, and the existing definitions that use it."
-  (fn [search-model] search-model))
+  {:arglists '([search-model])}
+  identity)
 
 (defn specifications
   "A mapping from each search-model to its specification."

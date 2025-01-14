@@ -14,6 +14,7 @@
 
 (defmulti ^:private convert
   "convert values from the naively converted json to what we REALLY WANT"
+  {:arglists '([spec-conformed])}
   first)
 
 (defmethod convert :kw->int [[_ k]] (Integer/parseInt (name k)))
