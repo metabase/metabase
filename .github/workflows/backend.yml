@@ -67,6 +67,7 @@ jobs:
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 10
+    name: Clj-Kondo
     steps:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
@@ -84,6 +85,7 @@ jobs:
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 20
+    name: Eastwood
     steps:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
@@ -103,7 +105,7 @@ jobs:
       github.event.pull_request.draft == true &&
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
-    name: be-tests-java-11-ee-pre-check
+    name: Java 11 EE Pre-Check
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -181,7 +183,7 @@ jobs:
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
               :partition/index 1
-    name: "Backend Tests Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
+    name: "Tests Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -243,11 +245,11 @@ jobs:
       github.event.pull_request.draft == false &&
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
-    name: be-check-java-${{ matrix.java-version }}
     timeout-minutes: 10
     strategy:
       matrix:
         java-version: [11, 17, 21]
+    name: "Check Java ${{ matrix.java-version }}"
     steps:
       - uses: actions/checkout@v4
       - name: Prepare backend
@@ -263,6 +265,7 @@ jobs:
       !cancelled() && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 10
+    name: Cljfmt
     steps:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
