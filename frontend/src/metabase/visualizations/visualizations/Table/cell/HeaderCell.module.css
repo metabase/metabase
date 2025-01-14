@@ -1,0 +1,35 @@
+.root {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  cursor: default;
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  margin: 0 0.75em;
+  padding: 0.25rem 0.625em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background-color: var(--mb-color-background-hover);
+  transition: background-color 200ms ease-in-out;
+  color: var(--mb-color-brand);
+  border-radius: 4px;
+  overflow: auto;
+  cursor: pointer;
+}
+
+.content:hover {
+  background-color: var(--mb-base-color-brand-20);
+}
+
+.leftAligned {
+  justify-content: flex-start;
+}
+
+.rightAligned {
+  justify-content: flex-end;
+}
