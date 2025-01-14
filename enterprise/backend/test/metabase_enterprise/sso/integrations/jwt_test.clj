@@ -10,11 +10,6 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.config :as config]
    [metabase.http-client :as client]
-   [metabase.models.permissions-group :refer [PermissionsGroup]]
-   [metabase.models.permissions-group-membership
-    :refer
-    [PermissionsGroupMembership]]
-   [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
@@ -196,7 +191,7 @@
             (testing "login attributes"
               (is
                (= {"extra" "keypairs", "are" "also present"}
-                  (t2/select-one-fn :login_attributes User :email "rasta@metabase.com")))))))
+                  (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com")))))))
 
       (testing "with SAML and JWT configured, a GET request without JWT params should redirect to SAML IdP"
         (let [response (client/client-full-response :get 302 "/auth/sso"
@@ -218,7 +213,7 @@
                                                     :last_name  "Toucan"
                                                     :extra      "keypairs"
                                                     :are        "also present"
-                                                               ;; registerd claims should not be synced as login attributes
+                                                        ;; registerd claims should not be synced as login attributes
                                                     :iss        "issuer"
                                                     :exp        (+ (buddy-util/now) 3600)
                                                     :iat        (buddy-util/now)}
@@ -231,7 +226,7 @@
         (testing "login attributes"
           (is
            (= {"extra" "keypairs", "are" "also present"}
-              (t2/select-one-fn :login_attributes User :email "rasta@metabase.com"))))))))
+              (t2/select-one-fn :login_attributes :model/User :email "rasta@metabase.com"))))))))
 
 (deftest no-open-redirect-test
   (testing "Check that we prevent open redirects to untrusted sites"
@@ -275,7 +270,7 @@
   `(try
      ~@body
      (finally
-       (t2/delete! User :%lower.email (u/lower-case-en ~user-email)))))
+       (t2/delete! :model/User :%lower.email (u/lower-case-en ~user-email)))))
 
 (deftest create-new-account-test
   (testing "A new account will be created for a JWT user we haven't seen before"
@@ -283,7 +278,7 @@
       (with-users-with-email-deleted "newuser@metabase.com"
         (letfn
          [(new-user-exists? []
-            (boolean (seq (t2/select User :%lower.email "newuser@metabase.com"))))]
+            (boolean (seq (t2/select :model/User :%lower.email "newuser@metabase.com"))))]
           (is (false? (new-user-exists?)))
           (let [response (client/client-real-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -297,7 +292,7 @@
                                                         :for        "the new user"}
                                                        default-jwt-secret))]
             (is (saml-test/successful-login? response))
-            (let [new-user (t2/select-one User :email "newuser@metabase.com")]
+            (let [new-user (t2/select-one :model/User :email "newuser@metabase.com")]
               (testing "new user"
                 (is
                  (=
@@ -322,7 +317,7 @@
                  (=
                   {"more" "stuff"
                    "for"  "the new user"}
-                  (t2/select-one-fn :login_attributes User :email "newuser@metabase.com")))))))))))
+                  (t2/select-one-fn :login_attributes :model/User :email "newuser@metabase.com")))))))))))
 
 (deftest update-account-test
   (testing "A new account with 'Unknown' name will be created for a new JWT user without a first or last name."
@@ -330,7 +325,7 @@
       (with-users-with-email-deleted "newuser@metabase.com"
         (letfn
          [(new-user-exists? []
-            (boolean (seq (t2/select User :%lower.email "newuser@metabase.com"))))]
+            (boolean (seq (t2/select :model/User :%lower.email "newuser@metabase.com"))))]
           (is
            (= false
               (new-user-exists?)))
@@ -353,7 +348,7 @@
                   :date_joined  true
                   :common_name  "newuser@metabase.com"}]
                 (->>
-                 (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
+                 (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                  (map #(dissoc % :last_login)))))))
           (let [response (client/client-real-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -377,7 +372,7 @@
                   :date_joined  true
                   :common_name  "New User"}]
                 (->>
-                 (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
+                 (mt/boolean-ids-and-timestamps (t2/select :model/User :email "newuser@metabase.com"))
                  (map #(dissoc % :last_login))))))))))))
 
 (deftest group-mappings-test
@@ -399,13 +394,13 @@
 
 (defn- group-memberships [user-or-id]
   (when-let [group-ids (seq
-                        (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
-    (t2/select-fn-set :name PermissionsGroup :id [:in group-ids])))
+                        (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
+    (t2/select-fn-set :name :model/PermissionsGroup :id [:in group-ids])))
 
 (deftest login-sync-group-memberships-test
   (testing "login should sync group memberships if enabled"
     (with-jwt-default-setup!
-      (mt/with-temp [PermissionsGroup my-group {:name (str ::my-group)}]
+      (mt/with-temp [:model/PermissionsGroup my-group {:name (str ::my-group)}]
         (mt/with-temporary-setting-values
           [jwt-group-sync
            true
@@ -432,7 +427,7 @@
                 #{"All Users"
                   ":metabase-enterprise.sso.integrations.jwt-test/my-group"}
                 (group-memberships
-                 (u/the-id (t2/select-one-pk User :email "newuser@metabase.com"))))))))))))
+                 (u/the-id (t2/select-one-pk :model/User :email "newuser@metabase.com"))))))))))))
 
 (deftest create-new-jwt-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."

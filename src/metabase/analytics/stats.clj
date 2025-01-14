@@ -18,10 +18,6 @@
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
-   [metabase.models
-    :refer [Card Collection Dashboard DashboardCard Database Field
-            LegacyMetric PermissionsGroup Pulse PulseCard PulseChannel
-            QueryCache Segment Table User]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
@@ -133,7 +129,7 @@
    :slack_configured                     (slack/slack-configured?)
    :sso_configured                       (google/google-auth-enabled)
    :instance_started                     (snowplow/instance-creation)
-   :has_sample_data                      (t2/exists? Database, :is_sample true)
+   :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
    :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
    :enable_embedding_sdk                 (embed.settings/enable-embedding-sdk)
    :enable_embedding_interactive         (embed.settings/enable-embedding-interactive)
@@ -162,7 +158,7 @@
   "Get metrics based on user records.
   TODO: get activity in terms of created questions, pulses and dashboards"
   []
-  {:users (merge-count-maps (for [user (t2/select [User :is_active :is_superuser :last_login :sso_source]
+  {:users (merge-count-maps (for [user (t2/select [:model/User :is_active :is_superuser :last_login :sso_source]
                                                   :type :personal)]
                               {:total     1
                                :active    (:is_active    user)
@@ -174,7 +170,7 @@
   "Get metrics based on groups:
   TODO characterize by # w/ sql access, # of users, no self-serve data access"
   []
-  {:groups (t2/count PermissionsGroup)})
+  {:groups (t2/count :model/PermissionsGroup)})
 
 (defn- card-has-params? [card]
   (boolean (get-in card [:dataset_query :native :template-tags])))
@@ -183,7 +179,8 @@
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [cards (t2/select [:model/Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query :dashboard_id]
+  (let [cards (t2/select [:model/Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query
+                          :dashboard_id :entity_id :created_at :collection_id :name]
                          {:where (mi/exclude-internal-content-hsql :model/Card)})]
     {:questions (merge-count-maps (for [card cards]
                                     (let [native? (= (keyword (:query_type card)) :native)
@@ -213,8 +210,8 @@
   (let [dashboards (t2/select [:model/Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params]
                               {:where (mi/exclude-internal-content-hsql :model/Dashboard)})
         dashcards  (t2/query {:select :dc.*
-                              :from [[(t2/table-name DashboardCard) :dc]]
-                              :join [[(t2/table-name Dashboard) :d] [:= :d.id :dc.dashboard_id]]
+                              :from [[(t2/table-name :model/DashboardCard) :dc]]
+                              :join [[(t2/table-name :model/Dashboard) :d] [:= :d.id :dc.dashboard_id]]
                               :where (mi/exclude-internal-content-hsql :model/Dashboard :table-alias :d)})]
     {:dashboards         (count dashboards)
      :with_params        (count (filter (comp seq :parameters) dashboards))
@@ -285,31 +282,31 @@
   TODO: characterize by non-user account emails, # emails"
   []
   (let [pulse-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:= :pulse.alert_condition nil]}]
-    {:pulses               (t2/count Pulse :alert_condition nil)
+    {:pulses               (t2/count :model/Pulse :alert_condition nil)
      ;; "Table Cards" are Cards that include a Table you can download
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])
-     :pulse_types          (db-frequencies PulseChannel :channel_type  pulse-conditions)
-     :pulse_schedules      (db-frequencies PulseChannel :schedule_type pulse-conditions)
-     :num_pulses_per_user  (medium-histogram (vals (db-frequencies Pulse     :creator_id (dissoc pulse-conditions :left-join))))
-     :num_pulses_per_card  (medium-histogram (vals (db-frequencies PulseCard :card_id    pulse-conditions)))
-     :num_cards_per_pulses (medium-histogram (vals (db-frequencies PulseCard :pulse_id   pulse-conditions)))}))
+     :pulse_types          (db-frequencies :model/PulseChannel :channel_type  pulse-conditions)
+     :pulse_schedules      (db-frequencies :model/PulseChannel :schedule_type pulse-conditions)
+     :num_pulses_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id (dissoc pulse-conditions :left-join))))
+     :num_pulses_per_card  (medium-histogram (vals (db-frequencies :model/PulseCard :card_id    pulse-conditions)))
+     :num_cards_per_pulses (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   pulse-conditions)))}))
 
 (defn- alert-metrics []
-  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (mdb.query/qualify Pulse :alert_condition) nil]}]
-    {:alerts               (t2/count Pulse :alert_condition [:not= nil])
+  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (mdb.query/qualify :model/Pulse :alert_condition) nil]}]
+    {:alerts               (t2/count :model/Pulse :alert_condition [:not= nil])
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
-     :first_time_only      (t2/count Pulse :alert_condition [:not= nil], :alert_first_only true)
-     :above_goal           (t2/count Pulse :alert_condition [:not= nil], :alert_above_goal true)
-     :alert_types          (db-frequencies PulseChannel :channel_type alert-conditions)
-     :num_alerts_per_user  (medium-histogram (vals (db-frequencies Pulse     :creator_id (dissoc alert-conditions :left-join))))
-     :num_alerts_per_card  (medium-histogram (vals (db-frequencies PulseCard :card_id    alert-conditions)))
-     :num_cards_per_alerts (medium-histogram (vals (db-frequencies PulseCard :pulse_id   alert-conditions)))}))
+     :first_time_only      (t2/count :model/Pulse :alert_condition [:not= nil], :alert_first_only true)
+     :above_goal           (t2/count :model/Pulse :alert_condition [:not= nil], :alert_above_goal true)
+     :alert_types          (db-frequencies :model/PulseChannel :channel_type alert-conditions)
+     :num_alerts_per_user  (medium-histogram (vals (db-frequencies :model/Pulse     :creator_id (dissoc alert-conditions :left-join))))
+     :num_alerts_per_card  (medium-histogram (vals (db-frequencies :model/PulseCard :card_id    alert-conditions)))
+     :num_cards_per_alerts (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   alert-conditions)))}))
 
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (t2/select Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
-        cards       (t2/select [Card :collection_id] {:where (mi/exclude-internal-content-hsql :model/Card)})]
+  (let [collections (t2/select :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
+        cards       (t2/select [:model/Card :collection_id] {:where (mi/exclude-internal-content-hsql :model/Card)})]
     {:collections              (count collections)
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
@@ -346,9 +343,9 @@
   "Get metrics based on Fields."
   []
   (let [fields (t2/query {:select [:f.table_id]
-                          :from [[(t2/table-name Field) :f]]
-                          :join [[(t2/table-name Table) :t] [:= :t.id :f.table_id]
-                                 [(t2/table-name Database) :d] [:= :d.id :t.db_id]]
+                          :from [[(t2/table-name :model/Field) :f]]
+                          :join [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]
+                                 [(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
                           :where (mi/exclude-internal-content-hsql :model/Database :table-alias :d)})]
     {:fields        (count fields)
      :num_per_table (medium-histogram fields :table_id)}))
@@ -356,12 +353,12 @@
 (defn- segment-metrics
   "Get metrics based on Segments."
   []
-  {:segments (t2/count Segment)})
+  {:segments (t2/count :model/Segment)})
 
 (defn- metric-metrics
   "Get metrics based on Metrics."
   []
-  {:metrics (t2/count LegacyMetric)})
+  {:metrics (t2/count :model/LegacyMetric)})
 
 ;;; Execution Metrics
 
@@ -449,7 +446,7 @@
 (defn- cache-metrics
   "Metrics based on use of the QueryCache."
   []
-  (let [{:keys [length count]} (t2/select-one [QueryCache [[:avg [:length :results]] :length] [:%count.* :count]])]
+  (let [{:keys [length count]} (t2/select-one [:model/QueryCache [[:avg [:length :results]] :length] [:%count.* :count]])]
     {:average_entry_size (int (or length 0))
      :num_queries_cached (bin-small-number count)
      ;; this value gets used in the snowplow ping 'metrics' section.
@@ -799,7 +796,7 @@
     :enabled   (public-settings/ldap-enabled?)}
    {:name      :sample-data
     :available true
-    :enabled   (t2/exists? Database, :is_sample true)}
+    :enabled   (t2/exists? :model/Database, :is_sample true)}
    {:name      :interactive-embedding
     :available (premium-features/hide-embed-branding?)
     :enabled   (and

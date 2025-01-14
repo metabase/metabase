@@ -246,7 +246,6 @@
   discard-setting-changes
   doall-recursive
   file->bytes
-  is-uuid-string?
   latest-audit-log-entry
   let-url
   obj->json->obj
@@ -298,6 +297,7 @@
  [tu.public-setings
   with-premium-features
   with-additional-premium-features
+  when-ee-evailable
   assert-has-premium-feature-error]
 
  [u.random

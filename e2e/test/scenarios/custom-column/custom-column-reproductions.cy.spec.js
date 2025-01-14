@@ -61,7 +61,7 @@ describe("issue 13289", () => {
     cy.button("Done").click();
   });
 
-  it("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289) (metabase#13289)", () => {
+  it("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
     H.summarize({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
@@ -288,7 +288,7 @@ describe("issue 18747", () => {
   function addValueToParameterFilter() {
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByRole("searchbox").type("14");
+      H.fieldValuesInput().type("14");
       cy.button("Add filter").click();
     });
   }

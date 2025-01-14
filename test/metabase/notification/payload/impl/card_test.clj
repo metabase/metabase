@@ -13,10 +13,10 @@
    [toucan2.core :as t2]))
 
 (use-fixtures
- :each
- (fn [thunk]
-   (binding [notification/*default-options* {:notification/sync? true}]
-     (thunk))))
+  :each
+  (fn [thunk]
+    (binding [notification/*default-options* {:notification/sync? true}]
+      (thunk))))
 
 (defn- construct-email
   [& [data]]
@@ -95,7 +95,6 @@
                                   :sent_at            (mt/malli=? :any)}}
                           req)))}))))))))
 
-
 (deftest basic-line-graph-test
   (testing "card notification of a simple line graph"
     (notification.tu/with-card-notification
@@ -111,7 +110,6 @@
           (is (= (construct-email
                   {:message [{notification.tu/default-card-name true
                               "Manage your subscriptions"       true}
-
                              ;; static viz
                              notification.tu/png-attachment
                              ;; icon

@@ -310,7 +310,7 @@ describe("scenarios > visualizations > pie chart", () => {
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
-        cy.icon("close").click();
+        cy.icon("close").click({ force: true });
       });
 
     ensurePieChartRendered(

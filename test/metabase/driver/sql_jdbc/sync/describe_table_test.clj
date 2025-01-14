@@ -16,7 +16,6 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
-   [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -173,7 +172,7 @@
                        :database-required
                        :database-is-auto-increment
                        (comp boolean :pk?))
-                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
+                 (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))))))
     (mt/test-drivers (mt/normal-drivers-without-feature :actions)
       (is (=?
            [[0 (driver/database-supports? driver/*driver* ::describe-pks (mt/db))]
@@ -185,7 +184,7 @@
            (sort-by
             :first
             (map (juxt :database-position (comp boolean :pk?))
-                 (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues))))))))))
+                 (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))))))))
 
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
@@ -199,7 +198,7 @@
                  {:name "latitude"    :base-type :type/Float}
                  {:name "name"        :base-type :type/Text}
                  {:name "id"          :base-type :type/Integer}}
-               (->> (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues)))
+               (->> (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))
                     (map (fn [{:keys [name base-type]}]
                            {:name      (u/lower-case-en name)
                             :base-type (if (or (isa? base-type :type/Integer)
@@ -215,7 +214,7 @@
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
-             (->> (describe-fields-for-table (mt/db) (t2/select-one Table :id (mt/id :venues)))
+             (->> (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))
                   (filter :semantic-type)
                   (map (juxt (comp u/lower-case-en :name) :semantic-type))))))))
 
@@ -268,7 +267,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (when-not (mysql/mariadb? (mt/db))
         (mt/dataset json
-          (let [table (t2/select-one Table :id (mt/id :json))]
+          (let [table (t2/select-one :model/Table :id (mt/id :json))]
             (sql-jdbc.execute/do-with-connection-with-options
              driver/*driver*
              (mt/db)
@@ -536,7 +535,7 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                   driver/*driver*
                   (mt/db)
-                  (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
+                  (t2/select-one :model/Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
 (mt/defdataset json-int-turn-string
   "Used for testing mysql json value unwrapping"
@@ -589,7 +588,7 @@
                      (into [] (sql-jdbc.sync/describe-nested-field-columns
                                driver/*driver*
                                (mt/db)
-                               (t2/select-one Table :db_id (mt/id) :name "json_with_pk")))))
+                               (t2/select-one :model/Table :db_id (mt/id) :name "json_with_pk")))))
               (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
                 (is (= [{:name              "json_col → int_turn_string"
                          :database-type     "decimal"
@@ -601,7 +600,7 @@
                        (into [] (sql-jdbc.sync/describe-nested-field-columns
                                  driver/*driver*
                                  (mt/db)
-                                 (t2/select-one Table :db_id (mt/id) :name "json_without_pk")))))))))))))
+                                 (t2/select-one :model/Table :db_id (mt/id) :name "json_without_pk")))))))))))))
 
 (defn- describe-table-indexes
   [table]

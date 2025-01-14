@@ -446,13 +446,15 @@ describe("scenarios > visualizations > waterfall", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Show total").next().click();
+      cy.get('[data-field-title="Show total"]').within(() => {
+        cy.findByRole("switch").click({ force: true });
+      });
 
       H.echartsContainer().get("text").contains("Total").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Show total").next().click();
+      cy.get('[data-field-title="Show total"]').within(() => {
+        cy.findByRole("switch").click({ force: true });
+      });
       H.echartsContainer().get("text").contains("Total").should("exist");
     });
 
@@ -462,8 +464,9 @@ describe("scenarios > visualizations > waterfall", () => {
 
       H.echartsContainer().get("text").contains("(4.56)").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Show values on data points").next().click();
+      cy.get('[data-field-title="Show values on data points"]')
+        .findByRole("switch")
+        .click({ force: true });
       H.echartsContainer().get("text").contains("(4.56)").should("be.visible");
     });
   });

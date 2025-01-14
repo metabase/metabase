@@ -79,12 +79,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("City");
 
-      searchMultiAutocompleteFilter();
+      searchFieldValuesFilter();
 
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesInput().blur();
         });
 
       H.popover().button("Add filter").click();
@@ -151,12 +151,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("City");
 
-      searchMultiAutocompleteFilter();
+      searchFieldValuesFilter();
 
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesInput().blur();
         });
       H.popover().button("Add filter").click();
 
@@ -197,12 +197,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("City");
 
-      searchMultiAutocompleteFilter();
+      searchFieldValuesFilter();
 
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesInput().blur();
         });
 
       H.popover().button("Add filter").click();
@@ -242,12 +242,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       H.filterWidget().should("have.length", 1).and("contain", "City").click();
 
-      searchMultiAutocompleteFilter();
+      searchFieldValuesFilter();
 
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesInput().blur();
         });
       H.popover().button("Add filter").click();
 
@@ -280,12 +280,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       H.filterWidget().should("have.length", 1).and("contain", "City").click();
 
-      searchMultiAutocompleteFilter();
+      searchFieldValuesFilter();
 
       H.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.multiAutocompleteInput().blur();
+          H.fieldValuesInput().blur();
         });
       H.popover().button("Add filter").click();
 
@@ -400,7 +400,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.findByText("2 selections").click();
 
         // Remove one of the previously set filter values
-        H.popover().within(() => H.removeMultiAutocompleteValue(1));
+        H.popover().within(() => H.removeFieldValuesValue(1));
 
         cy.button("Update filter").click();
 
@@ -496,12 +496,12 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
   H.echartsContainer().get("text").contains(yLabel);
 }
 
-function searchMultiAutocompleteFilter() {
+function searchFieldValuesFilter() {
   cy.findByTestId("parameter-value-dropdown").within(() => {
-    H.multiAutocompleteInput().type("An");
+    H.fieldValuesInput().type("An");
   });
 
-  cy.findByTestId("select-dropdown").within(() => {
+  cy.findByTestId("field-values-widget").within(() => {
     cy.findByText("Kiana");
     cy.findByText("Anacoco").should("not.exist");
     cy.findByText("Anchorage").click();

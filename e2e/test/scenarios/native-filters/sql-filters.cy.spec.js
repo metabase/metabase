@@ -185,7 +185,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         .click();
       H.popover().within(() => {
         cy.findByText("15").click();
-        cy.findByText("Update filter").click();
+        cy.findByText("Add filter").click();
       });
 
       SQLFilter.runQuery();

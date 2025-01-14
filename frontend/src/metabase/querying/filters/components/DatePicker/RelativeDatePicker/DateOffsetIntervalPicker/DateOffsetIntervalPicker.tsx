@@ -35,7 +35,7 @@ import {
 interface DateOffsetIntervalPickerProps {
   value: DateOffsetIntervalValue;
   availableUnits: DatePickerUnit[];
-  isNew: boolean;
+  submitButtonLabel: string;
   onChange: (value: DateIntervalValue) => void;
   onSubmit: () => void;
 }
@@ -43,7 +43,7 @@ interface DateOffsetIntervalPickerProps {
 export function DateOffsetIntervalPicker({
   value,
   availableUnits,
-  isNew,
+  submitButtonLabel,
   onChange,
   onSubmit,
 }: DateOffsetIntervalPickerProps) {
@@ -134,7 +134,7 @@ export function DateOffsetIntervalPicker({
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
         <Button variant="filled" type="submit">
-          {isNew ? t`Add filter` : t`Update filter`}
+          {submitButtonLabel}
         </Button>
       </Group>
     </form>

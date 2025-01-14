@@ -14,7 +14,7 @@ import {
   ChartSettingFieldPickerRoot,
   GrabberHandle,
 } from "./ChartSettingFieldPicker.styled";
-import ChartSettingSelect from "./ChartSettingSelect";
+import { ChartSettingSelect } from "./ChartSettingSelect";
 
 export const ChartSettingFieldPicker = ({
   value,
@@ -87,7 +87,6 @@ export const ChartSettingFieldPicker = ({
       align="center"
     >
       <ChartSettingSelect
-        data-testid="chartsettings-field-picker-select"
         pl="sm"
         pr="xs"
         w="100%"

@@ -12,10 +12,12 @@
    [metabase.lib.core :as lib]
    [metabase.models.field-usage :as field-usage]
    [metabase.models.query :as query]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.grouper :as grouper]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -35,6 +37,17 @@
 
 (def ^:private field-usage-interval-seconds 20)
 
+(defsetting enable-field-usage-analysis
+  (deferred-tru
+   "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the
+    application database.
+
+    Turn off by default since we haven't had an user-facing feature that uses this data yet.")
+  :type    :boolean
+  :export? false
+  :audit   :never
+  :default false)
+
 (defonce ^:private
   field-usages-queue
   (delay (grouper/start!
@@ -45,8 +58,8 @@
                                                (try
                                                  (map #(assoc % :query_execution_id query_execution_id) (field-usage/pmbql->field-usages pmbql))
                                                  ;; one query fail shouldn't fail the whole batch
-                                                 (catch Exception e
-                                                   (log/error e "Error getting field usages from pmbql" pmbql)
+                                                 (catch Throwable e
+                                                   (log/warn e "Error getting field usages from pmbql" pmbql)
                                                    [])))
                                              inputs))
               (catch Throwable e
@@ -67,7 +80,7 @@
   (if-not context
     (log/warn "Cannot save QueryExecution, missing :context")
     (let [qe-id (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))]
-      (when pmbql
+      (when (and (enable-field-usage-analysis) pmbql)
         (grouper/submit! @field-usages-queue {:query_execution_id qe-id
                                               :pmbql              pmbql})))))
 

@@ -144,7 +144,7 @@ describe("scenarios > visualizations > bar chart", () => {
         .should("contain.text", "Doohickey");
       cy.findAllByTestId("legend-item").eq(3).should("contain.text", "Widget");
 
-      H.getDraggableElements().eq(1).icon("close").click(); // Hide Gizmo
+      H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
 
       cy.findByTestId("query-visualization-root")
         .findByText("Gizmo")
@@ -176,7 +176,7 @@ describe("scenarios > visualizations > bar chart", () => {
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
       H.moveDnDKitElement(H.getDraggableElements().first(), { vertical: 100 });
 
-      H.getDraggableElements().eq(1).icon("close").click(); // Hide Gizmo
+      H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
 
       H.queryBuilderHeader().button("Filter").click();
       H.modal().within(() => {
@@ -915,7 +915,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
     // Test "graph.other_category_aggregation_fn" for native queries
     H.openNotebook();
-    H.queryBuilderHeader().button("View the SQL").click();
+    H.queryBuilderHeader().button("View SQL").click();
     cy.findByTestId("native-query-preview-sidebar")
       .button("Convert this question to SQL")
       .click();
