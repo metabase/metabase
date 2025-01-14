@@ -36,6 +36,7 @@ import {
   isImageURL,
   isMetric,
   isNumber,
+  isString,
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -45,13 +46,14 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 import { TableSimple } from "../components/TableSimple";
 import type {
   ColumnSettingDefinition,
   ComputedVisualizationSettings,
   VisualizationProps,
 } from "../types";
+
+import { Table as TableInteractive } from "./Table";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
@@ -64,7 +66,7 @@ interface TableState {
 
 class Table extends Component<TableProps, TableState> {
   static uiName = t`Table`;
-  static identifier = "table";
+  static identifier = "table-old";
   static iconName = "table2";
   static canSavePng = false;
 
@@ -214,6 +216,14 @@ class Table extends Component<TableProps, TableState> {
     if (isNumber(column)) {
       settings["show_mini_bar"] = {
         title: t`Show a mini bar chart`,
+        widget: "toggle",
+        inline: true,
+      };
+    }
+
+    if (isString(column)) {
+      settings["text-wrapping"] = {
+        title: t`Wrap text`,
         widget: "toggle",
         inline: true,
       };
