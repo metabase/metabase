@@ -158,7 +158,7 @@
                      :uploaded
                      value-map
 
-                       ;; fallback
+                     ;; fallback
                      (cond
                        has-value? value-map
                        has-path? path-map))]
