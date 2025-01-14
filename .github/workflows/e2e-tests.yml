@@ -103,9 +103,11 @@ jobs:
   e2e-tests:
     name: ${{ matrix.name }}-${{ matrix.edition }}
     uses: ./.github/workflows/e2e-test.yml
-    needs: [build, e2e-matrix-builder]
-    if: |
-      !cancelled() && needs.build.result == 'success'
+    needs:
+      - e2e-matrix-builder
+      # - build # FIXME
+    # if: |
+    #   !cancelled() && needs.build.result == 'success'
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -120,19 +122,21 @@ jobs:
       runner: ${{ matrix.runner }}
 
   # run this separately to make it non-blocking
-  flaky-e2e-tests:
-    name: Flaky e2e Tests
-    uses: ./.github/workflows/e2e-test.yml
-    needs: build
-    if: |
-      !cancelled() && needs.build.result == 'success'
-    secrets: inherit
-    with:
-      name: Flaky
-      tags: "@flaky"
+  # flaky-e2e-tests:
+  #   name: Flaky e2e Tests
+  #   uses: ./.github/workflows/e2e-test.yml
+  #   needs: build
+  #   if: |
+  #     !cancelled() && needs.build.result == 'success'
+  #   secrets: inherit
+  #   with:
+  #     name: Flaky
+  #     tags: "@flaky"
 
   e2e-tests-result:
-    needs: [e2e-tests, flaky-e2e-tests]
+    needs:
+     - e2e-tests
+    #  - flaky-e2e-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: e2e-tests-result

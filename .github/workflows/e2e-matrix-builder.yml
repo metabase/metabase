@@ -51,7 +51,6 @@ jobs:
             const inputChunks = Number(process.env.chunks);
             const regularChunks = inputChunks - specialTests.length;
 
-            console.log({ regularChunks });
 
             const regularTests = new Array(regularChunks).fill(1)
               .map((files, index) => ({
@@ -66,7 +65,9 @@ jobs:
               ...options,
             }));
 
-            console.log("matrix config", config);
 
-            core.setOutput("regularChunks", JSON.stringify({ include: regularChunks }));
+            core.setOutput("regularChunks", JSON.stringify(regularChunks));
             core.setOutput("config", JSON.stringify({ include: config }));
+
+            console.log({ regularChunks });
+            console.log({"matrix config", config});

@@ -99,7 +99,7 @@ jobs:
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
         if: ${{ !inputs.specs }}
         env:
-          SPLIT: ${{ inputs.split }}
+          SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
           SPLIT_FILE: "./e2e/support/timings.json"
         shell: bash
