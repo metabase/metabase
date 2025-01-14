@@ -207,7 +207,7 @@ jobs:
       - name: Run ${{ matrix.job.name }}
         id: run-java-tests
         run: >-
-          clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+          clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
           :exclude-tags [:mb/driver-tests]
           ${{ matrix.job.test-args }}
 
