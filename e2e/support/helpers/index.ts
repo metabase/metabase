@@ -29,6 +29,7 @@ export * from "./e2e-relative-date-picker-helpers";
 export * from "./e2e-request-helpers";
 export * from "./e2e-search-helpers";
 export * from "./e2e-setup-helpers";
+export * from "./e2e-sharing-helpers";
 export * from "./e2e-slack-helpers";
 export * from "./e2e-snowplow-helpers";
 export * from "./e2e-table-metadata-helpers";

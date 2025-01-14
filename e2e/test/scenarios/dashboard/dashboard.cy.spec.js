@@ -1053,7 +1053,7 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
     assertScrollBarExists();
 
-    H.openDashboardMenu("Embed");
+    H.openSharingMenu("Embed");
 
     H.modal().within(() => {
       cy.icon("close").click();

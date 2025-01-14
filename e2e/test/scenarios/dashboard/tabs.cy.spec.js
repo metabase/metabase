@@ -570,11 +570,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.spy().as("secondTabQuerySpy"),
     ).as("secondTabQuery");
 
-    H.openStaticEmbeddingModal({
-      context: "dashboard",
-      activeTab: "parameters",
-      acceptTerms: true,
-    });
+    H.openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: true });
 
     // publish the embedded dashboard so that we can directly navigate to its url
     H.publishChanges("dashboard", () => {});

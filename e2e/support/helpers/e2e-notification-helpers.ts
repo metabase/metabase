@@ -25,18 +25,3 @@ export const setupNotificationChannel = (
     ...opts,
   });
 };
-
-export const notificationsMenuButton = () =>
-  cy.findByTestId("notifications-menu-button");
-export const notificationsMenu = () => cy.findByTestId("notifications-menu");
-
-export const openNotificationsMenu = (menuItemText?: string) => {
-  notificationsMenuButton().click();
-  if (menuItemText) {
-    notificationsMenu().findByText(menuItemText).click();
-  }
-};
-
-export const toggleAlertChannel = (channel: string) => {
-  cy.findByText(channel).parent().find("input").click({ force: true });
-};

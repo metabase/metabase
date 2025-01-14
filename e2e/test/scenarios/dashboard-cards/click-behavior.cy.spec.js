@@ -1949,7 +1949,6 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
 
       H.openStaticEmbeddingModal({
-        context: "dashboard",
         activeTab: "parameters",
         acceptTerms: false,
       });

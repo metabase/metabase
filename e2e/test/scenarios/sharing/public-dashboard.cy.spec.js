@@ -141,7 +141,7 @@ describe("scenarios > public > dashboard", () => {
 
     cy.signInAsNormalUser().then(() => {
       H.visitDashboard("@dashboardId");
-      H.openDashboardMenu("Public link");
+      H.openSharingMenu("Public link");
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");

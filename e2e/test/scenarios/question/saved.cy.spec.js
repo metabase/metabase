@@ -461,18 +461,18 @@ describe(
 
     it("should allow you to enable a webhook alert", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByTestId("notifications-menu-button").click();
-      H.popover().findByText("Create subscriptions").click();
+      cy.findByTestId("sharing-menu-button").click();
+      H.popover().findByText("Create alert").click();
 
       H.modal()
         .first()
         .within(() => {
           H.toggleAlertChannel("Email");
           H.toggleAlertChannel(secondWebhookName);
-          cy.button("Done").should("not.be.disabled").click();
+          cy.button("Done").click();
         });
-      cy.findByTestId("notifications-menu-button").click();
-      H.popover().findByText("Edit subscriptions").click();
+      cy.findByTestId("sharing-menu-button").click();
+      H.popover().findByText("Edit alerts").click();
       H.modal().within(() => {
         cy.findByText("You set up an alert").should("exist");
         cy.findByText("Edit").click();
@@ -490,8 +490,8 @@ describe(
 
     it("should allow you to test a webhook", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByTestId("notifications-menu-button").click();
-      H.popover().findByText("Create subscriptions").click();
+      cy.findByTestId("sharing-menu-button").click();
+      H.popover().findByText("Create alert").click();
 
       H.modal()
         .first()

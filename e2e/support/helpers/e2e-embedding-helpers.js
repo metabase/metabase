@@ -192,23 +192,17 @@ export function getEmbedModalSharingPane() {
 /**
  * Open Static Embedding setup modal
  * @param {object} params
- * @param {("dashboard"|"question")} params.context - context to look for actions menu
  * @param {("overview"|"parameters"|"lookAndFeel")} [params.activeTab] - modal tab to open
  * @param {("code"|"preview")} [params.previewMode] - preview mode type to activate
  * @param {boolean} [params.acceptTerms] - whether we need to go through the legalese step
  */
 export function openStaticEmbeddingModal({
-  context,
   activeTab,
   previewMode,
   acceptTerms = true,
   confirmSave,
 } = {}) {
-  if (context === "dashboard") {
-    H.openDashboardMenu("Embed");
-  } else {
-    H.openQuestionActions("Embed");
-  }
+  H.openSharingMenu("Embed");
 
   if (confirmSave) {
     cy.findByRole("button", { name: "Save" }).click();
@@ -286,11 +280,7 @@ export function openNewPublicLinkDropdown(resourceType) {
     "sharingEnabled",
   );
 
-  if (resourceType === "dashboard") {
-    H.openDashboardMenu(/public link/i);
-  } else {
-    H.openQuestionActions(/public link/i);
-  }
+  H.openSharingMenu(/public link/i);
 
   cy.wait("@sharingEnabled").then(
     ({

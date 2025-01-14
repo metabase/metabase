@@ -19,7 +19,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 
     // Create alert as admin
     H.visitQuestion(ORDERS_QUESTION_ID);
-    createBasicAlert();
+    createBasicAlert({ firstAlert: true });
 
     // Create alert as admin that user can see
     H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
@@ -46,7 +46,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       // Change alert
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.openNotificationsMenu("Edit alerts");
+      H.openSharingMenu("Edit alerts");
 
       H.popover().findByText("Edit").click();
 
@@ -66,15 +66,15 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 
     it("should not let you see other people's alerts", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openNotificationsMenu();
+      H.openSharingMenu();
 
-      H.notificationsMenu().findByText("Edit alerts").should("not.exist");
-      H.notificationsMenu().findByText("Create alerts").should("be.visible");
+      H.sharingMenu().findByText("Edit alerts").should("not.exist");
+      H.sharingMenu().findByText("Create alert").should("be.visible");
     });
 
     it("should let you see other alerts where you are a recipient", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      H.openNotificationsMenu("Edit alerts");
+      H.openSharingMenu("Edit alerts");
 
       H.popover().findByText(
         `You're receiving ${H.getFullName(admin)}'s alerts`,
@@ -84,7 +84,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 
     it("should let you see your own alerts", () => {
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      H.openNotificationsMenu("Edit alerts");
+      H.openSharingMenu("Edit alerts");
 
       H.popover().findByText("You set up an alert");
     });
@@ -92,21 +92,25 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
     it("should let you unsubscribe from both your own and others' alerts", () => {
       // Unsubscribe from your own alert
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      H.openNotificationsMenu("Edit alerts");
+      H.openSharingMenu("Edit alerts");
       H.popover().findByText("Unsubscribe").click();
       H.notificationList().findByText("Okay, you're unsubscribed.");
 
       // Unsubscribe from others' alerts
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      H.openNotificationsMenu("Edit alerts");
+      H.openSharingMenu("Edit alerts");
       H.popover().findByText("Unsubscribe").click();
       H.notificationList().findByText("Okay, you're unsubscribed.");
     });
   });
 });
 
-function createBasicAlert({ includeNormal } = {}) {
-  H.openNotificationsMenu("Create subscriptions");
+function createBasicAlert({ firstAlert, includeNormal } = {}) {
+  H.openSharingMenu("Create alert");
+
+  if (firstAlert) {
+    H.modal().findByText("Set up an alert").click();
+  }
 
   if (includeNormal) {
     cy.findByText("Email alerts to:").parent().children().last().click();

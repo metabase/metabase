@@ -44,7 +44,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
       H.visitDashboard("@dashboardId");
 
       H.openStaticEmbeddingModal({
-        context: "dashboard",
         activeTab: "parameters",
         acceptTerms: true,
       });
@@ -130,7 +129,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
       H.visitDashboard("@dashboardId");
 
       H.openStaticEmbeddingModal({
-        context: "dashboard",
         activeTab: "parameters",
         acceptTerms: false,
       });
@@ -214,7 +212,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       // Check that parameter visibility is correct
       H.openStaticEmbeddingModal({
-        context: "dashboard",
         activeTab: "parameters",
         acceptTerms: true,
       });
@@ -248,7 +245,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       // Set an "editable" and "locked" parameters and leave the rest "disabled"
       H.openStaticEmbeddingModal({
-        context: "dashboard",
         activeTab: "parameters",
         acceptTerms: true,
       });
@@ -573,10 +569,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 
   it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
-    H.openStaticEmbeddingModal({
-      context: "dashboard",
-      activeTab: "parameters",
-    });
+    H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
     // ID param is disabled by default
     H.setEmbeddingParameter("Name", "Editable");
@@ -662,10 +655,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     });
 
     H.visitDashboard("@dashboardId");
-    H.openStaticEmbeddingModal({
-      context: "dashboard",
-      activeTab: "parameters",
-    });
+    H.openStaticEmbeddingModal({ activeTab: "parameters" });
     H.visitIframe();
 
     cy.log("should show card results by default");
@@ -732,7 +722,6 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
     ).as("previewEmbed");
 
     H.openStaticEmbeddingModal({
-      context: "dashboard",
       activeTab: "parameters",
       previewMode: "preview",
       // EE users don't have to accept terms
@@ -859,7 +848,6 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
     ).as("previewEmbed");
 
     H.openStaticEmbeddingModal({
-      context: "dashboard",
       activeTab: "parameters",
       previewMode: "preview",
       // EE users don't have to accept terms

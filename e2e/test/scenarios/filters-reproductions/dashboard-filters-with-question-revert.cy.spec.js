@@ -208,7 +208,7 @@ describe("issue 35954", () => {
         H.updateSetting("show-static-embed-terms", false);
 
         H.visitDashboard(id);
-        H.openDashboardMenu("Embed");
+        H.openSharingMenu("Embed");
 
         H.modal().findByText("Static embedding").click();
 

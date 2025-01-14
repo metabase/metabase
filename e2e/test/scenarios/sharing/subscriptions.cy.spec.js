@@ -19,10 +19,10 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     cy.findByLabelText("subscriptions").should("not.exist");
 
-    H.openDashboardMenu(/public link/i);
+    H.openSharingMenu(/public link/i);
     cy.findByTestId("public-link-popover-content").should("be.visible");
 
-    H.openDashboardMenu("Embed");
+    H.openSharingMenu("Embed");
     H.getEmbedModalSharingPane().within(() => {
       cy.findByText("public embedding").should("be.visible");
       cy.findByText("Static embedding").should("be.visible");
@@ -37,13 +37,12 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.button("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
-
+    H.openSharingMenu();
     // Dashboard subscriptions are not shown because
     // getting notifications with static text-only cards doesn't make a lot of sense
-    H.notificationsMenuButton().should("not.exist");
+    H.sharingMenu().findByText("subscriptions").should("not.exist");
 
-    H.openDashboardMenu();
-    H.popover().within(() => {
+    H.sharingMenu().within(() => {
       cy.findByText("Create a public link").should("be.visible");
       cy.findByText("Embed").should("be.visible");
     });
@@ -54,7 +53,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       openDashboardSubscriptions();
 
       // The sidebar starts open after the method there, so test that clicking the icon closes it
-      H.openNotificationsMenu("Subscriptions");
+      H.openSharingMenu("Subscriptions");
       H.sidebar().should("not.exist");
     });
   });
@@ -477,8 +476,8 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should disable subscriptions for non-admin users", () => {
       cy.signInAsNormalUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openNotificationsMenu();
-      H.notificationsMenu()
+      H.openSharingMenu();
+      H.sharingMenu()
         .findByText("Can't send subscriptions")
         .should("be.visible");
     });
@@ -710,7 +709,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 function openDashboardSubscriptions(dashboard_id = ORDERS_DASHBOARD_ID) {
   // Orders in a dashboard
   H.visitDashboard(dashboard_id);
-  H.openNotificationsMenu("Subscriptions");
+  H.openSharingMenu("Subscriptions");
 }
 
 function assignRecipient({

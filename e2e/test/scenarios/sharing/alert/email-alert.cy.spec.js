@@ -91,8 +91,8 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     cy.log(
       "ensure that when the alert is deleted, the delete modal is correct metabase#48402",
     );
-    H.openNotificationsMenu("Edit subscriptions");
-    H.modal().within(() => {
+    H.openSharingMenu("Edit alerts");
+    H.popover().within(() => {
       cy.findByText("You set up an alert").should("be.visible");
       cy.findByText("Edit").click();
     });
@@ -133,9 +133,9 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       .findByText("Your alert is all set up.")
       .should("be.visible");
 
-    H.openNotificationsMenu("Edit subscriptions");
+    H.openSharingMenu("Edit alerts");
 
-    H.modal().within(() => {
+    H.popover().within(() => {
       cy.findByText("You set up an alert").should("be.visible");
       cy.findByText("Edit").click();
     });
@@ -163,11 +163,11 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
 function openAlertForQuestion(id) {
   H.visitQuestion(id);
-  H.openNotificationsMenu("Create subscriptions");
+  H.openSharingMenu("Create alert");
 }
 
 function saveAlert() {
-  H.openNotificationsMenu();
+  H.openSharingMenu();
 
   H.modal().within(() => {
     cy.findByLabelText("Name").type(" alert");
@@ -175,6 +175,6 @@ function saveAlert() {
   });
   cy.wait("@saveCard");
 
-  H.openNotificationsMenu("Create subscriptions");
+  H.openSharingMenu("Create alert");
   H.modal().button("Done").click();
 }

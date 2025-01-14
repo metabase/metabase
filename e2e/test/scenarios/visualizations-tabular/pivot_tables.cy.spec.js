@@ -686,14 +686,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         it("should display pivot table in an embed URL", () => {
           cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {
-            cy.findByTestId("qb-header").button("Save").click();
+            H.openSharingMenu();
             H.modal().within(() => {
               cy.findByText("Save").click();
             });
           }
 
           H.openStaticEmbeddingModal({
-            context: test.case,
             activeTab: "parameters",
             confirmSave: test.confirmSave,
           });
