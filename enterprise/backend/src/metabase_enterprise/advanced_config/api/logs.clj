@@ -32,6 +32,7 @@
                                          (date-part :month month)]})]
     results))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/query_execution/:yyyy-mm"
   "Fetch rows for the month specified by `:yyyy-mm` from the query_execution logs table.
   Must be a superuser."

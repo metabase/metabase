@@ -1,7 +1,6 @@
 (ns metabase.lib.metadata.jvm-test
   (:require
    [clojure.test :refer :all]
-   [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
@@ -15,13 +14,13 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel fetch-field-test
   (let [field (t2/select-one :metadata/column (mt/id :categories :id))]
-    (is (not (me/humanize (mc/validate ::lib.schema.metadata/column field))))))
+    (is (not (me/humanize (mr/explain ::lib.schema.metadata/column field))))))
 
 (deftest ^:parallel fetch-database-test
   (is (=? {:lib/type :metadata/database, :features set?}
@@ -95,13 +94,14 @@
 
 (deftest ^:synchronized with-temp-source-question-metadata-test
   (binding [lib.card/*force-broken-card-refs* false]
-    (t2.with-temp/with-temp [:model/Card card {:dataset_query
-                                               (mt/mbql-query venues
-                                                 {:joins
-                                                  [{:source-table $$categories
-                                                    :condition    [:= $category_id &c.categories.id]
-                                                    :fields       :all
-                                                    :alias        "c"}]})}]
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (mt/with-temp [:model/Card card {:dataset_query
+                                     (mt/mbql-query venues
+                                       {:joins
+                                        [{:source-table $$categories
+                                          :condition    [:= $category_id &c.categories.id]
+                                          :fields       :all
+                                          :alias        "c"}]})}]
       (let [query      {:database (mt/id)
                         :type     :query
                         :query    {:source-card (u/the-id card)}}
@@ -182,10 +182,11 @@
              (mt/id :venues :id))))))
 
 (deftest ^:synchronized persisted-info-metadata-test
-  (t2.with-temp/with-temp [:model/Card          {card-id :id} {:dataset_query {:database (mt/id)
-                                                                               :type     :query
-                                                                               :query    {:source-table (mt/id :venues)}}}
-                           :model/PersistedInfo {}            {:card_id card-id, :database_id (mt/id)}]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (mt/with-temp [:model/Card          {card-id :id} {:dataset_query {:database (mt/id)
+                                                                     :type     :query
+                                                                     :query    {:source-table (mt/id :venues)}}}
+                 :model/PersistedInfo {}            {:card_id card-id, :database_id (mt/id)}]
     (is (=? {:lib/type           :metadata/card
              :id                 card-id
              :lib/persisted-info {:active     true

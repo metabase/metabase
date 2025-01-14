@@ -28,6 +28,7 @@
 
 ;; TODO: needs to make this work too
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
   [:as {{:keys [email hash pulse-id]} :body, :as request}]
@@ -46,6 +47,7 @@
       (events/publish-event! :event/subscription-unsubscribe {:object {:email email}})
       {:status :success :title (:name (models.pulse/retrieve-notification pulse-id :archived false))})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
   [:as {{:keys [email hash pulse-id]} :body, :as request}]

@@ -9,8 +9,7 @@
    [metabase.models.recent-views :as recent-views]
    [metabase.test :as mt]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (defn- clear-test-user-recent-views
   []
@@ -319,9 +318,9 @@
 
 (deftest user-recent-views-dedupe-test
   (testing "The `user-recent-views` table should dedupe views of the same model"
-    (t2.with-temp/with-temp [:model/Card      {model-id     :id} {:type "model"}
-                             :model/Card      {model-id-2   :id} {:type "model"}
-                             :model/Dashboard {dashboard-id :id} {}]
+    (mt/with-temp [:model/Card      {model-id     :id} {:type "model"}
+                   :model/Card      {model-id-2   :id} {:type "model"}
+                   :model/Dashboard {dashboard-id :id} {}]
       ;; insert 6
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id :view)
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id :view)
@@ -338,9 +337,9 @@
 
 (deftest most-recently-viewed-dashboard-id-test
   (testing "`most-recently-viewed-dashboard-id` returns the ID of the most recently viewed dashboard in the last 24 hours"
-    (t2.with-temp/with-temp [:model/Dashboard {dash-id :id} {}
-                             :model/Dashboard {dash-id-2 :id} {}
-                             :model/Dashboard {dash-id-3 :id} {}]
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Dashboard {dash-id-2 :id} {}
+                   :model/Dashboard {dash-id-3 :id} {}]
       (is (nil? (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)

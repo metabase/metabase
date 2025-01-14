@@ -6,15 +6,14 @@
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [next.jdbc :as next.jdbc]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (defn- updates-that-will-be-performed!
   ([new-metadata-from-sync metadata-in-application-db]
    ;; use alphabetical field_order by default because the default, database, will update the position
    (updates-that-will-be-performed! new-metadata-from-sync metadata-in-application-db {:field_order :alphabetical}))
   ([new-metadata-from-sync metadata-in-application-db table]
-   (t2.with-temp/with-temp [:model/Table table table]
+   (mt/with-temp [:model/Table table table]
      (let [update-operations (atom [])]
        (with-redefs [t2/update! (fn [model id updates]
                                   (swap! update-operations conj [(name model) id updates])

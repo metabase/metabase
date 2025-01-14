@@ -16,8 +16,8 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.user :as user]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.request.core :as request]
    [metabase.setup :as setup]
    [metabase.util :as u]
@@ -96,6 +96,7 @@
   ;; default to `true` the setting will set itself correctly whether a boolean or boolean string is specified
   (public-settings/anon-tracking-enabled! true))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
   returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
@@ -303,6 +304,7 @@
   ([checklist-info]
    (annotate (checklist-items checklist-info))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
@@ -311,6 +313,7 @@
 
 ;; User defaults endpoint
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/user_defaults"
   "Returns object containing default user details for initial setup, if configured,
    and if the provided token value matches the token in the configuration value."

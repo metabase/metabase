@@ -2,15 +2,15 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.models.interface :as mi]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -586,7 +586,7 @@
 
 (defn- assert-valid-permission
   [{:keys [perm_type perm_value] :as permission}]
-  (when-not (mc/validate PermissionType perm_type)
+  (when-not (mr/validate PermissionType perm_type)
     (throw (ex-info (str/join (mu/explain PermissionType perm_type)) permission)))
   (assert-value-matches-perm-type perm_type perm_value))
 

@@ -4,6 +4,7 @@ import type {
   CardQueryMetadata,
   CardQueryRequest,
   CollectionItem,
+  CreateCardFromCsvRequest,
   CreateCardRequest,
   DashboardId,
   Dataset,
@@ -89,6 +90,27 @@ export const cardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
+      }),
+      createCardFromCsv: builder.mutation<Card, CreateCardFromCsvRequest>({
+        query: ({ file, collection_id }) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("collection_id", String(collection_id));
+
+          return {
+            method: "POST",
+            url: "/api/card/from-csv",
+            body: { formData },
+            formData: true,
+            fetch: true,
+          };
+        },
+        invalidatesTags: (_, error) =>
+          invalidateTags(error, [
+            listTag("card"),
+            listTag("schema"),
+            listTag("table"),
+          ]),
       }),
       updateCard: builder.mutation<Card, UpdateCardRequest>({
         query: ({ id, delete_old_dashcards, ...body }) => ({

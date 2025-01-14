@@ -607,8 +607,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.createQuestion(questionDetails, { visitQuestion: true });
 
           cy.log("change display and assert the default settings");
-          cy.findByTestId("viz-type-button").click();
-          cy.findByTestId("chart-type-sidebar")
+          H.openVizTypeSidebar();
+          cy.findByTestId("chartsettings-sidebar")
             .findByTestId("Pivot Table-button")
             .click();
           cy.wait("@pivotDataset");
@@ -617,7 +617,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 3);
 
           cy.log("move a column from rows to columns");
-          cy.findByTestId("viz-settings-button").click();
+          H.openVizSettingsSidebar({ isSidebarOpen: true });
           H.dragField(2, 3);
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")
@@ -1346,7 +1346,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             columns: [tableColumn1Name, tableColumn2Name, "Count"],
           });
 
-          cy.findByTestId("viz-settings-button").click();
+          H.openVizSettingsSidebar();
           cy.findByTestId("chartsettings-sidebar")
             .button("Add or remove columns")
             .click();
@@ -1764,7 +1764,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             columns: [columnNameYear, columnNameMonth, "Count"],
           });
 
-          cy.findByTestId("viz-settings-button").click();
+          H.openVizSettingsSidebar();
           cy.findByTestId("chartsettings-sidebar")
             .button("Add or remove columns")
             .click();

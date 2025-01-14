@@ -1,3 +1,22 @@
+## [0.53.1-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.4-nightly...embedding-sdk-0.53.1-nightly) (2025-01-13)
+
+
+### Bug Fixes
+
+* **sdk:** add supports for xx-YY locales in embed/public-links and sdk ([#51002](https://github.com/metabase/metabase/issues/51002)) ([bda324e](https://github.com/metabase/metabase/commit/bda324e42b76e6b2b6b9e99e5175cc3466fe5ea9))
+* **sdk:** Control stacking without distinct z-indexes ([#49442](https://github.com/metabase/metabase/issues/49442)) ([93a703a](https://github.com/metabase/metabase/commit/93a703a9118418c4bc8b5d8b111875b8a9f2456a)), closes [#51256](https://github.com/metabase/metabase/issues/51256) [#45468](https://github.com/metabase/metabase/issues/45468) [#49466](https://github.com/metabase/metabase/issues/49466) [#50943](https://github.com/metabase/metabase/issues/50943) [#50971](https://github.com/metabase/metabase/issues/50971) [#45469](https://github.com/metabase/metabase/issues/45469) [#48256](https://github.com/metabase/metabase/issues/48256)
+* **sdk:** Ensure that styles within the custom expression editor still work ([#51878](https://github.com/metabase/metabase/issues/51878)) ([48f8769](https://github.com/metabase/metabase/commit/48f876956a171d8fc6e15e19c4d905265a1d2fb3))
+* **sdk:** migrate to custom redux context to allow using the sdk on host apps that use redux ([#51382](https://github.com/metabase/metabase/issues/51382)) ([ec2f229](https://github.com/metabase/metabase/commit/ec2f229fe18619106001af2b5c8b144dfe8696f2))
+* **sdk:** update define function names in Next.js compat ([#51071](https://github.com/metabase/metabase/issues/51071)) ([00a087b](https://github.com/metabase/metabase/commit/00a087bb52e8f3bdd7d56cf1fca7e7bf7133f6a5))
+
+
+### Features
+
+* **sdk:** Interactive Question Chart Settings Dropdown [#50976](https://github.com/metabase/metabase/issues/50976) ([08f0bf8](https://github.com/metabase/metabase/commit/08f0bf86aabcd3c3f6874aea3bda5cb408b7adaa))
+* **sdk:** make editable dashboard grid border color themeable ([#51060](https://github.com/metabase/metabase/issues/51060)) ([1a8e613](https://github.com/metabase/metabase/commit/1a8e6132b276383e8c2c92671ebfa88696358cb0))
+
+
+
 ## [0.52.4-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.3-nightly...embedding-sdk-0.52.4-nightly) (2024-12-16)
 
 

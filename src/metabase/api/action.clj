@@ -47,6 +47,7 @@
    [:parameters         {:optional true} [:maybe [:sequential map?]]]
    [:parameter_mappings {:optional true} [:maybe map?]]])
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
@@ -70,6 +71,7 @@
                                             (collection/visible-collection-filter-clause)]}))]
       (actions-for models))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
   []
@@ -77,6 +79,7 @@
   (validation/check-public-sharing-enabled)
   (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:action-id"
   "Fetch an Action."
   [action-id]
@@ -85,6 +88,7 @@
       (t2/hydrate :creator)
       api/read-check))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:action-id"
   "Delete an Action."
   [action-id]
@@ -97,6 +101,7 @@
   (t2/delete! :model/Action :id action-id)
   api/generic-204-no-content)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new action."
   [:as {{:keys [type name description model_id parameters parameter_mappings visualization_settings
@@ -141,6 +146,7 @@
       ;; so we return the most recently updated http action.
       (last (action/select-actions nil :type type)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update an Action."
   [id :as {action :body}]
@@ -171,6 +177,7 @@
                             :num_parameters (count parameters)})
     action))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/public_link"
   "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
   Action has already been shared, it will return the existing public link rather than creating a new one.) Public
@@ -187,6 +194,7 @@
                              {:public_uuid <>
                               :made_public_by_id api/*current-user-id*})))}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [id]
@@ -199,6 +207,7 @@
   (t2/update! :model/Action id {:public_uuid nil, :made_public_by_id nil})
   {:status 204, :body nil})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:action-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [action-id parameters]
@@ -209,6 +218,7 @@
       api/read-check
       (actions/fetch-values (json/decode parameters))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/execute"
   "Execute the Action.
 

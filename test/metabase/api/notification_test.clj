@@ -463,6 +463,42 @@
      (finally
        (perms/grant-application-permissions! (perms-group/all-users) :subscription))))
 
+(deftest create-card-notification-permissions-test
+  (mt/with-model-cleanup [:model/Notification]
+    (binding [collection/*allow-deleting-personal-collections* true]
+      (with-disabled-subscriptions-permissions
+        (mt/with-user-in-groups [group {:name "test notification perm"}
+                                 user  [group]]
+          (mt/with-temp
+            [:model/Collection {collection-id :id} {:personal_owner_id (:id user)}
+             :model/Card       {card-id :id}       {:collection_id collection-id}]
+            (let [create-notification! (fn [user-or-id expected-status]
+                                         (mt/user-http-request user-or-id :post expected-status "notification"
+                                                               {:payload_type "notification/card"
+                                                                :creator_id   (mt/user->id :rasta)
+                                                                :payload      {:card_id card-id}}))]
+              (mt/with-premium-features #{}
+                (testing "admin can create"
+                  (create-notification! :crowberto 200))
+
+                (testing "users who can view the card can create"
+                  (create-notification! user 200))
+
+                (testing "normal users can't create"
+                  (create-notification! :rasta 403))
+
+                (mt/when-ee-evailable
+                 (mt/with-premium-features #{:advanced-permissions}
+                   (testing "with advanced-permissions enabled"
+                     (testing "cannot create if they don't have subscriptions permissions enabled"
+                       (create-notification! user 403)
+                       (create-notification! :rasta 403))
+
+                     (testing "can create if they have subscriptions permissions enabled"
+                       (perms/grant-application-permissions! group :subscription)
+                       (create-notification! user 200)
+                       (create-notification! :rasta 403)))))))))))))
+
 (deftest update-card-notification-permissions-test
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-user-in-groups [group {:name "test notification perm"}

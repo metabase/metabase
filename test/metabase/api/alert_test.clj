@@ -14,8 +14,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :notifications))
 
@@ -114,7 +113,7 @@
   Cards that are. Alerts do not go in Collections; their perms are derived from their Cards.)"
   [grant-collection-perms-fn! alerts-or-ids f]
   (mt/with-non-admin-groups-no-root-collection-perms
-    (t2.with-temp/with-temp [:model/Collection collection]
+    (mt/with-temp [:model/Collection collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       ;; Go ahead and put all the Cards for all of the Alerts in the temp Collection
       (when (seq alerts-or-ids)
@@ -298,7 +297,7 @@
                (assoc-in [:card :collection_id] true)
                (update-in [:channels 0] merge {:schedule_hour 12, :schedule_type "daily", :recipients []}))
            (mt/with-non-admin-groups-no-root-collection-perms
-             (t2.with-temp/with-temp [:model/Collection collection]
+             (mt/with-temp [:model/Collection collection]
                (t2/update! :model/Card (u/the-id card) {:collection_id (u/the-id collection)})
                (with-alert-setup!
                  (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
@@ -625,10 +624,10 @@
 (deftest alert-event-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-non-admin-groups-no-root-collection-perms
-      (t2.with-temp/with-temp [:model/Collection collection {}
-                               :model/Card       card {:name          "My question"
-                                                       :display       "bar"
-                                                       :collection_id (u/the-id collection)}]
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card {:name          "My question"
+                                             :display       "bar"
+                                             :collection_id (u/the-id collection)}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-alert-setup!
           (let [alert-details {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}

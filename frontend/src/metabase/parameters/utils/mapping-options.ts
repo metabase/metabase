@@ -5,7 +5,7 @@ import { tag_names } from "cljs/metabase.models.params.shared";
 import { isActionDashCard } from "metabase/actions/utils";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
-import { getGroupName } from "metabase/querying/filters/utils";
+import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
