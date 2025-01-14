@@ -61,6 +61,8 @@ If you're hosting Metabase behind a firewall that blocks outgoing connections, y
 44.212.138.188
 ```
 
+Remember: you need to allow outbound stateful connections to port 443 on these 3 IP addresses as Metabase will make GET HTTP requests to these and parse the response. If you can't do this for security reasons, please [contact us](https://www.metabase.com/help/premium).
+
 ## Note about Zscaler deployments
 
 When Metabase is deployed inside infrastructure that uses Zscaler, you should do the following:
