@@ -17,7 +17,7 @@ import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { Group, Stack, Text } from "metabase/ui";
+import { Group, Stack, Text, Tooltip } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UploadsSettings } from "metabase-types/api/settings";
 import type { State } from "metabase-types/store";
@@ -290,6 +290,21 @@ const H2PersistenceWarning = () => (
       <Text>
         {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL or MySQL database.`}
       </Text>
+      <Tooltip
+        label={
+          <>
+            <Text>{t`By enabling uploads to the Sample Database, you agree that you will not upload or otherwise transmit any individually identifiable information, including without limitation Personal Data (as defined by the General Data Protection Regulation) or Personally Identifiable Information (as defined by the California Consumer Privacy Act and California Privacy Rights Act).`}</Text>
+            <br />
+            <br />
+            <Text>{t`Additionally, you acknowledge and agree that the ability to upload to the Sample Database is provided “as is” and without warranty of any kind, and Metabase disclaims all warranties, express or implied, and all liability in connection with the uploads to the Sample Database or the data stored within it.`}</Text>
+          </>
+        }
+        position="bottom"
+        multiline
+        maw="30rem"
+      >
+        <Text span underline weight={700}>{t`Additional terms apply.`}</Text>
+      </Tooltip>
     </Alert>
   </Stack>
 );
