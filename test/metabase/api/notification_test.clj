@@ -99,7 +99,7 @@
           (is (=? (assoc notification :id (mt/malli=? int?))
                   (mt/user-http-request :crowberto :post 200 "notification" notification))))))))
 
-(defn- do-with-send-messages-sync!
+(defn do-with-send-messages-sync!
   [f]
   (let [orig-send-email! @#'messages/send-email!]
     (with-redefs [messages/send-email! (fn [& args]

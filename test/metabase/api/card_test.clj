@@ -10,6 +10,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
    [metabase.api.card :as api.card]
+   [metabase.api.notification-test :as api.notification-test]
    [metabase.api.pivots :as api.pivots]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
@@ -26,6 +27,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.util :as perms.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
@@ -1749,39 +1751,31 @@
 ;;; |                                        Card updates that impact alerts                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- rasta-alert-not-working [body-map]
-  (mt/email-to :rasta {:subject "One of your alerts has stopped working"
-                       :body    body-map}))
-
-(defn- crowberto-alert-not-working [body-map]
-  (mt/email-to :crowberto {:subject "One of your alerts has stopped working"
-                           :body    body-map}))
-
 (deftest alert-deletion-test
   (doseq [{:keys [message card deleted? expected-email-re f]}
           [{:message           "Archiving a Card should trigger Alert deletion"
             :deleted?          true
             :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was archived by Rasta Toucan"
-            :f                 (fn [{:keys [card]}]
-                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
+            :f                 (fn [card]
+                                (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
            {:message           "Validate changing a display type triggers alert deletion"
             :card              {:display :table}
             :deleted?          true
             :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}
            {:message           "Changing the display type from line to table should force a delete"
             :card              {:display :line}
             :deleted?          true
             :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :table}))}
            {:message           "Removing the goal value will trigger the alert to be deleted"
             :card              {:display                :line
                                 :visualization_settings {:graph.goal_value 10}}
             :deleted?          true
             :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
            {:message           "Adding an additional breakout does not cause the alert to be removed if no goal is set"
             :card              {:display                :line
@@ -1792,9 +1786,8 @@
                                                          [[:field
                                                            (mt/id :checkins :date)
                                                            {:temporal-unit :hour}]])}
-            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
             :deleted?          false
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                        {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
                                                                                  [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
@@ -1810,73 +1803,59 @@
                                                            {:temporal-unit :hour}]])}
             :deleted?          true
             :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                        {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
                                                                                  [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
                                                                                                      [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
-    (testing message
-      (mt/test-helpers-set-global-values!
-        (mt/with-temp
-          [:model/Card           card  card
-           :model/Pulse                 pulse {:alert_condition  "rows"
-                                               :alert_first_only false
-                                               :creator_id       (mt/user->id :rasta)
-                                               :name             "Original Alert Name"}
-
-           :model/PulseCard             _     {:pulse_id (u/the-id pulse)
-                                               :card_id  (u/the-id card)
-                                               :position 0}
-           :model/PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-           :model/PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
-                                               :pulse_channel_id (u/the-id pc)}
-           :model/PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                               :pulse_channel_id (u/the-id pc)}]
-          (mt/with-temporary-setting-values [site-url "https://metabase.com"]
-            (with-cards-in-writeable-collection! card
-              (mt/with-fake-inbox
-                (when deleted?
-                  (u/with-timeout 5000
-                    (mt/with-expected-messages 2
-                      (f {:card card}))
-                    (is (= (merge (crowberto-alert-not-working {(str expected-email-re) true})
-                                  (rasta-alert-not-working     {(str expected-email-re) true}))
-                           (mt/regex-email-bodies expected-email-re))
-                        (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email-re)))))
-                (if deleted?
-                  (is (= nil (t2/select-one :model/Pulse :id (u/the-id pulse)))
-                      "Alert should have been deleted")
-                  (is (not= nil (t2/select-one :model/Pulse :id (u/the-id pulse)))
-                      "Alert should not have been deleted"))))))))))
+   (testing message
+     (api.notification-test/with-send-messages-sync!
+       (notification.tu/with-card-notification
+         [notification {:card     (merge {:name "YOLO"} card)
+                        :handlers [{:channel_type :channel/email
+                                    :recipients  [{:type    :notification-recipient/user
+                                                   :user_id (mt/user->id :crowberto)}
+                                                  {:type    :notification-recipient/user
+                                                   :user_id (mt/user->id :rasta)}
+                                                  {:type    :notification-recipient/raw-value
+                                                   :details {:value "ngoc@metabase.com"}}]}]}]
+         (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+           (when deleted?
+             (let [[email] (notification.tu/with-mock-inbox-email!
+                             (f (->> notification :payload :card_id (t2/select-one :model/Card))))]
+               (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
+                        :subject "One of your alerts has stopped working"
+                        :body    [{(str expected-email-re) true}]}
+                       (mt/summarize-multipart-single-email email expected-email-re)))))
+           (if deleted?
+             (is (= nil (t2/select-one :model/Notification :id (:id notification)))
+                 "Alert should have been deleted")
+             (is (not= nil (t2/select-one :model/Notification :id (:id notification)))
+                 "Alert should not have been deleted"))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
-  (is (= {:emails-1 {}
-          :pulse-1  true
-          :emails-2 {}
-          :pulse-2  true}
-         (mt/with-temp [:model/Card           card  {:display                :line
-                                                     :visualization_settings {:graph.goal_value 10}}
-                        :model/Pulse                 pulse {:alert_condition  "goal"
-                                                            :alert_first_only false
-                                                            :creator_id       (mt/user->id :rasta)
-                                                            :name             "Original Alert Name"}
-                        :model/PulseCard             _     {:pulse_id (u/the-id pulse)
-                                                            :card_id  (u/the-id card)
-                                                            :position 0}
-                        :model/PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-                        :model/PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                                            :pulse_channel_id (u/the-id pc)}]
-           (with-cards-in-writeable-collection! card
-             (mt/with-fake-inbox
-               (array-map
-                :emails-1 (do
-                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :area})
-                            (mt/regex-email-bodies #"the question was edited by Rasta Toucan"))
-                :pulse-1  (boolean (t2/select-one :model/Pulse :id (u/the-id pulse)))
-                :emails-2 (do
-                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :bar})
-                            (mt/regex-email-bodies #"the question was edited by Rasta Toucan"))
-                :pulse-2  (boolean (t2/select-one :model/Pulse :id (u/the-id pulse))))))))))
+  (doseq [{:keys [message display]}
+          [{:message "Changing display type from line to area should not delete alert"
+            :display :area}
+           {:message "Changing display type from line to bar should not delete alert"
+            :display :bar}]]
+    (testing message
+      (api.notification-test/with-send-messages-sync!
+        (notification.tu/with-card-notification
+          [notification {:card     {:name "Test Card"
+                                    :display :line
+                                    :visualization_settings {:graph.goal_value 10}}
+                         :handlers [{:channel_type :channel/email
+                                     :recipients   [{:type    :notification-recipient/user
+                                                     :user_id (mt/user->id :crowberto)}
+                                                    {:type    :notification-recipient/user
+                                                     :user_id (mt/user->id :rasta)}
+                                                    {:type    :notification-recipient/raw-value
+                                                     :details {:value "ngoc@metabase.com"}}]}]}]
+          (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+            (mt/user-http-request :rasta :put 200 (str "card/" (->> notification :payload :card_id)) {:display display})
+            (is (t2/exists? :model/Notification (:id notification))
+                "Alert should not have been deleted")))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          DELETING A CARD (DEPRECATED)                                          |
@@ -2582,72 +2561,72 @@
                                      :status              "verified"
                                      :text                "lookin good"}]))
          ~@body))]
-    (letfn [(verified? [card]
-              (-> card (t2/hydrate [:moderation_reviews :moderator_details])
-                  :moderation_reviews first :status #{"verified"} boolean))
-            (reviews [card]
-              (t2/select :model/ModerationReview
-                         :moderated_item_type "card"
-                         :moderated_item_id (u/the-id card)
-                         {:order-by [[:id :desc]]}))
-            (update-card [card diff]
-              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) (merge card diff)))]
-      (testing "Changing core attributes un-verifies the card"
-        (with-card :verified
-          (is (verified? card))
-          (update-card card (update-in card [:dataset_query :query :source-table] inc))
-          (is (not (verified? card)))
-          (testing "The unverification edit has explanatory text"
-            (is (= "Unverified due to edit"
-                   (-> (reviews card) first :text))))))
-      (testing "Changing some attributes does not unverify"
-        (tools.macro/macrolet [(remains-verified [& body]
-                                 `(~'with-card :verified
-                                               (is (~'verified? ~'card) "Not verified initially")
-                                               ~@body
-                                               (is (~'verified? ~'card) "Not verified after action")))]
-          (testing "changing collection"
-            (remains-verified
-             (update-card card {:collection_id (u/the-id collection2)})))
-          (testing "pinning"
-            (remains-verified
-             (update-card card {:collection_position 1})))
-          (testing "making public"
-            (remains-verified
-             (update-card card {:made_public_by_id (mt/user->id :rasta)
-                                :public_uuid (random-uuid)})))
-          (testing "Changing description"
-            (remains-verified
-             (update-card card {:description "foo"})))
-          (testing "Changing name"
-            (remains-verified
-             (update-card card {:name "foo"})))
-          (testing "Changing archived"
-            (remains-verified
-             (update-card card {:archived true})))
-          (testing "Changing display"
-            (remains-verified
-             (update-card card {:display :line})))
-          (testing "Changing visualization settings"
-            (remains-verified
-             (update-card card {:visualization_settings {:table.cell_column "FOO"}})))))
-      (testing "Does not add a new nil moderation review when not verified"
-        (with-card :not-verified
-          (is (empty? (reviews card)))
-          (update-card card {:description "a new description"})
-          (is (empty? (reviews card)))))
-      (testing "Does not add nil moderation reviews when there are reviews but not verified"
-        ;; testing that we aren't just adding a nil moderation each time we update a card
-        (with-card :verified
-          (is (verified? card))
-          (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
-                                             :moderated_item_type "card"
-                                             :moderator_id        (mt/user->id :rasta)
-                                             :status              nil})
-          (is (not (verified? card)))
-          (is (= 2 (count (reviews card))))
-          (update-card card {:description "a new description"})
-          (is (= 2 (count (reviews card)))))))))
+   (letfn [(verified? [card]
+             (-> card (t2/hydrate [:moderation_reviews :moderator_details])
+                 :moderation_reviews first :status #{"verified"} boolean))
+           (reviews [card]
+             (t2/select :model/ModerationReview
+                        :moderated_item_type "card"
+                        :moderated_item_id (u/the-id card)
+                        {:order-by [[:id :desc]]}))
+           (update-card [card diff]
+             (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) (merge card diff)))]
+     (testing "Changing core attributes un-verifies the card"
+       (with-card :verified
+         (is (verified? card))
+         (update-card card (update-in card [:dataset_query :query :source-table] inc))
+         (is (not (verified? card)))
+         (testing "The unverification edit has explanatory text"
+           (is (= "Unverified due to edit"
+                  (-> (reviews card) first :text))))))
+     (testing "Changing some attributes does not unverify"
+       (tools.macro/macrolet [(remains-verified [& body]
+                                `(~'with-card :verified
+                                              (is (~'verified? ~'card) "Not verified initially")
+                                              ~@body
+                                              (is (~'verified? ~'card) "Not verified after action")))]
+         (testing "changing collection"
+           (remains-verified
+            (update-card card {:collection_id (u/the-id collection2)})))
+         (testing "pinning"
+           (remains-verified
+            (update-card card {:collection_position 1})))
+         (testing "making public"
+           (remains-verified
+            (update-card card {:made_public_by_id (mt/user->id :rasta)
+                               :public_uuid (random-uuid)})))
+         (testing "Changing description"
+           (remains-verified
+            (update-card card {:description "foo"})))
+         (testing "Changing name"
+           (remains-verified
+            (update-card card {:name "foo"})))
+         (testing "Changing archived"
+           (remains-verified
+            (update-card card {:archived true})))
+         (testing "Changing display"
+           (remains-verified
+            (update-card card {:display :line})))
+         (testing "Changing visualization settings"
+           (remains-verified
+            (update-card card {:visualization_settings {:table.cell_column "FOO"}})))))
+     (testing "Does not add a new nil moderation review when not verified"
+       (with-card :not-verified
+         (is (empty? (reviews card)))
+         (update-card card {:description "a new description"})
+         (is (empty? (reviews card)))))
+     (testing "Does not add nil moderation reviews when there are reviews but not verified"
+       ;; testing that we aren't just adding a nil moderation each time we update a card
+       (with-card :verified
+         (is (verified? card))
+         (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
+                                            :moderated_item_type "card"
+                                            :moderator_id        (mt/user->id :rasta)
+                                            :status              nil})
+         (is (not (verified? card)))
+         (is (= 2 (count (reviews card))))
+         (update-card card {:description "a new description"})
+         (is (= 2 (count (reviews card)))))))))
 
 (deftest test-that-we-can-bulk-move-some-cards-with-no-collection-into-a-collection
   (mt/with-temp [:model/Collection  collection {:name "Pog Collection"}
