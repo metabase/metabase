@@ -154,7 +154,6 @@
    [metabase.models.field :as field]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
-   [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru trun]]
    [metabase.util.malli :as mu]
@@ -166,6 +165,7 @@
    [metabase.xrays.automagic-dashboards.names :as names]
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
+   [metabase.xrays.related :as related]
    [toucan2.core :as t2]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
