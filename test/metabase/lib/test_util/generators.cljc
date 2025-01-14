@@ -72,12 +72,14 @@
 
 (defmulti ^:private before-and-after
   "Runs the before/after tests for the given step, given the before and after queries."
-  (fn [before after step]
+  {:arglists '([before after step])}
+  (fn [_before _after step]
     (step-key step)))
 
 (defmulti ^:private next-steps*
   "Given a query, generate a nested set of choices, with the leaf nodes being possible steps."
-  (fn [query step-kind]
+  {:arglists '([query step-kind])}
+  (fn [_query step-kind]
     step-kind))
 
 (def ^:private step-kinds (atom {}))
