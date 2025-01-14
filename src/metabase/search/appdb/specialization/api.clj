@@ -38,3 +38,8 @@
   "Calculate the given p-value of view counts for each search model"
   {:arglists '([index-table p-value])}
   db-type)
+
+(defmulti ->db-type
+  "Return correct database type for a value type"
+  {:arglists '([t])}
+  db-type)

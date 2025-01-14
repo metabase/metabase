@@ -2,7 +2,6 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
    [metabase.db :as mdb]
@@ -55,7 +54,7 @@
         ;; Use seconds for granularity in the fraction.
         (case (mdb/db-type)
           :mysql
-          [[:raw "TIMESTAMPDIFF(second, " (sql/format-expr from-column) ", " (sql/format-expr to-column) ")"]]
+          [[:timestampdiff :second from-column to-column]]
           [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]])
         [:inline (double seconds-in-a-day)]]]
       [:inline 0]]
@@ -149,7 +148,7 @@
     {:model       [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
-    {:text         (specialization/text-score)
+    {:text         (specialization/text-score search-ctx)
      :view-count   (view-count-expr search.config/view-count-scaling-percentile)
      :pinned       (truthy :pinned)
      :bookmarked   bookmark-score-expr
