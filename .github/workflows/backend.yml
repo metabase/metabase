@@ -67,6 +67,7 @@ jobs:
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 10
+    name: Clj-Kondo
     steps:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
@@ -84,6 +85,7 @@ jobs:
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 20
+    name: Eastwood
     steps:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
@@ -103,7 +105,7 @@ jobs:
       github.event.pull_request.draft == true &&
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
-    name: be-tests-java-11-ee-pre-check
+    name: Java 11 EE Pre-Check
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -139,16 +141,53 @@ jobs:
       github.event.pull_request.draft == false &&
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
-    name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        edition: [oss, ee]
-        java-version: [11, 17, 21]
+        java-version:
+          - 11
+          - 17
+          - 21
+        job:
+          - name: Enterprise Tests
+            edition: ee
+            build-static-viz: 'false'
+            test-args: >-
+              :only '"enterprise/backend/test"'
+          - name: EE App DB Tests (Part 1)
+            edition: ee
+            build-static-viz: 'true'
+            test-args: >-
+              :only '["test" ".clj-kondo/test"]'
+              :partition/total 2
+              :partition/index 0
+          - name: EE App DB Tests (Part 2)
+            edition: ee
+            build-static-viz: 'true'
+            test-args: >-
+              :only '["test" ".clj-kondo/test"]'
+              :partition/total 2
+              :partition/index 1
+          - name: OSS App DB Tests (Part 1)
+            edition: oss
+            build-static-viz: 'true'
+            test-args: >-
+              :only '["test" ".clj-kondo/test"]'
+              :partition/total 2
+              :partition/index 0
+          - name: OSS App DB Tests (Part 2)
+            edition: oss
+            build-static-viz: 'true'
+            test-args: >-
+              :only '["test" ".clj-kondo/test"]'
+              :partition/total 2
+              :partition/index 1
+    name: "Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
+        if: ${{ matrix.job.build-static-viz == 'true' }}
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
@@ -158,27 +197,28 @@ jobs:
       # Depending on which files changed, we might either have to build static-viz
       # from scratch or download the previously built artifact
       - name: Build static-viz frontend
-        if: needs.files-changed.outputs.backend_all == 'true'
+        if: ${{ matrix.job.build-static-viz == 'true' && needs.files-changed.outputs.backend_all == 'true' }}
         run: yarn build-static-viz
       - name: Download Static Viz Bundle Artifact
-        if: needs.static-viz-files-changed.outputs.static_viz == 'true'
+        if: ${{ matrix.job.build-static-viz == 'true' && needs.static-viz-files-changed.outputs.static_viz == 'true' }}
         uses: actions/download-artifact@v4
         with:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
 
-      - name: Run App DB tests
+      - name: Run ${{ matrix.job.name }}
         id: run-java-tests
         run: >-
-          clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+          clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
           :exclude-tags [:mb/driver-tests]
+          ${{ matrix.job.test-args }}
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always() && (steps.run-java-tests.conclusion != 'skipped' || steps.run-java-tests-21.conclusion != 'skipped')
         with:
           input-path: ./target/junit/
-          output-name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+          output-name: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.edition }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
@@ -190,7 +230,7 @@ jobs:
         if: failure()
         with:
           path: "target/junit/**/*_test.xml"
-          name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
+          name: JUnit Test Report be-tests-java-${{ matrix.java-version }}-${{ matrix.job.edition }}
           reporter: java-junit
           list-suites: failed
           list-tests: failed
@@ -205,11 +245,11 @@ jobs:
       github.event.pull_request.draft == false &&
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
-    name: be-check-java-${{ matrix.java-version }}
     timeout-minutes: 10
     strategy:
       matrix:
         java-version: [11, 17, 21]
+    name: "Check Java ${{ matrix.java-version }}"
     steps:
       - uses: actions/checkout@v4
       - name: Prepare backend
@@ -225,6 +265,7 @@ jobs:
       !cancelled() && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 10
+    name: Cljfmt
     steps:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
