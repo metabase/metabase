@@ -5,7 +5,7 @@ import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
 import { TabButton } from "metabase/core/components/TabButton";
 import { TabRow } from "metabase/core/components/TabRow";
 import { MaybeTranslationCannotBeEditedHoverCard } from "metabase/i18n/MaybeTranslationCannotBeEditedHoverCard";
-import { L } from "metabase/i18n/utils";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import type { DashboardId } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
@@ -36,6 +36,8 @@ export function DashboardTabs({
   const hasMultipleTabs = tabs.length > 1;
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
+
+  const tc = useTranslateContent();
 
   if (!showTabs) {
     return null;
@@ -71,7 +73,7 @@ export function DashboardTabs({
           />
         ) : (
           tabs.map(tab => {
-            const localizedName = L(tab, "name");
+            const localizedName = tc(tab, "name");
             const isNameLocalized = localizedName !== tab.name;
             return (
               <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>

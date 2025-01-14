@@ -6,7 +6,7 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import { fetchDashboard } from "metabase/dashboard/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-import { L } from "metabase/i18n/utils";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { createThunkAction } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 
@@ -32,10 +32,12 @@ export const setArchivedDashboard = createThunkAction(
         Dashboards.actions.update({ id: dashboardId }, { archived }),
       );
 
+      const tc = useTranslateContent();
+
       if (!undoing) {
         dispatch(
           addUndo({
-            message: getTrashUndoMessage(L(dashboard, "name"), archived),
+            message: getTrashUndoMessage(tc(dashboard, "name"), archived),
             action: () => dispatch(setArchivedDashboard(!archived, true)),
           }),
         );

@@ -2,7 +2,6 @@ import type { FocusEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
@@ -19,7 +18,7 @@ import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
-import { L } from "metabase/i18n/utils";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
@@ -169,12 +168,14 @@ const OverviewTab = ({
   setDescriptionError: (error: string | null) => void;
   canWrite: boolean;
 }) => {
+  const tc = useTranslateContent();
+  const translatedDescription = tc(dashboard, "description");
   return (
     <Stack spacing="lg">
       <SidesheetCard title={t`Description`} pb="md">
         <SidesheetEditableDescription
-          description={L(dashboard, "description")}
-          isLocalized={L(dashboard, "description") !== dashboard.description}
+          description={translatedDescription}
+          isLocalized={translatedDescription !== dashboard.description}
           onChange={handleDescriptionChange}
           canWrite={canWrite}
           onFocus={() => setDescriptionError("")}

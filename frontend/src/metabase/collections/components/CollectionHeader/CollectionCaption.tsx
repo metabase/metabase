@@ -6,7 +6,7 @@ import {
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import { L } from "metabase/i18n/utils";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { color } from "metabase/lib/colors";
 import {
   PLUGIN_COLLECTIONS,
@@ -48,7 +48,8 @@ export const CollectionCaption = ({
     [collection, onUpdateCollection],
   );
 
-  const localizedCollectionName = L(collection, "name") as string;
+  const tc = useTranslateContent();
+  const localizedCollectionName = tc(collection, "name");
 
   return (
     <CaptionRoot data-testid="collection-caption">
