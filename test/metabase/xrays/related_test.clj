@@ -1,13 +1,13 @@
-(ns metabase.related-test
+(ns metabase.xrays.related-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.related :as related]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.xrays.related :as related]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel collect-context-bearing-forms-test

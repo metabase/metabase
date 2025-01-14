@@ -1,4 +1,4 @@
-(ns metabase.related
+(ns metabase.xrays.related
   "Related entities recommendations."
   (:require
    [clojure.set :as set]
