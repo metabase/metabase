@@ -1,14 +1,14 @@
-import type { NotificationTriggerOption } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/types";
 import type {
   CardId,
   ChannelApiResponse,
   CreateAlertNotificationRequest,
-  Notification,
   NotificationHandler,
   NotificationRecipient,
   ScheduleSettings,
   UserId,
 } from "metabase-types/api";
+
+import type { NotificationTriggerOption } from "./modals/CreateOrEditQuestionAlertModal/types";
 
 export const DEFAULT_ALERT_CRON_SCHEDULE = "0 0 9 * * ?";
 export const DEFAULT_ALERT_SCHEDULE: ScheduleSettings = {
@@ -73,7 +73,3 @@ export const getDefaultQuestionAlertRequest = ({
     ],
   };
 };
-
-export const isAlert = (_: Notification) => true;
-
-export const isSubscription = (_: Notification) => false;

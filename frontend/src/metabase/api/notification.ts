@@ -81,6 +81,10 @@ export const notificationApi = Api.injectEndpoints({
   }),
 });
 
+export const invalidateNotificationsApiCache = () => {
+  return notificationApi.util.invalidateTags([listTag("notification")]);
+};
+
 export const {
   useListNotificationsQuery,
   useGetNotificationQuery,

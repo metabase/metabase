@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import { ChannelSettingsBlock } from "metabase/notifications/ChannelSettingsBlock";
+import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
 import type { NotificationHandlerEmail, User } from "metabase-types/api";
 
 import { RecipientPicker } from "./RecipientPicker";
@@ -20,8 +20,14 @@ export const EmailChannelEdit = ({
   onChange: (newConfig: NotificationHandlerEmail) => void;
 }) => {
   const mappedUsers = channel.recipients
-    .map(({ user_id }) => users.find(({ id }) => id === user_id))
-    .filter(isNotNull); // TODO: optimize this?
+    .map(recipient =>
+      users.find(
+        ({ id }) =>
+          recipient.type === "notification-recipient/user" &&
+          id === recipient.user_id,
+      ),
+    )
+    .filter(isNotNull);
 
   const handleRecipientsChange = (recipients: User[]) =>
     onChange({

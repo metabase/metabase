@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { RecipientPicker } from "metabase/notifications/RecipientPicker";
+import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { createMockUser } from "metabase-types/api/mocks";
 
 const TEST_USERS = [

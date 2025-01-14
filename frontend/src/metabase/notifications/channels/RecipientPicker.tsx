@@ -36,7 +36,7 @@ export const RecipientPicker = ({
 
   return (
     <div>
-      <div style={{ padding: "2px" }}>
+      <div>
         <TokenField
           value={recipients}
           options={users ? users.map(user => ({ value: user })) : []}

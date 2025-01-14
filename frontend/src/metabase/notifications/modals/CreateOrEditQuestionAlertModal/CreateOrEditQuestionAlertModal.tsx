@@ -30,7 +30,7 @@ import {
   getQuestion,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getUser } from "metabase/selectors/user";
 import { Flex, Modal, Select, Stack, Switch, rem } from "metabase/ui";
 import type {
   CreateAlertNotificationRequest,
@@ -94,7 +94,6 @@ export const CreateOrEditQuestionAlertModal = ({
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const visualizationSettings = useSelector(getVisualizationSettings);
-  const isAdmin = useSelector(getUserIsAdmin);
   const user = useSelector(getUser);
 
   const { data: channelSpec } = useGetChannelInfoQuery();
@@ -253,7 +252,6 @@ export const CreateOrEditQuestionAlertModal = ({
                 getInvalidRecipientText={domains =>
                   t`You're only allowed to email alerts to addresses ending in ${domains}`
                 }
-                isAdminUser={isAdmin}
               />
             </AlertModalSettingsBlock>
             <AlertModalSettingsBlock title={t`More options`}>

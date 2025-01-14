@@ -1,10 +1,8 @@
 export { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
-export { AlertEditForm } from "./AlertEditForm";
 export { AlertModalTitle } from "./AlertModalTitle";
 export { AlertAboveGoalToggle } from "./AlertAboveGoalToggle";
 export { AlertFirstOnlyToggle } from "./AlertFirstOnlyToggle";
 export { AlertSettingToggle } from "./AlertSettingToggle";
-export { AlertEditChannels } from "./AlertEditChannels";
 export { NormalAlertTip } from "./NormalAlertTip";
 export { MultiSeriesAlertTip } from "./MultiSeriesAlertTip";
 export { RawDataAlertTip } from "./RawDataAlertTip";

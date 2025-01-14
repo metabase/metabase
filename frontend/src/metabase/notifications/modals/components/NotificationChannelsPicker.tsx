@@ -3,6 +3,9 @@ import { t } from "ttag";
 import { useListChannelsQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
+import { EmailChannelEdit } from "metabase/notifications/channels/EmailChannelEdit";
+import { SlackChannelEdit } from "metabase/notifications/channels/SlackChannelEdit";
+import { WebhookChannelEdit } from "metabase/notifications/channels/WebhookChannelEdit";
 import {
   type ChannelToAddOption,
   NotificationChannelsAddMenu,
@@ -18,10 +21,6 @@ import type {
   User,
 } from "metabase-types/api";
 
-import { EmailChannelEdit } from "../../EmailChannelEdit";
-import { SlackChannelEdit } from "../../SlackChannelEdit";
-import { WebhookChannelEdit } from "../../WebhookChannelEdit";
-
 const DEFAULT_CHANNELS_CONFIG = {
   email: { name: t`Email`, type: "email" },
   slack: { name: t`Slack`, type: "slack" },
@@ -35,7 +34,6 @@ interface NotificationChannelsPickerProps {
   onChange: (newHandlers: NotificationHandler[]) => void;
   emailRecipientText: string;
   getInvalidRecipientText: (domains: string) => string;
-  isAdminUser: boolean;
 }
 
 export const NotificationChannelsPicker = ({
@@ -44,25 +42,47 @@ export const NotificationChannelsPicker = ({
   users,
   onChange,
   getInvalidRecipientText,
-  isAdminUser,
 }: NotificationChannelsPickerProps) => {
   const { data: notificationChannels = [] } = useListChannelsQuery();
   const user = useSelector(getUser);
 
   const addChannel = (channel: ChannelToAddOption) => {
-    const newChannel: NotificationHandler = {
-      channel_type: channel.type,
-      channel_id: channel.channel_id,
-      recipients:
-        channel.type === "channel/email" && user
-          ? [
-              {
-                type: "notification-recipient/user",
-                user_id: user.id,
-              },
-            ]
-          : [],
-    };
+    let newChannel: NotificationHandler;
+
+    switch (channel.type) {
+      case "channel/http": {
+        newChannel = {
+          channel_type: channel.type,
+          channel_id: channel.channel_id,
+          recipients: [],
+        };
+        break;
+      }
+
+      case "channel/email": {
+        newChannel = {
+          channel_type: channel.type,
+          recipients: user
+            ? [
+                {
+                  type: "notification-recipient/user",
+                  user_id: user.id,
+                  details: null,
+                },
+              ]
+            : [],
+        };
+        break;
+      }
+
+      case "channel/slack": {
+        newChannel = {
+          channel_type: channel.type,
+          recipients: [],
+        };
+        break;
+      }
+    }
 
     onChange(notificationHandlers.concat(newChannel));
   };

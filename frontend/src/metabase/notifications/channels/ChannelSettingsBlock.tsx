@@ -1,5 +1,6 @@
 import type { JSX, ReactNode } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { Button, Group, Icon, type IconName, Stack, Text } from "metabase/ui";
 
 type ChannelSettingsBlockProps = {
@@ -20,7 +21,7 @@ export const ChannelSettingsBlock = ({
       <Group position="apart" align="center">
         <Group spacing="xs" align="center">
           <Icon name={iconName} />
-          <Text>{title}</Text>
+          <Text className={CS.textShortLineHeight}>{title}</Text>
         </Group>
 
         <Button

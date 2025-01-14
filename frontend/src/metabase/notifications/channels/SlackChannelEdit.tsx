@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { ChannelSettingsBlock } from "metabase/notifications/ChannelSettingsBlock";
-import { SlackChannelField } from "metabase/notifications/SlackChannelField";
+import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
+import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import type {
   NotificationHandlerSlack,
   SlackChannelSpec,

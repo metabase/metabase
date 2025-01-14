@@ -137,6 +137,10 @@ describe("scenarios > alert", () => {
     H.openNotificationsMenu("Edit subscriptions");
     H.modal().findByText("You set up an alert").should("be.visible");
   });
+
+  it("should reload alerts from server after question change", () => {
+    // TODO: implement
+  });
 });
 
 H.describeEE(

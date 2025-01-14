@@ -9,11 +9,16 @@ const CHANNEL_TYPE_TO_ICON_MAP: Record<NotificationChannelType, IconName> = {
   "channel/http": "webhook",
 };
 
-export type ChannelToAddOption = {
-  type: NotificationChannelType;
-  name: string;
-  channel_id?: number; // only for "channel/http" type
-};
+export type ChannelToAddOption =
+  | {
+      type: "channel/email" | "channel/slack";
+      name: string;
+    }
+  | {
+      type: "channel/http";
+      name: string;
+      channel_id: number;
+    };
 
 type NotificationChannelsAddMenuProps = {
   channelsToAdd: ChannelToAddOption[];
@@ -33,7 +38,11 @@ export const NotificationChannelsAddMenu = ({
       <Menu.Dropdown>
         {channelsToAdd.map(channel => (
           <Menu.Item
-            key={channel.channel_id || channel.name}
+            key={
+              channel.type === "channel/http"
+                ? channel.channel_id
+                : channel.name
+            }
             onClick={() => onAddChannel(channel)}
           >
             <Group spacing="md" align="center">

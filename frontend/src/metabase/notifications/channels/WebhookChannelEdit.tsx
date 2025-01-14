@@ -1,4 +1,4 @@
-import { ChannelSettingsBlock } from "metabase/notifications/ChannelSettingsBlock";
+import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
 import type { NotificationChannel } from "metabase-types/api";
 
 export const WebhookChannelEdit = ({

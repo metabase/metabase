@@ -1,6 +1,7 @@
 import { createAction } from "redux-actions";
 import _ from "underscore";
 
+import { invalidateNotificationsApiCache } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
@@ -288,7 +289,9 @@ export const apiUpdateQuestion = (
       },
     );
 
-    // TODO: invalidate question notifications RTK cache
+    // invalidate question notifications
+    // (some of the old alerts might be removed during update)
+    dispatch(invalidateNotificationsApiCache());
 
     await dispatch({
       type: API_UPDATE_QUESTION,
