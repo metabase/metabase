@@ -23,7 +23,6 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.query-processor.interface :as qp.i]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
@@ -958,37 +957,35 @@
                     :subscription-attachment (first subscription-result)}))))))))
 
 (deftest downloads-row-limit-test
+  (testing "Downloads row limit respects minimum (#52019)"
+    (mt/with-temporary-setting-values [public-settings/download-row-limit 950]
+      (mt/with-temp [:model/Card card {:display       :table
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,10002);"}}}]
+        (let [results (all-outputs! card {:export-format :csv :format-rows true})]
+          (is (= {:card-download            10001
+                  :unsaved-card-download    10001
+                  :alert-attachment         10001
+                  :dashcard-download        10001
+                  :subscription-attachment  10001
+                  :public-question-download 10001
+                  :public-dashcard-download 10001}
+                 (update-vals results count)))))))
   (testing "Downloads row limit works."
-    (mt/with-temporary-setting-values [public-settings/download-row-limit 105]
+    (mt/with-temporary-setting-values [public-settings/download-row-limit 10001]
       (mt/with-temp [:model/Card card {:display       :table
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,10002);"}}}]
         (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-          (is (= {:card-download            106
-                  :unsaved-card-download    106
-                  :alert-attachment         106
-                  :dashcard-download        106
-                  :subscription-attachment  106
-                  :public-question-download 106
-                  :public-dashcard-download 106}
-                 (update-vals results count))))))))
-
-(deftest downloads-row-limit-default-test
-  (testing "Downloads row limit default works."
-    (with-redefs [qp.i/absolute-max-results 100]
-      (mt/with-temp [:model/Card card {:display       :table
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,110);"}}}]
-        (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-          (is (= {:card-download            101
-                  :unsaved-card-download    101
-                  :alert-attachment         101
-                  :dashcard-download        101
-                  :subscription-attachment  101
-                  :public-question-download 101
-                  :public-dashcard-download 101}
+          (is (= {:card-download            10002
+                  :unsaved-card-download    10002
+                  :alert-attachment         10002
+                  :dashcard-download        10002
+                  :subscription-attachment  10002
+                  :public-question-download 10002
+                  :public-dashcard-download 10002}
                  (update-vals results count))))))))
 
 (deftest ^:parallel model-viz-settings-downloads-test
