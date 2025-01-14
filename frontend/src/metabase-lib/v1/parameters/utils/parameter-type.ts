@@ -32,21 +32,21 @@ export function isDateParameter(parameter: Parameter | string) {
   return type === "date";
 }
 
-export function isNumberParameter(parameter: Parameter | string) {
+export function isNumberParameter(parameter: Parameter) {
   const type = getParameterType(parameter);
   return type === "number";
 }
 
-export function isStringParameter(parameter: Parameter | string) {
+export function isStringParameter(parameter: Parameter) {
   const type = getParameterType(parameter);
   return type === "string";
 }
 
-export function isFilterParameter(parameter: Parameter | string) {
+export function isFilterParameter(parameter: Parameter) {
   return !isTemporalUnitParameter(parameter);
 }
 
-export function isTemporalUnitParameter(parameter: Parameter | string) {
+export function isTemporalUnitParameter(parameter: Parameter) {
   const type = getParameterType(parameter);
   return type === "temporal-unit";
 }

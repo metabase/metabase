@@ -7,7 +7,9 @@ function normalizeArray(value: ParameterValueOrArray) {
   return Array.isArray(value) ? value : [value];
 }
 
-export function normalizeStringFilter(value: ParameterValueOrArray): string[] {
+export function normalizeStringParameterValue(
+  value: ParameterValueOrArray,
+): string[] {
   return normalizeArray(value).reduce((values: string[], item) => {
     if (item != null && item !== "") {
       values.push(String(item));
@@ -16,7 +18,9 @@ export function normalizeStringFilter(value: ParameterValueOrArray): string[] {
   }, []);
 }
 
-export function normalizeNumberFilter(value: ParameterValueOrArray): number[] {
+export function normalizeNumberParameterValue(
+  value: ParameterValueOrArray,
+): number[] {
   return normalizeArray(value).reduce((values: number[], item) => {
     const number = typeof item === "number" ? item : parseFloat(String(item));
     if (isFinite(number)) {
@@ -26,7 +30,7 @@ export function normalizeNumberFilter(value: ParameterValueOrArray): number[] {
   }, []);
 }
 
-export function normalizeBooleanFilter(
+export function normalizeBooleanParameterValue(
   value: ParameterValueOrArray,
 ): boolean[] {
   return normalizeArray(value).reduce((values: boolean[], item) => {
@@ -43,7 +47,7 @@ export function normalizeBooleanFilter(
   }, []);
 }
 
-export function normalizeDateFilter(
+export function normalizeDateParameterValue(
   value: ParameterValueOrArray,
 ): DateFilterValue | undefined {
   return typeof value === "string" ? deserializeDateFilter(value) : undefined;

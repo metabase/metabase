@@ -159,10 +159,22 @@ describe("applyParameter", () => {
         expectedDisplayName: "Total is equal to 10.2",
       },
       {
+        type: "string/=", // category filter
+        target: getFilterColumnTarget("ORDERS", "QUANTITY"),
+        value: 10,
+        expectedDisplayName: "Quantity is equal to 10",
+      },
+      {
         type: "number/!=",
         target: getFilterColumnTarget("ORDERS", "TOTAL"),
         value: 10.2,
         expectedDisplayName: "Total is not equal to 10.2",
+      },
+      {
+        type: "string/!=", // category filter
+        target: getFilterColumnTarget("ORDERS", "QUANTITY"),
+        value: 10,
+        expectedDisplayName: "Quantity is not equal to 10",
       },
       {
         type: "number/>=",

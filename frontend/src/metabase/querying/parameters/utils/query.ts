@@ -12,14 +12,14 @@ import type {
 import { isStructuredDimensionTarget } from "metabase-types/guards";
 
 import {
-  normalizeBooleanFilter,
-  normalizeDateFilter,
-  normalizeNumberFilter,
-  normalizeStringFilter,
+  normalizeBooleanParameterValue,
+  normalizeDateParameterValue,
+  normalizeNumberParameterValue,
+  normalizeStringParameterValue,
 } from "./normalize";
 
 const STRING_OPERATORS: Partial<
-  Record<ParameterType, Lib.StringFilterOperator>
+  Record<ParameterType | string, Lib.StringFilterOperator>
 > = {
   "string/=": "=",
   "string/!=": "!=",
@@ -30,10 +30,12 @@ const STRING_OPERATORS: Partial<
 };
 
 const NUMBER_OPERATORS: Partial<
-  Record<ParameterType, Lib.NumberFilterOperator>
+  Record<ParameterType | string, Lib.NumberFilterOperator>
 > = {
+  "string/=": "=",
   "number/=": "=",
   "number/!=": "!=",
+  "string/!=": "!=",
   "number/>=": ">=",
   "number/<=": "<=",
   "number/between": "between",
@@ -42,7 +44,7 @@ const NUMBER_OPERATORS: Partial<
 export function applyParameter(
   query: Lib.Query,
   stageIndex: number,
-  type: ParameterType,
+  type: ParameterType | string,
   target: ParameterTarget | null,
   value: ParameterValueOrArray | null,
 ) {
@@ -60,7 +62,7 @@ export function applyParameter(
 function applyFilterParameter(
   query: Lib.Query,
   stageIndex: number,
-  type: ParameterType,
+  type: ParameterType | string,
   target: StructuredParameterDimensionTarget,
   value: ParameterValueOrArray,
 ): Lib.Query {
@@ -98,7 +100,7 @@ function getParameterFilterColumn(
 }
 
 function getParameterFilterClause(
-  type: ParameterType,
+  type: ParameterType | string,
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ) {
@@ -117,11 +119,11 @@ function getParameterFilterClause(
 }
 
 function getStringParameterFilterClause(
-  type: ParameterType,
+  type: ParameterType | string,
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const values = normalizeStringFilter(value);
+  const values = normalizeStringParameterValue(value);
   if (values.length === 0) {
     return;
   }
@@ -136,11 +138,11 @@ function getStringParameterFilterClause(
 }
 
 function getNumberParameterFilterClause(
-  type: ParameterType,
+  type: ParameterType | string,
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const values = normalizeNumberFilter(value);
+  const values = normalizeNumberParameterValue(value);
   if (values.length === 0) {
     return;
   }
@@ -163,11 +165,11 @@ function getNumberParameterFilterClause(
 }
 
 function getBooleanParameterFilterClause(
-  type: ParameterType,
+  type: ParameterType | string,
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const values = normalizeBooleanFilter(value);
+  const values = normalizeBooleanParameterValue(value);
   if (values.length === 0) {
     return;
   }
@@ -183,7 +185,7 @@ function getDateParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const filter = normalizeDateFilter(value);
+  const filter = normalizeDateParameterValue(value);
   if (filter == null) {
     return;
   }
