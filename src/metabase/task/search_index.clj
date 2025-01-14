@@ -91,8 +91,7 @@
   SearchIndexReindex [_ctx]
   (reindex!))
 
-(jobs/defjob ^{DisallowConcurrentExecution true
-               :doc                        "Keep Search Index updated"}
+(jobs/defjob ^{:doc                        "Keep Search Index updated"}
   SearchIndexUpdate [_ctx]
   (update-index!))
 
