@@ -1076,9 +1076,11 @@ export class UnconnectedDataSelector extends Component {
     if (this.props.isPopover) {
       return (
         <Popover
-          opened={this.props.isOpen}
           onClose={this.handleClose}
           position="bottom-start"
+          {...(this.props.isInitiallyOpen && !this.props.readOnly
+            ? { defaultOpened: true }
+            : { opened: this.props.isOpen })}
         >
           <Popover.Target>{this.getTriggerElement()}</Popover.Target>
           <Popover.Dropdown>{this.renderContent()}</Popover.Dropdown>
