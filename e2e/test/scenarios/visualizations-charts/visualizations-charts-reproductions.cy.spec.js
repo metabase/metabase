@@ -382,11 +382,12 @@ describe("issue 18063", () => {
 
     // Click on the popovers to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
-    ["Latitude field", "Longitude field"].forEach(field =>
-      H.leftSidebar().within(() => {
-        toggleFieldSelectElement(field);
-      }),
-    );
+    // Note: as of Mantine V7, this does not happen anymore
+    // ["Latitude field", "Longitude field"].forEach(field =>
+    //   H.leftSidebar().within(() => {
+    //     toggleFieldSelectElement(field);
+    //   }),
+    // );
   });
 
   it("should show the correct tooltip details for pin map even when some locations are null (metabase#18063)", () => {

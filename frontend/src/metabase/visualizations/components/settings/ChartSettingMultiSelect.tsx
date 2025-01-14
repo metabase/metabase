@@ -16,12 +16,17 @@ export const ChartSettingMultiSelect = ({
   options = [],
   placeholder,
   placeholderNoOptions,
-}: ChartSettingMultiSelectProps) => (
-  <MultiAutocomplete
-    value={value}
-    onChange={onChange}
-    placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
-    data={options}
-    showInfoIcon={false}
-  />
-);
+}: ChartSettingMultiSelectProps) => {
+  const handleChange = v => {
+    onChange(v);
+  };
+  return (
+    <MultiAutocomplete
+      value={value}
+      onChange={handleChange}
+      placeholder={options.length === 0 ? placeholderNoOptions : placeholder}
+      data={options}
+      showInfoIcon={false}
+    />
+  );
+};
