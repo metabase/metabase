@@ -872,15 +872,17 @@ export class UnconnectedDataSelector extends Component {
     switch (this.state.activeStep) {
       case DATA_BUCKET_STEP:
         return (
-          <DataBucketPicker
-            dataTypes={getDataTypes({
-              hasModels: this.hasModels(),
-              hasNestedQueriesEnabled,
-              hasSavedQuestions: this.hasSavedQuestions(),
-              hasMetrics: this.hasMetrics(),
-            })}
-            {...props}
-          />
+          <Box p="sm">
+            <DataBucketPicker
+              dataTypes={getDataTypes({
+                hasModels: this.hasModels(),
+                hasNestedQueriesEnabled,
+                hasSavedQuestions: this.hasSavedQuestions(),
+                hasMetrics: this.hasMetrics(),
+              })}
+              {...props}
+            />
+          </Box>
         );
       case DATABASE_STEP:
         return combineDatabaseSchemaSteps ? (
