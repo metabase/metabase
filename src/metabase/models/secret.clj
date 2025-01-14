@@ -94,8 +94,7 @@
   "**MetabasePass**")
 
 (defn secret-conn-props-by-name
-  "For the driver  return a map of all `:type` `:secret`
-  properties, keyed by property name."
+  "For the driver return a map of all `:type` `:secret` properties, keyed by property name."
   [driver]
   (let [conn-props-fn (get-method driver/connection-properties driver)]
     (when (fn? conn-props-fn)
