@@ -24,7 +24,7 @@ export default {
 };
 
 const Template: StoryFn<StaticDashboardProps> = args => {
-  return <StaticDashboard {...args} key={args.dashboardId} />;
+  return <StaticDashboard {...args} />;
 };
 
 export const Default = {
