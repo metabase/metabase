@@ -18,13 +18,8 @@ export function VisualizerModal({ onSave, onClose }: VisualizerModalProps) {
     <Modal
       opened={open}
       title={t`Visualize`}
-      fullScreen
+      size="95%"
       transitionProps={{ transition: "fade", duration: 200 }}
-      styles={{
-        body: {
-          height: "95%",
-        },
-      }}
       onClose={onClose}
     >
       <Visualizer onSave={onSave} />
