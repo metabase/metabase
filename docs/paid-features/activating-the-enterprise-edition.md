@@ -63,8 +63,8 @@ If you're hosting Metabase behind a firewall that blocks outgoing connections, y
 
 ## Note about Zscaler deployments
 
-When Metabase is deployed inside an infrastructure that uses Zscaler, you need to make sure that these 2 conditions:
-1) Zscaler is not acting as a proxy or DNS for the server where Metabase is running, as Metabase needs a clear connection to the token check services without any gateway acting as a proxy
-2) The server where Metabase is running should not be using Zscaler root CA certificates for every website on earth since the Java virtual machine where Metabase runs in will detect that the certificate authority is not correct.
+When Metabase is deployed inside infrastructure that uses Zscaler, you should do the following:
 
-It's recommended that you contact your networking team in case you know that you're using Zscaler and check what are the options to clear out the way for Metabase to do the token checks, or contact us to know more about the air-gapped version of Metabase.
+1. Contact your networking team and let them know that Metabase will need to perform token checks in order for paid features to work. If you need an air-gapped version of Metabase, [contact us](https://www.metabase.com/help/premium).
+2. Make sure Zscaler isn't acting as a proxy or DNS for the server where Metabase is running. Metabase needs a direct connection to the token check service without any gateway acting as a proxy.
+3. Make sure the server where Metabase is running isn't using Zscaler root CA certificates for all websites. Otherwise, the Java virtual machine where Metabase runs will determine that the certificate authority is incorrect.
