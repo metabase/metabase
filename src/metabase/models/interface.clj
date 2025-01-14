@@ -341,6 +341,11 @@
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
+(def transform-encrypted-json-no-keywordization
+  "Transform for json-no-keywordization"
+  {:in  encrypted-json-in
+   :out json-out-without-keywordization})
+
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
    to modern MBQL clauses so things work correctly."

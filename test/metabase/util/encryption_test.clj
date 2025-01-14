@@ -164,3 +164,14 @@
     (testing "When secret is not set, it does not encrypt the stream"
       (let [encrypted (encryption/maybe-encrypt-for-stream nil (codecs/to-bytes "test string"))]
         (is (= "test string" (codecs/bytes->str encrypted)))))))
+
+(deftest ^:parallel encrypt-nil
+  (testing "encrypting nil should return nil"
+    (is (nil? (encryption/encrypt secret nil)))
+    (is (nil? (encryption/maybe-encrypt secret nil)))))
+
+(deftest ^:parallel decrypt-nil
+  (testing "decrypting nil should return nil"
+    (is (nil? (encryption/decrypt secret nil)))
+    (is (nil? (encryption/maybe-decrypt secret nil)))))
+

@@ -114,27 +114,27 @@
           (let [cache-backend (i/cache-backend :db)]
             (i/save-results! cache-backend (codecs/to-bytes "cache-key") (codecs/to-bytes "cache-value"))
             (is (= "unencrypted" (t2/select-one-fn :value "setting" :key "encryption-check")))
-            (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database"))))
+            (is (not (encryption/possibly-encrypted-string? (t2/select-one-fn :details (t2/table-name :model/Database)))))
             (is (= 1 (t2/count :model/QueryCache)))
 
             (testing "Adding encryption encrypts database on restart"
               (encryption-test/with-secret-key "key1"
                 (reset! (:status mdb.connection/*application-db*) ::setup-finished)
                 (mdb/setup-db! :create-sample-content? false)
-                (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check"))))
-                (is (encryption/possibly-encrypted-string? (:details (t2/select-one "metabase_database"))))
+                (is (encryption/possibly-encrypted-string? (:value (t2/select-one (t2/table-name :model/Setting) :key "encryption-check"))))
+                (is (encryption/possibly-encrypted-string? (:details (t2/select-one (t2/table-name :model/Database)))))
                 (testing "Cache is cleared on encryption"
                   (is (= 0 (t2/count :model/QueryCache))))))))))
     (testing "Database created with encryption configured is encrypted"
       (encryption-test/with-secret-key "key2"
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (mdb/setup-db! :create-sample-content? true)
-          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :value "setting" :key "encryption-check")))
-          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details "metabase_database")))
+          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :value (t2/table-name :model/Setting) :key "encryption-check")))
+          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details (t2/table-name :model/Database))))
           (testing "Re-running server works"
             (reset! (:status mdb.connection/*application-db*) ::setup-finished)
             (mdb/setup-db! :create-sample-content? false)
-            (is (encryption/possibly-encrypted-string? (:value (t2/select-one "setting" :key "encryption-check")))))
+            (is (encryption/possibly-encrypted-string? (:value (t2/select-one (t2/table-name :model/Setting) :key "encryption-check")))))
           (testing "Different encryption key throws an error"
             (encryption-test/with-secret-key "different-key"
               (reset! (:status mdb.connection/*application-db*) ::setup-finished)

@@ -105,8 +105,8 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/FieldValues
-  {:human_readable_values mi/transform-json-no-keywordization
-   :values                mi/transform-json
+  {:human_readable_values mi/transform-encrypted-json-no-keywordization
+   :values                mi/transform-encrypted-json
    :type                  mi/transform-keyword})
 
 (defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
