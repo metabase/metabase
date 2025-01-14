@@ -22,7 +22,7 @@ Run Metabase in a [Docker container](./running-metabase-on-docker.md).
 
 ### Running the Jar file
 
-Metabase can run anywhere Java is available. See [running the Metabase Jar](./running-the-metabase-jar-file.md)
+If you're self-hosting but don’t use Docker, the JAR is the easiest way to get started, but it might make it more challenging to move to production. See [running the Metabase Jar](./running-the-metabase-jar-file.md).
 
 ## Air-gapped Metabase
 
