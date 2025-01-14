@@ -1,9 +1,9 @@
 import type { DateFilterValue } from "metabase/querying/filters/types";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
-import { deserializeDateFilter } from "./dates";
+import { deserializeDateParameterValue } from "./dates";
 
-function normalizeArray(value: ParameterValueOrArray | null) {
+function normalizeArray(value: ParameterValueOrArray | null | undefined) {
   if (value == null) {
     return [];
   } else {
@@ -12,7 +12,7 @@ function normalizeArray(value: ParameterValueOrArray | null) {
 }
 
 export function normalizeStringParameterValue(
-  value: ParameterValueOrArray | null,
+  value: ParameterValueOrArray | null | undefined,
 ): string[] {
   return normalizeArray(value).reduce((values: string[], item) => {
     if (item != null && item !== "") {
@@ -23,7 +23,7 @@ export function normalizeStringParameterValue(
 }
 
 export function normalizeNumberParameterValue(
-  value: ParameterValueOrArray | null,
+  value: ParameterValueOrArray | null | undefined,
 ): number[] {
   return normalizeArray(value).reduce((values: number[], item) => {
     const number = typeof item === "number" ? item : parseFloat(String(item));
@@ -35,7 +35,7 @@ export function normalizeNumberParameterValue(
 }
 
 export function normalizeBooleanParameterValue(
-  value: ParameterValueOrArray | null,
+  value: ParameterValueOrArray | null | undefined,
 ): boolean[] {
   return normalizeArray(value).reduce((values: boolean[], item) => {
     if (typeof item === "boolean") {
@@ -52,7 +52,9 @@ export function normalizeBooleanParameterValue(
 }
 
 export function normalizeDateParameterValue(
-  value: ParameterValueOrArray | null,
+  value: ParameterValueOrArray | null | undefined,
 ): DateFilterValue | undefined {
-  return typeof value === "string" ? deserializeDateFilter(value) : undefined;
+  return typeof value === "string"
+    ? deserializeDateParameterValue(value)
+    : undefined;
 }
