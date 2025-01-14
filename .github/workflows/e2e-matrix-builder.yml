@@ -32,7 +32,7 @@ jobs:
           script: | # js
             const java = 21;
             const defaultRunner = "ubuntu-22.04";
-            const beefyRunner = "them-good-ones";
+            const beefyRunner = "ubuntu-latest-8-cores";
 
             const defaultOptions = {
               "java-version": java,
