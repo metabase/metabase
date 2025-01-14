@@ -243,9 +243,9 @@ describe("Notebook Editor > Join Step", () => {
 
     const modal = await screen.findByTestId("entity-picker-modal");
 
-    expect(within(modal).getByText("Products")).toBeInTheDocument();
-    expect(within(modal).getByText("People")).toBeInTheDocument();
-    expect(within(modal).getByText("Reviews")).toBeInTheDocument();
+    expect(await within(modal).findByText("Products")).toBeInTheDocument();
+    expect(await within(modal).findByText("People")).toBeInTheDocument();
+    expect(await within(modal).findByText("Reviews")).toBeInTheDocument();
   });
 
   it("should not allow picking a right table from another database", async () => {
@@ -295,13 +295,13 @@ describe("Notebook Editor > Join Step", () => {
 
     const modal = await screen.findByTestId("entity-picker-modal");
 
-    expect(within(modal).getByText("Recents")).toBeInTheDocument();
+    expect(await within(modal).findByText("Recents")).toBeInTheDocument();
     expect(
-      within(modal).getByRole("tab", { name: /Recents/i }),
+      await within(modal).findByRole("tab", { name: /Recents/i }),
     ).toHaveAttribute("aria-selected", "true");
 
     expect(within(modal).queryByText(QUESTION.name)).not.toBeInTheDocument();
-    expect(within(modal).getByText(MODEL.name)).toBeInTheDocument();
+    expect(await within(modal).findByText(MODEL.name)).toBeInTheDocument();
   });
 
   it("should open the LHS column picker after right table is selected and the RHS picker after it", async () => {
