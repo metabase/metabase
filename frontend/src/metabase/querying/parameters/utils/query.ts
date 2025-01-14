@@ -149,17 +149,11 @@ function getNumberParameterFilterClause(
 
   const operator = NUMBER_OPERATORS[type] ?? "=";
   return match({ operator, values })
-    .with({ operator: P.union("=", "!=") }, () =>
-      Lib.numberFilterClause({ operator, column, values }),
-    )
-    .with({ operator: "<=", values: [P.number] }, () =>
-      Lib.numberFilterClause({ operator: "<=", column, values }),
-    )
-    .with({ operator: ">=", values: [P.number] }, () =>
-      Lib.numberFilterClause({ operator: ">=", column, values }),
-    )
-    .with({ operator: "between", values: [P.number, P.number] }, () =>
-      Lib.numberFilterClause({ operator: "between", column, values }),
+    .with(
+      { operator: P.union("=", "!=") },
+      { operator: P.union(">=", "<="), values: [P.number] },
+      { operator: "between", values: [P.number, P.number] },
+      () => Lib.numberFilterClause({ operator, column, values }),
     )
     .otherwise(() => undefined);
 }
