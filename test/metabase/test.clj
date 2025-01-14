@@ -9,6 +9,7 @@
    [mb.hawk.init]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
+   [metabase.core.init]
    [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
@@ -70,6 +71,7 @@
   lib.metadata.jvm/keep-me
   mb.hawk.init/keep-me
   mdb.test-util/keep-me
+  metabase.core.init/keep-me
   metabase.request.core/keep-me
   metabase.test.util.dynamic-redefs/keep-me
   metabase.util.log.capture/keep-me
@@ -174,7 +176,7 @@
 
  [metabase.test.util.dynamic-redefs
   dynamic-value
-  with-dynamic-redefs]
+  with-dynamic-fn-redefs]
 
  [premium-features.test-util
   with-premium-features

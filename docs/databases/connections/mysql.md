@@ -136,6 +136,8 @@ Remember to drop the old user:
 DROP USER 'metabase'@'localhost';
 ```
 
+If you can't connect to the database, but the user, host, and password are correct, try adding `trustServerCertificate=true` to the additional JDBC options. This option will tell the Metabase driver to trust the server certificate even though it doesn't have a root certificate installed, and it should establish a secure connection.
+
 ## Syncing records that include JSON
 
 **Metabase will infer the JSON "schema" based on the keys in the first five hundred rows of a table.** MySQL JSON fields lack schema, so Metabase can't rely on table metadata to define which keys a JSON field has. To work around the lack of schema, Metabase will get the first five hundred records and parse the JSON in those records to infer the JSON's "schema". The reason Metabase limits itself to five hundred records is so that syncing metadata doesn't put unnecessary strain on your database.

@@ -2,9 +2,9 @@ import type { PropsWithChildren } from "react";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
-import type { MetabaseQuestion } from "embedding-sdk/types/public/question";
 import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
+import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";

@@ -1,14 +1,10 @@
 import type { Store } from "@reduxjs/toolkit";
 import { createContext } from "react";
-import { Provider, ReactReduxContext } from "react-redux";
+import { Provider } from "react-redux";
 // eslint-disable-next-line no-restricted-imports
 import * as ReactRedux from "react-redux";
 
-import { isEmbeddingSdk } from "metabase/env";
-
-export const MetabaseReduxContext = isEmbeddingSdk
-  ? createContext<any>(null)
-  : ReactReduxContext;
+export const MetabaseReduxContext = createContext<any>(null);
 
 export const MetabaseReduxProvider = ({
   children,

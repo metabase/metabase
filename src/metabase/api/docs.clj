@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [compojure.core :as compojure :refer [GET]]
    [metabase.api.common :as api]
-   [metabase.config :as config]
    [ring.middleware.content-type :as content-type]
    [ring.util.response :as response]))
 
@@ -34,10 +33,7 @@
    {:status 200
     :body  (merge
             (api/openapi-object (requiring-resolve 'metabase.api.routes/routes))
-            {:openapi "3.1.0"
-             :info    {:title   "Metabase API"
-                       :version (:tag config/mb-version-info)}
-             :servers [{:url         "/api"
+            {:servers [{:url         "/api"
                         :description "Metabase API"}]})})
 
   ([request respond raise]

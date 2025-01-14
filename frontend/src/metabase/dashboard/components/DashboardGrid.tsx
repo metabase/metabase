@@ -35,10 +35,6 @@ import { addUndo } from "metabase/redux/undo";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
-import {
-  MOBILE_DEFAULT_CARD_HEIGHT,
-  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
-} from "metabase/visualizations/shared/utils/sizes";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import {
   type BaseDashboardCard,
@@ -149,6 +145,8 @@ type OwnProps = {
   ) => void;
   onEditingChange?: (dashboard: Dashboard | null) => void;
   downloadsEnabled: boolean;
+  autoScrollToDashcardId: DashCardId | undefined;
+  reportAutoScrolledToDashcard: () => void;
 };
 
 type DashboardGridProps = OwnProps &
@@ -354,11 +352,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
   getLayouts(cards: BaseDashboardCard[]) {
     const desktop = cards.map(this.getLayoutForDashCard);
-    const mobile = generateMobileLayout({
-      desktopLayout: desktop,
-      defaultCardHeight: MOBILE_DEFAULT_CARD_HEIGHT,
-      heightByDisplayType: MOBILE_HEIGHT_BY_DISPLAY_TYPE,
-    });
+    const mobile = generateMobileLayout(desktop);
     return { desktop, mobile };
   }
 
@@ -512,11 +506,15 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       gridItemWidth,
       totalNumGridCols,
       downloadsEnabled,
+      shouldAutoScrollTo,
+      reportAutoScrolledToDashcard,
     }: {
       isMobile: boolean;
       gridItemWidth: number;
       totalNumGridCols: number;
       downloadsEnabled: boolean;
+      shouldAutoScrollTo: boolean;
+      reportAutoScrolledToDashcard: () => void;
     },
   ) {
     return (
@@ -552,6 +550,8 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
         downloadsEnabled={downloadsEnabled}
+        autoScroll={shouldAutoScrollTo}
+        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
       />
     );
   }
@@ -575,7 +575,9 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     gridItemWidth: number;
     totalNumGridCols: number;
   }) => {
-    const { isEditing } = this.props;
+    const { isEditing, autoScrollToDashcardId, reportAutoScrolledToDashcard } =
+      this.props;
+    const shouldAutoScrollTo = autoScrollToDashcardId === dc.id;
 
     const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
       dc.card.display,
@@ -601,6 +603,8 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
           gridItemWidth,
           totalNumGridCols,
           downloadsEnabled: this.props.downloadsEnabled,
+          shouldAutoScrollTo,
+          reportAutoScrolledToDashcard,
         })}
       </DashboardCardContainer>
     );

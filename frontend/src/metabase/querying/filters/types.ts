@@ -114,3 +114,8 @@ export type DateFilterValue =
   | DatePickerValue
   | MonthYearPickerValue
   | QuarterYearPickerValue;
+
+export type DateFilterDisplayOpts = {
+  // whether to include `On` prefix for a single date filter
+  withPrefix?: boolean;
+};
