@@ -1,8 +1,8 @@
-(ns metabase.task.analyze-queries-test
+(ns metabase.query-analysis.task.analyze-queries-test
   (:require
    [clojure.test :refer :all]
-   [metabase.query-analysis :as query-analysis]
-   [metabase.task.analyze-queries :as task.analyze-queries]
+   [metabase.query-analysis.core :as query-analysis]
+   [metabase.query-analysis.task.analyze-queries :as task.analyze-queries]
    [metabase.task.setup.query-analysis-setup :as setup]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))

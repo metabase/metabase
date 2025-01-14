@@ -1,4 +1,4 @@
-(ns metabase.query-analysis-test
+(ns metabase.query-analysis.core-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
@@ -7,7 +7,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.public-settings :as public-settings]
-   [metabase.query-analysis :as query-analysis]
+   [metabase.query-analysis.core :as query-analysis]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -23,7 +23,7 @@
       (public-settings/sql-parsing-enabled! false)
       (is (false? (query-analysis/enabled-type? :native))))))
 
-(deftest non-native-query-enabled-test
+(deftest ^:parallel non-native-query-enabled-test
   (testing "mbql parsing is always enabled"
     (is (query-analysis/enabled-type? :query))
     (is (query-analysis/enabled-type? :mbql/query)))
@@ -43,7 +43,7 @@
                         (u/update-if-exists :column u/lower-case-en)))
               (sort-by (juxt :table :column)))))))
 
-(deftest parse-mbql-test
+(deftest ^:parallel parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"
     (mt/with-temp [:model/Card c1 {:dataset_query (mt/mbql-query venues
                                                     {:aggregation [[:distinct $name]
@@ -64,7 +64,9 @@
       (is (= (mt/$ids
                [{:table-id (mt/id :checkins), :table "checkins", :field-id %checkins.venue_id, :column "venue_id", :explicit-reference true}
                 {:table-id (mt/id :venues), :table "venues", :field-id %venues.id, :column "id", :explicit-reference true}])
-             (:fields (field-id-references c3))))))
+             (:fields (field-id-references c3)))))))
+
+(deftest ^:parallel parse-mbql-test-2
   (testing "Parsing pMBQL query returns correct used fields"
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
@@ -103,7 +105,7 @@
       (is (= [{:table "t"}]
              (:tables (field-id-references c2)))))))
 
-(deftest replace-fields-and-tables!-test
+(deftest ^:parallel replace-fields-and-tables!-test
   (testing "fields and tables in a native card can be replaced"
     (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
       (let [replacements {:fields {(mt/id :orders :total) (mt/id :people :name)}
@@ -119,7 +121,7 @@
      (query-analysis/with-immediate-analysis
        ~@body)))
 
-(deftest parse-crosstab-test
+(deftest ^:parallel parse-crosstab-test
   (with-analysis-on
     (testing "Nested queries within crosstab expressions are ignored"
       (let [sql "SELECT * FROM CROSSTAB($$ wat $$, $$ wut $$) AS ct(page INTEGER, \"foo\" FLOAT)"]
@@ -130,7 +132,7 @@
             (is (not (t2/exists? :model/QueryField :card_id c-id)))
             (is (not (t2/exists? :model/QueryTable :card_id c-id)))))))))
 
-(deftest parse-long-column-test
+(deftest ^:parallel parse-long-column-test
   (with-analysis-on
     (testing "Long identifiers are truncated"
       (let [long-column (monstrous-name)
@@ -148,7 +150,7 @@
             (is (some (partial str/starts-with? long-table) tables))))))))
 
 (defn- throw-empty-exception [& _]
-  (let [ex (doto (ex-info "Oh no!" {})
+  (let [ex (doto ^Throwable (ex-info "Oh no!" {})
              (.setStackTrace (into-array StackTraceElement [])))]
     (throw ex)))
 

@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.query-analysis :as query-analysis]
+   [metabase.query-analysis.core :as query-analysis]
    [metabase.test :as mt]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))

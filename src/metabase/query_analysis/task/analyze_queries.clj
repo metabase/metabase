@@ -1,4 +1,4 @@
-(ns metabase.task.analyze-queries
+(ns metabase.query-analysis.task.analyze-queries
   "The background worker which performs the analysis of queries, and updates the database in accordance.
   Restricts the CPU and database load corresponding to this analysis via a crude rate limiting algorithm that puts the
   worker to sleep such that it is active at most [[max-cpu-usage-fraction]] of the time."
@@ -7,7 +7,7 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.public-settings :as public-settings]
-   [metabase.query-analysis :as query-analysis]
+   [metabase.query-analysis.core :as query-analysis]
    [metabase.query-analysis.failure-map :as failure-map]
    [metabase.task :as task]
    [metabase.util :as u]

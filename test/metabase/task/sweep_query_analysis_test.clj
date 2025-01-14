@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.query-analysis :as query-analysis]
+   [metabase.query-analysis.core :as query-analysis]
    [metabase.task.setup.query-analysis-setup :as setup]
    [metabase.task.sweep-query-analysis :as sweeper]
    [metabase.util.queue :as queue]

@@ -6,7 +6,6 @@
 
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
-   [metabase.task.analyze-queries]
    [metabase.task.cache]
    [metabase.task.creator-sentiment-emails]
    [metabase.task.email-remove-legacy-pulse]
