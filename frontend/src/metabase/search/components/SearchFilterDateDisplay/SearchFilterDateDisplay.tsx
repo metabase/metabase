@@ -1,5 +1,5 @@
 import { getDateFilterDisplayName } from "metabase/querying/filters/utils/dates";
-import { deserializeDateFilter } from "metabase/querying/parameters/utils/dates";
+import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/dates";
 import { Text } from "metabase/ui";
 
 export type SearchFilterDateDisplayProps = {
@@ -10,7 +10,7 @@ export const SearchFilterDateDisplay = ({
   label,
   value,
 }: SearchFilterDateDisplayProps) => {
-  const filter = value ? deserializeDateFilter(value) : undefined;
+  const filter = value ? deserializeDateParameterValue(value) : undefined;
 
   return (
     <Text c="inherit" fw={700} truncate>
