@@ -1,7 +1,6 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useMemo } from "react";
-import { useLatest } from "react-use";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
@@ -17,6 +16,7 @@ import { isObject } from "metabase-types/guards";
 
 import type {
   EntityDefinition,
+  EntityListQueryResponse,
   EntityQuery,
   EntityQuerySelector,
   EntityType,
@@ -43,6 +43,7 @@ interface ChildrenProps<Entity, EntityWrapper> {
   list: EntityWrapper[] | Entity[] | undefined;
   metadata: ListMetadata | undefined;
   reload: () => void;
+  total: number | undefined;
 }
 
 interface LoadingAndErrorWrapperProps {
@@ -69,10 +70,11 @@ interface Props<Entity, EntityWrapper> {
   reloadInterval?: ReloadInterval | ReloadIntervalSelector<Entity>;
   selectorName?: "getList" | "getListUnfiltered";
   wrapped?: boolean;
-  onLoaded?: (list: Entity[]) => void;
 }
 
-const transformResponse = (fetched: unknown) => {
+const transformResponse = <Entity extends object>(
+  fetched: EntityListQueryResponse<Entity>,
+) => {
   if (!isObject(fetched) || !fetched.data) {
     return { results: fetched, metadata: {} };
   }
@@ -98,7 +100,7 @@ const isPaginationMetadata = (
  *
  * @deprecated use "metabase/api" instead
  */
-export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
+export function EntityListLoader<Entity, EntityWrapper>({
   allError: allErrorProp,
   allFetched: allFetchedProp,
   allLoaded: allLoadedProp,
@@ -115,7 +117,6 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
   reloadInterval: reloadIntervalProp,
   selectorName = "getList",
   wrapped = false,
-  onLoaded,
   ...props
 }: Props<Entity, EntityWrapper>) {
   const dispatch = useDispatch();
@@ -295,20 +296,13 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
     setHasMorePages,
   ]);
 
-  const onLoadedRef = useLatest(onLoaded);
-
-  useEffect(() => {
-    if (data) {
-      onLoadedRef.current?.(data);
-    }
-  }, [data, onLoadedRef]);
-
   // merge props passed in from stacked Entity*Loaders:
   const allError = error || (allErrorProp ?? null);
   const allFetched = fetched && (allFetchedProp ?? true);
   const allLoaded = loaded && (allLoadedProp ?? true);
   const allLoading = loading || (allLoadingProp ?? false);
   const finalListName = listName || entityDefinition.nameMany;
+  const total = Array.isArray(data) ? undefined : data?.total;
 
   const actionCreators = useMemo(() => {
     return bindActionCreators(entityDefinition.actions, dispatch);
@@ -335,6 +329,7 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
       loading={loading || isFetching}
       metadata={metadata}
       reload={refetch}
+      total={total}
     />
   );
 
@@ -356,16 +351,16 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
 /**
  * @deprecated HOCs are deprecated
  */
-export const entityListLoaderRtkQuery =
+export const entityListLoader =
   <Entity, EntityWrapper>(eolProps: any) =>
   (
     ComposedComponent: (
       props: ChildrenProps<Entity, EntityWrapper>,
     ) => ReactNode,
   ) =>
-    function EntityListLoaderRtkQueryWrapper(props: any) {
+    function EntityListLoaderWrapper(props: any) {
       return (
-        <EntityListLoaderRtkQuery
+        <EntityListLoader
           ComposedComponent={ComposedComponent}
           {...props}
           {...eolProps}
