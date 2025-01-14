@@ -1,29 +1,39 @@
 (ns metabase-enterprise.upload-management.api
   (:require
-   [compojure.core :refer [DELETE]]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :as premium-features]
    [metabase.upload :as upload]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/tables"
+(defn- attached-dwh-tables
+  "Used for adding attached DWH tables to the list of tables visible to the user. In practice these are to manage
+  google sheets uploads."
+  []
+  (when (premium-features/has-feature? :attached-dwh)
+    (when-let [dw-db-id (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
+      (when-let [dw-tables (t2/select :model/Table :database_id dw-db-id)]
+        dw-tables))))
+
+(api.macros/defendpoint :get "/tables"
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []
   (as-> (t2/select :model/Table, :active true, :is_upload true, {:order-by [[:name :asc]]}) tables
-        ;; See https://github.com/metabase/metabase/issues/41023
+    ;; See https://github.com/metabase/metabase/issues/41023
+    (concat tables (attached-dwh-tables))
     (map #(update % :schema str) tables)
     (filterv mi/can-read? tables)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/tables/:id"
+(api.macros/defendpoint :delete "/tables/:id"
   "Delete the uploaded table from the database, optionally archiving cards for which it is the primary source."
-  [id archive-cards]
-  {id            ms/PositiveInt
-   archive-cards [:maybe {:default false} ms/BooleanValue]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [archive-cards]} :- [:map [:archive-cards {:default false} ms/BooleanValue]]
+   {}]
   (try
     ;; To be idempotent, we do not check whether the table has already been deactivated.
     (let [table  (api/check-404 (t2/select-one :model/Table id))
