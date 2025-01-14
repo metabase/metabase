@@ -44,7 +44,11 @@ jobs:
               { name: "mongo", tags: "@mongo", specs: allSpecs },
             ];
 
-            const regularChunks = context.payload.inputs.chunks - specialTests.length;
+            console.log({ context });
+            console.log("inputs", context.inputs);
+            console.log("payload", context.payload);
+
+            const regularChunks = context.inputs.chunks - specialTests.length;
 
             console.log({ regularChunks });
 
