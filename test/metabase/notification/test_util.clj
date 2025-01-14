@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.core :as channel]
+   [metabase.email :as email]
    [metabase.events.notification :as events.notification]
    [metabase.integrations.slack :as slack]
    [metabase.models.notification :as models.notification]
@@ -45,6 +46,7 @@
   `(binding [notification/*default-options* {:notification/sync? true}]
      ~@body))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-captured-channel-send!
   [thunk]
   (with-send-notification-sync
@@ -102,6 +104,18 @@
 (def default-card-name "Card notification test card")
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn- with-temp-notification
+  "Create a temporary notification for testing."
+  [{:keys [notification handlers subscriptions]} thunk]
+  (let [notification (models.notification/create-notification!
+                      notification
+                      subscriptions
+                      handlers)]
+    (try
+      (thunk (models.notification/hydrate-notification notification))
+      (finally
+        (t2/delete! :model/Notification (:id notification))))))
+
 (defn do-with-card-notification
   [{:keys [card notification-card notification subscriptions handlers]} thunk]
   (mt/with-temp
@@ -111,18 +125,15 @@
                                                                          :breakout    [$category]})}
 
                                 card)]
-    (let [notification (models.notification/create-notification!
-                        (merge {:payload      (assoc notification-card
-                                                     :card_id card-id)
-                                :payload_type :notification/card
-                                :creator_id   (mt/user->id :crowberto)}
-                               notification)
-                        subscriptions
-                        handlers)]
-      (try
-        (thunk (models.notification/hydrate-notification notification))
-        (finally
-          (t2/delete! :model/Notification (:id notification)))))))
+    (with-temp-notification
+      {:notification  (merge {:payload      (assoc notification-card
+                                                   :card_id card-id)
+                              :payload_type :notification/card
+                              :creator_id   (mt/user->id :crowberto)}
+                             notification)
+       :subscriptions subscriptions
+       :handlers      handlers}
+      thunk)))
 
 (defmacro with-card-notification
   "Macro that sets up a card notification for testing.
@@ -134,6 +145,27 @@
                      :handlers          []}]"
   [[bindings props] & body]
   `(do-with-card-notification ~props (fn [~bindings] ~@body)))
+
+(defn do-with-system-event-notification!
+  [{:keys [event notification subscriptions handlers]} thunk]
+  (with-temporary-event-topics! [event]
+    (with-temp-notification
+      {:notification  (merge {:payload_type :notification/system-event
+                              :creator_id   (mt/user->id :crowberto)}
+                             notification)
+       :subscriptions subscriptions
+       :handlers      handlers}
+      thunk)))
+
+(defmacro with-system-event-notification!
+  "Macro that sets up a system event notification for testing.
+    (with-system-event-notification!
+      [notification {:event         :metabase/big-event
+                     :notification  {:creator_id 1}
+                     :subscriptions []
+                     :handlers      []}]"
+  [[notification-binding props] & body]
+  `(do-with-system-event-notification! ~props (fn [~notification-binding] ~@body)))
 
 (def channel-type->fixture
   {:channel/email (fn [thunk] (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
@@ -172,6 +204,25 @@
                                          :rendered-info
                                          (fn [ri] (m/map-vals some? ri)))
                                  attachment-info))))
+
+(defn do-with-mock-inbox-email!
+  "Helper function that mocks email/send-email! to capture emails in a vector and returns them."
+  [thunk]
+  (let [emails (atom [])]
+    (with-redefs [email/send-email! (fn [_ email]
+                                      (swap! emails conj email))]
+      (thunk)
+      @emails)))
+
+(defmacro with-mock-inbox-email!
+  "Macro that mocks email/send-email! to capture emails in a vector and returns them.
+   Example:
+   (with-mock-inbox-email
+     (email/send-email! {:to \"test@test.com\"})
+     (email/send-email! {:to \"test2@test.com\"}))
+   ;; => [{:to \"test@test.com\"} {:to \"test2@test.com\"}]"
+  [& body]
+  `(do-with-mock-inbox-email! (fn [] ~@body)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Dummy Data                                              ;;

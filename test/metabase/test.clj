@@ -297,6 +297,7 @@
  [tu.public-setings
   with-premium-features
   with-additional-premium-features
+  when-ee-evailable
   assert-has-premium-feature-error]
 
  [u.random

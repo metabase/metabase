@@ -8,7 +8,9 @@
    [medley.core :as m]
    [metabase.models.channel :as models.channel]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions :as perms]
    [metabase.models.util.spec-update :as models.u.spec-update]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -211,9 +213,10 @@
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
    notification-handlers k
-   #(t2/select-fn->fn :id identity :model/Channel
-                      :id [:in (map :channel_id notification-handlers)]
-                      :active true)
+   #(when-let [channel-ids (seq (keep :channel_id notification-handlers))]
+      (t2/select-fn->fn :id identity :model/Channel
+                        :id [:in channel-ids]
+                        :active true))
    :channel_id
    {:default nil}))
 
@@ -222,8 +225,9 @@
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
    notification-handlers k
-   #(t2/select-fn->fn :id identity :model/ChannelTemplate
-                      :id [:in (map :template_id notification-handlers)])
+   #(when-let [template-ids (seq (keep :template_id notification-handlers))]
+      (t2/select-fn->fn :id identity :model/ChannelTemplate
+                        :id [:in template-ids]))
    :template_id
    {:default nil}))
 
@@ -371,6 +375,68 @@
          instance))
 
 ;; ------------------------------------------------------------------------------------------------;;
+;;                                         Permissions                                             ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defn current-user-can-read-payload?
+  "Check if the current user can read the payload of a notification."
+  [notification]
+  (case (:payload_type notification)
+    :notification/card
+    (mi/can-read? :model/Card (-> notification :payload :card_id))
+
+    :notification/system-event
+    (mi/superuser?)
+
+    :notification/testing
+    true))
+
+(defn current-user-is-recipient?
+  "Check if the current user is a recipient of a notification."
+  [notification]
+  (->> (:handlers (t2/hydrate notification [:handlers :recipients]))
+       (mapcat :recipients)
+       (map :user_id)
+       distinct
+       (some #{(mi/current-user-id)})
+       boolean))
+
+(defn current-user-is-creator?
+  "Check if the current user is the creator of a notification."
+  [notification]
+  (= (:creator_id notification) (mi/current-user-id)))
+
+(defmethod mi/can-read? :model/Notification
+  ([notification]
+   (or
+    (mi/superuser?)
+    (current-user-is-creator? notification)
+    (current-user-is-recipient? notification)))
+  ([_ pk]
+   (mi/can-read? (t2/select-one :model/Notification pk))))
+
+(defmethod mi/can-create? :model/Notification
+  [_ notification]
+  (or (mi/superuser?)
+      (and (current-user-can-read-payload? notification)
+           ;; if advanced-permissions is enabled, we require users to have subscription permissions
+           (or (not (premium-features/has-feature? :advanced-permissions))
+               (perms/current-user-has-application-permissions? :subscription)))))
+
+(defmethod mi/can-update? :model/Notification
+  [instance _changes]
+  (or
+   (mi/superuser?)
+   (and
+    (current-user-is-creator? instance)
+    ;; if advanced-permissions is enabled, we require users to have subscription permissions
+    ;; and is the owner of the notification and can read the payload
+    (or
+     (not (premium-features/has-feature? :advanced-permissions))
+     (perms/current-user-has-application-permissions? :subscription))
+    (current-user-can-read-payload? instance))))
+
+;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
@@ -392,7 +458,7 @@
                          [:payload ::NotificationCard]]]
     [::mc/default       :any]]])
 
-(mu/defn hydrate-notification :- ::FullyHydratedNotification
+(mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
   [notification-or-notifications]
   (t2/hydrate notification-or-notifications
@@ -465,3 +531,12 @@
   "Update an existing notification with `new-notification`."
   [existing-notification new-notification]
   (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))
+
+(defn unsubscribe-user!
+  "Unsubscribe a user from a notification."
+  [notification-id user-id]
+  (t2/delete! :model/NotificationRecipient
+              :user_id user-id
+              :notification_handler_id [:in {:select [:id]
+                                             :from   [:notification_handler]
+                                             :where  [:= :notification_id notification-id]}]))
