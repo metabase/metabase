@@ -123,3 +123,43 @@ jobs:
           m2-cache-key: "cljs"
       - name: Run frontend timezones tests
         run: yarn run test-timezones
+
+  fe-tests-result:
+    needs:
+      - fe-lint
+      - fe-type-check
+      - fe-tests-unit
+      - fe-tests-timezones
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      needs: ${{ toJson(needs) }}
+    steps:
+      - name: Check frontend job status
+        uses: actions/github-script@v7
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            // are all jobs skipped or successful?
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+              console.log('All jobs are skipped or successful');
+              process.exit(0);
+            }
+
+            // otherwise, something failed
+            console.log('Some frontend jobs failed');
+            jobs.forEach((job) => {
+              if (job.result !== 'success') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+            process.exit(1);
