@@ -178,6 +178,8 @@ When querying Vitess databases, you should add a `LIMIT` clause inside each subq
 
 The reason: typically, Metabase applies limits (e.g., 2000 or 10000 rows) to the final query results. But due to a known bug in Vitess, Vitess might apply these limits to subqueries, which can lead to unexpected results. The workaround is to add limits to each of your subqueries.
 
+Also, please ensure to talk to the vendor that's hosting the platform, since Vitess has problems to return metadata from the information schema which Metabase uses to populate its own Application database, causing fields and tables to not appear or appear empty.
+
 ## Further reading
 
 - [MariaDB](./mariadb.md)
