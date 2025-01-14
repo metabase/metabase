@@ -24,6 +24,8 @@ jobs:
           node-version: '20.x'
       - uses: actions/github-script@v7
         id: matrix
+        env:
+          chunks: ${{ inputs.chunks }}
         with:
           script: | # js
             const java = 21;
@@ -44,11 +46,8 @@ jobs:
               { name: "mongo", tags: "@mongo", specs: allSpecs },
             ];
 
-            console.log({ context });
-            console.log("inputs", context.inputs);
-            console.log("payload", context.payload);
-
-            const regularChunks = context.inputs.chunks - specialTests.length;
+            const inputChunks = Number(process.env.chunks);
+            const regularChunks = inputChunks - specialTests.length;
 
             console.log({ regularChunks });
 
