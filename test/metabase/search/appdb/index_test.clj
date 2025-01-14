@@ -313,7 +313,7 @@
                                                   :updated_at yesterday}]
         (is (=? (index-entity
                  {:model            "table"
-                  :model_id         table-id
+                  :model_id         (str table-id)
                   :name             table-name
                   :view_count       42
                   :database_id      db-id
@@ -336,7 +336,7 @@
                                                       :created_at yesterday}]
         (is (=? (index-entity
                  {:model            "collection"
-                  :model_id         coll-id
+                  :model_id         (str coll-id)
                   :collection_id    coll-id
                   :name             collection-name
                   :archived         true
