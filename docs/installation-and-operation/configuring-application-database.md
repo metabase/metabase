@@ -11,7 +11,7 @@ The application database is where Metabase stores information about user account
 For production, we recommend using PostgreSQL as your application database.
 
 - [PostgreSQL](#postgresql) (recommended for production)
-- [MySQL](#mysql-or-mariadb) (also works for production)
+- [MySQL or MariaDB](#mysql-or-mariadb) (also works for production)
 - [H2](#h2-application-database) (default for local demos - AVOID in production)
 
 Metabase will read the connection configuration information when the application starts up. You can't change the application database while the application is running.

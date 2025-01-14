@@ -4,11 +4,15 @@ title: MariaDB
 
 # MariaDB
 
-> We recommend using MariaDB version 10.4 or higher.
+> This page covers connecting to MariaDB as a _data warehouse_. For using MariaDB as Metabase's _application database_, see [Configuring the Metabase application database](../../installation-and-operation/configuring-application-database.md).
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
 MariaDB shares a driver with MySQL, so select the **MySQL** driver.
+
+## Supported versions
+
+Metabase supports the oldest supported version of Maria DB through the latest stable version. See [MariaDB Server releases](https://mariadb.com/kb/en/mariadb-server-release-dates/).
 
 ## Settings
 

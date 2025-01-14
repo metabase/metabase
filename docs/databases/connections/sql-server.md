@@ -6,7 +6,9 @@ title: SQL Server
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
-Fill out the fields for that database, and click **Save changes** at the bottom.
+## Supported versions
+
+Metabase supports the oldest supported version of SQL Server through the latest stable version. See [SQL Server end of support options](https://learn.microsoft.com/en-us/sql/sql-server/end-of-support/sql-server-end-of-support-overview).
 
 ## Settings
 
