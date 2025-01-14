@@ -974,12 +974,12 @@ describe("issue 29786", { tags: "@external" }, () => {
       H.startNewNativeQuestion({
         display: "table",
         collection_id: COLLECTION_GROUP,
+        database: 2,
+        query: SQL_QUERY,
       });
 
-      cy.findByTestId("gui-builder-data").click();
-      cy.findByLabelText("QA MySQL8").click();
-
-      SQLFilter.enterParameterizedQuery(SQL_QUERY);
+      // type a space to trigger fields
+      cy.focused().type(" ");
 
       cy.findAllByTestId("variable-type-select").first().click();
       SQLFilter.chooseType("Field Filter");
