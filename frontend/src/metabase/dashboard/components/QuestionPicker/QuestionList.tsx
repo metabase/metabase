@@ -10,7 +10,7 @@ import { isEmbeddingSdk } from "metabase/env";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import type {
   CollectionId,
@@ -129,13 +129,15 @@ export function QuestionList({
                       flex: 1,
                     }}
                   />
-                  <Box
-                    ml="auto"
-                    className={S.visualizerButton}
-                    onClick={() => setVisualizerModalOpen(true)}
-                  >
-                    <Icon name="add_data" />
-                  </Box>
+                  <Tooltip label={t`Visualize another way`}>
+                    <Box
+                      ml="auto"
+                      className={S.visualizerButton}
+                      onClick={() => setVisualizerModalOpen(true)}
+                    >
+                      <Icon name="add_data" />
+                    </Box>
+                  </Tooltip>
                 </Flex>
               ))}
             </SelectList>
