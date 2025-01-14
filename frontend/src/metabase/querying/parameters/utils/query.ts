@@ -1,3 +1,5 @@
+import { P, match } from "ts-pattern";
+
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
@@ -9,14 +11,16 @@ import type {
 } from "metabase-types/api";
 import { isStructuredDimensionTarget } from "metabase-types/guards";
 
-import { deserializeDateFilter } from "./dates";
+import {
+  normalizeBooleanFilter,
+  normalizeDateFilter,
+  normalizeNumberFilter,
+  normalizeStringFilter,
+} from "./normalize";
 
 const STRING_OPERATORS: Partial<
   Record<ParameterType, Lib.StringFilterOperator>
 > = {
-  id: "=",
-  text: "=",
-  category: "=",
   "string/=": "=",
   "string/!=": "!=",
   "string/contains": "contains",
@@ -28,24 +32,11 @@ const STRING_OPERATORS: Partial<
 const NUMBER_OPERATORS: Partial<
   Record<ParameterType, Lib.NumberFilterOperator>
 > = {
-  id: "=",
-  text: "=",
-  category: "=",
   "number/=": "=",
   "number/!=": "!=",
   "number/>=": ">=",
   "number/<=": "<=",
   "number/between": "between",
-};
-
-const BOOLEAN_OPERATORS: Partial<
-  Record<ParameterType, Lib.BooleanFilterOperator>
-> = {
-  id: "=",
-  text: "=",
-  category: "=",
-  "string/=": "=",
-  "string/!=": "=",
 };
 
 export function applyParameter(
@@ -125,28 +116,17 @@ function getParameterFilterClause(
   }
 }
 
-function getValueAsArray(value: ParameterValueOrArray) {
-  const array = Array.isArray(value) ? value : [value];
-  return array.filter(item => item != null);
-}
-
 function getStringParameterFilterClause(
   type: ParameterType,
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const operator = STRING_OPERATORS[type];
-  if (operator == null) {
-    return;
-  }
-
-  const values = getValueAsArray(value)
-    .map(String)
-    .filter(value => value.length > 0);
+  const values = normalizeStringFilter(value);
   if (values.length === 0) {
     return;
   }
 
+  const operator = STRING_OPERATORS[type] ?? "=";
   return Lib.stringFilterClause({
     operator,
     column,
@@ -160,19 +140,26 @@ function getNumberParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const operator = NUMBER_OPERATORS[type];
-  if (operator == null) {
-    return;
-  }
-
-  const values = getValueAsArray(value)
-    .map(value => parseFloat(String(value)))
-    .filter(value => isFinite(value));
+  const values = normalizeNumberFilter(value);
   if (values.length === 0) {
     return;
   }
 
-  return Lib.numberFilterClause({ operator, column, values });
+  const operator = NUMBER_OPERATORS[type] ?? "=";
+  return match({ operator, values })
+    .with({ operator: P.union("=", "!=") }, () =>
+      Lib.numberFilterClause({ operator, column, values }),
+    )
+    .with({ operator: "<=", values: [P.number] }, () =>
+      Lib.numberFilterClause({ operator: "<=", column, values }),
+    )
+    .with({ operator: ">=", values: [P.number] }, () =>
+      Lib.numberFilterClause({ operator: ">=", column, values }),
+    )
+    .with({ operator: "between", values: [P.number, P.number] }, () =>
+      Lib.numberFilterClause({ operator: "between", column, values }),
+    )
+    .otherwise(() => undefined);
 }
 
 function getBooleanParameterFilterClause(
@@ -180,31 +167,23 @@ function getBooleanParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  const operator = BOOLEAN_OPERATORS[type];
-  if (operator == null) {
-    return;
-  }
-
-  const values = getValueAsArray(value)
-    .filter(value => typeof value === "boolean")
-    .map(Boolean)
-    .map(value => (type === "string/!=" ? !value : value));
+  const values = normalizeBooleanFilter(value);
   if (values.length === 0) {
     return;
   }
 
-  return Lib.booleanFilterClause({ operator, column, values });
+  return Lib.booleanFilterClause({
+    operator: "=",
+    column,
+    values: values.map(item => (type === "string/!=" ? !item : item)),
+  });
 }
 
 function getDateParameterFilterClause(
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
-  if (typeof value !== "string") {
-    return;
-  }
-
-  const filter = deserializeDateFilter(value);
+  const filter = normalizeDateFilter(value);
   if (filter == null) {
     return;
   }

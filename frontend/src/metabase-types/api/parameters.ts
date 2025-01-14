@@ -31,7 +31,6 @@ export type ParameterType =
   | DateParameterType
   | "id"
   | "category"
-  | "text"
   | "temporal-unit";
 
 export type ParameterId = string;
