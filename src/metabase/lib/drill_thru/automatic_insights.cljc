@@ -27,7 +27,7 @@
              (or (not column) (some? value))
              (lib.metadata/setting query :enable-xrays)
              (not-empty dimensions)
-             ;; TODO fix this drill to work with underlying aggregations and remove this check (metabase#46932).
+             ;; Disabled because xrays do not work with multi-stage queries (metabase#52129).
              (not (lib.drill-thru.common/strictly-underlying-aggregation? query column)))
     {:lib/type   :metabase.lib.drill-thru/drill-thru
      :type       :drill-thru/automatic-insights
