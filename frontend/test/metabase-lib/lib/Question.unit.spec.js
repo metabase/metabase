@@ -842,7 +842,7 @@ describe("Question", () => {
         id: 3,
         slug: "param_date",
         type: "date/month",
-        target: ["dimension", ["field", 3, null]],
+        target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
       },
       {
         id: 4,
@@ -863,9 +863,9 @@ describe("Question", () => {
       dataset_query: {
         type: "query",
         query: {
-          "source-table": 1,
+          "source-table": PRODUCTS_ID,
         },
-        database: 1,
+        database: SAMPLE_DB_ID,
       },
     };
 
@@ -959,13 +959,14 @@ describe("Question", () => {
               dissoc(card, "id"),
               ["dataset_query", "query", "filter"],
               [
-                "=",
+                "between",
                 [
                   "field",
-                  3,
-                  { "base-type": "type/BigInteger", "temporal-unit": "month" },
+                  PRODUCTS.CREATED_AT,
+                  { "base-type": "type/DateTime" },
                 ],
                 "2017-05-01",
+                "2017-05-31",
               ],
             ),
             original_card_id: card.id,

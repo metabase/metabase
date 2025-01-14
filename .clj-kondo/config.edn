@@ -259,6 +259,7 @@
    clojure.core/pr                                    {:message "Use metabase.util.log instead of clojure.core/pr"}
    clojure.core/tap>                                  {:message "Don't use tap> is source code"}
    clojure.core/time                                  {:message "Don't use time in source code"}
+   clojure.test.check/quick-check                     {:message "You probably meant to use clojure.test.check.clojure-test/defspec instead -- quick check will run the tests when it is evaluated rather than when we run the test suite."}
    clojure.java.jdbc/get-connection                   {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/get-connection"}
    clojure.java.jdbc/with-db-connection               {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/with-db-connection"}
    clojure.java.jdbc/with-db-metadata                 {:message "Use sql-jdbc.execute/do-with-connection-with-options + .getMetaData instead of jdbc/with-db-metadata"}
@@ -290,8 +291,7 @@
    honeysql.format        {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.helpers       {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.types         {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
-   honeysql.util          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
-   metabase.util.jvm      {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}}
+   honeysql.util          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}}
 
   :unresolved-var
   {:exclude
@@ -336,6 +336,7 @@
     metabase.bootstrap             #{metabase.bootstrap}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     metabase.channel               #{metabase.channel.core
+                                     metabase.channel.init
                                      metabase.channel.render.core
                                      metabase.channel.template.core}
     metabase.config                #{metabase.config}
@@ -349,7 +350,7 @@
                                      metabase.email.messages
                                      metabase.email.result-attachment}                              ; TODO -- consolidate these into a real API namespace.
     metabase.embed                 #{metabase.embed.settings}
-    metabase.events                #{metabase.events}
+    metabase.events                #{metabase.events metabase.events.init}
     metabase.formatter             #{metabase.formatter}
     metabase.integrations          #{metabase.integrations.common
                                      metabase.integrations.google
@@ -361,11 +362,12 @@
                                      metabase.legacy-mbql.schema.helpers
                                      metabase.legacy-mbql.util}                                     ; TODO -- consolidate these into a real API namespace.
     metabase.lib                   :any                                                             ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
-    metabase.logger                #{metabase.logger}
+    metabase.logger                #{metabase.logger metabase.logger.init}
     metabase.metabot               #{metabase.metabot}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
     metabase.notification          #{metabase.notification.core
+                                     metabase.notification.init
                                      metabase.notification.payload.core}
     metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
     metabase.plugins               #{metabase.plugins
@@ -409,6 +411,7 @@
     metabase.task                  #{metabase.task
                                      metabase.task.bootstrap
                                      metabase.task.index-values
+                                     metabase.task.init
                                      metabase.task.persist-refresh
                                      ;; We need to expose this to the metabase.search module.
                                      ;; Ideally, it would just live inside that module.
@@ -782,6 +785,7 @@
   clojure.core.cache/defcache                                                           clojure.core/deftype
   clojure.core.logic/defne                                                              clj-kondo.lint-as/def-catch-all
   clojure.test.check.clojure-test/defspec                                               clojure.test/deftest
+  clojure.test.check.properties/for-all                                                 clojure.core/let
   clojurewerkz.quartzite.jobs/defjob                                                    clojure.core/defn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let

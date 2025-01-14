@@ -58,17 +58,6 @@
   {:arglists '([job-name-string])}
   keyword)
 
-(defn- find-and-load-task-namespaces!
-  "Search Classpath for namespaces that start with `metabase.tasks.`, then `require` them so initialization can happen."
-  []
-  (doseq [ns-symb u/metabase-namespace-symbols
-          :when   (.startsWith (name ns-symb) "metabase.task.")]
-    (try
-      (log/debug "Loading tasks namespace:" (u/format-color 'blue ns-symb))
-      (classloader/require ns-symb)
-      (catch Throwable e
-        (log/errorf e "Error loading tasks namespace %s" ns-symb)))))
-
 (defn- init-tasks!
   "Call all implementations of `init!`"
   []
@@ -109,7 +98,6 @@
     (set-jdbc-backend-properties!)
     (let [new-scheduler (qs/initialize)]
       (when (compare-and-set! *quartz-scheduler* nil new-scheduler)
-        (find-and-load-task-namespaces!)
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
         (delete-jobs-with-no-class!)

@@ -7,6 +7,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.task :as task]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -121,7 +122,9 @@
               e     engines]
         (search.engine/consume! e batch)))))
 
-(defn- bulk-ingest! [updates]
+(defn bulk-ingest!
+  "Process the given search model updates. Returns the number of search index entries that get updated as a result."
+  [updates]
   (->> (for [[search-model where-clauses] (u/group-by first second updates)]
          (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
        ;; init collection is only for clj-kondo, as we know that the list is non-empty
@@ -129,12 +132,14 @@
        query->documents
        consume!))
 
-(defn process-next-batch!
-  "Wait up to 'delay-ms' for a queued batch to become ready, and process the batch if we get one.
-  Returns the number of search index entries that get updated as a result."
+(defn get-next-batch!
+  "Wait up for a batch to become ready, and take it off the queue.
+  Used `first-delay-ms` to determine how long it will wait for any updates.
+  It will wait an additional `next-delay-ms` after each item for additional items to add to the batch, up to some
+  maximum batch size.
+  Will return nil if there is a timeout waiting for any updates."
   [first-delay-ms next-delay-ms]
-  (when-let [queued-updates (queue/take-delayed-batch! queue batch-max first-delay-ms next-delay-ms)]
-    (bulk-ingest! queued-updates)))
+  (queue/take-delayed-batch! queue batch-max first-delay-ms next-delay-ms))
 
 (defn- index-worker-exists? []
   (task/job-exists? @(requiring-resolve 'metabase.task.search-index/update-job-key)))
@@ -150,4 +155,5 @@
      (if sync?
        (bulk-ingest! updates)
        (doseq [update updates]
+         (log/trace "Queuing update" update)
          (queue/put-with-delay! queue delay-ms update))))))
