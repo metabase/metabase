@@ -189,7 +189,7 @@
 (defn bytes-to-string
   "Converts UTF-8 bytes into a string."
   ^String [^bytes bs]
-  (new java.lang.String bs StandardCharsets/UTF_8))
+  (String. bs StandardCharsets/UTF_8))
 
 (defn decode-base64-to-bytes
   "Decodes a Base64 string into bytes."
