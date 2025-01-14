@@ -116,7 +116,7 @@ jobs:
       name: ${{ matrix.name }}
       edition: ${{ matrix.edition }}
       specs: ${{ matrix.specs }}
-      total_chunks: ${{ needs.e2e-matrix-builder.outputs.regularChunks }}
+      total_chunks: ${{ fromJson(needs.e2e-matrix-builder.outputs.regularChunks) }}
       split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
