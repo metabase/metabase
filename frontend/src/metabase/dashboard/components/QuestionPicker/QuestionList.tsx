@@ -10,6 +10,8 @@ import { isEmbeddingSdk } from "metabase/env";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { Box, Flex, Icon } from "metabase/ui";
+import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import type {
   CollectionId,
   SearchRequest,
@@ -22,6 +24,7 @@ import {
   PaginationControlsContainer,
   QuestionListItem,
 } from "./QuestionList.styled";
+import S from "./QuestionPicker.module.css";
 
 interface QuestionListProps {
   searchText: string;
@@ -46,6 +49,7 @@ export function QuestionList({
   showOnlyPublicCollections,
 }: QuestionListProps) {
   const [queryOffset, setQueryOffset] = useState(0);
+  const [isVisualizerModalOpen, setVisualizerModalOpen] = useState(false);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
 
   useEffect(() => {
@@ -109,19 +113,30 @@ export function QuestionList({
           <>
             <SelectList>
               {list.map(item => (
-                <QuestionListItem
-                  key={item.id}
-                  id={item.id}
-                  name={item.getName()}
-                  icon={{
-                    name: item.getIcon().name,
-                    size: item.model === "dataset" ? 18 : 16,
-                  }}
-                  onSelect={onSelect}
-                  rightIcon={PLUGIN_MODERATION.getStatusIcon(
-                    item.moderated_status ?? undefined,
-                  )}
-                />
+                <Flex align="center" key={item.id} className={S.questionItem}>
+                  <QuestionListItem
+                    id={item.id}
+                    name={item.getName()}
+                    icon={{
+                      name: item.getIcon().name,
+                      size: item.model === "dataset" ? 18 : 16,
+                    }}
+                    onSelect={onSelect}
+                    rightIcon={PLUGIN_MODERATION.getStatusIcon(
+                      item.moderated_status ?? undefined,
+                    )}
+                    style={{
+                      flex: 1,
+                    }}
+                  />
+                  <Box
+                    ml="auto"
+                    className={S.visualizerButton}
+                    onClick={() => setVisualizerModalOpen(true)}
+                  >
+                    <Icon name="add_data" />
+                  </Box>
+                </Flex>
               ))}
             </SelectList>
             <PaginationControlsContainer>
@@ -135,6 +150,12 @@ export function QuestionList({
                 onPreviousPage={handleClickPreviousPage}
               />
             </PaginationControlsContainer>
+            {isVisualizerModalOpen && (
+              <VisualizerModal
+                onSave={() => alert("Do a thing")}
+                onClose={() => setVisualizerModalOpen(false)}
+              />
+            )}
           </>
         );
       }}
