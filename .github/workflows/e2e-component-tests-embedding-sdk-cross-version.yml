@@ -233,7 +233,7 @@ jobs:
                formatSummary
              } = require("./.github/scripts/handle-mochawesome-report.js");
 
-             const report = generateReport();
+             const report = await generateReport();
              const results = parseReport(report);
              const summary = formatSummary(results);
 
