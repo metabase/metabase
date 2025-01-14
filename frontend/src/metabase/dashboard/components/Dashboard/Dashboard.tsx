@@ -430,7 +430,11 @@ function Dashboard(props: DashboardProps) {
                 canRestore={canRestore}
                 canDelete={canDelete}
                 onUnarchive={async () => {
-                  await dispatch(setArchivedDashboard(false));
+                  await dispatch(
+                    setArchivedDashboard(false, false, {
+                      name: tc(dashboard, "name"),
+                    }),
+                  );
                   await dispatch(Bookmarks.actions.invalidateLists());
                 }}
                 onMove={({ id }) => dispatch(moveDashboardToCollection({ id }))}

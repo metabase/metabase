@@ -21,6 +21,7 @@ export const ContentTranslationProvider = ({
 }: {
   children: ReactNode;
 }) => {
+  // This needs to be an instance level setting
   const [stringifiedDictionary, setStringifiedDictionary] =
     useUserSetting("dynamic-dictionary");
 
@@ -51,10 +52,10 @@ export const ContentTranslationProvider = ({
   const locale = useLocale();
 
   const contextValue = {
-    shouldLocalize: true,
     dictionary: dictionary || [],
-    setDictionary,
     locale,
+    setDictionary,
+    shouldLocalize: true,
   };
 
   return (
