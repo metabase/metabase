@@ -61,23 +61,28 @@
 ;; MB <-> HM APIs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(mu/defn- hm-service-account-setup? :- [:or [:= false] :string]
+(mu/defn- maybe-hm-service-account-email :- [:or [:= false] :string]
   "Checks to see if Google service-account is setup in harbormaster."
   []
-  (let [[status response] (hm.client/make-request
-                           (->config)
-                           :get
-                           ;; This is the endpoint that harbormaster uses to check if service-account is setup.
-                           ;; n.b. try to ignore that it has 'oauth' in there.
-                           "/api/v2/mb/connections-google/service-account")]
-    (if (= status :ok)
-      (:email response)
-      false)))
+  (let [[_status response] (hm.client/make-request
+                            (->config)
+                            :get
+                            ;; This is the endpoint that harbormaster uses to check if service-account is setup.
+                            ;; n.b. try to ignore that it has 'oauth' in there.
+                            "/api/v2/mb/connections-google/service-account")
+        response-status    (:status response)]
+    (cond
+      (= :initializing response-status) false
+      (= :active response-status)       (:email response)
+      ;; an `:error-details` key may optionally be in the response. if it is, use it:
+      (= :error response-status)        (throw (ex-info (:error-details response "Error syncing service-account.") {}))
+      ;; the status can be `:syncing`, in which case we continue to wait:
+      :else                             false)))
 
 (defn- service-account-email [gsheets]
   (or
    (:email gsheets) ;; It's already set-up! no need to ask HM or update the status:
-   (when-let [email (hm-service-account-setup?)]
+   (when-let [email (maybe-hm-service-account-email)]
      ;; When harbormaster says service-account exists, set the gsheets status to `auth-complete`:
      (gsheets! {:status "connected" :email email})
      email)))
@@ -138,12 +143,14 @@
                                    "and sharing permissions."]) {})))))
 
 (api.macros/defendpoint :delete "/folder"
-  "Disconnect the google service account"
+  "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []
-  (let [conn-id (get-gdrive-connection)
-        [status resp] (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" conn-id))]
-    (if (= status :ok)
-      (gsheets! {:status "not-connected"})
-      (throw (ex-info "Unable to disconnect google service account" {:hm/resp resp})))))
+  (if-let [conn-id (get-gdrive-connection)]
+    (let [[status _] (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" conn-id))]
+      (if (= status :ok)
+        (gsheets! {:status "not-connected"})
+        (throw (ex-info "Unable to disconnect google service account" {}))))
+    (do (gsheets! {:status "not-connected"})
+        (throw (ex-info "Unable to find google drive connection." {})))))
 
 (api/define-routes)
