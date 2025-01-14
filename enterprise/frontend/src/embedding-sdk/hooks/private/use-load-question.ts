@@ -1,4 +1,4 @@
-import { useReducer, useRef } from "react";
+import { useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
 import type { ParameterValues } from "embedding-sdk/components/private/InteractiveQuestion/context";
@@ -82,7 +82,14 @@ export function useLoadQuestion({
   // Avoid re-running the query if the parameters haven't changed.
   const sqlParameterKey = getParameterDependencyKey(initialSqlParameters);
 
-  const [loadQuestionState, loadAndQueryQuestion] = useAsyncFn(async () => {
+  const shouldLoadQuestion = cardId != null;
+  const [isQuestionLoading, setIsQuestionLoading] =
+    useState(shouldLoadQuestion);
+
+  const [, loadAndQueryQuestion] = useAsyncFn(async () => {
+    if (shouldLoadQuestion) {
+      setIsQuestionLoading(true);
+    }
     const questionState = await dispatch(
       loadQuestionSdk({
         options,
@@ -90,7 +97,9 @@ export function useLoadQuestion({
         cardId,
         initialSqlParameters,
       }),
-    );
+    ).finally(() => {
+      setIsQuestionLoading(false);
+    });
 
     mergeQuestionState(questionState);
 
@@ -180,7 +189,7 @@ export function useLoadQuestion({
 
     queryResults,
 
-    isQuestionLoading: loadQuestionState.loading,
+    isQuestionLoading,
     isQueryRunning,
 
     queryQuestion,
