@@ -13,7 +13,7 @@ function findDateColumn(query: Lib.Query) {
 }
 
 function createDateFilter(query: Lib.Query) {
-  return Lib.specificDateFilterClause(query, 0, {
+  return Lib.specificDateFilterClause({
     operator: "=",
     column: findDateColumn(query),
     values: [new Date(2020, 0, 10)],
