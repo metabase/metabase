@@ -45,7 +45,7 @@ export const NewModals = withRouter((props: WithRouterProps) => {
     case "dashboard":
       return (
         <CreateDashboardModal
-          opened={true}
+          opened
           onClose={handleModalClose}
           collectionId={collectionId}
         />

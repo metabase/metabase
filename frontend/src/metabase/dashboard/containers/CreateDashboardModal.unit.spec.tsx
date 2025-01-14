@@ -87,15 +87,12 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
     .filter(c => c.id !== "root")
     .forEach(c => fetchMock.get(`path:/api/collection/${c.id}`, c));
 
-  renderWithProviders(
-    <CreateDashboardModal opened={true} onClose={onClose} />,
-    {
-      storeInitialState: {
-        entities: createMockEntitiesState({ collections }),
-        settings,
-      },
+  renderWithProviders(<CreateDashboardModal opened onClose={onClose} />, {
+    storeInitialState: {
+      entities: createMockEntitiesState({ collections }),
+      settings,
     },
-  );
+  });
 
   return {
     onClose,

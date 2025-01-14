@@ -90,7 +90,7 @@ export function CreateDashboardForm({
       {() => (
         <Form as={Stack} spacing={0}>
           <FormTextInput
-            labelProps={{ mb: "xs", fw: "800" }}
+            labelProps={{ mb: "xs", fw: 800 }}
             name="name"
             label={t`Name`}
             placeholder={t`What is the name of your dashboard?`}
@@ -98,7 +98,7 @@ export function CreateDashboardForm({
             mt="md"
           />
           <FormTextarea
-            labelProps={{ mb: "xs", fw: "800" }}
+            labelProps={{ mb: "xs", fw: 800 }}
             name="description"
             label={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
