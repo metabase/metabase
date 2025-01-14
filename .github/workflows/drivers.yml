@@ -35,6 +35,7 @@ jobs:
     timeout-minutes: 60
     env:
       CI: 'true'
+    name: H2
     steps:
     - uses: actions/checkout@v4
     - name: Test H2 driver
@@ -70,6 +71,7 @@ jobs:
       # These credentials are used to test the driver when the user does not have the athena:GetTableMetadata permission
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY }}
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY }}
+    name: Athena
     steps:
     - uses: actions/checkout@v4
     - name: Test Athena driver
@@ -104,6 +106,7 @@ jobs:
       MB_BIGQUERY_TEST_ACCESS_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_ACCESS_TOKEN }}
       MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
+    name: BigQuery
     steps:
     - uses: actions/checkout@v4
     - name: Test BigQuery Cloud SDK driver
@@ -139,6 +142,7 @@ jobs:
           - "8082:8082"
         env:
           CLUSTER_SIZE: nano-quickstart
+    name: Druid (Legacy)
     steps:
     - uses: actions/checkout@v4
     - name: Test Druid driver
@@ -173,6 +177,7 @@ jobs:
       MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
+    name: Databricks
     steps:
     - uses: actions/checkout@v4
     - name: Test Databricks driver
@@ -208,6 +213,7 @@ jobs:
           - "8888:8888"
         env:
           CLUSTER_SIZE: nano-quickstart
+    name: Druid (JDBC)
     steps:
     - uses: actions/checkout@v4
     - name: Test Druid JDBC driver
@@ -262,15 +268,22 @@ jobs:
             build-static-viz: false
             test-args: >-
               :only-tags [:mb/driver-tests]
-          - name: App DB Tests (Part 1)
+          - name: Enterprise Tests
+            build-static-viz: false
+            test-args: >-
+              :only '"enterprise/backend/test"'
+              :exclude-tags [:mb/driver-tests]
+          - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
+              :only '"test"'
               :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0
-          - name: App DB Tests (Part 2)
+          - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
+              :only '"test"'
               :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 1
@@ -331,11 +344,24 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-mongo-4-4-ee:
+  be-tests-mongo:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: MongoDB 4.4
+            junit-name: be-tests-mongo-4-4-ee
+            image: metabase/qa-databases:mongo-sample-4.4
+          - name: MongoDB 5.0
+            junit-name: be-tests-mongo-5-0-ee
+            image: metabase/qa-databases:mongo-sample-5.0
+          - name: MongoDB Latest
+            junit-name: be-tests-mongo-latest-ee
+            image: circleci/mongo:latest
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -343,15 +369,19 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
     services:
       mongodb:
-        image: metabase/qa-databases:mongo-sample-4.4
+        image: ${{ matrix.version.image }}
         ports:
           - "27017:27017"
+        env:
+          MONGO_INITDB_ROOT_USERNAME: metabase
+          MONGO_INITDB_ROOT_PASSWORD: metasample123
+    name: ${{ matrix.version.name }}
     steps:
     - uses: actions/checkout@v4
-    - name: Test MongoDB driver (4.4)
+    - name: Test ${{ matrix.version.name }}
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mongo-4-4-ee'
+        junit-name: ${{ matrix.version.junit-name }}
         test-args: >-
           :exclude-tags [:mongo-sharded-cluster-tests]
           :only-tags [:mb/driver-tests]
@@ -367,17 +397,28 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-mongo-4-4-ssl-ee:
+  be-tests-mongo-ssl:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: MongoDB 4.4
+            junit-name: be-tests-mongo-4-4-ee
+            image: metabase/qa-databases:mongo-sample-4.4
+          - name: MongoDB 5.0
+            junit-name: be-tests-mongo-5-0-ssl-ee
+            image: metabase/qa-databases:mongo-sample-5.0
     env:
       CI: 'true'
       DRIVERS: mongo
       MB_MONGO_TEST_USER: metabase
       MB_MONGO_TEST_PASSWORD: metasample123
       MB_TEST_MONGO_REQUIRES_SSL: true
+    name: "${{ matrix.version.name }} (SSL)"
     steps:
       - uses: actions/checkout@v4
       - name: Spin up Mongo docker container
@@ -385,7 +426,7 @@ jobs:
           docker run -d
           -p 27017:27017
           --name metamongo
-          metabase/qa-databases:mongo-sample-4.4
+          ${{ matrix.version.image }}
           mongod
           --dbpath /data/db2/
           --tlsMode requireTLS
@@ -405,10 +446,10 @@ jobs:
 
           curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
           -o ./test_resources/ssl/mongo/metaca.crt
-      - name: Test MongoDB SSL driver (4.4)
+      - name: Test ${{ matrix.version.name }}
         uses: ./.github/actions/test-driver
         with:
-          junit-name: 'be-tests-mongo-4-4-ee'
+          junit-name: ${{ matrix.version.junit-name }}
           test-args: >-
             :exclude-tags [:mongo-sharded-cluster-tests]
             :only-tags [:mb/driver-tests]
@@ -424,138 +465,6 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-mongo-5-0-ee:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: mongo
-      MB_MONGO_TEST_USER: metabase
-      MB_MONGO_TEST_PASSWORD: metasample123
-    services:
-      mongodb:
-        image: metabase/qa-databases:mongo-sample-5.0
-        ports:
-          - "27017:27017"
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test MongoDB driver (5.0)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-mongo-5-0-ee'
-        test-args: >-
-          :exclude-tags [:mongo-sharded-cluster-tests]
-          :only-tags [:mb/driver-tests]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
-  be-tests-mongo-5-0-ssl-ee:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: mongo
-      MB_MONGO_TEST_USER: metabase
-      MB_MONGO_TEST_PASSWORD: metasample123
-      MB_TEST_MONGO_REQUIRES_SSL: true
-    steps:
-    - uses: actions/checkout@v4
-    - name: Spin up Mongo docker container
-      run: >-
-        docker run -d
-        -p 27017:27017
-        --name metamongo
-        metabase/qa-databases:mongo-sample-5.0
-        mongod
-        --dbpath /data/db2/
-        --tlsMode requireTLS
-        --tlsCertificateKeyFile /etc/mongo/metamongo.pem
-        --tlsCAFile /etc/mongo/metaca.crt
-    - uses: ./.github/actions/await-port
-      with:
-        port: 27017
-      timeout-minutes: 5
-    - name: Make SSL certificates for Mongo available
-      run: |
-        curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.crt \
-        -o ./test_resources/ssl/mongo/metabase.crt
-
-        curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.key \
-        -o ./test_resources/ssl/mongo/metabase.key
-
-        curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
-        -o ./test_resources/ssl/mongo/metaca.crt
-    - name: Test MongoDB SSL driver (5.0)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-mongo-5-0-ee'
-        test-args: >-
-          :exclude-tags [:mongo-sharded-cluster-tests]
-          :only-tags [:mb/driver-tests]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
-  be-tests-mongo-latest-ee:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: mongo
-      MB_MONGO_TEST_USER: metabase
-      MB_MONGO_TEST_PASSWORD: metasample123
-    services:
-      mongodb:
-        image: circleci/mongo:latest
-        ports:
-          - "27017:27017"
-        env:
-          MONGO_INITDB_ROOT_USERNAME: metabase
-          MONGO_INITDB_ROOT_PASSWORD: metasample123
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test MongoDB driver (latest)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-mongo-latest-ee'
-        test-args: >-
-          :exclude-tags [:mongo-sharded-cluster-tests]
-          :only-tags [:mb/driver-tests]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
   be-tests-mongo-sharded-cluster-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
@@ -569,52 +478,15 @@ jobs:
         image: metabase/mongo-sharded-cluster:6
         ports:
           - "27017:17017"
+    name: MongoDB Sharded Cluster
     steps:
     - uses: actions/checkout@v4
     - name: Test MongoDB driver (Sharded cluster)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-sharded-cluster-ee'
-        test-args: ':only "[metabase.driver.mongo.sharded-cluster-test]"'
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
-  be-tests-oracle-18-4-ee:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: oracle
-      MB_ORACLE_TEST_HOST: localhost
-      MB_ORACLE_TEST_USER: system
-      MB_ORACLE_TEST_PASSWORD: password
-      MB_ORACLE_TEST_SERVICE_NAME: XEPDB1
-    services:
-      oracle:
-        image: gvenzl/oracle-xe:18.4.0-slim
-        env:
-          ORACLE_PASSWORD: password
-        ports:
-          - "1521:1521"
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test Oracle driver (18.4)
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-oracle-18-4-ee'
         test-args: >-
-          :only-tags [:mb/driver-tests]
+          :only metabase.driver.mongo.sharded-cluster-test
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -627,40 +499,64 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-oracle-21-3-ee:
+  be-tests-oracle:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: Oracle 18.4
+            junit-name: be-tests-oracle-18-4-ee
+            image: gvenzl/oracle-xe:18.4.0-slim
+            port: 1521
+            env:
+              user: system
+              password: 'password'
+              enable-ssl-tests: false
+          - name: Oracle 21.3
+            junit-name: be-tests-oracle-21-3-ee
+            image: metabase/qa-databases:oracle-xe-21.3
+            port: 2484
+            env:
+              user: ''
+              password: ''
+              enable-ssl-tests: true
     env:
       CI: 'true'
       DRIVERS: oracle
       MB_ORACLE_TEST_HOST: localhost
-      MB_ORACLE_TEST_PORT: 2484
+      MB_ORACLE_TEST_USER: '${{ matrix.version.env.user }}'
       MB_ORACLE_TEST_SERVICE_NAME: XEPDB1
-      MB_ORACLE_TEST_SSL: true
-      MB_ORACLE_TEST_SSL_USE_TRUSTSTORE: true
+      # Only the non-SSL 18.4 tests specify password as an env var; the SSL 21.3 tests get it from the keystore I guess
+      MB_ORACLE_TEST_PASSWORD: '${{ matrix.version.env.password }}'
+      # These are ignored for the 18.4 tests which do not test SSL
+      MB_ORACLE_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_ORACLE_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
+      MB_ORACLE_TEST_SSL_USE_TRUSTSTORE: ${{ matrix.version.env.enable-ssl-tests }}
       MB_ORACLE_TEST_SSL_TRUSTSTORE_PATH: './test_resources/ssl/oracle/truststore.p12'
       MB_ORACLE_TEST_SSL_TRUSTSTORE_OPTIONS: local
       MB_ORACLE_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE: 'PassworD_#1234'
-      MB_ORACLE_TEST_SSL_USE_KEYSTORE: true
+      MB_ORACLE_TEST_SSL_USE_KEYSTORE: ${{ matrix.version.env.enable-ssl-tests }}
       MB_ORACLE_TEST_SSL_KEYSTORE_PATH: './test_resources/ssl/oracle/keystore.p12'
       MB_ORACLE_TEST_SSL_KEYSTORE_OPTIONS: local
       MB_ORACLE_TEST_SSL_KEYSTORE_PASSWORD_VALUE: 'PassworD_#1234'
-      MB_ORACLE_SSL_TEST_SSL: true
     services:
       oracle:
-        image: metabase/qa-databases:oracle-xe-21.3
+        image: ${{ matrix.version.image }}
         env:
           ORACLE_PASSWORD: password
         ports:
-          - "2484:2484"
+          - "1521:${{ matrix.version.port }}"
+    name: ${{ matrix.version.name }}
     steps:
     - uses: actions/checkout@v4
-    - name: Test Oracle driver (21.3)
+    - name: Test ${{ matrix.version.name }}
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-oracle-21-3-ee'
+        junit-name: ${{ matrix.version.junit-name }}
         test-args: >-
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
@@ -675,7 +571,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-postgres-ee:
+  be-tests-postgres:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
@@ -699,15 +595,22 @@ jobs:
             build-static-viz: false
             test-args: >-
               :only-tags [:mb/driver-tests]
-          - name: App DB Tests (Part 1)
+          - name: Enterprise Tests
+            build-static-viz: false
+            test-args: >-
+              :only '"enterprise/backend/test"'
+              :exclude-tags [:mb/driver-tests]
+          - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
+              :only '"test"'
               :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0
-          - name: App DB Tests (Part 2)
+          - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
+              only '"test"'
               :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 1
@@ -771,6 +674,7 @@ jobs:
       MB_PRESTO_JDBC_TEST_PASSWORD: metabase
       MB_ENABLE_PRESTO_JDBC_DRIVER: true
       MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS: 'SSLTrustStorePath=/tmp/cacerts-with-presto-ssl.jks&SSLTrustStorePassword=changeit'
+    name: Presto
     services:
       presto:
         image: metabase/presto-mb-ci:latest # version 0.254
@@ -835,6 +739,7 @@ jobs:
       MB_REDSHIFT_TEST_DB: testdb
       MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
+    name: Redshift
     steps:
     - uses: actions/checkout@v4
     - name: Test Redshift driver
@@ -874,6 +779,7 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
+    name: Snowflake
     steps:
     - uses: actions/checkout@v4
     - name: Test Snowflake driver
@@ -907,6 +813,7 @@ jobs:
         image: metabase/spark:3.2.1
         ports:
           - "10000:10000"
+    name: Spark SQL
     steps:
     - uses: actions/checkout@v4
     - name: Test Spark driver
@@ -935,6 +842,7 @@ jobs:
     env:
       CI: 'true'
       DRIVERS: sqlite
+    name: SQLite
     steps:
     - uses: actions/checkout@v4
     - name: Test SQLite driver
@@ -955,11 +863,21 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-sqlserver-2017-ee:
+  be-tests-sqlserver:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: SQL Server 2017
+            junit-name: be-tests-sqlserver-2017-ee
+            image: mcr.microsoft.com/mssql/server:2017-latest
+          - name: SQL Server 2022
+            junit-name: be-tests-sqlserver-2022-ee
+            image: mcr.microsoft.com/mssql/server:2022-latest
     env:
       CI: 'true'
       DRIVERS: sqlserver
@@ -968,59 +886,20 @@ jobs:
       MB_SQLSERVER_TEST_USER: SA
     services:
       sqlserver:
-        image: mcr.microsoft.com/mssql/server:2017-latest
+        image: ${{ matrix.version.image }}
         ports:
           - "1433:1433"
         env:
           ACCEPT_EULA: Y
           SA_PASSWORD: 'P@ssw0rd'
           MSSQL_MEMORY_LIMIT_MB: 1024
+    name: ${{ matrix.version.name }}
     steps:
     - uses: actions/checkout@v4
-    - name: Test MS SQL Server 2017 driver
+    - name: Test ${{ matrix.version.name }}
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-sqlserver-ee'
-        test-args: >-
-          :only-tags [:mb/driver-tests]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
-  be-tests-sqlserver-2022-ee:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: sqlserver
-      MB_SQLSERVER_TEST_HOST: localhost
-      MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
-      MB_SQLSERVER_TEST_USER: SA
-    services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
-        ports:
-          - "1433:1433"
-        env:
-          ACCEPT_EULA: Y
-          SA_PASSWORD: 'P@ssw0rd'
-          MSSQL_MEMORY_LIMIT_MB: 1024
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test MS SQL Server 2022 driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-sqlserver-2022-ee'
+        junit-name: ${{ matrix.version.junit-name }}
         test-args: >-
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
@@ -1048,6 +927,7 @@ jobs:
         image: vertica/vertica-ce:12.0.2-0
         ports:
           - "5433:5433"
+    name: Vertica
     steps:
     - uses: actions/checkout@v4
     - name: Make plugins directory
@@ -1080,22 +960,17 @@ jobs:
       - be-tests-databricks-ee
       - be-tests-druid-jdbc-ee
       - be-tests-mysql-mariadb
-      - be-tests-mongo-4-4-ee
-      - be-tests-mongo-4-4-ssl-ee
-      - be-tests-mongo-5-0-ee
-      - be-tests-mongo-5-0-ssl-ee
-      - be-tests-mongo-latest-ee
+      - be-tests-mongo
+      - be-tests-mongo-ssl
       - be-tests-mongo-sharded-cluster-ee
-      - be-tests-oracle-18-4-ee
-      - be-tests-oracle-21-3-ee
-      - be-tests-postgres-ee
+      - be-tests-oracle
+      - be-tests-postgres
       - be-tests-presto-jdbc-ee
       - be-tests-redshift-ee
       - be-tests-snowflake-ee
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
-      - be-tests-sqlserver-2017-ee
-      - be-tests-sqlserver-2022-ee
+      - be-tests-sqlserver
       - be-tests-vertica-ee
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1118,12 +993,35 @@ jobs:
 
             // are all jobs skipped or successful?
             if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
-              console.log('All jobs are skipped or successful');
+                console.log("");
+                console.log("        _------.        ");
+                console.log("       /  ,     \_      ");
+                console.log("     /   /  /{}\ |o\_   ");
+                console.log("    /    \  `--' /-' \  ");
+                console.log("   |      \      \    | ");
+                console.log("  |              |`-, | ");
+                console.log("  /              /__/)/ ");
+                console.log(" |              |       ");
+                console.log("");
+                console.log("All driver tests have passed (or have been skipped). Cam is very proud of you.");
               process.exit(0);
             }
 
             // otherwise, something failed
-            console.log('Some drivers jobs failed');
+            console.log("");
+            console.log("       .::::::::::.                          .::::::::::.       ");
+            console.log("     .::::''''''::::.                      .::::''''''::::.     ");
+            console.log("   .:::'          `::::....          ....::::'          `:::.   ");
+            console.log("  .::'             `:::::::|        |:::::::'             `::.  ");
+            console.log(" .::|               |::::::|_ ___ __|::::::|               |::. ");
+            console.log(" `--'               |::::::|_()__()_|::::::|               `--' ");
+            console.log("  :::               |::-o::|        |::o-::|               :::  ");
+            console.log("  `::.             .|::::::|        |::::::|.             .::'  ");
+            console.log("   `:::.          .::\-----'        `-----/::.          .:::'   ");
+            console.log("     `::::......::::'                      `::::......::::'     ");
+            console.log("       `::::::::::'                          `::::::::::'       ");
+            console.log("");
+            console.log("Driver tests have failed. You have been sentenced to MetaJail.");
 
             jobs.forEach((job) => {
               if (job.result !== 'success') {

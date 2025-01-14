@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [environ.core :as env]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -388,7 +389,7 @@
 (deftest oracle-connect-with-ssl-test
   ;; ridiculously hacky test; hopefully it can be simplified; see inline comments for full explanations
   (mt/test-driver :oracle
-    (if (System/getenv "MB_ORACLE_SSL_TEST_SSL") ; only even run this test if this env var is set
+    (if (some-> (env/env :mb-oracle-ssl-test-ssl) Boolean/parseBoolean)
       ;; swap out :oracle env vars with any :oracle-ssl ones that were defined
       (mt/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
         ;; need to get a fresh instance of details to pick up env key changes
