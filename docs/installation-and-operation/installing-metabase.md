@@ -42,7 +42,7 @@ Check out our [professional services](https://www.metabase.com/product/professio
 
 ## Upgrading Metabase
 
-See [Upgrading Metabase](upgrading-metabase.md)
+See [Upgrading Metabase](upgrading-metabase.md).
 
 ## Other installation options
 
