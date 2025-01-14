@@ -153,9 +153,11 @@ describe("Dashboard > ActionSidebar", () => {
 
       await userEvent.click(cancelButton);
 
-      expect(
-        screen.queryByTestId("mock-native-query-editor"),
-      ).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("mock-native-query-editor"),
+        ).not.toBeInTheDocument(),
+      );
     });
   });
 });

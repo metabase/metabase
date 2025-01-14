@@ -1,7 +1,9 @@
-import { render, screen, within } from "__support__/ui";
+import { mockScrollIntoView, render, screen, within } from "__support__/ui";
 import { Select } from "metabase/ui";
 
 import { viewMantineSelectOptions } from "./mantineSelect";
+
+mockScrollIntoView();
 
 describe("viewMantineSelectOptions", () => {
   it("fetches options from the <Select> component", async () => {
@@ -107,7 +109,7 @@ describe("viewMantineSelectOptions", () => {
     );
     const secondSelectRoot = await within(
       await screen.findByTestId("second-select-container"),
-    ).findByRole("combobox");
+    ).findByRole("textbox");
     const { optionElements, optionTextContents, displayedOption } =
       await viewMantineSelectOptions({
         root: secondSelectRoot,
@@ -122,7 +124,7 @@ describe("viewMantineSelectOptions", () => {
 
   it("throws an error if the <Select> is not found", async () => {
     await expect(viewMantineSelectOptions()).rejects.toThrow(
-      /Unable to find.*role="combobox"/,
+      /Unable to find.*role="textbox"/,
     );
   });
 });

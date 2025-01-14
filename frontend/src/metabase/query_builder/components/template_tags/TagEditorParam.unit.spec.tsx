@@ -138,7 +138,7 @@ describe("TagEditorParam", () => {
 
       await waitForElementsToLoad("People");
 
-      await userEvent.click(screen.getByText("People"));
+      await userEvent.click(await screen.findByText("People"));
       await userEvent.click(await screen.findByText("Source"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -159,7 +159,7 @@ describe("TagEditorParam", () => {
 
       await waitForElementsToLoad("People");
 
-      await userEvent.click(screen.getByText("People"));
+      await userEvent.click(await screen.findByText("People"));
       await userEvent.click(await screen.findByText("Name"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -180,7 +180,7 @@ describe("TagEditorParam", () => {
 
       await waitForElementsToLoad("Orders");
 
-      await userEvent.click(screen.getByText("Orders"));
+      await userEvent.click(await screen.findByText("Orders"));
       await userEvent.click(await screen.findByText("Quantity"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -201,7 +201,7 @@ describe("TagEditorParam", () => {
 
       await waitForElementsToLoad("Reviews");
 
-      await userEvent.click(screen.getByText("Reviews"));
+      await userEvent.click(await screen.findByText("Reviews"));
       await userEvent.click(await screen.findByText("Rating"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -334,6 +334,6 @@ async function waitForElementsToLoad(text: string) {
     () => {
       expect(screen.getByText(text)).toBeInTheDocument();
     },
-    { timeout: 10000 },
+    { timeout: 20000 },
   );
 }

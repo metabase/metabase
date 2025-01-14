@@ -144,10 +144,10 @@ describe("NumberInputWidget", () => {
       const value = [1, 2, 3, 4];
       setup({ value, arity: "n" });
 
-      const combobox = screen.getByRole("combobox");
+      const valueList = screen.getByRole("list");
 
       for (const item of value) {
-        const value = getValue(combobox, item);
+        const value = getValue(valueList, item);
         expect(value).toBeInTheDocument();
       }
     });
@@ -156,11 +156,12 @@ describe("NumberInputWidget", () => {
       const { setValue } = setup({ value: undefined, arity: "n" });
 
       const input = screen.getByRole("combobox");
+      const valueList = screen.getByRole("list");
       await userEvent.type(input, "foo,123abc,456,", {
         pointerEventsCheck: 0,
       });
 
-      expect(getValue(input, 456)).toBeInTheDocument();
+      expect(getValue(valueList, 456)).toBeInTheDocument();
 
       const button = screen.getByRole("button", { name: "Add filter" });
       await userEvent.click(button);

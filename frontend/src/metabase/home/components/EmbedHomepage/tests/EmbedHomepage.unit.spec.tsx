@@ -184,7 +184,7 @@ describe("EmbedHomepage (OSS)", () => {
       });
 
       expect(
-        screen.getByText("Your feedback was submitted, thank you."),
+        await screen.findByText("Your feedback was submitted, thank you."),
       ).toBeInTheDocument();
     });
   });
