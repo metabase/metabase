@@ -1,5 +1,5 @@
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
-import type { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
+import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 
 export {
   CollectionBrowser,
