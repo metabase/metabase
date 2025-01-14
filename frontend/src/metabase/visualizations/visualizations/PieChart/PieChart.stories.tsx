@@ -1,7 +1,7 @@
 import type { StoryFn } from "@storybook/react";
 
 import { SdkVisualizationWrapper } from "__support__/storybook";
-import type { MetabaseTheme } from "embedding-sdk";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { data } from "metabase/static-viz/components/PieChart/stories-data";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";

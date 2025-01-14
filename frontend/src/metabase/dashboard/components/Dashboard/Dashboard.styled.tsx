@@ -156,6 +156,7 @@ export const ParametersAndCardsContainer = styled.div<{
   overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
     shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
   overflow-x: hidden;
+  scroll-behavior: smooth;
 
   @supports (overflow-x: clip) {
     overflow-x: clip;
