@@ -6,9 +6,9 @@ redirect_from:
 
 # Configuring the Metabase application database
 
-The application database is where Metabase stores information about user accounts, questions, dashboards, and any other data needed to run the Metabase application.
+The application database is where Metabase stores information about user accounts, questions, dashboards, and any other data needed to run the Metabase application. This app DB is distinct from the database where you store your data, also known as your data warehouse. For connecting to your data warehouse, see [Connecting to a supported database](../databases/connecting.md).
 
-For production, we recommend using PostgreSQL as your application database.
+For production, we recommend using PostgreSQL as your Metabase application database.
 
 - [PostgreSQL](#postgresql) (recommended for production)
 - [MySQL](#mysql-or-mariadb) (also works for production)
