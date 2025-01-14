@@ -26,8 +26,6 @@
                     {:type        type
                      :status-code 400}))))
 
-;; TODO: needs to make this work too
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."

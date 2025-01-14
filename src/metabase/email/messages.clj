@@ -277,6 +277,15 @@
                   :email    email
                   :pulse-id pulse-id}))))
 
+(defn generate-notification-unsubscribe-hash
+  "Generates hash to allow for non-users to unsubscribe from notifications."
+  [notification-handler-id email]
+  (codecs/bytes->hex
+   (encryption/validate-and-hash-secret-key
+    (json/encode {:salt                    (public-settings/site-uuid-for-unsubscribing-url)
+                  :email                   email
+                  :notification-handler-id notification-handler-id}))))
+
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."
   [{:keys [alert_above_goal alert_condition] :as _alert}]
