@@ -51,7 +51,6 @@ jobs:
             const inputChunks = Number(process.env.chunks);
             const regularChunks = inputChunks - specialTests.length;
 
-
             const regularTests = new Array(regularChunks).fill(1)
               .map((files, index) => ({
                 name: `e2e-group-${index + 1}`,
@@ -70,4 +69,4 @@ jobs:
             core.setOutput("config", JSON.stringify({ include: config }));
 
             console.log({ regularChunks });
-            console.log({"matrix config", config});
+            console.log("matrix config", config);
