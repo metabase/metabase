@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Component, createRef } from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -142,7 +142,6 @@ export class UnconnectedDataSelector extends Component {
       ...state,
       ...computedState,
     };
-    this.popover = createRef();
   }
 
   static propTypes = {
@@ -592,7 +591,6 @@ export class UnconnectedDataSelector extends Component {
     const nextStep = this.getNextStep();
     if (!nextStep) {
       await this.setStateWithComputedState(stateChange);
-      this.popover.current && this.popover.current.toggle();
     } else {
       await this.switchToStep(nextStep, stateChange, skipSteps);
     }
@@ -917,7 +915,6 @@ export class UnconnectedDataSelector extends Component {
       const table = this.props.metadata.table(tableOrCardId);
       this.props.setSourceTableFn(tableOrCardId, table.db_id);
     }
-    this.popover.current.toggle();
     this.handleClose();
   };
 
@@ -946,7 +943,6 @@ export class UnconnectedDataSelector extends Component {
       const table = this.props.metadata.table(tableOrCardId);
       this.props.setSourceTableFn(table.id, table.db_id);
     }
-    this.popover.current.toggle();
     this.handleClose();
   };
 
