@@ -532,3 +532,7 @@
                       {}
                       (fn [^java.sql.Connection conn]
                         (next.jdbc/execute! conn query))))))))))))
+
+(deftest ^:parallel db-default-timezone-test
+  (mt/test-driver :sqlserver
+    (is (= "Z" (str (driver/db-default-timezone :sqlserver (mt/db)))))))

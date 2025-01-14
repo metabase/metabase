@@ -4,7 +4,6 @@
    [metabase.models.notification :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.public-settings :as public-settings]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p]
@@ -156,9 +155,3 @@
 (defmethod should-send-notification? :default
   [_notification-payload]
   true)
-
-;; ------------------------------------------------------------------------------------------------;;
-;;                                    Load the implementations                                     ;;
-;; ------------------------------------------------------------------------------------------------;;
-(when-not *compile-files*
-  (u/find-and-load-namespaces! "metabase.notification.payload.impl"))

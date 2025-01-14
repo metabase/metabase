@@ -141,7 +141,7 @@ describe("scenarios > dashboard", () => {
           .findByRole("tab", { name: /Collections/ })
           .click();
         H.entityPickerModal()
-          .findByText("Create a new collection")
+          .findByText("New collection")
           .click({ force: true });
         const NEW_COLLECTION = "Bar";
         H.collectionOnTheGoModal().within(() => {
@@ -199,7 +199,7 @@ describe("scenarios > dashboard", () => {
       H.entityPickerModal()
         .findByRole("tab", { name: /Dashboards/ })
         .click();
-      H.entityPickerModal().findByText("Create a new dashboard").click();
+      H.entityPickerModal().findByText("New dashboard").click();
       cy.findByTestId("create-dashboard-on-the-go").within(() => {
         cy.findByPlaceholderText("My new dashboard").type("Foo");
         cy.findByText("Create").click();
@@ -1064,6 +1064,42 @@ describe("scenarios > dashboard", () => {
     });
     H.modal().should("not.exist");
     assertScrollBarExists();
+  });
+
+  it("should support auto-scrolling to a dashcard via a url hash param", () => {
+    const questionCard = {
+      id: ORDERS_DASHBOARD_DASHCARD_ID,
+      card_id: ORDERS_QUESTION_ID,
+      row: 0,
+      col: 0,
+      size_x: 16,
+      size_y: 8,
+    };
+    const paddingCard = H.getTextCardDetails({
+      col: 0,
+      text: "I'm just padding",
+    });
+    const TARGET_TEXT = "Scroll to me plz.";
+    const targetCard = H.getTextCardDetails({ col: 0, text: TARGET_TEXT });
+    const dashcards = [questionCard, paddingCard, targetCard];
+
+    H.createDashboard({ name: "Auto-scroll test", dashcards }).then(
+      ({ body: dashboard }) => {
+        const targetCard = dashboard.dashcards.find(
+          dc => dc.visualization_settings?.text === TARGET_TEXT,
+        );
+
+        cy.log("should not be visible (below the fold)");
+        cy.visit(`/dashboard/${dashboard.id}}`);
+        cy.findByText(TARGET_TEXT).should("not.be.visible");
+
+        cy.log("should scroll into view w/ scrollTo hash param");
+        cy.visit(`/dashboard/${dashboard.id}#scrollTo=${targetCard.id}`);
+        cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+        cy.location("hash").should("not.include", "scrollTo"); // scrollTo param should get removed
+        cy.findByText(TARGET_TEXT).should("be.visible");
+      },
+    );
   });
 
   it("should allow making card hide when it is empty", () => {

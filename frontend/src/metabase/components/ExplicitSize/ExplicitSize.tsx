@@ -112,6 +112,11 @@ function ExplicitSize<T>({
       }
 
       componentDidUpdate() {
+        // Check if component previously had no rendered output (this._currentElement was null).
+        // Re-run size calculations since the component may now have rendered content with dimensions.
+        if (!this._currentElement) {
+          this.timeoutId = setTimeout(this._updateSize, 0);
+        }
         // update ResizeObserver if element changes
         this._updateResizeObserver();
         this._updateRefreshMode();

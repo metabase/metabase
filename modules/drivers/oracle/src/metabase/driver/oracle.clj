@@ -23,6 +23,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.ssh :as ssh])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
@@ -42,6 +44,29 @@
                               :identifiers-with-spaces true
                               :convert-timezone        true}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
+
+(mr/def ::details
+  "Oracle database details map."
+  [:map
+   [:host                          {:optional true} [:maybe string?]]
+   [:port                          {:optional true} [:maybe integer?]]
+   [:user                          {:optional true} [:maybe string?]]
+   [:password                      {:optional true} [:maybe string?]]
+   [:sid                           {:optional true} [:maybe string?]]
+   [:service-name                  {:optional true} [:maybe string?]]
+   [:schema-filters-type           {:optional true} [:enum "inclusion" "exclusion"]]
+   [:schema-filters-patterns       {:optional true} [:maybe string?]]
+   [:ssl                           {:optional true} [:maybe boolean?]]
+   [:ssl-use-keystore              {:optional true} [:maybe boolean?]]
+   [:ssl-keystore-value            {:optional true} [:maybe string?]]
+   [:ssl-keystore-path             {:optional true} [:maybe string?]]
+   [:ssl-keystore-options          {:optional true} [:maybe string?]]
+   [:ssl-keystore-password-value   {:optional true} [:maybe string?]]
+   [:ssl-use-truststore            {:optional true} [:maybe boolean?]]
+   [:ssl-truststore-value          {:optional true} [:maybe string?]]
+   [:ssl-truststore-path           {:optional true} [:maybe string?]]
+   [:ssl-truststore-options        {:optional true} [:maybe string?]]
+   [:ssl-truststore-password-value {:optional true} [:maybe string?]]])
 
 (defmethod driver/prettify-native-form :oracle
   [_ native-form]
@@ -88,7 +113,7 @@
   [_ column-type]
   (database-type->base-type column-type))
 
-(defn- non-ssl-spec [_details spec host port sid service-name]
+(mu/defn- non-ssl-spec [_details :- ::details spec host port sid service-name]
   (assoc spec :subname (str "@" host
                             ":" port
                             (when sid
@@ -96,7 +121,7 @@
                             (when service-name
                               (str "/" service-name)))))
 
-(defn- ssl-spec [details spec host port sid service-name]
+(mu/defn- ssl-spec [details :- ::details spec host port sid service-name]
   (-> (assoc spec :subname (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
                                    host
                                    port
@@ -116,7 +141,7 @@
       ;; so this ensures backwards compatibility.
       "JKS")))
 
-(defn- handle-keystore-options [details]
+(mu/defn- handle-keystore-options [details :- ::details]
   (let [keystore (-> (secret/db-details-prop->secret-map details "ssl-keystore")
                      (secret/value->file! :oracle))
         password (or (-> (secret/db-details-prop->secret-map details "ssl-keystore-password")
@@ -129,7 +154,7 @@
         (dissoc :ssl-use-keystore :ssl-keystore-value :ssl-keystore-path :ssl-keystore-password-value
                 :ssl-keystore-created-at :ssl-keystore-password-created-at))))
 
-(defn- handle-truststore-options [details]
+(mu/defn- handle-truststore-options [details :- ::details]
   (let [truststore (-> (secret/db-details-prop->secret-map details "ssl-truststore")
                        (secret/value->file! :oracle))
         password (or (-> (secret/db-details-prop->secret-map details "ssl-truststore-password")
@@ -142,19 +167,20 @@
         (dissoc :ssl-use-truststore :ssl-truststore-value :ssl-truststore-path :ssl-truststore-password-value
                 :ssl-truststore-created-at :ssl-truststore-password-created-at))))
 
-(defn- handle-ssl-options [{:keys [password ssl ssl-use-keystore ssl-use-truststore] :as details}]
+(mu/defn- handle-ssl-options [{:keys [password ssl ssl-use-keystore ssl-use-truststore] :as details} :- ::details]
   (if ssl
     (cond-> details
-      ssl-use-keystore handle-keystore-options
+      ssl-use-keystore                       handle-keystore-options
       (and ssl-use-keystore (nil? password)) (assoc :oracle.net.authentication_services "(TCPS)")
-      ssl-use-truststore handle-truststore-options
-      true (dissoc :ssl))
+      ssl-use-truststore                     handle-truststore-options
+      true                                   (dissoc :ssl))
     details))
 
-(defmethod sql-jdbc.conn/connection-details->spec :oracle
-  [_ {:keys [host port sid service-name]
-      :or   {host "localhost", port 1521}
-      :as   details}]
+(mu/defmethod sql-jdbc.conn/connection-details->spec :oracle
+  [_driver
+   {:keys [host port sid service-name]
+    :or   {host "localhost", port 1521}
+    :as   details} :- ::details]
   (assert (or sid service-name))
   (let [spec      {:classname "oracle.jdbc.OracleDriver", :subprotocol "oracle:thin"}
         finish-fn (partial (if (:ssl details) ssl-spec non-ssl-spec) details)
@@ -168,13 +194,14 @@
         (dissoc :host :port :sid :service-name :ssl)
         (finish-fn host port sid service-name))))
 
-(defmethod driver/can-connect? :oracle
-  [driver details]
+(mu/defmethod driver/can-connect? :oracle
+  [driver
+   details :- ::details]
   (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel! details))]
     (= 1M (first (vals (first (jdbc/query connection ["SELECT 1 FROM dual"])))))))
 
 (defmethod driver/db-start-of-week :oracle
-  [_]
+  [_driver]
   :sunday)
 
 ;;; use Honey SQL 2 `:oracle` `:dialect`

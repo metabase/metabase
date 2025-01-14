@@ -113,7 +113,7 @@
              column
              (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
              ;; If this is an aggregation, there must be breakouts (dimensions).
-             (or (not= (:lib/source column) :source/aggregations)
+             (or (not (lib.drill-thru.common/aggregation-sourced? query column))
                  (seq dimensions))
              (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/primary-key? column))

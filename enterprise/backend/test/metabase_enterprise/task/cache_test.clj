@@ -510,8 +510,8 @@
                                           :refresh_automatically true
                                           :config {:schedule "0 0 * * * ?"}}]
       (let [call-count (atom 0)]
-        (mt/with-dynamic-redefs [task.cache/refresh-schedule-cache! (fn [_] (swap! call-count inc))
-                                 task.cache/maybe-refresh-duration-caches! (fn [] (swap! call-count inc))]
+        (mt/with-dynamic-fn-redefs [task.cache/refresh-schedule-cache! (fn [_] (swap! call-count inc))
+                                    task.cache/maybe-refresh-duration-caches! (fn [] (swap! call-count inc))]
           (@#'task.cache/refresh-cache-configs!)
           (is (= 0 @call-count))
 

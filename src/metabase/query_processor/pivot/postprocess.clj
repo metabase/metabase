@@ -4,6 +4,7 @@
   The shape returned by the pivot qp is not the same visually as what a pivot table looks like in the app.
   It's all of the same data, but some post-processing logic needs to run on the rows to be able to present them
   visually in the same way as in the app."
+  (:refer-clojure :exclude [run!])
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
@@ -11,7 +12,11 @@
    [metabase.query-processor.streaming.common :as common]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf :refer [run!]])
+  (:import
+   (java.util ArrayList)))
+
+(set! *warn-on-reflection* true)
 
 ;; I'll do my best to concisely explain what's happening here. Some terms:
 ;;  - raw pivot rows -> the rows returned by the above 'pivot query processor machinery'.
@@ -271,50 +276,48 @@
   [row-combo col-combos pivot-measures data totals row-totals? ordered-formatters row-formatters]
   (let [row-path       (vec row-combo)
         row-data       (get-in data row-path)
-        measure-values (vec
-                        ;; we need to lead with col-combo here so that each row will alternate
-                        ;; between all of the measures, rather than have all measures of one kind
-                        ;; bunched together. That is, if you have a table with `count` and `avg`
-                        ;; the row must show count-val, avg-val, count-val, avg-val ... etc
-                        (for [col-combo   col-combos
-                              measure-key pivot-measures
-                              :let        [formatter (get ordered-formatters measure-key)]]
-                          (fmt formatter
-                               (as-> row-data m
-                                 (reduce get m col-combo)
-                                 (get m measure-key)))))]
-    (when (some #(and (some? %) (not= "" %)) measure-values)
+        ;; Mutable ArrayList intentional because of the hotness of the function.
+        measure-values (ArrayList. (* (count col-combos) (count pivot-measures)))]
+    (run! (fn [col-combo]
+            ;; we need to lead with col-combo here so that each row will alternate between all of the measures, rather
+            ;; than have all measures of one kind bunched together. That is, if you have a table with `count` and
+            ;; `avg` the row must show count-val, avg-val, count-val, avg-val ... etc
+            (let [m (reduce get row-data col-combo)]
+              (run! (fn [measure-key]
+                      (let [formatter (get ordered-formatters measure-key)]
+                        (.add measure-values (fmt formatter (get m measure-key)))))
+                    pivot-measures)))
+          col-combos)
+    (when (perf/some #(and (some? %) (not= "" %)) measure-values)
       (perf/concat
        (when-not (seq row-formatters) (repeat (count pivot-measures) nil))
        row-combo
        measure-values
        (when row-totals?
-         (for [measure-key pivot-measures]
-           (fmt (get ordered-formatters measure-key)
-                (get-in totals (concat row-path [measure-key])))))))))
+         (let [row-totals (get-in totals row-path)]
+           (mapv #(fmt (get ordered-formatters %) (get row-totals %))
+                 pivot-measures)))))))
 
 (defn- build-column-totals
   "Build column totals for a section."
   [section-path col-combos pivot-measures totals row-totals? ordered-formatters pivot-rows]
-  (let [totals-row (for [col-combo   col-combos
-                         measure-key pivot-measures
-                         :let        [subtotal-path (concat
-                                                     [:column-totals :rows-part]
-                                                     section-path
-                                                     [:cols-part]
-                                                     col-combo
-                                                     [measure-key])]]
-                     (fmt (get ordered-formatters measure-key)
-                          (get-in totals subtotal-path)))]
-    (when (some #(and (some? %) (not= "" %)) totals-row)
+  (let [cols-part (get-in totals (concat [:column-totals :rows-part] section-path [:cols-part]))
+        totals-row (ArrayList. (* (count col-combos) (count pivot-measures)))]
+    (run! (fn [col-combo]
+            (let [m (reduce get cols-part col-combo)]
+              (run! (fn [measure-key]
+                      (.add totals-row (fmt (get ordered-formatters measure-key) (get m measure-key))))
+                    pivot-measures)))
+          col-combos)
+    (when (perf/some #(and (some? %) (not= "" %)) totals-row)
       (perf/concat
        [(format "Totals for %s" (fmt (get ordered-formatters (first pivot-rows)) (last section-path)))]
        (repeat (dec (count pivot-rows)) nil)
        totals-row
        (when row-totals?
-         (for [measure-key pivot-measures]
-           (fmt (get ordered-formatters measure-key)
-                (get-in totals (concat [:section-totals] section-path [measure-key])))))))))
+         (let [totals' (-> totals :section-totals (get-in section-path))]
+           (mapv #(fmt (get ordered-formatters %) (get totals' %))
+                 pivot-measures)))))))
 
 (defn- build-grand-totals
   "Build grand totals row."
@@ -426,14 +429,16 @@
     (perf/concat
      headers
      (transduce (remove empty?) into []
-                (let [sections-rows
-                      (vec
-                       (for [section-row-combos ((get sort-fns (first pivot-rows) identity) (sort-by ffirst (vals (group-by first row-combos))))]
-                         (into []
-                               (keep (fn [row-combo]
-                                       (build-row row-combo col-combos pivot-measures data totals row-totals? ordered-formatters row-formatters)))
-                               section-row-combos)))]
-                  (mapv
+                (let [sort-fn (get sort-fns (first pivot-rows) identity)
+                      sections-rows
+                      (mapv (fn [section-row-combos]
+                              (into []
+                                    (keep (fn [row-combo]
+                                            (build-row row-combo col-combos pivot-measures data totals
+                                                       row-totals? ordered-formatters row-formatters)))
+                                    section-row-combos))
+                            (sort-fn (sort-by ffirst (vals (group-by first row-combos)))))]
+                  (perf/mapv
                    (fn [section-rows]
                      (->>
                       section-rows
