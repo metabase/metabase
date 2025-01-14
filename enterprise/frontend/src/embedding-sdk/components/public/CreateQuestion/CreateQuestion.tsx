@@ -65,7 +65,6 @@ export const CreateQuestionDefaultView = ({
 
   return (
     <FlexibleSizeComponent>
-      test
       <Flex w="100%" justify="space-between" pb="lg">
         <Flex>
           <InteractiveQuestion.Title />
@@ -85,16 +84,19 @@ export const CreateQuestionDefaultView = ({
           />
         </Flex>
       </Flex>
+
       {isVisualizationView && (
         <Flex h="500px">
           <InteractiveQuestion.QuestionVisualization />
         </Flex>
       )}
+
       {!isVisualizationView && (
         <InteractiveQuestion.Editor
           onApply={() => setIsVisualizationView(true)}
         />
       )}
+
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
       {isSaveEnabled && isSaveModalOpen && question && (
         <SaveQuestionModal
