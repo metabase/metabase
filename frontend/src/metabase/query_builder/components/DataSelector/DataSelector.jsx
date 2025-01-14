@@ -1,3 +1,5 @@
+// @ts-check
+
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
@@ -8,7 +10,6 @@ import _ from "underscore";
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
@@ -19,7 +20,7 @@ import { connect } from "metabase/lib/redux";
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
-import { Box } from "metabase/ui";
+import { Box, Popover } from "metabase/ui";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getQuestionIdFromVirtualTableId,
@@ -164,7 +165,6 @@ export class UnconnectedDataSelector extends Component {
     tableFilter: PropTypes.func,
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
-    containerClassName: PropTypes.string,
     canSelectMetric: PropTypes.bool,
 
     // from search entity list loader
@@ -800,7 +800,7 @@ export class UnconnectedDataSelector extends Component {
       getTriggerElementContent: TriggerComponent,
       hasTriggerExpandControl,
       readOnly,
-      isMantine,
+      isMantine = true,
     } = this.props;
 
     if (triggerElement) {
@@ -811,7 +811,7 @@ export class UnconnectedDataSelector extends Component {
 
     return (
       <Trigger
-        className={className}
+        className={cx(this.getTriggerClasses(), className)}
         style={style}
         showDropdownIcon={!readOnly && hasTriggerExpandControl}
         iconSize={isMantine ? "1rem" : triggerIconSize}
@@ -1075,24 +1075,13 @@ export class UnconnectedDataSelector extends Component {
   render() {
     if (this.props.isPopover) {
       return (
-        <PopoverWithTrigger
-          id="DataPopover"
-          autoWidth
-          ref={this.popover}
-          isInitiallyOpen={this.props.isInitiallyOpen && !this.props.readOnly}
-          containerClassName={this.props.containerClassName}
-          triggerElement={this.getTriggerElement}
-          triggerClasses={this.getTriggerClasses()}
-          hasArrow={this.props.hasArrow}
-          tetherOptions={this.props.tetherOptions}
-          sizeToFit
-          isOpen={this.props.isOpen}
-          onClose={this.handleClose}
-        >
-          {this.renderContent()}
-        </PopoverWithTrigger>
+        <Popover opened={this.props.isOpen} onClose={this.handleClose}>
+          <Popover.Target>{this.getTriggerElement()}</Popover.Target>
+          <Popover.Dropdown>{this.renderContent()}</Popover.Dropdown>
+        </Popover>
       );
     }
+
     return this.renderContent();
   }
 }

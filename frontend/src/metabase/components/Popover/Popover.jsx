@@ -284,32 +284,10 @@ export default class Popover extends Component {
         targetOffset: `${o.offsetY}px ${o.offsetX}px`,
       };
     }
-
-    // // Add validation before creating/updating Tether
-    // if (!tetherOptions.element || !tetherOptions.target) {
-    //   console.warn("Missing required Tether options:", {
-    //     hasElement: !!tetherOptions.element,
-    //     hasTarget: !!tetherOptions.target,
-    //     tetherOptions,
-    //   });
-
-    //   return;
-    // }
-
-    try {
-      if (this._tether) {
-        this._tether.setOptions(tetherOptions);
-      } else {
-        this._tether = new Tether(tetherOptions);
-      }
-    } catch (error) {
-      console.error("[poom] error setting tether options", error, {
-        tetherOptions,
-        o,
-        self: this,
-      });
-
-      debugger;
+    if (this._tether) {
+      this._tether.setOptions(tetherOptions);
+    } else {
+      this._tether = new Tether(tetherOptions);
     }
   }
 
