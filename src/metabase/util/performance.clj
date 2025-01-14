@@ -1,6 +1,6 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing."
-  (:refer-clojure :exclude [reduce mapv some concat])
+  (:refer-clojure :exclude [reduce mapv run! some concat])
   (:import (clojure.lang LazilyPersistentVector RT)))
 
 (set! *warn-on-reflection* true)
@@ -115,6 +115,11 @@
      (cond (= n 0) []
            (<= n 32) (small-persistent! (reduce #(small-conj! %1 (f %2 %3 %4 %5)) (small-transient n) coll1 coll2 coll3 coll4))
            :else (persistent! (reduce #(conj! %1 (f %2 %3 %4 %5)) (transient []) coll1 coll2 coll3 coll4))))))
+
+(defn run!
+  "Like `clojure.core/run!`, but iterates collections more efficiently and uses Java iterators under the hood."
+  ([f coll1]
+   (reduce (fn [_ x] (f x)) nil coll1)))
 
 (defn juxt*
   "Like `clojure.core/juxt`, but accepts a list of functions instead of varargs. Uses more efficient mapping."
