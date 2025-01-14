@@ -25,6 +25,7 @@ const FORCE_DARK_TEXT_COLOR = {
   // color. The sdk aliases text-dark to the primary color, which in dark themes
   // is a light color, making the text un-readable
   "--mb-color-text-dark": color("text-dark"),
+  "--mb-color-text-medium": color("text-medium"),
 } as React.CSSProperties;
 
 const DefaultErrorMessage = ({ message }: SdkErrorComponentProps) => (
@@ -43,9 +44,8 @@ export function QuestionNotFoundError({ id }: ResourceNotFoundErrorProps) {
     <SdkError
       message={jt`Question ${(
         <Code
-          // TODO: replace this color with a semantic color from a design
-          bg="var(--mb-base-color-ocean-20)"
-          c="text-dark"
+          bg="var(--mb-color-background-error-secondary)"
+          c="var(--mb-color-text-medium)"
           key="question-id"
         >
           {id}
@@ -60,9 +60,8 @@ export function DashboardNotFoundError({ id }: ResourceNotFoundErrorProps) {
     <SdkError
       message={jt`Dashboard ${(
         <Code
-          // TODO: replace this color with a semantic color from a design
-          bg="var(--mb-base-color-ocean-20)"
-          c="text-dark"
+          bg="var(--mb-color-background-error-secondary)"
+          c="var(--mb-color-text-medium)"
           key="dashboard-id"
         >
           {id}
