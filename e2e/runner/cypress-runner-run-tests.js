@@ -6,14 +6,7 @@ const {
   args,
 } = require("./cypress-runner-utils");
 
-const folder = args["--folder"];
-const isFolder = !!folder;
-
 const isOpenMode = args["--open"];
-
-const getSourceFolder = folder => {
-  return `./e2e/test/scenarios/${folder}/**/*.cy.spec.{js,ts}`;
-};
 
 const runCypress = async (baseUrl, exitFunction) => {
   await executeYarnCommand({
@@ -27,7 +20,6 @@ const runCypress = async (baseUrl, exitFunction) => {
     config: {
       baseUrl,
     },
-    spec: isFolder && getSourceFolder(folder),
   };
 
   const userArgs = await parseArguments(args);

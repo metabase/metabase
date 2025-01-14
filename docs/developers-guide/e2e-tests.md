@@ -30,13 +30,8 @@ To run all Cypress tests programmatically in the terminal:
 yarn run test-cypress-run
 ```
 
-You can run a specific set of scenarios by using a custom `--folder` flag, which will pick up the chosen scenarios under `e2e/test/scenarios/`.
-
-```sh
-yarn run test-cypress-run --folder sharing
-```
-
 You can quickly test a single file only by using the official `--spec` flag.
+This flag can be used to run all specs within a folder, or to run multiple assorted specs. Consult [the official documentation](https://docs.cypress.io/app/references/command-line#cypress-run-spec-lt-spec-gt) for instructions.
 
 ```sh
 yarn test-cypress-run --spec e2e/test/scenarios/question/new.cy.spec.js

@@ -51,7 +51,7 @@
 
 (defn- clump [x y] (str x y))
 
-(deftest ^:parallel with-dynamic-redefs-test
+(deftest ^:parallel with-dynamic-fn-redefs-test
   (testing "Three threads can independently redefine a regular var"
     (let [n-threads  3
           ;; Note that .getId is deprecated in favor of .threadId, but that method is only introduced in Java 19
@@ -82,7 +82,7 @@
       (future
         (testing "A thread that redefines it in reverse"
           (log/debug "Starting reverse thread, thread-id:" (thread-id))
-          (mt/with-dynamic-redefs [clump #(str %2 %1)]
+          (mt/with-dynamic-fn-redefs [clump #(str %2 %1)]
             (is (= "ok" (clump "k" "o")))
             (take-latch)
             (is (= "ko" (clump "o" "k"))))))
@@ -90,9 +90,9 @@
       (future
         (testing "A thread that redefines it twice"
           (log/debug "Starting double-redefining thread, thread-id:" (thread-id))
-          (mt/with-dynamic-redefs [clump (fn [_ y] (str y y))]
+          (mt/with-dynamic-fn-redefs [clump (fn [_ y] (str y y))]
             (is (= "zz" (clump "a" "z")))
-            (mt/with-dynamic-redefs [clump (fn [x _] (str x x))]
+            (mt/with-dynamic-fn-redefs [clump (fn [x _] (str x x))]
               (is (= "aa" (clump "a" "z")))
               (take-latch)
               (is (= "mm" (clump "m" "l"))))
@@ -103,19 +103,44 @@
       (testing "The original definition survives"
         (is (= "original" (clump "orig" "inal")))))))
 
+(def not-a-function 23)
+
+(def accidentally-a-function :wut-up)
+
+(def also-accidentally-a-function [:wut-up])
+
+(deftest ^:parallel with-dynamic-fn-redefs-non-function
+  (testing "It is an error to redefine a non-function"
+    (is (thrown-with-msg?
+         AssertionError
+         #"Cannot proxy non-functions"
+         (mt/with-dynamic-fn-redefs [not-a-function 5]
+           (is (= 5 not-a-function))))))
+  (testing "Redefining keywords or collections is likely to surprise you, so we don't allow it"
+    (is (thrown-with-msg?
+         AssertionError
+         #"Cannot proxy keywords"
+         (mt/with-dynamic-fn-redefs [accidentally-a-function :not-much]
+           (is (= :not-much accidentally-a-function)))))
+    (is (thrown-with-msg?
+         AssertionError
+         #"Cannot proxy collections"
+         (mt/with-dynamic-fn-redefs [also-accidentally-a-function #{:butter-cup}]
+           (is (= [:butter-cup] also-accidentally-a-function)))))))
+
 (defn mock-me-inner []
   :mock/original)
 
 (defn mock-me-outer []
   (mock-me-inner))
 
-(deftest with-dynamic-redefs-nested-binding-test
+(deftest with-dynamic-fn-redefs-nested-binding-test
   (defn z []
-    (mt/with-dynamic-redefs [mock-me-outer
-                             (let [orig (mt/dynamic-value mock-me-outer)]
-                               (fn []
-                                 (mt/with-dynamic-redefs [mock-me-inner (constantly :mock/redefined)]
-                                   (orig))))]
+    (mt/with-dynamic-fn-redefs [mock-me-outer
+                                (let [orig (mt/dynamic-value mock-me-outer)]
+                                  (fn []
+                                    (mt/with-dynamic-fn-redefs [mock-me-inner (constantly :mock/redefined)]
+                                      (orig))))]
       (mock-me-outer)))
   (is (= :mock/redefined (z))))
 

@@ -1,12 +1,18 @@
 (ns ^:mb/once metabase.util.encryption-test
   "Tests for encryption of Metabase DB details."
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.initialize :as initialize]
-   [metabase.util.encryption :as encryption]))
+   [metabase.test.util :as tu]
+   [metabase.util.encryption :as encryption])
+  (:import (java.io ByteArrayInputStream)
+           (org.apache.commons.io IOUtils)))
+
+(set! *warn-on-reflection* true)
 
 (defn do-with-secret-key! [^String secret-key thunk]
   ;; flush the Setting cache so unencrypted values have to be fetched from the DB again
@@ -118,3 +124,43 @@
   (testing "Something that is not encrypted, but might be should return the original text"
     (is (= fake-ciphertext
            (encryption/maybe-decrypt secret fake-ciphertext)))))
+
+(deftest ^:parallel stream-encryption-test
+  (testing "Can encrypt stream"
+    (let [input-stream (ByteArrayInputStream. (.getBytes "test string"))
+          encrypted-stream (encryption/encrypt-stream secret input-stream)
+          output-string (slurp encrypted-stream)]
+      (is (not= "test string" output-string))))
+  (testing "Can encrypt and decrypt streams"
+    (let [input-stream (ByteArrayInputStream. (.getBytes "test string"))]
+      (with-open [encrypted-stream (encryption/encrypt-stream secret input-stream)
+                  decrypted-stream (encryption/maybe-decrypt-stream secret encrypted-stream)]
+        (is (= "test string" (slurp decrypted-stream))))))
+  (testing "Can encrypt and decrypt a large stream"
+    (let [data (tu/random-string 100000)
+          input-stream (ByteArrayInputStream. (codecs/to-bytes data))]
+      (with-open [encrypted-stream (encryption/encrypt-stream secret input-stream)
+                  decrypted-stream (encryption/maybe-decrypt-stream secret encrypted-stream)]
+        (is (= data (codecs/bytes->str (IOUtils/toByteArray decrypted-stream)))))))
+  (testing "Unencrypted streams come back as-is"
+    (let [input-stream (ByteArrayInputStream. (codecs/to-bytes "test string"))]
+      (with-open [decrypted-stream (encryption/maybe-decrypt-stream secret input-stream)]
+        (is (= "test string" (codecs/bytes->str (IOUtils/toByteArray decrypted-stream)))))))
+  (testing "Empty unencrypted streams come back as-is"
+    (let [input-stream (ByteArrayInputStream. (byte-array 0))]
+      (with-open [decrypted-stream (encryption/maybe-decrypt-stream secret input-stream)]
+        (is (= -1 (.read decrypted-stream))))))
+  (testing "Long unencrypted streams come back as-is"
+    (let [data (tu/random-string 100000)
+          input-stream (ByteArrayInputStream. (codecs/to-bytes data))]
+      (with-open [decrypted-stream (encryption/maybe-decrypt-stream secret input-stream)]
+        (is (= data (codecs/bytes->str (IOUtils/toByteArray decrypted-stream))))))))
+
+(deftest ^:parallel maybe-encrypt-for-stream-test
+  (testing "When secret is set, it encrypts the stream"
+    (let [encrypted (encryption/maybe-encrypt-for-stream secret (codecs/to-bytes "test string"))]
+      (is (not= "test string" (codecs/bytes->str encrypted)))
+      (is (= "test string" (slurp (encryption/maybe-decrypt-stream secret (ByteArrayInputStream. encrypted))))))
+    (testing "When secret is not set, it does not encrypt the stream"
+      (let [encrypted (encryption/maybe-encrypt-for-stream nil (codecs/to-bytes "test string"))]
+        (is (= "test string" (codecs/bytes->str encrypted)))))))

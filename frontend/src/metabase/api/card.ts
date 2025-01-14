@@ -122,12 +122,23 @@ export const cardApi = Api.injectEndpoints({
               : ""),
           body,
         }),
-        invalidatesTags: (_, error, { id }) =>
-          invalidateTags(error, [
+        invalidatesTags: (_, error, payload) => {
+          const tags = [
             listTag("card"),
-            idTag("card", id),
-            idTag("table", `card__${id}`),
-          ]),
+            idTag("card", payload.id),
+            idTag("table", `card__${payload.id}`),
+          ];
+
+          if (payload.dashboard_id != null) {
+            tags.push(idTag("dashboard", payload.dashboard_id));
+          }
+
+          if (payload.collection_id != null) {
+            tags.push(idTag("collection", payload.collection_id));
+          }
+
+          return invalidateTags(error, tags);
+        },
       }),
       deleteCard: builder.mutation<void, CardId>({
         query: id => ({
