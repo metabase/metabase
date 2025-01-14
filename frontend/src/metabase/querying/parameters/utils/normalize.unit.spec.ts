@@ -46,6 +46,7 @@ describe("normalizeNumberParameterValue", () => {
     { value: 1.5, expectedValue: [1.5] },
     { value: "1.5", expectedValue: [1.5] },
     { value: [1, 2, 3], expectedValue: [1, 2, 3] },
+    { value: ["1", "2", "3"], expectedValue: [1, 2, 3] },
   ])("should normalize number parameter value", ({ value, expectedValue }) => {
     expect(normalizeNumberParameterValue(value)).toEqual(expectedValue);
   });
@@ -68,6 +69,9 @@ describe("normalizeBooleanParameterValue", () => {
     { value: true, expectedValue: [true] },
     { value: false, expectedValue: [false] },
     { value: [true, false], expectedValue: [true, false] },
+    { value: "true", expectedValue: [true] },
+    { value: "false", expectedValue: [false] },
+    { value: ["true", "false"], expectedValue: [true, false] },
   ])("should normalize boolean parameter value", ({ value, expectedValue }) => {
     expect(normalizeBooleanParameterValue(value)).toEqual(expectedValue);
   });
@@ -88,7 +92,7 @@ describe("normalizeDateParameterValue", () => {
       value: "Q3-2020",
       expectedValue: { type: "quarter", year: 2020, quarter: 3 },
     },
-  ])("should normalize boolean parameter value", ({ value, expectedValue }) => {
+  ])("should normalize date parameter value", ({ value, expectedValue }) => {
     expect(normalizeDateParameterValue(value)).toEqual(expectedValue);
   });
 });

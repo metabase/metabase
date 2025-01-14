@@ -1,9 +1,7 @@
 (ns ^{:added "0.51.0"} metabase.channel.core
   "The Metabase channel system.
 
-  The API is still in development and subject to change."
-  (:require
-   [metabase.util :as u]))
+  The API is still in development and subject to change.")
 
 (set! *warn-on-reflection* true)
 
@@ -42,9 +40,3 @@
    :arglists '([channel message])}
   (fn [channel _message]
     (:type channel)))
-
-;; ------------------------------------------------------------------------------------------------;;
-;;                                    Load the implementations                                     ;;
-;; ------------------------------------------------------------------------------------------------;;
-(when-not *compile-files*
-  (u/find-and-load-namespaces! "metabase.channel.impl"))
