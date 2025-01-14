@@ -69,6 +69,9 @@ describe("normalizeBooleanParameterValue", () => {
     { value: true, expectedValue: [true] },
     { value: false, expectedValue: [false] },
     { value: [true, false], expectedValue: [true, false] },
+    { value: "true", expectedValue: [true] },
+    { value: "false", expectedValue: [false] },
+    { value: ["true", "false"], expectedValue: [true, false] },
   ])("should normalize boolean parameter value", ({ value, expectedValue }) => {
     expect(normalizeBooleanParameterValue(value)).toEqual(expectedValue);
   });
