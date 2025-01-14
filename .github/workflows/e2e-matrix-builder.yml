@@ -66,5 +66,5 @@ jobs:
 
             console.log("matrix config", config);
 
-            core.setOutput("regularChunks", regularChunks);
+            core.setOutput("regularChunks", JSON.stringify({ include: regularChunks }));
             core.setOutput("config", JSON.stringify({ include: config }));
