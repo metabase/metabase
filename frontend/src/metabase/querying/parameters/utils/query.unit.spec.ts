@@ -213,6 +213,30 @@ describe("applyParameter", () => {
         expectedDisplayName: "Is trial is false",
       },
       {
+        type: "string/=",
+        target: getFilterColumnTarget("ORDERS", "IS_TRIAL"),
+        value: [true, false],
+        expectedDisplayName: "Is trial is 2 selections",
+      },
+      {
+        type: "string/!=",
+        target: getFilterColumnTarget("ORDERS", "IS_TRIAL"),
+        value: [true],
+        expectedDisplayName: "Is trial is not true",
+      },
+      {
+        type: "string/!=",
+        target: getFilterColumnTarget("ORDERS", "IS_TRIAL"),
+        value: [false],
+        expectedDisplayName: "Is trial is not false",
+      },
+      {
+        type: "string/!=",
+        target: getFilterColumnTarget("ORDERS", "IS_TRIAL"),
+        value: [true, false],
+        expectedDisplayName: "Is trial is not 2 selections",
+      },
+      {
         type: "date/single",
         target: getFilterColumnTarget("ORDERS", "CREATED_AT"),
         value: "2024-04-02",
