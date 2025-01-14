@@ -1,0 +1,1135 @@
+{
+  "durations": [
+  {
+    "spec": "e2e/test/scenarios/actions/actions-in-object-detail-view.cy.spec.js",
+    "duration": 100
+  },
+  {
+    "spec": "e2e/test/scenarios/actions/actions-on-dashboards.cy.spec.js",
+    "duration": 100
+  },
+  {
+    "spec": "e2e/test/scenarios/actions/actions-reproductions.cy.spec.js",
+    "duration": 100
+  },
+  {
+    "spec": "e2e/test/scenarios/actions/model-actions.cy.spec.js",
+    "duration": 100
+  },
+  {
+    "spec": "e2e/test/scenarios/admin/admin-reproductions.cy.spec.js",
+    "duration": 100
+  },
+  {
+    "spec": "e2e/test/scenarios/admin/databases.cy.spec.js",
+    "duration": 100
+  },
+  {
+    "spec": "e2e/test/scenarios/admin/query-validator.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin/troubleshooting.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin-2/api-keys.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin-2/authentication.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin-2/error-reporting.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin-2/people.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin-2/settings.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin-2/whitelabel.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/binning/binning-options.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/binning/binning-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/binning/qb-explicit-joins.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/binning/qb-implicit-joins.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/binning/qb-regular-table.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/binning/sql.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/collections/cleanup.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/collections/collection-pinned-overview.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/collections/collections-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/collections/collections.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/collections/instance-analytics.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/collections/permissions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/collections/personal-collections.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/collections/revision-history.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/collections/trash.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/collections/uploads.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/custom-column/cc-boolean-functions.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/custom-column/cc-shortcuts-combine.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/custom-column/cc-shortcuts.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/custom-column/cc-typing-suggestion.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/custom-column/custom-column-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/custom-column/custom-column.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard/dashboard-back-navigation.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard/dashboard-management.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard/dashboard-questions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard/dashboard-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard/dashboard.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard/tabs.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard/text-cards.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard/title-drill.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard/x-rays.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-cards/click-behavior.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-cards/dashboard-card-fetching.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-cards/dashboard-card-resizing.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-cards/dashboard-card-undo.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-cards/dashboard-drill.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-cards/dashboard-sections.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-cards/dashcard-replace-question.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-cards/duplicate-dashcards-tabs.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-cards/visualization-options.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-chained-filters.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filter-data-permissions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filter-defaults.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-auto-apply.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-auto-wiring.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-clear-and-restore.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-date.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-explicit-join.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-id.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-location.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-management.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-nested.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-number-source.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-number.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-reset-clear.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-source.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-sql-date.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-sql-id.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-sql-location.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-sql-management.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-sql-number.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-sql-required-field-filter.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-sql-required-simple-filter.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-sql-text-category.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/dashboard-filters-text-category.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/old-parameters.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/parameters.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters/temporal-unit-parameters.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-2/dashboard-filters-1-stage.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-2/dashboard-filters-2-stage.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-2/dashboard-filters-3-stage.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-2/dashboard-filters-misc.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-matrix/page-0.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-matrix/page-1.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-matrix/page-10.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-matrix/page-2.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-matrix/page-3.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-matrix/page-4.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-matrix/page-5.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-matrix/page-6.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-matrix/page-7.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-matrix/page-8.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/dashboard-filters-matrix/page-9.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/embedding/embed-resource-downloads.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/embedding/embedding-dashboard.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/embedding/embedding-linked-filters.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/embedding/embedding-native.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/embedding/embedding-questions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/embedding/embedding-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/embedding/embedding-smoketests.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/embedding/embedding-snippets.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/embedding/interactive-embedding.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/embedding-sdk/static-dashboard-cors.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/filters/filter-bulk.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/filters/filter-sources.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/filters/filter-types.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/filters/filter.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/filters/operators.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/filters/relative-datetime.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/filters/time-series-chrome.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/filters/view.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/filters-reproductions/dashboard-filters-with-question-revert.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/joins/joins-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/joins/joins.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/metrics/browse.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/metrics/metrics-collection.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/metrics/metrics-dashboard.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/metrics/metrics-editing.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/metrics/metrics-question.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/metrics/metrics-search.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/models/create.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/models/model-indexes.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/models/models-metadata.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/models/models-query-editor.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/models/models-revision-history.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/models/models-with-aggregation-and-breakout.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/models/models.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/models/reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/models/reproductions.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/native/native-database-source.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/native/native-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/native/native-reproductions.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/native/native.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/native/native_subquery.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/native/snippets.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/native-filters/native-filters-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/native-filters/sql-field-filter-types.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/native-filters/sql-field-filter.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/native-filters/sql-filters-reset-clear.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/native-filters/sql-filters-source.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/native-filters/sql-filters.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/navigation/navbar.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/about.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/add-initial-data.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/command-palette.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/embedding-homepage.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/notifications.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/onboarding-checklist.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/urls.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/organization/bookmarks-collection.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/organization/bookmarks-dashboard.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/organization/bookmarks-question.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/organization/bookmarks-reordering.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/organization/content-verification.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/organization/edit-history-metadata.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/organization/entity-picker.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/organization/official-collections.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/organization/timelines-collection.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/organization/timelines-question.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/admin-permissions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/application-permissions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/create-queries.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/data-model-permissions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/database-details-permissions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/downgrade-ee-to-oss.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/download-permissions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/impersonated.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/permissions-baseline.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/permissions-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/permissions-reproductions.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/sandboxes.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/permissions/view-data.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/caching.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/column-compare.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/document-title.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/multiple-column-breakouts.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/native-query-drill.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/nested.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/new.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/notebook-data-source.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/notebook-link-to-data-source.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/notebook-native-preview-sidebar.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/notebook.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/nulls.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/offset.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/query-external.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/question-management.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/saved.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/settings.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question/summarization.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question-reproductions/reproductions-1.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question-reproductions/reproductions-2.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/search/recently-viewed.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/search/search-filters.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/search/search-pagination.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/search/search-snowplow.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/search/search-typeahead.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/search/search.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/public-dashboard.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/public-question.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/public-resource-downloads.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/public-sharing-embed-button-behavior.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/public-sharing.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/sharing-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/subscriptions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/stats/instance-stats-snowplow.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/bar_chart.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/combo.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/funnel.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/gauge.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/legend.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/line-bar-tooltips.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/line_chart.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/maps.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/pie_chart.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/progress-bar.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/rows.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/sankey.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/scatter.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/trendline.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-charts/waterfall.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/column-shortcuts.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/object_detail.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/scalar.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/smartscalar-trend.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/table-column-settings.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/table.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin/datamodel/datamodel.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin/datamodel/editor.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin/datamodel/reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin/performance/clock.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin/performance/dashboardsAndQuestions.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin/performance/schedule.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin/performance/strategyForm.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin-2/sso/google.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin-2/sso/jwt.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin-2/sso/ldap.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/admin-2/sso/saml.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/binning/correctness/longitude.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/binning/correctness/time-series.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/binning/reproductions/23851-drill-temporal-extraction.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/binning/reproductions/34688-34690-time-series-footer.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/cross-version/source/00-setup.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/cross-version/source/01-generate-metadata.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/cross-version/source/02-datamodel.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/cross-version/source/03-questions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/cross-version/target/smoke.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/metrics/reproductions/metrics-reproductions.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/auth/forgot_password.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/auth/signin.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/auth/sso.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/home/browse.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/home/homepage.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/navbar/new-menu.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/navbar/whats-new.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/reference/databases.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/setup/setup.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/setup/user_settings.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/alert/alert-permissions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/alert/alert-types.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/alert/alert.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/alert/email-alert.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/downloads/downloads.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/sharing/downloads/sharing-download-reproductions.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/drillthroughs/chart_drill.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/drillthroughs/column_extract_drill.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/drillthroughs/combine-column.cy.spec.ts",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/drillthroughs/dash_drill.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/visualizations-tabular/drillthroughs/table_drills.cy.spec.js",
+    "duration": 50000
+  },
+  {
+    "spec": "e2e/test/scenarios/onboarding/reference/reproductions/5276-remove-field-type.cy.spec.js",
+    "duration": 50000
+  }
+]}

@@ -12,6 +12,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  SPLIT_CHUNKS: 50
+
 jobs:
   files-changed:
     name: Check which files changed
@@ -31,7 +34,7 @@ jobs:
   e2e-matrix-builder:
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
-      chunks: 50
+      chunks: ${{ env.SPLIT_CHUNKS }}
 
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
@@ -63,7 +66,6 @@ jobs:
               java_version: requirements.java,
               node_version: requirements.node,
             };
-
 
   build:
     needs: [files-changed, get-build-requirements]
@@ -115,6 +117,8 @@ jobs:
       name: ${{ matrix.name }}
       edition: ${{ matrix.edition }}
       specs: ${{ matrix.specs }}
+      total_chunks: ${{ needs.e2e-matrix-builder.outputs.regularChunks }}
+      split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
 

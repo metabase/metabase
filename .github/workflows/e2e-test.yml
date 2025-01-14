@@ -22,6 +22,12 @@ on:
         required: false
         type: string
         default: ubuntu-22.04
+      total_chunks: # number of chunks
+        required: false
+        type: number
+      split_index: # index of the chunk
+        required: false
+        type: number
 
 jobs:
   e2e-tests:
@@ -90,17 +96,20 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
-      - name: Run EE Cypress tests on ${{ inputs.name }}
-        if: ${{ !inputs.tags }}
+      - name: Run auto-split Cypress tests on ${{ inputs.name }}
+        if: ${{ !inputs.specs }}
+        env:
+          SPLIT: ${{ inputs.split }}
+          SPLIT_INDEX: ${{ inputs.split_index }}
+          SPLIT_FILE: "./e2e/support/timings.json"
         shell: bash
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@slow+-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
-          --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
-        if: ${{ inputs.tags }}
+        if: ${{ inputs.specs }}
         shell: bash
         run: |
           yarn run test-cypress-run \
