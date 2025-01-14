@@ -100,7 +100,7 @@ const isPaginationMetadata = (
  *
  * @deprecated use "metabase/api" instead
  */
-export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
+export function EntityListLoader<Entity, EntityWrapper>({
   allError: allErrorProp,
   allFetched: allFetchedProp,
   allLoaded: allLoadedProp,
@@ -351,16 +351,16 @@ export function EntityListLoaderRtkQuery<Entity, EntityWrapper>({
 /**
  * @deprecated HOCs are deprecated
  */
-export const entityListLoaderRtkQuery =
+export const entityListLoader =
   <Entity, EntityWrapper>(eolProps: any) =>
   (
     ComposedComponent: (
       props: ChildrenProps<Entity, EntityWrapper>,
     ) => ReactNode,
   ) =>
-    function EntityListLoaderRtkQueryWrapper(props: any) {
+    function EntityListLoaderWrapper(props: any) {
       return (
-        <EntityListLoaderRtkQuery
+        <EntityListLoader
           ComposedComponent={ComposedComponent}
           {...props}
           {...eolProps}
