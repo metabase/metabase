@@ -80,12 +80,10 @@ export const collectionApi = Api.injectEndpoints({
       }),
       invalidatesTags: (collection, error) =>
         collection
-          ? [
-              ...invalidateTags(error, [listTag("collection")]),
-              ...invalidateTags(error, [
-                idTag("collection", collection.parent_id ?? "root"),
-              ]),
-            ]
+          ? invalidateTags(error, [
+              listTag("collection"),
+              idTag("collection", collection.parent_id ?? "root"),
+            ])
           : [],
     }),
     updateCollection: builder.mutation<Collection, UpdateCollectionRequest>({
@@ -94,8 +92,13 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("collection"), idTag("collection", id)]),
+      invalidatesTags: (_, error, payload) => {
+        return invalidateTags(error, [
+          listTag("collection"),
+          idTag("collection", payload.id),
+          idTag("collection", payload.parent_id ?? "root"),
+        ]);
+      },
     }),
     deleteCollection: builder.mutation<void, DeleteCollectionRequest>({
       query: ({ id, ...body }) => ({

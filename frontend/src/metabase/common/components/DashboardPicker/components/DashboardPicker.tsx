@@ -22,9 +22,9 @@ import type {
   DashboardPickerStatePath,
 } from "../types";
 import {
-  getCollectionId,
   getCollectionIdPath,
   getStateFromIdPath,
+  handleNewDashboard as handleNewDashboardUtil,
   isFolder,
 } from "../utils";
 
@@ -142,36 +142,14 @@ const DashboardPickerInner = (
 
   const handleNewDashboard = useCallback(
     (newDashboard: Dashboard) => {
-      const newCollectionItem: DashboardPickerItem = {
-        id: newDashboard.id,
-        name: newDashboard.name,
-        collection_id: newDashboard.collection_id || "root",
-        model: "dashboard",
-      };
-
-      // Needed to satisfy type between DashboardPickerItem and the query below.
-      const parentCollectionId = getCollectionId(newCollectionItem);
-
-      //Is the parent collection already in the path?
-      const isParentCollectionInPath =
-        getPathLevelForItem(newCollectionItem, path, userPersonalCollectionId) >
-        0;
-
-      if (!isParentCollectionInPath) {
-        onPathChange([
-          ...path,
-          {
-            query: {
-              id: parentCollectionId,
-              models: ["collection", "dashboard"],
-            },
-            selectedItem: newCollectionItem,
-          },
-        ]);
-        onItemSelect(newCollectionItem);
-        return;
-      }
-      handleItemSelect(newCollectionItem);
+      handleNewDashboardUtil(
+        newDashboard,
+        path,
+        onItemSelect,
+        userPersonalCollectionId,
+        handleItemSelect,
+        onPathChange,
+      );
     },
     [
       path,
