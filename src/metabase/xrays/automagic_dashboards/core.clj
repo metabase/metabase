@@ -176,7 +176,7 @@
 (defmulti linked-metrics
   "Get user-defined metrics linked to a given entity."
   {:arglists '([entity])}
-   mi/model)
+  mi/model)
 
 (defmethod linked-metrics :model/LegacyMetric [{metric-name :name :keys [definition]}]
   [{:metric-name       metric-name
