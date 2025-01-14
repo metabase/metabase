@@ -9,13 +9,14 @@ import {
 } from "./normalize";
 
 type StringParameterCase = {
-  value: ParameterValueOrArray | null;
+  value: ParameterValueOrArray | null | undefined;
   expectedValue: string[];
 };
 
 describe("normalizeStringParameterValue", () => {
   it.each<StringParameterCase>([
     { value: null, expectedValue: [] },
+    { value: undefined, expectedValue: [] },
     { value: "", expectedValue: [] },
     { value: [""], expectedValue: [] },
     { value: ["abc"], expectedValue: ["abc"] },
@@ -28,13 +29,14 @@ describe("normalizeStringParameterValue", () => {
 });
 
 type NumberParameterCase = {
-  value: ParameterValueOrArray | null;
+  value: ParameterValueOrArray | null | undefined;
   expectedValue: number[];
 };
 
 describe("normalizeNumberParameterValue", () => {
   it.each<NumberParameterCase>([
     { value: null, expectedValue: [] },
+    { value: undefined, expectedValue: [] },
     { value: "", expectedValue: [] },
     { value: [""], expectedValue: [] },
     { value: ["abc"], expectedValue: [] },
@@ -53,13 +55,14 @@ describe("normalizeNumberParameterValue", () => {
 });
 
 type BooleanParameterCase = {
-  value: ParameterValueOrArray | null;
+  value: ParameterValueOrArray | null | undefined;
   expectedValue: boolean[];
 };
 
 describe("normalizeBooleanParameterValue", () => {
   it.each<BooleanParameterCase>([
     { value: null, expectedValue: [] },
+    { value: undefined, expectedValue: [] },
     { value: "", expectedValue: [] },
     { value: [""], expectedValue: [] },
     { value: ["abc"], expectedValue: [] },
@@ -78,13 +81,14 @@ describe("normalizeBooleanParameterValue", () => {
 });
 
 type DateParameterCase = {
-  value: ParameterValueOrArray | null;
+  value: ParameterValueOrArray | null | undefined;
   expectedValue: DateFilterValue | undefined;
 };
 
 describe("normalizeDateParameterValue", () => {
   it.each<DateParameterCase>([
     { value: null, expectedValue: undefined },
+    { value: undefined, expectedValue: undefined },
     { value: "abc", expectedValue: undefined },
     { value: 10, expectedValue: undefined },
     { value: true, expectedValue: undefined },
