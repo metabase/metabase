@@ -19,7 +19,7 @@ import {
 } from "./normalize";
 
 const STRING_OPERATORS: Partial<
-  Record<ParameterType | string, Lib.StringFilterOperator>
+  Record<ParameterType, Lib.StringFilterOperator>
 > = {
   "string/=": "=",
   "string/!=": "!=",
@@ -30,7 +30,7 @@ const STRING_OPERATORS: Partial<
 };
 
 const NUMBER_OPERATORS: Partial<
-  Record<ParameterType | string, Lib.NumberFilterOperator>
+  Record<ParameterType, Lib.NumberFilterOperator>
 > = {
   "string/=": "=",
   "number/=": "=",
@@ -44,7 +44,7 @@ const NUMBER_OPERATORS: Partial<
 export function applyParameter(
   query: Lib.Query,
   stageIndex: number,
-  type: ParameterType | string,
+  type: ParameterType,
   target: ParameterTarget | null,
   value: ParameterValueOrArray | null,
 ) {
@@ -62,7 +62,7 @@ export function applyParameter(
 function applyFilterParameter(
   query: Lib.Query,
   stageIndex: number,
-  type: ParameterType | string,
+  type: ParameterType,
   target: StructuredParameterDimensionTarget,
   value: ParameterValueOrArray,
 ): Lib.Query {
@@ -100,7 +100,7 @@ function getParameterFilterColumn(
 }
 
 function getParameterFilterClause(
-  type: ParameterType | string,
+  type: ParameterType,
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ) {
@@ -119,7 +119,7 @@ function getParameterFilterClause(
 }
 
 function getStringParameterFilterClause(
-  type: ParameterType | string,
+  type: ParameterType,
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
@@ -138,7 +138,7 @@ function getStringParameterFilterClause(
 }
 
 function getNumberParameterFilterClause(
-  type: ParameterType | string,
+  type: ParameterType,
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
@@ -165,7 +165,7 @@ function getNumberParameterFilterClause(
 }
 
 function getBooleanParameterFilterClause(
-  type: ParameterType | string,
+  type: ParameterType,
   column: Lib.ColumnMetadata,
   value: ParameterValueOrArray,
 ): Lib.ExpressionClause | undefined {
