@@ -1,5 +1,5 @@
 import type { MantineThemeOverride } from "@mantine/core";
-import type { Reducer, Store } from "@reduxjs/toolkit";
+import type { Store } from "@reduxjs/toolkit";
 import { render } from "@testing-library/react";
 import type * as React from "react";
 import _ from "underscore";
@@ -17,29 +17,16 @@ import { MetabaseReduxProvider } from "metabase/lib/redux";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
-type ReducerValue = ReducerObject | Reducer;
-
-interface ReducerObject {
-  [slice: string]: ReducerValue;
-}
-
 export interface RenderWithSDKProvidersOptions {
   storeInitialState?: Partial<State>;
-  customReducers?: ReducerObject;
   sdkProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
 }
 
-/**
- * Custom wrapper of react testing library's render function,
- * helping to setup common wrappers and provider components
- * (router, redux, drag-n-drop provider, etc.)
- */
 export function renderWithSDKProviders(
   ui: React.ReactElement,
   {
     storeInitialState = {},
-    customReducers,
     sdkProviderProps = null,
     theme,
     ...options
@@ -60,18 +47,10 @@ export function renderWithSDKProviders(
     initialState.settings.values["token-features"].embedding_sdk = true;
   }
 
-  let reducers;
-
-  reducers = sdkReducers;
-
-  if (customReducers) {
-    reducers = { ...reducers, ...customReducers };
-  }
-
   const storeMiddleware = _.compact([Api.middleware]);
 
   const store = getStore(
-    reducers,
+    sdkReducers,
     initialState,
     storeMiddleware,
   ) as unknown as Store<State>;
