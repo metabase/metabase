@@ -364,7 +364,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.icon("arrow_down").should(
       "have.css",
       "color",
-      Color(colors.error).string(),
+      Color(colors.error).rgb().string(),
     );
     H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
