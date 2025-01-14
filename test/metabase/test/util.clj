@@ -1535,3 +1535,8 @@
   `(do-poll-until
     ~timeout-ms
     (fn ~'poll-body [] ~@body)))
+
+(defn random-string
+  "Returns a string of `n` random alphanumeric characters."
+  [n]
+  (apply str (take n (repeatedly #(rand-nth "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))))

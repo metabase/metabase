@@ -530,7 +530,7 @@
                    table->descendants))))))
 
 (defn- active-table-after [simulated-delay-ns]
-  (mt/with-dynamic-redefs [search.index/now (constantly (+ simulated-delay-ns (System/nanoTime)))]
+  (mt/with-dynamic-fn-redefs [search.index/now (constantly (+ simulated-delay-ns (System/nanoTime)))]
     (search.index/active-table)))
 
 (deftest auto-refresh-test
