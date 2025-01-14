@@ -508,15 +508,14 @@
 (models.u.spec-update/define-spec notification-update-spec
   "Spec for updating a notification."
   {:model        :model/Notification
-   ;; a function that takes a row and returns a map of the columns to compare
    :compare-cols [:active]
+   :extra-cols   [:payload_type :internal_id :payload_id]
    :nested-specs {:payload       {:model        :model/NotificationCard
-                                  :compare-cols [:send_condition :send_once]}
+                                  :compare-cols [:send_condition :send_once]
+                                  :extra-cols   [:card_id]}
                   :subscriptions {:model        :model/NotificationSubscription
-                                  ;; the foreign key column in the nested model with respect to the parent model
                                   :fk-column    :notification_id
                                   :compare-cols [:notification_id :type :event_name :cron_schedule]
-                                  ;; whether this nested model is a sequentials with respect to the parent model
                                   :multi-row?   true}
                   :handlers      {:model        :model/NotificationHandler
                                   :fk-column    :notification_id
