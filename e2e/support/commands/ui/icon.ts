@@ -20,7 +20,8 @@ Cypress.Commands.add(
     prevSubject: "optional",
   },
   (subject, iconName) => {
-    const SELECTOR = `.Icon-${iconName}`;
+    const ICON = `.Icon-${iconName}`;
+    const SELECTOR = `a:has(${ICON}), button:has(${ICON})`;
 
     return subject ? cy.wrap(subject).find(SELECTOR) : cy.get(SELECTOR);
   },
