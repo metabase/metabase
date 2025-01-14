@@ -3,8 +3,6 @@ import path from "node:path";
 
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
-import { generateReport } from "e2e/runner/utils/reporter";
-
 import {
   removeDirectory,
   verifyDownloadTasks,
@@ -63,22 +61,6 @@ const defaultConfig = {
       });
     }
 
-    on("before:run", () => {
-      console.log("🧹 Clean up the existing Cypress artifacts 🧹");
-      fs.rmSync(path.join(config.projectRoot + "/cypress"), {
-        recursive: true,
-        force: true,
-      });
-    });
-
-    on("after:run", results => {
-      if (results.totalFailed > 0) {
-        const reportDir = path.join(config.projectRoot + "/cypress/reports");
-
-        console.log("📄 Generate unified Mocha report 📄");
-        generateReport(reportDir);
-      }
-    });
     /********************************************************************
      **                        PREPROCESSOR                            **
      ********************************************************************/
