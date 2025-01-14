@@ -13,6 +13,7 @@ import { parseHashOptions } from "metabase/lib/browser";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
+import { useAutoScrollToDashcard } from "./use-auto-scroll-to-dashcard";
 import { useEmbedFont } from "./use-embed-font";
 
 export const useDashboardUrlParams = ({
@@ -44,6 +45,8 @@ export const useDashboardUrlParams = ({
   const { isFullscreen, onFullscreenChange } = useDashboardFullscreen();
   const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
     useDashboardRefreshPeriod({ onRefresh });
+  const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
+    useAutoScrollToDashcard(location);
 
   useLocationSync<RefreshPeriod>({
     key: "refresh",
@@ -93,5 +96,7 @@ export const useDashboardUrlParams = ({
     hideParameters: hide_parameters,
     downloadsEnabled,
     locale,
+    autoScrollToDashcardId,
+    reportAutoScrolledToDashcard,
   };
 };
