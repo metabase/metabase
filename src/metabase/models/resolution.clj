@@ -107,3 +107,15 @@
      (let [metabase-models-keyword (keyword "model" (name symb))]
        (t2.model/resolve-model metabase-models-keyword)))
    (next-method symb)))
+
+(def ^:private ^:dynamic *table-name-resolved* false)
+
+(methodical/defmethod t2.model/table-name :around :default
+  "Toucan 2 table-name by default does not do model resolution. Since we do a lot of dynamic model resolution, wrap it
+  and resolve keywords if needed."
+  [model]
+  (if (or (not (keyword? model))
+          *table-name-resolved*)
+    (next-method model)
+    (binding [*table-name-resolved* true]
+      (t2.model/table-name (t2.model/resolve-model model)))))
