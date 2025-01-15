@@ -153,8 +153,6 @@ export async function reportCIFailure({
     testName: test.titlePath.join(" > "),
   }).catch(console.error);
 
-  console.log("response", response);
-
   if (response?.ok) {
     console.log(
       `Updated failure notice in PR: ${PR_NUMBER} - ${spec.name} - ${test.titlePath.join(
