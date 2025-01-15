@@ -115,11 +115,13 @@ export type UpdateUserRequest = {
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
 };
 
-export type UserKeyValue = {
-  namespace: "user_acknowledgement";
-  key: string;
-  value: boolean;
-};
+export type UserKeyValue =
+  | { namespace: "test"; key: string; value: any }
+  | {
+      namespace: "user_acknowledgement";
+      key: string;
+      value: boolean;
+    };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;
 
