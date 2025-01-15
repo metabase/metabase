@@ -661,15 +661,12 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         it("should display pivot table in a public link", () => {
           cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {
-            cy.findByTestId("qb-header").button("Save").click();
+            H.openSharingMenu();
             H.modal().within(() => {
               cy.findByText("Save").click();
             });
-            H.openQuestionActions(/public link/i);
-          } else if (test.case === "dashboard") {
-            H.openDashboardMenu(/public link/i);
           }
-
+          H.openSharingMenu(/public link/i);
           cy.findByTestId("public-link-popover-content")
             .findByTestId("public-link-input")
             .invoke("val")

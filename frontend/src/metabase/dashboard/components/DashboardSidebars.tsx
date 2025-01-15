@@ -8,6 +8,7 @@ import {
   getParameters,
 } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
+import DashboardSubscriptionsSidebar from "metabase/notifications/DashboardSubscriptionsSidebar";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
 import type {
@@ -26,8 +27,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { SelectedTabId, State } from "metabase-types/store";
-
-import DashboardSubscriptionsSidebar from "../../notifications/DashboardSubscriptionsSidebar";
 
 import { ActionSidebarConnected } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";

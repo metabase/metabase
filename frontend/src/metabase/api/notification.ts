@@ -4,7 +4,6 @@ import type {
   Notification,
   NotificationId,
   UpdateNotificationRequest,
-  // UpdateNotificationRequest,
 } from "metabase-types/api/notification";
 
 import { Api } from "./api";
