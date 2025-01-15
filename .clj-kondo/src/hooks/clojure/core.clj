@@ -49,7 +49,7 @@
      metabase-enterprise.advanced-permissions.models.permissions/update-db-download-permissions!
      metabase-enterprise.internal-user/install-internal-user!
      metabase-enterprise.sso.integrations.saml-test/call-with-login-attributes-cleared!
-     metabase.actions/perform-action!
+     metabase.actions.actions/perform-action!
      metabase.analytics.snowplow-test/fake-track-event-impl!
      metabase.analytics.snowplow/track-event-impl!
      metabase.api.public-test/add-card-to-dashboard!
