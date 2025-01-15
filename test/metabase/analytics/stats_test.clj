@@ -8,7 +8,7 @@
    [metabase.config :as config]
    [metabase.core.core :as mbc]
    [metabase.db :as mdb]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.util :as qp.util]

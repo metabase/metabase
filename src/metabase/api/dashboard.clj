@@ -14,7 +14,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.query-metadata :as api.query-metadata]
    [metabase.db.query :as mdb.query]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]

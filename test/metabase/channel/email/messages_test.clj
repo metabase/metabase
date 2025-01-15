@@ -1,10 +1,10 @@
-(ns metabase.email.messages-test
+(ns metabase.channel.email.messages-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.email :as email]
-   [metabase.email-test :as et]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email :as email]
+   [metabase.channel.email-test :as et]
+   [metabase.channel.email.messages :as messages]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util.retry :as retry]
@@ -71,7 +71,7 @@
 
 #_(deftest render-pulse-email-test
     (testing "Email with few rows and columns can be rendered when tracing (#21166)"
-      (mt/with-log-level [metabase.email :trace]
+      (mt/with-log-level [metabase.channel.email :trace]
         (let [part {:card   {:id   1
                              :name "card-name"
                              :visualization_settings

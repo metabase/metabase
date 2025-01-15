@@ -1,4 +1,4 @@
-(ns metabase.email.result-attachment
+(ns metabase.channel.email.result-attachment
   (:require
    [clojure.java.io :as io]
    [java-time.api :as t]

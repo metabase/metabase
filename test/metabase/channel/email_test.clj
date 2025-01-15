@@ -1,4 +1,4 @@
-(ns metabase.email-test
+(ns metabase.channel.email-test
   "Various helper functions for testing email functionality."
   (:require
    [clojure.java.io :as io]
@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]
@@ -83,8 +83,9 @@
 ;;; TODO -- rename to `with-fake-inbox!` since it's not thread-safe and remove the Kondo ignore below.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-fake-inbox
-  "Clear `inbox`, bind `send-email!` to `fake-inbox-email-fn`, set temporary settings for `email-smtp-username`
-   and `email-smtp-password` (which will cause `metabase.email/email-configured?` to return `true`, and execute `body`.
+  "Clear `inbox`, bind `send-email!` to `fake-inbox-email-fn`, set temporary settings for `email-smtp-username` and
+  `email-smtp-password` (which will cause [[metabase.channel.email/email-configured?]] to return `true`, and execute
+  `body`.
 
    Fetch the emails send by dereffing `inbox`.
 

@@ -1,4 +1,4 @@
-(ns metabase.email
+(ns metabase.channel.email
   (:require
    [metabase.analytics.prometheus :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -235,8 +235,8 @@
   ((retry/decorate send-message-or-throw!) email))
 
 (def ^:private SMTPStatus
-  "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key
-  `:metabase.email/error`, which will either be `nil` (indicating no error) or an instance of [[java.lang.Throwable]]
+  "Schema for the response returned by various functions in [[metabase.channel.email]]. Response will be a map with the key
+  `:metabase.channel.email/error`, which will either be `nil` (indicating no error) or an instance of [[java.lang.Throwable]]
   with the error."
   [:map {:closed true}
    [::error [:maybe (ms/InstanceOfClass Throwable)]]])

@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.email :as api.email]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -70,7 +70,7 @@
 
 (deftest update-email-settings-test
   (testing "PUT /api/email - check updating email settings"
-    ;; [[metabase.email/email-smtp-port]] was originally a string Setting (it predated our introduction of different
+    ;; [[metabase.channel.email/email-smtp-port]] was originally a string Setting (it predated our introduction of different
     ;; Settings types) -- make sure our API endpoints still work if you pass in the value as a String rather than an
     ;; integer.
     (let [original-values (email-settings)]

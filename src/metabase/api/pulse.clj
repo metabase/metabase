@@ -14,7 +14,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.channel.render.core :as channel.render]
    [metabase.config :as config]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.events :as events]
    [metabase.integrations.slack :as slack]
    [metabase.models.collection :as collection]

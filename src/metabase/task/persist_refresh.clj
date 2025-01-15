@@ -10,7 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.task-history :as task-history]
    [metabase.public-settings :as public-settings]

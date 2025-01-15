@@ -14,7 +14,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.eid-translation :as eid-translation]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]

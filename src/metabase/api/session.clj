@@ -7,7 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.ldap :as api.ldap]
    [metabase.config :as config]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]

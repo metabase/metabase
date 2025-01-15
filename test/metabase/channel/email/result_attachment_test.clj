@@ -1,7 +1,7 @@
-(ns metabase.email.result-attachment-test
+(ns metabase.channel.email.result-attachment-test
   (:require
    [clojure.test :refer :all]
-   [metabase.email.result-attachment :as email.result-attachment])
+   [metabase.channel.email.result-attachment :as email.result-attachment])
   (:import
    (java.io IOException)))
 

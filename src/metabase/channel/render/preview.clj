@@ -12,7 +12,7 @@
    [metabase.channel.render.image-bundle :as img]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
-   [metabase.email.result-attachment :as email.result-attachment]
+   [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.util.markdown :as markdown]
    [toucan2.core :as t2]))
 

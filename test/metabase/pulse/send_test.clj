@@ -10,7 +10,7 @@
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]

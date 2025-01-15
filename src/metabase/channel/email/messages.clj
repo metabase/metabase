@@ -1,4 +1,4 @@
-(ns metabase.email.messages
+(ns metabase.channel.email.messages
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails.
 
@@ -7,11 +7,11 @@
    [buddy.core.codecs :as codecs]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.template.core :as channel.template]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
-   [metabase.email :as email]
    [metabase.lib.util :as lib.util]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
@@ -106,7 +106,7 @@
                            (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
       :recipients   recipients
       :message-type :html
-      :message      (channel.template/render "metabase/email/user_joined_notification.hbs"
+      :message      (channel.template/render "metabase/channel/email/user_joined_notification.hbs"
                                              (merge (common-context)
                                                     {:logoHeader        true
                                                      :joinedUserName    (or (:first_name new-user) (:email new-user))
@@ -123,7 +123,7 @@
          ((some-fn string? nil?) password-reset-url)]}
   (let [google-sso? (= "google" sso-source)
         message-body (channel.template/render
-                      "metabase/email/password_reset.hbs"
+                      "metabase/channel/email/password_reset.hbs"
                       (merge (common-context)
                              {:emailType        "password_reset"
                               :google           google-sso?
@@ -153,7 +153,7 @@
                              :device     (:device_description login-history)
                              :location   (:location login-history)
                              :timestamp  timestamp})
-        message-body (channel.template/render "metabase/email/login_from_new_device.hbs"
+        message-body (channel.template/render "metabase/channel/email/login_from_new_device.hbs"
                                               context)]
     (email/send-message!
      {:subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
@@ -217,7 +217,7 @@
                     :card-url (urls/card-url (:id card))
                     :collection-url (urls/collection-url (:id collection))
                     :caching-log-details-url (urls/tools-caching-details-url (:id persisted-info))})}
-        message-body (channel.template/render "metabase/email/persisted-model-error.hbs"
+        message-body (channel.template/render "metabase/channel/email/persisted-model-error.hbs"
                                               (merge (common-context) context))]
     (when (seq emails)
       (email/send-message!
@@ -239,7 +239,7 @@
         email {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
                :recipients   [email]
                :message-type :html
-               :message      (channel.template/render "metabase/email/follow_up_email.hbs" context)}]
+               :message      (channel.template/render "metabase/channel/email/follow_up_email.hbs" context)}]
     (email/send-message! email)))
 
 (defn send-creator-sentiment-email!
@@ -263,7 +263,7 @@
         message {:subject      "Metabase would love your take on something"
                  :recipients   [email]
                  :message-type :html
-                 :message      (channel.template/render "metabase/email/creator_sentiment_email.hbs" context)}]
+                 :message      (channel.template/render "metabase/channel/email/creator_sentiment_email.hbs" context)}]
     (email/send-message! message)))
 
 (defn generate-pulse-unsubscribe-hash
@@ -365,7 +365,7 @@
         (log/errorf e "Failed to send message to '%s' with subject '%s'" (:email user) subject)))))
 
 (defn- template-path [template-name]
-  (str "metabase/email/" template-name ".hbs"))
+  (str "metabase/channel/email/" template-name ".hbs"))
 
 ;; Paths to the templates for all of the alerts emails
 (def ^:private you-unsubscribed-template   (template-path "alert_unsubscribed"))
@@ -417,7 +417,7 @@
      :recipients (distinct (map :email [pulse-creator dashboard-creator]))
      :message-type :html
      :message (channel.template/render
-               "metabase/email/broken_subscription_notification.hbs"
+               "metabase/channel/email/broken_subscription_notification.hbs"
                (merge context
                       {:dashboardName            dashboard-name
                        :badParameters            (map

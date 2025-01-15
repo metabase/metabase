@@ -7,7 +7,7 @@
    [compojure.core :refer [DELETE POST PUT]]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.models.setting :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -27,7 +27,7 @@
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our email functions into our normal api error response structure."
-  [{::email/keys [error]}]
+  [{::email/keys [:metabase.channel.email/error]}]
   (when error
     (let [conn-error  {:errors {:email-smtp-host "Wrong host or port"
                                 :email-smtp-port "Wrong host or port"}}

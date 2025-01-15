@@ -15,7 +15,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.email-test :as et]
+   [metabase.channel.email-test :as et]
    [metabase.http-client :as client]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.permissions.test-util :as perms.test-util]
