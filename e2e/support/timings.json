@@ -33,7 +33,7 @@
       "spec": "../test/scenarios/admin-2/people.cy.spec.js"
     },
     {
-      "duration": 5000,
+      "duration": 111304,
       "spec": "../test/scenarios/admin-2/settings.cy.spec.js"
     },
     {
@@ -141,7 +141,7 @@
       "spec": "../test/scenarios/binning/sql.cy.spec.js"
     },
     {
-      "duration": 56000,
+      "duration": 70206,
       "spec": "../test/scenarios/collections/cleanup.cy.spec.js"
     },
     {
@@ -513,7 +513,7 @@
       "spec": "../test/scenarios/embedding/interactive-embedding.cy.spec.js"
     },
     {
-      "duration": 137000,
+      "duration": 315697,
       "spec": "../test/scenarios/filters-reproductions/dashboard-filters-reproductions.cy.spec.js"
     },
     {
@@ -529,11 +529,11 @@
       "spec": "../test/scenarios/filters/filter-bulk.cy.spec.js"
     },
     {
-      "duration": 95000,
+      "duration": 90038,
       "spec": "../test/scenarios/filters/filter-sources.cy.spec.js"
     },
     {
-      "duration": 124000,
+      "duration": 203813,
       "spec": "../test/scenarios/filters/filter-types.cy.spec.js"
     },
     {
@@ -565,7 +565,7 @@
       "spec": "../test/scenarios/joins/joins.cy.spec.js"
     },
     {
-      "duration": 42000,
+      "duration": 48320,
       "spec": "../test/scenarios/metrics/browse.cy.spec.ts"
     },
     {
@@ -625,7 +625,7 @@
       "spec": "../test/scenarios/models/reproductions.cy.spec.js"
     },
     {
-      "duration": 8000,
+      "duration": 176057,
       "spec": "../test/scenarios/models/reproductions.cy.spec.ts"
     },
     {
@@ -721,7 +721,7 @@
       "spec": "../test/scenarios/onboarding/navbar/new-menu.cy.spec.js"
     },
     {
-      "duration": 90000,
+      "duration": 10000,
       "spec": "../test/scenarios/onboarding/navbar/whats-new.cy.spec.js"
     },
     {
@@ -753,7 +753,7 @@
       "spec": "../test/scenarios/onboarding/urls.cy.spec.js"
     },
     {
-      "duration": 29000,
+      "duration": 33716,
       "spec": "../test/scenarios/organization/bookmarks-collection.cy.spec.js"
     },
     {
@@ -849,11 +849,11 @@
       "spec": "../test/scenarios/question-reproductions/reproductions-1.cy.spec.js"
     },
     {
-      "duration": 13000,
+      "duration": 93539,
       "spec": "../test/scenarios/question-reproductions/reproductions-2.cy.spec.js"
     },
     {
-      "duration": 11000,
+      "duration": 361799,
       "spec": "../test/scenarios/question-reproductions/reproductions-3.cy.spec.js"
     },
     {
@@ -885,7 +885,7 @@
       "spec": "../test/scenarios/question/nested.cy.spec.js"
     },
     {
-      "duration": 11000,
+      "duration": 89886,
       "spec": "../test/scenarios/question/new.cy.spec.js"
     },
     {
@@ -1025,7 +1025,7 @@
       "spec": "../test/scenarios/visualizations-charts/funnel.cy.spec.js"
     },
     {
-      "duration": 3000,
+      "duration": 3662,
       "spec": "../test/scenarios/visualizations-charts/gauge.cy.spec.js"
     },
     {
@@ -1069,11 +1069,11 @@
       "spec": "../test/scenarios/visualizations-charts/trendline.cy.spec.js"
     },
     {
-      "duration": 29000,
+      "duration": 111283,
       "spec": "../test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.js"
     },
     {
-      "duration": 50000,
+      "duration": 29000,
       "spec": "../test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.ts"
     },
     {
