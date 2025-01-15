@@ -1,4 +1,4 @@
-{{> metabase/email/_header.hbs }}
+{{> metabase/channel/email/_header.hbs }}
     <p>This is just a confirmation that your alert about <a href="{{context.site_url}}/question/{{payload.event_info.object.card.id}}">{{payload.event_info.object.card.name}}</a> has been set up.</p>
     <p>This alert will be sent
       {{#with payload.event_info.object}}
@@ -11,4 +11,4 @@
           whenever this question has any results
         {{/if}}
       {{/with}}</p>
-{{> metabase/email/_footer.hbs}}
+{{> metabase/channel/email/_footer.hbs}}
