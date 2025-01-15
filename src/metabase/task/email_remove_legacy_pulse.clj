@@ -2,8 +2,8 @@
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.channel.template.core :as channel.template]
    [metabase.channel.email :as email]
+   [metabase.channel.template.core :as channel.template]
    [metabase.task :as task]
    [metabase.util.log :as log]
    [metabase.util.urls :as urls]
