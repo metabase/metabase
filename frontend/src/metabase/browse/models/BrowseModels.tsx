@@ -2,23 +2,32 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import NoResults from "assets/img/no_results.svg";
 import { skipToken, useListRecentsQuery } from "metabase/api";
+import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
 } from "metabase/plugins";
-import { Box, Flex, Group, Icon, Stack, Title } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 
 import {
   BrowseContainer,
   BrowseHeader,
   BrowseMain,
   BrowseSection,
-  CenteredEmptyState,
 } from "../components/BrowseContainer.styled";
 
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
@@ -37,6 +46,8 @@ export const BrowseModels = () => {
   const [modelFilters, setModelFilters] = useModelFilterSettings();
   const { isLoading, error, models, recentModels, hasVerifiedModels } =
     useFilteredModels(modelFilters);
+
+  const { showMetabaseLinks, url } = useDocsUrl("data-modeling/models");
 
   const isEmpty = !isLoading && !error && models.length === 0;
   const titleId = useMemo(() => _.uniqueId("browse-models"), []);
@@ -75,17 +86,37 @@ export const BrowseModels = () => {
         <BrowseSection>
           <Stack mb="lg" spacing="md" w="100%">
             {isEmpty ? (
-              <CenteredEmptyState
-                title={<Box mb=".5rem">{t`No models here yet`}</Box>}
-                message={
-                  <Box maw="24rem">{t`Models help curate data to make it easier to find answers to questions all in one place.`}</Box>
-                }
-                illustrationElement={
-                  <Box mb=".5rem">
-                    <img src={NoResults} />
-                  </Box>
-                }
-              />
+              <Stack spacing="lg" align="center">
+                <Box maw="720px" w="100%">
+                  <iframe
+                    width="100%"
+                    style={{
+                      aspectRatio: "16/9",
+                      border: 0,
+                      borderRadius: "8px",
+                    }}
+                    src="https://www.youtube.com/embed/Cb7-wLAgSCA?si=gPukXurSJAM8asGJ&autoplay=1"
+                    // eslint-disable-next-line no-literal-metabase-strings -- It's just a title for the a11y purposes
+                    title="Use Models in Metabase | Getting started with Metabase"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  ></iframe>
+                </Box>
+                <Stack spacing="xs" maw="30rem">
+                  <Title
+                    order={2}
+                    align="center"
+                  >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
+                  <Text align="center">{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
+                </Stack>
+                {showMetabaseLinks && (
+                  <Button variant="subtle" p={0}>
+                    <ExternalLink
+                      key="model-caching-link"
+                      href={url}
+                    >{t`Read the docs`}</ExternalLink>
+                  </Button>
+                )}
+              </Stack>
             ) : (
               <>
                 <ModelExplanationBanner />
