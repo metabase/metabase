@@ -1951,7 +1951,7 @@
     (is (= {eid {:id id :type :card :status :ok}}
            (api.embed.common/model->entity-ids->ids {:card [eid]})))))
 
-(deftest entity-id-card-translations-test
+(deftest ^:parallel entity-id-card-translations-test
   (mt/with-temp
     [:model/Card {id   :id eid   :entity_id} {}
      :model/Card {id-0 :id eid-0 :entity_id} {}

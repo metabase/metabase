@@ -252,6 +252,8 @@
   discard-setting-changes
   doall-recursive
   file->bytes
+  file-path->bytes
+  bytes->base64-data-uri
   latest-audit-log-entry
   let-url
   obj->json->obj
