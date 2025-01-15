@@ -55,3 +55,8 @@
   "True if the given string is formatted like a UUID"
   [s] (try (java.util.UUID/fromString s) true
            (catch Exception _e false)))
+
+(defn random-string
+  "Returns a string of `n` random alphanumeric characters."
+  [n]
+  (apply str (take n (repeatedly #(rand-nth "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))))

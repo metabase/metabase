@@ -16,7 +16,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.string :as string]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1158,7 +1157,7 @@
     (testing "Test that we return a session if we are changing our own password"
       (mt/with-temp [:model/User user {:password "def", :is_superuser false}]
         (let [creds {:username (:email user), :password "def"}]
-          (is (=? {:session_id string/valid-uuid?
+          (is (=? {:session_id string?
                    :success    true}
                   (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
                                                                                     :old_password "def"}))))))

@@ -17,7 +17,6 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.string :as string]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -35,7 +34,7 @@
 
 (def ^:private SessionResponse
   [:map
-   [:id ms/UUIDString]])
+   [:id ms/NonBlankString]])
 
 (def ^:private session-cookie request/metabase-session-cookie)
 
@@ -303,7 +302,7 @@
               (mt/client :post 200 "session" (:old creds))
               ;; Call reset password endpoint to change the PW
               (testing "reset password endpoint should return a valid session token"
-                (is (=? {:session_id string/valid-uuid?
+                (is (=? {:session_id string?
                          :success    true}
                         (mt/client :post 200 "session/reset_password" {:token    token
                                                                        :password (:new password)}))))
