@@ -14,10 +14,12 @@ import {
   createQuestion,
   describeEE,
   popover,
+  tableAllFieldsHiddenImage,
   tableHeaderClick,
   tableInteractive,
 } from "e2e/support/helpers";
 import {
+  METABASE_INSTANCE_URL,
   mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   mountSdkContent,
@@ -91,15 +93,28 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
-    tableInteractive().findByText("Max of Quantity").should("be.visible");
+    const columnNames = ["Product ID", "Max of Quantity"];
 
-    tableHeaderClick("Max of Quantity");
+    columnNames.forEach((columnName, index) => {
+      tableInteractive().findByText(columnName).should("be.visible");
 
-    popover()
-      .findByTestId("click-actions-sort-control-formatting-hide")
-      .click();
+      tableHeaderClick(columnName);
 
-    tableInteractive().findByText("Max of Quantity").should("not.exist");
+      popover()
+        .findByTestId("click-actions-sort-control-formatting-hide")
+        .click();
+
+      if (index < columnNames.length - 1) {
+        tableInteractive().findByText(columnName).should("not.exist");
+      } else {
+        tableInteractive().should("not.exist");
+
+        tableAllFieldsHiddenImage()
+          .should("be.visible")
+          .should("have.attr", "src")
+          .and("include", METABASE_INSTANCE_URL);
+      }
+    });
   });
 
   it("can save a question to a default collection", () => {
