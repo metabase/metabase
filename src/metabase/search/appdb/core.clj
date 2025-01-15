@@ -43,6 +43,9 @@
 (defn- rehydrate [weights active-scorers index-row]
   (-> (json/decode+kw (:legacy_input index-row))
       (assoc
+       ;; this relies on the corresponding scorer, which is not great coupling.
+       ;; ideally we would make per-user computed attributes part of the spec itself.
+       :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (mapv (fn [k]
                            ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)

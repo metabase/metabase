@@ -39,7 +39,6 @@
 
 (def ^:private default-search-row
   {:archived                   false
-   :dashboard_id               false
    :dashboard                  nil
    :effective_location         nil
    :location                   nil
@@ -1713,13 +1712,13 @@
                      :model/Card {reg-card-id :id} {:name (named "regular card")}
                      ;; DQs aren't searchable without a DashboardCard (see later test)
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-        (testing "The card data includes the `dashboard_id`"
-          (is (= dash-id
-                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
-                      :data
-                      (filter #(= card-id (:id %)))
-                      first
-                      :dashboard_id))))
+
+        ;; We need to update the entry for the card once the join is created.
+        ;; This is not necessary in the real app because of how the index updates are batched.
+        ;; Another solution would be to explicitly mark this data dependency, which we explicitly chose not to do for
+        ;; now (see note of the Card spec).
+        (search/update! (t2/instance :model/Card {:id card-id}))
+
         (testing "The card data also include `dashboard` info"
           (is (= {:id dash-id
                   :name (named "dashboard")
@@ -1730,12 +1729,6 @@
                       first
                       :dashboard))))
         (testing "Regular cards don't have it"
-          (is (nil?
-               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
-                    :data
-                    (filter #(= reg-card-id (:id %)))
-                    first
-                    :dashboard_id)))
           (is (nil?
                (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                     :data

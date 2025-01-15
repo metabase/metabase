@@ -213,7 +213,7 @@
 (defn- document->entry [entity]
   (-> entity
       (select-keys
-       ;; remove attrs that get aliased
+       ;; remove attrs that get explicitly aliased below
        (remove #{:id :created_at :updated_at :native_query}
                (conj search.spec/attr-columns :model :display_data :legacy_input)))
       (update :display_data json/encode)
