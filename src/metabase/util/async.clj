@@ -1,9 +1,8 @@
-(ns metabase.async.util
+(ns metabase.util.async
   "Utility functions for core.async-based async logic."
   (:require
    [clojure.core.async :as a]
-   [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.log :as log])
   (:import
    (clojure.core.async.impl.buffers PromiseBuffer)
    (clojure.core.async.impl.channels ManyToManyChannel)
@@ -19,14 +18,6 @@
   [chan]
   (and (instance? ManyToManyChannel chan)
        (instance? PromiseBuffer (.buf ^ManyToManyChannel chan))))
-
-(def PromiseChan
-  "Malli schema for a core.async promise channel."
-  [:and
-   (ms/InstanceOfClass ManyToManyChannel)
-   [:fn
-    {:error/message "A core.async promise channel"}
-    promise-chan?]])
 
 (defn cancelable-thread-call
   "Exactly like `a/thread-call`, with two differences:

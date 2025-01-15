@@ -2,15 +2,14 @@
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
-   [metabase.async.streaming-response :as streaming-response]
    [metabase.driver.mongo.conversion :as mongo.conversion]
    [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache.impl :as middleware.cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.test :as mt])
   (:import
-   #_(com.mongodb BasicDBObject)
    (java.util NoSuchElementException)))
 
 (set! *warn-on-reflection* true)
