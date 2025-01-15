@@ -231,6 +231,27 @@ describe("scenarios > models", () => {
     H.echartsContainer().should("not.exist");
   });
 
+  // TODO: add test here "should only show a user the model modal once"
+
+  it.only("only shows model info modal once when turning a question into a model", () => {
+    H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+    H.echartsContainer();
+
+    turnIntoModel();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("This is a model now.");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Undo").click();
+
+    H.openQuestionActions();
+    H.popover().within(() => {
+      cy.icon("model").click();
+    });
+    H.modal().should("not.exist");
+
+    cy.findByText("This is a model now.").should("not.exist");
+  });
+
   it("allows to undo turning a question into a model", () => {
     H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
     H.echartsContainer();

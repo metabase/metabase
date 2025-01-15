@@ -2,27 +2,23 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
-import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
 import { useDispatch } from "metabase/lib/redux";
 import { turnQuestionIntoModel } from "metabase/query_builder/actions";
 import { Box, Button, Text } from "metabase/ui";
 
 import NewDatasetModalS from "./NewDatasetModal.module.css";
+import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 
 export function NewDatasetModal({ onClose }: { onClose: () => void }) {
   const dispatch = useDispatch();
 
-  const { setValue: setAcknowledged } = useUserKeyValue({
-    namespace: "user_acknowledgement",
-    key: "turn_into_model_modal",
-    defaultValue: false,
-  });
+  const [, ack] = useUserAcknowledgement("turn_into_model_modal");
 
   const onConfirm = useCallback(() => {
-    setAcknowledged(true);
+    ack();
     dispatch(turnQuestionIntoModel());
     onClose();
-  }, [dispatch, setAcknowledged, onClose]);
+  }, [dispatch, ack, onClose]);
 
   return (
     <ModalContent
