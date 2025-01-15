@@ -65,5 +65,10 @@
             "data_source"
         ],
         "additionalProperties": false
-    }
+    },
+    "examples": [
+        "User: Can you find outliers? (user is looking at a query result with id 'awergasdvoihw2' with 3 numeric columns (field_ids 'aggregation_0', 'aggregation_3', 'aggregation_4' and other columns)\nAssistant: {\"tool_name\": \"find-outliers\", \"arguments\": {\"data_source\": {\"query_id\": \"awergasdvoihw2\", \"result_field_id\": \"aggregation_0\"}}}, {\"tool_name\": \"find-outliers\", \"arguments\": {\"data_source\": {\"query_id\": \"awergasdvoihw2\", \"result_field_id\": \"aggregation_3\"}}}, {\"tool_name\": \"find-outliers\", \"arguments\": {\"data_source\": {\"query_id\": \"awergasdvoihw2\", \"result_field_id\": \"aggregation_4\"}}}",
+        "User: Any unusual values in the monthly page views? (user is looking at a report with id 'card__6231', page view count field_id='aggregation_0')\nAssistant: {\"tool_name\": \"find-outliers\", \"arguments\": {\"data_source\": {\"report_id\": 6231, \"result_field_id\": \"aggregation_0\"}}}",
+        "User: Is the revenue of the last months within normal range? (user is looking at a metric with id 522)\nAssistant: {\"tool_name\": \"find-outliers\", \"arguments\": {\"data_source\": {\"metric_id\": 522}}}"
+    ]
 }

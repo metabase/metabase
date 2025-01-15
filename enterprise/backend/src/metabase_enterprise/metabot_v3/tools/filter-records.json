@@ -1,6 +1,6 @@
 {
     "name": "filter-records",
-    "description": "Filter records of a table, or the results of a query by specified conditions. Multiple filters can be combined to create complex queries but note that the filters are applied in a logical AND fashion (cannot be combined with OR). For querying metrics, always use the `query-metric` tool instead.",
+    "description": "Filter records of a table, or the results of a query by specified conditions. Multiple filters can be combined to create complex queries but note that the filters are applied in a logical AND fashion (cannot be combined with OR).\n## When to not use the filter-records tool\n-For querying and filtering existing metrics, you should only use the `query-metrics` tool instead (it also allows you to filter records).",
     "parameters": {
         "type": "object",
         "properties": {
@@ -11,7 +11,7 @@
                         "description": "Filter the records of a table.",
                         "properties": {
                             "table_id": {
-                                "type": "integer",
+                                "type": "string",
                                 "description": "The ID of the table to filter"
                             }
                         },
@@ -55,7 +55,7 @@
                     "array",
                     "null"
                 ],
-                "description": "An array of filter objects. Each filter specifies a field, an operation, and a value (if required). For single filters, pass one object. If you want to filter on multiple columns, pass multiple objects. If the user doesn't specify any filters, set this parameter to null.",
+                "description": "An array of filter objects. Each filter specifies a field, an operation, and a value (if required). For single filters, pass one object. If you want to filter on multiple columns, pass multiple objects. If no filters are used, this **must** be set to `null`. Do not pass an empty array.",
                 "items": {
                     "anyOf": [
                         {
@@ -71,7 +71,7 @@
                                         "is-true",
                                         "is-false"
                                     ],
-                                    "description": "Operation to apply. `string-is-empty` and `string-is-not-empty` refer to both empty strings and NULL values."
+                                    "description": "Operation to apply. `string-is-empty` and `string-is-not-empty` refer to both empty strings and NULL values. When filtering for empty/missing values, use `string-is-empty` and `string-is-not-empty` for categorical fields and `is-null` and `is-not-null` for others (e.g. date, number)."
                                 },
                                 "field_id": {
                                     "type": "string",
@@ -229,5 +229,12 @@
             "filters"
         ],
         "additionalProperties": false
-    }
+    },
+    "examples": [
+        "User: Only show records after 1st January 2019 (User looking at report with id 2235, date field id 9384)\nAssistant: {\"tool_name\": \"filter-records\", \"arguments\": {\"data_source\": {\"report_id\": 2235}, \"filters\": [{\"field_id\": \"9384\", \"operation\": \"date-after\", \"value\": \"2019-01-01\"}]}}",
+        "User: Show me all products without a category (table id '5231', category field id 20234)\nAssistant: {\"tool_name\": \"filter-records\", \"arguments\": {\"data_source\": {\"table_id\": \"5231\"}, \"filters\": [{\"field_id\": \"20234\", \"operation\": \"string-is-empty\"}]}}",
+        "User: Only surveys with from 2021 (table_id 'card__285', creation field id 182).\nAssistant: {\"tool_name\": \"filter-records\", \"arguments\": {\"data_source\": {\"table_id\": \"card__285\"}, \"filters\": [{\"field_id\": \"182\", \"operation\": \"year-equals\", \"value\": 2021}]}}",
+        "User: Only show events where the amount is greater than 51 (user looking at query results with query id 'awfohewfbvwg', amount field id 9384)\nAssistant: {\"tool_name\": \"filter-records\", \"arguments\": {\"data_source\": {\"query_id\": \"awfohewfbvwg\"}, \"filters\": [{\"field_id\": \"9384\", \"operation\": \"number-greater-than\", \"value\": 51}]}}",
+        "User: Show users without a updated date (table id 'card__1043', updated date field id 20234)\nAssistant: {\"tool_name\": \"filter-records\", \"arguments\": {\"data_source\": {\"table_id\": \"card__1043\"}, \"filters\": [{\"field_id\": \"20234\", \"operation\": \"is-null\"}]}}"
+    ]
 }
