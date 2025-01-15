@@ -1,10 +1,10 @@
-import type { CSSProperties, ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect } from "react";
 import _ from "underscore";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
-  SdkError,
+  DashboardNotFoundError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
@@ -14,12 +14,15 @@ import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
+import { setErrorPage } from "metabase/redux/app";
+import { getErrorPage } from "metabase/selectors/app";
 
 import { InteractiveDashboardProvider } from "./context";
 
@@ -131,20 +134,39 @@ const InteractiveDashboardInner = ({
 };
 
 export const InteractiveDashboard = renderOnlyInSdkProvider(
-  ({ dashboardId, ...rest }: InteractiveDashboardProps) => {
-    const { id, isLoading } = useValidatedEntityId({
+  ({ dashboardId: initialDashboardId, ...rest }: InteractiveDashboardProps) => {
+    const { id: resolvedDashboardId, isLoading } = useValidatedEntityId({
       type: "dashboard",
-      id: dashboardId,
+      id: initialDashboardId,
     });
 
+    const errorPage = useSdkSelector(getErrorPage);
+    const dispatch = useSdkDispatch();
+    useEffect(() => {
+      if (resolvedDashboardId) {
+        dispatch(setErrorPage(null));
+      }
+    }, [dispatch, resolvedDashboardId]);
+
+    const { style, className } = rest;
     if (isLoading) {
-      return <SdkLoader />;
+      return (
+        <StyledPublicComponentWrapper className={className} style={style}>
+          <SdkLoader />
+        </StyledPublicComponentWrapper>
+      );
     }
 
-    if (!id) {
-      return <SdkError message="ID not found" />;
+    if (!resolvedDashboardId || errorPage?.status === 404) {
+      return (
+        <StyledPublicComponentWrapper className={className} style={style}>
+          <DashboardNotFoundError id={initialDashboardId} />
+        </StyledPublicComponentWrapper>
+      );
     }
 
-    return <InteractiveDashboardInner dashboardId={id} {...rest} />;
+    return (
+      <InteractiveDashboardInner dashboardId={resolvedDashboardId} {...rest} />
+    );
   },
 );
