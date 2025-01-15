@@ -25,6 +25,20 @@
     (throw (ex-info (tru "Invalid hash.")
                     {:status-code 400}))))
 
+(defn- notification-name-by-handler-id
+  [notification-handler-id]
+  (let [notification (t2/hydrate (t2/select-one :model/Notification
+                                                :id [:in {:select [:notification_id]
+                                                          :from  :notification_handler
+                                                          :where [:= :id notification-handler-id]}])
+                                 :payload)]
+    (case (:payload_type notification)
+      ;; use the card name
+      :notification/card (->> notification :payload :card_id (t2/select-one-fn :name :model/Card))
+      ;; use the dashboard name
+      :notification/dashboard (->> notification :payload :dashboard_id (t2/select-one-fn :name :model/Dashboard))
+      (name (:payload_type notification)))))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Allow non-users to unsubscribe from notifications, with the hash given through email."
@@ -42,7 +56,7 @@
         (t2/delete! :model/NotificationRecipient (:id matching-recipient))
         (throw (ex-info (tru "Email doesn''t exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-ex {:object {:email email}})
-  {:status :success :title "Notification Unsubscribed"})
+  {:status :success :title (notification-name-by-handler-id notification-handler-id)})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/undo"
@@ -62,6 +76,6 @@
                                                   :notification_handler_id notification-handler-id})
         (throw (ex-info (tru "Email already exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-undo-ex {:object {:email email}})
-  {:status :success :title "Notification Resubscribed"})
+  {:status :success :title (notification-name-by-handler-id notification-handler-id)})
 
 (api/define-routes)
