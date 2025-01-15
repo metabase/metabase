@@ -258,6 +258,9 @@ export function tokenize(expression: string): {
       const ch = source[index++];
       if (ch === "]") {
         break;
+      } else if (ch.trim().length === 0) {
+        --index; // do not include whitespace in the token
+        break; // stop scanning when whitespace encountered
       } else if (ch === "[") {
         const type = TOKEN.Identifier;
         const end = index;

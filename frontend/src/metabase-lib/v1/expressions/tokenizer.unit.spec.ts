@@ -50,7 +50,7 @@ describe("tokenizer", () => {
       { type: 2, start: 25, end: 29 }, // 1.21
       { type: 1, op: ",", start: 29, end: 30 }, // ,
       { type: 4, start: 31, end: 34 }, // [Pr
-      { type: 4, start: 35, end: 41 }, // [Price]
+      { type: 4, start: 35, end: 42 }, // [Price]
       { type: 1, op: ")", start: 42, end: 43 }, // )
     ]);
   });
