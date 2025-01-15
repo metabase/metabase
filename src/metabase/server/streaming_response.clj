@@ -1,12 +1,12 @@
-(ns metabase.async.streaming-response
+(ns metabase.server.streaming-response
   (:require
    [clojure.core.async :as a]
    [clojure.walk :as walk]
    [compojure.response]
-   [metabase.async.streaming-response.thread-pool :as thread-pool]
-   [metabase.async.util :as async.u]
    [metabase.server.protocols :as server.protocols]
+   [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.util :as u]
+   [metabase.util.async :as async.u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [potemkin.types :as p.types]

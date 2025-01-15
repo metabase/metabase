@@ -1,9 +1,9 @@
-(ns metabase.async.util-test
+(ns metabase.util.async-test
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
-   [metabase.async.util :as async.u]
-   [metabase.test.util.async :as tu.async]))
+   [metabase.test.util.async :as tu.async]
+   [metabase.util.async :as async.u]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,8 +22,9 @@
                                                 (Thread/sleep 10)
                                                 ::success)]
       (is (= ::success
-             (first (a/alts!! [result-chan (a/timeout 500)]))))))
+             (first (a/alts!! [result-chan (a/timeout 500)])))))))
 
+(deftest ^:parallel cancelable-thread-test-2
   (testing (str "when you close the result channel of `cancelable-thread`, it should cancel the future that's running "
                 "it. This will produce an InterruptedException")
     (tu.async/with-open-channels [started-chan  (a/chan 1)

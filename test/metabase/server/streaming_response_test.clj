@@ -1,14 +1,14 @@
-(ns ^:mb/once metabase.async.streaming-response-test
+(ns ^:mb/once metabase.server.streaming-response-test
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
-   [metabase.async.streaming-response :as streaming-response]
-   [metabase.async.streaming-response.thread-pool :as thread-pool]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.server.protocols :as server.protocols]
+   [metabase.server.streaming-response :as streaming-response]
+   [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import
