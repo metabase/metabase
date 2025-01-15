@@ -1,4 +1,4 @@
-(ns macros.metabase.task.setup.query-analysis-setup
+(ns macros.metabase.query-analysis.task.test-setup
   (:require [macros.common]))
 
 (defmacro with-test-setup!
