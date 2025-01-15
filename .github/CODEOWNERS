@@ -11,3 +11,10 @@ src/metabase/**/*permissions* @noahmoss
 src/metabase/integrations @noahmoss
 snowplow/* @metabase/data
 e2e/* @filiphric
+
+#
+# Backend modules <=> teams that own them
+#
+
+src/metabase/query_analysis/** @metabase/core-backend-querying
+test/metabase/query_analysis/** @metabase/core-backend-querying
