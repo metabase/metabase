@@ -31,7 +31,7 @@ jobs:
     env:
       MB_EDITION: ${{ inputs.edition }}
       DISPLAY: ""
-      QA_DB_ENABLED: true
+      QA_DB_ENABLED: ${{ inputs.name == 'external' || inputs.name == 'mongo' }}
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
@@ -45,8 +45,8 @@ jobs:
       CYPRESS_QA_DB_MONGO: ${{ inputs.name == 'mongo' }}
       CYPRESS_IS_EMBEDDING_SDK: ${{ inputs.name == 'embedding-sdk' }}
       mongo: ${{ inputs.name == 'mongo' }}
-      postgres: ${{ inputs.name != 'mongo' }}
-      mysql: ${{ inputs.name != 'mongo' }}
+      postgres: ${{ inputs.name == 'external' || inputs.name == 'oss-subset' || inputs.name == 'flaky' }}
+      mysql: ${{ inputs.name == 'external' || inputs.name == 'oss-subset' || inputs.name == 'flaky' }}
       openldap: ${{ contains(inputs.specs, 'ldap') }}
       maildev: true
       webhook: true
@@ -95,7 +95,7 @@ jobs:
         shell: bash
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@slow+-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
+          --env grepTags="-@slow+-@mongo+-@flaky+-@OSS+-@external --@quarantine",grepOmitFiltered=true \
           --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 

@@ -486,7 +486,7 @@ describe("issues 20845, 25031", () => {
 // - Add tests for embedding previews in both cases
 // - Add tests for disabled, editable and locked parameters in both cases
 // BONUS: Ideally add tests for email subscriptions with the filter applied
-describe("issue 27643", () => {
+describe("issue 27643", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
   const TEMPLATE_TAG_NAME = "expected_invoice";
   const getQuestionDetails = fieldId => {
