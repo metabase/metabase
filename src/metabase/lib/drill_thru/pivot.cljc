@@ -65,7 +65,7 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (some? value)
-             (lib.drill-thru.common/aggregation-sourced? query column))
+             (lib.underlying/aggregation-sourced? query column))
     (->> (lib.breakout/breakoutable-columns query stage-number)
          (filter field-pred))))
 
@@ -128,7 +128,7 @@
     (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
                column
                (some? value)
-               (lib.drill-thru.common/aggregation-sourced? query column)
+               (lib.underlying/aggregation-sourced? query column)
                (-> (lib.aggregation/aggregations query stage-number) count pos?))
       (let [breakout-pivot-types (permitted-pivot-types query stage-number)
             pivots               (into {} (for [pivot-type breakout-pivot-types

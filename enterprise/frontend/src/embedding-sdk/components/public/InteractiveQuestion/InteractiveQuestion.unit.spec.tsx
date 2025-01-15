@@ -17,6 +17,7 @@ import {
   within,
 } from "__support__/ui";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
@@ -104,7 +105,7 @@ const setup = ({
 
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
-  return renderWithProviders(
+  return renderWithSDKProviders(
     <InteractiveQuestion
       questionId={TEST_CARD.id}
       title={title}
@@ -113,7 +114,6 @@ const setup = ({
       {withCustomLayout ? <InteractiveQuestionCustomLayout /> : undefined}
     </InteractiveQuestion>,
     {
-      mode: "sdk",
       sdkProviderProps: {
         authConfig: createMockAuthProviderUriConfig({
           authProviderUri: "http://TEST_URI/sso/metabase",

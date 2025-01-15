@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 
-import type { MetabaseQuestion } from "embedding-sdk/types/public/question";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { ClickAction, ClickObject } from "metabase/visualizations/types";
+
+import type { MetabaseQuestion } from "./question";
 
 export type MetabaseDataPointObject = Pick<
   ClickObject,
