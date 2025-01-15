@@ -18,9 +18,9 @@
     :refer [Card Collection Database Field FieldValues Segment Table]]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :as database :refer [protected-password]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.secret :as secret]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.sync :as sync]
@@ -1972,14 +1972,14 @@
                                                                   :access-token                  "access-token"
                                                                   :refresh-token                 "refresh-token"}
                                                     :id          (mt/id)}
-                                                   {:service-account-json          protected-password
+                                                   {:service-account-json          secret/protected-password
                                                     :password                      "new-password"
-                                                    :pass                          protected-password
-                                                    :tunnel-pass                   protected-password
-                                                    :tunnel-private-key            protected-password
-                                                    :tunnel-private-key-passphrase protected-password
-                                                    :access-token                  protected-password
-                                                    :refresh-token                 protected-password})))))
+                                                    :pass                          secret/protected-password
+                                                    :tunnel-pass                   secret/protected-password
+                                                    :tunnel-private-key            secret/protected-password
+                                                    :tunnel-private-key-passphrase secret/protected-password
+                                                    :access-token                  secret/protected-password
+                                                    :refresh-token                 secret/protected-password})))))
 
 (deftest ^:parallel upsert-sensitive-fields-no-fields-replaced-test
   (testing "no fields are replaced"
@@ -2008,29 +2008,28 @@
                                                                   :access-token                  "access-token"
                                                                   :refresh-token                 "refresh-token"}
                                                     :id          (mt/id)}
-                                                   {:service-account-json          protected-password
-                                                    :password                      protected-password
-                                                    :pass                          protected-password
-                                                    :tunnel-pass                   protected-password
-                                                    :tunnel-private-key            protected-password
-                                                    :tunnel-private-key-passphrase protected-password
-                                                    :access-token                  protected-password
-                                                    :refresh-token                 protected-password})))))
+                                                   {:service-account-json          secret/protected-password
+                                                    :password                      secret/protected-password
+                                                    :pass                          secret/protected-password
+                                                    :tunnel-pass                   secret/protected-password
+                                                    :tunnel-private-key            secret/protected-password
+                                                    :tunnel-private-key-passphrase secret/protected-password
+                                                    :access-token                  secret/protected-password
+                                                    :refresh-token                 secret/protected-password})))))
 
 (deftest ^:parallel secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
     (testing "File path values for secrets are returned as plaintext in the API (#20030)"
-      (t2.with-temp/with-temp [Database database {:engine  :secret-test-driver
-                                                  :name    "Test secret DB with password path"
-                                                  :details {:host           "localhost"
-                                                            :password-path "/path/to/password.txt"}}]
-        (is (= {:password-source "file-path"
-                :password-value  "/path/to/password.txt"}
-               (as-> (u/the-id database) d
-                 (format "database/%d" d)
-                 (mt/user-http-request :crowberto :get 200 d)
-                 (:details d)
-                 (select-keys d [:password-source :password-value]))))))))
+      (mt/with-temp [:model/Database database {:engine  :secret-test-driver
+                                               :name    "Test secret DB with password path"
+                                               :details {:host           "localhost"
+                                                         :password-path "/path/to/password.txt"}}]
+        (is (=? {:password-options "local"
+                 :password-path  "/path/to/password.txt"}
+                (as-> (u/the-id database) d
+                  (format "database/%d" d)
+                  (mt/user-http-request :crowberto :get 200 d)
+                  (:details d))))))))
 
 ;; these descriptions use deferred-tru because the `defsetting` macro complains if they're not, but since these are in
 ;; tests they won't get scraped for i18n purposes so it's ok.
