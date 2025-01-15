@@ -1,6 +1,8 @@
 (ns metabase.models.resolution-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.models.resolution :as models.resolution]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.jvm :as u.jvm]
@@ -30,7 +32,9 @@
           (format "%s should have a mapping for %s" `models.resolution/model->namespace model)))))
 
 (deftest ^:parallel all-entries-are-valid-test
-  (doseq [[model nspace] models.resolution/model->namespace]
+  (doseq [[model nspace] models.resolution/model->namespace
+          :when          (or config/ee-available?
+                             (not (str/starts-with? nspace "metabase-enterprise")))]
     (testing model
       (let [e (try
                 (classloader/require nspace)
