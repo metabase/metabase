@@ -14,6 +14,8 @@
 
 (comment
   ;; Make sure to import all the engine implementations. In future this can happen automatically, as per drivers.
+  ;;
+  ;; TODO -- maybe engine loading should be moved to [[metabase.search.init]] instead
   search.engine/keep-me
   search.engines.appdb/keep-me
   search.legacy/keep-me
