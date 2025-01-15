@@ -30,10 +30,6 @@
   true)
 
 ;; The following drivers are excluded from this test because their date types are acutally date times
-(defmethod driver/database-supports? [:athena ::date-columns-should-be-emitted-without-time]
-  [_driver _feature _database]
-  false)
-
 (defmethod driver/database-supports? [:mongo ::date-columns-should-be-emitted-without-time]
   [_driver _feature _database]
   false)
