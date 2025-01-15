@@ -67,4 +67,4 @@ Metabase uses database column metadata to populate values for linked filters, wh
 
 ## Troubleshooting linked filters
 
-If you're not seeing what you expect with linked filters, make sure that your table relationships are [set up to support linked filters](). See [Troubleshooting linked filters]() for more troubleshooting information.
+If you're not seeing what you expect with linked filters, make sure that your table relationships are [set up to support linked filters](). See [Troubleshooting linked filters](../troubleshooting-guide/linked-filters.md) for more troubleshooting information.
