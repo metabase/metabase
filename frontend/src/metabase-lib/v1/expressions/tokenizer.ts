@@ -262,6 +262,7 @@ export function tokenize(expression: string): {
         --index; // do not include whitespace in the token
         break; // stop scanning when whitespace encountered
       } else if (ch === "[") {
+        --index; // allow this character to be parsed again, so it can be recognized as a start of another bracket identifier
         const type = TOKEN.Identifier;
         const end = index;
         const error = t`Bracket identifier in another bracket identifier`;

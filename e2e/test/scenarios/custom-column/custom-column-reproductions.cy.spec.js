@@ -1273,7 +1273,7 @@ describe("issue 50925", () => {
       .first()
       .focus()
       .type("{leftarrow}".repeat(8))
-      .type(" [Pr{enter}");
+      .type("[Pr{enter}");
 
     cy.get(".ace_text-input")
       .first()
