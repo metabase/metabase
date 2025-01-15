@@ -11,3 +11,10 @@ src/metabase/**/*permissions* @noahmoss
 src/metabase/integrations @noahmoss
 snowplow/* @metabase/data
 e2e/* @filiphric
+
+#
+# Backend modules <=> teams that own them
+#
+
+src/metabase/actions/** @metabase/core-backend-admin-webapp
+test/metabase/actions/** @metabase/core-backend-admin-webapp
