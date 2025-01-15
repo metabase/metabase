@@ -7,10 +7,15 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.search.config :as search.config]
+   [metabase.search.models]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
+
+(comment
+  ;; for side effects
+  metabase.search.models/keep-me)
 
 (def ^:private search-models
   #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"})
