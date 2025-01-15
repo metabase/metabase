@@ -2,72 +2,69 @@
 title: Linked filters
 ---
 
-# Linked filters on dashboards
+# Linked filters
 
-You can **link filters** so that a child filter knows to limit its choices based on the activation of a parent filter.
+You can **link filters** on a dashboard so that a child filter knows to limit its choices based on the activation of a parent filter.
 
-Say you have two filters, one to filter by state, the other to filter by city. You can link the city filter to the state filter so that when someone filters by California, the city filter will "know" to only show cities in California. In this case, state is the parent filter, and city is the child filter.
+For example, you can have two dashboard filters: one to filter by state, the other to filter by city. You can link the city filter to the state filter so that when someone filters by California, the city filter only show cities in California in dropdown of suggested filter values. In this case, state is the parent filter, and city is the child filter.
 
-## Set up data for linked filters
+![Linked filters](./images/field-values-linked-filters.png)
 
-Metabase uses table and column metadata to create linked filters. For linked filters to work, Metabase needs to know how the columns and tables relate to each other, so there needs to be an explicit relationship between the columns used in the parent filter and the child filters.
+## Set up tables for linked filters
 
-The parent and child columns should be either:
+You can only link dashboard filters that are wired to database columns (not custom columns or summaries) on dashboard cards, because Metabase needs column metadata to create linked filters. Metabase needs to know what values are there in the columns, and how the columns in the parent and child relate to each other.
+
+To make linked filters work, you need to set up an explicit relationship between the columns used in the parent filter and the child filters in table metadata. This means that your columns should be either:
 
 - In the same table;
-- In two different tables that have an explicit foreign key relationship specified in table metadata in Admin settings
-- In two different tables that have foreign key relationships to one or more intermediate tables specified in table metadata in Admin settings
+- In two different tables that have a foreign key relationship specified in [table metadata in Admin settings](../data-modeling/metadata-editing.md)
+- In two different tables that have a foreign key relationships to one or more intermediate tables specified in [table metadata in Admin settings](../data-modeling/metadata-editing.md)
 
-For example, if you have an entity-relationship diagram like this:
+![Setting up foreign key in table metadata](./images/foreign-key-linked-filters.png)
 
-Then some of the example linked filters that will work correctly:
-
-| Parent | Child | Why it works |
-| ------ | ----- | ------------ |
-| A      | B     | C            |
-
-Here are linked filters that **won't work correctly**
-
-| Parent | Child | Why it **won't work** |
-| ------ | ----- | --------------------- |
-| A      | B     | C                     |
-
-Note that Metabase will not give an errors for , but the values in linked filters. See [Troubleshooting]
+Note that Metabase will not show an error if you try to set up linked filters with improperly linked columns, but you'll see that the values in child linked filter will not be filtered by parent filter. See [Troubleshooting link filters](../troubleshooting-guide/linked-filters.md) for more troubleshooting tips.
 
 ## Set up linked filters
 
-To link filters, you'll need to set up this parent-child relationship. And you set up this relationship through the child filter. In the above scenario, with a state and city filter, we'd edit the child filter, city, by clicking on the **gears** icon on the city filter. From the filter sidebar on the right, select the **Linked filters** tab.
+You can link a child filter to one or more parent filters. The child filter (filter whose values are determined by another filter), must be an ID, Location, or Text or Category filter. Parent filters can have any [filter type](./filters.md).
+
+To link a child filter on a dashboard to one or more parent filters:
+
+1. Edit the dashboard by clicking on the pencil icon in the top right of the dashboard;
+2. Edit the child filter by clicking on the gear icon in the filter;
+3. In the filter settings sidebar on the right, switch to **Linked filters** tab;
+4. Select the parent filters.
 
 ![Linked filters](./images/linked-filter.png)
 
-Here you can limit the current filter's choices. If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for this filter. In this case, we toggle on the state filter (the parent), to limit the choices for the city filter. When states are selected, the city filter will limit its choices to cities in those states. Click **Done**, then **Save** to save the dashboard.
+The filters you select in the **linked filters** tab will be used to limit the choices of filter values for the child filters.
 
-## Linked filters only use table-level information
+## Linked filters limitations
 
-Because a single dashboard filter can be wired to the same column on multiple dashboard cards, dashboard filters - including linked filters - can only use table-level information about the column to populate possible filter values, and can't rely on any logic included in any specific dashboard card.
+### Linked filters only use table-level information
+
+A single dashboard filter can be wired to the same column on multiple dashboard cards, so dashboard filters — including linked filters — can only use table-level information about the column to populate possible filter values, and can't rely on any logic included in any specific dashboard card.
 
 For linked filters specifically, this means that they can only use relationships specified on the table level in Table Metadata, and they will ignore any relationships specified only the model or question level.
 
 In particular, this means that:
 
-- Joining tables in a question or a model source, or even setting foreign key relationships in model metadata only, is **not sufficient** to enable linked filter values. You need to specify relationships in table metadata
+- Joining tables in a question or a model source, or even setting foreign key relationships in model metadata only, is **not sufficient** to enable linked filter values. You need to specify relationships in table metadata.
 
 - Linked dashboard filters will not use any filter or join logic from any underlying card or model.
 
-  For example, if you have State and City columns, build a model that filters out any data with city=San Francisco, then build a question based on this model and add it to a dashboard with linked State and City filters, selecting State = CA will still show San Francisco as an option for the City filter (although of course actually selecting this option will return no data for the question built on the "no San Francisco" model) .
+  For example, if you have State and City columns, and you build a model that filters out any data with `City = San Francisco`, then build a question based on this model and add it to a dashboard with linked State and City filters, selecting `State = CA` will still show San Francisco as an option for the City filter (although of course actually selecting this option will return no data for the question built on the "no San Francisco" model) .
 
-## Other linked filter limitations
+### Linked filter work only with database columns
 
-- Metabase uses table-level about columns to populate values for linked
+Metabase uses database column metadata to populate values for linked filters, which means that linked filters have to be connected to database columns. In particular:
 
-- You can't create linked filters on custom columns. That's because Metabase uses column metadata to create linked filters, so it can only work with filters that are explicitly connected to actual database columns.
+- You can't create linked filters on custom columns
 
-- Native/SQL questions must have a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. That's because Metabase uses column metadata to create linked filters, so it can only work with filters that are explicitly connected to actual database columns. Basic SQL variables aren't connected to columns, so they won't work for linked filters.
+- Native/SQL questions must have a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Basic SQL variables aren't connected to database columns, so they won't work for linked filters.
 
-- You can't link filters that use "Custom List" or "From another model or question" as their value's source. That's because Metabase uses column metadata to create linked filters, and so it needs to have an actual database column as a data source.
+- You can't link filters that use "Custom List" or "From another model or question" as their value's source.
 
 ## Troubleshooting linked filters
 
-If you're not Make sure that your table metadata is set up to support linked filters
-
-See [Troubleshooting linked filters] for more information.
+If you're not seeing what you expect with linked filters, make sure that your table relationships are [set up to support linked filters](). See [Troubleshooting linked filters]() for more troubleshooting information.
