@@ -28,7 +28,7 @@
   "Create a temporary index table for the duration of the body."
   [& body]
   `(if (search/supports-index?)
-     (mt/with-dynamic-redefs [search.impl/default-engine (constantly :search.engine/appdb)]
+     (mt/with-dynamic-fn-redefs [search.impl/default-engine (constantly :search.engine/appdb)]
        (with-temp-index-table
          (search/reindex!)
          ~@body))
@@ -37,7 +37,7 @@
 (defmacro with-legacy-search
   "Ensure legacy search, which doesn't require an index, is used."
   [& body]
-  `(mt/with-dynamic-redefs [search.impl/default-engine (constantly :search.engine/in-place)]
+  `(mt/with-dynamic-fn-redefs [search.impl/default-engine (constantly :search.engine/in-place)]
      ~@body))
 
 (defmacro with-api-user [raw-ctx & body]

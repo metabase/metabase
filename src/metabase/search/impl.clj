@@ -16,6 +16,7 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -398,7 +399,8 @@
 
 (defn- hydrate-dashboards [results]
   (->> (t2/hydrate results [:dashboard :moderation_status])
-       (map (fn [row] (update row :dashboard #(when % (select-keys % [:id :name :moderation_status])))))))
+       (map (fn [row] (u/update-some row :dashboard #(select-keys % [:id :name :moderation_status]))))
+       (map #(dissoc % :dashboard_id))))
 
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
