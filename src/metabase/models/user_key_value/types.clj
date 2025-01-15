@@ -83,6 +83,10 @@
 
 (def ^:private prod-types-dir "user_key_value_types")
 
+(def ^:private test-types-dir
+  "These schemas are only loaded in tests."
+  "test_user_key_value_types")
+
 (defn- load-schema
   "Loads a schema with the provided namespace"
   [schema namespace]
@@ -98,9 +102,9 @@
 
 (defn load-all-schemas
   "Load all schemas from the production types directory."
-  []
-  (u.files/with-open-path-to-resource [prod-dir prod-types-dir]
-    (with-open [ds (Files/newDirectoryStream prod-dir)]
+  [dir]
+  (u.files/with-open-path-to-resource [dir dir]
+    (with-open [ds (Files/newDirectoryStream dir)]
       (let [schemas (reduce
                      (fn [acc ^Path f]
                        (let [schema (try
@@ -171,7 +175,10 @@
 (defn load-and-watch-schemas
   "In production, just load the schemas. In development, watch for changes as well."
   []
-  (load-all-schemas)
+  (load-all-schemas prod-types-dir)
+  (when config/is-test?
+    (load-all-schemas test-types-dir))
   (when config/is-dev?
+    (load-all-schemas test-types-dir)
     (doseq [types-dir (types-dirs)]
       (watch-directory types-dir handle-file-change))))
