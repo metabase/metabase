@@ -1,4 +1,4 @@
-(ns metabase.async.streaming-response.thread-pool
+(ns metabase.server.streaming-response.thread-pool
   (:require
    [metabase.config :as config])
   (:import
