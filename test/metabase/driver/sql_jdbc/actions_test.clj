@@ -3,7 +3,7 @@
   in [[metabase.api.action-test]]."
   (:require
    [clojure.test :refer :all]
-   [metabase.actions :as actions]
+   [metabase.actions.actions :as actions]
    [metabase.actions.error :as actions.error]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]

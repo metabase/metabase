@@ -1,4 +1,4 @@
-(ns metabase.analyze
+(ns metabase.analyze.core
   "API namespace for the `metabase.analyze` module."
   (:require
    [metabase.analyze.classifiers.category]

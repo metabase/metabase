@@ -1,4 +1,4 @@
-(ns metabase.actions
+(ns metabase.actions.actions
   "Code related to the new writeback Actions."
   (:require
    [clojure.spec.alpha :as s]
