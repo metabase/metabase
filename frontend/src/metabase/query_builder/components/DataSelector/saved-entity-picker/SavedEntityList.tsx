@@ -49,42 +49,44 @@ const SavedEntityList = ({
   const list = data?.data ?? [];
 
   return (
-    <SelectList className={SavedEntityListS.SavedEntityListRoot}>
-      <LoadingAndErrorWrapper
-        className={SavedEntityListS.LoadingWrapper}
-        loading={!collection || isFetching}
-        error={error}
-      >
-        <Fragment>
-          {list.map(collectionItem => {
-            const { id, name, moderated_status } = collectionItem;
-            const virtualTableId = getQuestionVirtualTableId(id);
+    <Box p="sm" w="100%">
+      <SelectList className={SavedEntityListS.SavedEntityListRoot}>
+        <LoadingAndErrorWrapper
+          className={SavedEntityListS.LoadingWrapper}
+          loading={!collection || isFetching}
+          error={error}
+        >
+          <Fragment>
+            {list.map(collectionItem => {
+              const { id, name, moderated_status } = collectionItem;
+              const virtualTableId = getQuestionVirtualTableId(id);
 
-            return (
-              <SelectList.Item
-                classNames={{
-                  root: SavedEntityListS.SavedEntityListItem,
-                  icon: SavedEntityListS.SavedEntityListItemIcon,
-                }}
-                key={id}
-                id={id}
-                isSelected={selectedId === virtualTableId}
-                size="small"
-                name={name}
-                icon={{
-                  name: CARD_INFO[type].icon,
-                  size: 16,
-                }}
-                onSelect={() => onSelect(virtualTableId)}
-                rightIcon={PLUGIN_MODERATION.getStatusIcon(moderated_status)}
-              />
-            );
-          })}
-          {list.length === 0 ? emptyState : null}
-        </Fragment>
-        {isVirtualCollection && emptyState}
-      </LoadingAndErrorWrapper>
-    </SelectList>
+              return (
+                <SelectList.Item
+                  classNames={{
+                    root: SavedEntityListS.SavedEntityListItem,
+                    icon: SavedEntityListS.SavedEntityListItemIcon,
+                  }}
+                  key={id}
+                  id={id}
+                  isSelected={selectedId === virtualTableId}
+                  size="small"
+                  name={name}
+                  icon={{
+                    name: CARD_INFO[type].icon,
+                    size: 16,
+                  }}
+                  onSelect={() => onSelect(virtualTableId)}
+                  rightIcon={PLUGIN_MODERATION.getStatusIcon(moderated_status)}
+                />
+              );
+            })}
+            {list.length === 0 ? emptyState : null}
+          </Fragment>
+          {isVirtualCollection && emptyState}
+        </LoadingAndErrorWrapper>
+      </SelectList>
+    </Box>
   );
 };
 

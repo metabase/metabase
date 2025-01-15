@@ -26,7 +26,6 @@
    [metabase.api.google :as api.google]
    [metabase.api.ldap :as api.ldap]
    [metabase.api.login-history :as api.login-history]
-   [metabase.api.metabot :as api.metabot]
    [metabase.api.model-index :as api.model-index]
    [metabase.api.native-query-snippet :as api.native-query-snippet]
    [metabase.api.notify :as api.notify]
@@ -44,7 +43,6 @@
    [metabase.api.segment :as api.segment]
    [metabase.api.session :as api.session]
    [metabase.api.setting :as api.setting]
-   [metabase.api.setup :as api.setup]
    [metabase.api.slack :as api.slack]
    [metabase.api.table :as api.table]
    [metabase.api.task :as api.task]
@@ -57,6 +55,7 @@
    [metabase.api.util :as api.util]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
+   [metabase.setup.api :as setup.api]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (when config/ee-available?
@@ -97,7 +96,6 @@
   (context "/google"               [] (+auth api.google/routes))
   (context "/ldap"                 [] (+auth api.ldap/routes))
   (context "/login-history"        [] (+auth api.login-history/routes))
-  (context "/metabot"              [] (+auth api.metabot/routes))
   (context "/model-index"          [] (+auth api.model-index/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
   (context "/notify"               [] (+static-apikey api.notify/routes))
@@ -114,7 +112,7 @@
   (context "/session"              [] api.session/routes)
   (context "/cache"                [] (+auth api.cache/routes))
   (context "/setting"              [] (+auth api.setting/routes))
-  (context "/setup"                [] api.setup/routes)
+  (context "/setup"                [] setup.api/routes)
   (context "/slack"                [] (+auth api.slack/routes))
   (context "/table"                [] (+auth api.table/routes))
   (context "/task"                 [] (+auth api.task/routes))
