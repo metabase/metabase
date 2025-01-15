@@ -10,7 +10,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 
-describeEE("scenarios > embedding-sdk > interactive-question", () => {
+describeEE("scenarios > embedding-sdk > interactive-question-map", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
