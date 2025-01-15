@@ -97,6 +97,8 @@ jobs:
         uses: ./.github/actions/run-snowplow-micro
 
       - name: Generate database snapshots
+        env:
+          SETUP_ONLY: true
         run: |
           yarn test-cypress-run \
             --config-file e2e/support/cypress-snapshots.config.js \
