@@ -8,11 +8,14 @@
    [metabase.models.persisted-info :as persisted-info]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis.core :as query-analysis]
+   [metabase.query-analysis.init]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.query-analysis.init/keep-me)
 
 (deftest native-query-enabled-test
   (mt/discard-setting-changes [sql-parsing-enabled]
