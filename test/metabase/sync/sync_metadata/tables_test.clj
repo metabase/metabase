@@ -6,7 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models :refer [Database Table]]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
@@ -35,17 +34,17 @@
     (mt/dataset metabase.sync.sync-metadata.tables-test/db-with-some-cruft
       (is (= #{{:name "SOUTH_MIGRATIONHISTORY" :visibility_type :cruft :initial_sync_status "complete"}
                {:name "ACQUIRED_TOUCANS"       :visibility_type nil    :initial_sync_status "complete"}}
-             (set (for [table (t2/select [Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
+             (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
                     (into {} table))))))))
 
 (deftest retire-tables-test
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"
-    (mt/with-temp [Database db {}
-                   Table    table-1 {:name "Table 1" :db_id (u/the-id db)}
-                   Table    _       {:name "Table 2" :db_id (u/the-id db)}]
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    table-1 {:name "Table 1" :db_id (u/the-id db)}
+                   :model/Table    _       {:name "Table 2" :db_id (u/the-id db)}]
       (#'sync-tables/retire-tables! db #{{:name "Table 1" :schema (:schema table-1)}})
       (is (= {"Table 1" false "Table 2" true}
-             (t2/select-fn->fn :name :active Table :db_id (u/the-id db)))))))
+             (t2/select-fn->fn :name :active :model/Table :db_id (u/the-id db)))))))
 
 (deftest sync-table-update-info-of-new-table-added-during-sync-test
   (testing "during sync, if a table is reactivated, we should update the table info if needed"

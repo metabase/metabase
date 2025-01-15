@@ -758,7 +758,7 @@ describe("issue 31274", () => {
     );
 
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("close").click({ position: "bottom" });
+      cy.icon("close").parent("a").click({ position: "bottom" });
     });
 
     cy.findByTestId("dashcard").should("not.exist");
@@ -876,9 +876,7 @@ describe("issue 31766", () => {
 
     cy.log("Update viz settings");
 
-    cy.findByTestId("view-footer")
-      .findByRole("button", { name: "Visualization" })
-      .click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Detail-button").click();
 
     saveUpdatedQuestion();
@@ -1051,7 +1049,9 @@ describe("should not redirect users to other pages when linking an entity (metab
 
     cy.icon("link").click();
     H.popover().findByText("Link").click();
-    cy.findByTestId("custom-edit-text-link").type(TEST_QUESTION_NAME);
+    cy.findByTestId("custom-edit-text-link")
+      .findByPlaceholderText("https://example.com")
+      .type(TEST_QUESTION_NAME);
     cy.findByTestId("search-results-list").within(() => {
       cy.findByText(TEST_QUESTION_NAME).click();
     });
@@ -1250,7 +1250,7 @@ describe("issue 39863", () => {
   function setDateFilter() {
     cy.findByLabelText("Date filter").click();
     H.popover()
-      .findByText(/Last 12 months/i)
+      .findByText(/Previous 12 months/i)
       .click();
   }
 
@@ -1506,7 +1506,7 @@ describe("issue 42165", () => {
       H.visitDashboard(dashboardId);
 
       H.filterWidget().click();
-      H.popover().findByText("Last 30 Days").click();
+      H.popover().findByText("Previous 30 days").click();
       cy.wait("@dashcardQuery");
 
       H.getDashboardCard(0).findByText("fooBarQuestion").click();
@@ -1552,5 +1552,105 @@ describe("issue 47170", () => {
       cy.findByText("Something’s gone wrong").should("not.exist");
       cy.findByText("Dashboard A").should("be.visible");
     });
+  });
+
+  it("should show legible dark mode colors in fullscreen mode (metabase#51524)", () => {
+    cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+
+    H.dashboardHeader().findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Enter fullscreen").click();
+    H.dashboardHeader().findByLabelText("Nighttime mode").click();
+
+    const primaryTextColor = "color(srgb 1 1 1 / 0.9)";
+
+    cy.findByTestId("dashboard-name-heading").should(
+      "have.css",
+      "color",
+      primaryTextColor,
+    );
+
+    H.getDashboardCard(0)
+      .findByText("37.65")
+      .should("have.css", "color", primaryTextColor);
+
+    cy.findByTestId("sharing-menu-button").should(
+      "have.css",
+      "color",
+      primaryTextColor,
+    );
+  });
+});
+
+describe("issue 49556", () => {
+  const TAB = { id: 1, name: "Tab" };
+
+  const PEOPLE_NAME_FIELD_REF = [
+    "field",
+    PEOPLE.NAME,
+    { "base-type": "type/Text" },
+  ];
+
+  const TARGET_PARAMETER = {
+    id: "d7988e02",
+    name: "Target",
+    slug: "target",
+    type: "category",
+    filteringParameters: ["d7988e03"],
+  };
+
+  const SOURCE_PARAMETER = {
+    id: "d7988e03",
+    name: "Source",
+    slug: "source",
+    type: "category",
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createDashboardWithTabs({
+      tabs: [TAB],
+      parameters: [TARGET_PARAMETER, SOURCE_PARAMETER],
+      dashcards: [
+        createMockDashboardCard({
+          id: -1,
+          dashboard_tab_id: TAB.id,
+          size_x: 10,
+          size_y: 4,
+          card_id: ORDERS_QUESTION_ID,
+          parameter_mappings: [
+            {
+              parameter_id: TARGET_PARAMETER.id,
+              card_id: ORDERS_QUESTION_ID,
+              target: [
+                "dimension",
+                PEOPLE_NAME_FIELD_REF,
+                { "stage-number": 0 },
+              ],
+            },
+            {
+              parameter_id: SOURCE_PARAMETER.id,
+              card_id: ORDERS_QUESTION_ID,
+              target: [
+                "dimension",
+                PEOPLE_NAME_FIELD_REF,
+                { "stage-number": 0 },
+              ],
+            },
+          ],
+        }),
+      ],
+    }).then(dashboard => H.visitDashboard(dashboard.id));
+  });
+
+  it("unlinks the filter when it is removed (metabase#49556)", () => {
+    H.editDashboard();
+
+    cy.findByTestId("fixed-width-filters").findByText("Source").click();
+    H.dashboardParameterSidebar().findByText("Remove").click();
+
+    cy.findByTestId("fixed-width-filters").findByText("Target").click();
+    H.dashboardParameterSidebar().button("Edit").should("be.enabled");
   });
 });

@@ -2,7 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.models.cache-config :as cache-config]
-   [metabase.public-settings.premium-features :refer [defenterprise defenterprise-schema]]
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
@@ -19,7 +19,7 @@
   []
   [:and
    [:map
-    [:type [:enum :nocache :ttl :duration :schedule :query]]]
+    [:type [:enum :nocache :ttl :duration :schedule]]]
    [:multi {:dispatch :type}
     [:nocache  [:map ;; not closed due to a way it's used in tests for clarity
                 [:type [:= :nocache]]]]
@@ -33,18 +33,13 @@
                 [:type [:= :duration]]
                 [:duration ms/PositiveInt]
                 [:unit [:enum "hours" "minutes" "seconds" "days"]]
+                [:refresh_automatically {:optional true} [:maybe :boolean]]
                 ^:internal
                 [:invalidated-at {:optional true} some?]]]
     [:schedule [:map {:closed true}
                 [:type [:= :schedule]]
                 [:schedule u.cron/CronScheduleString]
-                ^:internal
-                [:invalidated-at {:optional true} some?]]]
-    [:query    [:map {:closed true}
-                [:type [:= :query]]
-                [:field_id int?]
-                [:aggregation [:enum "max" "count"]]
-                [:schedule u.cron/CronScheduleString]
+                [:refresh_automatically {:optional true} [:maybe :boolean]]
                 ^:internal
                 [:invalidated-at {:optional true} some?]]]]])
 
@@ -92,11 +87,6 @@
 (defmethod fetch-cache-stmt-ee* :schedule [{:keys [invalidated-at] :as strategy} query-hash conn]
   (if-not invalidated-at
     (log/debugf "Caching strategy %s has not run yet" (pr-str strategy))
-    (backend.db/prepare-statement conn query-hash invalidated-at)))
-
-(defmethod fetch-cache-stmt-ee* :query [{:keys [invalidated-at] :as strategy} query-hash conn]
-  (if-not invalidated-at
-    (log/debugf "Caching strategy %s has never run yet" (pr-str strategy))
     (backend.db/prepare-statement conn query-hash invalidated-at)))
 
 (defmethod fetch-cache-stmt-ee* :nocache [_ _ _]

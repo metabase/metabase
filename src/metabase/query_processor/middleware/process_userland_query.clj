@@ -12,10 +12,12 @@
    [metabase.lib.core :as lib]
    [metabase.models.field-usage :as field-usage]
    [metabase.models.query :as query]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.grouper :as grouper]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -35,6 +37,17 @@
 
 (def ^:private field-usage-interval-seconds 20)
 
+(defsetting enable-field-usage-analysis
+  (deferred-tru
+   "Enable field usage analysis for queries. This will analyze the fields used in queries and store them in the
+    application database.
+
+    Turn off by default since we haven't had an user-facing feature that uses this data yet.")
+  :type    :boolean
+  :export? false
+  :audit   :never
+  :default false)
+
 (defonce ^:private
   field-usages-queue
   (delay (grouper/start!
@@ -45,8 +58,8 @@
                                                (try
                                                  (map #(assoc % :query_execution_id query_execution_id) (field-usage/pmbql->field-usages pmbql))
                                                  ;; one query fail shouldn't fail the whole batch
-                                                 (catch Exception e
-                                                   (log/error e "Error getting field usages from pmbql" pmbql)
+                                                 (catch Throwable e
+                                                   (log/warn e "Error getting field usages from pmbql" pmbql)
                                                    [])))
                                              inputs))
               (catch Throwable e
@@ -67,7 +80,7 @@
   (if-not context
     (log/warn "Cannot save QueryExecution, missing :context")
     (let [qe-id (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))]
-      (when pmbql
+      (when (and (enable-field-usage-analysis) pmbql)
         (grouper/submit! @field-usages-queue {:query_execution_id qe-id
                                               :pmbql              pmbql})))))
 
@@ -112,7 +125,8 @@
   (merge
    (-> query-execution
        add-running-time
-       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native))
+       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native
+               :parameterized))
    (dissoc result :cache/details)
    {:cached                 (when (:cached cache) (:updated_at cache))
     :status                 :completed
@@ -149,6 +163,7 @@
      :pivot/keys [original-query]} :info
     database-id                    :database
     query-type                     :type
+    parameters                     :parameters
     :as                            query}]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
@@ -165,6 +180,8 @@
      :pulse_id          pulse-id
      :context           context
      :hash              query-hash
+     :parameterized     (and (boolean (seq parameters))
+                             (every? #(some? (:value %)) parameters))
      :native            (= (keyword query-type) :native)
      :json_query        json-query
      :started_at        (t/zoned-date-time)

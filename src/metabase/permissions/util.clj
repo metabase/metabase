@@ -3,12 +3,13 @@
   typically not be used outside of permissions-related namespaces such as `metabase.models.permissions`."
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
    [metabase.api.common :as api]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.regex :as u.regex]
    [toucan2.core :as t2]))
 
@@ -220,7 +221,7 @@
       (throw (ex-info "Unclassified data path!!" {:data-path data-path :result result})))
     (first result)))
 
-(let [path-validator (mc/validator Path)]
+(let [path-validator (mr/validator Path)]
   (defn valid-path?
     "Is `path` a valid, known permissions path?"
     ^Boolean [^String path]
@@ -232,7 +233,7 @@
    {:error/message "Valid permissions path"}
    (re-pattern (str "^/(" path-char-rx "*/)*$"))])
 
-(let [path-format-validator (mc/validator PathSchema)]
+(let [path-format-validator (mr/validator PathSchema)]
   (defn valid-path-format?
     "Is `path` a string with a valid permissions path format? This is a less strict version of [[valid-path?]] which
   just checks that the path components contain alphanumeric characters or dashes, separated by slashes
@@ -285,3 +286,56 @@
 
       ;; other paths should be unchanged too.
       [path])))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               EE UTILS                                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defenterprise sandboxed-user?
+  "Returns a boolean if the current user uses sandboxing for any database. In OSS this is always false. Will throw an
+  error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.sandbox.api.util
+  []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
+    ;; returning `false` for users who should actually be sandboxes.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have sandboxing. But we throw if no current-user-id so the behavior doesn't change when ee version
+  ;; becomes available
+  false)
+
+(defenterprise impersonated-user?
+  "Returns a boolean if the current user uses connection impersonation for any database. In OSS this is always false.
+  Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.advanced-permissions.api.util
+  []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
+    ;; returning `false` for users who should actually be using impersonations.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have connection impersonation. But we throw if no current-user-id so the behavior doesn't change when
+  ;; ee version becomes available
+  false)
+
+(defenterprise impersonation-enforced-for-db?
+  "Returns a boolean if the current user has an enforced connection impersonation policy for a provided database. In OSS
+  this is always false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.advanced-permissions.api.util
+  [_db-or-id]
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
+    ;; returning `false` for users who should actually be using impersonations.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have connection impersonation. But we throw if no current-user-id so the behavior doesn't change when
+  ;; ee version becomes available
+  false)
+
+(defn sandboxed-or-impersonated-user?
+  "Returns a boolean if the current user uses sandboxing or connection impersonation for any database. In OSS is always
+  false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  []
+  (or (sandboxed-user?)
+      (impersonated-user?)))

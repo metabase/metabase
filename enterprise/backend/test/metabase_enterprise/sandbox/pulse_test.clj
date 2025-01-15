@@ -6,18 +6,16 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.api.alert :as api.alert]
-   [metabase.models :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as models.pulse]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.permissions.util :as perms-util]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util :as u]))
 
 (use-fixtures :each (fn [thunk]
                       (notification.tu/with-send-notification-sync
@@ -31,7 +29,7 @@
               (met/with-gtaps! {:gtaps      {:venues {:query      (mt/mbql-query venues)
                                                       :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
                                 :attributes {"cat" 50}}
-                (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+                (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
                   ;; `with-gtaps!` binds the current test user; we don't want that falsely affecting results
                   (mt/with-test-user nil
                     (pulse.test-util/send-alert-created-by-user! user-kw card)))))]
@@ -43,15 +41,15 @@
 (defn- alert-results!
   "Results for creating and running an Alert"
   [query]
-  (mt/with-temp [Card                  pulse-card {:name          "Test card"
-                                                   :dataset_query query}
-                 Pulse                 pulse {:alert_condition "rows"}
-                 PulseCard             _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
-                 PulseChannel          pc {:channel_type :email
-                                           :pulse_id     (:id pulse)
-                                           :enabled      true}
-                 PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                          :user_id          (mt/user->id :rasta)}]
+  (mt/with-temp [:model/Card                  pulse-card {:name          "Test card"
+                                                          :dataset_query query}
+                 :model/Pulse                 pulse {:alert_condition "rows"}
+                 :model/PulseCard             _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
+                 :model/PulseChannel          pc {:channel_type :email
+                                                  :pulse_id     (:id pulse)
+                                                  :enabled      true}
+                 :model/PulseChannelRecipient _ {:pulse_channel_id (:id pc)
+                                                 :user_id          (mt/user->id :rasta)}]
     (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
       (let [pulse (models.pulse/retrieve-pulse pulse)]
         (-> (notification.payload.execute/execute-card (:creator_id pulse) (-> pulse :cards first :id)) :result)))))
@@ -59,7 +57,7 @@
 (deftest dashboard-subscription-send-event-test
   (testing "When we send a pulse, we also log the event:"
     (mt/with-premium-features #{:audit-app}
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/Card                  pulse-card {:dataset_query (mt/mbql-query venues {:limit 1})}
          :model/Dashboard             dashboard {:name "Test Dashboard"}
          :model/Pulse                 pulse {:creator_id (mt/user->id :crowberto)
@@ -89,17 +87,17 @@
 (deftest alert-send-event-test
   (testing "When we send an alert, we also log the event:"
     (mt/with-premium-features #{:audit-app}
-      (t2.with-temp/with-temp [Card                  pulse-card {:dataset_query (mt/mbql-query venues)}
-                               Pulse                 pulse {:creator_id (mt/user->id :crowberto)
-                                                            :name "Test Pulse"
-                                                            :alert_condition "rows"}
-                               PulseCard             _ {:pulse_id (:id pulse)
-                                                        :card_id (:id pulse-card)}
-                               PulseChannel          pc {:channel_type :email
-                                                         :pulse_id     (:id pulse)
-                                                         :enabled      true}
-                               PulseChannelRecipient _ {:pulse_channel_id (:id pc)
-                                                        :user_id          (mt/user->id :rasta)}]
+      (mt/with-temp [:model/Card                  pulse-card {:dataset_query (mt/mbql-query venues)}
+                     :model/Pulse                 pulse {:creator_id (mt/user->id :crowberto)
+                                                         :name "Test Pulse"
+                                                         :alert_condition "rows"}
+                     :model/PulseCard             _ {:pulse_id (:id pulse)
+                                                     :card_id (:id pulse-card)}
+                     :model/PulseChannel          pc {:channel_type :email
+                                                      :pulse_id     (:id pulse)
+                                                      :enabled      true}
+                     :model/PulseChannelRecipient _ {:pulse_channel_id (:id pc)
+                                                     :user_id          (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
             (mt/with-test-user :lucky
@@ -145,7 +143,7 @@
                       :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
-          (t2.with-temp/with-temp [Card card {:dataset_query query}]
+          (mt/with-temp [:model/Card card {:dataset_query query}]
             (testing "Sanity check: make sure user is seeing sandboxed results outside of Pulses"
               (testing "ad-hoc query"
                 (is (= 22
@@ -165,7 +163,7 @@
                       :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
-          (t2.with-temp/with-temp [Card card {:dataset_query query}]
+          (mt/with-temp [:model/Card card {:dataset_query query}]
             (testing "GET /api/pulse/preview_card/:id"
               (is (= 22
                      (html->row-count (mt/user-http-request :rasta :get 200 (format "pulse/preview_card/%d" (u/the-id card)))))))
@@ -196,17 +194,17 @@
                       :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
-          (mt/with-temp [Card                 {card-id :id}  {:dataset_query query}
-                         Pulse                {pulse-id :id} {:name            "Pulse Name"
-                                                              :skip_if_empty   false
-                                                              :alert_condition "rows"}
-                         PulseCard             _             {:pulse_id pulse-id
-                                                              :card_id  card-id
-                                                              :position 0
-                                                              :include_csv true}
-                         PulseChannel          {pc-id :id}   {:pulse_id pulse-id}
-                         PulseChannelRecipient _             {:user_id          (mt/user->id :rasta)
-                                                              :pulse_channel_id pc-id}]
+          (mt/with-temp [:model/Card                 {card-id :id}  {:dataset_query query}
+                         :model/Pulse                {pulse-id :id} {:name            "Pulse Name"
+                                                                     :skip_if_empty   false
+                                                                     :alert_condition "rows"}
+                         :model/PulseCard             _             {:pulse_id pulse-id
+                                                                     :card_id  card-id
+                                                                     :position 0
+                                                                     :include_csv true}
+                         :model/PulseChannel          {pc-id :id}   {:pulse_id pulse-id}
+                         :model/PulseChannelRecipient _             {:user_id          (mt/user->id :rasta)
+                                                                     :pulse_channel_id pc-id}]
             (mt/with-fake-inbox
               (mt/with-test-user nil
                 (pulse.send/send-pulse! (models.pulse/retrieve-alert pulse-id)))
@@ -221,17 +219,17 @@
 
 (deftest sandboxed-users-cant-read-pulse-recipients
   (testing "When sandboxed users fetch a pulse hydrated with recipients, they should only see themselves"
-    (mt/with-temp [Pulse        {pulse-id :id} {:name "my pulse"}
-                   PulseChannel {pc-id :id} {:pulse_id     pulse-id
-                                             :channel_type :email}
-                   PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :crowberto)}
-                   PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :rasta)}]
+    (mt/with-temp [:model/Pulse        {pulse-id :id} {:name "my pulse"}
+                   :model/PulseChannel {pc-id :id} {:pulse_id     pulse-id
+                                                    :channel_type :email}
+                   :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :crowberto)}
+                   :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :rasta)}]
       (let [recipient-ids (fn [pulses]
                             (let [pulse      (first (filter #(= pulse-id (:id %)) pulses))
                                   recipients (-> pulse :channels first :recipients)]
                               (sort (map :id recipients))))]
         (mt/with-test-user :rasta
-          (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
+          (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly false)]
             (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                    (-> (mt/user-http-request :rasta :get 200 "pulse/")
                        recipient-ids)))
@@ -241,7 +239,7 @@
                        vector
                        recipient-ids))))
 
-          (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+          (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
             (is (= [(mt/user->id :rasta)]
                    (-> (mt/user-http-request :rasta :get 200 "pulse/")
                        recipient-ids)))
@@ -254,16 +252,16 @@
 (deftest sandboxed-users-cant-delete-pulse-recipients
   (testing "When sandboxed users update a pulse, Metabase users in the recipients list are not deleted, even if they
            are not included in the request."
-    (mt/with-temp [Pulse        {pulse-id :id} {:name            "my pulse"
-                                                :alert_condition "rows"}
-                   PulseChannel {pc-id :id :as pc} {:pulse_id     pulse-id
-                                                    :channel_type :email
-                                                    :details      {:emails "asdf@metabase.com"}}
-                   PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :crowberto)}
-                   PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :rasta)}]
+    (mt/with-temp [:model/Pulse        {pulse-id :id} {:name            "my pulse"
+                                                       :alert_condition "rows"}
+                   :model/PulseChannel {pc-id :id :as pc} {:pulse_id     pulse-id
+                                                           :channel_type :email
+                                                           :details      {:emails "asdf@metabase.com"}}
+                   :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :crowberto)}
+                   :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :rasta)}]
 
       (mt/with-test-user :rasta
-        (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+        (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
           ;; Rasta, a sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]}))
@@ -272,7 +270,7 @@
         (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                (->> (api.alert/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort)))
 
-        (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly false)]
+        (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly false)]
           ;; Rasta, a non-sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]})

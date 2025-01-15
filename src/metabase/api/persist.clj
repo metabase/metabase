@@ -7,9 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.driver.ddl.interface :as ddl.i]
-   [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.persisted-info :refer [PersistedInfo]]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.task.persist-refresh :as task.persist-refresh]
@@ -50,7 +48,7 @@
                            card-id           (sql.helpers/where [:= :p.card_id card-id])
                            limit             (sql.helpers/limit limit)
                            offset            (sql.helpers/offset offset))]
-    (as-> (t2/select PersistedInfo query) results
+    (as-> (t2/select :model/PersistedInfo query) results
       (t2/hydrate results :creator)
       (map (fn [{:keys [database_id] :as pi}]
              (assoc pi
@@ -58,43 +56,46 @@
                     :next-fire-time (get-in db-id->fire-time [database_id :next-fire-time])))
            results))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
   (validation/check-has-application-permission :monitoring)
-  (let [db-ids (t2/select-fn-set :database_id PersistedInfo)
+  (let [db-ids (t2/select-fn-set :database_id :model/PersistedInfo)
         writable-db-ids (when (seq db-ids)
-                          (->> (t2/select Database :id [:in db-ids])
+                          (->> (t2/select :model/Database :id [:in db-ids])
                                (filter mi/can-write?)
                                (map :id)
                                set))
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} (request/limit) (request/offset))]
     {:data   persisted-infos
      :total  (if (seq writable-db-ids)
-               (t2/count PersistedInfo {:from [[:persisted_info :p]]
-                                        :join [[:report_card :c] [:= :c.id :p.card_id]]
-                                        :where [:and
-                                                [:in :p.database_id writable-db-ids]
-                                                [:= :c.type "model"]
-                                                [:not :c.archived]]})
+               (t2/count :model/PersistedInfo {:from [[:persisted_info :p]]
+                                               :join [[:report_card :c] [:= :c.id :p.card_id]]
+                                               :where [:and
+                                                       [:in :p.database_id writable-db-ids]
+                                                       [:= :c.type "model"]
+                                                       [:not :c.archived]]})
                0)
      :limit  (request/limit)
      :offset (request/offset)}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:persisted-info-id"
   "Fetch a particular [[PersistedInfo]] by id."
   [persisted-info-id]
   {persisted-info-id [:maybe ms/PositiveInt]}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil))]
-    (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
+    (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
     persisted-info))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:card-id"
   "Fetch a particular [[PersistedInfo]] by card-id."
   [card-id]
   {card-id [:maybe ms/PositiveInt]}
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
-    (api/read-check (t2/select-one Database :id (:database_id persisted-info)))
+    (api/read-check (t2/select-one :model/Database :id (:database_id persisted-info)))
     persisted-info))
 
 (def ^:private CronSchedule
@@ -105,6 +106,7 @@
     [:fn {:error/message (deferred-tru "String representing a cron schedule")} #(= 7 (count (str/split % #" ")))]]
    (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/set-refresh-schedule"
   "Set the cron schedule to refresh persisted models.
    Shape should be JSON like {cron: \"0 30 1/8 * * ? *\"}."
@@ -121,6 +123,7 @@
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/enable"
   "Enable global setting to allow databases to persist models."
   []
@@ -136,14 +139,15 @@
   - remove `:persist-models-enabled` from relevant [[Database]] settings
   - schedule a task to [[metabase.driver.ddl.interface/unpersist]] each table"
   []
-  (let [id->db      (m/index-by :id (t2/select Database))
+  (let [id->db      (m/index-by :id (t2/select :model/Database))
         enabled-dbs (filter (comp :persist-models-enabled :settings) (vals id->db))]
     (log/info "Disabling model persistence")
     (doseq [db enabled-dbs]
-      (t2/update! Database (u/the-id db)
+      (t2/update! :model/Database (u/the-id db)
                   {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/disable"
   "Disable global setting to allow databases to persist models. This will remove all tasks to refresh tables, remove
   that option from databases which might have it enabled, and delete all cached tables."

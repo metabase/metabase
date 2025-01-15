@@ -2,8 +2,7 @@
  ["src" "resources"]
 
  :mvn/repos
- {"athena" {:url "https://s3.amazonaws.com/maven-athena"}}
+ {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"}}
 
  :deps
- {com.amazonaws/aws-java-sdk-core {:mvn/version "1.12.779"}
-  com.metabase/athena-jdbc {:mvn/version "2.0.35"}}}
+ {com.metabase/athena-jdbc {:mvn/version "3.3.0"}}}

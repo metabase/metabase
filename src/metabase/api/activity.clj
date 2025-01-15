@@ -5,12 +5,8 @@
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.db.query :as mdb.query]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
-   [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.recent-views :as recent-views]
-   [metabase.models.table :refer [Table]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -20,16 +16,16 @@
   [model ids]
   (t2/select
    (case model
-     "card"      [Card
+     "card"      [:model/Card
                   :id :name :collection_id :description :display
                   :dataset_query :type :archived
                   :collection.authority_level [:collection.name :collection_name]
                   [:dashboard.name :dashboard_name] :dashboard_id]
-     "dashboard" [Dashboard
+     "dashboard" [:model/Dashboard
                   :id :name :collection_id :description
                   :archived
                   :collection.authority_level [:collection.name :collection_name]]
-     "table"     [Table
+     "table"     [:model/Table
                   :id :name :db_id :active
                   :display_name [:metabase_database.initial_sync_status :initial-sync-status]
                   [:visibility_type :visibility_type]
@@ -93,12 +89,12 @@
                                                           [:and
                                                            [:= :model "table"]
                                                            [:= :t.id :model_id]]]})
-        card-runs                 (->> (t2/select [QueryExecution
+        card-runs                 (->> (t2/select [:model/QueryExecution
                                                    [:%min.executor_id :user_id]
-                                                   [(mdb.query/qualify QueryExecution :card_id) :model_id]
+                                                   [(mdb.query/qualify :model/QueryExecution :card_id) :model_id]
                                                    [:%count.* :cnt]
                                                    [:%max.started_at :max_ts]]
-                                                  {:group-by [(mdb.query/qualify QueryExecution :card_id) :context]
+                                                  {:group-by [(mdb.query/qualify :model/QueryExecution :card_id) :context]
                                                    :where    [:and
                                                               [:= :context (h2x/literal :question)]]
                                                    :order-by [[:max_ts :desc]]
@@ -112,12 +108,14 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint ^:deprecated GET "/recent_views"
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
   []
   {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/recents"
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
   Allows for filtering by context: views or selections"
@@ -126,6 +124,7 @@
   (when-not (seq context) (throw (ex-info "context is required." {})))
   (recent-views/get-recents *current-user-id* context))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/recents"
   "Adds a model to the list of recently selected items."
   [:as {{:keys [model model_id context]} :body}]
@@ -139,12 +138,13 @@
     (api/read-check (t2/select-one model-type :id model-id))
     (recent-views/update-users-recent-views! *current-user-id* model-type model-id context)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
    in the last 24 hours."
   []
   (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id api/*current-user-id*)]
-    (let [dashboard (-> (t2/select-one Dashboard :id dashboard-id)
+    (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
                         api/check-404
                         (t2/hydrate [:collection :is_personal]))]
       (if (mi/can-read? dashboard)
@@ -235,6 +235,7 @@
                    (assoc :timestamp (:max_ts % ""))
                    recent-views/fill-recent-view-info)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/popular_items"
   "Get the list of 5 popular things on the instance. Query takes 8 and limits to 5 so that if it finds anything
   archived, deleted, etc it can usually still get 5. "

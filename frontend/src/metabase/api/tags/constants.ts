@@ -36,6 +36,7 @@ export const TAG_TYPES = [
   "public-card",
   "embed-card",
   "public-action",
+  "user-key-value",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

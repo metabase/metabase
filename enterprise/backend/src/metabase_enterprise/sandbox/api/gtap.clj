@@ -2,28 +2,30 @@
   "`/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies)."
   (:require
    [compojure.core :refer [DELETE GET POST PUT]]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided."
   [group_id table_id]
   {group_id [:maybe ms/PositiveInt]
    table_id [:maybe ms/PositiveInt]}
   (if (and group_id table_id)
-    (t2/select-one GroupTableAccessPolicy :group_id group_id :table_id table_id)
-    (t2/select GroupTableAccessPolicy {:order-by [[:id :asc]]})))
+    (t2/select-one :model/GroupTableAccessPolicy :group_id group_id :table_id table_id)
+    (t2/select :model/GroupTableAccessPolicy {:order-by [[:id :asc]]})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Fetch GTAP by `id`"
   [id]
   {id ms/PositiveInt}
-  (api/check-404 (t2/select-one GroupTableAccessPolicy :id id)))
+  (api/check-404 (t2/select-one :model/GroupTableAccessPolicy :id id)))
 
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
 
@@ -31,6 +33,7 @@
     (mu/with-api-error-message [:maybe [:map-of ms/NonBlankString ms/NonBlankString]]
       "value must be a valid attribute remappings map (attribute name -> remapped name)"))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new GTAP."
   [:as {{:keys [table_id card_id group_id attribute_remappings]} :body}]
@@ -38,12 +41,13 @@
    card_id              [:maybe ms/PositiveInt]
    group_id             ms/PositiveInt
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
-  (first (t2/insert-returning-instances! GroupTableAccessPolicy
+  (first (t2/insert-returning-instances! :model/GroupTableAccessPolicy
                                          {:table_id             table_id
                                           :card_id              card_id
                                           :group_id             group_id
                                           :attribute_remappings attribute_remappings})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the
   paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
@@ -52,15 +56,16 @@
   {id                   ms/PositiveInt
    card_id              [:maybe ms/PositiveInt]
    #_attribute_remappings #_AttributeRemappings} ; TODO -  fix me
-  (api/check-404 (t2/select-one GroupTableAccessPolicy :id id))
+  (api/check-404 (t2/select-one :model/GroupTableAccessPolicy :id id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil
   (when (some #(contains? body %) [:card_id :attribute_remappings])
-    (t2/update! GroupTableAccessPolicy id
+    (t2/update! :model/GroupTableAccessPolicy id
                 (u/select-keys-when body
                                     :present #{:card_id :attribute_remappings})))
-  (t2/select-one GroupTableAccessPolicy :id id))
+  (t2/select-one :model/GroupTableAccessPolicy :id id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/validate"
   "Validate a sandbox which may not have yet been saved. This runs the same validation that is performed when the
   sandbox is saved, but doesn't actually save the sandbox."
@@ -70,12 +75,13 @@
   (gtap/check-columns-match-table {:table_id table_id
                                    :card_id  card_id}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id"
   "Delete a GTAP entry."
   [id]
   {id ms/PositiveInt}
-  (api/check-404 (t2/select-one GroupTableAccessPolicy :id id))
-  (t2/delete! GroupTableAccessPolicy :id id)
+  (api/check-404 (t2/select-one :model/GroupTableAccessPolicy :id id))
+  (t2/delete! :model/GroupTableAccessPolicy :id id)
   api/generic-204-no-content)
 
 (defn- +check-sandboxes-enabled

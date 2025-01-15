@@ -202,7 +202,7 @@ describe("issue 18770", () => {
 
   it("post-aggregation filter shouldn't affect the drill-through options (metabase#18770)", () => {
     H.openNotebook();
-    // It is important to manually triger "visualize" in order to generate the `result_metadata`
+    // It is important to manually trigger "visualize" in order to generate the `result_metadata`
     // Otherwise, we might get false negative even when this issue gets resolved.
     // In order to do that, we have to change the breakout field first or it will never generate and send POST /api/dataset request.
     cy.findAllByTestId("notebook-cell-item")
@@ -220,8 +220,9 @@ describe("issue 18770", () => {
     H.popover().within(() => {
       cy.findByText("Filter by this value").should("be.visible");
       cy.findAllByRole("button")
-        .should("have.length", 5)
+        .should("have.length", 6)
         .and("contain", "See these Orders")
+        .and("contain", "Break out by")
         .and("contain", "<")
         .and("contain", ">")
         .and("contain", "=")
@@ -615,7 +616,7 @@ describe("issue 25927", () => {
     H.tableHeaderClick("Created At: Month");
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Last 30 days").click();
+      cy.findByText("Previous 30 days").click();
     });
 
     cy.wait("@dataset");
@@ -755,10 +756,10 @@ describe.skip("issue 26861", () => {
   it("exclude filter shouldn't break native questions with field filters (metabase#26861)", () => {
     H.filterWidget().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exclude...").click();
+    cy.findByText("Exclude…").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Days of the week...").click();
+    cy.findByText("Days of the week…").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tuesday").click();
 
@@ -1563,12 +1564,11 @@ describe("issue 49642", () => {
       );
 
       cy.findByText("Zackery Bailey").should("be.visible");
-      cy.findByText("Zackery Kuhn").should("be.visible");
     });
   });
 
   function addQuestion(name) {
-    H.openAddQuestionMenu("Existing Question");
+    H.openQuestionsSidebar();
     cy.findByTestId("add-card-sidebar").findByText(name).click();
   }
 

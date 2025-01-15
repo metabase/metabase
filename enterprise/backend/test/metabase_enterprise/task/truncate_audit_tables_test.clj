@@ -2,12 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.util :as qp.util]
    [metabase.task.truncate-audit-tables :as task.truncate-audit-tables]
    [metabase.test :as mt]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (defn- query-execution-defaults
   []
@@ -24,7 +23,7 @@
 (deftest query-execution-cleanup-test
   (testing "When the task runs, rows in `query_execution` older than the configured threshold are deleted"
     (mt/with-premium-features #{:audit-app}
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/QueryExecution {qe1-id :id} (merge (query-execution-defaults)
                                                    {:started_at (t/offset-date-time)})
          ;; 31 days ago
@@ -49,7 +48,7 @@
 (deftest audit-log-cleanup-test
   (testing "When the task runs, rows in `audit_log` older than the configured threshold are deleted"
     (mt/with-premium-features #{:audit-app}
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/AuditLog {al1-id :id} (audit-log-defaults)
          :model/AuditLog {al2-id :id} (merge (audit-log-defaults)
                                              {:timestamp (t/minus (t/offset-date-time) (t/days 31))})
@@ -72,7 +71,7 @@
 (deftest view-log-cleanup-test
   (testing "When the task runs, rows in `view_log` older than the configured threshold are deleted"
     (mt/with-premium-features #{:audit-app}
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/ViewLog {vl1-id :id} (view-log-defaults)
          :model/ViewLog {vl2-id :id} (merge (view-log-defaults)
                                             {:timestamp (t/minus (t/offset-date-time) (t/days 31))})

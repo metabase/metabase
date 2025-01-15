@@ -2,14 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
-   [metabase.models :refer [Collection NativeQuerySnippet]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (def ^:private root-collection (assoc collection/root-collection :name "Root Collection", :namespace "snippets"))
 
@@ -52,9 +50,9 @@
 
 (defn- test-with-root-collection-and-collection! [f]
   (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-    (t2.with-temp/with-temp [Collection collection {:name "Parent Collection", :namespace "snippets"}]
+    (mt/with-temp [:model/Collection collection {:name "Parent Collection", :namespace "snippets"}]
       (doseq [coll [root-collection collection]]
-        (t2.with-temp/with-temp [NativeQuerySnippet snippet {:collection_id (:id coll)}]
+        (mt/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id coll)}]
           (testing (format "in %s\n" (:name coll))
             (f coll snippet)))))))
 
@@ -64,7 +62,7 @@
      (fn [coll snippet]
        (test-perms!
         :has-perms-for-obj?       #(mi/can-read? snippet)
-        :has-perms-for-id?        #(mi/can-read? NativeQuerySnippet (:id snippet))
+        :has-perms-for-id?        #(mi/can-read? :model/NativeQuerySnippet (:id snippet))
         :grant-collection-perms!  #(perms/grant-collection-read-permissions! (perms-group/all-users) coll)
         :revoke-collection-perms! #(perms/revoke-collection-permissions! (perms-group/all-users) coll))))))
 
@@ -73,7 +71,7 @@
     (test-with-root-collection-and-collection!
      (fn [coll snippet]
        (test-perms!
-        :has-perms-for-obj?       #(mi/can-create? NativeQuerySnippet (dissoc snippet :id))
+        :has-perms-for-obj?       #(mi/can-create? :model/NativeQuerySnippet (dissoc snippet :id))
         :grant-collection-perms!  #(perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
         :revoke-collection-perms! #(perms/revoke-collection-permissions! (perms-group/all-users) coll))))))
 
@@ -83,6 +81,6 @@
      (fn [coll snippet]
        (test-perms!
         :has-perms-for-obj?       #(mi/can-write? snippet)
-        :has-perms-for-id?        #(mi/can-write? NativeQuerySnippet (:id snippet))
+        :has-perms-for-id?        #(mi/can-write? :model/NativeQuerySnippet (:id snippet))
         :grant-collection-perms!  #(perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
         :revoke-collection-perms! #(perms/revoke-collection-permissions! (perms-group/all-users) coll))))))

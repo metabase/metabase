@@ -7,7 +7,6 @@
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.models :refer [Card Collection Dashboard]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.compress :as u.compress]
@@ -87,11 +86,11 @@
       (mt/with-premium-features #{:serialization}
         (testing "POST /api/ee/serialization/export"
           (mt/with-empty-h2-app-db
-            (mt/with-temp [Collection    coll  {:name "API Collection"}
-                           Dashboard     _     {:collection_id (:id coll)}
-                           Card          card  {:collection_id (:id coll)}
-                           Collection    coll2 {:name "Other Collection"}
-                           Card          _     {:collection_id (:id coll2)}]
+            (mt/with-temp [:model/Collection    coll  {:name "API Collection"}
+                           :model/Dashboard     _     {:collection_id (:id coll)}
+                           :model/Card          card  {:collection_id (:id coll)}
+                           :model/Collection    coll2 {:name "Other Collection"}
+                           :model/Card          _     {:collection_id (:id coll2)}]
               (testing "API respects parameters"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :all_collections false :data_model false :settings true)]
@@ -132,8 +131,8 @@
                          (tar-file-types f)))))
 
               (testing "On exception API returns log"
-                (mt/with-dynamic-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                               (mt/dynamic-value serdes/extract-one))]
+                (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
+                                                                                  (mt/dynamic-value serdes/extract-one))]
                   (let [res (binding [api.serialization/*additive-logging* false]
                               (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
                                                     :collection (:id coll) :data_model false :settings false))
@@ -167,9 +166,9 @@
       (snowplow-test/with-fake-snowplow-collector
         (mt/with-premium-features #{:serialization}
           (testing "POST /api/ee/serialization/export"
-            (mt/with-temp [Collection coll  {}
-                           Dashboard  _dash {:collection_id (:id coll)}
-                           Card       card  {:collection_id (:id coll)}]
+            (mt/with-temp [:model/Collection coll  {}
+                           :model/Dashboard  _dash {:collection_id (:id coll)}
+                           :model/Card       card  {:collection_id (:id coll)}]
 
               (let [res (-> (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                                   :collection (:id coll) :data_model false :settings false)
@@ -231,14 +230,14 @@
                                "error_message" nil}
                               (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))
 
-                (mt/with-dynamic-redefs [v2.load/load-one! (let [load-one! (mt/dynamic-value #'v2.load/load-one!)]
-                                                             (fn [ctx path & [modfn]]
-                                                               (load-one! ctx path
-                                                                          (or modfn
-                                                                              (fn [ingested]
-                                                                                (cond-> ingested
-                                                                                  (= (:entity_id ingested) (:entity_id card))
-                                                                                  (assoc :collection_id "DoesNotExist")))))))]
+                (mt/with-dynamic-fn-redefs [v2.load/load-one! (let [load-one! (mt/dynamic-value #'v2.load/load-one!)]
+                                                                (fn [ctx path & [modfn]]
+                                                                  (load-one! ctx path
+                                                                             (or modfn
+                                                                                 (fn [ingested]
+                                                                                   (cond-> ingested
+                                                                                     (= (:entity_id ingested) (:entity_id card))
+                                                                                     (assoc :collection_id "DoesNotExist")))))))]
                   (testing "ERROR /api/ee/serialization/import"
                     (let [res (binding [api.serialization/*additive-logging* false]
                                 (mt/user-http-request :crowberto :post 500 "ee/serialization/import"
@@ -293,8 +292,8 @@
                       log (slurp (io/input-stream res))]
                   (is (re-find #"Cannot unpack archive" log))))
 
-              (mt/with-dynamic-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                             (mt/dynamic-value serdes/extract-one))]
+              (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
+                                                                                (mt/dynamic-value serdes/extract-one))]
                 (testing "ERROR /api/ee/serialization/export"
                   (binding [api.serialization/*additive-logging* false]
                     (let [res (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
@@ -320,7 +319,7 @@
                              "field_values"    false
                              "secrets"         false
                              "success"         false
-                             "error_message"   #"(?s)Exception extracting Card \d+ .*"}
+                             "error_message"   #"(?s)Error extracting Card \d+ .*"}
                             (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))
 
                   (testing "Full stacktrace"

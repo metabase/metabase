@@ -3,8 +3,6 @@
    [clojure.data :as data]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.upsert :as upsert]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field NativeQuerySnippet
-                            Pulse Segment Table User]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -42,38 +40,38 @@
 ;; TODO -- I'm not really clear on what these are testing, so I wasn't sure what to name them when I converted them to
 ;; the new style. Feel free to give them better names - Cam
 (deftest maybe-upsert-many!-skip-test
-  (mt/with-model-cleanup [Card]
-    (let [existing-ids (sort (t2/insert-returning-pks! Card @cards))
-          inserted-ids (sort (vec (upsert/maybe-upsert-many! {:mode :skip} Card @cards)))]
+  (mt/with-model-cleanup [:model/Card]
+    (let [existing-ids (sort (t2/insert-returning-pks! :model/Card @cards))
+          inserted-ids (sort (vec (upsert/maybe-upsert-many! {:mode :skip} :model/Card @cards)))]
       (is (= existing-ids inserted-ids)))))
 
 (deftest maybe-upsert-many!-same-objects-test
-  (mt/with-model-cleanup [Card]
+  (mt/with-model-cleanup [:model/Card]
     (letfn [(test-mode [mode]
               (testing (format "Mode = %s" mode)
                 (let [[e1 e2]   @cards
-                      [id1 id2] (upsert/maybe-upsert-many! {:mode mode} Card @cards)]
+                      [id1 id2] (upsert/maybe-upsert-many! {:mode mode} :model/Card @cards)]
                   (is (every? (partial apply same?)
-                              [[(t2/select-one Card :id id1) e1] [(t2/select-one Card :id id2) e2]])))))]
+                              [[(t2/select-one :model/Card :id id1) e1] [(t2/select-one :model/Card :id id2) e2]])))))]
       (doseq [mode [:skip :update]]
         (test-mode mode)))))
 
 (deftest maybe-upsert-many!-update-test
-  (mt/with-model-cleanup [Card]
+  (mt/with-model-cleanup [:model/Card]
     (let [[e1 e2]           @cards
-          id1               (first (t2/insert-returning-pks! Card e1))
-          e1-mutated        (mutate Card e1)
-          [id1-mutated id2] (upsert/maybe-upsert-many! {:mode :update} Card [e1-mutated e2])]
+          id1               (first (t2/insert-returning-pks! :model/Card e1))
+          e1-mutated        (mutate :model/Card e1)
+          [id1-mutated id2] (upsert/maybe-upsert-many! {:mode :update} :model/Card [e1-mutated e2])]
       (testing "Card 1 ID"
         (is (= id1 id1-mutated)))
       (testing "Card 1"
-        (is (same? (t2/select-one Card :id id1-mutated) e1-mutated)))
+        (is (same? (t2/select-one :model/Card :id id1-mutated) e1-mutated)))
       (testing "Card 2"
-        (is (same? (t2/select-one Card :id id2) e2))))))
+        (is (same? (t2/select-one :model/Card :id id2) e2))))))
 
 (defn- dummy-entity [dummy-dashboard model entity instance-num]
   (cond
-    (isa? model DashboardCard)
+    (isa? model :model/DashboardCard)
     ;; hack to make sure that :visualization_settings are slightly different between the two dummy instances
     ;; this is necessary because DashboardCards have that as part of their identity-condition
     (assoc entity :dashboard_id (u/the-id dummy-dashboard)
@@ -89,7 +87,7 @@
           [e1 e2] (if (contains? (set id-cond) :name)
                     [{:name "a"} {:name "b"}]
                     [{} {}])]
-      (mt/with-temp [Dashboard dashboard {:name "Dummy Dashboard"}
+      (mt/with-temp [:model/Dashboard dashboard {:name "Dummy Dashboard"}
                      ;; create an additional entity so we're sure whe get the right one
                      model     _ (dummy-entity dashboard model e1 1)
                      model     {id :id} (dummy-entity dashboard model e2 2)]
@@ -102,24 +100,24 @@
           (is (= (#'upsert/select-identical model (cond-> e
                                                     ;; engine is a keyword but has to be a string for
                                                     ;; HoneySQL to not interpret it as a col name
-                                                    (mi/instance-of? Database e) (update :engine name)))
+                                                    (mi/instance-of? :model/Database e) (update :engine name)))
                  e)))))))
 
 (deftest identical-test
-  (doseq [model [Collection
-                 Card
-                 Table
-                 Field
-                 NativeQuerySnippet
-                 Segment
-                 Dashboard
-                 DashboardCard
-                 Database
-                 Pulse
-                 User]]
+  (doseq [model [:model/Collection
+                 :model/Card
+                 :model/Table
+                 :model/Field
+                 :model/NativeQuerySnippet
+                 :model/Segment
+                 :model/Dashboard
+                 :model/DashboardCard
+                 :model/Database
+                 :model/Pulse
+                 :model/User]]
     (testing model
       (test-select-identical model))))
 
 (deftest has-post-insert?-test
   (is (= true
-         (#'upsert/has-post-insert? User))))
+         (#'upsert/has-post-insert? :model/User))))

@@ -18,21 +18,28 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
-   [environ.core :as env]
    [metabase.config :as config]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.models]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+;; Fool the linters into thinking these namespaces are used
+(comment
+  metabase.models ; without importing models, table names are not correctly converted
+  )
 
 ;; Command processing and option parsing utilities, etc.
 
 (defn- system-exit!
   "Proxy function to System/exit to enable the use of `with-redefs`."
   [return-code]
+  (flush)
   (System/exit return-code))
 
 (defn- cmd->var
@@ -91,13 +98,6 @@
     (catch Throwable e
       (log/error e "Failed to dump application database to H2 file")
       (system-exit! 1))))
-
-(defn ^:command profile
-  "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
-  []
-  ;; override env var that would normally make Jetty block forever
-  (alter-var-root #'env/env assoc :mb-jetty-join "false")
-  (u/profile "start-normally" ((resolve 'metabase.core/start-normally))))
 
 (defn ^:command reset-password
   "Reset the password for a user with `email-address`."
@@ -259,6 +259,22 @@
       (log/error e "ERROR ROTATING KEY.")
       (system-exit! 1))))
 
+(defn ^:command remove-encryption
+  "Decrypts data in the metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to
+  the current key"
+  []
+  (classloader/require 'metabase.cmd.remove-encryption)
+  (when-not (encryption/default-encryption-enabled?)
+    (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
+    (system-exit! 1))
+  (try
+    ((resolve 'metabase.cmd.remove-encryption/remove-encryption!))
+    (log/info "Encryption removed OK.")
+    (system-exit! 0)
+    (catch Throwable e
+      (log/error e "ERROR REMOVING ENCRYPTION.")
+      (system-exit! 1))))
+
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
 
 (defn- arg-list-count-ok? [arg-list arg-count]
@@ -305,6 +321,7 @@
   [& messages]
   (doseq [msg messages]
     (println (u/format-color 'red msg)))
+  (flush)
   (System/exit 1))
 
 (defn run-cmd
@@ -323,7 +340,9 @@
       (apply @(cmd->var command-name) args)
       (catch Throwable e
         (when (:cmd/exit (ex-data e)) ;; fast-track for commands that have their own error handling
+          (flush)
           (System/exit 1))
         (.printStackTrace e)
         (fail! (str "Command failed with exception: " (.getMessage e))))))
+  (flush)
   (System/exit 0))

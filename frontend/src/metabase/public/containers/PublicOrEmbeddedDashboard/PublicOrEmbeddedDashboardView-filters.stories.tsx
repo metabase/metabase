@@ -681,16 +681,8 @@ export const LightThemeDateFilterMonthYear = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-    const month = popover.getByText("March");
+    const month = popover.getByText("May");
     month.classList.add("pseudo-hover");
-
-    await userEvent.click(
-      popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
-    );
-    const dropdown = getLastPopover();
-    dropdown
-      .getByRole("option", { name: "2023" })
-      .setAttribute("data-hovered", "true");
   },
 };
 
@@ -749,14 +741,8 @@ export const LightThemeDateFilterQuarterYearDropdown = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-
-    await userEvent.click(
-      popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
-    );
-    const dropdown = getLastPopover();
-    dropdown
-      .getByRole("option", { name: "2023" })
-      .setAttribute("data-hovered", "true");
+    await userEvent.click(popover.getByText("2024"));
+    popover.getByRole("button", { name: "2023" }).classList.add("pseudo-hover");
   },
 };
 
@@ -842,7 +828,8 @@ export const LightThemeDateFilterRange = {
     await userEvent.click(filter);
 
     const popover = getLastPopover();
-    popover.getByText("15").classList.add("pseudo-hover");
+    await userEvent.click(popover.getByRole("button", { name: "Add time" }));
+    popover.getAllByText("15")[0].classList.add("pseudo-hover");
   },
 };
 
