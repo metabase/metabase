@@ -341,8 +341,8 @@
     metabase.audit                 #{metabase.audit}
     metabase.auth-provider         #{metabase.auth-provider}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
-    ;; TODO -- this needs a real API namespace, ideally it would expose `metabase.channel.core` and
-    ;; `metabase.channel.init` and that's it.
+    ;; TODO -- this has too many API namespaces, ideally it would only expose `metabase.channel.core`,
+    ;; `metabase.channel.init`, and `metabase.channel.api`.
     metabase.channel               #{metabase.channel.api
                                      metabase.channel.core
                                      metabase.channel.email
