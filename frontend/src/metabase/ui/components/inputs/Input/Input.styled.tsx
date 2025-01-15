@@ -15,7 +15,6 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
   Input: {
     defaultProps: {
       size: "md",
-      error: "Hello world this is an error",
     },
     styles: (
       theme,

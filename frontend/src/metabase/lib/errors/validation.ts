@@ -2,14 +2,14 @@ import { t } from "ttag";
 
 import type { LengthParams, MaxLengthParams } from "./types";
 
-export const required = () => t`required`;
+export const required = () => t`Required`;
 
-export const email = () => t`must be a valid email address`;
+export const email = () => t`Must be a valid email address`;
 
 export const maxLength = ({ max }: MaxLengthParams) =>
-  t`must be ${max} characters or less`;
+  t`Must be ${max} characters or less`;
 
 export const exactLength = ({ length }: LengthParams) =>
-  t`must be exactly ${length} characters`;
+  t`Must be exactly ${length} characters`;
 
-export const positive = () => t`must be a positive integer value`;
+export const positive = () => t`Must be a positive integer value`;
