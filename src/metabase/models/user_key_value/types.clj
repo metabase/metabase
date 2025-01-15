@@ -83,19 +83,6 @@
 
 (def ^:private prod-types-dir "user_key_value_types")
 
-(defn- types-dirs
-  "Types live in `user_key_value_types`, in both `test_resources` and `resources`."
-  []
-  (->> (classpath/classpath-directories)
-       (map #(io/file % "user_key_value_types"))
-       (filter #(.exists ^File %))))
-
-#_(defn- types-files []
-    (->> (types-dirs)
-         (mapcat #(file-seq (io/file %)))
-         (filter #(.isFile ^File %))
-         distinct))
-
 (defn- load-schema
   "Loads a schema with the provided namespace"
   [schema namespace]
@@ -110,18 +97,22 @@
     (load-schema schema namespace)))
 
 (defn load-all-schemas
-  "Load all schemas from the types directory."
+  "Load all schemas from the production types directory."
   []
   (u.files/with-open-path-to-resource [prod-dir prod-types-dir]
     (with-open [ds (Files/newDirectoryStream prod-dir)]
       (let [schemas (reduce
                      (fn [acc ^Path f]
                        (let [schema (try
-                                      (-> (Files/newInputStream f (u/varargs OpenOption)) slurp edn/read-string)
+                                      (-> f
+                                          (Files/newInputStream (u/varargs OpenOption))
+                                          slurp
+                                          edn/read-string)
                                       (catch Throwable e
-                                        (throw (ex-info (format "Error loading schema %s: %s" (str f) (ex-message e))
-                                                        {:f f}
-                                                        e))))
+                                        (throw
+                                         (ex-info (format "Error loading schema %s: %s" (str f) (ex-message e))
+                                                  {:f f}
+                                                  e))))
                              namespace (keyword "namespace"
                                                 (-> f
                                                     .getFileName
@@ -130,11 +121,11 @@
                      []
                      ds)]
         (doseq [[schema n] schemas]
-          (defnamespace n schema)
-          (update-user-key-value-schema!))))))
+          (load-schema schema n))
+        (update-user-key-value-schema!)))))
 
 (defn watch-directory
-  "Watch a directory for changes and call the callback with the affected file."
+  "Only used in dev. Watch a directory for changes and call the callback with the affected file."
   [dir callback]
   (let [^WatchService watcher (.newWatchService (FileSystems/getDefault))
         ^Path path    (.toPath (io/file dir))]
@@ -157,7 +148,7 @@
           (recur))))))
 
 (defn handle-file-change
-  "Handle a file change in the types directory."
+  "Only used in dev. Handle a file change in the types directory."
   [^File file action]
   (case action
     :create (load-schema-from-file file)
@@ -167,6 +158,15 @@
               ;; make a schema that can't ever be valid. In production, we're not going to be watching files, so
               ;; this is solely for dev.
               (defnamespace namespace [:and true? false?]))))
+
+(defn- types-dirs
+  "Only used in dev. Types live in `user_key_value_types` in both `test_resources` and `resources`.
+
+  In production, "
+  []
+  (->> (classpath/classpath-directories)
+       (map #(io/file % "user_key_value_types"))
+       (filter #(.exists ^File %))))
 
 (defn load-and-watch-schemas
   "In production, just load the schemas. In development, watch for changes as well."
