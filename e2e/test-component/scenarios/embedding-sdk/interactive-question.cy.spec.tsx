@@ -93,9 +93,11 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
-    const columnNames = ["Product ID", "Max of Quantity"];
+    const firstColumnName = "Product ID";
+    const lastColumnName = "Max of Quantity";
+    const columnNames = [firstColumnName, lastColumnName];
 
-    columnNames.forEach((columnName, index) => {
+    columnNames.forEach(columnName => {
       tableInteractive().findByText(columnName).should("be.visible");
 
       tableHeaderClick(columnName);
@@ -104,7 +106,9 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
         .findByTestId("click-actions-sort-control-formatting-hide")
         .click();
 
-      if (index < columnNames.length - 1) {
+      const lastColumnName = "Max of Quantity";
+
+      if (columnName !== lastColumnName) {
         tableInteractive().findByText(columnName).should("not.exist");
       } else {
         tableInteractive().should("not.exist");
