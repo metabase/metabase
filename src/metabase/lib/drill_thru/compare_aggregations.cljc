@@ -24,7 +24,7 @@
   (when (and column
              (nil? value)
              (lib.drill-thru.common/mbql-stage? query stage-number)
-             (lib.drill-thru.common/aggregation-sourced? query column))
+             (lib.underlying/aggregation-sourced? query column))
     {:lib/type    :metabase.lib.drill-thru/drill-thru
      :type        :drill-thru/compare-aggregations
      :aggregation (lib.aggregation/resolve-aggregation
