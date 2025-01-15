@@ -1,9 +1,12 @@
 import type { Active } from "@dnd-kit/core";
 
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
+import { isNotNull } from "metabase/lib/types";
+import { getColumnVizSettings } from "metabase/visualizations";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
+  Dataset,
   DatasetColumn,
   VisualizationDisplay,
   VisualizationSettings,
@@ -18,6 +21,7 @@ import type {
   VisualizerDataSourceId,
   VisualizerDataSourceNameReference,
   VisualizerDataSourceType,
+  VisualizerHistoryItem,
 } from "metabase-types/store/visualizer";
 
 import { DRAGGABLE_ID } from "./constants";
@@ -261,4 +265,61 @@ function areAreaBarLineSeriesCompatible(
     (isDate(primaryInitialDimension) === isDate(primaryNewDimension) ||
       isNumeric(primaryInitialDimension) !== isNumeric(primaryNewDimension))
   );
+}
+
+export function getInitialStateForCardDataSource(
+  card: Card,
+  dataset: Dataset,
+): VisualizerHistoryItem {
+  const state: VisualizerHistoryItem = {
+    display: card.display,
+    columns: [],
+    columnValuesMapping: {},
+    settings: {},
+  };
+  const dataSource = createDataSource("card", card.id, card.name);
+
+  dataset.data.cols.forEach(column => {
+    const columnRef = createVisualizerColumnReference(
+      dataSource,
+      column,
+      extractReferencedColumns(state.columnValuesMapping),
+    );
+    state.columns.push(copyColumn(columnRef.name, column));
+    state.columnValuesMapping[columnRef.name] = [columnRef];
+  });
+
+  const entries = getColumnVizSettings(card.display)
+    .map(setting => {
+      const originalValue = card.visualization_settings[setting];
+
+      if (!originalValue) {
+        return null;
+      }
+
+      if (Array.isArray(originalValue)) {
+        return [
+          setting,
+          originalValue.map(originalColumnName => {
+            const index = dataset.data.cols.findIndex(
+              col => col.name === originalColumnName,
+            );
+            return state.columns[index].name;
+          }),
+        ];
+      } else {
+        const index = dataset.data.cols.findIndex(
+          col => col.name === originalValue,
+        );
+        return [setting, state.columns[index].name];
+      }
+    })
+    .filter(isNotNull);
+
+  state.settings = {
+    ...card.visualization_settings,
+    ...Object.fromEntries(entries),
+  };
+
+  return state;
 }

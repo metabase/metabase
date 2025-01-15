@@ -9,7 +9,6 @@ import _ from "underscore";
 
 import { cardApi } from "metabase/api";
 import { createAsyncThunk } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
 import {
   getColumnVizSettings,
   isCartesianChart,
@@ -38,6 +37,7 @@ import {
   createVisualizerColumnReference,
   extractReferencedColumns,
   getDataSourceIdFromNameRef,
+  getInitialStateForCardDataSource,
   parseDataSourceId,
 } from "./utils";
 import {
@@ -482,54 +482,7 @@ function maybeCombineDataset(
     !state.display ||
     (card.display === state.display && state.columns.length === 0)
   ) {
-    state.display = card.display;
-
-    state.columns = [];
-    state.columnValuesMapping = {};
-
-    dataset.data.cols.forEach(column => {
-      const columnRef = createVisualizerColumnReference(
-        source,
-        column,
-        extractReferencedColumns(state.columnValuesMapping),
-      );
-      state.columns.push(copyColumn(columnRef.name, column));
-      state.columnValuesMapping[columnRef.name] = [columnRef];
-    });
-
-    const entries = getColumnVizSettings(state.display)
-      .map(setting => {
-        const originalValue = card.visualization_settings[setting];
-
-        if (!originalValue) {
-          return null;
-        }
-
-        if (Array.isArray(originalValue)) {
-          return [
-            setting,
-            originalValue.map(originalColumnName => {
-              const index = dataset.data.cols.findIndex(
-                col => col.name === originalColumnName,
-              );
-              return state.columns[index].name;
-            }),
-          ];
-        } else {
-          const index = dataset.data.cols.findIndex(
-            col => col.name === originalValue,
-          );
-          return [setting, state.columns[index].name];
-        }
-      })
-      .filter(isNotNull);
-
-    state.settings = {
-      ...card.visualization_settings,
-      ...Object.fromEntries(entries),
-    };
-
-    return state;
+    return getInitialStateForCardDataSource(card, dataset);
   }
 
   if (
