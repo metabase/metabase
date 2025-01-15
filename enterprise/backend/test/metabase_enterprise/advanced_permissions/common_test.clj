@@ -106,11 +106,21 @@
                                                         :group_id  group-id
                                                         :table_id  table-id
                                                         :perm_type :perms/view-data))]
-        (testing "New table gets `blocked` view-data perms if any tables in the DB are `blocked`"
+        (testing "A new table gets `:blocked` view-data perms if any tables in the DB are `:blocked`"
           (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :blocked)
           (data-perms/set-table-permission! group-id table-id-2 :perms/view-data :unrestricted)
           (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
+            ;; Check that no DB-level perm is set
             (is (nil? (perm-value nil)))
+            (is (= :blocked (perm-value table-id-3)))))
+
+        (testing "A new table defaults to `:blocked` if the group has a sandbox for any existing table"
+          (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
+          (mt/with-temp [:model/GroupTableAccessPolicy _ {:group_id group-id
+                                                          :table_id table-id-1}
+                         :model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
+            (is (nil? (perm-value nil)))
+            (is (= :unrestricted (perm-value table-id-1)))
             (is (= :blocked (perm-value table-id-3)))))))))
 
 (deftest new-group-view-data-permission-level
