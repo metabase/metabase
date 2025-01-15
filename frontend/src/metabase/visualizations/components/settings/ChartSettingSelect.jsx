@@ -4,6 +4,17 @@ import cx from "classnames";
 import CS from "metabase/css/core/index.css";
 import { Select, Stack } from "metabase/ui";
 
+// Some properties of visualization settings that are controlled by selects can have a value of `true` or `false`
+const VALUE_OVERRIDE = val => {
+  if (val === true) {
+    return "\0_true";
+  } else if (val === false || val === "") {
+    return "\0_false";
+  } else {
+    return val;
+  }
+};
+
 export const ChartSettingSelect = ({
   // Use null if value is undefined. If we pass undefined, Select will create an
   // uncontrolled component because it's wrapped with Uncontrollable.
@@ -25,7 +36,7 @@ export const ChartSettingSelect = ({
 
   const data = options.map(({ name, value }) => ({
     label: name,
-    value: value || "",
+    value: VALUE_OVERRIDE(value) || "",
   }));
 
   const dropdownComponent =
@@ -46,7 +57,7 @@ export const ChartSettingSelect = ({
       data={data}
       dropdownComponent={dropdownComponent}
       disabled={disabled}
-      value={value}
+      value={VALUE_OVERRIDE(value)}
       //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
       onChange={v => onChange(v)}
       placeholder={options.length === 0 ? placeholderNoOptions : placeholder}

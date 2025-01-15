@@ -43,9 +43,11 @@ describe("PublicOrEmbeddedQuestion", () => {
     it('should set the locale to "en" by default', async () => {
       await setupEnterprise();
 
-      await userEvent.hover(getIcon("download"));
+      await userEvent.hover(screen.getByRole("button", { name: /download/ }));
 
-      expect(screen.getByText("Download full results")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Download full results"),
+      ).toBeInTheDocument();
     });
 
     it('should not set the locale to "ko" without "whitelabel" feature', async () => {
