@@ -152,7 +152,7 @@ describe("issue 8030 + 32444", () => {
             cy.findByText(filterDetails.name).click();
             H.popover().within(() => {
               // the filter is connected only to the first card
-              H.multiAutocompleteInput().type("1{enter}");
+              cy.findByPlaceholderText("Enter an ID").type("1");
               cy.button("Add filter").click();
             });
             cy.wait("@getCardQuery1");
@@ -1237,7 +1237,7 @@ describe("issue 22788", () => {
   function addFilterAndAssert() {
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByRole("searchbox").type("Gizmo");
+      cy.findByPlaceholderText("Enter some text").type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -2160,7 +2160,7 @@ describe("issue 27768", () => {
 
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByRole("searchbox").type("Gizmo");
+      H.fieldValuesInput().type("Gizmo");
       cy.button("Add filter").click();
     });
 

@@ -1062,7 +1062,7 @@ describe("issue 31606", { tags: "@external" }, () => {
     });
 
     H.popover().within(() => {
-      H.removeMultiAutocompleteValue(0);
+      H.removeFieldValuesValue(0);
       cy.findByText("Update filter").click();
     });
     cy.findByTestId("sidebar-content").within(() => {
@@ -1086,7 +1086,7 @@ describe("issue 31606", { tags: "@external" }, () => {
     H.filterWidget().click();
 
     H.popover().within(() => {
-      H.removeMultiAutocompleteValue(0);
+      H.removeFieldValuesValue(0);
       cy.findByText("Update filter").click();
     });
 

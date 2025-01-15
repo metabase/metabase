@@ -1,5 +1,6 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.load-test
   (:require
+   [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -362,6 +363,7 @@
           field3s    (atom nil)
           dash1s     (atom nil)
           dash2s     (atom nil)
+          tab2s      (atom nil)
           card1s     (atom nil)
           dashcard1s (atom nil)
           user1s     (atom nil)
@@ -371,6 +373,7 @@
           field2d    (atom nil)
           user1d     (atom nil)
           dash1d     (atom nil)
+          tab2d      (atom nil)
           card1d     (atom nil)
           dashcard1d (atom nil)
           db2d       (atom nil)
@@ -389,6 +392,7 @@
             (reset! user1s   (ts/create! User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! dash1s   (ts/create! Dashboard :name "My Dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
             (reset! dash2s   (ts/create! Dashboard :name "Linked dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
+            (reset! tab2s    (ts/create! :model/DashboardTab :name "Tab for dash2" :dashboard_id (:id @dash2s) :position 0))
             (let [columns           [{:name     "SOME_FIELD"
                                       :fieldRef [:field (:id @field1s) nil]
                                       :enabled  true}
@@ -419,11 +423,12 @@
                                               :table.cell_column  "sum"
                                               :table.columns      columns
                                               :column_settings
-                                              {(str "[\"ref\",[\"field\"," (:id @field1s) ",null]]")
+                                              {(json/encode [:ref [:field (:id @field1s) nil]])
                                                {:click_behavior {:type     "link"
                                                                  :linkType "dashboard"
-                                                                 :targetId (:id @dash2s)}}
-                                               (str "[\"ref\",[\"field\"," (:id @field2s) ",null]]")
+                                                                 :targetId (:id @dash2s)
+                                                                 :tabId    (:id @tab2s)}}
+                                               (json/encode [:ref [:field (:id @field2s) nil]])
                                                {:column_title "Locus"
                                                 :click_behavior
                                                 {:type     "link"
@@ -433,7 +438,7 @@
                                                  {mapping-id {:id     mapping-id
                                                               :source {:type "column" :id "Category_ID" :name "Category ID"}
                                                               :target {:type "dimension" :id mapping-id :dimension mapping-dimension}}}}}
-                                               (str "[\"ref\",[\"field\"," (:id @field3s) ",null]]")
+                                               (json/encode [:ref [:field (:id @field3s) nil]])
                                                {:click_behavior
                                                 {:type     "link"
                                                  :linkType "question"
@@ -482,19 +487,22 @@
                                     :column_settings
                                     {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]" {:column_title "Locus"}}}
                       dimension    [:dimension [:field ["my-db" nil "orders" "invoice"] {:source-field ["my-db" nil "orders" "subtotal"]}]]
-                      dimension-id "[\"dimension\",[\"fk->\",[\"field\",[\"my-db\",null,\"orders\",\"subtotal\"],null],[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]]"
+                      dimension-id (json/encode [:dimension [:fk->
+                                                             [:field [:my-db nil :orders :subtotal] nil]
+                                                             [:field [:my-db nil :orders :invoice] nil]]])
                       exp-dashcard (-> exp-card
                                        (assoc :click_behavior {:type     "link"
                                                                :linkType "question"
                                                                :targetId (:entity_id @card1s)})
                                        (assoc-in [:column_settings
-                                                  "[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"subtotal\"],null]]"
+                                                  (json/encode [:ref [:field [:my-db nil :orders :subtotal] nil]])
                                                   :click_behavior]
                                                  {:type     "link"
                                                   :linkType "dashboard"
-                                                  :targetId (:entity_id @dash2s)})
+                                                  :targetId (:entity_id @dash2s)
+                                                  :tabId    [(:entity_id @dash2s) (:entity_id @tab2s)]})
                                        (assoc-in [:column_settings
-                                                  "[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]"
+                                                  (json/encode [:ref [:field [:my-db nil :orders :invoice] nil]])
                                                   :click_behavior]
                                                  {:type     "link"
                                                   :linkType "question"
@@ -505,7 +513,7 @@
                                                     :source {:type "column" :id "Category_ID" :name "Category ID"}
                                                     :target {:type "dimension" :id dimension-id :dimension dimension}}}})
                                        (assoc-in [:column_settings
-                                                  "[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"discount\"],null]]"
+                                                  (json/encode [:ref [:field [:my-db nil :orders :discount] nil]])
                                                   :click_behavior]
                                                  {:type "link"
                                                   :linkType "question"
@@ -538,6 +546,7 @@
             (reset! field1d    (t2/select-one Field :table_id (:id @table1d) :name "subtotal"))
             (reset! field2d    (t2/select-one Field :table_id (:id @table1d) :name "invoice"))
             (reset! dash1d     (t2/select-one Dashboard :name "My Dashboard"))
+            (reset! tab2d      (t2/select-one :model/DashboardTab :name "Tab for dash2"))
             (reset! card1d     (t2/select-one Card :name "The Card"))
             (reset! dashcard1d (t2/select-one DashboardCard :card_id (:id @card1d) :dashboard_id (:id @dash1d)))
 
@@ -559,7 +568,13 @@
               (is (= [{:parameter_id "deadbeef"
                        :card_id      (:id @card1d)
                        :target       [:dimension [:field (:id @field1d) {:source-field (:id @field2d)}]]}]
-                     (:parameter_mappings @dashcard1d))))))))))
+                     (:parameter_mappings @dashcard1d))))
+            (testing "DashboardTab was exported even though he wasn't mentioned by click_behavior"
+              (is (= (:entity_id @tab2s) (:entity_id @tab2d)))
+              (let [settings (-> @dashcard1d :visualization_settings :column_settings)
+                    setting  (get settings (json/encode [:ref [:field (:id @field1d) nil]]))]
+                (is (= (:id @tab2d)
+                       (-> setting :click_behavior :tabId)))))))))))
 
 (deftest timelines-test
   (testing "timelines"
@@ -688,10 +703,10 @@
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the original entities"
           (ts/with-db source-db
-            (reset! user1s    (ts/create! User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-            (reset! user2s    (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
-            (reset! dash1s    (ts/create! Dashboard :name "My Dashboard" :creator_id (:id @user1s)))
-            (reset! dash2s    (ts/create! Dashboard :name "Linked dashboard" :creator_id (:id @user2s)))
+            (reset! user1s     (ts/create! User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+            (reset! user2s     (ts/create! User :first_name "Neil"  :last_name "Peart"   :email "neil@rush.yyz"))
+            (reset! dash1s     (ts/create! Dashboard :name "My Dashboard" :creator_id (:id @user1s)))
+            (reset! dash2s     (ts/create! Dashboard :name "Linked dashboard" :creator_id (:id @user2s)))
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "deserializing finds the matching user and synthesizes the missing one"
@@ -713,14 +728,14 @@
             (testing "the Dashboards and Users have different IDs now"
               (is (not= (:id @dash1s) (:id @dash1d)))
               (is (not= (:id @dash2s) (:id @dash2d)))
-              (is (not= (:id @user1s)   (:id @user1d))))
+              (is (not= (:id @user1s) (:id @user1d))))
 
             (testing "both existing User and the new one are set up properly"
               (is (= (:id @user1d) (:creator_id @dash1d)))
               (let [user2d-id (:creator_id @dash2d)
-                    user2d    (t2/select-one User :id user2d-id)]
-                (is (any? user2d))
-                (is (= (:email @user2s) (:email user2d)))))))))))
+                    user2d    (t2/select-one [User :email :is_active] :id user2d-id)]
+                (is (= (:email @user2s) (:email user2d)))
+                (is (false? (:is_active user2d)))))))))))
 
 (deftest field-values-test
   ;; FieldValues are a bit special - they map 1-1 with Fields but are a separate table serialized separately.

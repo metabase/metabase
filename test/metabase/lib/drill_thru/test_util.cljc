@@ -6,9 +6,12 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
@@ -61,18 +64,23 @@
                 (lib/aggregate (lib/count)))
      :row   {"count" 200}}}})
 
+(defn- schema-or-update-fn
+  [schema]
+  [:or schema [:-> schema schema]])
+
 (def ^:private Row
   [:map-of :string :any])
 
 (def ^:private TestCase
   [:map
-   [:click-type      [:enum :cell :header]]
-   [:query-type      [:enum :aggregated :unaggregated]]
-   [:column-name     :string]
+   [:click-type    [:enum :cell :header]]
+   [:query-type    [:enum :aggregated :unaggregated]]
+   [:column-name   :string]
    ;; defaults to "ORDERS"
-   [:query-table  {:optional true} [:maybe [:enum "ORDERS" "PRODUCTS"]]]
-   [:custom-query {:optional true} [:maybe ::lib.schema/query]]
-   [:custom-row   {:optional true} [:maybe Row]]])
+   [:query-table   {:optional true} [:maybe [:enum "ORDERS" "PRODUCTS"]]]
+   [:custom-query  {:optional true} [:maybe (schema-or-update-fn ::lib.schema/query)]]
+   [:custom-native {:optional true} [:maybe (schema-or-update-fn ::lib.schema/query)]]
+   [:custom-row    {:optional true} [:maybe (schema-or-update-fn Row)]]])
 
 (def ^:private native-card-id 12)
 
@@ -114,6 +122,84 @@
   (fn [x]
     (some #(= x %) exps)))
 
+(defmulti column-by-name
+  "Return the first column with :name `column-name` in `query-or-columns`.
+
+  If `query-or-columns` is a ::lib.schema/query, then search it's `lib/returned-columns`.
+  Otherwise, `query-or-columns` should be the collection of columns to search."
+  {:arglists '([query-or-columns column-name])}
+  (fn [query-or-columns & _] (lib.dispatch/dispatch-value query-or-columns))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(mu/defmethod column-by-name :mbql/query :- ::lib.schema.metadata/column
+  [query       :- ::lib.schema/query
+   column-name :- :string]
+  (column-by-name (lib/returned-columns query) column-name))
+
+(mu/defmethod column-by-name :dispatch-type/sequential :- ::lib.schema.metadata/column
+  [columns     :- [:sequential ::lib.schema.metadata/column]
+   column-name :- :string]
+  (m/find-first #(= (:name %) column-name) columns))
+
+(mu/defn append-filter-stage :- ::lib.schema/query
+  "Append a new stage to `query` and add a filter there targeting `column-name`.
+
+  The two-arg arity adds a simple `col > -1` filter.
+
+  The three-arg arity will pass the first column it finds with `column-name` to `column-filter-fn`, which should
+  return a boolean expression that can be passed as the second arg to [[lib/filter]]."
+  ([query       :- ::lib.schema/query
+    column-name :- :string]
+   (append-filter-stage query column-name #(lib/> % -1)))
+  ([query            :- ::lib.schema/query
+    column-name      :- :string
+    column-filter-fn :- [:-> ::lib.schema.metadata/column :any]]
+   (let [query'           (lib/append-stage query)
+         column-to-filter (column-by-name query' column-name)]
+     (assert (some? column-to-filter) (str "Failed to find " column-name " in " query))
+     (lib/filter query' (column-filter-fn column-to-filter)))))
+
+(mu/defn append-filter-stage-to-test-expectation :- :map
+  "Like [[append-filter-stage]] but for test expectations rather than full queries.
+
+  If you called [[append-filter-stage]] to modify the query under tests,
+  then [[append-filter-stage-to-test-expectation]] might be useful to update the test expectation.
+
+  `expected-query` is something you'd pass to ?= to match a query. It should have a `:stages` key.
+
+  `field-matcher-or-filter-expr` is either a vector, in which case it will be used as the filter expression directly,
+  or else something that should match in a filter clause like
+
+    [:> {} [:field {} field-matcher] -1]
+
+  The default filter here intentionally matches the one added by [[append-filter-stage]], so that
+
+    (append-filter-stage query my-column-name)
+    (append-filter-stage-to-test-expectation expected-query my-column-name)
+
+  are matching pairs."
+  ([expected-query               :- :map
+    field-matcher-or-filter-expr :- [:or :string fn? vector?]]
+   (assert (vector? (:stages expected-query))
+           "expected-query should have a :stages key mapped to a vector")
+   (let [default-filter (fn [field-matcher] [:> {} [:field {} field-matcher] -1])
+         filter-expr    (cond-> field-matcher-or-filter-expr
+                          (not (vector? field-matcher-or-filter-expr))
+                          default-filter)]
+     (update expected-query :stages conj {:filters [filter-expr]}))))
+
+(mu/defn prepend-filter-to-stage :- :map
+  "Prepend `filter-expr` to the filters in `expected-query`.
+
+  Useful for updating the `:expected-query` for [[test-drill-application]] when the `:custom-query` was modified
+  by [[append-filter-stage]]."
+  [expected-query :- :map
+   stage-number   :- :int
+   filter-expr    :- vector?]
+  (update-in expected-query
+             [:stages (lib.util/canonical-stage-index expected-query stage-number) :filters]
+             #(into [filter-expr] %)))
+
 (def ^:private unsupported-on-native
   #{:drill-thru/automatic-insights
     :drill-thru/pivot
@@ -122,6 +208,11 @@
     :drill-thru/zoom-in.geographic
     :drill-thru/zoom-in.timeseries})
 
+(defn- custom-value [custom-value-or-fn default-value]
+  (if (fn? custom-value-or-fn)
+    (custom-value-or-fn default-value)
+    (or custom-value-or-fn default-value)))
+
 (mu/defn query-and-row-for-test-case :- [:map
                                          [:mbql   ::lib.schema/query]
                                          [:native [:maybe ::lib.schema/query]]
@@ -129,16 +220,19 @@
   [{:keys [query-table query-type custom-query custom-native custom-row]
     :or   {query-table "ORDERS"}
     :as   test-case} :- TestCase]
-  (let [queries (if custom-query
-                  {:mbql   custom-query
-                   :native (or custom-native (->native custom-query))}
-                  (when-let [mbql (get-in test-queries [query-table query-type :query])]
-                    {:mbql   mbql
-                     :native (->native mbql)}))
-        row     (or custom-row (get-in test-queries [query-table query-type :row]))]
-    (when-not (and queries row)
-      (throw (ex-info "Invalid query-table/query-:type no matching test query" {:test-case test-case})))
-    (assoc queries :row row)))
+  (let [mbql   (custom-value custom-query  (get-in test-queries [query-table query-type :query]))
+        row    (custom-value custom-row    (get-in test-queries [query-table query-type :row]))
+        native (custom-value custom-native (->native mbql))]
+    (doseq [[value value-name custom-name] [[mbql "query" "custom-query"]
+                                            [native "native query" "custom-native"]
+                                            [row "row" "custom-row"]]]
+      (when-not value
+        (throw (ex-info (str "Invalid " value-name ". You either provided an invalid " custom-name ", or else the "
+                             value-name " could not be looked up for the given query-table and query-type")
+                        {:test-case test-case}))))
+    {:mbql mbql
+     :native native
+     :row row}))
 
 (mu/defn test-case-context :- ::lib.schema.drill-thru/context
   [{:keys [mbql row]} :- [:map] ;; TODO: Better type? Does one exist?
@@ -328,3 +422,44 @@
                           expected-native)
                         (clean-expected-query expected-query))
                     query'))))))))
+
+(mu/defn test-drill-variants-with-merged-args
+  "Run `test-fn` first with `base-case` then with each of the specified `variants`.
+
+  `test-fn` is probably one of these functions, but could be any func that can be called with a single map argument:
+
+    - [[test-returns-drill]]
+    - [[test-drill-not-returned]]
+    - [[test-drill-application]]
+
+  `base-desc` will be passed directly to [[clojure.test/testing]].
+  `base-case` will be passed unmodified to `test-fn`. It is probably a TestCase derivative, but could be any map.
+  `variants` is a flat sequence of `variant-desc` `variant-case` pairs indicating variations on the base-case.
+
+  For each `variants` pair:
+    - `variant-desc` will be passed directly to [[clojure.test/testing]].
+    - `variant-case` will be `merge`d with the `base-case` and the result will be passed to `test-fn`.
+
+  If any `base-desc` or `variant-desc` is the special string \"SKIP\", then the corresponding case will be
+  skipped. Useful when you want to debug one of the `variants` in isolation.
+
+  If any `variant-case` is a fn, it should be of type map -> map and will be passed the `base-case` and the returned
+  map will be merged with `base-case` instead."
+  [test-fn   :- [:-> :map :any]
+   base-desc :- :string
+   base-case :- :map
+   & variants]
+  (assert (even? (count variants)) "variants must come in variant-desc and variant-case pairs")
+
+  (when-not (= "SKIP" base-desc)
+    (testing base-desc
+      (test-fn base-case)))
+
+  (doseq [[variant-desc variant-case-or-fn] (partition 2 variants)]
+    (when-not (= "SKIP" variant-desc)
+      (testing variant-desc
+        (test-fn (merge base-case
+                        (cond (fn? variant-case-or-fn) (variant-case-or-fn base-case)
+                              (map? variant-case-or-fn) variant-case-or-fn
+                              :else (throw (ex-info "Invalid variant case. Must be a fn or map."
+                                                    {:variant-case variant-case-or-fn})))))))))
