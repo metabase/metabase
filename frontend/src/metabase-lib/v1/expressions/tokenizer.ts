@@ -259,7 +259,7 @@ export function tokenize(expression: string): {
       if (ch === "]") {
         break;
       } else if (ch === "[") {
-        index -= 2; // allow this character to be parsed again, so it can be recognized as a start of another bracket identifier
+        index -= 2; // end the current token early so it does not overlap with the next one
 
         const type = TOKEN.Identifier;
         const end = index;
