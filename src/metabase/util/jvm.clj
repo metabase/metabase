@@ -9,7 +9,13 @@
    [metabase.util.log :as log])
   (:import
    (java.net InetAddress InetSocketAddress Socket)
-   (java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue)
+   (java.nio.charset StandardCharsets)
+   (java.util
+    Base64
+    Base64$Decoder
+    Base64$Encoder
+    Locale
+    PriorityQueue)
    (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
@@ -180,25 +186,39 @@
   "A shared Base64 decoder instance."
   (Base64/getDecoder))
 
+(defn bytes-to-string
+  "Converts UTF-8 bytes into a string."
+  ^String [^bytes bs]
+  (String. bs StandardCharsets/UTF_8))
+
 (defn decode-base64-to-bytes
   "Decodes a Base64 string into bytes."
   ^bytes [^String string]
   (.decode base64-decoder string))
 
-;;; TODO -- this is only used [[metabase.analytics.snowplow-test]] these days
 (defn decode-base64
   "Decodes the Base64 string `input` to a UTF-8 string."
   [input]
-  (new java.lang.String (decode-base64-to-bytes input) "UTF-8"))
+  (bytes-to-string (decode-base64-to-bytes input)))
 
 (def ^:private ^Base64$Encoder base64-encoder
   "A shared Base64 encoder instance."
   (Base64/getEncoder))
 
+(defn string-to-bytes
+  "Converts a string into UTF-8 bytes"
+  ^bytes [^String input]
+  (.getBytes input StandardCharsets/UTF_8))
+
 (defn encode-base64
   "Encodes the UTF-8 encoding of the string `input` to a Base64 string."
   ^String [^String input]
-  (.encodeToString base64-encoder (.getBytes input "UTF-8")))
+  (.encodeToString base64-encoder (string-to-bytes input)))
+
+(defn encode-base64-bytes
+  "Encodes the bytes `input` to a Base64 string."
+  ^String [^bytes input]
+  (.encodeToString base64-encoder input))
 
 (def ^:private do-with-us-locale-lock (Object.))
 
