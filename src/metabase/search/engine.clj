@@ -37,6 +37,7 @@
 
 (defmulti delete!
   "Removes the documents from the search index."
+  {:arglists '([search-engine model ids])}
   (fn [search-engine _model _ids]
     search-engine))
 
