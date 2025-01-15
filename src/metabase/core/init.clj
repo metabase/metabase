@@ -13,6 +13,7 @@
    [metabase.logger.init]
    [metabase.models.init]
    [metabase.notification.init]
+   [metabase.query-analysis.init]
    [metabase.search.init]
    [metabase.task.init]))
 
