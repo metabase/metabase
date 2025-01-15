@@ -90,6 +90,12 @@ describeEE("scenarios > embedding-sdk > dashboard-click-behavior", () => {
   });
 
   it("should not trigger url click behaviors in the sdk (metabase#51099)", () => {
+    // Spies to intercept opening external links.
+    // See "clickLink" in frontend/src/metabase/lib/dom.js to see what we are intercepting.
+    cy.window().then(win => {
+      cy.spy(win.HTMLAnchorElement.prototype, "click").as("anchorClick");
+    });
+
     cy.get<string>("@dashboardId").then(dashboardId => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
     });
@@ -102,6 +108,9 @@ describeEE("scenarios > embedding-sdk > dashboard-click-behavior", () => {
       const root = getSdkRoot();
 
       root.within(() => {
+        // Table should not contain any anchor links
+        H.getDashboardCard(0).get("table a").should("have.length", 0);
+
         // Drill-through should work on columns without click behavior
         H.getDashboardCard(0).findByText("39.72").click();
         popover().should("contain.text", "Filter by this value");
@@ -114,7 +123,7 @@ describeEE("scenarios > embedding-sdk > dashboard-click-behavior", () => {
 
         popover().should("contain.text", "Filter by this value");
 
-        // Table column click behavior should be disabled in the sdk
+        // URL formatting via column click behavior should not apply.
         H.getDashboardCard(0).should("not.contain.text", "Link Text Applied");
         H.getDashboardCard(0).findByText("37.65").click();
         cy.get(POPOVER_ELEMENT).should("not.exist");
@@ -132,7 +141,18 @@ describeEE("scenarios > embedding-sdk > dashboard-click-behavior", () => {
         cy.get(POPOVER_ELEMENT).should("not.exist");
       });
 
-      // We should not be navigated away from the current page
+      // We should never open a window in new tab in this test.
+      cy.get<sinon.SinonSpy>("@anchorClick").then(clickSpy => {
+        const blankClicks = clickSpy
+          .getCalls()
+          .filter(
+            (call: sinon.SinonSpyCall) => call.thisValue.target === "_blank",
+          );
+
+        expect(blankClicks).to.have.length(0, "should never open a new tab");
+      });
+
+      // We should never be navigated away from the current page in this test.
       cy.location().then(location => {
         cy.get("@initialPath").should("eq", location.pathname);
       });
