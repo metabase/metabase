@@ -111,7 +111,7 @@ jobs:
         shell: bash
         run: |
           node e2e/runner/run_cypress_ci.js test \
-            --env grepTags="-@slow+-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
+            --env grepTags="-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}

@@ -5,7 +5,6 @@ const { parseArguments, args } = require("./cypress-runner-utils");
 const isOpenMode = args["--open"];
 
 const runCypress = async (baseUrl, exitFunction = console.log) => {
-
   const defaultConfig = {
     browser: "chrome",
     configFile: "e2e/support/cypress.config.js",
