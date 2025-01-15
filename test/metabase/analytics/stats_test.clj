@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
    [metabase.config :as config]
-   [metabase.core :as mbc]
+   [metabase.core.core :as mbc]
    [metabase.db :as mdb]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]

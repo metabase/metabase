@@ -159,9 +159,23 @@ export const removeParameter = createThunkAction(
   (parameterId: ParameterId) => (dispatch, getState) => {
     dispatch(closeAddCardAutoWireToasts());
 
-    updateParameters(dispatch, getState, parameters =>
-      parameters.filter(p => p.id !== parameterId),
-    );
+    updateParameters(dispatch, getState, parameters => {
+      return parameters
+        .filter(parameter => parameter.id !== parameterId)
+        .map(parameter => {
+          if (parameter.filteringParameters) {
+            const filteringParameters = parameter.filteringParameters.filter(
+              filteringParameter => {
+                return filteringParameter !== parameterId;
+              },
+            );
+
+            return { ...parameter, filteringParameters };
+          }
+
+          return parameter;
+        });
+    });
 
     return { id: parameterId };
   },

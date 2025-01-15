@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
-   [metabase.actions :as actions]
+   [metabase.actions.actions :as actions]
    [metabase.actions.http-action :as http-action]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
