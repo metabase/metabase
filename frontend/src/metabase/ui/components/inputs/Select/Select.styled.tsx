@@ -23,6 +23,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       clearButtonProps: {
         color: "text-dark",
       },
+      inputWrapperOrder: ["label", "description", "input", "error"],
     }),
     styles: (theme, _, { size = "md" }) => ({
       ...getSelectInputOverrides(theme),

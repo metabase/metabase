@@ -5,6 +5,7 @@ export const getDateInputOverrides =
     DateInput: {
       defaultProps: {
         size: "md",
+        inputWrapperOrder: ["label", "description", "input", "error"],
       },
       styles: theme => ({
         calendar: {

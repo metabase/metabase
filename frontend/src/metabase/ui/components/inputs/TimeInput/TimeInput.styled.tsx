@@ -5,6 +5,7 @@ export const getTimeInputOverrides =
     TimeInput: {
       defaultProps: {
         size: "md",
+        inputWrapperOrder: ["label", "description", "input", "error"],
       },
       styles: () => ({
         input: {

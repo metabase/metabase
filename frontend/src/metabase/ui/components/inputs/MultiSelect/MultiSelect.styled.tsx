@@ -39,6 +39,7 @@ export const getMultiSelectOverrides =
           color: "text-dark",
         },
         "data-testid": "multi-select",
+        inputWrapperOrder: ["label", "description", "input", "error"],
       },
       styles: (
         theme,
