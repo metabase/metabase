@@ -323,7 +323,7 @@
                                      metabase.analytics.snowplow
                                      metabase.analytics.stats
                                      metabase.analytics.sdk}                                        ; TODO -- consolidate these into a real API namespace.
-    metabase.analyze               #{metabase.analyze}
+    metabase.analyze               #{metabase.analyze.core}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
                                      metabase.api.macros
