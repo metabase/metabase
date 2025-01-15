@@ -1,9 +1,9 @@
-(ns metabase.task.setup.query-analysis-setup
+(ns metabase.query-analysis.task.test-setup
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.query-analysis :as query-analysis]
+   [metabase.query-analysis.core :as query-analysis]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

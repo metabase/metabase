@@ -1,11 +1,11 @@
-(ns metabase.task.sweep-query-analysis
+(ns metabase.query-analysis.task.sweep-query-analysis
   "A background worker making sure that analyze the queries for all active cards, and that it is up-to-date."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.public-settings :as public-settings]
-   [metabase.query-analysis :as query-analysis]
+   [metabase.query-analysis.core :as query-analysis]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]

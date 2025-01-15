@@ -1,8 +1,12 @@
-(ns metabase.query-analysis
+(ns metabase.query-analysis.core
   "This module handles the analysis of queries, which determines their data dependencies.
   It also is used to audit these dependencies for issues - for example, making use of column that no longer exists.
   Analysis is typically performed on a background worker thread, and the [[analyze-async!]] method is used to add cards
-  to the corresponding queue."
+  to the corresponding queue.
+
+  TODO -- not all of this stuff needs to live here or be public now
+  that [[metabase.query-analysis.task.analyze-queries]] is part of this module instead of living somewhere else. See
+  if we can clean up the API a little further."
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -225,8 +229,8 @@
     (t2/select-one [:model/Card :id :archived :dataset_query] (u/the-id card-or-id))))
 
 (defn analyze!*
-  "Update the analysis for a given card if it is active. Should only be called from [[metabase.task.analyze-queries]];
-  otherwise favor [[analyze!]]"
+  "Update the analysis for a given card if it is active. Should only be called
+  from [[metabase.query-analysis.task.analyze-queries]]; otherwise favor [[analyze!]]"
   [card-or-id]
   (let [card    (->analyzable card-or-id)
         card-id (:id card)]
@@ -239,7 +243,7 @@
 
 (defn next-card-or-id!
   "Get the id of the next card id to be analyzed. May block indefinitely, relies on producer.
-  Should only be called from [[metabase.task.analyze-queries]]."
+  Should only be called from [[metabase.query-analysis.task.analyze-queries]]."
   ([]
    (next-card-or-id! worker-queue))
   ([queue]
