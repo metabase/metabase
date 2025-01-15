@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
-   [metabase.analyze :as analyze]
+   [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
