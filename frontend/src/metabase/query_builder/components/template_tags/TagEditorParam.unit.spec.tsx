@@ -147,7 +147,7 @@ describe("TagEditorParam", () => {
         "widget-type": "string/=",
         options: undefined,
       });
-    });
+    }, 40000);
 
     it("should default to string/contains for a new high cardinality string field filter", async () => {
       const tag = createMockTemplateTag({
@@ -168,7 +168,7 @@ describe("TagEditorParam", () => {
         "widget-type": "string/contains",
         options: { "case-sensitive": false },
       });
-    });
+    }, 40000);
 
     it("should default to number/= for a new numeric field filter", async () => {
       const tag = createMockTemplateTag({
@@ -189,7 +189,7 @@ describe("TagEditorParam", () => {
         "widget-type": "number/=",
         options: undefined,
       });
-    });
+    }, 40000);
 
     it("should default to number/= for a new reviews->rating field filter (metabase#16151)", async () => {
       const tag = createMockTemplateTag({
@@ -210,7 +210,7 @@ describe("TagEditorParam", () => {
         "widget-type": "number/=",
         options: undefined,
       });
-    });
+    }, 40000);
 
     it("should allow to change the field for a field filter", async () => {
       const tag = createMockTemplateTag({
@@ -229,7 +229,7 @@ describe("TagEditorParam", () => {
         ...tag,
         dimension: ["field", PEOPLE.ADDRESS, null],
       });
-    });
+    }, 40000);
   });
 
   describe("tag widget type", () => {

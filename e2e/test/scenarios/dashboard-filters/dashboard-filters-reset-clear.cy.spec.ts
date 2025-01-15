@@ -284,14 +284,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       setValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.multiAutocompleteInput().type(value).blur();
+          H.fieldValuesInput().type(value).blur();
           cy.button("Add filter").click();
         });
       },
       updateValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.multiAutocompleteInput().type(value).blur();
+          H.fieldValuesInput().type(value).blur();
           cy.button("Update filter").click();
         });
       },
@@ -336,14 +336,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       setValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.multiAutocompleteInput().type(value).blur();
+          H.fieldValuesInput().type(value).blur();
           cy.button("Add filter").click();
         });
       },
       updateValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.multiAutocompleteInput().type(value).blur();
+          H.fieldValuesInput().type(value).blur();
           cy.button("Update filter").click();
         });
       },
@@ -385,14 +385,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       setValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.multiAutocompleteInput().type(value).blur();
+          H.fieldValuesInput().type(value).blur();
           cy.button("Add filter").click();
         });
       },
       updateValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.multiAutocompleteInput().type(value).blur();
+          H.fieldValuesInput().type(value).blur();
           cy.button("Update filter").click();
         });
       },
