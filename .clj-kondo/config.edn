@@ -346,7 +346,6 @@
     metabase.channel               #{metabase.channel.core
                                      metabase.channel.email
                                      metabase.channel.email.messages
-                                     metabase.channel.email.result-attachment
                                      metabase.channel.init
                                      metabase.channel.render.core
                                      metabase.channel.template.core}
