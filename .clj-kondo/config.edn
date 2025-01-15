@@ -333,7 +333,6 @@
                                      metabase.async.streaming-response.thread-pool
                                      metabase.async.util}                                           ; TODO -- consolidate these into a real API namespace.
     metabase.audit                 #{metabase.audit}
-    metabase.bootstrap             #{metabase.bootstrap}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     metabase.channel               #{metabase.channel.core
                                      metabase.channel.init
@@ -438,7 +437,6 @@
     metabase.audit                 :any
     metabase.auth-provider         #{metabase.util
                                      metabase.premium-features}
-    metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
     metabase.channel               :any

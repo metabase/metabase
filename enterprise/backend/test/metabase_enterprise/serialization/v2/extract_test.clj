@@ -8,7 +8,7 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.audit :as audit]
-   [metabase.core :as mbc]
+   [metabase.core.core :as mbc]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]

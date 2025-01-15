@@ -8,7 +8,7 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.audit :as audit]
-   [metabase.core :as mbc]
+   [metabase.core.core :as mbc]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]

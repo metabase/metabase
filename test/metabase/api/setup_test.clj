@@ -7,7 +7,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.setup :as api.setup]
    [metabase.config :as config]
-   [metabase.core :as mbc]
+   [metabase.core.core :as mbc]
    [metabase.db :as mdb]
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
