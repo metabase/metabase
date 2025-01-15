@@ -324,7 +324,8 @@
                                      metabase.analytics.stats
                                      metabase.analytics.sdk}                                        ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze}
-    metabase.api                   #{metabase.api.common
+    metabase.api                   #{metabase.api.auth
+                                     metabase.api.common
                                      metabase.api.dataset
                                      metabase.api.macros
                                      metabase.api.permission-graph
@@ -351,6 +352,7 @@
     metabase.embed                 #{metabase.embed.settings}
     metabase.events                #{metabase.events metabase.events.init}
     metabase.formatter             #{metabase.formatter}
+    metabase.harbormaster          #{metabase.harbormaster.client}
     metabase.integrations          #{metabase.integrations.common
                                      metabase.integrations.google
                                      metabase.integrations.ldap
@@ -446,6 +448,7 @@
     metabase.embed                 :any
     metabase.events                :any
     metabase.formatter             :any
+    metabase.harbormaster          #{metabase.util}
     metabase.integrations          :any
     metabase.legacy-mbql           :any
     metabase.lib                   :any
@@ -550,6 +553,7 @@
     metabase.analyze.fingerprint.schema                           fingerprint.schema
     metabase.api.activity                                         api.activity
     metabase.api.alert                                            api.alert
+    metabase.api.auth                                             api.auth
     metabase.api.automagic-dashboards                             api.magic
     metabase.api.bookmark                                         api.bookmark
     metabase.api.card                                             api.card

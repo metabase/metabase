@@ -22,6 +22,7 @@ enable-sandboxes?: null
 enable-whitelabeling?: null
 enable-pivoted-exports: null
 enable-xrays: null
+gsheets: null
 hide-embed-branding?: null
 humanization-strategy: null
 landing-page: null

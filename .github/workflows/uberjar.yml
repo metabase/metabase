@@ -174,8 +174,8 @@ jobs:
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-extra ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest && docker push ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest
 
     - name: Retag and push images if dev branch
-      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }} && docker push ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee-extra' }}
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-extra ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }} && docker push ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
 
     - name: Run Trivy vulnerability scanner if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
