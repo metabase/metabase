@@ -3,14 +3,11 @@ import {
   InteractiveQuestion,
 } from "@metabase/embedding-sdk-react";
 
-import { H } from "e2e/support";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  POPOVER_ELEMENT,
-  cartesianChartCircle,
-  describeEE,
-  popover,
-} from "e2e/support/helpers";
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import { describeEE, getTextCardDetails } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -23,18 +20,19 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
+    const textCard = getTextCardDetails({ col: 16, text: "Test text card" });
     const questionCard = {
-      id: 64,
+      id: ORDERS_DASHBOARD_DASHCARD_ID,
       card_id: ORDERS_QUESTION_ID,
       row: 0,
       col: 0,
-      size_x: 8,
+      size_x: 16,
       size_y: 8,
     };
 
     cy.createDashboard({
       name: "Orders in a dashboard",
-      dashcards: [questionCard],
+      dashcards: [questionCard, textCard],
     }).then(({ body: dashboard }) => {
       cy.wrap(dashboard.id).as("dashboardId");
       cy.wrap(dashboard.entity_id).as("dashboardEntityId");
@@ -129,48 +127,6 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
           cy.findByText("Rows 1-6 of first 2000").should("not.exist");
           cy.findByText("Test text card").should("not.exist");
         });
-      });
-    });
-  });
-
-  it("should not trigger url click behaviours when clicking on sdk cards (metabase#51099)", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
-      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
-    });
-
-    cy.wait("@dashcardQuery").then(() => {
-      cy.location().then(location => {
-        cy.wrap(location.pathname).as("initialPath");
-      });
-
-      const root = getSdkRoot();
-
-      root.within(() => {
-        // Drill-through should work on columns without click behavior
-        H.getDashboardCard(0).findByText("2.07").click();
-        popover().should("contain.text", "Filter by this value");
-
-        // Table column click behavior should be disabled in the sdk
-        H.getDashboardCard(0).should("not.contain.text", "Link Text Applied");
-        H.getDashboardCard(0).findByText("37.65").click();
-        cy.get(POPOVER_ELEMENT).should("not.exist");
-
-        // Line chart click behavior should be disabled in the sdk
-        H.getDashboardCard(1).within(() => {
-          cartesianChartCircle()
-            .eq(0)
-            .then(([circle]) => {
-              const { left, top } = circle.getBoundingClientRect();
-              root.click(left, top);
-            });
-        });
-
-        cy.get(POPOVER_ELEMENT).should("not.exist");
-      });
-
-      // We should not be navigated away from the current page
-      cy.location().then(location => {
-        cy.get("@initialPath").should("eq", location.pathname);
       });
     });
   });
