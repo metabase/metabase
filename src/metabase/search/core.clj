@@ -14,6 +14,8 @@
 
 (comment
   ;; Make sure to import all the engine implementations. In future this can happen automatically, as per drivers.
+  ;;
+  ;; TODO -- maybe engine loading should be moved to [[metabase.search.init]] instead
   search.engine/keep-me
   search.engines.appdb/keep-me
   search.legacy/keep-me
@@ -81,3 +83,12 @@
                             seq)]
       ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
       (search.ingestion/ingest-maybe-async! updates))))
+
+(defn delete!
+  "Given a model and a list of model's ids, remove corresponding search entries."
+  [model ids]
+  (doseq [e            (search.engine/active-engines)
+          search-model (->> (vals (search.spec/specifications))
+                            (filter (comp #{model} :model))
+                            (map :name))]
+    (search.engine/delete! e search-model ids)))

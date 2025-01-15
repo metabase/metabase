@@ -7,11 +7,11 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
-   [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -127,6 +127,6 @@
   "Return related entities."
   [id]
   {id ms/PositiveInt}
-  (-> (t2/select-one :model/Segment :id id) api/read-check related/related))
+  (-> (t2/select-one :model/Segment :id id) api/read-check xrays/related))
 
 (api/define-routes)

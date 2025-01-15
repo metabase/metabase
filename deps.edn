@@ -211,7 +211,7 @@
  ;; https://ask.clojure.org/index.php/12367/support-mvn-repos-inside-an-alias -- if we could, this could go in the
  ;; `:drivers` alias instead.
  :mvn/repos
- {"athena"   {:url "https://s3.amazonaws.com/maven-athena"}
+ {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"}
   "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}
   ;; for metabase/saml20-clj
   "opensaml" {:url "https://build.shibboleth.net/nexus/content/repositories/releases/"}}
@@ -272,7 +272,8 @@
                  "-Djdk.attach.allowAttachSelf"
                  ;; This will suppress the warning about dynamically loaded agents (like clj-memory-meter)
                  "-XX:+EnableDynamicAgentLoading"
-                 ;; set the logging properties set in metabase.bootstrap. calling (dev) will load it but putting here to be sure
+                 ;; set the logging properties set in `metabase.core.bootstrap`. calling (dev) will load it but
+                 ;; putting here to be sure
                  "-Dlog4j2.contextSelector=org.apache.logging.log4j.core.selector.BasicContextSelector"
                  "-Dclojure.tools.logging.factory=clojure.tools.logging.impl/log4j2-factory"
                  ;; If Clojure fails to start (e.g. because of a compilation error somewhere) print the error
@@ -313,7 +314,7 @@
   ;; clojure -M:run:drivers (include all drivers)
   ;; clojure -M:run:ee (include EE code)
   :run
-  {:main-opts ["-m" "metabase.bootstrap"]
+  {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=dev"
                "-Dmacaw.run.mode=dev"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
@@ -323,7 +324,7 @@
   ;;
   ;;    clojure -M:ee:doc api-documentation
   :doc
-  {:main-opts ["-m" "metabase.bootstrap"]
+  {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
@@ -741,7 +742,7 @@
 
   ;; Profile Metabase start time with clojure -M:profile
   :profile
-  {:main-opts ["-m" "metabase.core" "profile"]
+  {:main-opts ["-m" "metabase.core.bootstrap" "profile"]
    :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
                "-Xlog:gc"]}
 

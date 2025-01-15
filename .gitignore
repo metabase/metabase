@@ -21,6 +21,7 @@
 /*.trace.db
 /.babel_cache
 /.env
+/.envrc
 /.lein-env
 /.lein-failures
 /.lein-plugins

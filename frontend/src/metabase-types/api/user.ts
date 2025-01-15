@@ -114,3 +114,20 @@ export type UpdateUserRequest = {
   login_attributes?: Record<UserAttribute, UserAttribute> | null;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
 };
+
+// NOTE: remove silly value namespace/key from FE once we add a real feature
+export type UserKeyValue = {
+  namespace: "meow";
+  key: "meow";
+  value: string;
+};
+
+export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;
+
+export type DeleteUserKeyValueRequest = UserKeyValueKey;
+
+export type GetUserKeyValueRequest = UserKeyValueKey;
+
+export type UpdateUserKeyValueRequest = UserKeyValue & {
+  expires_at?: string;
+};

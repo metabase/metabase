@@ -106,7 +106,7 @@ const mapDispatchToProps = {
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
-type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
+export type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
 
 const DashboardApp = (props: DashboardAppProps) => {
   useFavicon({ favicon: props.pageFavicon });
@@ -132,6 +132,7 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   const parameterQueryParams = location.query;
   const dashboardId = getDashboardId(props);
+
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
   const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
@@ -210,6 +211,8 @@ const DashboardApp = (props: DashboardAppProps) => {
     onFullscreenChange,
     setRefreshElapsedHook,
     onRefreshPeriodChange,
+    autoScrollToDashcardId,
+    reportAutoScrolledToDashcard,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
   useDashboardUrlQuery(router, location);
@@ -226,6 +229,8 @@ const DashboardApp = (props: DashboardAppProps) => {
         dashboardId={dashboardId}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}
+        autoScrollToDashcardId={autoScrollToDashcardId}
+        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
         isFullscreen={isFullscreen}
         refreshPeriod={refreshPeriod}
         isNightMode={isNightMode}
