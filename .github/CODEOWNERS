@@ -26,3 +26,6 @@ test/metabase/channel @metabase/core-workflows
 
 src/metabase/query_analysis @metabase/core-backend-querying
 test/metabase/query_analysis @metabase/core-backend-querying
+
+src/metabase/setup @metabase/core-backend-admin-webapp
+test/metabase/setup @metabase/core-backend-admin-webapp
