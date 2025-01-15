@@ -493,6 +493,7 @@
    #{"-test$"                     ; anything ending in `-test`
      "test[-.]util"               ; anything that contains `test.util` or `test-util`
      "test\\.impl"                ; anything that contains `test.impl`
+     "test-setup"                 ; anything that contains `test-setup`
      "^metabase\\.test"           ; anything starting with `metabase.test`
      "^metabase\\.http-client$"}} ; `metabase.http-client` which is a test-only namespace despite its name.
 
