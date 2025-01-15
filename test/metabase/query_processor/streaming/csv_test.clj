@@ -29,17 +29,15 @@
   [_driver _feature _database]
   true)
 
-;;; FIXME -- not working for Athena -- test is returning dates including time (#46849)
+;; The following drivers are excluded from this test because their date types are acutally date times
 (defmethod driver/database-supports? [:athena ::date-columns-should-be-emitted-without-time]
   [_driver _feature _database]
   false)
 
-;;; FIXME -- not working for MongoDB -- test is returning dates including time (#46856)
 (defmethod driver/database-supports? [:mongo ::date-columns-should-be-emitted-without-time]
   [_driver _feature _database]
   false)
 
-;; Oracle's DATE has a time part. It is mapped to `:type/DateTime`.
 (defmethod driver/database-supports? [:oracle ::date-columns-should-be-emitted-without-time]
   [_driver _feature _database]
   false)
