@@ -374,11 +374,12 @@
     metabase.public-settings       #{metabase.public-settings}
     metabase.pulse                 #{metabase.pulse.core}
     metabase.query-processor       :any                                                             ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
-    metabase.query-analysis        #{metabase.query-analysis
-                                     metabase.query-analysis.failure-map}
+    metabase.query-analysis        #{metabase.query-analysis.core
+                                     metabase.query-analysis.init}
     metabase.request               #{metabase.request.core}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search.core
+                                     metabase.search.init
                                      ;; Need to expose this submodule, to break circular dependencies with models.
                                      metabase.search.spec}
     metabase.server                #{metabase.server.core
@@ -466,6 +467,7 @@
                                      metabase.models
                                      metabase.public-settings
                                      metabase.query-processor
+                                     metabase.task
                                      metabase.util}
     metabase.query-processor       :any
     metabase.request               #{metabase.config
@@ -492,6 +494,7 @@
    #{"-test$"                     ; anything ending in `-test`
      "test[-.]util"               ; anything that contains `test.util` or `test-util`
      "test\\.impl"                ; anything that contains `test.impl`
+     "test-setup"                 ; anything that contains `test-setup`
      "^metabase\\.test"           ; anything starting with `metabase.test`
      "^metabase\\.http-client$"}} ; `metabase.http-client` which is a test-only namespace despite its name.
 
@@ -1001,8 +1004,8 @@
    metabase.models.params.chain-filter-test/chain-filter-search                  macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.query-analysis-test/with-test-setup                           macros.metabase.models.query-analysis-test/with-test-setup
    metabase.models.user-test/with-groups                                         macros.metabase.models.user-test/with-groups
+   metabase.query-analysis.task.test-setup/with-test-setup!                      macros.metabase.query-analysis.task.test-setup/with-test-setup!
    metabase.query-processor.streaming/streaming-response                         macros.metabase.query-processor.streaming/streaming-response
-   metabase.task.setup.query-analysis-setup/with-test-setup!                     macros.metabase.task.setup.query-analysis-setup/with-test-setup!
    metabase.test.data.users/with-group-for-user                                  macros.metabase.test.data.users/with-group-for-user
    metabase.test.util/with-temp-env-var-value!                                   macros.metabase.test.util/with-temp-env-var-value!
    metabase.test.util/with-temporary-raw-setting-values                          macros.metabase.test.util/with-temporary-raw-setting-values

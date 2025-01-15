@@ -27,12 +27,21 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.realize :as t2.realize]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Database [_model] :metabase_database)
+
+(methodical/defmethod t2.pipeline/results-transform [:toucan.result-type/instances :model/Database]
+  [query-type model]
+  (comp
+   (next-method query-type model)
+    ;; This is for safety - if a secret ever gets stored in details we don't want it to leak.
+    ;; This will also help to secure properties that we set to secret in the future.
+   (map secret/clean-secret-properties-from-database)))
 
 (t2/deftransforms :model/Database
   {:details                     mi/transform-encrypted-json
@@ -197,30 +206,10 @@
            (not *normalizing-details*))
       normalize-details)))
 
-(defn- delete-orphaned-secrets!
-  "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
-  simply delete any Secret whose ID appears in the details blob, since every Secret instance that is currently created
-  is exclusively associated with a single Database.
-
-  In the future, if/when we allow arbitrary association of secret instances to database instances, this will need to
-  change and become more complicated (likely by consulting a many-to-many join table)."
-  [{:keys [id details] :as database}]
-  (when-let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
-    (let [conn-props                 (conn-props-fn (driver.u/database->driver database))
-          possible-secret-prop-names (keys (secret/conn-props->secret-props-by-name conn-props))]
-      (doseq [secret-id (reduce (fn [acc prop-name]
-                                  (if-let [secret-id (get details (keyword (str prop-name "-id")))]
-                                    (conj acc secret-id)
-                                    acc))
-                                []
-                                possible-secret-prop-names)]
-        (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
-        (t2/delete! :model/Secret :id secret-id)))))
-
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (delete-orphaned-secrets! database)
+  (secret/delete-orphaned-secrets! database)
   ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
   (when-some [table-ids (not-empty (t2/select-pks-vec :model/Table :db_id id))]
@@ -229,45 +218,6 @@
     (driver/notify-database-updated driver database)
     (catch Throwable e
       (log/error e "Error sending database deletion notification"))))
-
-(defn- handle-db-details-secret-prop!
-  "Helper fn for reducing over a map of all the secret connection-properties, keyed by name. This is side effecting. At
-  each iteration step, if there is a -value suffixed property set in the details to be persisted, then we instead insert
-  (or update an existing) Secret instance and point to the inserted -id instead."
-  [database details conn-prop-nm conn-prop]
-  (let [sub-prop   (fn [suffix]
-                     (keyword (str conn-prop-nm suffix)))
-        id-kw      (sub-prop "-id")
-        value-kw   (sub-prop "-value")
-        new-name   (format "%s for %s" (:display-name conn-prop) (:name database))
-        kind       (:secret-kind conn-prop)
-        ;; in the future, when secret values can simply be changed by passing
-        ;; in a new ID (as opposed to a new value), this behavior will change,
-        ;; but for now, we should simply look for the value
-        secret-map (secret/db-details-prop->secret-map details conn-prop-nm)
-        value      (:value secret-map)
-        src        (:source secret-map)] ; set the :source due to the -path suffix (see above)]
-    (if (nil? value) ;; secret value for this conn prop was not changed
-      details
-      (let [{:keys [id] :as secret*} (secret/upsert-secret-value!
-                                      (id-kw details)
-                                      new-name
-                                      kind
-                                      src
-                                      value)]
-        (-> details
-            ;; remove the -value keyword (since in the persisted details blob, we only ever want to store the -id),
-            ;; but the value may be re-added by expand-inferred-secret-values below (if appropriate)
-            (dissoc value-kw (sub-prop "-path"))
-            (assoc id-kw id)
-            (secret/expand-inferred-secret-values conn-prop-nm conn-prop secret*))))))
-
-(defn- handle-secrets-changes [{:keys [details] :as database}]
-  (let [updated-details (secret/reduce-over-details-secret-values
-                         (driver.u/database->driver database)
-                         details
-                         (partial handle-db-details-secret-prop! database))]
-    (assoc database :details updated-details)))
 
 (defn- handle-uploads-enabled!
   "This function maintains the invariant that only one database can have uploads_enabled=true."
@@ -308,7 +258,7 @@
                  infer-db-schedules
 
                  (some? (:details changes))
-                 handle-secrets-changes
+                 secret/handle-incoming-client-secrets!
 
                  (:uploads_enabled changes)
                  handle-uploads-enabled!)
@@ -336,7 +286,7 @@
       (cond->
        (not details)             (assoc :details {})
        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
-      handle-secrets-changes
+      secret/handle-incoming-client-secrets!
       handle-uploads-enabled!
       infer-db-schedules))
 
@@ -388,10 +338,6 @@
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 
-(def ^:const protected-password
-  "The string to replace passwords with when serializing Databases."
-  "**MetabasePass**")
-
 (defn sensitive-fields-for-db
   "Gets all sensitive fields that should be redacted in API responses for a given database. Delegates to
   driver.u/sensitive-fields using the given database's driver (if valid), so refer to that for full details. If a valid
@@ -416,11 +362,13 @@
               (do (log/debug "Fully redacting database details during json encoding.")
                   (dissoc db :details))
               (do (log/debug "Redacting sensitive fields within database details during json encoding.")
-                  (update db :details (fn [details]
-                                        (reduce
-                                         #(m/update-existing %1 %2 (constantly protected-password))
-                                         details
-                                         (sensitive-fields-for-db db))))))]
+                  (-> db
+                      (secret/to-json-hydrate-redacted-secrets)
+                      (update :details (fn [details]
+                                         (reduce
+                                          #(m/update-existing %1 %2 (fn [v] (when v secret/protected-password)))
+                                          details
+                                          (sensitive-fields-for-db db)))))))]
      (update db :settings
              (fn [settings]
                (when (map? settings)

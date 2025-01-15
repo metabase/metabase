@@ -48,34 +48,9 @@
   [value]
   (if (= value :null) nil value))
 
-(defn- has-source-or-underlying-source-fn
-  [source]
-  (fn has-source?
-    ([column]
-     (= (:lib/source column) source))
-    ([query column]
-     (and
-      (seq column)
-      (or (has-source? column)
-          (has-source? (lib.underlying/top-level-column query column)))))))
-
-(def aggregation-sourced?
-  "Does column or top-level-column have :source/aggregations?"
-  (has-source-or-underlying-source-fn :source/aggregations))
-
-(def breakout-sourced?
-  "Does column or top-level-column have :source/breakouts?"
-  (has-source-or-underlying-source-fn :source/breakouts))
-
-(defn strictly-underlying-aggregation?
-  "Does the top-level-column for `column` in `query` have :source/aggregations?"
-  [query column]
-  (and (not (aggregation-sourced? column))
-       (aggregation-sourced? query column)))
-
 (defn dimensions-from-breakout-columns
   "Convert `row` data into dimensions for `column`s that come from an aggregation in a previous stage."
   [query column row]
-  (when (strictly-underlying-aggregation? query column)
-    (not-empty (filterv #(breakout-sourced? query (:column %))
+  (when (lib.underlying/strictly-underlying-aggregation? query column)
+    (not-empty (filterv #(lib.underlying/breakout-sourced? query (:column %))
                         row))))
