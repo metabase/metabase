@@ -805,10 +805,12 @@ export class UnconnectedDataSelector extends Component {
     const {
       className,
       style,
+      triggerIconSize,
       triggerElement,
       getTriggerElementContent: TriggerComponent,
       hasTriggerExpandControl,
       readOnly,
+      isMantine,
     } = this.props;
 
     if (triggerElement) {
@@ -819,11 +821,11 @@ export class UnconnectedDataSelector extends Component {
 
     return (
       <Trigger
-        className={cx(this.getTriggerClasses(), className)}
+        className={className}
         style={style}
         showDropdownIcon={!readOnly && hasTriggerExpandControl}
-        iconSize="1rem"
-        isMantine
+        iconSize={isMantine ? "1rem" : triggerIconSize}
+        isMantine={isMantine}
       >
         <TriggerComponent
           database={selectedDatabase}
@@ -1088,13 +1090,23 @@ export class UnconnectedDataSelector extends Component {
 
   render() {
     if (this.props.isPopover) {
+      const triggerElement = this.getTriggerElement();
+
+      const triggerTargetClassName = cx(
+        this.props.containerClassName,
+        this.getTriggerClasses(),
+      );
+
       return (
         <Popover
           onClose={this.handleClose}
           position="bottom-start"
           opened={this.isPopoverOpen()}
         >
-          <Popover.Target>{this.getTriggerElement()}</Popover.Target>
+          <Popover.Target>
+            <Box className={triggerTargetClassName}>{triggerElement}</Box>
+          </Popover.Target>
+
           <Popover.Dropdown>{this.renderContent()}</Popover.Dropdown>
         </Popover>
       );
