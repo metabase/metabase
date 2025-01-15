@@ -1,8 +1,8 @@
-(ns metabase.api.email-test
+(ns metabase.channel.api.email-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.email :as api.email]
+   [metabase.channel.api.email :as api.email]
    [metabase.channel.email :as email]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]

@@ -1,4 +1,4 @@
-(ns ^{:added "0.51.0"} metabase.api.channel
+(ns ^{:added "0.51.0"} metabase.channel.api.channel
   "/api/channel endpoints.
 
   Currently only used for http channels."

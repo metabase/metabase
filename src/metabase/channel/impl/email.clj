@@ -11,7 +11,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.handlebars :as handlebars]
-   [metabase.models.channel :as models.channel]
+   [metabase.channel.models.channel :as models.channel]
    [metabase.models.notification :as models.notification]
    [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]

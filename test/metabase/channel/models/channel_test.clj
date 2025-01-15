@@ -1,4 +1,4 @@
-(ns metabase.models.channel-test
+(ns metabase.channel.models.channel-test
   (:require
    [clojure.test :refer :all]
    [metabase.notification.test-util :as notification.tu]

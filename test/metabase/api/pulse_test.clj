@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.card-test :as api.card-test]
-   [metabase.api.channel-test :as api.channel-test]
+   [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.api.pulse :as api.pulse]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]

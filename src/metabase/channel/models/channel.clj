@@ -1,4 +1,4 @@
-(ns ^{:added "0.51.0"} metabase.models.channel
+(ns ^{:added "0.51.0"} metabase.channel.models.channel
   (:require
    [malli.core :as mc]
    [metabase.models.audit-log :as audit-log]

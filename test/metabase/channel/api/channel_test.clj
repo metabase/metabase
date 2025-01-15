@@ -1,4 +1,4 @@
-(ns metabase.api.channel-test
+(ns metabase.channel.api.channel-test
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]

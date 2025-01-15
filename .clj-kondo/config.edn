@@ -343,7 +343,8 @@
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     ;; TODO -- this needs a real API namespace, ideally it would expose `metabase.channel.core` and
     ;; `metabase.channel.init` and that's it.
-    metabase.channel               #{metabase.channel.core
+    metabase.channel               #{metabase.channel.api
+                                     metabase.channel.core
                                      metabase.channel.email
                                      metabase.channel.email.messages
                                      metabase.channel.init
@@ -664,7 +665,6 @@
     metabase.models.collection                                    collection
     metabase.models.collection.graph                              graph
     metabase.models.collection-permission-graph-revision          c-perm-revision
-    metabase.models.channel                                       models.channel
     metabase.models.dashboard-card                                dashboard-card
     metabase.models.database                                      database
     metabase.models.dependency                                    dependency

@@ -1,4 +1,4 @@
-(ns metabase.api.email
+(ns metabase.channel.api.email
   "/api/email endpoints"
   (:require
    [clojure.data :as data]
