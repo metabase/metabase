@@ -1,4 +1,4 @@
-(ns metabase.api.pivots
+(ns metabase.query-processor.pivot.test-util
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]

@@ -314,8 +314,7 @@
    ;;    this set. Ideally this set should only have one namespace, but restricting it to a set of several is still
    ;;    better than `:any`.
    ;;
-   ;; 3. `nil` or not listed here -- we default to assuming there is one API namespace that matches the name of the
-   ;;    module itself, e.g. the module namespace for `metabase.setup` would be `metabase.setup`.
+   ;; 3. `nil` or not listed here -- we default to assuming there is one API namespace called `<module>.core`
    ;;
    ;; `nil` or an empty set  Otherwise this should be a set of namespace symbols.
    ;;
@@ -328,23 +327,34 @@
                                      metabase.analytics.sdk}                                        ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze.core}
     metabase.api                   #{metabase.api.common
+                                     ;; I don't really like making all these namespaces external but they have to be
+                                     ;; for now until we can shrink this mega-module down a little bit (by moving API
+                                     ;; namespaces out into different modules)... eventually `api` will just be a
+                                     ;; general low-level API utils/macros module and at that point it can probably
+                                     ;; get a single API namespace. Please try to avoid adding more stuff here if you
+                                     ;; can tho. -- Cam
+                                     metabase.api.common.validation
                                      metabase.api.dataset
                                      metabase.api.macros
                                      metabase.api.permission-graph
                                      metabase.api.routes}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
     metabase.audit                 #{metabase.audit}
+    metabase.auth-provider         #{metabase.auth-provider}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     metabase.channel               #{metabase.channel.core
                                      metabase.channel.init
                                      metabase.channel.render.core
                                      metabase.channel.template.core}
     metabase.config                #{metabase.config}
+    ;; this is not even a real module, it's an external library but its starts with a `metabase.` namespace.
+    metabase.connection-pool       #{metabase.connection-pool}
     metabase.core                  #{metabase.core.initialization-status}                           ; TODO -- only namespace used outside of EE, this probably belongs in `metabase.server` anyway since that's the only place it's used.
     metabase.db                    #{metabase.db
                                      metabase.db.metadata-queries                                   ; TODO this should probably be separate from metabase.db
                                      metabase.db.query                                              ; TODO this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
                                      metabase.db.setup}                                             ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
     metabase.driver                :any                                                             ; TODO -- 19 namespaces!!!! CRY
+    metabase.eid-translation       #{metabase.eid-translation}
     metabase.email                 #{metabase.email
                                      metabase.email.messages
                                      metabase.email.result-attachment}                              ; TODO -- consolidate these into a real API namespace.
@@ -401,7 +411,8 @@
                                      ;; this module but some things need to import it so
                                      ;; `metabase.server.streaming_response.StreamingReponse` comes into existence...
                                      metabase.server.streaming-response}
-    metabase.setup                 #{metabase.setup}
+    metabase.setup                 #{metabase.setup.api
+                                     metabase.setup.core}
     metabase.sync                  #{metabase.sync
                                      metabase.sync.analyze
                                      metabase.sync.concurrent

@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.setup-test
+(ns ^:mb/once metabase.setup.core-test
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
@@ -9,7 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
-   [metabase.setup :as setup]
+   [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.encryption :as encryption]

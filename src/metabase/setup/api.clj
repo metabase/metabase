@@ -1,4 +1,4 @@
-(ns metabase.api.setup
+(ns metabase.setup.api
   (:require
    [compojure.core :refer [GET POST]]
    [java-time.api :as t]
@@ -19,7 +19,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
-   [metabase.setup :as setup]
+   [metabase.setup.core :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]

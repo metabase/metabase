@@ -1,11 +1,10 @@
-(ns ^:mb/once metabase.api.setup-test
+(ns ^:mb/once metabase.setup.api-test
   "Tests for /api/setup endpoints."
   (:require
    [clojure.spec.alpha :as s]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.api.setup :as api.setup]
    [metabase.config :as config]
    [metabase.core.core :as mbc]
    [metabase.db :as mdb]
@@ -17,7 +16,8 @@
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
-   [metabase.setup :as setup]
+   [metabase.setup.api :as api.setup]
+   [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
