@@ -362,7 +362,6 @@
                                      metabase.legacy-mbql.util}                                     ; TODO -- consolidate these into a real API namespace.
     metabase.lib                   :any                                                             ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
     metabase.logger                #{metabase.logger metabase.logger.init}
-    metabase.metabot               #{metabase.metabot}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
     metabase.notification          #{metabase.notification.core
@@ -454,7 +453,6 @@
     metabase.lib                   :any
     metabase.logger                #{metabase.config
                                      metabase.plugins}
-    metabase.metabot               :any
     metabase.models                :any
     metabase.moderation            :any
     metabase.notification          :any
