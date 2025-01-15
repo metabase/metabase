@@ -27,7 +27,7 @@
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our email functions into our normal api error response structure."
-  [{::email/keys [:metabase.channel.email/error]}]
+  [{::email/keys [error]}]
   (when error
     (let [conn-error  {:errors {:email-smtp-host "Wrong host or port"
                                 :email-smtp-port "Wrong host or port"}}
