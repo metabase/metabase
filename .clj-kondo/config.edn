@@ -437,7 +437,6 @@
     metabase.auth-provider         #{metabase.util
                                      metabase.premium-features}
     metabase.cmd                   :any
-    metabase.compatibility         :any
     metabase.channel               :any
     metabase.config                #{metabase.plugins}
     metabase.core                  :any
