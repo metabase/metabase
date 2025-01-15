@@ -163,6 +163,7 @@ export class UnconnectedDataSelector extends Component {
     tableFilter: PropTypes.func,
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
+    containerClassName: PropTypes.string,
     canSelectMetric: PropTypes.bool,
 
     // from search entity list loader
