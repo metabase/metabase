@@ -57,7 +57,7 @@ module.exports = {
       },
       {
         test: /\.(tsx?|jsx?)$/,
-        exclude: /node_modules/,
+        exclude: /(node_modules|resources\/embedding-sdk\/dist)/,
         use: {
           loader: "babel-loader",
           options: {

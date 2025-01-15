@@ -60,7 +60,6 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [LDAP](api/ldap.md)
 - [LLM](api/llm.md)
 - [Login history](api/login-history.md)
-- [Metabot](api/metabot.md)
 - [Model index](api/model-index.md)
 - [Native query snippet](api/native-query-snippet.md)
 - [Notify](api/notify.md)
