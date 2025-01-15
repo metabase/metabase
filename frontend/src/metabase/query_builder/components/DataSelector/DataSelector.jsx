@@ -598,6 +598,12 @@ export class UnconnectedDataSelector extends Component {
     return steps[index];
   }
 
+  togglePopoverOpen = () => {
+    this.setStateWithComputedState({
+      isPopoverOpen: !this.state.isPopoverOpen,
+    });
+  };
+
   nextStep = async (stateChange = {}, skipSteps = true) => {
     const nextStep = this.getNextStep();
     if (!nextStep) {
@@ -929,9 +935,7 @@ export class UnconnectedDataSelector extends Component {
       const table = this.props.metadata.table(tableOrCardId);
       this.props.setSourceTableFn(tableOrCardId, table.db_id);
     }
-    this.setStateWithComputedState({
-      isPopoverOpen: !this.state.isPopoverOpen,
-    });
+    this.togglePopoverOpen();
     this.handleClose();
   };
 
@@ -960,9 +964,7 @@ export class UnconnectedDataSelector extends Component {
       const table = this.props.metadata.table(tableOrCardId);
       this.props.setSourceTableFn(table.id, table.db_id);
     }
-    this.setStateWithComputedState({
-      isPopoverOpen: !this.state.isPopoverOpen,
-    });
+    this.togglePopoverOpen();
     this.handleClose();
   };
 
@@ -1104,7 +1106,12 @@ export class UnconnectedDataSelector extends Component {
           opened={this.isPopoverOpen()}
         >
           <Popover.Target>
-            <Box className={triggerTargetClassName}>{triggerElement}</Box>
+            <Box
+              className={triggerTargetClassName}
+              onClick={() => this.togglePopoverOpen()}
+            >
+              {triggerElement}
+            </Box>
           </Popover.Target>
 
           <Popover.Dropdown>{this.renderContent()}</Popover.Dropdown>
