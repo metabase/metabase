@@ -27,11 +27,11 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.task :as task]
-   [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
+   [metabase.test-runner.assert-exprs]
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
-   [metabase.test.util.log :as tu.log]
+   [metabase.test.util.log]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -52,8 +52,9 @@
 
 (set! *warn-on-reflection* true)
 
-(comment tu.log/keep-me
-         test-runner.assert-exprs/keep-me)
+(comment
+  metabase.test-runner.assert-exprs/keep-me
+  metabase.test.util.log/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -754,9 +755,14 @@
 ;; It is safe to call `search/reindex!` when we are in a `with-temp-index-table` scope.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-model-cleanup [models f]
-  {:pre [(sequential? models) (every? #(or (isa? % :metabase/model)
-                                           ;; to support [[:model/Model :updated_at]] syntax
-                                           (isa? (first %) :metabase/model)) models)]}
+  {:pre [(sequential? models) (every?
+                               ;; to support [[:model/Model :updated_at]] syntax
+                               #(isa? (t2/resolve-model
+                                       (if (sequential? %)
+                                         (first %)
+                                         %))
+                                      :metabase/model)
+                               models)]}
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [models (map model->model&pk models)
