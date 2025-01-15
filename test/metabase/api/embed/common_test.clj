@@ -1,13 +1,24 @@
 (ns metabase.api.embed.common-test
-  (:require [clojure.test :refer [deftest is testing use-fixtures]]
-            [metabase.analytics.stats :as stats]
-            [metabase.api.embed.common :as api.embed.common]
-            [metabase.eid-translation :as eid-translation]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [toucan2.core :as t2]))
+  (:require
+   [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.analytics.stats :as stats]
+   [metabase.api.common :as api]
+   [metabase.api.embed.common :as api.embed.common]
+   [metabase.eid-translation :as eid-translation]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(deftest ^:parallel api-name->model-test
+  (testing "api-name->model should be up-to-date"
+    (is (= (into {}
+                 (keep (fn [[k {:keys [db-model]}]]
+                         (when (#'api.embed.common/api-model? db-model)
+                           [(keyword k) db-model])))
+                 api/model->db-model)
+           @#'api.embed.common/api-name->model))))
 
 (deftest ->id-test
   (#'stats/clear-translation-count!)

@@ -340,7 +340,7 @@
                     (log/warnf e "Error updating database %d for randomized schedules" (u/the-id db))
                     counter))))
              (t2/reducible-query
-              {:select [:id :details]
+              {:select [:*]
                :from   [:metabase_database]
                :where  [:or
                         [:in
