@@ -1,7 +1,6 @@
 (ns metabase.lib.drill-thru.summarize-column-test
   (:require
-   [clojure.test :refer [deftest is testing]]
-   [medley.core :as m]
+   [clojure.test :refer [deftest testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
@@ -70,7 +69,7 @@
         :query-table "ORDERS"
         :column-name column-name}))))
 
-(deftest ^:parallel summarize-column-not-returned-for-aggregate-or-breakout-cols-for-multi-stage-queries-test
+(deftest ^:parallel summarize-column-not-returned-for-aggregate-or-breakout-cols-for-multi-stage-query-test
   (doseq [column-name ["PRODUCT_ID" "count"]]
     (testing (str "summarize-column drill not returned for ORDERS." column-name)
       (lib.drill-thru.tu/test-drill-not-returned
@@ -78,14 +77,7 @@
         :click-type  :header
         :query-kinds [:mbql]
         :query-type  :aggregated
-        :custom-query (let [base-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                                           (lib/aggregate (lib/count))
-                                           (lib/breakout (meta/field-metadata :orders :product-id))
-                                           lib/append-stage)
-                            count-col  (m/find-first #(= (:name %) "count")
-                                                     (lib/returned-columns base-query))
-                            _          (is (some? count-col))]
-                        (lib/filter base-query (lib/> count-col 0)))
+        :custom-query #(lib.drill-thru.tu/append-filter-stage % "count")
         :custom-row   {"PRODUCT_ID" 3
                        "count"      77}
         :column-name column-name}))))
