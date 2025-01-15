@@ -5,14 +5,13 @@ import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 interface ParameterFieldSetProps {
-  fieldHasValueOrFocus?: boolean;
+  fieldHasValueOrFocus: boolean;
 }
 
 export const ParameterFieldSet = styled(FieldSet)<ParameterFieldSetProps>`
   background: var(--mb-color-background);
   display: flex;
   align-items: center;
-  transition: opacity 500ms linear;
   border: 2px solid
     ${props =>
       props.fieldHasValueOrFocus ? color("brand") : "var(--mb-color-border)"};
