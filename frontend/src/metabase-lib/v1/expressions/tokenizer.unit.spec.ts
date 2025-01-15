@@ -40,7 +40,7 @@ describe("tokenizer", () => {
 
     expect(tokens).toEqual([
       { type: 4, start: 0, end: 4 }, // case
-      { type: 1, op: "(", start: 4, end: 5 }, // ()
+      { type: 1, op: "(", start: 4, end: 5 }, // (
       { type: 4, start: 5, end: 9 }, // [ID]
       { type: 1, op: "=", start: 10, end: 11 }, // =
       { type: 2, start: 12, end: 13 }, // 1
