@@ -379,6 +379,7 @@
     metabase.request               #{metabase.request.core}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search.core
+                                     metabase.search.init
                                      ;; Need to expose this submodule, to break circular dependencies with models.
                                      metabase.search.spec}
     metabase.server                #{metabase.server.core

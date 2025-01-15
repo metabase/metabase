@@ -9,14 +9,12 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.models]
    [metabase.models.revision-test]
    [metabase.models.serialization :as serdes]))
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.models/keep-me
-         metabase.models.revision-test/keep-me)
+(comment metabase.models.revision-test/keep-me)
 
 (def ^:private entities-external-name
   "Entities with external names, so they don't need a generated entity_id."
@@ -95,8 +93,6 @@
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (v2.entity-ids/toucan-models)
-                              (remove (fn [model]
-                                        (not= (namespace model) "model")))
                               (remove entities-not-exported)
                               (remove entities-external-name))]
     (testing "All exported models should get entity id except those with other unique property (like name)"
