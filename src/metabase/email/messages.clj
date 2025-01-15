@@ -269,7 +269,10 @@
     (email/send-message! message)))
 
 (defn generate-pulse-unsubscribe-hash
-  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
+  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions.
+
+  Deprecated: only used for dashboard subscriptions for now, should be migrated to `generate-notification-unsubscribe-hash`
+  once we migrate all the dashboard subscriptions to the new notification system."
   [pulse-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
@@ -279,12 +282,12 @@
 
 (defn generate-notification-unsubscribe-hash
   "Generates hash to allow for non-users to unsubscribe from notifications."
-  [notification-handler-id email]
+  [notification-id email]
   (codecs/bytes->hex
    (encryption/validate-and-hash-secret-key
-    (json/encode {:salt                    (public-settings/site-uuid-for-unsubscribing-url)
-                  :email                   email
-                  :notification-handler-id notification-handler-id}))))
+    (json/encode {:salt            (public-settings/site-uuid-for-unsubscribing-url)
+                  :email           email
+                  :notification-id notification-id}))))
 
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."

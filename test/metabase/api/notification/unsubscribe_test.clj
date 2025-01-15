@@ -58,52 +58,55 @@
                    (api:unsubscribe 400 handler-id email)))))
 
         (testing "Valid hash and email"
-          (mt/with-temp [:model/Notification        {notification-id :id} {}
-                         :model/NotificationHandler {handler-id :id} {:notification_id notification-id
-                                                                      :channel_type   :channel/email}
+          (mt/with-temp [:model/Notification          {notification-id :id} {}
+                         :model/NotificationHandler   {handler-id :id} {:notification_id notification-id
+                                                                        :channel_type   :channel/email}
                          :model/NotificationRecipient nr {:notification_handler_id handler-id
                                                           :type :notification-recipient/raw-value
                                                           :details {:value email}}]
-            (is (= {:status "success", :title "Notification Unsubscribed"}
+            (is (= {:status "success"
+                    :title  "Notification Unsubscribed"}
                    (api:unsubscribe 200 handler-id email)))
             (is (not (t2/exists? :model/NotificationRecipient (:id nr))))
-            (is (= {:topic    :subscription-unsubscribe
+            (is (= {:topic    :notification-unsubscribe-ex
                     :user_id  nil
-                    :model    "NotificationHandler"
+                    :model    "Notification"
                     :model_id nil
                     :details  {:email "test@metabase.com"}}
-                   (mt/latest-audit-log-entry :subscription-unsubscribe)))))))))
+                   (mt/latest-audit-log-entry :notification-unsubscribe-ex)))))))))
 
 (deftest unsubscribe-undo-test
-  (testing "POST /api/notification/unsubscribe/undo"
-    (let [email "test@metabase.com"]
-      (testing "Invalid hash"
-        (is (= "Invalid hash."
-               (api:unsubscribe-undo 400 1 email "fake-hash"))))
+  (mt/with-premium-features #{:audit-app}
+    (testing "POST /api/notification/unsubscribe/undo"
+      (let [email "test@metabase.com"]
+        (testing "Invalid hash"
+          (is (= "Invalid hash."
+                 (api:unsubscribe-undo 400 1 email "fake-hash"))))
 
-      (testing "Valid hash and email doesn't exist (should succeed and create recipient)"
-        (mt/with-temp [:model/Notification        {notification-id :id} {}
-                       :model/NotificationHandler {handler-id :id} {:notification_id notification-id
-                                                                    :channel_type   :channel/email}]
-          (is (= {:status "success" :title "Notification Resubscribed"}
-                 (api:unsubscribe-undo 200 handler-id email)))
-          (is (=? [{:notification_handler_id handler-id
-                    :type :notification-recipient/raw-value
-                    :details {:value email}}]
-                  (t2/select :model/NotificationRecipient :notification_handler_id handler-id)))
-          (is (= {:topic    :subscription-unsubscribe-undo
-                  :user_id  nil
-                  :model    "NotificationHandler"
-                  :model_id nil
-                  :details  {:email "test@metabase.com"}}
-                 (mt/latest-audit-log-entry :subscription-unsubscribe-undo)))))
+        (testing "Valid hash and email doesn't exist (should succeed and create recipient)"
+          (mt/with-temp [:model/Notification        {notification-id :id} {}
+                         :model/NotificationHandler {handler-id :id} {:notification_id notification-id
+                                                                      :channel_type   :channel/email}]
+            (is (= {:status "success"
+                    :title  "Notification Resubscribed"}
+                   (api:unsubscribe-undo 200 handler-id email)))
+            (is (=? [{:notification_handler_id handler-id
+                      :type                    :notification-recipient/raw-value
+                      :details                 {:value email}}]
+                    (t2/select :model/NotificationRecipient :notification_handler_id handler-id)))
+            (is (= {:topic    :notification-unsubscribe-undo-ex
+                    :user_id  nil
+                    :model    "Notification"
+                    :model_id nil
+                    :details  {:email "test@metabase.com"}}
+                   (mt/latest-audit-log-entry :notification-unsubscribe-undo-ex)))))
 
-      (testing "Valid hash but email already exists"
-        (mt/with-temp [:model/Notification        {notification-id :id} {}
-                       :model/NotificationHandler {handler-id :id} {:notification_id notification-id
-                                                                    :channel_type   :channel/email}
-                       :model/NotificationRecipient _ {:notification_handler_id handler-id
-                                                       :type :notification-recipient/raw-value
-                                                       :details {:value email}}]
-          (is (= "Email already exist."
-                 (api:unsubscribe-undo 400 handler-id email))))))))
+        (testing "Valid hash but email already exists"
+          (mt/with-temp [:model/Notification          {notification-id :id} {}
+                         :model/NotificationHandler   {handler-id :id} {:notification_id notification-id
+                                                                        :channel_type   :channel/email}
+                         :model/NotificationRecipient _ {:notification_handler_id handler-id
+                                                         :type :notification-recipient/raw-value
+                                                         :details {:value email}}]
+            (is (= "Email already exist."
+                   (api:unsubscribe-undo 400 handler-id email)))))))))

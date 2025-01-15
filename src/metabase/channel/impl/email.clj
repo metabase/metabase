@@ -1,6 +1,5 @@
 (ns metabase.channel.impl.email
   (:require
-   [buddy.core.codecs :as codecs]
    [hiccup.core :refer [html]]
    [medley.core :as m]
    [metabase.channel.core :as channel]
@@ -16,9 +15,7 @@
    [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -49,22 +46,21 @@
 ;;                                        Render Utils                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn generate-dashboard-sub-unsubscribe-hash
-  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
-  [pulse-id email]
-  (codecs/bytes->hex
-   (encryption/validate-and-hash-secret-key
-    (json/encode {:salt     (public-settings/site-uuid-for-unsubscribing-url)
-                  :email    email
-                  :pulse-id pulse-id}))))
-
-(defn- unsubscribe-url-for-non-user
-  [dashboard-subscription-id non-user-email]
+(defn- pulse-unsubscribe-url-for-non-user
+  [pulse-id non-user-email]
   (str (urls/unsubscribe-url)
        "?"
-       (codec/form-encode {:hash     (generate-dashboard-sub-unsubscribe-hash dashboard-subscription-id non-user-email)
+       (codec/form-encode {:hash     (messages/generate-pulse-unsubscribe-hash pulse-id non-user-email)
                            :email    non-user-email
-                           :pulse-id dashboard-subscription-id})))
+                           :pulse-id pulse-id})))
+
+(defn- notification-unsubscribe-url-for-non-user
+  [notification-handler-id non-user-email]
+  (str (urls/unsubscribe-url)
+       "?"
+       (codec/form-encode {:hash                    (messages/generate-notification-unsubscribe-hash notification-handler-id non-user-email)
+                           :email                   non-user-email
+                           :notification-handler-id notification-handler-id})))
 
 (defn- render-part
   [timezone part options]
@@ -207,7 +203,9 @@
                                                                   "Unsubscribe")
                                                :management_url  (if (nil? non-user-email)
                                                                   (urls/notification-management-url)
-                                                                  (unsubscribe-url-for-non-user (:id notification_card) non-user-email))}))]
+                                                                  (let [email-handler-id (:notification_handler_id
+                                                                                          (m/find-first #(= non-user-email (-> % :details :value)) recipients))]
+                                                                    (notification-unsubscribe-url-for-non-user email-handler-id non-user-email)))}))]
     (construct-emails template message-context-fn attachments recipients)))
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -281,7 +279,7 @@
                                                                           "Unsubscribe")
                                                     :management_url     (if (nil? non-user-email)
                                                                           (urls/notification-management-url)
-                                                                          (unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
+                                                                          (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
                                                     :filters           (when parameters
                                                                          (render-filters parameters))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]

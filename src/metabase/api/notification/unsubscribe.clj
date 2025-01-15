@@ -40,9 +40,9 @@
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if matching-recipient
         (t2/delete! :model/NotificationRecipient (:id matching-recipient))
-        (throw (ex-info (tru "Email doesn''t exist.") {:status-code 400}))))
-    (events/publish-event! :event/subscription-unsubscribe {:object {:email email}})
-    {:status :success :title "Notification Unsubscribed"}))
+        (throw (ex-info (tru "Email doesn''t exist.") {:status-code 400})))))
+  (events/publish-event! :event/notification-unsubscribe-ex {:object {:email email}})
+  {:status :success :title "Notification Unsubscribed"})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/undo"
@@ -60,8 +60,8 @@
         (t2/insert! :model/NotificationRecipient {:type                    :notification-recipient/raw-value
                                                   :details                 {:value email}
                                                   :notification_handler_id notification-handler-id})
-        (throw (ex-info (tru "Email already exist.") {:status-code 400}))))
-    (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}}))
+        (throw (ex-info (tru "Email already exist.") {:status-code 400})))))
+  (events/publish-event! :event/notification-unsubscribe-undo-ex {:object {:email email}})
   {:status :success :title "Notification Resubscribed"})
 
 (api/define-routes)
