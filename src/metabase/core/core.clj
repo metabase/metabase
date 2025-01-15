@@ -1,4 +1,4 @@
-(ns metabase.core
+(ns metabase.core.core
   (:require
    [clojure.string :as str]
    [clojure.tools.trace :as trace]
@@ -28,9 +28,9 @@
    [metabase.server.core :as server]
    [metabase.setup :as setup]
    [metabase.task :as task]
-   [metabase.troubleshooting :as troubleshooting]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.system-info :as u.system-info])
   (:import
    (java.lang.management ManagementFactory)))
 
@@ -102,7 +102,7 @@
   "General application initialization function which should be run once at application startup."
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
-  (log/infof "System info:\n %s" (u/pprint-to-str (troubleshooting/system-info)))
+  (log/infof "System info:\n %s" (u/pprint-to-str (u.system-info/system-info)))
   (init-status/set-progress! 0.1)
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
@@ -216,7 +216,7 @@
 ;;; ------------------------------------------------ App Entry Point -------------------------------------------------
 
 (defn entrypoint
-  "Launch Metabase in standalone mode. (Main application entrypoint is [[metabase.bootstrap/-main]].)"
+  "Launch Metabase in standalone mode. (Main application entrypoint is [[metabase.core.bootstrap/-main]].)"
   [& [cmd & args]]
   (maybe-enable-tracing)
   (if cmd

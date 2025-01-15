@@ -12,6 +12,7 @@
    [metabase.events.init]
    [metabase.logger.init]
    [metabase.notification.init]
+   [metabase.query-analysis.init]
    [metabase.task.init]))
 
 ;; load EE init code on system launch if it exists.

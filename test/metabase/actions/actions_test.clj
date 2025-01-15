@@ -1,7 +1,7 @@
-(ns ^:mb/driver-tests metabase.actions-test
+(ns ^:mb/driver-tests metabase.actions.actions-test
   (:require
    [clojure.test :refer :all]
-   [metabase.actions :as actions]
+   [metabase.actions.actions :as actions]
    [metabase.actions.execution :as actions.execution]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]

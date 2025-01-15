@@ -550,13 +550,6 @@ export const ActionsApi = {
   ),
 };
 
-export const MetabotApi = {
-  modelPrompt: POST("/api/metabot/model/:modelId"),
-  databasePrompt: POST("/api/metabot/database/:databaseId"),
-  databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
-  sendFeedback: POST("/api/metabot/feedback"),
-};
-
 export const CacheConfigApi = {
   list: GET("/api/cache"),
   update: PUT("/api/cache"),

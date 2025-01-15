@@ -323,7 +323,7 @@
                                      metabase.analytics.snowplow
                                      metabase.analytics.stats
                                      metabase.analytics.sdk}                                        ; TODO -- consolidate these into a real API namespace.
-    metabase.analyze               #{metabase.analyze}
+    metabase.analyze               #{metabase.analyze.core}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
                                      metabase.api.macros
@@ -333,7 +333,6 @@
                                      metabase.async.streaming-response.thread-pool
                                      metabase.async.util}                                           ; TODO -- consolidate these into a real API namespace.
     metabase.audit                 #{metabase.audit}
-    metabase.bootstrap             #{metabase.bootstrap}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     metabase.channel               #{metabase.channel.core
                                      metabase.channel.init
@@ -363,7 +362,6 @@
                                      metabase.legacy-mbql.util}                                     ; TODO -- consolidate these into a real API namespace.
     metabase.lib                   :any                                                             ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
     metabase.logger                #{metabase.logger metabase.logger.init}
-    metabase.metabot               #{metabase.metabot}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
     metabase.notification          #{metabase.notification.core
@@ -376,8 +374,8 @@
     metabase.public-settings       #{metabase.public-settings}
     metabase.pulse                 #{metabase.pulse.core}
     metabase.query-processor       :any                                                             ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
-    metabase.query-analysis        #{metabase.query-analysis
-                                     metabase.query-analysis.failure-map}
+    metabase.query-analysis        #{metabase.query-analysis.core
+                                     metabase.query-analysis.init}
     metabase.request               #{metabase.request.core}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search.core
@@ -415,7 +413,6 @@
                                      ;; We need to expose this to the metabase.search module.
                                      ;; Ideally, it would just live inside that module.
                                      metabase.task.search-index}                                    ; TODO -- consolidate these into a real API namespace.
-    metabase.troubleshooting       #{metabase.troubleshooting}
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}
     metabase.util                  :any                                                             ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
@@ -439,9 +436,7 @@
     metabase.audit                 :any
     metabase.auth-provider         #{metabase.util
                                      metabase.premium-features}
-    metabase.bootstrap             #{}
     metabase.cmd                   :any
-    metabase.compatibility         :any
     metabase.channel               :any
     metabase.config                #{metabase.plugins}
     metabase.core                  :any
@@ -456,7 +451,6 @@
     metabase.lib                   :any
     metabase.logger                #{metabase.config
                                      metabase.plugins}
-    metabase.metabot               :any
     metabase.models                :any
     metabase.moderation            :any
     metabase.notification          :any
@@ -472,6 +466,7 @@
                                      metabase.models
                                      metabase.public-settings
                                      metabase.query-processor
+                                     metabase.task
                                      metabase.util}
     metabase.query-processor       :any
     metabase.request               #{metabase.config
@@ -484,7 +479,6 @@
     metabase.setup                 :any
     metabase.sync                  :any
     metabase.task                  :any
-    metabase.troubleshooting       :any
     metabase.types                 #{metabase.util}
     metabase.upload                :any
     metabase.util                  :any ; TODO -- this should probably be #{}
@@ -499,6 +493,7 @@
    #{"-test$"                     ; anything ending in `-test`
      "test[-.]util"               ; anything that contains `test.util` or `test-util`
      "test\\.impl"                ; anything that contains `test.impl`
+     "test-setup"                 ; anything that contains `test-setup`
      "^metabase\\.test"           ; anything starting with `metabase.test`
      "^metabase\\.http-client$"}} ; `metabase.http-client` which is a test-only namespace despite its name.
 
@@ -1008,8 +1003,8 @@
    metabase.models.params.chain-filter-test/chain-filter-search                  macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.query-analysis-test/with-test-setup                           macros.metabase.models.query-analysis-test/with-test-setup
    metabase.models.user-test/with-groups                                         macros.metabase.models.user-test/with-groups
+   metabase.query-analysis.task.test-setup/with-test-setup!                      macros.metabase.query-analysis.task.test-setup/with-test-setup!
    metabase.query-processor.streaming/streaming-response                         macros.metabase.query-processor.streaming/streaming-response
-   metabase.task.setup.query-analysis-setup/with-test-setup!                     macros.metabase.task.setup.query-analysis-setup/with-test-setup!
    metabase.test.data.users/with-group-for-user                                  macros.metabase.test.data.users/with-group-for-user
    metabase.test.util/with-temp-env-var-value!                                   macros.metabase.test.util/with-temp-env-var-value!
    metabase.test.util/with-temporary-raw-setting-values                          macros.metabase.test.util/with-temporary-raw-setting-values
