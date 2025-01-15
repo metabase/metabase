@@ -1,4 +1,4 @@
-(ns metabase.task.sweep-query-analysis
+(ns metabase.query-analysis.task.sweep-query-analysis
   "A background worker making sure that analyze the queries for all active cards, and that it is up-to-date."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
