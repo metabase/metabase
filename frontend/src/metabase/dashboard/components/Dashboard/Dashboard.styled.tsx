@@ -5,7 +5,6 @@ import type { ComponentPropsWithoutRef } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
-import TransitionS from "metabase/css/core/transitions.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { isEmbeddingSdk } from "metabase/env";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
@@ -100,25 +99,11 @@ export function getDashboardBodyBgColor(isNightMode: boolean) {
   return isNightMode ? "var(--mb-color-bg-black)" : "var(--mb-color-bg-light)";
 }
 
-export const ParametersWidgetContainer = styled(
-  ({
-    isFullscreen,
-    className,
-    ...props
-  }: ComponentPropsWithoutRef<typeof FullWidthContainer> & {
-    isSticky: boolean;
-    hasScroll: boolean;
-    isNightMode: boolean;
-    isFullscreen: boolean;
-  }) => (
-    <FullWidthContainer
-      className={cx(className, {
-        [TransitionS.transitionThemeChange]: isFullscreen,
-      })}
-      {...props}
-    />
-  ),
-)`
+export const ParametersWidgetContainer = styled(FullWidthContainer)<{
+  isSticky: boolean;
+  hasScroll: boolean;
+  isNightMode: boolean;
+}>`
   background-color: ${props => getDashboardBodyBgColor(props.isNightMode)};
   border-bottom: 1px solid
     ${props => getDashboardBodyBgColor(props.isNightMode)};

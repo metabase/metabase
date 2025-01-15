@@ -1,31 +1,14 @@
 import styled from "@emotion/styled";
-import cx from "classnames";
-import type { ComponentPropsWithoutRef } from "react";
 
 import { FieldSet } from "metabase/components/FieldSet";
-import TransitionS from "metabase/css/core/transitions.module.css";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 interface ParameterFieldSetProps {
   fieldHasValueOrFocus: boolean;
-  isFullscreen: boolean | undefined;
 }
 
-export const ParameterFieldSet = styled(
-  ({
-    isFullscreen,
-    className,
-    ...props
-  }: ComponentPropsWithoutRef<typeof FieldSet> & ParameterFieldSetProps) => (
-    <FieldSet
-      className={cx(className, {
-        [TransitionS.transitionThemeChange]: isFullscreen,
-      })}
-      {...props}
-    />
-  ),
-)`
+export const ParameterFieldSet = styled(FieldSet)<ParameterFieldSetProps>`
   background: var(--mb-color-background);
   display: flex;
   align-items: center;

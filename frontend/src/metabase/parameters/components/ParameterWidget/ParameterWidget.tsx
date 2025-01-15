@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { type PropsWithChildren, type ReactNode, useState } from "react";
 
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
+import TransitionS from "metabase/css/core/transitions.module.css";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -102,12 +104,13 @@ export const ParameterWidget = ({
     return (
       <Box fz={isFullscreen ? "md" : undefined}>
         <ParameterFieldSet
+          className={cx(className, {
+            [TransitionS.transitionThemeChange]: isFullscreen,
+          })}
           legend={legend}
           required={enableParameterRequiredBehavior && parameter.required}
           noPadding={true}
-          isFullscreen={isFullscreen}
           fieldHasValueOrFocus={fieldHasValueOrFocus}
-          className={className}
         >
           <ParameterValueWidget
             offset={{
