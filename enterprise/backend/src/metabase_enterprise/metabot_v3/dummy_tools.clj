@@ -110,9 +110,8 @@
           default-temporal-breakout (->> breakouts
                                          (map #(lib/find-matching-column % visible-cols))
                                          (m/find-first lib.types.isa/temporal?))
-          external-id (str "card__" id)
           field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
-      {:id external-id
+      {:id id
        :name (:name card)
        :description (:description card)
        :default-time-dimension-field-id (some-> default-temporal-breakout
@@ -128,11 +127,8 @@
 
 (defn- get-metric-details
   [_tool-id {:keys [metric-id]} _e]
-  (let [details (if-let [[_ card-id] (when (string? metric-id)
-                                       (re-matches #"card__(\d+)" metric-id))]
-                  (metric-details (parse-long card-id))
-                  "invalid metric_id")]
-    {:output (or details "metric not found")}))
+  {:output (or (metric-details metric-id)
+               "metric not found")})
 
 (defn- get-report-details
   [_tool-id {:keys [report-id]} _e]
@@ -181,7 +177,7 @@
            :arg-fn (fn [id] {:table-id (str "card__" id)})}
    :metric {:id :get-metric-details
             :fn get-metric-details
-            :arg-fn (fn [id] {:metric-id (str "card__" id)})}
+            :arg-fn (fn [id] {:metric-id id})}
    :report {:id :get-report-details
             :fn get-report-details
             :arg-fn (fn [id] {:report-id (str "card__" id)})}})
