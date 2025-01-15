@@ -17,7 +17,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
+describeEE("scenarios > embedding-sdk > dashboard-click-behavior", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
