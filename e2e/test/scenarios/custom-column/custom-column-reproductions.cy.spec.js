@@ -1250,8 +1250,8 @@ describe("issue 50925", () => {
   it("should not remove existing characters when applying autocomplete suggestion (metabase#50925)", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
-    H.getNotebookStep("expression").findByText("Custom").click();
 
+    H.getNotebookStep("expression").findByText("Custom").click();
     cy.get(".ace_text-input")
       .first()
       .focus()
@@ -1260,6 +1260,24 @@ describe("issue 50925", () => {
 
     cy.get(".ace_text-input")
       .first()
-      .should("have.value", "case([ID] = 1, [Price] * 1.21, [Price] [Price])");
+      .should(
+        "have.value",
+        "case([ID] = 1, [Price] * 1.21, [Price]  [Price])\n\n",
+      );
+
+    H.popover().button("Cancel").click();
+    H.getNotebookStep("expression").findByText("Custom").click();
+    cy.get(".ace_text-input")
+      .first()
+      .focus()
+      .type("{leftarrow}".repeat(8))
+      .type(" [Pr{enter}");
+
+    cy.get(".ace_text-input")
+      .first()
+      .should(
+        "have.value",
+        "case([ID] = 1, [Price] * 1.21, [Price] [Price])\n\n",
+      );
   });
 });
