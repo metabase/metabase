@@ -51,6 +51,7 @@
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.util.malli :as mu]))
 
 (mu/defn- pivot-drill-pred :- [:sequential ::lib.schema.metadata/column]
@@ -64,7 +65,7 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (some? value)
-             (= (:lib/source column) :source/aggregations))
+             (lib.drill-thru.common/aggregation-sourced? query column))
     (->> (lib.breakout/breakoutable-columns query stage-number)
          (filter field-pred))))
 
@@ -121,24 +122,25 @@
   See `:pivots` key, which holds a map `{t [breakouts...]}` where `t` is `:category`, `:location`, or `:time`.
   If a key is missing, there are no breakouts of that kind."
   [query                                         :- ::lib.schema/query
-   stage-number                                  :- :int
+   _stage-number                                 :- :int
    {:keys [column dimensions value] :as context} :- ::lib.schema.drill-thru/context]
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
-             (some? value)
-             (= (:lib/source column) :source/aggregations)
-             (-> (lib.aggregation/aggregations query stage-number) count pos?))
-    (let [breakout-pivot-types (permitted-pivot-types query stage-number)
-          pivots               (into {} (for [pivot-type breakout-pivot-types
-                                              :let [pred    (get pivot-type-predicates pivot-type)
-                                                    columns (pivot-drill-pred query stage-number context pred)]
-                                              :when (not-empty columns)]
-                                          [pivot-type columns]))]
-      (when-not (empty? pivots)
-        {:lib/type   :metabase.lib.drill-thru/drill-thru
-         :type       :drill-thru/pivot
-         :dimensions dimensions
-         :pivots     pivots}))))
+  (let [stage-number (lib.underlying/top-level-stage-number query)]
+    (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
+               column
+               (some? value)
+               (lib.drill-thru.common/aggregation-sourced? query column)
+               (-> (lib.aggregation/aggregations query stage-number) count pos?))
+      (let [breakout-pivot-types (permitted-pivot-types query stage-number)
+            pivots               (into {} (for [pivot-type breakout-pivot-types
+                                                :let [pred    (get pivot-type-predicates pivot-type)
+                                                      columns (pivot-drill-pred query stage-number context pred)]
+                                                :when (not-empty columns)]
+                                            [pivot-type columns]))]
+        (when-not (empty? pivots)
+          {:lib/type   :metabase.lib.drill-thru/drill-thru
+           :type       :drill-thru/pivot
+           :dimensions dimensions
+           :pivots     pivots})))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/pivot
   [_query _stage-number drill-thru]
@@ -171,6 +173,7 @@
 ;;     b. Go through the breakouts, and remove any that match this dimension from the query.
 ;; 2. Add a new breakout for the selected column.
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/pivot
-  [query stage-number drill-thru & [column]]
-  (let [filtered (reduce #(breakouts->filters %1 stage-number %2) query (:dimensions drill-thru))]
+  [query _stage-number drill-thru & [column]]
+  (let [stage-number (lib.underlying/top-level-stage-number query)
+        filtered (reduce #(breakouts->filters %1 stage-number %2) query (:dimensions drill-thru))]
     (lib.breakout/breakout filtered stage-number column)))
