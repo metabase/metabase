@@ -43,15 +43,26 @@ export const ModelExplanationBanner = () => {
     >
       <Flex>
         <div
+          data-testid="browse-models-video-thumbnail"
           onClick={() => setOpened(true)}
           style={{
             cursor: "pointer",
-            background: "pink",
-            width: "120px",
-            height: "80px",
+            width: "8rem",
             marginRight: "16px",
           }}
-        />
+        >
+          <img
+            alt="Browse models video thumbnail"
+            loading="lazy"
+            src="app/assets/img/browse-models-video-thumbnail.png"
+            width="100%"
+            style={{
+              borderRadius: "8px",
+              boxShadow:
+                "0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 4px 16px rgba(0, 0, 0, 0.1)",
+            }}
+          />
+        </div>
         <Stack spacing="md">
           <Title
             order={2}
