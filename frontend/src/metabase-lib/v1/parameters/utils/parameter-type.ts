@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { FIELD_FILTER_PARAMETER_TYPES } from "metabase-lib/v1/parameters/constants";
-import type { Parameter } from "metabase-types/api";
+import type { Parameter, ParameterType } from "metabase-types/api";
 
 export function getParameterType(parameter: Parameter | string) {
   return typeof parameter === "string"
@@ -46,7 +46,7 @@ export function isFilterParameter(parameter: Parameter) {
   return !isTemporalUnitParameter(parameter);
 }
 
-export function isTemporalUnitParameter(parameter: Parameter) {
+export function isTemporalUnitParameter(parameter: Parameter | ParameterType) {
   const type = getParameterType(parameter);
   return type === "temporal-unit";
 }

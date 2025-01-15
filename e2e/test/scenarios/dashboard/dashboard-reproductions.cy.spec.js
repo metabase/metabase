@@ -758,7 +758,7 @@ describe("issue 31274", () => {
     );
 
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("close").click({ position: "bottom" });
+      cy.icon("close").parent("a").click({ position: "bottom" });
     });
 
     cy.findByTestId("dashcard").should("not.exist");
@@ -1578,5 +1578,79 @@ describe("issue 47170", () => {
       "color",
       primaryTextColor,
     );
+  });
+});
+
+describe("issue 49556", () => {
+  const TAB = { id: 1, name: "Tab" };
+
+  const PEOPLE_NAME_FIELD_REF = [
+    "field",
+    PEOPLE.NAME,
+    { "base-type": "type/Text" },
+  ];
+
+  const TARGET_PARAMETER = {
+    id: "d7988e02",
+    name: "Target",
+    slug: "target",
+    type: "category",
+    filteringParameters: ["d7988e03"],
+  };
+
+  const SOURCE_PARAMETER = {
+    id: "d7988e03",
+    name: "Source",
+    slug: "source",
+    type: "category",
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createDashboardWithTabs({
+      tabs: [TAB],
+      parameters: [TARGET_PARAMETER, SOURCE_PARAMETER],
+      dashcards: [
+        createMockDashboardCard({
+          id: -1,
+          dashboard_tab_id: TAB.id,
+          size_x: 10,
+          size_y: 4,
+          card_id: ORDERS_QUESTION_ID,
+          parameter_mappings: [
+            {
+              parameter_id: TARGET_PARAMETER.id,
+              card_id: ORDERS_QUESTION_ID,
+              target: [
+                "dimension",
+                PEOPLE_NAME_FIELD_REF,
+                { "stage-number": 0 },
+              ],
+            },
+            {
+              parameter_id: SOURCE_PARAMETER.id,
+              card_id: ORDERS_QUESTION_ID,
+              target: [
+                "dimension",
+                PEOPLE_NAME_FIELD_REF,
+                { "stage-number": 0 },
+              ],
+            },
+          ],
+        }),
+      ],
+    }).then(dashboard => H.visitDashboard(dashboard.id));
+  });
+
+  it("unlinks the filter when it is removed (metabase#49556)", () => {
+    H.editDashboard();
+
+    cy.findByTestId("fixed-width-filters").findByText("Source").click();
+    H.dashboardParameterSidebar().findByText("Remove").click();
+
+    cy.findByTestId("fixed-width-filters").findByText("Target").click();
+    H.dashboardParameterSidebar().button("Edit").should("be.enabled");
   });
 });

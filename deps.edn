@@ -211,7 +211,7 @@
  ;; https://ask.clojure.org/index.php/12367/support-mvn-repos-inside-an-alias -- if we could, this could go in the
  ;; `:drivers` alias instead.
  :mvn/repos
- {"athena"   {:url "https://s3.amazonaws.com/maven-athena"}
+ {"metabase-maven-downloads" {:url "https://s3.amazonaws.com/metabase-maven-downloads"}
   "redshift" {:url "https://s3.amazonaws.com/redshift-maven-repository/release"}
   ;; for metabase/saml20-clj
   "opensaml" {:url "https://build.shibboleth.net/nexus/content/repositories/releases/"}}
@@ -243,7 +243,7 @@
     djblue/portal                {:mvn/version "0.58.3"}                    ; ui for inspecting values
     hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
-    io.github.metabase/hawk      {:mvn/version "1.0.5"}
+    io.github.metabase/hawk      {:mvn/version "1.0.6"}
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
@@ -272,7 +272,8 @@
                  "-Djdk.attach.allowAttachSelf"
                  ;; This will suppress the warning about dynamically loaded agents (like clj-memory-meter)
                  "-XX:+EnableDynamicAgentLoading"
-                 ;; set the logging properties set in metabase.bootstrap. calling (dev) will load it but putting here to be sure
+                 ;; set the logging properties set in `metabase.core.bootstrap`. calling (dev) will load it but
+                 ;; putting here to be sure
                  "-Dlog4j2.contextSelector=org.apache.logging.log4j.core.selector.BasicContextSelector"
                  "-Dclojure.tools.logging.factory=clojure.tools.logging.impl/log4j2-factory"
                  ;; If Clojure fails to start (e.g. because of a compilation error somewhere) print the error
@@ -312,7 +313,7 @@
   ;; clojure -M:run:drivers (include all drivers)
   ;; clojure -M:run:ee (include EE code)
   :run
-  {:main-opts ["-m" "metabase.bootstrap"]
+  {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=dev"
                "-Dmacaw.run.mode=dev"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
@@ -322,7 +323,7 @@
   ;;
   ;;    clojure -M:ee:doc api-documentation
   :doc
-  {:main-opts ["-m" "metabase.bootstrap"]
+  {:main-opts ["-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
 
@@ -382,7 +383,7 @@
     cider/piggieback                   {:mvn/version "0.5.3"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
-    io.github.metabase/hawk            {:mvn/version "1.0.5"}
+    io.github.metabase/hawk            {:mvn/version "1.0.6"}
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.10.0"}
     thheller/shadow-cljs               {:mvn/version "2.28.20"}}}
@@ -740,7 +741,7 @@
 
   ;; Profile Metabase start time with clojure -M:profile
   :profile
-  {:main-opts ["-m" "metabase.core" "profile"]
+  {:main-opts ["-m" "metabase.core.bootstrap" "profile"]
    :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
                "-Xlog:gc"]}
 
