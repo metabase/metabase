@@ -100,8 +100,7 @@ jobs:
         run: |
           yarn test-cypress-run \
             --config-file e2e/support/cypress-snapshots.config.js \
-            --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
-            --spec "e2e/snapshot-creators/*.cy.snap.*"
+            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
         if: ${{ !inputs.specs }}
