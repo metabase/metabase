@@ -86,7 +86,7 @@
        (eduction (map #(assoc % :model search-model)))))
 
 (defn- search-items-reducible []
-  (reduce u/rconcat [] (map spec-index-reducible (keys (methods search.spec/spec)))))
+  (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))
 
 (defn- query->documents [query-reducible]
   (->> query-reducible
