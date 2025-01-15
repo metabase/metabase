@@ -413,7 +413,6 @@
                                      ;; We need to expose this to the metabase.search module.
                                      ;; Ideally, it would just live inside that module.
                                      metabase.task.search-index}                                    ; TODO -- consolidate these into a real API namespace.
-    metabase.troubleshooting       #{metabase.troubleshooting}
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}
     metabase.util                  :any                                                             ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
@@ -480,7 +479,6 @@
     metabase.setup                 :any
     metabase.sync                  :any
     metabase.task                  :any
-    metabase.troubleshooting       :any
     metabase.types                 #{metabase.util}
     metabase.upload                :any
     metabase.util                  :any ; TODO -- this should probably be #{}
