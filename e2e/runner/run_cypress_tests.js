@@ -4,7 +4,6 @@ const runCypress = require("./cypress-runner-run-tests");
 const { printBold } = require("./cypress-runner-utils");
 
 const e2eHost = process.env["E2E_HOST"];
-const setupOnly = process.env["SETUP_ONLY"];
 
 const server = CypressBackend.createServer();
 const baseUrl = e2eHost || server.host;
@@ -18,10 +17,8 @@ const init = async () => {
     await generateSnapshots(baseUrl, cleanup);
   }
 
-  if (!setupOnly) {
-    printBold("Starting Cypress");
-    await runCypress(baseUrl, cleanup);
-  }
+  printBold("Starting Cypress");
+  await runCypress(baseUrl, cleanup);
 };
 
 const cleanup = async (exitCode = 0) => {
