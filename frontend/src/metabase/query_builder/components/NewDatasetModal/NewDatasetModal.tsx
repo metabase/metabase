@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
@@ -12,26 +12,17 @@ import NewDatasetModalS from "./NewDatasetModal.module.css";
 export function NewDatasetModal({ onClose }: { onClose: () => void }) {
   const dispatch = useDispatch();
 
-  const { value: acknowledged, setValue: setAcknowledged } = useUserKeyValue({
+  const { setValue: setAcknowledged } = useUserKeyValue({
     namespace: "user_acknowledgement",
     key: "turn_into_model_modal",
     defaultValue: false,
   });
 
   const onConfirm = useCallback(() => {
-    if (!acknowledged) {
-      setAcknowledged(true);
-    }
+    setAcknowledged(true);
     dispatch(turnQuestionIntoModel());
     onClose();
-  }, [dispatch, acknowledged, setAcknowledged, onClose]);
-
-  // auto-confirm if this user has acknowledged this modal before
-  useEffect(() => {
-    if (acknowledged) {
-      onConfirm();
-    }
-  }, [acknowledged, onConfirm]);
+  }, [dispatch, setAcknowledged, onClose]);
 
   return (
     <ModalContent

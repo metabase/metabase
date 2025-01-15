@@ -4,12 +4,14 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
+import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   onOpenQuestionSettings,
   softReloadCard,
   turnModelIntoQuestion,
+  turnQuestionIntoModel,
 } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import DatasetMetadataStrengthIndicator from "metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
@@ -81,12 +83,22 @@ export const QuestionMoreActionsMenu = ({
       datasetEditorTab: "metadata",
     });
 
+  const { value: hasAckedModelModal } = useUserKeyValue({
+    namespace: "user_acknowledgement",
+    key: "turn_into_model_modal",
+    defaultValue: false,
+  });
+
   const handleTurnToModel = () => {
-    const modal = checkCanBeModel(question)
-      ? MODAL_TYPES.TURN_INTO_DATASET
-      : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+    if (!hasAckedModelModal) {
+      const modal = checkCanBeModel(question)
+        ? MODAL_TYPES.TURN_INTO_DATASET
+        : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+      onOpenModal(modal);
+    } else {
+      dispatch(turnQuestionIntoModel());
+    }
     trackTurnIntoModelClicked(question);
-    onOpenModal(modal);
   };
   const onOpenSettingsSidebar = () => dispatch(onOpenQuestionSettings());
 
