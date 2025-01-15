@@ -4,6 +4,7 @@ import {
   useUpdateCardEmbeddingParamsMutation,
   useUpdateCardEnableEmbeddingMutation,
 } from "metabase/api";
+import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
 import { useSelector } from "metabase/lib/redux";
 import { publicQuestion } from "metabase/lib/urls";
 import {
@@ -11,7 +12,6 @@ import {
   EmbedModalContent,
 } from "metabase/public/components/EmbedModal";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card } from "metabase-types/api";
 

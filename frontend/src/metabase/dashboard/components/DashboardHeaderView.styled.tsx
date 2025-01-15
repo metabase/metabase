@@ -178,7 +178,6 @@ export const HeaderButtonSection = styled.div<TypeForItemsThatRespondToNavBarOpe
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  position: relative;
 
   ${breakpointMaxMedium} {
     ${props =>

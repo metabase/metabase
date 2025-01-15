@@ -1,3 +1,4 @@
+import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
 import { LegaleseStep } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep";
 import type {
   EmbedModalStep,
@@ -6,7 +7,6 @@ import type {
   EmbedResourceType,
   EmbeddingParameters,
 } from "metabase/public/lib/types";
-import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
 
 import { SelectEmbedTypePane } from "../SelectEmbedTypePane";
 import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";

@@ -5,7 +5,7 @@ import { screen } from "__support__/ui";
 
 import { dashcard, hasBasicFilterOptions, setup, user } from "./setup";
 
-describe("SharingSidebar", () => {
+describe("DashboardSubscriptionsSidebar", () => {
   it("should forward non-admin to email form - when slack is not setup", async () => {
     setup({ isAdmin: false, email: true, slack: false });
 

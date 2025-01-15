@@ -19,7 +19,7 @@ import {
 import type { DashboardState } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
-import SharingSidebar from "../SharingSidebar";
+import DashboardSubscriptionsSidebar from "../DashboardSubscriptionsSidebar";
 
 export const dashcard = createMockDashboardCard();
 
@@ -125,7 +125,10 @@ export function setup(
   }
 
   renderWithProviders(
-    <SharingSidebar dashboard={dashboard} onCancel={jest.fn()} />,
+    <DashboardSubscriptionsSidebar
+      dashboard={dashboard}
+      onCancel={jest.fn()}
+    />,
     {
       storeInitialState: createMockState({
         settings: storeSettings,

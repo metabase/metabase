@@ -8,9 +8,9 @@ import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
 import Link from "metabase/core/components/Link";
 import Styles from "metabase/css/core/index.css";
+import { QuestionPublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover";
 import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
-import { QuestionPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
 import { Box, Flex, FixedSizeIcon as Icon, Loader, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 

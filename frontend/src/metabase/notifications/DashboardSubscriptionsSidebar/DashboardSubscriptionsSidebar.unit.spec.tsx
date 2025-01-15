@@ -4,7 +4,7 @@ import {
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
 
-import { getSupportedCardsForSubscriptions } from "./SharingSidebar";
+import { getSupportedCardsForSubscriptions } from "./DashboardSubscriptionsSidebar";
 
 describe("getSupportedCardsForSubscriptions", () => {
   it("should return an empty array if dashboard is undefined", () => {

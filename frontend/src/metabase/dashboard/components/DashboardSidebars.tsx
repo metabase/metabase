@@ -27,7 +27,7 @@ import type {
 } from "metabase-types/api";
 import type { SelectedTabId, State } from "metabase-types/store";
 
-import SharingSidebar from "../../notifications/SharingSidebar";
+import DashboardSubscriptionsSidebar from "../../notifications/DashboardSubscriptionsSidebar";
 
 import { ActionSidebarConnected } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
@@ -217,7 +217,12 @@ export function DashboardSidebars({
         />
       );
     case SIDEBAR_NAME.sharing:
-      return <SharingSidebar dashboard={dashboard} onCancel={onCancel} />;
+      return (
+        <DashboardSubscriptionsSidebar
+          dashboard={dashboard}
+          onCancel={onCancel}
+        />
+      );
     case SIDEBAR_NAME.info:
       return (
         <DashboardInfoSidebar

@@ -67,9 +67,9 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "pencil",
     tooltip: "Edit dashboard",
   },
-  [DASHBOARD_ACTION.DASHBOARD_NOTIFICATIONS]: {
-    icon: "alert",
-    tooltip: "Notifications",
+  [DASHBOARD_ACTION.DASHBOARD_SHARING]: {
+    icon: "share",
+    tooltip: "Sharing",
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     icon: "clock",
@@ -210,7 +210,7 @@ const expectButtonInHeader = async ({
   }
 };
 
-const expectButtonsToStricMatchHeader = async ({
+const expectButtonsToStrictMatchHeader = async ({
   expectedButtons,
   checkLength,
 }: {
@@ -258,7 +258,7 @@ describe("DashboardHeaderButtonRow", () => {
   describe("when editing", () => {
     it("should show all edit-related buttons", async () => {
       setup({ isEditing: true, hasModelActionsEnabled: true });
-      await expectButtonsToStricMatchHeader({
+      await expectButtonsToStrictMatchHeader({
         expectedButtons: DASHBOARD_EDITING_ACTIONS,
         checkLength: true,
       });
@@ -266,7 +266,7 @@ describe("DashboardHeaderButtonRow", () => {
 
     it("should not show `Add action element` when model actions are disabled", async () => {
       setup({ isEditing: true, hasModelActionsEnabled: false });
-      await expectButtonsToStricMatchHeader({
+      await expectButtonsToStrictMatchHeader({
         expectedButtons: DASHBOARD_EDITING_ACTIONS.filter(
           action => action !== DASHBOARD_ACTION.ADD_ACTION_ELEMENT,
         ),
@@ -298,10 +298,10 @@ describe("DashboardHeaderButtonRow", () => {
         hasNightModeToggle: true,
         isAdmin: true,
       });
-      await expectButtonsToStricMatchHeader({
+      await expectButtonsToStrictMatchHeader({
         expectedButtons: [
           DASHBOARD_ACTION.EDIT_DASHBOARD,
-          DASHBOARD_ACTION.DASHBOARD_NOTIFICATIONS,
+          DASHBOARD_ACTION.DASHBOARD_SHARING,
           DASHBOARD_ACTION.REFRESH_WIDGET,
           DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER,
           DASHBOARD_ACTION.DASHBOARD_BOOKMARK,
@@ -312,11 +312,9 @@ describe("DashboardHeaderButtonRow", () => {
       });
     });
 
-    it("should show notifications button", () => {
+    it("should show sharing button", () => {
       setup({ isEditing: false });
-      expect(
-        screen.getByTestId("notifications-menu-button"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("sharing-menu-button")).toBeInTheDocument();
     });
 
     it("should not show editing-related buttons", () => {

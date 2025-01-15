@@ -91,7 +91,7 @@ export const QuestionAlertListModal = ({
               : undefined
           }
           onClose={handleInternalModalClose}
-          onAlertCreated={() => setActiveModal("list-modal")}
+          onAlertCreated={handleInternalModalClose}
           onAlertUpdated={handleInternalModalClose}
         />
       )}

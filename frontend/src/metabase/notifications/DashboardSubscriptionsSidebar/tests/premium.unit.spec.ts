@@ -4,7 +4,7 @@ import { screen } from "__support__/ui";
 
 import { hasAdvancedFilterOptions, setup } from "./setup";
 
-describe("SharingSidebar Premium Features", () => {
+describe("DashboardSubscriptionsSidebar Premium Features", () => {
   const tokenFeatures = {
     dashboard_subscription_filters: true,
   };

@@ -123,7 +123,7 @@ const mapDispatchToProps = {
   testPulse,
 };
 
-class SharingSidebarInner extends Component {
+class DashboardSubscriptionsSidebarInner extends Component {
   state = {
     editingMode: EDITING_MODES.LIST_PULSES,
     // use this to know where to go "back" to
@@ -491,12 +491,12 @@ class SharingSidebarInner extends Component {
   }
 }
 
-const SharingSidebar = _.compose(
+const DashboardSubscriptionsSidebar = _.compose(
   Pulses.loadList({
     query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),
-)(SharingSidebarInner);
+)(DashboardSubscriptionsSidebarInner);
 
-export default SharingSidebar;
+export default DashboardSubscriptionsSidebar;

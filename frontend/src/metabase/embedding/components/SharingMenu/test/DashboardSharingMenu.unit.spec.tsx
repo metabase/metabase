@@ -1,18 +1,130 @@
+import userEvent from "@testing-library/user-event";
+
 import { screen } from "__support__/ui";
+import {
+  createMockCard,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 
-import { openMenu, setup } from "./setup";
+import { openMenu, setupDashboardSharingMenu } from "./setup";
 
-describe("DashboardActionMenu", () => {
+describe("DashboardSharingMenu", () => {
+  it("should have a 'sharing' tooltip by default", () => {
+    setupDashboardSharingMenu({
+      isAdmin: true,
+    });
+    expect(screen.getByTestId("sharing-menu-button")).toHaveAttribute(
+      "aria-label",
+      "Sharing",
+    );
+  });
+
+  it("should not appear for archived dashboards", async () => {
+    setupDashboardSharingMenu({
+      isAdmin: true,
+      dashboard: { archived: true },
+    });
+
+    expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
+  });
+
+  describe("dashboard subscriptions", () => {
+    describe("admins", () => {
+      it("should show the 'Subscriptions' menu item if email and slack are not setup", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          isEmailSetup: false,
+          isSlackSetup: false,
+        });
+        await openMenu();
+        expect(screen.getByText("Subscriptions")).toBeInTheDocument();
+      });
+
+      it("should show the 'Subscriptions' menu item if email and slack are setup", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          isEmailSetup: true,
+          isSlackSetup: true,
+        });
+        await openMenu();
+        expect(screen.getByText("Subscriptions")).toBeInTheDocument();
+      });
+
+      it("Should toggle the subscriptions sidebar on click", async () => {
+        setupDashboardSharingMenu({ isAdmin: true });
+        await openMenu();
+        await userEvent.click(screen.getByText("Subscriptions"));
+        expect(screen.getByTestId("fake-sidebar")).toHaveTextContent(
+          "Sidebar: sharing",
+        );
+      });
+
+      it("should not show the subscriptions menu item if there are no data cards", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          dashboard: {
+            dashcards: [
+              createMockDashboardCard({
+                card: createMockCard({ display: "text" }),
+              }),
+            ],
+          },
+        });
+        await openMenu();
+        expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
+      });
+    });
+
+    describe("non-admins", () => {
+      it("should show 'subscriptions' option when email is set up", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: false,
+          isEmailSetup: true,
+          isSlackSetup: false,
+        });
+        await openMenu();
+        expect(screen.getByText("Subscriptions")).toBeInTheDocument();
+      });
+
+      it("should show disabled 'subscriptions' option when email is not set up", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: false,
+          isEmailSetup: false,
+          isSlackSetup: true,
+        });
+        await openMenu();
+        expect(
+          await screen.findByText("Can't send subscriptions"),
+        ).toBeInTheDocument();
+      });
+
+      it("should not show the subscriptions menu item if there are no data cards", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: false,
+          dashboard: {
+            dashcards: [
+              createMockDashboardCard({
+                card: createMockCard({ display: "heading" }),
+              }),
+            ],
+          },
+        });
+        await openMenu();
+        expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
+      });
+    });
+  });
+
   describe("pdf export", () => {
     ["admin", "non-admin"].forEach(userType => {
       it(`should show the "Export as PDF" menu item for ${userType}`, async () => {
-        setup({ isAdmin: userType === "admin" });
+        setupDashboardSharingMenu({ isAdmin: userType === "admin" });
         await openMenu();
         expect(screen.getByText("Export as PDF")).toBeInTheDocument();
       });
 
       it(`should show the "Export tab as PDF" menu item for ${userType} for a dashboard with multiple tabs`, async () => {
-        setup({
+        setupDashboardSharingMenu({
           isAdmin: userType === "admin",
           dashboard: {
             tabs: [
@@ -30,7 +142,7 @@ describe("DashboardActionMenu", () => {
   describe("public links", () => {
     describe("admins", () => {
       it('should show a "Create Public link" menu item if public sharing is enabled', async () => {
-        setup({
+        setupDashboardSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: true,
         });
@@ -39,7 +151,7 @@ describe("DashboardActionMenu", () => {
       });
 
       it('should show a "Public link" menu item if public sharing is enabled and a public link exists already', async () => {
-        setup({
+        setupDashboardSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
@@ -52,7 +164,7 @@ describe("DashboardActionMenu", () => {
       });
 
       it("should show a 'public links are off' menu item if public sharing is disabled", async () => {
-        setup({
+        setupDashboardSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: false,
         });
@@ -68,7 +180,7 @@ describe("DashboardActionMenu", () => {
 
     describe("non-admins", () => {
       it('should show a "Public link" menu item if public sharing is enabled and a public link exists already', async () => {
-        setup({
+        setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
@@ -81,7 +193,7 @@ describe("DashboardActionMenu", () => {
       });
 
       it("should not show a 'ask your admin to create a public link' menu item if public sharing is disabled", async () => {
-        setup({
+        setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: false,
           hasPublicLink: true,
@@ -93,7 +205,7 @@ describe("DashboardActionMenu", () => {
       });
 
       it("should show a 'ask your admin to create a public link' menu item if public sharing is enabled, but there is no existing public link", async () => {
-        setup({
+        setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: false,
@@ -109,7 +221,7 @@ describe("DashboardActionMenu", () => {
   describe("embedding", () => {
     describe("admins", () => {
       it("should show the 'Embed' menu item if embedding is enabled", async () => {
-        setup({
+        setupDashboardSharingMenu({
           isAdmin: true,
           isEmbeddingEnabled: true,
         });
@@ -118,7 +230,7 @@ describe("DashboardActionMenu", () => {
       });
 
       it("should show the 'Embed' menu item if embedding is disabled", async () => {
-        setup({
+        setupDashboardSharingMenu({
           isAdmin: true,
           isEmbeddingEnabled: false,
         });
@@ -129,7 +241,7 @@ describe("DashboardActionMenu", () => {
 
     describe("non-admins", () => {
       it("should not show the 'Embed' menu item if embedding is enabled", async () => {
-        setup({
+        setupDashboardSharingMenu({
           isAdmin: false,
           isEmbeddingEnabled: true,
         });
@@ -138,7 +250,7 @@ describe("DashboardActionMenu", () => {
       });
 
       it("should not show the 'Embed' menu item if embedding is disabled", async () => {
-        setup({
+        setupDashboardSharingMenu({
           isAdmin: false,
           isEmbeddingEnabled: false,
         });

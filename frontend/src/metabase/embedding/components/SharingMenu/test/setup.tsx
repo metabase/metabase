@@ -24,12 +24,11 @@ import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
-  createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { DashboardNotificationsMenu } from "../DashboardNotificationsMenu";
-import { QuestionNotificationsMenu } from "../QuestionNotificationsMenu";
+import { DashboardSharingMenu } from "../DashboardSharingMenu";
+import { QuestionSharingMenu } from "../QuestionSharingMenu";
 
 // This is a fake sidebar that we can use to check if the correct redux state is getting updated
 const FakeSidebar = () => {
@@ -43,6 +42,8 @@ const FakeSidebar = () => {
 };
 
 type SettingsProps = {
+  isEmbeddingEnabled?: boolean;
+  isPublicSharingEnabled?: boolean;
   isEmailSetup?: boolean;
   isSlackSetup?: boolean;
   isAdmin?: boolean;
@@ -52,6 +53,8 @@ type SettingsProps = {
 };
 
 const setupState = ({
+  isEmbeddingEnabled = false,
+  isPublicSharingEnabled = false,
   isEmailSetup = false,
   isSlackSetup = false,
   isAdmin = false,
@@ -72,6 +75,8 @@ const setupState = ({
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
+    "enable-public-sharing": isPublicSharingEnabled,
+    "enable-embedding-static": isEmbeddingEnabled,
     "email-configured?": isEmailSetup,
     "slack-token-valid?": isSlackSetup,
   });
@@ -97,17 +102,22 @@ const setupState = ({
 };
 
 export function setupDashboardSharingMenu({
+  isPublicSharingEnabled = false,
+  isEmbeddingEnabled = false,
   isEmailSetup = false,
   isSlackSetup = false,
   isAdmin = false,
   canManageSubscriptions = false,
   isEnterprise = false,
+  hasPublicLink = false,
   dashboard: dashboardOverrides = {},
 }: {
   dashboard?: Partial<Dashboard>;
+  hasPublicLink?: boolean;
 } & SettingsProps) {
   const dashboard = createMockDashboard({
     name: "My Cool Dashboard",
+    public_uuid: hasPublicLink && isPublicSharingEnabled ? "1337bad801" : null,
     dashcards: [
       createMockDashboardCard({
         card: createMockCard({ display: "pie" }),
@@ -117,6 +127,8 @@ export function setupDashboardSharingMenu({
   });
 
   const state = setupState({
+    isPublicSharingEnabled,
+    isEmbeddingEnabled,
     isEmailSetup,
     isSlackSetup,
     isAdmin,
@@ -130,7 +142,7 @@ export function setupDashboardSharingMenu({
 
   renderWithProviders(
     <div>
-      <DashboardNotificationsMenu dashboard={dashboard} />
+      <DashboardSharingMenu dashboard={dashboard} />
       <FakeSidebar />
     </div>,
     { storeInitialState: state },
@@ -138,28 +150,30 @@ export function setupDashboardSharingMenu({
 }
 
 export function setupQuestionSharingMenu({
+  isPublicSharingEnabled = false,
+  isEmbeddingEnabled = false,
   isEmailSetup = false,
   isSlackSetup = false,
   isAdmin = false,
   canManageSubscriptions = false,
   isEnterprise = false,
+  hasPublicLink = false,
   question: questionOverrides = {},
   alerts = [],
 }: {
   question?: Partial<Card>;
+  hasPublicLink?: boolean;
   alerts?: Alert[];
 } & SettingsProps) {
   const card = createMockCard({
     name: "My Cool Question",
-    display: "line",
-    visualization_settings: createMockVisualizationSettings({
-      "graph.show_goal": true,
-      "graph.metrics": ["count"],
-    }),
+    public_uuid: hasPublicLink && isPublicSharingEnabled ? "1337bad801" : null,
     ...questionOverrides,
   });
 
   const state = setupState({
+    isPublicSharingEnabled,
+    isEmbeddingEnabled,
     isEmailSetup,
     isSlackSetup,
     isAdmin,
@@ -177,7 +191,7 @@ export function setupQuestionSharingMenu({
 
   renderWithProviders(
     <div>
-      <QuestionNotificationsMenu question={new Question(card)} />
+      <QuestionSharingMenu question={new Question(card)} />
       <FakeSidebar />
     </div>,
     { storeInitialState: state },
@@ -185,5 +199,5 @@ export function setupQuestionSharingMenu({
 }
 
 export const openMenu = () => {
-  return userEvent.click(screen.getByTestId("notifications-menu-button"));
+  return userEvent.click(screen.getByTestId("sharing-menu-button"));
 };

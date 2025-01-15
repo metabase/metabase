@@ -1,2 +1,2 @@
-export * from "./DashboardNotificationsMenu";
-export * from "./QuestionNotificationsMenu";
+export * from "./DashboardSubscriptionMenuItem";
+export * from "./QuestionAlertsMenuItem";

@@ -4,7 +4,7 @@ import { screen } from "__support__/ui";
 
 import { hasBasicFilterOptions, setup } from "./setup";
 
-describe("SharingSidebar Enterprise Bundle", () => {
+describe("DashboardSubscriptionsSidebar Enterprise Bundle", () => {
   describe("Email Subscription sidebar", () => {
     it("should not show advanced filtering options without the feature flag", async () => {
       setup({ isAdmin: true, email: true, hasEnterprisePlugins: true });

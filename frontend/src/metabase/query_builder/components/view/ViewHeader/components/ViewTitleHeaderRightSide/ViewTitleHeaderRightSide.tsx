@@ -4,9 +4,9 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-import { QuestionNotificationsMenu } from "metabase/notifications/NotificationsActionsMenu";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
@@ -209,7 +209,7 @@ export function ViewTitleHeaderRightSide({
           />
         </Box>
       )}
-      {!isShowingNotebook && <QuestionNotificationsMenu question={question} />}
+      {!isShowingNotebook && <QuestionSharingMenu question={question} />}
       {isSaved && (
         <QuestionActions
           question={question}
