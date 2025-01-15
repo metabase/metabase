@@ -1,11 +1,12 @@
 import { msgid, ngettext, t } from "ttag";
+import _ from "underscore";
 
+import { getEmailDomain, isEmail } from "metabase/lib/email";
 import {
   formatDateTimeWithUnit,
   formatTimeWithUnit,
 } from "metabase/lib/formatting";
-import { recipientIsValid } from "metabase/lib/pulse";
-import Settings from "metabase/lib/settings";
+import MetabaseSettings from "metabase/lib/settings";
 import { formatFrame } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -15,11 +16,15 @@ import {
 import type Question from "metabase-lib/v1/Question";
 import type {
   ChannelApiResponse,
-  CreateNotificationRequest,
+  ChannelType,
+  CreateAlertNotificationRequest,
   Notification,
   NotificationCardSendCondition,
   NotificationChannelType,
   NotificationHandler,
+  NotificationRecipient,
+  NotificationRecipientRawValue,
+  UpdateAlertNotificationRequest,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -72,7 +77,7 @@ export const formatChannelSchedule = ({
   schedule_day,
   schedule_frame,
 }) => {
-  const options = Settings.formattingOptions();
+  const options = MetabaseSettings.formattingOptions();
 
   switch (schedule_type) {
     case "hourly":
@@ -148,38 +153,81 @@ export const canArchive = (item, user) => {
   return isCreator && (!isSubscribed || isOnlyRecipient);
 };
 
-export function channelIsValid(channel: NotificationHandler) {
-  switch (channel.channel_type) {
+export function emailHandlerRecipientIsValid(recipient: NotificationRecipient) {
+  if (recipient.type === "notification-recipient/user") {
+    return !!recipient.user_id;
+  }
+
+  if (recipient.type === "notification-recipient/raw-value") {
+    const email = recipient.details.value;
+
+    const recipientDomain = getEmailDomain(email);
+    const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
+    return (
+      !!email &&
+      isEmail(email) &&
+      (_.isEmpty(allowedDomains) ||
+        !!(recipientDomain && allowedDomains.includes(recipientDomain)))
+    );
+  }
+}
+
+export function slackHandlerRecipientIsValid(
+  recipient: NotificationRecipientRawValue,
+) {
+  if (recipient.details.value) {
+    return true;
+  }
+
+  return false;
+}
+
+export function channelIsValid(handlers: NotificationHandler) {
+  switch (handlers.channel_type) {
     case "channel/email":
       return (
-        channel.recipients &&
-        channel.recipients.length > 0 &&
-        channel.recipients.every(recipientIsValid)
+        handlers.recipients &&
+        handlers.recipients.length > 0 &&
+        handlers.recipients.every(emailHandlerRecipientIsValid)
       );
     case "channel/slack":
-      return channel.details;
+      return (
+        handlers.recipients &&
+        handlers.recipients.length > 0 &&
+        handlers.recipients.every(slackHandlerRecipientIsValid)
+      );
     case "channel/http":
-      return channel.channel_id;
+      return handlers.channel_id;
     default:
       return false;
   }
 }
 
-export function channelIsEnabled(channel) {
-  return channel.enabled;
-}
+const notificationHandlerTypeToChannelMap: Record<
+  NotificationChannelType,
+  ChannelType
+> = {
+  ["channel/email"]: "email",
+  ["channel/slack"]: "slack",
+  ["channel/http"]: "http",
+};
 
 export function alertIsValid(
-  notification: CreateNotificationRequest,
-  channelSpec: ChannelApiResponse,
+  notification: CreateAlertNotificationRequest | UpdateAlertNotificationRequest,
+  channelSpec: ChannelApiResponse | undefined,
 ) {
   const handlers = notification.handlers;
 
   return (
     channelSpec?.channels &&
     handlers.length > 0 &&
-    handlers.every(channel => channelIsValid(channel)) &&
-    handlers.every(c => channelSpec?.channels[c.channel_type]?.configured)
+    handlers.every(handlers => channelIsValid(handlers)) &&
+    handlers.every(c => {
+      const handlerChannelType =
+        notificationHandlerTypeToChannelMap[c.channel_type];
+
+      return channelSpec?.channels[handlerChannelType]?.configured;
+    })
   );
 }
 

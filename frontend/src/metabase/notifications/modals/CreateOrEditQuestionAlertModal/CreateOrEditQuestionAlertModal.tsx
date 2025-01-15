@@ -15,7 +15,10 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
-import { getAlertTriggerOptions } from "metabase/lib/notifications";
+import {
+  alertIsValid,
+  getAlertTriggerOptions,
+} from "metabase/lib/notifications";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { AlertModalSettingsBlock } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/AlertTriggerIcon";
@@ -171,8 +174,7 @@ export const CreateOrEditQuestionAlertModal = ({
     return null;
   }
 
-  // TODO: add validity check for new data format
-  // const isValid = alertIsValid(notification, channelSpec);
+  const isValid = alertIsValid(notification, channelSpec);
 
   return (
     <Modal.Root
@@ -282,7 +284,7 @@ export const CreateOrEditQuestionAlertModal = ({
           <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
           <ButtonWithStatus
             titleForState={{ default: t`Done` }}
-            // disabled={!isValid}
+            disabled={!isValid}
             onClickOperation={onCreateOrEditAlert}
           />
         </Flex>

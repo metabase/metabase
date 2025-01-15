@@ -112,6 +112,7 @@ export const QuestionAlertListModal = ({
               color="danger"
               onClick={() => handleDelete(editingItem)}
             >{t`Delete it`}</Button>
+            {/* TODO: add DeleteAlertSection content here ??? */}
           </Flex>
         </Modal>
       )}

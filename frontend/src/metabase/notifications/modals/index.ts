@@ -1,4 +1,4 @@
-export { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
+export { CreateOrEditQuestionAlertModal } from "./CreateOrEditQuestionAlertModal";
 export { AlertModalTitle } from "./AlertModalTitle";
 export { AlertAboveGoalToggle } from "./AlertAboveGoalToggle";
 export { AlertFirstOnlyToggle } from "./AlertFirstOnlyToggle";
@@ -7,5 +7,4 @@ export { NormalAlertTip } from "./NormalAlertTip";
 export { MultiSeriesAlertTip } from "./MultiSeriesAlertTip";
 export { RawDataAlertTip } from "./RawDataAlertTip";
 export { AlertGoalToggles } from "./AlertGoalToggles";
-export { DeleteAlertSection } from "./DeleteAlertSection";
 export { AlertEditSchedule } from "./AlertEditSchedule";
