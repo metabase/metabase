@@ -1,7 +1,6 @@
 (ns metabase.models.user-key-value.types
   (:require
    [clojure.edn :as edn]
-   [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.config :as config]
@@ -84,7 +83,9 @@
 (def ^:private prod-types-dir "user_key_value_types")
 
 (def ^:private test-types-dir
-  "These schemas are only loaded in tests."
+  "These schemas are only loaded in tests.
+
+  They should ONLY be used for testing the UserKeyValue store itself."
   "test_user_key_value_types")
 
 (defn- load-schema
@@ -101,7 +102,7 @@
     (load-schema schema namespace)))
 
 (defn load-all-schemas
-  "Load all schemas from the production types directory."
+  "Load all schemas from the a given resource path."
   [dir]
   (u.files/with-open-path-to-resource [dir dir]
     (with-open [ds (Files/newDirectoryStream dir)]
@@ -163,22 +164,14 @@
               ;; this is solely for dev.
               (defnamespace namespace [:and true? false?]))))
 
-(defn- types-dirs
-  "Only used in dev. Types live in `user_key_value_types` in both `test_resources` and `resources`.
-
-  In production, "
-  []
-  (->> (classpath/classpath-directories)
-       (map #(io/file % "user_key_value_types"))
-       (filter #(.exists ^File %))))
-
 (defn load-and-watch-schemas
   "In production, just load the schemas. In development, watch for changes as well."
   []
   (load-all-schemas prod-types-dir)
-  (when config/is-test?
+  ;; in testing or dev, load the test schemas
+  (when (or config/is-test? config/is-dev?)
     (load-all-schemas test-types-dir))
+  ;; in dev, watch both types directories for changes
   (when config/is-dev?
-    (load-all-schemas test-types-dir)
-    (doseq [types-dir (types-dirs)]
-      (watch-directory types-dir handle-file-change))))
+    (watch-directory (io/file (io/resource prod-types-dir)) handle-file-change)
+    (watch-directory (io/file (io/resource test-types-dir)) handle-file-change)))
