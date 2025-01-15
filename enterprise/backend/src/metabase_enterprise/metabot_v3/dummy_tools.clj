@@ -87,7 +87,9 @@
   [_tool-id {:keys [table-id]} _e]
   (let [details (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
                   (card-details (parse-long card-id))
-                  (table-details (parse-long table-id) {:include-foreign-key-tables? true}))]
+                  (if (re-matches #"\d+" table-id)
+                    (table-details (parse-long table-id) {:include-foreign-key-tables? true})
+                    "invalid table_id"))]
     (if (map? details)
       {:structured-output details}
       {:output (or details "table not found")})))

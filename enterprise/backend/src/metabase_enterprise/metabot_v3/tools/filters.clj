@@ -66,11 +66,14 @@
           :number-greater-than-or-equal (lib/>= column value)
           :number-less-than             (lib/< column value)
           :number-less-than-or-equal    (lib/<= column value)
-          (throw (ex-info (str "unknown filter operation " operation) {})))]
+          (throw (ex-info (str "unknown filter operation " operation) {:agent-error? true})))]
     (lib/filter query filter)))
 
 (defn- add-breakout
   [query {:keys [column field_granularity]}]
+  (when (and field_granularity
+             (not (lib.types.isa/temporal? column)))
+    (throw (ex-info "field_granularity can only be specified for date fields" {:agent-error? true})))
   (let [expr (cond-> column
                (and field_granularity
                     (lib.types.isa/temporal? column))
@@ -106,9 +109,12 @@
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
   [_tool-name arguments _e]
-  (if-let [result (query-metric arguments)]
-    {:structured-output result}
-    {:output "metric not found"}))
+  (try
+    (if-let [result (query-metric arguments)]
+      {:structured-output result}
+      {:output "metric not found"})
+    (catch Exception e
+      (metabot-v3.tools.u/handle-agent-error e))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -140,14 +146,20 @@
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
           [(metabot-v3.tools.u/card-field-id-prefix report_id)
            (lib/query mp (lib.metadata/card mp report_id))])
-        (throw (ex-info (str "No report found with report_id " report_id) {:data_source data-source})))
+        (throw (ex-info (str "No report found with report_id " report_id) {:agent-error? true
+                                                                           :data_source data-source})))
 
       (some? query_id)
       (if-let [query (metabot-v3.envelope/find-query e query_id)]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database query))]
           [(metabot-v3.tools.u/query-field-id-prefix query_id)
            (lib/query mp query)])
-        (throw (ex-info (str "No query found with query_id " query_id) {:data_source data-source}))))))
+        (throw (ex-info (str "No query found with query_id " query_id) {:agent-error? true
+                                                                        :data_source data-source})))
+
+      :else
+      (throw (ex-info "Invalid data_source" {:agent-error? true
+                                             :data_source data-source})))))
 
 (defn- filter-records
   [{:keys [data-source filters] :as _arguments} e]
@@ -176,4 +188,7 @@
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/filter-records
   [_tool-name arguments e]
-  {:structured-output (filter-records arguments e)})
+  (try
+    {:structured-output (filter-records arguments e)}
+    (catch Exception e
+      (metabot-v3.tools.u/handle-agent-error e))))

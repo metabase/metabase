@@ -9,7 +9,8 @@
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/create-dashboard-subscription
   [_tool-name {:keys [dashboard-id email schedule] :as _arguments} _env]
-  (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
+  (if (int? dashboard-id)
+    (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
                       (t2/hydrate [:dashcards :card]))
         cards (for [{:keys [id card]} (sort-by (juxt :tab :row :col) (:dashcards dashboard))
                     :when (-> card :id int?)]
@@ -38,4 +39,5 @@
     (if recipient-id
       (do (models.pulse/create-pulse! (map models.pulse/card->ref cards) [channel] pulse-data)
           {:output "success"})
-      {:output "no user with this email found"})))
+      {:output "no user with this email found"}))
+    {:output "invalid dashboard_id"}))
