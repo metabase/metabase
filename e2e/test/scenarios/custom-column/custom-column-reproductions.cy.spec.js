@@ -1251,6 +1251,7 @@ describe("issue 50925", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
 
+    cy.log("incomplete bracket identifier is followed by whitespace");
     H.getNotebookStep("expression").findByText("Custom").click();
     cy.get(".ace_text-input")
       .first()
@@ -1265,6 +1266,7 @@ describe("issue 50925", () => {
         "case([ID] = 1, [Price] * 1.21, [Price]  [Price])\n\n",
       );
 
+    cy.log("incomplete bracket identifier is followed by bracket identifier");
     H.popover().button("Cancel").click();
     H.getNotebookStep("expression").findByText("Custom").click();
     cy.get(".ace_text-input")

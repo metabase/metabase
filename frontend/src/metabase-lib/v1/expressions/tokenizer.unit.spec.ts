@@ -35,7 +35,7 @@ describe("tokenizer", () => {
     ]);
   });
 
-  it("tokenizes incomplete identifiers (metabase#50925)", () => {
+  it("tokenizes incomplete bracket identifiers (metabase#50925)", () => {
     const { tokens } = tokenize("case([ID] = 1, [Price] * 1.21, [Pr [Price])");
 
     expect(tokens).toEqual([
