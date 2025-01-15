@@ -23,6 +23,8 @@ import {
   useSaveGsheetsFolderLinkMutation,
 } from "metabase-enterprise/api";
 
+import disconnectIllustration from "./disconnect.svg?component";
+
 export function GSheetManagement() {
   const gSheetsSetting = useSetting("gsheets");
   const [showModal, setShowModal] = useState(false);
@@ -98,20 +100,24 @@ function GoogleSheetsConnectModal({
 }) {
   const dispatch = useDispatch();
   const [folderLink, setFolderLink] = useState(folderUrl ?? "");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [saveFolderLink, { isLoading: isSavingFolderLink }] =
     useSaveGsheetsFolderLinkMutation();
 
   const onSave = async () => {
+    setErrorMessage("");
     const response = await saveFolderLink({
       url: folderLink.trim(),
-    }).unwrap();
+    })
+      .unwrap()
+      .catch(response => response);
 
-    if (response.success) {
+    if (response?.success) {
       dispatch(reloadSettings());
       onClose();
     } else {
-      // TODO: show error
+      setErrorMessage(response?.data?.message ?? "Something went wrong");
     }
   };
 
@@ -162,7 +168,8 @@ function GoogleSheetsConnectModal({
           color="secondary"
         >{t`In Google Drive, right-click on the folder → Share → Copy link`}</Text>
       </Box>
-      <Flex justify="flex-end" mt="sm">
+      <Flex justify="space-between" align="center" mt="sm">
+        <Text c="error">{errorMessage}</Text>
         <Button
           variant="filled"
           loading={isSavingFolderLink}
@@ -183,13 +190,17 @@ function GoogleSheetsDisconnectModal({
   onClose: () => void;
   reconnect: boolean;
 }) {
+  const [errorMessage, setErrorMessage] = useState("");
   const dispatch = useDispatch();
 
   const [deleteFolderLink, { isLoading: isDeletingFolderLink }] =
     useDeleteGsheetsFolderLinkMutation();
 
   const onDelete = async () => {
-    const response = await deleteFolderLink().unwrap();
+    setErrorMessage("");
+    const response = await deleteFolderLink()
+      .unwrap()
+      .catch(response => response);
 
     if (response.success) {
       dispatch(reloadSettings());
@@ -198,22 +209,15 @@ function GoogleSheetsDisconnectModal({
         onClose();
       }
     } else {
-      // TODO: show error
+      setErrorMessage(response?.data?.message ?? "Something went wrong");
     }
   };
 
   return (
     <ModalWrapper onClose={onClose}>
       <Flex justify="center" align="center" direction="column" gap="md" p="xl">
-        <Center
-          bg="bg-light"
-          style={{ borderRadius: "50%" }}
-          w="6rem"
-          h="6rem"
-          p="md"
-        >
-          {/* FIXME this icon needs help */}
-          <Icon name="folder_disconnect" size={64} />
+        <Center p="md">
+          <Box component={disconnectIllustration} />
         </Center>
         <Text size="lg" fw="bold">
           {reconnect
@@ -239,6 +243,9 @@ function GoogleSheetsDisconnectModal({
           <Button fullWidth variant="outline" onClick={onClose}>
             {t`Keep connected`}
           </Button>
+          <Text c="error" ta="center">
+            {errorMessage}
+          </Text>
         </Stack>
       </Flex>
     </ModalWrapper>
