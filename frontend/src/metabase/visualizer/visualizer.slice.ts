@@ -8,7 +8,6 @@ import {
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
-import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -86,28 +85,25 @@ const initialState: VisualizerState = {
 
 export const initializeVisualizer = createAsyncThunk(
   "visualizer/initializeVisualizer",
-  async (urlHash: string, { dispatch }) => {
-    try {
-      const urlData = JSON.parse(b64hash_to_utf8(urlHash));
-      const columnRefs = extractReferencedColumns(urlData.columnValuesMapping);
-      const dataSourceIds = Array.from(
-        new Set(columnRefs.map(ref => ref.sourceId)),
-      );
-      await Promise.all(
-        dataSourceIds
-          .map(sourceId => {
-            const [, cardId] = sourceId.split(":");
-            return [
-              dispatch(fetchCard(Number(cardId))),
-              dispatch(fetchCardQuery(Number(cardId))),
-            ];
-          })
-          .flat(),
-      );
-      return urlData;
-    } catch (err) {
-      console.error("Error parsing visualizer URL hash", err);
-    }
+  async (initialState: Partial<VisualizerHistoryItem>, { dispatch }) => {
+    const columnRefs = initialState.columnValuesMapping
+      ? extractReferencedColumns(initialState.columnValuesMapping)
+      : [];
+    const dataSourceIds = Array.from(
+      new Set(columnRefs.map(ref => ref.sourceId)),
+    );
+    await Promise.all(
+      dataSourceIds
+        .map(sourceId => {
+          const [, cardId] = sourceId.split(":");
+          return [
+            dispatch(fetchCard(Number(cardId))),
+            dispatch(fetchCardQuery(Number(cardId))),
+          ];
+        })
+        .flat(),
+    );
+    return initialState;
   },
 );
 
@@ -246,9 +242,9 @@ const visualizerHistoryItemSlice = createSlice({
   extraReducers: builder => {
     builder
       .addCase(initializeVisualizer.fulfilled, (state, action) => {
-        const urlState = action.payload;
-        if (urlState) {
-          Object.assign(state, urlState);
+        const initialState = action.payload;
+        if (initialState) {
+          Object.assign(state, initialState);
         }
       })
       .addCase(handleDrop, (state, action) => {
