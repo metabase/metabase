@@ -5,18 +5,23 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.config :as config]
+   [metabase.util :as u]
+   [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
    (java.io File)
-   (java.nio.file FileSystems
-                  Path
-                  StandardWatchEventKinds
-                  WatchKey
-                  WatchService
-                  WatchEvent)))
+   (java.nio.file
+    FileSystems
+    Files
+    OpenOption
+    Path
+    StandardWatchEventKinds
+    WatchEvent
+    WatchKey
+    WatchService)))
 
 (set! *warn-on-reflection* true)
 
@@ -76,7 +81,7 @@
 
 (update-user-key-value-schema!)
 
-;; Types live in `resources/user_key_value_types`
+(def ^:private prod-types-dir "user_key_value_types")
 
 (defn- types-dirs
   "Types live in `user_key_value_types`, in both `test_resources` and `resources`."
@@ -85,26 +90,48 @@
        (map #(io/file % "user_key_value_types"))
        (filter #(.exists ^File %))))
 
-(defn- types-files []
-  (->> (types-dirs)
-       (mapcat #(file-seq (io/file %)))
-       (filter #(.isFile ^File %))
-       distinct))
+#_(defn- types-files []
+    (->> (types-dirs)
+         (mapcat #(file-seq (io/file %)))
+         (filter #(.isFile ^File %))
+         distinct))
 
 (defn- load-schema
+  "Loads a schema with the provided namespace"
+  [schema namespace]
+  (defnamespace namespace schema)
+  (update-user-key-value-schema!))
+
+(defn- load-schema-from-file
   "Load a schema from an EDN file, using its name as the namespace."
   [^File file]
   (let [namespace (file->namespace file)
         schema  (-> file slurp edn/read-string)]
-    (defnamespace namespace schema)
-    (update-user-key-value-schema!)))
+    (load-schema schema namespace)))
 
 (defn load-all-schemas
   "Load all schemas from the types directory."
   []
-  (doseq [^File file (types-files)]
-    (when (str/ends-with? (.getName file) ".edn")
-      (load-schema file))))
+  (u.files/with-open-path-to-resource [prod-dir prod-types-dir]
+    (with-open [ds (Files/newDirectoryStream prod-dir)]
+      (let [schemas (reduce
+                     (fn [acc ^Path f]
+                       (let [schema (try
+                                      (-> (Files/newInputStream f (u/varargs OpenOption)) slurp edn/read-string)
+                                      (catch Throwable e
+                                        (throw (ex-info (format "Error loading schema %s: %s" (str f) (ex-message e))
+                                                        {:f f}
+                                                        e))))
+                             namespace (keyword "namespace"
+                                                (-> f
+                                                    .getFileName
+                                                    (str/replace #"\.edn$" "")))]
+                         (conj acc [schema namespace])))
+                     []
+                     ds)]
+        (doseq [[schema n] schemas]
+          (defnamespace n schema)
+          (update-user-key-value-schema!))))))
 
 (defn watch-directory
   "Watch a directory for changes and call the callback with the affected file."
@@ -133,8 +160,8 @@
   "Handle a file change in the types directory."
   [^File file action]
   (case action
-    :create (load-schema file)
-    :modify (load-schema file)
+    :create (load-schema-from-file file)
+    :modify (load-schema-from-file file)
     :delete (let [namespace (file->namespace file)]
               ;; this is kind of silly. we don't have a way to delete something from the registry, so just hackily
               ;; make a schema that can't ever be valid. In production, we're not going to be watching files, so
@@ -148,6 +175,3 @@
   (when config/is-dev?
     (doseq [types-dir (types-dirs)]
       (watch-directory types-dir handle-file-change))))
-
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defonce ^:private watcher (load-and-watch-schemas))
