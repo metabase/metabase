@@ -65,7 +65,7 @@
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.core :as mbc]
+   [metabase.core.core :as mbc]
    [metabase.db :as mdb]
    [metabase.db.env :as mdb.env]
    [metabase.driver :as driver]

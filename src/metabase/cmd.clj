@@ -18,7 +18,6 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
-   [environ.core :as env]
    [metabase.config :as config]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models]
@@ -99,13 +98,6 @@
     (catch Throwable e
       (log/error e "Failed to dump application database to H2 file")
       (system-exit! 1))))
-
-(defn ^:command profile
-  "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
-  []
-  ;; override env var that would normally make Jetty block forever
-  (alter-var-root #'env/env assoc :mb-jetty-join "false")
-  (u/profile "start-normally" ((resolve 'metabase.core/start-normally))))
 
 (defn ^:command reset-password
   "Reset the password for a user with `email-address`."
