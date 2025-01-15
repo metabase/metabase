@@ -133,6 +133,7 @@ export class UnconnectedDataSelector extends Component {
       searchText: "",
       isSavedEntityPickerShown: false,
       savedEntityType: null,
+      isPopoverOpen: props.isInitiallyOpen && !props.readOnly,
     };
     const computedState = this._getComputedState(props, state);
     this.state = {
@@ -196,6 +197,16 @@ export class UnconnectedDataSelector extends Component {
     isMantine: false,
     canSelectMetric: false,
   };
+
+  isPopoverOpen() {
+    // If the isOpen prop is passed in, use the controlled value.
+    if (typeof this.props.isOpen === "boolean") {
+      return this.props.isOpen;
+    }
+
+    // Otherwise, use the internal popover state.
+    return this.state.isPopoverOpen;
+  }
 
   // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
   // from props (`metadata`, `databases`, etc) and state (`selectedDatabaseId`, etc)
@@ -590,7 +601,10 @@ export class UnconnectedDataSelector extends Component {
   nextStep = async (stateChange = {}, skipSteps = true) => {
     const nextStep = this.getNextStep();
     if (!nextStep) {
-      await this.setStateWithComputedState(stateChange);
+      await this.setStateWithComputedState({
+        ...stateChange,
+        isPopoverOpen: !this.state.isPopoverOpen,
+      });
     } else {
       await this.switchToStep(nextStep, stateChange, skipSteps);
     }
@@ -791,12 +805,10 @@ export class UnconnectedDataSelector extends Component {
     const {
       className,
       style,
-      triggerIconSize,
       triggerElement,
       getTriggerElementContent: TriggerComponent,
       hasTriggerExpandControl,
       readOnly,
-      isMantine = true,
     } = this.props;
 
     if (triggerElement) {
@@ -810,8 +822,8 @@ export class UnconnectedDataSelector extends Component {
         className={cx(this.getTriggerClasses(), className)}
         style={style}
         showDropdownIcon={!readOnly && hasTriggerExpandControl}
-        iconSize={isMantine ? "1rem" : triggerIconSize}
-        isMantine={isMantine}
+        iconSize="1rem"
+        isMantine
       >
         <TriggerComponent
           database={selectedDatabase}
@@ -915,6 +927,9 @@ export class UnconnectedDataSelector extends Component {
       const table = this.props.metadata.table(tableOrCardId);
       this.props.setSourceTableFn(tableOrCardId, table.db_id);
     }
+    this.setStateWithComputedState({
+      isPopoverOpen: !this.state.isPopoverOpen,
+    });
     this.handleClose();
   };
 
@@ -943,6 +958,9 @@ export class UnconnectedDataSelector extends Component {
       const table = this.props.metadata.table(tableOrCardId);
       this.props.setSourceTableFn(table.id, table.db_id);
     }
+    this.setStateWithComputedState({
+      isPopoverOpen: !this.state.isPopoverOpen,
+    });
     this.handleClose();
   };
 
@@ -1074,9 +1092,7 @@ export class UnconnectedDataSelector extends Component {
         <Popover
           onClose={this.handleClose}
           position="bottom-start"
-          {...(this.props.isInitiallyOpen && !this.props.readOnly
-            ? { defaultOpened: true }
-            : { opened: this.props.isOpen })}
+          opened={this.isPopoverOpen()}
         >
           <Popover.Target>{this.getTriggerElement()}</Popover.Target>
           <Popover.Dropdown>{this.renderContent()}</Popover.Dropdown>
