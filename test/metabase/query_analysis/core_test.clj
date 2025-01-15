@@ -46,7 +46,7 @@
                         (u/update-if-exists :column u/lower-case-en)))
               (sort-by (juxt :table :column)))))))
 
-(deftest ^:parallel parse-mbql-test
+(deftest parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"
     (mt/with-temp [:model/Card c1 {:dataset_query (mt/mbql-query venues
                                                     {:aggregation [[:distinct $name]
@@ -69,7 +69,7 @@
                 {:table-id (mt/id :venues), :table "venues", :field-id %venues.id, :column "id", :explicit-reference true}])
              (:fields (field-id-references c3)))))))
 
-(deftest ^:parallel parse-mbql-test-2
+(deftest parse-mbql-test-2
   (testing "Parsing pMBQL query returns correct used fields"
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
@@ -108,7 +108,7 @@
       (is (= [{:table "t"}]
              (:tables (field-id-references c2)))))))
 
-(deftest ^:parallel replace-fields-and-tables!-test
+(deftest replace-fields-and-tables!-test
   (testing "fields and tables in a native card can be replaced"
     (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
       (let [replacements {:fields {(mt/id :orders :total) (mt/id :people :name)}
@@ -124,7 +124,7 @@
      (query-analysis/with-immediate-analysis
        ~@body)))
 
-(deftest ^:parallel parse-crosstab-test
+(deftest parse-crosstab-test
   (with-analysis-on
     (testing "Nested queries within crosstab expressions are ignored"
       (let [sql "SELECT * FROM CROSSTAB($$ wat $$, $$ wut $$) AS ct(page INTEGER, \"foo\" FLOAT)"]
@@ -135,7 +135,7 @@
             (is (not (t2/exists? :model/QueryField :card_id c-id)))
             (is (not (t2/exists? :model/QueryTable :card_id c-id)))))))))
 
-(deftest ^:parallel parse-long-column-test
+(deftest parse-long-column-test
   (with-analysis-on
     (testing "Long identifiers are truncated"
       (let [long-column (monstrous-name)
