@@ -1,0 +1,49 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tbody {
+  background: var(--mb-color-bg-light);
+  border-top: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border);
+  min-height: 30rem;
+  max-height: 40rem;
+  overflow: scroll;
+}
+
+.th {
+  &:first-child {
+    width: 70%;
+    padding: 0.5rem 0.5rem 0.75rem 2.5rem;
+  }
+
+  &:last-child {
+    width: 30%;
+    padding: 0.5rem 2.5rem 0.75rem 0.5rem;
+  }
+}
+
+.col {
+  &:first-child {
+    width: 70%;
+    padding: 0.5rem 0.5rem 0.5rem 2.5rem;
+  }
+
+  &:last-child {
+    width: 30%;
+    padding: 0.5rem 2.5rem 0.5rem 0.5rem;
+  }
+}
+
+.tr {
+  display: flex;
+
+  &:first-child .col {
+    padding-top: 0.75rem;
+  }
+
+  &:last-child .col {
+    padding-bottom: 0.75rem;
+  }
+}
