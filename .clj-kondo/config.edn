@@ -333,7 +333,6 @@
                                      metabase.async.streaming-response.thread-pool
                                      metabase.async.util}                                           ; TODO -- consolidate these into a real API namespace.
     metabase.audit                 #{metabase.audit}
-    metabase.bootstrap             #{metabase.bootstrap}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
     metabase.channel               #{metabase.channel.core
                                      metabase.channel.init
@@ -363,7 +362,6 @@
                                      metabase.legacy-mbql.util}                                     ; TODO -- consolidate these into a real API namespace.
     metabase.lib                   :any                                                             ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
     metabase.logger                #{metabase.logger metabase.logger.init}
-    metabase.metabot               #{metabase.metabot}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
     metabase.notification          #{metabase.notification.core
@@ -439,7 +437,6 @@
     metabase.audit                 :any
     metabase.auth-provider         #{metabase.util
                                      metabase.premium-features}
-    metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
     metabase.channel               :any
@@ -456,7 +453,6 @@
     metabase.lib                   :any
     metabase.logger                #{metabase.config
                                      metabase.plugins}
-    metabase.metabot               :any
     metabase.models                :any
     metabase.moderation            :any
     metabase.notification          :any

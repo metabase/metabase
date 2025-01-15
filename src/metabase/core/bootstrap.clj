@@ -1,4 +1,4 @@
-(ns metabase.bootstrap
+(ns metabase.core.bootstrap
   (:gen-class)
   (:require [clojure.java.io :as io]))
 
@@ -26,6 +26,6 @@
 (System/setProperty "clojure.tools.logging.factory" "clojure.tools.logging.impl/log4j2-factory")
 
 (defn -main
-  "Main entrypoint. Invokes [[metabase.core/entrypoint]]"
+  "Main entrypoint. Invokes [[metabase.core.core/entrypoint]]"
   [& args]
-  (apply (requiring-resolve 'metabase.core/entrypoint) args))
+  (apply (requiring-resolve 'metabase.core.core/entrypoint) args))
