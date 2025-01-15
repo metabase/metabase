@@ -18,7 +18,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.setup :as setup]
+   [metabase.setup.core :as setup]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]

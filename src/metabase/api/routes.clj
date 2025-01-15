@@ -43,7 +43,6 @@
    [metabase.api.segment :as api.segment]
    [metabase.api.session :as api.session]
    [metabase.api.setting :as api.setting]
-   [metabase.api.setup :as api.setup]
    [metabase.api.slack :as api.slack]
    [metabase.api.table :as api.table]
    [metabase.api.task :as api.task]
@@ -56,6 +55,7 @@
    [metabase.api.util :as api.util]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
+   [metabase.setup.api :as setup.api]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (when config/ee-available?
@@ -112,7 +112,7 @@
   (context "/session"              [] api.session/routes)
   (context "/cache"                [] (+auth api.cache/routes))
   (context "/setting"              [] (+auth api.setting/routes))
-  (context "/setup"                [] api.setup/routes)
+  (context "/setup"                [] setup.api/routes)
   (context "/slack"                [] (+auth api.slack/routes))
   (context "/table"                [] (+auth api.table/routes))
   (context "/task"                 [] (+auth api.task/routes))

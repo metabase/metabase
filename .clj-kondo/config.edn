@@ -311,8 +311,7 @@
    ;;    this set. Ideally this set should only have one namespace, but restricting it to a set of several is still
    ;;    better than `:any`.
    ;;
-   ;; 3. `nil` or not listed here -- we default to assuming there is one API namespace that matches the name of the
-   ;;    module itself, e.g. the module namespace for `metabase.setup` would be `metabase.setup`.
+   ;; 3. `nil` or not listed here -- we default to assuming there is one API namespace called `<module>.core`
    ;;
    ;; `nil` or an empty set  Otherwise this should be a set of namespace symbols.
    ;;
@@ -325,6 +324,13 @@
                                      metabase.analytics.sdk}                                        ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze.core}
     metabase.api                   #{metabase.api.common
+                                     ;; I don't really like making all these namespaces external but they have to be
+                                     ;; for now until we can shrink this mega-module down a little bit (by moving API
+                                     ;; namespaces out into different modules)... eventually `api` will just be a
+                                     ;; general low-level API utils/macros module and at that point it can probably
+                                     ;; get a single API namespace. Please try to avoid adding more stuff here if you
+                                     ;; can tho. -- Cam
+                                     metabase.api.common.validation
                                      metabase.api.dataset
                                      metabase.api.macros
                                      metabase.api.permission-graph
@@ -396,7 +402,8 @@
                                      ;; causes circular dependencies. Maybe in the future once we tease apart more of
                                      ;; the modules tangle we can.
                                      metabase.server.protocols}
-    metabase.setup                 #{metabase.setup}
+    metabase.setup                 #{metabase.setup.api
+                                     metabase.setup.core}
     metabase.sync                  #{metabase.sync
                                      metabase.sync.analyze
                                      metabase.sync.concurrent

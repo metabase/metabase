@@ -1,4 +1,4 @@
-(ns metabase.setup
+(ns metabase.setup.core
   (:require
    [environ.core :as env]
    [metabase.config :as config]
