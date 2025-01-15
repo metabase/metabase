@@ -62,6 +62,7 @@ export type NewDashCardOpts = {
 export type AddDashCardOpts = NewDashCardOpts & {
   dashcardOverrides: Partial<NewDashboardCard> & {
     card: Card | VirtualCard;
+    series?: Card[];
   };
 };
 
@@ -253,6 +254,57 @@ export const replaceCard =
     dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
 
     dashboardId && trackQuestionReplaced(dashboardId);
+  };
+
+export const addCardWithVisualization =
+  ({ visualization }: { visualization: VisualizerHistoryItem }) =>
+  async (dispatch: Dispatch, getState: GetState) => {
+    const referencedColumns = extractReferencedColumns(
+      visualization.columnValuesMapping,
+    );
+    const usedDataSourceIds = Array.from(
+      new Set(referencedColumns.map(ref => ref.sourceId)),
+    );
+
+    const cardIds = usedDataSourceIds.map(id => {
+      const { sourceId } = parseDataSourceId(id);
+      return sourceId;
+    });
+    const cards: any = [];
+
+    for (const cardId of cardIds) {
+      await dispatch(Questions.actions.fetch({ id: cardId }));
+      const card = Questions.selectors
+        .getObject(getState(), { entityId: cardId })
+        .card();
+      cards.push(card);
+    }
+
+    const [mainCard, ...secondaryCards] = cards;
+
+    const dashcardId = generateTemporaryDashcardId();
+    const dashcard = dispatch(
+      addDashCardToDashboard({
+        dashId: getState().dashboard.dashboardId!,
+        tabId: getState().dashboard.selectedTabId,
+        dashcardOverrides: {
+          id: dashcardId,
+          card: mainCard,
+          card_id: mainCard.id,
+          series: secondaryCards,
+          visualization_settings: {
+            visualization,
+          },
+        },
+      }),
+    ) as DashboardCard;
+
+    for (const card of cards) {
+      dispatch(
+        fetchCardData(card, dashcard, { reload: true, clearCache: true }),
+      );
+      await dispatch(loadMetadataForCard(card));
+    }
   };
 
 export const replaceCardWithVisualization =

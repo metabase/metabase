@@ -5,10 +5,12 @@ import EmptyState from "metabase/components/EmptyState";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import SelectList from "metabase/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
+import { addCardWithVisualization } from "metabase/dashboard/actions";
 import Search from "metabase/entities/search";
 import { isEmbeddingSdk } from "metabase/env";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
+import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
@@ -55,6 +57,8 @@ export function QuestionList({
   const [visualizerModalCardId, setVisualizerModalCardId] =
     useState<CardId | null>(null);
   const isVisualizerModalOpen = !!visualizerModalCardId;
+
+  const dispatch = useDispatch();
 
   useEffect(() => {
     setQueryOffset(0);
@@ -167,7 +171,10 @@ export function QuestionList({
                   },
                   extraDataSources: [`card:${visualizerModalCardId}`],
                 }}
-                onSave={() => alert("Do a thing")}
+                onSave={visualization => {
+                  dispatch(addCardWithVisualization({ visualization }));
+                  setVisualizerModalCardId(null);
+                }}
                 onClose={() => setVisualizerModalCardId(null)}
               />
             )}

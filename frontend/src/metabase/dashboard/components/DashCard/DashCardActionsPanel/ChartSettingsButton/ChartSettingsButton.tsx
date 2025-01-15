@@ -2,6 +2,8 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { replaceCardWithVisualization } from "metabase/dashboard/actions";
+import { useDispatch } from "metabase/lib/redux";
 import { Modal } from "metabase/ui";
 import { DashboardChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
@@ -12,6 +14,7 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import { DashCardActionButton } from "../DashCardActionButton";
 
@@ -30,12 +33,29 @@ export function ChartSettingsButton({
 }: Props) {
   // const [isOpened, { open, close }] = useDisclosure(false);
   const [isVisualizerModalOpen, setVisualizerModalOpen] = useState(false);
+  const dispatch = useDispatch();
 
   const visualizerInitialState = useMemo(() => {
     if (isVisualizerModalOpen) {
-      return getInitialStateForCardDataSource(series[0].card, series[0]);
+      if (dashcard?.visualization_settings?.visualization) {
+        return dashcard?.visualization_settings?.visualization;
+      } else {
+        return getInitialStateForCardDataSource(series[0].card, series[0]);
+      }
     }
-  }, [isVisualizerModalOpen, series]);
+  }, [isVisualizerModalOpen, dashcard, series]);
+
+  const handleChangeVisualization = (visualization: VisualizerHistoryItem) => {
+    if (dashcard) {
+      dispatch(
+        replaceCardWithVisualization({
+          dashcardId: dashcard.id,
+          visualization,
+        }),
+      );
+      setVisualizerModalOpen(false);
+    }
+  };
 
   return (
     <>
@@ -51,7 +71,7 @@ export function ChartSettingsButton({
       {!!visualizerInitialState && (
         <VisualizerModal
           initialState={{ state: visualizerInitialState }}
-          onSave={() => alert("Do a thing")}
+          onSave={handleChangeVisualization}
           onClose={() => setVisualizerModalOpen(false)}
         />
       )}
