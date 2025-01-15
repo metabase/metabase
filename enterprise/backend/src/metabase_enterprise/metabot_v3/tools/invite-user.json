@@ -1,6 +1,6 @@
 {
     "name": "invite-user",
-    "description": "Invite a user to Metabase. Can only be used with valid and complete email address (username + @ + domain + TLD) like 'peter.pan@neverland.com'. This will fail if the email address is incomplete or missing a part like the TLD (e.g. 'peter.pan@neverland').",
+    "description": "Invite a user to Metabase. Can only be used with valid and complete email address (username + @ + domain + TLD) like 'peter.pan@neverland.com'. This will fail if the email address is incomplete or missing a part like the TLD (e.g. 'peter.pan@neverland'). Only use this tool when explicitly asked by the user to invite someone.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -13,5 +13,9 @@
             "email"
         ],
         "additionalProperties": false
-    }
+    },
+    "examples": [
+        "User: Invite my colleague Peter (user email: metabot@metabase.com)\nAssistant: Please provide the email address of Peter.\nUser: peter.p@metabase.com\nAssistant: {\"tool_name\": \"invite-user\", \"arguments\": {\"email\": \"peter.p@metabase.com\"}}",
+        "User: Invite a.f@coorp to Metabase\nAssistant: 'a.f@coorp is not a valid email address. Please provide a valid email address.\nUser: a.f@corp.net\nAssistant: {\"tool_name\": \"invite-user\", \"arguments\": {\"email\": \"a.f@corp.net\"}}"
+    ]
 }
