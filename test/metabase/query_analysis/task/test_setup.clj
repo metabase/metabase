@@ -1,4 +1,4 @@
-(ns metabase.task.setup.query-analysis-setup
+(ns metabase.query-analysis.task.test-setup
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

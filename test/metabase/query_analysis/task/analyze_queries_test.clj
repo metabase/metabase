@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.query-analysis.core :as query-analysis]
    [metabase.query-analysis.task.analyze-queries :as task.analyze-queries]
-   [metabase.task.setup.query-analysis-setup :as setup]
+   [metabase.query-analysis.task.test-setup :as setup]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 

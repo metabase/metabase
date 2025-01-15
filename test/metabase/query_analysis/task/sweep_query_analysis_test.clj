@@ -3,8 +3,8 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.query-analysis.core :as query-analysis]
-   [metabase.task.setup.query-analysis-setup :as setup]
    [metabase.query-analysis.task.sweep-query-analysis :as sweeper]
+   [metabase.query-analysis.task.test-setup :as setup]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
