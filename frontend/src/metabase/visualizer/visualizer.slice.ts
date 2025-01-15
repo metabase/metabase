@@ -83,15 +83,26 @@ const initialState: VisualizerState = {
   future: [],
 };
 
+type InitVisualizerPayload = {
+  state?: Partial<VisualizerHistoryItem>;
+  extraDataSources?: VisualizerDataSourceId[];
+};
+
 export const initializeVisualizer = createAsyncThunk(
   "visualizer/initializeVisualizer",
-  async (initialState: Partial<VisualizerHistoryItem>, { dispatch }) => {
+  async (
+    { state: initialState = {}, extraDataSources = [] }: InitVisualizerPayload,
+    { dispatch },
+  ) => {
     const columnRefs = initialState.columnValuesMapping
       ? extractReferencedColumns(initialState.columnValuesMapping)
       : [];
     const dataSourceIds = Array.from(
       new Set(columnRefs.map(ref => ref.sourceId)),
     );
+    if (extraDataSources.length > 0) {
+      dataSourceIds.push(...extraDataSources);
+    }
     await Promise.all(
       dataSourceIds
         .map(sourceId => {

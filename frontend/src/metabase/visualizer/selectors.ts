@@ -251,7 +251,7 @@ export const getFutureVisualizerUrlHashes = createSelector(
 );
 
 function getStateHash(state: VisualizerHistoryItem) {
-  return checkIfStateDirty(state) ? utf8_to_b64(JSON.stringify(state)) : "";
+  return checkIfStateDirty(state) ? utf8_to_b64(JSON.stringify({ state })) : "";
 }
 
 function checkIfStateDirty(state: VisualizerHistoryItem) {

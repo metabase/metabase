@@ -13,6 +13,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import type {
+  CardId,
   CollectionId,
   SearchRequest,
   SearchResult,
@@ -49,8 +50,11 @@ export function QuestionList({
   showOnlyPublicCollections,
 }: QuestionListProps) {
   const [queryOffset, setQueryOffset] = useState(0);
-  const [isVisualizerModalOpen, setVisualizerModalOpen] = useState(false);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
+
+  const [visualizerModalCardId, setVisualizerModalCardId] =
+    useState<CardId | null>(null);
+  const isVisualizerModalOpen = !!visualizerModalCardId;
 
   useEffect(() => {
     setQueryOffset(0);
@@ -101,6 +105,7 @@ export function QuestionList({
       {({ list, metadata }: SearchListLoaderProps) => {
         const shouldShowEmptyState =
           list.length === 0 && (isSearching || !hasCollections);
+
         if (shouldShowEmptyState) {
           return (
             <EmptyStateContainer>
@@ -133,7 +138,7 @@ export function QuestionList({
                     <Box
                       ml="auto"
                       className={S.visualizerButton}
-                      onClick={() => setVisualizerModalOpen(true)}
+                      onClick={() => setVisualizerModalCardId(Number(item.id))}
                     >
                       <Icon name="add_data" />
                     </Box>
@@ -154,8 +159,16 @@ export function QuestionList({
             </PaginationControlsContainer>
             {isVisualizerModalOpen && (
               <VisualizerModal
+                initialState={{
+                  state: {
+                    display: list.find(
+                      item => item.id === visualizerModalCardId,
+                    )?.display,
+                  },
+                  extraDataSources: [`card:${visualizerModalCardId}`],
+                }}
                 onSave={() => alert("Do a thing")}
-                onClose={() => setVisualizerModalOpen(false)}
+                onClose={() => setVisualizerModalCardId(null)}
               />
             )}
           </>
