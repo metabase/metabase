@@ -6,7 +6,7 @@ import CS from "metabase/css/core/index.css";
 import { getNotificationEnabledChannelsMap } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
-import { Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Group, Icon, Text, Tooltip } from "metabase/ui";
 import type { Notification } from "metabase-types/api";
 
 import { AlertCreatorTitle } from "./AlertCreatorTitle";
@@ -58,42 +58,54 @@ export const AlertListItem = ({
   };
 
   return (
-    <Stack
+    <Flex
       className={cx(
         S.notificationListItem,
         canEdit && S.notificationListItemEditable,
       )}
+      direction="row"
+      justify="space-between"
+      align="center"
       w="100%"
       py="0.5rem"
       px="0.75rem"
-      spacing="sm"
       onClick={onEdit}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div>
-        <Text
-          className={S.itemTitle}
-          size="md"
-          lineClamp={1}
-          weight="bold"
-        >{t`Alert`}</Text>
-      </div>
-
-      <Group spacing="0.75rem" align="center" c="text-medium">
-        {enabledChannelsMap["channel/email"] && <Icon name="mail" />}
-        {enabledChannelsMap["channel/slack"] && <Icon name="slack" size={16} />}
-        {enabledChannelsMap["channel/http"] && (
-          <Icon name="webhook" size={16} />
-        )}
-        {user && <AlertCreatorTitle alert={alert} user={user} />}
-      </Group>
-
+      <Box>
+        <Box mb="0.5rem">
+          <Text
+            className={S.itemTitle}
+            size="md"
+            lineClamp={1}
+            weight="bold"
+          >{t`Alert`}</Text>
+        </Box>
+        <Group spacing="0.75rem" align="center" c="text-medium">
+          {enabledChannelsMap["channel/email"] && <Icon name="mail" />}
+          {enabledChannelsMap["channel/slack"] && (
+            <Icon name="slack" size={14} />
+          )}
+          {enabledChannelsMap["channel/http"] && (
+            <Icon name="webhook" size={16} />
+          )}
+          {user && <AlertCreatorTitle alert={alert} user={user} />}
+        </Group>
+      </Box>
       {showHoverActions && (
-        <div className={S.hoverActionButton}>
+        <div>
           {canEdit && (
             <Tooltip label={t`Delete this alert`}>
-              <Icon name="trash" onClick={handleDelete} />
+              <Button
+                color="brand"
+                aria-label={t`Delete this alert`}
+                leftIcon={<Icon name="trash" />}
+                mr="-0.6875rem"
+                size="xs"
+                variant="subtle"
+                onClick={handleDelete}
+              />
             </Tooltip>
           )}
           {!canEdit && (
@@ -104,6 +116,6 @@ export const AlertListItem = ({
           )}
         </div>
       )}
-    </Stack>
+    </Flex>
   );
 };

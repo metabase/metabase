@@ -2,8 +2,8 @@ import type {
   CardId,
   ChannelApiResponse,
   CreateAlertNotificationRequest,
+  NotificationChannel,
   NotificationHandler,
-  NotificationRecipient,
   ScheduleSettings,
   UserId,
 } from "metabase-types/api";
@@ -19,41 +19,72 @@ export const DEFAULT_ALERT_SCHEDULE: ScheduleSettings = {
   schedule_minute: 0,
 };
 
+const getDefaultChannelConfig = ({
+  channelSpec,
+  hookChannels,
+  currentUserId,
+}: {
+  channelSpec: ChannelApiResponse;
+  hookChannels: NotificationChannel[];
+  currentUserId: UserId;
+}): NotificationHandler[] => {
+  if (channelSpec.channels.email.configured) {
+    const handlers: NotificationHandler[] = [
+      {
+        channel_type: "channel/email",
+        recipients: [
+          {
+            type: "notification-recipient/user",
+            user_id: currentUserId,
+            details: null,
+          },
+        ],
+      },
+    ];
+
+    return handlers;
+  }
+
+  if (channelSpec.channels.slack.configured) {
+    const handlers: NotificationHandler[] = [
+      {
+        channel_type: "channel/slack",
+        recipients: [],
+      },
+    ];
+
+    return handlers;
+  }
+
+  if (channelSpec.channels.http.configured && hookChannels.length > 0) {
+    const channel = hookChannels[0];
+    const handlers: NotificationHandler[] = [
+      {
+        channel_type: "channel/http",
+        channel_id: channel.id,
+        recipients: [],
+      },
+    ];
+
+    return handlers;
+  }
+
+  return [];
+};
+
 export const getDefaultQuestionAlertRequest = ({
   cardId,
-  userId,
+  currentUserId,
   channelSpec,
+  hookChannels,
   availableTriggerOptions,
 }: {
   cardId: CardId;
-  userId: UserId;
-  channelSpec: ChannelApiResponse | undefined;
+  currentUserId: UserId;
+  channelSpec: ChannelApiResponse;
+  hookChannels: NotificationChannel[];
   availableTriggerOptions: NotificationTriggerOption[];
 }): CreateAlertNotificationRequest => {
-  const recipients: NotificationRecipient[] = userId
-    ? [
-        {
-          type: "notification-recipient/user",
-          user_id: userId,
-          details: null,
-        },
-      ]
-    : [];
-
-  const handlers: NotificationHandler[] = [
-    {
-      channel_type: "channel/email",
-      recipients,
-    },
-  ];
-
-  if (channelSpec?.channels.slack.configured) {
-    handlers.push({
-      channel_type: "channel/slack",
-      recipients: [],
-    });
-  }
-
   const sendCondition = availableTriggerOptions[0].value;
 
   return {
@@ -63,7 +94,11 @@ export const getDefaultQuestionAlertRequest = ({
       send_once: false,
       send_condition: sendCondition,
     },
-    handlers,
+    handlers: getDefaultChannelConfig({
+      channelSpec,
+      hookChannels,
+      currentUserId,
+    }),
     subscriptions: [
       {
         type: "notification-subscription/cron",

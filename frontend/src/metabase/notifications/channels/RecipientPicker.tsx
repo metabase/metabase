@@ -46,6 +46,9 @@ export const RecipientPicker = ({
           options={users ? users.map(user => ({ value: user })) : []}
           onChange={handleOnChange}
           className={S.tokenField}
+          idKey={(item: RecipientPickerValue) =>
+            "id" in item ? String(item.id) : item.email
+          }
           placeholder={
             recipients.length === 0
               ? t`Enter user names or email addresses`

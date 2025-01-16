@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+import { isEqual } from "underscore";
 
 import {
   cronToScheduleSettings,
@@ -8,6 +9,7 @@ import {
 import {
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
+  useListChannelsQuery,
   useListUsersQuery,
   useUpdateNotificationMutation,
 } from "metabase/api";
@@ -100,26 +102,29 @@ export const CreateOrEditQuestionAlertModal = ({
   const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
 
-  const { data: channelSpec } = useGetChannelInfoQuery();
-  const { data: users } = useListUsersQuery({});
-
-  const isEditMode = !!editingNotification;
-
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
   >(null);
 
+  const questionId = question?.id();
+  const isEditMode = !!editingNotification;
   const subscription = notification?.subscriptions[0];
+
+  const { data: channelSpec } = useGetChannelInfoQuery();
+  const { data: users } = useListUsersQuery({});
+  const { data: hookChannels } = useListChannelsQuery();
 
   const [createNotification] = useCreateNotificationMutation();
   const [updateNotification] = useUpdateNotificationMutation();
 
-  const questionId = question?.id();
-
-  const triggerOptions = getAlertTriggerOptions({
-    question,
-    visualizationSettings,
-  }).map(trigger => ALERT_TRIGGER_OPTIONS_MAP[trigger]);
+  const triggerOptions = useMemo(
+    () =>
+      getAlertTriggerOptions({
+        question,
+        visualizationSettings,
+      }).map(trigger => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
+    [question, visualizationSettings],
+  );
 
   const hasSingleTriggerOption = triggerOptions.length === 1;
 
@@ -133,14 +138,15 @@ export const CreateOrEditQuestionAlertModal = ({
   // }, [question]);
 
   useEffect(() => {
-    if (questionId && channelSpec && user && !notification) {
+    if (questionId && channelSpec && user && hookChannels && !notification) {
       setNotification(
         isEditMode
           ? { ...editingNotification }
           : getDefaultQuestionAlertRequest({
               cardId: questionId,
-              userId: user.id,
+              currentUserId: user.id,
               channelSpec,
+              hookChannels,
               availableTriggerOptions: triggerOptions,
             }),
       );
@@ -153,6 +159,7 @@ export const CreateOrEditQuestionAlertModal = ({
     user,
     editingNotification,
     isEditMode,
+    hookChannels,
   ]);
 
   const onCreateOrEditAlert = async () => {
@@ -203,6 +210,7 @@ export const CreateOrEditQuestionAlertModal = ({
   }
 
   const isValid = alertIsValid(notification, channelSpec);
+  const hasChanges = !isEqual(editingNotification, notification);
 
   return (
     <Modal.Root
@@ -311,7 +319,9 @@ export const CreateOrEditQuestionAlertModal = ({
         >
           <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
           <ButtonWithStatus
-            titleForState={{ default: t`Done` }}
+            titleForState={{
+              default: isEditMode && hasChanges ? t`Save changes` : t`Done`,
+            }}
             disabled={!isValid}
             onClickOperation={onCreateOrEditAlert}
           />

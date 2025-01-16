@@ -6,6 +6,8 @@ import {
   useListNotificationsQuery,
   useUpdateNotificationMutation,
 } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
 import { Button, Flex, Modal, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Notification } from "metabase-types/api";
@@ -28,6 +30,8 @@ export const QuestionAlertListModal = ({
   onClose: () => void;
 }) => {
   const [editingItem, setEditingItem] = useState<Notification | null>(null);
+
+  const dispatch = useDispatch();
 
   const { data: questionNotifications } = useListNotificationsQuery({
     card_id: question.id(),
@@ -53,10 +57,23 @@ export const QuestionAlertListModal = ({
   };
 
   const handleDelete = async (itemToDelete: Notification) => {
-    await updateNotification({
+    const result = await updateNotification({
       ...itemToDelete,
       active: false,
     });
+
+    if (result.error) {
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "error",
+          message: t`An error occurred`,
+        }),
+      );
+      return;
+    }
+
+    dispatch(addUndo({ message: t`The alert was successfully deleted.` }));
 
     handleInternalModalClose();
   };
@@ -109,7 +126,7 @@ export const QuestionAlertListModal = ({
             <Button onClick={handleInternalModalClose}>{t`Cancel`}</Button>
             <Button
               variant="filled"
-              color="danger"
+              color="error"
               onClick={() => handleDelete(editingItem)}
             >{t`Delete it`}</Button>
             {/* TODO: add DeleteAlertSection content here ??? */}
