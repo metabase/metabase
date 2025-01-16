@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -7,25 +7,15 @@ import type { Widget } from "../types";
 import type { BaseChartSettingsProps } from "./types";
 
 // section names are localized
-const DEFAULT_TAB_PRIORITY = [t`Chart`, t`Data`];
+const DEFAULT_TAB_PRIORITY = [t`Data`];
 
 export const useChartSettingsSections = ({
   initial,
   widgets,
-  shouldShowChartTypeSelector = false,
-}: Pick<BaseChartSettingsProps, "initial" | "widgets"> & {
-  shouldShowChartTypeSelector: boolean;
-}) => {
+}: Pick<BaseChartSettingsProps, "initial" | "widgets">) => {
   const [currentSection, setCurrentSection] = useState<string | null>(
     initial?.section ?? null,
   );
-
-  useEffect(() => {
-    // it's a way to select some specific tab
-    if (initial?.section) {
-      setCurrentSection(initial.section);
-    }
-  }, [initial?.section]);
 
   const sections: Record<string, Widget[]> = useMemo(() => {
     const sectionObj: Record<string, Widget[]> = {};
@@ -35,9 +25,6 @@ export const useChartSettingsSections = ({
         sectionObj[widget.section].push(widget);
       }
     }
-    if (shouldShowChartTypeSelector) {
-      sectionObj[t`Chart`] = [];
-    }
 
     // Move settings from the "undefined" section in the first tab
     if (sectionObj["undefined"] && Object.values(sectionObj).length > 1) {
@@ -45,16 +32,14 @@ export const useChartSettingsSections = ({
       delete sectionObj["undefined"];
       Object.values(sectionObj)[0].unshift(...extra);
     }
-
     return sectionObj;
-  }, [shouldShowChartTypeSelector, widgets]);
+  }, [widgets]);
 
   // This sorts the section radio buttons.
   const sectionNames = useMemo(() => {
     const names = Object.keys(sections);
 
     const sectionSortOrder = [
-      "chart",
       "data",
       "display",
       "axes",
@@ -71,14 +56,14 @@ export const useChartSettingsSections = ({
     return names;
   }, [sections]);
 
-  const chartSettingCurrentSection = useMemo(() => {
-    const calculatedCurrentSection = currentSection ?? initial?.section;
-
-    return calculatedCurrentSection && sections[calculatedCurrentSection]
-      ? calculatedCurrentSection
-      : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
-          sectionNames[0];
-  }, [currentSection, initial?.section, sectionNames, sections]);
+  const chartSettingCurrentSection = useMemo(
+    () =>
+      currentSection && sections[currentSection]
+        ? currentSection
+        : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
+          sectionNames[0],
+    [currentSection, sectionNames, sections],
+  );
 
   const visibleWidgets = useMemo(
     () => sections[chartSettingCurrentSection] || [],
