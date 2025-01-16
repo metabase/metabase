@@ -167,6 +167,8 @@ import globe_component from "./globe.svg?component";
 import globe_source from "./globe.svg?source";
 import google_component from "./google.svg?component";
 import google_source from "./google.svg?source";
+import google_drive_component from "./google_drive.svg?component";
+import google_drive_source from "./google_drive.svg?source";
 import google_sheet_component from "./google_sheet.svg?component";
 import google_sheet_source from "./google_sheet.svg?source";
 import grabber_component from "./grabber.svg?component";
@@ -750,6 +752,10 @@ export const Icons = {
   google: {
     component: google_component,
     source: google_source,
+  },
+  google_drive: {
+    component: google_drive_component,
+    source: google_drive_source,
   },
   google_sheet: {
     component: google_sheet_component,

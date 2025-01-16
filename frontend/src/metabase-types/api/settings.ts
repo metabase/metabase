@@ -355,7 +355,7 @@ interface PublicSettings {
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
   gsheets: {
-    status: "not-connected" | "connected";
+    status: "not-connected" | "loading" | "complete";
     folder_url: string | null;
   };
   "has-user-setup": boolean;
