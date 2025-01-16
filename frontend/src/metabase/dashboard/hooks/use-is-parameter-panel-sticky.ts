@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useState } from "react";
 
-export function useIsParameterPanelSticky() {
-  const intersectionObserverTargetRef = useRef<HTMLElement>(null);
+export function useIsParameterPanelSticky({
+  parameterPanelRef,
+}: {
+  parameterPanelRef: RefObject<HTMLElement>;
+}) {
   const [isSticky, setIsSticky] = useState(false);
   const [isStickyStateChanging, setIsStickyStateChanging] = useState(false);
 
   useEffect(() => {
     if (
-      intersectionObserverTargetRef.current &&
+      parameterPanelRef.current &&
       // Allow this hook in tests, since Node don't have access to some Browser APIs
       typeof IntersectionObserver !== "undefined"
     ) {
@@ -23,17 +26,16 @@ export function useIsParameterPanelSticky() {
           setIsStickyStateChanging(false);
         });
       }, settings);
-      observer.observe(intersectionObserverTargetRef.current);
+      observer.observe(parameterPanelRef.current);
 
       return () => {
         observer.disconnect();
       };
     }
-  }, []);
+  }, [parameterPanelRef]);
 
   return {
     isSticky,
     isStickyStateChanging,
-    intersectionObserverTargetRef,
   } as const;
 }

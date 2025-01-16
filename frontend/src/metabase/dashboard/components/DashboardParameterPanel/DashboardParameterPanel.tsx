@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useRef } from "react";
 
 import TransitionS from "metabase/css/core/transitions.module.css";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
@@ -41,14 +42,13 @@ export function DashboardParameterPanel({
   const hasVisibleParameters = visibleParameters.length > 0;
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
+  const parameterPanelRef = useRef<HTMLElement>(null);
   const allowSticky = isParametersWidgetContainersSticky(
     visibleParameters.length,
   );
-  const {
-    isSticky,
-    isStickyStateChanging,
-    intersectionObserverTargetRef: stickyRef,
-  } = useIsParameterPanelSticky();
+  const { isSticky, isStickyStateChanging } = useIsParameterPanelSticky({
+    parameterPanelRef,
+  });
 
   const shouldApplyThemeChangeTransition = !isStickyStateChanging && isSticky;
 
@@ -58,7 +58,7 @@ export function DashboardParameterPanel({
 
   if (isEditing) {
     return (
-      <span ref={stickyRef}>
+      <span ref={parameterPanelRef}>
         <ParametersWidgetContainer
           allowSticky
           isSticky
@@ -77,7 +77,7 @@ export function DashboardParameterPanel({
   }
 
   return (
-    <span ref={stickyRef}>
+    <span ref={parameterPanelRef}>
       <ParametersWidgetContainer
         className={cx({
           [TransitionS.transitionThemeChange]: shouldApplyThemeChangeTransition,

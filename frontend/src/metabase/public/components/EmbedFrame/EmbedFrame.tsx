@@ -1,6 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
@@ -126,11 +125,11 @@ export const EmbedFrame = ({
     initializeIframeResizer(() => setHasFrameScroll(false));
   });
 
+  const parameterPanelRef = useRef<HTMLElement>(null);
   const {
     isSticky: isParameterPanelSticky,
     isStickyStateChanging: isParameterPanelStickyStateChanging,
-    intersectionObserverTargetRef: stickyParameterPanelRef,
-  } = useIsParameterPanelSticky();
+  } = useIsParameterPanelSticky({ parameterPanelRef });
 
   const hideParameters = [hide_parameters, hiddenParameterSlugs]
     .filter(Boolean)
@@ -219,12 +218,8 @@ export const EmbedFrame = ({
             <Separator className={TransitionS.transitionThemeChange} />
           </Header>
         )}
-        {/**
-         * I put the target for IntersectionObserver right above the parameters container,
-         * so that it detects when the parameters container is about to be sticky (is about
-         * to go out of the viewport).
-         */}
-        <span ref={stickyParameterPanelRef} />
+
+        <span ref={parameterPanelRef} />
         {hasVisibleParameters && (
           <ParametersWidgetContainer
             className={cx({
