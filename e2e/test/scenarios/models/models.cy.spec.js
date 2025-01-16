@@ -231,12 +231,12 @@ describe("scenarios > models", () => {
     H.echartsContainer().should("not.exist");
   });
 
-  it.only("only shows model info modal once when turning a question into a model", () => {
+  it("only shows model info modal once when turning a question into a model", () => {
     H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
     H.echartsContainer();
 
     turnIntoModel();
-    H.undoToast().findByText("This is a model now.");
+    H.undoToast().findByText("This is a model now.").should("exist");
     H.undo();
 
     H.openQuestionActions();
