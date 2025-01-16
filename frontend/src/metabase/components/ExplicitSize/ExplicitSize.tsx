@@ -5,8 +5,9 @@ import type {
   ComponentType,
   ForwardedRef,
   PropsWithoutRef,
+  Ref,
 } from "react";
-import React, { Component } from "react";
+import React, { Component, createRef } from "react";
 import ReactDOM from "react-dom";
 import _ from "underscore";
 
@@ -76,6 +77,8 @@ function ExplicitSize<T>({
 
       _updateSize: () => void;
 
+      elementRef: Ref<HTMLDivElement | null> = createRef();
+
       constructor(props: T & InnerProps) {
         super(props);
 
@@ -96,6 +99,25 @@ function ExplicitSize<T>({
           if (selector && element instanceof Element) {
             element = element.querySelector(selector) || element;
           }
+          console.log(
+            !selector && element !== this.elementRef?.current
+              ? "DIFFERENT"
+              : "SAME",
+            displayName,
+            wrapped,
+            element,
+            !selector ? this.elementRef?.current : element,
+          );
+
+          if (!selector && element !== this.elementRef?.current) {
+            console.error(
+              "*********  element and elementRef DO NOT MATCH. ************",
+            );
+            throw new Error(
+              "*********  element and elementRef DO NOT MATCH. ************",
+            );
+          }
+
           return element instanceof Element ? element : null;
         } catch (e) {
           console.error(e);
@@ -227,7 +249,11 @@ function ExplicitSize<T>({
           const { className, style = {}, ...rest } = props;
           const { width, height } = this.state;
           return (
-            <div className={cx(className, CS.relative)} style={style}>
+            <div
+              className={cx(className, CS.relative)}
+              style={style}
+              ref={this.elementRef}
+            >
               <ComposedComponent
                 ref={forwardedRef}
                 style={{ position: "absolute", top: 0, left: 0, width, height }}
@@ -237,9 +263,26 @@ function ExplicitSize<T>({
             </div>
           );
         } else {
+          console.log(ComposedComponent.displayName);
           return (
             <ComposedComponent
-              ref={forwardedRef}
+              ref={el => {
+                if (forwardedRef) {
+                  if (typeof forwardedRef === "function") {
+                    forwardedRef(el);
+                  } else {
+                    forwardedRef.current = el;
+                  }
+                }
+
+                if (this.elementRef) {
+                  if (typeof this.elementRef === "function") {
+                    this.elementRef(el);
+                  } else {
+                    this.elementRef.current = el;
+                  }
+                }
+              }}
               {...(props as unknown as T)}
               {...this.state}
             />

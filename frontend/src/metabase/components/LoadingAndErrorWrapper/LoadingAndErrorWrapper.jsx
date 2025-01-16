@@ -1,13 +1,13 @@
 /* eslint "react/prop-types": "warn" */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Children, Component } from "react";
+import { Children, Component, forwardRef } from "react";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 
-export default class LoadingAndErrorWrapper extends Component {
+class LoadingAndErrorWrapperInner extends Component {
   state = {
     messageIndex: 0,
     sceneIndex: 0,
@@ -27,6 +27,10 @@ export default class LoadingAndErrorWrapper extends Component {
     loadingScenes: PropTypes.array,
     renderError: PropTypes.func,
     "data-testid": PropTypes.string,
+    forwardedRef: PropTypes.oneOfType([
+      PropTypes.func,
+      PropTypes.shape({ current: PropTypes.any }),
+    ]),
   };
 
   static defaultProps = {
@@ -121,6 +125,7 @@ export default class LoadingAndErrorWrapper extends Component {
       style,
       className,
       "data-testid": testId,
+      forwardedRef,
     } = this.props;
 
     const { messageIndex, sceneIndex } = this.state;
@@ -146,7 +151,12 @@ export default class LoadingAndErrorWrapper extends Component {
       return Children.only(children);
     }
     return (
-      <div className={className} style={style} data-testid={testId}>
+      <div
+        className={className}
+        style={style}
+        data-testid={testId}
+        ref={forwardedRef}
+      >
         {error ? (
           this.renderError(contentClassName)
         ) : loading ? (
@@ -164,3 +174,11 @@ export default class LoadingAndErrorWrapper extends Component {
     );
   }
 }
+
+const LoadingAndErrorWrapper = forwardRef((props, ref) => (
+  <LoadingAndErrorWrapperInner {...props} forwardedRef={ref} />
+));
+
+LoadingAndErrorWrapper.displayName = "LoadingAndErrorWrapper";
+
+export default LoadingAndErrorWrapper;

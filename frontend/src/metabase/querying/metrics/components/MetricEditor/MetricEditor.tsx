@@ -43,6 +43,7 @@ export function MetricEditor({
   onCancel,
   onRunQuery,
   onCancelQuery,
+  forwardedRef,
 }: MetricEditorProps) {
   const [modalType, setModalType] = useState<MetricModalType>();
   const isRunnable = Lib.canRun(question.query(), "metric");
@@ -76,7 +77,7 @@ export function MetricEditor({
   };
 
   return (
-    <Flex h="100%" direction="column" bg="white">
+    <Flex h="100%" direction="column" bg="white" ref={forwardedRef}>
       <MetricEditorHeader
         question={question}
         isDirty={isDirty}

@@ -204,6 +204,7 @@ function DatasetEditor(props) {
     updateQuestion,
     handleResize,
     onOpenModal,
+    forwardedRef,
   } = props;
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
@@ -508,7 +509,7 @@ function DatasetEditor(props) {
           </Tooltip>,
         ]}
       />
-      <Flex className={DatasetEditorS.Root}>
+      <Flex className={DatasetEditorS.Root} ref={forwardedRef}>
         <Flex className={DatasetEditorS.MainContainer}>
           <Box
             className={cx(DatasetEditorS.QueryEditorContainer, {
