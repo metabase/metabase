@@ -14,7 +14,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.date-time-zone-functions-test :as qp-test.date-time-zone-functions-test]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]

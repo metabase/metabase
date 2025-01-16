@@ -26,7 +26,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.sample-data :as sample-data]
    [metabase.server.core :as server]
-   [metabase.setup :as setup]
+   [metabase.setup.core :as setup]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]

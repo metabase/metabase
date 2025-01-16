@@ -7,7 +7,7 @@
    [medley.core :as m]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.util-test :as sync.util-test]

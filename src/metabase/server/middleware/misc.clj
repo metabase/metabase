@@ -2,16 +2,16 @@
   "Misc Ring middleware."
   (:require
    [clojure.string :as str]
-   [metabase.async.streaming-response]
    [metabase.db :as mdb]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.server.streaming-response]
    [metabase.util.log :as log])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
-   (metabase.async.streaming_response StreamingResponse)))
+   (metabase.server.streaming_response StreamingResponse)))
 
-(comment metabase.async.streaming-response/keep-me)
+(comment metabase.server.streaming-response/keep-me)
 
 (defn- add-content-type* [{:keys [body], {:strs [Content-Type]} :headers, :as response}]
   (cond-> response

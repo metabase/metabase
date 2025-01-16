@@ -1,7 +1,7 @@
 (ns metabase.api.pulse.unsubscribe-test
   (:require
    [clojure.test :refer :all]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.test :as mt]))
 
 (deftest unsubscribe-hash-test

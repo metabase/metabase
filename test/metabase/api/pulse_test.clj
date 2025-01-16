@@ -1,13 +1,13 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.card-test :as api.card-test]
-   [metabase.api.channel-test :as api.channel-test]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.pulse :as api.pulse]
+   [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.style :as style]
    [metabase.http-client :as client]
