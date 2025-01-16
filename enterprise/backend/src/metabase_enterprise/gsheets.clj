@@ -2,17 +2,21 @@
   "/api/gsheets endpoints"
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.api.auth :as api.auth]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (def ^:private gsheets-not-connected {:status "not-connected"})
 
@@ -20,15 +24,17 @@
   #_"
   Information about Google Sheets Integration.
 
-  This value can have 2 states:
+  This value can have 3 states:
 
   1) The Google Sheets Folder is not setup.
   {:status \"not-connected\"}
 
+  2) We have uploaded a Folder url to HM, but have not synced it in MB yet.
+  {:status \"loading\"
+   :folder_url \"https://drive.google.com/drive/abc\"}
 
   2)  Google Sheets Integration is enabled, and a folder has been setup to sync.
-  {:status \"connected\"
-   :email \"service_account@email.com\"
+  {:status \"complete\"
    :folder_url \"https://drive.google.com/drive/abc\"}
   "
   (deferred-tru "Information about Google Sheets Integration")
@@ -42,7 +48,6 @@
 
 (mr/def ::gsheets [:map
                    [:status                      [:enum "not-connected" "connected"]]
-                   [:email      {:optional true} ms/NonBlankString]
                    [:folder_url {:optional true} ms/NonBlankString]])
 
 (defn- ->config
@@ -66,43 +71,32 @@
 ;; MB <-> HM APIs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(mu/defn- maybe-hm-service-account-email :- [:or [:= false] :string]
+(mu/defn- maybe-service-account-email :- [:or [:= false] :string]
   "Checks to see if Google service-account is setup in harbormaster."
   []
-  (let [[_status response] (hm.client/make-request (->config) :get "/api/v2/mb/connections-google/service-account")]
-    (if-let [sa-email (-> response :body :email)]
-      (u/prog1 sa-email
-        (let [old-gsheets (gsheets)]
-          (gsheets! (assoc old-gsheets :email <>))))
-      (throw (ex-info "Error checking service-account status." {:hm/body (:body response)})))))
-
-(defn- maybe-service-account-email [gsheets]
-  (or
-   (:email gsheets) ;; It's already set-up! no need to ask HM or update the status:
-   (when-let [email (maybe-hm-service-account-email)]
-     ;; When harbormaster says service-account exists, set the gsheets status to `auth-complete`:
-     (gsheets! {:status "connected" :email email})
-     email)))
+  (let [[_status {:keys [body] :as response}] (hm.client/make-request (->config) :get "/api/v2/mb/connections-google/service-account")]
+    (if-let [email (:email body)]
+      email
+      (throw (ex-info "Error checking service-account status." {:hm/response response})))))
 
 (mu/defn- setup-drive-folder-sync :- [:tuple [:enum :ok :error] :map]
   "Start the sync w/ drive folder"
   [drive-folder-url]
-  (hm.client/make-request
-   (->config)
-   :post
-   "/api/v2/mb/connections"
-   {:type "gdrive"
-    :secret {:resources [drive-folder-url]}}))
+  (hm.client/make-request (->config)
+                          :post
+                          "/api/v2/mb/connections"
+                          {:type "gdrive" :secret {:resources [drive-folder-url]}}))
 
 (mu/defn- get-gdrive-connection :- [:maybe [:map {:description "The Harbormaster Gdrive Connection"}
                                             [:id :string]
                                             [:type [:= "gdrive"]]
                                             [:status [:enum "syncing" "active" "initializing" "error"]]
-                                            [:last-sync-at [:maybe :string]] ;; time fixme
-                                            [:created-at :string] ;; time fixme
-                                            [:updated-at :string]  ;; time fixme
-                                            [:hosted-instance-resource-id :int] ;; unclear if `hosted-instance-resource-id` is relevant
-                                            [:hosted-instance-id :string]]] ;; unclear if `hosted-instance-id` is relevant
+                                            [:last-sync-at [:maybe :time/zoned-date-time]]
+                                            [:created-at :time/zoned-date-time]
+                                            [:updated-at :time/zoned-date-time]
+                                             ;; unclear if `hosted-instance-resource-id` or `hosted-instance-id` are relevant
+                                            [:hosted-instance-resource-id :int]
+                                            [:hosted-instance-id :string]]]
   "Get the harbormaster gdrive type connection. This is used to verify the status of the folder sync.
 
   We should expect 0 or 1 gdrive accounts at this time."
@@ -111,7 +105,10 @@
                  :as _response}] (hm.client/make-request (->config) :get "/api/v2/mb/connections")]
     (when (= status :ok)
       (some-> (filter #(= "gdrive" (:type %)) body)
-              first))))
+              first
+              (m/update-existing :last-sync-at u.date/parse)
+              (m/update-existing :created-at u.date/parse)
+              (m/update-existing :updated-at u.date/parse)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; FE <-> MB APIs
@@ -124,34 +121,46 @@
   (api/check-superuser)
   (when-not (api.auth/show-google-sheets-integration)
     (throw (ex-info "Google Sheets integration is not enabled." {})))
-  {:email (maybe-service-account-email (gsheets))})
+  {:email (maybe-service-account-email)})
 
 (api.macros/defendpoint :post "/folder" :- ::gsheets
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
   [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
   (let [[status _resp] (setup-drive-folder-sync url)]
       (if (= status :ok)
-        (u/prog1 {:status "connected" :folder_url url}
-          ;; merge instead of overwrite because we need to keep the :email key
-          (gsheets! (merge (gsheets) <>)))
+        (u/prog1 {:status "loading" :folder_url url} (gsheets! <>))
         (throw (ex-info (str/join ["Unable to setup drive folder sync.\n"
                                    "Please check that the folder is shared with the proper service account email "
                                    "and sharing permissions."]) {})))))
 
 (api.macros/defendpoint :get "/folder" :- ::gsheets
   "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to
-  stop showing the setup widget."
-  []
-  (if-let [{:keys [status] :as _gdrive-conn} (get-gdrive-connection)]
-    (let [keep-polling? (cond
-                          ;; Can we use these as a poorman's progress indicator?
-                          (= :initializing status) true
-                          (= :syncing status)      true
-                          (= :active status)       false
-                          ;; TODO: an `:error-detail` key may optionally be in the response. if it is, use it:
-                          (= :error status)        (throw (ex-info "Error syncing service-account." {})))]
-      {:status status :continue_polling keep-polling?})
-    {:error "google drive connection not found."}))
+  stop showing the setup widget.
+
+  Returns the gsheets shape, with the attached datawarehouse's db id in db_id."
+  [] :- ::gsheets
+  (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
+    (assert (some? attached-dwh) "No attached dwh found.")
+    (if-let [{:keys [status]
+              last-gdrive-sync-at :last-sync-at
+              :as _gdrive-conn} (get-gdrive-connection)]
+      (let [dwh-sync-ended-at (t2/select-one-fn :ended_at :model/TaskHistory
+                                               :db_id (:id attached-dwh)
+                                               :task "sync"
+                                               :status :success
+                                               {:order-by [[:ended_at :desc]]})]
+        (-> (if (and
+                 ;; HM says the connection is active
+                 (= status :active)
+                 ;; We have synced the dwh before (so we have ended_at time)
+                 dwh-sync-ended-at
+                 ;; We finished a sync of the dwh in metabase after the HM conn was synced.
+                 (t/after? dwh-sync-ended-at last-gdrive-sync-at))
+              (let [new-gsheets (assoc (gsheets) :status "complete")]
+                (gsheets! new-gsheets) new-gsheets)
+              (gsheets))
+            (assoc :db_id (:id attached-dwh))))
+      {:error "google drive connection not found."})))
 
 (api.macros/defendpoint :delete "/folder"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
@@ -175,7 +184,7 @@
 
   (hm.client/make-request (->config) :get "/api/v2/mb/connections")
 
-  @(def sa-email (maybe-service-account-email (gsheets)))
+  @(def sa-email (maybe-service-account-email))
   ;; => "service-account@elt-sync.iam.gserviceaccount.com"
 
   ;; share a folder w/ that email on gdrive
