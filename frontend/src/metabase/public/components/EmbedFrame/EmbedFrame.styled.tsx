@@ -149,6 +149,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       left: 0;
       width: 100%;
       z-index: 3;
+      /* this is for proper transitions from the \`transparent\` value to other values if set */
       border-bottom: 1px solid transparent;
     `}
 

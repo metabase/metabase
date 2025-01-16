@@ -110,6 +110,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   z-index: 3;
   top: 0;
   left: 0;
+  /* this is for proper transitions from the \`transparent\` value to other values if set */
   border-bottom: 1px solid transparent;
 
   ${({ allowSticky }) =>
