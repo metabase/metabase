@@ -30,6 +30,7 @@ import {
   BrowseSection,
 } from "../components/BrowseContainer.styled";
 
+import { ModelsVideo } from "./EmptyStates";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
 import { RecentModels } from "./RecentModels";
@@ -87,19 +88,8 @@ export const BrowseModels = () => {
           <Stack mb="lg" spacing="md" w="100%">
             {isEmpty ? (
               <Stack spacing="lg" align="center">
-                <Box maw="720px" w="100%">
-                  <iframe
-                    width="100%"
-                    style={{
-                      aspectRatio: "16/9",
-                      border: 0,
-                      borderRadius: "8px",
-                    }}
-                    src="https://www.youtube.com/embed/Cb7-wLAgSCA?si=gPukXurSJAM8asGJ&autoplay=1"
-                    // eslint-disable-next-line no-literal-metabase-strings -- It's just a title for the a11y purposes
-                    title="Use Models in Metabase | Getting started with Metabase"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                  ></iframe>
+                <Box maw="45rem" w="100%">
+                  <ModelsVideo autoplay={0} />
                 </Box>
                 <Stack spacing="xs" maw="30rem">
                   <Title
@@ -110,10 +100,7 @@ export const BrowseModels = () => {
                 </Stack>
                 {showMetabaseLinks && (
                   <Button variant="subtle" p={0}>
-                    <ExternalLink
-                      key="model-caching-link"
-                      href={url}
-                    >{t`Read the docs`}</ExternalLink>
+                    <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>
                   </Button>
                 )}
               </Stack>

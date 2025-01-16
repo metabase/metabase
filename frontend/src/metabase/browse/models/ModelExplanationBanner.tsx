@@ -14,6 +14,8 @@ import {
   Title,
 } from "metabase/ui";
 
+import { ModelsVideo, ModelsVideoThumnail } from "./EmptyStates";
+
 export const ModelExplanationBanner = () => {
   const [hasDismissedBanner, setHasDismissedBanner] = useUserSetting(
     "dismissed-browse-models-banner",
@@ -42,27 +44,7 @@ export const ModelExplanationBanner = () => {
       mb="xl"
     >
       <Flex>
-        <div
-          data-testid="browse-models-video-thumbnail"
-          onClick={() => setOpened(true)}
-          style={{
-            cursor: "pointer",
-            width: "8rem",
-            marginRight: "16px",
-          }}
-        >
-          <img
-            alt="Browse models video thumbnail"
-            loading="lazy"
-            src="app/assets/img/browse-models-video-thumbnail.png"
-            width="100%"
-            style={{
-              borderRadius: "8px",
-              boxShadow:
-                "0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 4px 16px rgba(0, 0, 0, 0.1)",
-            }}
-          />
-        </div>
+        <ModelsVideoThumnail onClick={() => setOpened(true)} />
         <Stack spacing="md">
           <Title
             order={2}
@@ -76,10 +58,7 @@ export const ModelExplanationBanner = () => {
           <Group spacing="md">
             {showMetabaseLinks && (
               <Button variant="subtle" p={0}>
-                <ExternalLink
-                  key="model-caching-link"
-                  href={url}
-                >{t`Read the docs`}</ExternalLink>
+                <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>
               </Button>
             )}
             <Button variant="subtle" p={0} onClick={dismissBanner}>
@@ -89,14 +68,7 @@ export const ModelExplanationBanner = () => {
         </Stack>
       </Flex>
       <Modal opened={opened} size="80%" onClose={() => setOpened(false)}>
-        <iframe
-          width="100%"
-          style={{ aspectRatio: "16/9", border: 0, borderRadius: "8px" }}
-          src="https://www.youtube.com/embed/Cb7-wLAgSCA?si=gPukXurSJAM8asGJ&autoplay=1"
-          // eslint-disable-next-line no-literal-metabase-strings -- It's just a title for the a11y purposes
-          title="Use Models in Metabase | Getting started with Metabase"
-          referrerPolicy="strict-origin-when-cross-origin"
-        ></iframe>
+        <ModelsVideo autoplay={1} />
       </Modal>
     </Paper>
   );
