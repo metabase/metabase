@@ -1072,7 +1072,9 @@
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
       (if *rescan-values-async*
-        (future (sync/update-field-values! db))
+        (sync/submit-task!
+         (fn []
+           (sync/update-field-values! db)))
         (sync/update-field-values! db))))
   {:status :ok})
 
