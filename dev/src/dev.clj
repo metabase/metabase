@@ -437,10 +437,11 @@
                                      :sender      :email-from-address,
                                      :reply-to    :email-reply-to}))))
 
-(defn setup-instance!
-  "Set up an instance for testing. This is useful for bootstrapping an instance in the REPL."
+(defn seed-instance!
+  "Seed an empty instance with test users and test db.
+  This is useful for bootstrapping an instance in the REPL."
   []
-  ;; setup test users
+  ;; seed test users
   (mt/initialize-if-needed! :test-users)
-  ;; setup test db
+  ;; seed test db
   (mt/id))
