@@ -23,11 +23,11 @@ export const GsheetsSyncStatus = () => {
     }
   }, [folderSync]);
 
-  // if (!showStatus) {
-  //   return null;
-  // }
+  if (!showStatus) {
+    return null;
+  }
 
-  const isComplete = false; //folderSync?.status === "complete";
+  const isComplete = folderSync?.status === "complete";
 
   return (
     <StatusLarge
