@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   Card,
@@ -93,7 +92,7 @@ export const QUESTION_BASED_MODEL_INDEX = 2;
 export const MODEL_BASED_MODEL_INDEX = 3;
 
 export function createBaseQuestions() {
-  H.createQuestion({
+  cy.createQuestion({
     type: "question",
     name: "Q0 Orders",
     description: "Question based on a database table",
@@ -103,7 +102,7 @@ export function createBaseQuestions() {
   }).then(response => cy.wrap(response.body).as("ordersQuestion"));
 
   cy.then(function () {
-    H.createQuestion({
+    cy.createQuestion({
       type: "question",
       name: "Base Orders Question",
       query: {
@@ -111,7 +110,7 @@ export function createBaseQuestions() {
       },
     }).then(response => cy.wrap(response.body).as("baseQuestion"));
 
-    H.createQuestion({
+    cy.createQuestion({
       type: "model",
       name: "Base Orders Model",
       query: {
@@ -328,25 +327,25 @@ export function createAndVisitDashboardWithCardMatrix(
   createQuery: CreateQuery,
 ) {
   cy.then(function () {
-    H.createQuestion({
+    cy.createQuestion({
       type: "question",
       query: createQuery(this.baseQuestion),
       name: "Question-based Question",
     }).then(response => cy.wrap(response.body).as("qbq"));
 
-    H.createQuestion({
+    cy.createQuestion({
       type: "question",
       query: createQuery(this.baseModel),
       name: "Model-based Question",
     }).then(response => cy.wrap(response.body).as("mbq"));
 
-    H.createQuestion({
+    cy.createQuestion({
       type: "model",
       name: "Question-based Model",
       query: createQuery(this.baseQuestion),
     }).then(response => cy.wrap(response.body).as("qbm"));
 
-    H.createQuestion({
+    cy.createQuestion({
       type: "model",
       name: "Model-based Model",
       query: createQuery(this.baseModel),
@@ -363,7 +362,7 @@ export function createAndVisitDashboard(cards: Card[]) {
   let id = 0;
   const getNextId = () => --id;
 
-  H.createDashboardWithTabs({
+  cy.createDashboardWithTabs({
     enable_embedding: true,
     embedding_params: {
       [DATE_PARAMETER.slug]: "enabled",
@@ -383,24 +382,24 @@ export function createAndVisitDashboard(cards: Card[]) {
       })),
     ],
   }).then(dashboard => {
-    H.visitDashboard(dashboard.id);
+    cy.visitDashboard(dashboard.id);
     cy.wrap(dashboard.id).as("dashboardId");
     cy.wait("@getDashboard");
   });
 }
 
 export function setup1stStageExplicitJoinFilter() {
-  H.editDashboard();
+  cy.editDashboard();
 
   getFilter("Text").click();
 
-  H.getDashboardCard(0).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(0).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Reviewer", 0).click();
   });
 
-  H.getDashboardCard(1).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(1).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Reviewer", 0).click();
   });
 
@@ -409,35 +408,35 @@ export function setup1stStageExplicitJoinFilter() {
 }
 
 export function apply1stStageExplicitJoinFilter() {
-  H.filterWidget().eq(0).click();
-  H.popover().within(() => {
+  cy.filterWidget().eq(0).click();
+  cy.popover().within(() => {
     cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
     cy.button("Add filter").click();
   });
 }
 
 export function setup1stStageImplicitJoinFromSourceFilter() {
-  H.editDashboard();
+  cy.editDashboard();
 
   getFilter("Number").click();
-  H.sidebar().findByText("Filter operator").next().click();
-  H.popover().findByText("Between").click();
+  cy.sidebar().findByText("Filter operator").next().click();
+  cy.popover().findByText("Between").click();
 
-  H.getDashboardCard(0).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(0).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Price", 0).click();
   });
 
-  H.getDashboardCard(1).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(1).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Price", 0).click();
   });
 
   cy.button("Save").click();
   cy.wait("@updateDashboard");
 
-  H.filterWidget().eq(0).click();
-  H.popover().within(() => {
+  cy.filterWidget().eq(0).click();
+  cy.popover().within(() => {
     cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("16");
     cy.button("Add filter").click();
@@ -446,25 +445,25 @@ export function setup1stStageImplicitJoinFromSourceFilter() {
 }
 
 export function setup1stStageImplicitJoinFromJoinFilter() {
-  H.editDashboard();
+  cy.editDashboard();
 
   getFilter("Text").click();
 
-  H.getDashboardCard(0).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(0).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Category", 1).click();
   });
 
-  H.getDashboardCard(1).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(1).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Category", 1).click();
   });
 
   cy.button("Save").click();
   cy.wait("@updateDashboard");
 
-  H.filterWidget().eq(0).click();
-  H.popover().within(() => {
+  cy.filterWidget().eq(0).click();
+  cy.popover().within(() => {
     cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
@@ -472,27 +471,27 @@ export function setup1stStageImplicitJoinFromJoinFilter() {
 }
 
 export function setup1stStageCustomColumnFilter() {
-  H.editDashboard();
+  cy.editDashboard();
 
   getFilter("Number").click();
-  H.sidebar().findByText("Filter operator").next().click();
-  H.popover().findByText("Between").click();
+  cy.sidebar().findByText("Filter operator").next().click();
+  cy.popover().findByText("Between").click();
 
-  H.getDashboardCard(0).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(0).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Net").click();
   });
 
-  H.getDashboardCard(1).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(1).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Net").click();
   });
 
   cy.button("Save").click();
   cy.wait("@updateDashboard");
 
-  H.filterWidget().eq(0).click();
-  H.popover().within(() => {
+  cy.filterWidget().eq(0).click();
+  cy.popover().within(() => {
     cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("20");
     cy.button("Add filter").click();
@@ -501,20 +500,20 @@ export function setup1stStageCustomColumnFilter() {
 }
 
 export function setup1stStageAggregationFilter() {
-  H.editDashboard();
+  cy.editDashboard();
 
   getFilter("Number").click();
-  H.sidebar().findByText("Filter operator").next().click();
-  H.popover().findByText("Between").click();
+  cy.sidebar().findByText("Filter operator").next().click();
+  cy.popover().findByText("Between").click();
 
-  H.getDashboardCard(0).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(0).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Count").click();
   });
 
-  H.getDashboardCard(1).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(1).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Count").click();
   });
@@ -522,8 +521,8 @@ export function setup1stStageAggregationFilter() {
   cy.button("Save").click();
   cy.wait("@updateDashboard");
 
-  H.filterWidget().eq(0).click();
-  H.popover().within(() => {
+  cy.filterWidget().eq(0).click();
+  cy.popover().within(() => {
     cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
     cy.button("Add filter").click();
@@ -532,18 +531,18 @@ export function setup1stStageAggregationFilter() {
 }
 
 export function setup1stStageBreakoutFilter() {
-  H.editDashboard();
+  cy.editDashboard();
 
   getFilter("Text").click();
 
-  H.getDashboardCard(0).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(0).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Category", 1).click();
   });
 
-  H.getDashboardCard(1).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(1).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Category", 1).click();
   });
@@ -551,8 +550,8 @@ export function setup1stStageBreakoutFilter() {
   cy.button("Save").click();
   cy.wait("@updateDashboard");
 
-  H.filterWidget().eq(0).click();
-  H.popover().within(() => {
+  cy.filterWidget().eq(0).click();
+  cy.popover().within(() => {
     cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
@@ -560,25 +559,25 @@ export function setup1stStageBreakoutFilter() {
 }
 
 export function setup2ndStageExplicitJoinFilter() {
-  H.editDashboard();
+  cy.editDashboard();
 
   getFilter("Text").click();
 
-  H.getDashboardCard(0).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(0).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Reviewer", 1).click();
   });
 
-  H.getDashboardCard(1).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(1).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Reviewer", 1).click();
   });
 
   cy.button("Save").click();
   cy.wait("@updateDashboard");
 
-  H.filterWidget().eq(0).click();
-  H.popover().within(() => {
+  cy.filterWidget().eq(0).click();
+  cy.popover().within(() => {
     cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
     cy.button("Add filter").click();
   });
@@ -586,20 +585,20 @@ export function setup2ndStageExplicitJoinFilter() {
 }
 
 export function setup2ndStageCustomColumnFilter() {
-  H.editDashboard();
+  cy.editDashboard();
 
   getFilter("Number").click();
-  H.sidebar().findByText("Filter operator").next().click();
-  H.popover().findByText("Between").click();
+  cy.sidebar().findByText("Filter operator").next().click();
+  cy.popover().findByText("Between").click();
 
-  H.getDashboardCard(0).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(0).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("5 * Count").click();
   });
 
-  H.getDashboardCard(1).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(1).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("5 * Count").click();
   });
@@ -609,8 +608,8 @@ export function setup2ndStageCustomColumnFilter() {
 }
 
 export function apply2ndStageCustomColumnFilter() {
-  H.filterWidget().eq(0).click();
-  H.popover().within(() => {
+  cy.filterWidget().eq(0).click();
+  cy.popover().within(() => {
     cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("20");
     cy.button("Add filter").click();
@@ -618,34 +617,34 @@ export function apply2ndStageCustomColumnFilter() {
 }
 
 export function setup2ndStageAggregationFilter() {
-  H.editDashboard();
+  cy.editDashboard();
 
   getFilter("Number").click();
-  H.sidebar().findByText("Filter operator").next().click();
-  H.popover().findByText("Between").click();
+  cy.sidebar().findByText("Filter operator").next().click();
+  cy.popover().findByText("Between").click();
 
-  H.getDashboardCard(0).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(0).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Count", 1).click();
   });
   dismissToast();
 
-  H.getDashboardCard(1).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(1).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Count", 1).click();
   });
   dismissToast();
 
-  H.getDashboardCard(2).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(2).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Count").click();
   });
   dismissToast();
 
-  H.getDashboardCard(3).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(3).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Count").click();
   });
 
@@ -654,8 +653,8 @@ export function setup2ndStageAggregationFilter() {
 }
 
 export function apply2ndStageAggregationFilter() {
-  H.filterWidget().eq(0).click();
-  H.popover().within(() => {
+  cy.filterWidget().eq(0).click();
+  cy.popover().within(() => {
     cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
     cy.button("Add filter").click();
@@ -663,32 +662,32 @@ export function apply2ndStageAggregationFilter() {
 }
 
 export function setup2ndStageBreakoutFilter() {
-  H.editDashboard();
+  cy.editDashboard();
 
   getFilter("Text").click();
 
-  H.getDashboardCard(0).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(0).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Category", 2).click();
   });
   dismissToast();
 
-  H.getDashboardCard(1).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(1).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverList().scrollTo("bottom");
     getPopoverItem("Category", 2).click();
   });
   dismissToast();
 
-  H.getDashboardCard(2).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(2).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Products Via Product ID Category").click();
   });
   dismissToast();
 
-  H.getDashboardCard(3).findByText("Select…").click();
-  H.popover().within(() => {
+  cy.getDashboardCard(3).findByText("Select…").click();
+  cy.popover().within(() => {
     getPopoverItem("Products Via Product ID Category").click();
   });
 
@@ -697,8 +696,8 @@ export function setup2ndStageBreakoutFilter() {
 }
 
 export function apply2ndStageBreakoutFilter() {
-  H.filterWidget().eq(0).click();
-  H.popover().within(() => {
+  cy.filterWidget().eq(0).click();
+  cy.popover().within(() => {
     cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
@@ -772,17 +771,17 @@ export function verifyDashcardMappingOptions(
   dashcardIndex: number,
   sections: MappingSection[],
 ) {
-  H.getDashboardCard(dashcardIndex).findByText("Select…").click();
+  cy.getDashboardCard(dashcardIndex).findByText("Select…").click();
   verifyPopoverMappingOptions(sections);
   clickAway();
 }
 
 export function verifyNoDashcardMappingOptions(dashcardIndex: number) {
-  H.getDashboardCard(dashcardIndex)
+  cy.getDashboardCard(dashcardIndex)
     .findByText("No valid fields")
     .should("be.visible");
 
-  H.getDashboardCard(dashcardIndex).findByText("No valid fields").realHover();
+  cy.getDashboardCard(dashcardIndex).findByText("No valid fields").realHover();
   cy.findByRole("tooltip")
     .findByText(
       "This card doesn't have any fields or parameters that can be mapped to this parameter type.",
@@ -801,7 +800,7 @@ export function verifyPopoverMappingOptions(sections: MappingSection[]) {
     0,
   );
 
-  H.popover().within(() => {
+  cy.popover().within(() => {
     getPopoverItems().then($items => {
       let index = 0;
 
@@ -833,10 +832,10 @@ export function verifyDashcardRowsCount({
   dashboardCount: string;
   queryBuilderCount: string;
 }) {
-  H.getDashboardCard(dashcardIndex)
+  cy.getDashboardCard(dashcardIndex)
     .findByText(dashboardCount)
     .should("be.visible");
-  H.getDashboardCard(dashcardIndex)
+  cy.getDashboardCard(dashcardIndex)
     .findByTestId("legend-caption-title")
     .click();
   cy.wait("@dataset");
@@ -853,14 +852,14 @@ export function verifyDashcardCellValues({
   for (let valueIndex = 0; valueIndex < values.length; ++valueIndex) {
     const value = values[valueIndex];
 
-    H.getDashboardCard(dashcardIndex)
+    cy.getDashboardCard(dashcardIndex)
       .findByTestId("table-row")
       .findAllByTestId("cell-data")
       .eq(valueIndex)
       .should("have.text", value);
   }
 
-  H.getDashboardCard(dashcardIndex)
+  cy.getDashboardCard(dashcardIndex)
     .findByTestId("legend-caption-title")
     .click();
   cy.wait("@dataset");

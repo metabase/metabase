@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -27,7 +26,7 @@ describe("issue 13504", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -35,9 +34,9 @@ describe("issue 13504", () => {
   it("should remove post-aggregation filters from a multi-stage query (metabase#13504)", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    H.cartesianChartCircle().eq(0).click({ force: true });
+    cy.cartesianChartCircle().eq(0).click({ force: true });
 
-    H.popover().findByText("See these Orders").click();
+    cy.popover().findByText("See these Orders").click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {
@@ -55,20 +54,20 @@ describe("issue 16170", { tags: "@mongo" }, () => {
       cy.findByTestId("chart-setting-select").click();
     });
 
-    H.popover().contains(value).click();
+    cy.popover().contains(value).click();
   }
 
   function assertOnTheYAxis() {
-    H.echartsContainer().get("text").contains("Count");
+    cy.echartsContainer().get("text").contains("Count");
 
-    H.echartsContainer().get("text").contains("6,000");
+    cy.echartsContainer().get("text").contains("6,000");
   }
 
   beforeEach(() => {
-    H.restore("mongo-5");
+    cy.restore("mongo-5");
     cy.signInAsAdmin();
 
-    H.withDatabase(externalDatabaseId, ({ ORDERS, ORDERS_ID }) => {
+    cy.withDatabase(externalDatabaseId, ({ ORDERS, ORDERS_ID }) => {
       const questionDetails = {
         name: "16170",
         query: {
@@ -86,9 +85,9 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
   ["Zero", "Nothing"].forEach(replacementValue => {
     it(`replace missing values with "${replacementValue}" should work on Mongo (metabase#16170)`, () => {
-      H.openVizSettingsSidebar();
+      cy.openVizSettingsSidebar();
 
-      H.openSeriesSettings("Count");
+      cy.openSeriesSettings("Count");
 
       replaceMissingValuesWith(replacementValue);
 
@@ -97,9 +96,9 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       assertOnTheYAxis();
 
-      H.cartesianChartCircle().eq(-2).trigger("mousemove");
+      cy.cartesianChartCircle().eq(-2).trigger("mousemove");
 
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "2019",
         rows: [
           {
@@ -148,7 +147,7 @@ describe("issue 17524", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -158,7 +157,7 @@ describe("issue 17524", () => {
     });
 
     it("should not alter visualization type when applying filter on a native question (metabase#17524-1)", () => {
-      H.filterWidget().type("1");
+      cy.filterWidget().type("1");
 
       cy.get("polygon");
 
@@ -178,9 +177,9 @@ describe("issue 17524", () => {
     it("should not alter visualization type when applying filter on a QB question (metabase#17524-2)", () => {
       cy.get("polygon");
 
-      H.filter();
+      cy.filter();
 
-      H.filterField("ID", {
+      cy.filterField("ID", {
         operator: "Greater than",
         value: "1",
       });
@@ -235,13 +234,13 @@ describe("issue 18061", () => {
   const dashboardDetails = { name: "18061D", parameters: [filter] };
 
   function addFilter(filter) {
-    H.filterWidget().click();
-    H.popover().contains(filter).click();
+    cy.filterWidget().click();
+    cy.popover().contains(filter).click();
     cy.button("Add filter").click();
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
@@ -282,23 +281,25 @@ describe("issue 18061", () => {
 
   context("scenario 1: question with a filter", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-1)", () => {
-      H.visitAlias("@questionUrl");
+      cy.visitAlias("@questionUrl");
 
       cy.wait("@getCard");
       cy.wait("@cardQuery");
 
       cy.window().then(w => (w.beforeReload = true));
 
-      H.queryBuilderHeader().findByTestId("filters-visibility-control").click();
+      cy.queryBuilderHeader()
+        .findByTestId("filters-visibility-control")
+        .click();
       cy.findByTestId("qb-filters-panel")
         .findByText("ID is less than 3")
         .click();
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByDisplayValue("3").type("{backspace}2");
         cy.button("Update filter").click();
       });
 
-      H.queryBuilderMain()
+      cy.queryBuilderMain()
         .findByText("Something went wrong")
         .should("not.exist");
 
@@ -313,7 +314,7 @@ describe("issue 18061", () => {
 
   context("scenario 2: dashboard with a filter", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-2)", () => {
-      H.visitAlias("@dashboardUrl");
+      cy.visitAlias("@dashboardUrl");
 
       cy.wait("@dashCardQuery");
 
@@ -329,7 +330,7 @@ describe("issue 18061", () => {
 
   context("scenario 3: publicly shared dashboard with a filter", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-3)", () => {
-      H.visitAlias("@publicLink");
+      cy.visitAlias("@publicLink");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18061D");
@@ -364,26 +365,26 @@ describe("issue 18063", () => {
 
   function selectFieldValue(field, value) {
     toggleFieldSelectElement(field);
-    H.popover().findByText(value).click();
+    cy.popover().findByText(value).click();
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     // Select a Pin map
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
     cy.findByTestId("chart-settings-widget-map.type")
       .findByDisplayValue("Region map")
       .click();
-    H.popover().contains("Pin map").click();
+    cy.popover().contains("Pin map").click();
 
     // Click on the popovers to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
     ["Latitude field", "Longitude field"].forEach(field =>
-      H.leftSidebar().within(() => {
+      cy.leftSidebar().within(() => {
         toggleFieldSelectElement(field);
       }),
     );
@@ -395,11 +396,11 @@ describe("issue 18063", () => {
 
     cy.get(".leaflet-marker-icon").trigger("mousemove");
 
-    H.popover().within(() => {
-      H.testPairedTooltipValues("LATITUDE", "55.68");
-      H.testPairedTooltipValues("LONGITUDE", "12.57");
-      H.testPairedTooltipValues("COUNT", "1");
-      H.testPairedTooltipValues("NAME", "Copenhagen");
+    cy.popover().within(() => {
+      cy.testPairedTooltipValues("LATITUDE", "55.68");
+      cy.testPairedTooltipValues("LONGITUDE", "12.57");
+      cy.testPairedTooltipValues("COUNT", "1");
+      cy.testPairedTooltipValues("NAME", "Copenhagen");
     });
   });
 });
@@ -425,12 +426,12 @@ describe("issue 18776", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should not freeze when opening a timeseries chart with sparse data and without the X-axis", () => {
-    H.visitQuestionAdhoc(questionDetails);
+    cy.visitQuestionAdhoc(questionDetails);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
   });
@@ -463,7 +464,7 @@ describe("issue 20548", () => {
 
   function addAggregationItem(item) {
     cy.findByTestId("add-aggregation-button").click();
-    H.popover().contains(item).click();
+    cy.popover().contains(item).click();
 
     cy.wait("@dataset");
   }
@@ -481,30 +482,30 @@ describe("issue 20548", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
-    H.summarize();
+    cy.summarize();
   });
 
   it("should not display duplicate Y-axis after modifying/reordering metrics (metabase#20548)", () => {
     removeAggregationItem("Count");
     // Ensure bars of only one series exist
-    H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
-    H.chartPathWithFillColor("#509EE3").should("not.exist");
+    cy.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+    cy.chartPathWithFillColor("#509EE3").should("not.exist");
 
     addAggregationItem("Count");
     // Ensure bars of two series exist
-    H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
-    H.chartPathWithFillColor("#509EE3").should("have.length", 4);
+    cy.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+    cy.chartPathWithFillColor("#509EE3").should("have.length", 4);
 
     // Although the test already fails on the previous step, let's add some more assertions to prevent future regressions
     assertOnLegendItemFrequency("Count", 1);
     assertOnLegendItemFrequency("Sum of Price", 1);
 
-    H.openVizSettingsSidebar();
-    H.sidebar().findByDisplayValue("Count").should("be.visible");
+    cy.openVizSettingsSidebar();
+    cy.sidebar().findByDisplayValue("Count").should("be.visible");
   });
 });
 
@@ -523,17 +524,17 @@ describe("issue 21452", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.visitQuestionAdhoc(questionDetails);
+    cy.visitQuestionAdhoc(questionDetails);
 
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
   });
 
   it("should not fire POST request after every character during display name change (metabase#21452)", () => {
-    H.openSeriesSettings("Cumulative sum of Quantity");
-    H.popover()
+    cy.openSeriesSettings("Cumulative sum of Quantity");
+    cy.popover()
       .findByDisplayValue("Cumulative sum of Quantity")
       .clear()
       .type("Foo");
@@ -543,9 +544,9 @@ describe("issue 21452", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
 
-    H.cartesianChartCircle().first().realHover();
+    cy.cartesianChartCircle().first().realHover();
 
-    H.assertEChartsTooltip({
+    cy.assertEChartsTooltip({
       header: "2022",
       rows: [
         {
@@ -562,12 +563,12 @@ describe("issue 21452", () => {
 
 describe("issue 21504", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   it("should format pie chart settings (metabase#21504)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -582,9 +583,9 @@ describe("issue 21504", () => {
       display: "pie",
     });
 
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
 
-    H.leftSidebar().within(() => {
+    cy.leftSidebar().within(() => {
       cy.findByText("January 2025").should("be.visible");
     });
   });
@@ -613,7 +614,7 @@ describe("issue 21665", () => {
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestionAndDashboard({
@@ -632,8 +633,8 @@ describe("issue 21665", () => {
 
       cy.createNativeQuestion(Q2);
 
-      H.visitDashboard(dashboardId);
-      H.editDashboard();
+      cy.visitDashboard(dashboardId);
+      cy.editDashboard();
     });
 
     cy.findByTestId("add-series-button").click({ force: true });
@@ -643,7 +644,7 @@ describe("issue 21665", () => {
 
     cy.findByTestId("add-series-modal").button("Done").click();
 
-    H.saveDashboard();
+    cy.saveDashboard();
     cy.wait("@getDashboard");
   });
 
@@ -652,7 +653,7 @@ describe("issue 21665", () => {
       editQ2NativeQuery("select order by --", questionId);
     });
 
-    H.visitDashboard("@dashboardId");
+    cy.visitDashboard("@dashboardId");
 
     cy.get("@dashboardLoaded").should("have.callCount", 3);
     cy.findByTestId("dashcard")
@@ -677,15 +678,15 @@ describe.skip("issue 22527", () => {
   function assertion() {
     cy.get("circle").should("have.length", 5).last().realHover();
 
-    H.popover().within(() => {
-      H.testPairedTooltipValues("X", "5");
-      H.testPairedTooltipValues("Y", "-20");
-      H.testPairedTooltipValues("SIZE", "70");
+    cy.popover().within(() => {
+      cy.testPairedTooltipValues("X", "5");
+      cy.testPairedTooltipValues("Y", "-20");
+      cy.testPairedTooltipValues("SIZE", "70");
     });
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
@@ -694,7 +695,7 @@ describe.skip("issue 22527", () => {
   it("should render negative values in a scatter visualziation (metabase#22527)", () => {
     assertion();
 
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTextEnsureVisible("Data").click();
     });
@@ -702,7 +703,7 @@ describe.skip("issue 22527", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Bubble size").parent().contains("Select a field").click();
 
-    H.popover().contains(/size/i).click();
+    cy.popover().contains(/size/i).click();
 
     assertion();
   });
@@ -725,18 +726,18 @@ describe("issue 25007", () => {
   };
 
   const clickLineDot = ({ index } = {}) => {
-    H.cartesianChartCircle().eq(index).click({ force: true });
+    cy.cartesianChartCircle().eq(index).click({ force: true });
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
     clickLineDot({ index: 1 });
-    H.popover().findByTextEnsureVisible("May 1–7, 2022");
+    cy.popover().findByTextEnsureVisible("May 1–7, 2022");
   });
 });
 
@@ -760,14 +761,14 @@ describe("issue 25156", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should handle invalid x-axis scale (metabase#25156)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    H.echartsContainer()
+    cy.echartsContainer()
       .should("contain", "2022")
       .and("contain", "2023")
       .and("contain", "2023")
@@ -796,13 +797,13 @@ describe("issue 27279", () => {
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should reflect/apply sorting to the x-axis (metabase#27279)", () => {
     cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      H.visitQuestionAdhoc({
+      cy.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: {
@@ -837,16 +838,17 @@ describe("issue 27279", () => {
       str => ` ${str} `,
     );
     compareValuesInOrder(
-      H.echartsContainer()
+      cy
+        .echartsContainer()
         .get("text")
         .contains(/F2021|V2021|S2022|F2022/),
       xAxisTicks,
     );
 
     // Extra step, just to be overly cautious
-    H.chartPathWithFillColor("#98D9D9").realHover();
+    cy.chartPathWithFillColor("#98D9D9").realHover();
 
-    H.assertEChartsTooltip({
+    cy.assertEChartsTooltip({
       header: "F2021",
       rows: [
         {
@@ -872,8 +874,8 @@ describe("issue 27279", () => {
       ],
     });
 
-    H.chartPathWithFillColor("#509EE3").realHover();
-    H.assertEChartsTooltip({
+    cy.chartPathWithFillColor("#509EE3").realHover();
+    cy.assertEChartsTooltip({
       header: "F2022",
       rows: [
         {
@@ -931,7 +933,7 @@ describe("issue 27427", () => {
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -946,11 +948,11 @@ describe("issue 27427", () => {
 });
 
 const addCountGreaterThan2Filter = () => {
-  H.openNotebook();
+  cy.openNotebook();
   cy.findAllByTestId("action-buttons").last().button("Filter").click();
-  H.popover().findByText("Count").click();
-  H.selectFilterOperator("Greater than");
-  H.popover().within(() => {
+  cy.popover().findByText("Count").click();
+  cy.selectFilterOperator("Greater than");
+  cy.popover().within(() => {
     cy.findByPlaceholderText("Enter a number").type("2");
     cy.button("Add filter").click();
   });
@@ -981,55 +983,55 @@ describe("issue 32075", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   it("should still display visualization as a map after adding a filter (metabase#32075)", () => {
-    H.visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
+    cy.visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
 
-    H.visualize();
+    cy.visualize();
     addCountGreaterThan2Filter();
-    H.visualize();
+    cy.visualize();
 
     cy.findByTestId("TableInteractive-root").should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
   it("should still display visualization as a map after adding another column to group by", () => {
-    H.visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
+    cy.visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
 
-    H.visualize();
-    H.openNotebook();
-    H.addSummaryGroupingField({ field: "Birth Date" });
-    H.visualize();
+    cy.visualize();
+    cy.openNotebook();
+    cy.addSummaryGroupingField({ field: "Birth Date" });
+    cy.visualize();
 
     cy.findByTestId("TableInteractive-root").should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
   it("should still display visualization as a map after adding another aggregation", () => {
-    H.visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
+    cy.visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
 
-    H.visualize();
-    H.openNotebook();
-    H.addSummaryField({ metric: "Average of ...", field: "Longitude" });
-    H.visualize();
+    cy.visualize();
+    cy.openNotebook();
+    cy.addSummaryField({ metric: "Average of ...", field: "Longitude" });
+    cy.visualize();
 
     cy.findByTestId("TableInteractive-root").should("not.exist");
     cy.get("[data-element-id=pin-map]").should("exist");
   });
 
   it("should change display to default after removing a column to group by when map is not sensible anymore", () => {
-    H.visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
+    cy.visitQuestionAdhoc({ dataset_query: testQuery }, { mode: "notebook" });
 
-    H.visualize();
-    H.openNotebook();
-    H.removeSummaryGroupingField({ field: "Latitude: Auto binned" });
-    H.visualize();
+    cy.visualize();
+    cy.openNotebook();
+    cy.removeSummaryGroupingField({ field: "Latitude: Auto binned" });
+    cy.visualize();
 
     cy.get("[data-element-id=pin-map]").should("not.exist");
-    H.echartsContainer().should("exist");
+    cy.echartsContainer().should("exist");
   });
 });
 
@@ -1058,19 +1060,19 @@ describe("issue 30058", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   it("should not crash visualization after adding a filter (metabase#30058)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "map",
       displayIsLocked: true,
     });
 
     addCountGreaterThan2Filter();
-    H.visualize();
+    cy.visualize();
 
     cy.get(".Icon-warning").should("not.exist");
   });
@@ -1078,7 +1080,7 @@ describe("issue 30058", () => {
 
 describe("issue 33208", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     cy.createNativeQuestion(
       {
@@ -1112,16 +1114,16 @@ describe("issue 33208", () => {
 
   it("should not auto-select chart type when saving a native question with parameters that have default values", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
-    H.focusNativeEditor().type(" ");
-    H.saveSavedQuestion("top category");
-    H.runNativeQuery({ wait: false });
+    cy.focusNativeEditor().type(" ");
+    cy.saveSavedQuestion("top category");
+    cy.runNativeQuery({ wait: false });
     cy.findByTestId("scalar-value").should("be.visible");
   });
 });
 
 describe("issue 43077", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
@@ -1146,7 +1148,7 @@ describe("issue 43077", () => {
     const cardRequestSpy = cy.spy();
     cy.intercept("/api/card/*", cardRequestSpy);
 
-    H.visitQuestionAdhoc(cartesianQuestionDetails);
+    cy.visitQuestionAdhoc(cartesianQuestionDetails);
 
     cy.findAllByTestId("legend-item").first().click();
 
@@ -1174,7 +1176,7 @@ describe("issue 43077", () => {
     const cardRequestSpy = cy.spy();
     cy.intercept("/api/card/*", cardRequestSpy);
 
-    H.visitQuestionAdhoc(rowQuestionDetails);
+    cy.visitQuestionAdhoc(rowQuestionDetails);
 
     cy.findAllByTestId("legend-item").first().click();
 
@@ -1182,15 +1184,15 @@ describe("issue 43077", () => {
   });
 });
 
-H.describeEE("issue 49160", () => {
+cy.describeEE("issue 49160", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
   });
 
   it("pie chart should have a placeholder", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -1202,18 +1204,18 @@ H.describeEE("issue 49160", () => {
     });
 
     // Shows pie placeholder
-    H.echartsContainer().findByText("18,760").should("be.visible");
+    cy.echartsContainer().findByText("18,760").should("be.visible");
     cy.findByTestId("qb-header-action-panel").findByText("Summarize").click();
 
     cy.findByLabelText("Rating").click();
-    H.echartsContainer().findByText("200").should("be.visible");
-    H.echartsContainer().findByText("TOTAL").should("be.visible");
+    cy.echartsContainer().findByText("200").should("be.visible");
+    cy.echartsContainer().findByText("TOTAL").should("be.visible");
   });
 
   it("pie chart should work when instance colors have overrides", () => {
-    H.updateSetting("application-colors", { "accent0-light": "#98b4ce" });
+    cy.updateSetting("application-colors", { "accent0-light": "#98b4ce" });
 
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -1226,10 +1228,10 @@ H.describeEE("issue 49160", () => {
       display: "pie",
     });
 
-    H.echartsContainer().findByText("200").should("be.visible");
+    cy.echartsContainer().findByText("200").should("be.visible");
 
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
 
-    H.leftSidebar().findByText("Gizmo");
+    cy.leftSidebar().findByText("Gizmo");
   });
 });

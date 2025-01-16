@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
@@ -193,19 +192,19 @@ describe(
   { requestTimeout: 15000 },
   () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
     });
 
     it("should display all visualization cards with their default sizes", () => {
       TEST_QUESTIONS.forEach(question => {
-        H.createQuestion(question);
+        cy.createQuestion(question);
       });
-      H.createDashboard().then(({ body: { id: dashId } }) => {
-        H.visitDashboard(dashId);
+      cy.createDashboard().then(({ body: { id: dashId } }) => {
+        cy.visitDashboard(dashId);
 
-        H.editDashboard();
-        H.openQuestionsSidebar();
+        cy.editDashboard();
+        cy.openQuestionsSidebar();
 
         /**
          * Metabase sorts all questions in the sidebar alphabetically.
@@ -230,7 +229,7 @@ describe(
           cy.wait("@cardQuery");
         });
 
-        H.saveDashboard();
+        cy.saveDashboard();
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
           body.dashcards.forEach(({ card, size_x, size_y }) => {
@@ -245,11 +244,11 @@ describe(
     it("should not allow cards to be resized smaller than min height", () => {
       const cardIds = [];
       TEST_QUESTIONS.forEach(question => {
-        H.createQuestion(question).then(({ body: { id } }) => {
+        cy.createQuestion(question).then(({ body: { id } }) => {
           cardIds.push(id);
         });
       });
-      H.createDashboard().then(({ body: { id: dashId } }) => {
+      cy.createDashboard().then(({ body: { id: dashId } }) => {
         cy.request("PUT", `/api/dashboard/${dashId}`, {
           dashcards: cardIds.map((cardId, index) => ({
             id: index,
@@ -260,19 +259,19 @@ describe(
             size_y: 10,
           })),
         });
-        H.visitDashboard(dashId);
-        H.editDashboard();
+        cy.visitDashboard(dashId);
+        cy.editDashboard();
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
           body.dashcards.forEach(({ card }, index) => {
-            H.resizeDashboardCard({
-              card: H.getDashboardCard(index),
+            cy.resizeDashboardCard({
+              card: cy.getDashboardCard(index),
               x: -getDefaultSize(card.display).width * 200,
               y: -getDefaultSize(card.display).height * 200,
             });
           });
 
-          H.saveDashboard();
+          cy.saveDashboard();
 
           cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
             body.dashcards.forEach(({ card, size_x, size_y }) => {
@@ -288,8 +287,8 @@ describe(
 );
 
 describe("issue 31701", () => {
-  const entityCard = () => H.getDashboardCard(0);
-  const customCard = () => H.getDashboardCard(1);
+  const entityCard = () => cy.getDashboardCard(0);
+  const customCard = () => cy.getDashboardCard(1);
 
   const editEntityLinkContainer = () =>
     cy.findByTestId("entity-edit-display-link");
@@ -302,37 +301,37 @@ describe("issue 31701", () => {
     cy.findByTestId("custom-view-text-link");
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.createQuestion({
+    cy.createQuestion({
       name: TEST_QUESTION_NAME,
       query: {
         "source-table": ORDERS_ID,
       },
     });
 
-    H.createDashboard({
+    cy.createDashboard({
       name: TEST_DASHBOARD_NAME,
     }).then(({ body: { id: dashId } }) => {
-      H.visitDashboard(dashId);
+      cy.visitDashboard(dashId);
     });
 
-    H.editDashboard();
+    cy.editDashboard();
 
     cy.log("Add first link card (connected to an entity");
     cy.findByLabelText("Add a link or iframe").click();
-    H.popover().findByText("Link").click();
-    H.getDashboardCard(0).as("entityCard").click().type(TEST_QUESTION_NAME);
-    H.popover()
+    cy.popover().findByText("Link").click();
+    cy.getDashboardCard(0).as("entityCard").click().type(TEST_QUESTION_NAME);
+    cy.popover()
       .findAllByTestId("search-result-item-name")
       .first()
       .trigger("click");
 
     cy.log("Add second link card (text only)");
     cy.findByLabelText("Add a link or iframe").click();
-    H.popover().findByText("Link").click();
-    H.getDashboardCard(1)
+    cy.popover().findByText("Link").click();
+    cy.getDashboardCard(1)
       .as("customCard")
       .click()
       .type(TEST_QUESTION_NAME)
@@ -349,7 +348,7 @@ describe("issue 31701", () => {
       assertLinkCardOverflow(editCustomLinkContainer(), customCard());
     });
 
-    H.saveDashboard();
+    cy.saveDashboard();
 
     cy.log("when viewing a saved dashboard");
     viewports.forEach(([width, height]) => {

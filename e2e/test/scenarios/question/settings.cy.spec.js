@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -6,7 +5,7 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > settings", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -17,8 +16,8 @@ describe("scenarios > question > settings", () => {
       // get a really wide window, so we don't need to mess with scrolling the table horizontally
       cy.viewport(1600, 800);
 
-      H.openOrdersTable();
-      H.openVizSettingsSidebar();
+      cy.openOrdersTable();
+      cy.openVizSettingsSidebar();
 
       // wait for settings sidebar to open
       cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
@@ -63,7 +62,7 @@ describe("scenarios > question > settings", () => {
     it("should allow you to re-order columns even when one has been removed (metabase #14238, #29287)", () => {
       cy.viewport(1600, 800);
 
-      H.visitQuestionAdhoc({
+      cy.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
           query: {
@@ -85,14 +84,14 @@ describe("scenarios > question > settings", () => {
           type: "query",
         },
       });
-      H.openVizSettingsSidebar();
+      cy.openVizSettingsSidebar();
 
       cy.findByTestId("Subtotal-hide-button").click();
       cy.findByTestId("Tax-hide-button").click();
 
       getSidebarColumns().eq("5").as("total").contains("Total");
 
-      H.moveDnDKitElement(cy.get("@total"), { vertical: -100 });
+      cy.moveDnDKitElement(cy.get("@total"), { vertical: -100 });
 
       getSidebarColumns().eq("3").should("contain.text", "Total");
 
@@ -106,7 +105,7 @@ describe("scenarios > question > settings", () => {
         expect($el.scrollTop).to.eql(0);
       });
 
-      H.moveDnDKitElement(cy.get("@title"), { vertical: 15 });
+      cy.moveDnDKitElement(cy.get("@title"), { vertical: 15 });
 
       cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
         expect($el.scrollTop).to.be.greaterThan(0);
@@ -116,7 +115,7 @@ describe("scenarios > question > settings", () => {
     it("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
       cy.viewport(2000, 1600);
       // Orders join Products
-      H.visitQuestionAdhoc({
+      cy.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: {
@@ -153,7 +152,7 @@ describe("scenarios > question > settings", () => {
         display: "table",
       });
 
-      H.openVizSettingsSidebar();
+      cy.openVizSettingsSidebar();
 
       getSidebarColumns()
         .eq("12")
@@ -161,7 +160,7 @@ describe("scenarios > question > settings", () => {
         .contains(/Products? → Category/);
 
       // Drag and drop this column between "Tax" and "Discount" (index 5 in @sidebarColumns array)
-      H.moveDnDKitElement(cy.get("@prod-category"), { vertical: -360 });
+      cy.moveDnDKitElement(cy.get("@prod-category"), { vertical: -360 });
 
       refreshResultsInHeader();
 
@@ -190,7 +189,7 @@ describe("scenarios > question > settings", () => {
       findColumnAtIndex("User → Address", -1).as("user-address");
 
       // Move it one place up
-      H.moveDnDKitElement(cy.get("@user-address"), { vertical: -100 });
+      cy.moveDnDKitElement(cy.get("@user-address"), { vertical: -100 });
 
       findColumnAtIndex("User → Address", -3);
 
@@ -205,7 +204,7 @@ describe("scenarios > question > settings", () => {
 
     it("should be okay showing an empty joined table (metabase#29140)", () => {
       // Orders join Products
-      H.visitQuestionAdhoc({
+      cy.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: {
@@ -221,7 +220,7 @@ describe("scenarios > question > settings", () => {
         display: "table",
       });
 
-      H.openVizSettingsSidebar();
+      cy.openVizSettingsSidebar();
 
       cy.findByRole("button", { name: "Add or remove columns" }).click();
       cy.findByLabelText("Name").should("not.be.checked").click();
@@ -241,7 +240,7 @@ describe("scenarios > question > settings", () => {
     });
 
     it("should change to column formatting when sidebar is already open (metabase#16043)", () => {
-      H.visitQuestionAdhoc({
+      cy.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           query: { "source-table": ORDERS_ID },
@@ -249,14 +248,14 @@ describe("scenarios > question > settings", () => {
         },
       });
 
-      H.openVizSettingsSidebar(); // open settings sidebar
+      cy.openVizSettingsSidebar(); // open settings sidebar
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
 
       // cy.get(".test-TableInteractive").findByText("Subtotal").scrollIntoView();
-      H.tableHeaderClick("Subtotal"); // open subtotal column header actions
+      cy.tableHeaderClick("Subtotal"); // open subtotal column header actions
 
-      H.popover().icon("gear").click(); // open subtotal column settings
+      cy.popover().icon("gear").click(); // open subtotal column settings
 
       //cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -264,9 +263,9 @@ describe("scenarios > question > settings", () => {
 
       cy.findByTestId("head-crumbs-container").findByText("Orders").click(); //Dismiss popover
 
-      H.tableHeaderClick("Created At"); // open created_at column header actions
+      cy.tableHeaderClick("Created At"); // open created_at column header actions
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.icon("gear").click(); // open created_at column settings
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -292,19 +291,19 @@ describe("scenarios > question > settings", () => {
         },
       };
 
-      H.visitQuestionAdhoc(questionDetails);
+      cy.visitQuestionAdhoc(questionDetails);
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(newColumnTitle);
 
-      H.openVizSettingsSidebar();
+      cy.openVizSettingsSidebar();
 
-      H.sidebar().findByText(newColumnTitle);
+      cy.sidebar().findByText(newColumnTitle);
     });
 
     it("should respect symbol settings for all currencies", () => {
-      H.openOrdersTable();
-      H.openVizSettingsSidebar();
+      cy.openOrdersTable();
+      cy.openVizSettingsSidebar();
 
       getSidebarColumns()
         .eq("4")
@@ -332,7 +331,7 @@ describe("scenarios > question > settings", () => {
     it("should show all options without text overflowing", () => {
       const longName =
         "SuperLongColumnNameSuperLongColumnNameSuperLongColumnNameSuperLongColumnNameSuperLongColumnName";
-      H.createNativeQuestion(
+      cy.createNativeQuestion(
         {
           name: "Orders Model",
           native: {
@@ -342,9 +341,9 @@ describe("scenarios > question > settings", () => {
         { visitQuestion: true },
       );
 
-      H.openVizSettingsSidebar();
+      cy.openVizSettingsSidebar();
 
-      H.sidebar()
+      cy.sidebar()
         .findByRole("listitem")
         .within(() => {
           cy.findByLabelText("ellipsis icon").should("be.visible");
@@ -427,7 +426,7 @@ describe("scenarios > question > settings", () => {
         columnNames.forEach(text => cy.findByText(text).should("be.visible"));
       });
 
-      H.openVizSettingsSidebar();
+      cy.openVizSettingsSidebar();
 
       cy.findByTestId("chartsettings-sidebar").within(() => {
         columnNames.forEach(text => cy.findByText(text).should("be.visible"));
@@ -472,24 +471,24 @@ describe("scenarios > question > settings", () => {
   describe("resetting state", () => {
     it("should reset modal state when navigating away", () => {
       // create a question and add it to a modal
-      H.openOrdersTable();
+      cy.openOrdersTable();
 
       cy.findByTestId("qb-header").contains("Save").click();
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByLabelText(/Where do you want to save this/).click();
       });
-      H.pickEntity({ tab: "Browse", path: ["Our analytics"], select: false });
-      H.entityPickerModal().findByText("Select this collection").click();
+      cy.pickEntity({ tab: "Browse", path: ["Our analytics"], select: false });
+      cy.entityPickerModal().findByText("Select this collection").click();
       cy.findByTestId("save-question-modal").findByText("Save").click();
-      H.modal().findByText("Yes please!").click();
-      H.entityPickerModal().within(() => {
+      cy.modal().findByText("Yes please!").click();
+      cy.entityPickerModal().within(() => {
         cy.findByText("Orders in a dashboard").click();
         cy.findByText("Cancel").click();
       });
 
       // create a new question to see if the "add to a dashboard" modal is still there
-      H.openNavigationSidebar();
-      H.browseDatabases().click();
+      cy.openNavigationSidebar();
+      cy.browseDatabases().click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
@@ -499,7 +498,7 @@ describe("scenarios > question > settings", () => {
       // This next assertion might not catch bugs where the modal displays after
       // a quick delay. With the previous presentation of this bug, the modal
       // was immediately visible, so I'm not going to add any waits.
-      H.modal().should("not.exist");
+      cy.modal().should("not.exist");
     });
   });
 });
@@ -522,7 +521,7 @@ function getVisibleSidebarColumns() {
 }
 
 function hideColumn(name) {
-  H.sidebar()
+  cy.sidebar()
     .findByTestId(`draggable-item-${name}`)
     .icon("eye_outline")
     .click({ force: true });

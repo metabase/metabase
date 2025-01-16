@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -20,12 +19,12 @@ const {
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
-H.describeEE("formatting > sandboxes", () => {
+cy.describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      cy.setTokenFeatures("all");
       preparePermissions();
       cy.visit("/admin/people");
     });
@@ -67,9 +66,9 @@ H.describeEE("formatting > sandboxes", () => {
     const QUESTION_NAME = "Joined test";
 
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      cy.setTokenFeatures("all");
       preparePermissions();
 
       // Add user attribute to existing ("normal" / id:2) user
@@ -120,10 +119,10 @@ H.describeEE("formatting > sandboxes", () => {
 
     describe("table sandboxed on a user attribute", () => {
       it("should display correct number of orders", () => {
-        H.openOrdersTable();
+        cy.openOrdersTable();
         // 10 rows filtered on User ID
         cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 10);
-        H.assertDatasetReqIsSandboxed({
+        cy.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
           columnAssertion: ATTRIBUTE_VALUE,
         });
@@ -133,7 +132,7 @@ H.describeEE("formatting > sandboxes", () => {
     describe("question with joins", () => {
       it("should be sandboxed even after applying a filter to the question", () => {
         cy.log("Open saved question with joins");
-        H.visitQuestion("@questionId");
+        cy.visitQuestion("@questionId");
 
         cy.log("Make sure user is initially sandboxed");
         cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
@@ -142,18 +141,18 @@ H.describeEE("formatting > sandboxes", () => {
         );
 
         cy.log("Add filter to a question");
-        H.openNotebook();
-        H.filter({ mode: "notebook" });
-        H.popover().findByText("Total").click();
-        H.selectFilterOperator("Greater than");
-        H.popover().within(() => {
+        cy.openNotebook();
+        cy.filter({ mode: "notebook" });
+        cy.popover().findByText("Total").click();
+        cy.selectFilterOperator("Greater than");
+        cy.popover().within(() => {
           cy.findByPlaceholderText("Enter a number").type("100");
           cy.button("Add filter").click();
         });
 
-        H.visualize();
+        cy.visualize();
         cy.log("Make sure user is still sandboxed");
-        H.assertDatasetReqIsSandboxed({
+        cy.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
           columnAssetion: ATTRIBUTE_VALUE,
         });
@@ -166,8 +165,8 @@ H.describeEE("formatting > sandboxes", () => {
 
     describe("table sandboxed on a saved parameterized SQL question", () => {
       it("should show filtered categories", () => {
-        H.openPeopleTable();
-        H.assertDatasetReqIsSandboxed({
+        cy.openPeopleTable();
+        cy.assertDatasetReqIsSandboxed({
           columnId: PEOPLE.ID,
           columnAssertion: ATTRIBUTE_VALUE,
         });
@@ -187,7 +186,7 @@ H.describeEE("formatting > sandboxes", () => {
     const allCategories = ["Gadget", "Gizmo", "Doohickey", "Widget"];
 
     function verifyCategoryList(visibleCategories) {
-      H.popover().within(() => {
+      cy.popover().within(() => {
         allCategories.forEach(value => {
           if (visibleCategories.includes(value)) {
             cy.findByText(value).should("be.visible");
@@ -199,9 +198,9 @@ H.describeEE("formatting > sandboxes", () => {
     }
 
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      cy.setTokenFeatures("all");
       preparePermissions();
     });
 
@@ -225,30 +224,30 @@ H.describeEE("formatting > sandboxes", () => {
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
       );
-      H.modifyPermission("collection", 0, "Sandboxed");
-      H.modal().findByText("Pick a column").click();
-      H.popover().findByText("Category").click();
-      H.modal().findByText("Pick a user attribute").click();
-      H.popover().findByText("attr_cat").click();
-      H.modal().button("Save").click();
-      H.savePermissions();
+      cy.modifyPermission("collection", 0, "Sandboxed");
+      cy.modal().findByText("Pick a column").click();
+      cy.popover().findByText("Category").click();
+      cy.modal().findByText("Pick a user attribute").click();
+      cy.popover().findByText("attr_cat").click();
+      cy.modal().button("Save").click();
+      cy.savePermissions();
 
       cy.log("setup a dashboard");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
-      H.selectDashboardFilter(H.getDashboardCard(), "Category");
-      H.saveDashboard();
+      cy.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.editDashboard();
+      cy.setFilter("Text or Category", "Is");
+      cy.selectDashboardFilter(cy.getDashboardCard(), "Category");
+      cy.saveDashboard();
 
       cy.log("field values for admin");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.filterWidget().click();
+      cy.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.filterWidget().click();
       verifyCategoryList(allCategories);
 
       cy.log("field values for the first sandboxed user");
       cy.signIn("sandboxed");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.filterWidget().click();
+      cy.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.filterWidget().click();
       verifyCategoryList(["Widget"]);
 
       cy.log("field values for the second sandboxed user");
@@ -256,17 +255,17 @@ H.describeEE("formatting > sandboxes", () => {
         username: user.email,
         password: user.password,
       });
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.filterWidget().click();
+      cy.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.filterWidget().click();
       verifyCategoryList(["Gadget"]);
     });
   });
 
   describe("Sandboxing reproductions", () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      cy.setTokenFeatures("all");
       preparePermissions();
     });
 
@@ -323,13 +322,15 @@ H.describeEE("formatting > sandboxes", () => {
       cy.signInAsNormalUser();
 
       // see that the question is in the dashboard
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.dashboardCards().findByText("sql param in a dashboard").should("exist");
+      cy.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.dashboardCards()
+        .findByText("sql param in a dashboard")
+        .should("exist");
 
-      H.openPeopleTable();
+      cy.openPeopleTable();
       // 1 row filtered on User ID
       cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 1);
-      H.assertDatasetReqIsSandboxed({
+      cy.assertDatasetReqIsSandboxed({
         columnId: PEOPLE.USER_ID,
         columnAssertion: ATTRIBUTE_VALUE,
       });
@@ -361,8 +362,8 @@ H.describeEE("formatting > sandboxes", () => {
       cy.signOut();
       cy.signInAsSandboxedUser();
 
-      H.openOrdersTable({ mode: "notebook" });
-      H.summarize({ mode: "notebook" });
+      cy.openOrdersTable({ mode: "notebook" });
+      cy.summarize({ mode: "notebook" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -372,7 +373,7 @@ H.describeEE("formatting > sandboxes", () => {
         "Original issue reported failure to find 'User' group / foreign key",
       );
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         // Collapse "Order/s/" in order to bring "User" into view (trick to get around virtualization - credits: @flamber)
         cy.get("[data-element-id=list-section-header]")
           .contains(/Orders?/)
@@ -385,14 +386,14 @@ H.describeEE("formatting > sandboxes", () => {
         cy.get("[data-element-id=list-item]").contains("ID").click();
       });
 
-      H.visualize();
+      cy.visualize();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by User → ID");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("11"); // Sum of orders for user with ID #1
-      H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
-      H.assertDatasetReqIsSandboxed();
+      cy.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
+      cy.assertDatasetReqIsSandboxed();
     });
 
     // Note: This issue was ported from EE repo - it was previously known as (metabase-enterprise#548)
@@ -430,13 +431,13 @@ H.describeEE("formatting > sandboxes", () => {
         cy.signInAsSandboxedUser();
 
         // Assertion phase starts here
-        H.visitQuestion(QUESTION_ID);
+        cy.visitQuestion(QUESTION_ID);
         cy.findByText(QUESTION_NAME);
 
         cy.log("Reported failing since v1.36.4");
         cy.contains(CC_NAME);
-        H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
-        H.assertDatasetReqIsSandboxed({
+        cy.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
+        cy.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
           columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
           requestAlias: `@cardQuery${QUESTION_ID}`,
@@ -450,7 +451,7 @@ H.describeEE("formatting > sandboxes", () => {
 
         if (test === "remapped") {
           cy.log("Remap Product ID's display value to `title`");
-          H.remapDisplayValueToFK({
+          cy.remapDisplayValueToFK({
             display_value: ORDERS.PRODUCT_ID,
             name: "Product ID",
             fk: PRODUCTS.TITLE,
@@ -515,7 +516,7 @@ H.describeEE("formatting > sandboxes", () => {
         // Drill-through
         cy.findByTestId("query-visualization-root").within(() => {
           // Click on the first bar in a graph (Category: "Doohickey")
-          H.chartPathWithFillColor("#509EE3").eq(0).click();
+          cy.chartPathWithFillColor("#509EE3").eq(0).click();
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Orders").click();
@@ -528,8 +529,8 @@ H.describeEE("formatting > sandboxes", () => {
         cy.findByText("Product → Category is Doohickey");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("97.44"); // Subtotal for order #10
-        H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
-        H.assertDatasetReqIsSandboxed({
+        cy.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
+        cy.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
           columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
         });
@@ -602,7 +603,7 @@ H.describeEE("formatting > sandboxes", () => {
       // Drill-through
       cy.findByTestId("query-visualization-root").within(() => {
         // Click on the first bar in a graph (Category: "Doohickey")
-        H.chartPathWithFillColor("#509EE3").eq(0).click();
+        cy.chartPathWithFillColor("#509EE3").eq(0).click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("See these Orders").click();
@@ -613,8 +614,8 @@ H.describeEE("formatting > sandboxes", () => {
       cy.findByText("Products → Category is Doohickey");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("97.44"); // Subtotal for order #10
-      H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
-      H.assertDatasetReqIsSandboxed({
+      cy.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
+      cy.assertDatasetReqIsSandboxed({
         columnId: ORDERS.USER_ID,
         columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
       });
@@ -624,7 +625,7 @@ H.describeEE("formatting > sandboxes", () => {
       beforeEach(() => {
         cy.intercept("POST", "/api/dataset").as("datasetQuery");
         cy.log("Remap Product ID's display value to `title`");
-        H.remapDisplayValueToFK({
+        cy.remapDisplayValueToFK({
           display_value: ORDERS.PRODUCT_ID,
           name: "Product ID",
           fk: PRODUCTS.TITLE,
@@ -673,14 +674,14 @@ H.describeEE("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        H.openOrdersTable({
+        cy.openOrdersTable({
           callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
 
         cy.wait("@datasetQuery");
 
-        H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
-        H.assertDatasetReqIsSandboxed({
+        cy.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
+        cy.assertDatasetReqIsSandboxed({
           requestAlias: "@datasetQuery",
           columnId: ORDERS.USER_ID,
           columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
@@ -689,7 +690,7 @@ H.describeEE("formatting > sandboxes", () => {
         cy.findByTestId("TableInteractive-root")
           .findByText("Awesome Concrete Shoes")
           .click();
-        H.popover()
+        cy.popover()
           .findByText(/View details/i)
           .click();
 
@@ -759,7 +760,7 @@ H.describeEE("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        H.openOrdersTable();
+        cy.openOrdersTable();
 
         cy.log("Reported failing on v1.36.x");
 
@@ -810,11 +811,11 @@ H.describeEE("formatting > sandboxes", () => {
 
         cy.signOut();
         cy.signInAsSandboxedUser();
-        H.openOrdersTable({
+        cy.openOrdersTable({
           callback: xhr => expect(xhr.response.body.error).not.to.exist,
         });
-        H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
-        H.assertDatasetReqIsSandboxed({
+        cy.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
+        cy.assertDatasetReqIsSandboxed({
           columnId: ORDERS.USER_ID,
           columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
         });
@@ -838,7 +839,7 @@ H.describeEE("formatting > sandboxes", () => {
 
         if (test === "remapped") {
           cy.log("Remap Product ID's display value to `title`");
-          H.remapDisplayValueToFK({
+          cy.remapDisplayValueToFK({
             display_value: ORDERS.PRODUCT_ID,
             name: "Product ID",
             fk: PRODUCTS.TITLE,
@@ -894,13 +895,13 @@ H.describeEE("formatting > sandboxes", () => {
         cy.findByText(QUESTION_NAME).click();
 
         cy.wait("@cardQuery");
-        H.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has 4
-        H.assertDatasetReqIsSandboxed({ requestAlias: "@cardQuery" });
+        cy.assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has 4
+        cy.assertDatasetReqIsSandboxed({ requestAlias: "@cardQuery" });
 
         // Drill-through
         cy.findByTestId("query-visualization-root").within(() => {
           // Click on the second bar in a graph (Category: "Widget")
-          H.chartPathWithFillColor("#509EE3").eq(1).click();
+          cy.chartPathWithFillColor("#509EE3").eq(1).click();
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Orders").click();
@@ -910,8 +911,8 @@ H.describeEE("formatting > sandboxes", () => {
         });
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("37.65");
-        H.assertQueryBuilderRowCount(6); // test that user is sandboxed - normal users has over 2000
-        H.assertDatasetReqIsSandboxed({ requestAlias: "@dataset" });
+        cy.assertQueryBuilderRowCount(6); // test that user is sandboxed - normal users has over 2000
+        cy.assertDatasetReqIsSandboxed({ requestAlias: "@dataset" });
       });
     });
 
@@ -936,32 +937,32 @@ H.describeEE("formatting > sandboxes", () => {
       cy.icon("eye")
         .eq(1) // No better way of doing this, unfortunately (see table above)
         .click();
-      H.popover().findByText("Sandboxed").click();
+      cy.popover().findByText("Sandboxed").click();
       cy.button("Change").click();
-      H.modal()
+      cy.modal()
         .findByText(
           "Use a saved question to create a custom view for this table",
         )
         .click();
 
-      H.modal().findByText("Select a question").click();
+      cy.modal().findByText("Select a question").click();
 
-      H.entityPickerModal().findByText(QUESTION_NAME).click();
-      H.modal().button("Save").click();
+      cy.entityPickerModal().findByText(QUESTION_NAME).click();
+      cy.modal().button("Save").click();
       cy.wait("@sandboxTable").then(({ response }) => {
         expect(response.statusCode).to.eq(400);
         expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
-      H.modal().scrollTo("bottom");
-      H.modal().findByText(ERROR_MESSAGE);
+      cy.modal().scrollTo("bottom");
+      cy.modal().findByText(ERROR_MESSAGE);
     });
 
     it("should be able to use summarize columns from joined table based on a saved question (metabase#14766)", () => {
       createJoinedQuestion("14766_joined");
 
-      H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      cy.startNewQuestion();
+      cy.entityPickerModal().within(() => {
+        cy.entityPickerModalTab("Collections").click();
         cy.findByText("14766_joined").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -973,7 +974,7 @@ H.describeEE("formatting > sandboxes", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Products? → ID/).click();
 
-      H.visualize(response => {
+      cy.visualize(response => {
         expect(response.body.error).to.not.exist;
       });
 
@@ -1002,7 +1003,7 @@ H.describeEE("formatting > sandboxes", () => {
       cy.signInAsSandboxedUser();
       createJoinedQuestion("14841", { visitQuestion: true });
 
-      H.openVizSettingsSidebar();
+      cy.openVizSettingsSidebar();
       cy.findByTestId("sidebar-left")
         .should("be.visible")
         .within(() => {
@@ -1018,8 +1019,8 @@ H.describeEE("formatting > sandboxes", () => {
       cy.contains("Subtotal").should("not.exist");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("37.65").should("not.exist");
-      H.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
-      H.assertDatasetReqIsSandboxed({
+      cy.assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
+      cy.assertDatasetReqIsSandboxed({
         requestAlias: "@cardQuery",
         columnId: ORDERS.USER_ID,
         columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
@@ -1084,8 +1085,8 @@ H.describeEE("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        H.visitQuestion(QUESTION_ID);
-        H.assertDatasetReqIsSandboxed({
+        cy.visitQuestion(QUESTION_ID);
+        cy.assertDatasetReqIsSandboxed({
           requestAlias: `@cardQuery${QUESTION_ID}`,
         });
       });
@@ -1094,11 +1095,11 @@ H.describeEE("formatting > sandboxes", () => {
       cy.findByText("Twitter");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row totals");
-      H.assertQueryBuilderRowCount(6); // test that user is sandboxed - normal users has 30
+      cy.assertQueryBuilderRowCount(6); // test that user is sandboxed - normal users has 30
     });
 
     it("should show dashboard subscriptions for sandboxed user (metabase#14990)", () => {
-      H.setupSMTP();
+      cy.setupSMTP();
 
       cy.sandboxTable({
         table_id: ORDERS_ID,
@@ -1108,15 +1109,15 @@ H.describeEE("formatting > sandboxes", () => {
       });
 
       cy.signInAsSandboxedUser();
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openSharingMenu("Subscriptions");
+      cy.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.openSharingMenu("Subscriptions");
 
       // should forward to email since that is the only one setup
-      H.sidebar().findByText("Email this dashboard").should("exist");
+      cy.sidebar().findByText("Email this dashboard").should("exist");
 
       // test that user is sandboxed - normal users has over 2000 rows
-      H.getDashboardCards().findByText("Rows 1-6 of 11").should("exist");
-      H.assertDatasetReqIsSandboxed({
+      cy.getDashboardCards().findByText("Rows 1-6 of 11").should("exist");
+      cy.assertDatasetReqIsSandboxed({
         requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
         columnId: ORDERS.USER_ID,
         columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
@@ -1137,7 +1138,7 @@ H.describeEE("formatting > sandboxes", () => {
       cy.signOut();
       cy.signInAsSandboxedUser();
 
-      H.openOrdersTable({
+      cy.openOrdersTable({
         callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
 
@@ -1146,7 +1147,7 @@ H.describeEE("formatting > sandboxes", () => {
     });
 
     it("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
-      H.remapDisplayValueToFK({
+      cy.remapDisplayValueToFK({
         display_value: ORDERS.USER_ID,
         name: "User ID",
         fk: PEOPLE.NAME,
@@ -1191,11 +1192,11 @@ H.describeEE("formatting > sandboxes", () => {
       cy.signOut();
       cy.signInAsSandboxedUser();
 
-      H.openReviewsTable({
+      cy.openReviewsTable({
         callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
-      H.assertQueryBuilderRowCount(57); // test that user is sandboxed - normal users has 1,112 rows
-      H.assertDatasetReqIsSandboxed();
+      cy.assertQueryBuilderRowCount(57); // test that user is sandboxed - normal users has 1,112 rows
+      cy.assertDatasetReqIsSandboxed();
 
       // Add positive assertion once this issue is fixed
     });
@@ -1204,7 +1205,7 @@ H.describeEE("formatting > sandboxes", () => {
       "sandboxed user should receive sandboxed dashboard subscription",
       { tags: "@external" },
       () => {
-        H.setupSMTP();
+        cy.setupSMTP();
 
         cy.sandboxTable({
           table_id: ORDERS_ID,
@@ -1216,23 +1217,23 @@ H.describeEE("formatting > sandboxes", () => {
         cy.signOut();
         cy.signInAsSandboxedUser();
 
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        cy.visitDashboard(ORDERS_DASHBOARD_ID);
 
         // test that user is sandboxed - normal users has over 2000 rows
-        H.getDashboardCards().findByText("Rows 1-6 of 11").should("exist");
-        H.assertDatasetReqIsSandboxed({
+        cy.getDashboardCards().findByText("Rows 1-6 of 11").should("exist");
+        cy.assertDatasetReqIsSandboxed({
           requestAlias: `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
           columnId: ORDERS.USER_ID,
           columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
         });
 
-        H.openSharingMenu("Subscriptions");
+        cy.openSharingMenu("Subscriptions");
 
-        H.sidebar()
+        cy.sidebar()
           .findByPlaceholderText("Enter user names or email addresses")
           .click();
-        H.popover().findByText("User 1").click();
-        H.sendEmailAndAssert(email => {
+        cy.popover().findByText("User 1").click();
+        cy.sendEmailAndAssert(email => {
           expect(email.html).to.include("Orders in a dashboard");
           expect(email.html).to.include("37.65");
           expect(email.html).not.to.include("148.23"); // Order for user with ID 3
@@ -1268,7 +1269,7 @@ function createJoinedQuestion(name, { visitQuestion = false } = {}) {
 }
 
 function preparePermissions() {
-  H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
-  H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
-  H.blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
+  cy.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+  cy.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
+  cy.blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
 }

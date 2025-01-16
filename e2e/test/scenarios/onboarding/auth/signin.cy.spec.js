@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 
 const sizes = [
@@ -9,7 +8,7 @@ const { admin } = USERS;
 
 describe("scenarios > auth > signin", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signOut();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -75,7 +74,7 @@ describe("scenarios > auth > signin", () => {
   it("should redirect to an unsaved question after login", () => {
     cy.signInAsAdmin();
     cy.visit("/");
-    H.browseDatabases().click();
+    cy.browseDatabases().click();
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Orders" }).click();
     cy.wait("@dataset");

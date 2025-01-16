@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -6,7 +5,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > scalar", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -40,14 +39,14 @@ describe("scenarios > visualizations > scalar", () => {
           size_y: 4,
         },
       }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
         cy.findByText("1.5T");
       });
     });
   });
 
   it("should render date without time (metabase#7494)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -61,7 +60,7 @@ describe("scenarios > visualizations > scalar", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("April 30, 2024");
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show the time").should("be.hidden");

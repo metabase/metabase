@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
@@ -7,26 +6,26 @@ const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 describe("scenarios > admin > permissions > create queries > granular", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should allow configuring granular permissions in group view", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder and native",
     );
 
     // should allow choosing granular option at the db level
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Granular",
     );
 
-    H.assertPermissionTable([
+    cy.assertPermissionTable([
       ["Accounts", "Query builder and native"],
       ["Analytic Events", "Query builder and native"],
       ["Feedback", "Query builder and native"],
@@ -38,15 +37,15 @@ describe("scenarios > admin > permissions > create queries > granular", () => {
     ]);
 
     // should allow setting a granular value for one table
-    H.modifyPermission("Orders", NATIVE_QUERIES_PERMISSION_INDEX, "No");
+    cy.modifyPermission("Orders", NATIVE_QUERIES_PERMISSION_INDEX, "No");
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Change access to this database to “Granular”?");
       cy.findByText("Change").click();
     });
 
     // should also remove native permissions for all other tables
-    H.assertPermissionTable([
+    cy.assertPermissionTable([
       ["Accounts", "Query builder only"],
       ["Analytic Events", "Query builder only"],
       ["Feedback", "Query builder only"],
@@ -58,17 +57,17 @@ describe("scenarios > admin > permissions > create queries > granular", () => {
     ]);
 
     // should not allow 'query builder and native' as a granular permissions permission options
-    H.selectPermissionRow("Orders", NATIVE_QUERIES_PERMISSION_INDEX);
-    H.popover().should("not.contain", "Query builder and native");
+    cy.selectPermissionRow("Orders", NATIVE_QUERIES_PERMISSION_INDEX);
+    cy.popover().should("not.contain", "Query builder and native");
 
     // should have db set to granular
-    H.selectSidebarItem("All Users");
-    H.assertPermissionTable([["Sample Database", "Granular"]]);
+    cy.selectSidebarItem("All Users");
+    cy.assertPermissionTable([["Sample Database", "Granular"]]);
 
     // should allow saving
     cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
     cy.button("Save changes").click();
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Save permissions?");
       cy.button("Yes").click();
     });
@@ -79,46 +78,46 @@ describe("scenarios > admin > permissions > create queries > granular", () => {
 
     // should infer value at db level if the tables are all made the same value
     cy.findByTextEnsureVisible("Sample Database").click();
-    H.modifyPermission(
+    cy.modifyPermission(
       "Orders",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder only",
     );
-    H.selectSidebarItem("All Users");
-    H.assertPermissionTable([["Sample Database", "Query builder only"]]);
+    cy.selectSidebarItem("All Users");
+    cy.assertPermissionTable([["Sample Database", "Query builder only"]]);
   });
 });
 
 describe("scenarios > admin > permissions > create queries > no", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should allow setting create queries to 'no' in group view", () => {
     cy.visit("/admin/permissions/data");
-    H.selectSidebarItem("data");
+    cy.selectSidebarItem("data");
 
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "No",
     );
 
-    H.assertPermissionTable([["Sample Database", "No"]]);
+    cy.assertPermissionTable([["Sample Database", "No"]]);
 
     cy.button("Save changes").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Save permissions?");
       cy.button("Yes").click();
     });
 
-    H.assertPermissionTable([["Sample Database", "No"]]);
+    cy.assertPermissionTable([["Sample Database", "No"]]);
 
     cy.findByTextEnsureVisible("Sample Database").click();
 
-    H.assertPermissionTable([
+    cy.assertPermissionTable([
       ["Accounts", "No"],
       ["Analytic Events", "No"],
       ["Feedback", "No"],
@@ -133,20 +132,20 @@ describe("scenarios > admin > permissions > create queries > no", () => {
 
 describe("scenarios > admin > permissions > create queries > query builder and native", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should allow setting create queries to 'query builder and native' in group view", () => {
     cy.visit("/admin/permissions");
-    H.selectSidebarItem("collection");
+    cy.selectSidebarItem("collection");
 
-    H.assertPermissionTable([["Sample Database", "No"]]);
+    cy.assertPermissionTable([["Sample Database", "No"]]);
 
     // Drill down to tables permissions
     cy.findByTextEnsureVisible("Sample Database").click();
 
-    H.assertPermissionTable([
+    cy.assertPermissionTable([
       ["Accounts", "No"],
       ["Analytic Events", "No"],
       ["Feedback", "No"],
@@ -158,19 +157,19 @@ describe("scenarios > admin > permissions > create queries > query builder and n
     ]);
 
     // Test that query builder and native is not an option when it's not selected at table level
-    H.selectPermissionRow("Orders", NATIVE_QUERIES_PERMISSION_INDEX);
-    H.popover().should("not.contain", "Query builder and native");
+    cy.selectPermissionRow("Orders", NATIVE_QUERIES_PERMISSION_INDEX);
+    cy.popover().should("not.contain", "Query builder and native");
 
     // Navigate back
-    H.selectSidebarItem("collection");
+    cy.selectSidebarItem("collection");
 
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder and native",
     );
 
-    H.assertPermissionTable([["Sample Database", "Query builder and native"]]);
+    cy.assertPermissionTable([["Sample Database", "Query builder and native"]]);
 
     // Drill down to tables permissions
     cy.findByTextEnsureVisible("Sample Database").click();
@@ -186,11 +185,11 @@ describe("scenarios > admin > permissions > create queries > query builder and n
       ["Reviews", "Query builder and native"],
     ];
 
-    H.assertPermissionTable(finalTablePermissions);
+    cy.assertPermissionTable(finalTablePermissions);
 
     cy.button("Save changes").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Save permissions?");
       cy.contains(
         "collection will be able to use the query builder and write native queries for Sample Database.",
@@ -201,13 +200,13 @@ describe("scenarios > admin > permissions > create queries > query builder and n
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").should("not.exist");
 
-    H.assertPermissionTable(finalTablePermissions);
+    cy.assertPermissionTable(finalTablePermissions);
 
     // After saving permissions, user should be able to make further edits without refreshing the page
     // metabase#37811
-    H.selectSidebarItem("data");
+    cy.selectSidebarItem("data");
 
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "No",
@@ -216,7 +215,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
     cy.button("Refresh the page").should("not.exist");
 
     // User should have the option to change permissions back to query builder and native at the database level
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder and native",
@@ -230,9 +229,9 @@ describe("scenarios > admin > permissions > create queries > query builder and n
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select a database to see group permissions");
 
-    H.selectSidebarItem("Sample Database");
+    cy.selectSidebarItem("Sample Database");
 
-    H.assertPermissionTable([
+    cy.assertPermissionTable([
       ["Administrators", "Query builder and native"],
       ["All Users", "No"],
       ["collection", "No"],
@@ -241,7 +240,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
       ["readonly", "No"],
     ]);
 
-    H.modifyPermission(
+    cy.modifyPermission(
       "readonly",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder and native",
@@ -255,18 +254,18 @@ describe("scenarios > admin > permissions > create queries > query builder and n
       ["nosql", "Query builder only"],
       ["readonly", "Query builder and native"],
     ];
-    H.assertPermissionTable(finalPermissions);
+    cy.assertPermissionTable(finalPermissions);
 
-    H.selectSidebarItem("Orders");
+    cy.selectSidebarItem("Orders");
 
-    H.assertPermissionTable(finalPermissions);
+    cy.assertPermissionTable(finalPermissions);
 
     // Navigate back
     cy.get("a").contains("Sample Database").click();
 
     cy.button("Save changes").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Save permissions?");
       cy.contains(
         "readonly will be able to use the query builder and write native queries for Sample Database.",
@@ -277,26 +276,26 @@ describe("scenarios > admin > permissions > create queries > query builder and n
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").should("not.exist");
 
-    H.assertPermissionTable(finalPermissions);
+    cy.assertPermissionTable(finalPermissions);
   });
 });
 
 describe("scenarios > admin > permissions > create queries > query builder only", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should allow setting create queries to 'query builder only' in group view", () => {
     cy.visit("/admin/permissions");
-    H.selectSidebarItem("collection");
+    cy.selectSidebarItem("collection");
 
-    H.assertPermissionTable([["Sample Database", "No"]]);
+    cy.assertPermissionTable([["Sample Database", "No"]]);
 
     // Drill down to tables permissions
     cy.findByTextEnsureVisible("Sample Database").click();
 
-    H.assertPermissionTable([
+    cy.assertPermissionTable([
       ["Accounts", "No"],
       ["Analytic Events", "No"],
       ["Feedback", "No"],
@@ -308,15 +307,15 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     ]);
 
     // Navigate back
-    H.selectSidebarItem("collection");
+    cy.selectSidebarItem("collection");
 
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder only",
     );
 
-    H.assertPermissionTable([["Sample Database", "Query builder only"]]);
+    cy.assertPermissionTable([["Sample Database", "Query builder only"]]);
 
     // Drill down to tables permissions
     cy.findByTextEnsureVisible("Sample Database").click();
@@ -332,11 +331,11 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       ["Reviews", "Query builder only"],
     ];
 
-    H.assertPermissionTable(finalTablePermissions);
+    cy.assertPermissionTable(finalTablePermissions);
 
     cy.button("Save changes").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Save permissions?");
       cy.contains(
         "collection will only be able to use the query builder for Sample Database.",
@@ -347,13 +346,13 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").should("not.exist");
 
-    H.assertPermissionTable(finalTablePermissions);
+    cy.assertPermissionTable(finalTablePermissions);
 
     // After saving permissions, user should be able to make further edits without refreshing the page
     // metabase#37811
-    H.selectSidebarItem("data");
+    cy.selectSidebarItem("data");
 
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "No",
@@ -362,7 +361,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     cy.button("Refresh the page").should("not.exist");
 
     // User should have the option to change permissions back to query builder only at the database level
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder only",
@@ -371,11 +370,11 @@ describe("scenarios > admin > permissions > create queries > query builder only"
 
   it("should set entire database to 'query builder only' if a table is changed to it while db is 'query builder only'", () => {
     cy.visit("/admin/permissions");
-    H.selectSidebarItem("collection");
+    cy.selectSidebarItem("collection");
 
-    H.assertPermissionTable([["Sample Database", "No"]]);
+    cy.assertPermissionTable([["Sample Database", "No"]]);
 
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder and native",
@@ -384,7 +383,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     // Drill down to tables permissions
     cy.findByTextEnsureVisible("Sample Database").click();
 
-    H.assertPermissionTable([
+    cy.assertPermissionTable([
       ["Accounts", "Query builder and native"],
       ["Analytic Events", "Query builder and native"],
       ["Feedback", "Query builder and native"],
@@ -395,13 +394,13 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       ["Reviews", "Query builder and native"],
     ]);
 
-    H.modifyPermission(
+    cy.modifyPermission(
       "Orders",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder only",
     );
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Change access to this database to “Granular”?");
       cy.findByText("Change").click();
     });
@@ -417,15 +416,15 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       ["Reviews", "Query builder only"],
     ];
 
-    H.assertPermissionTable(finalTablePermissions);
+    cy.assertPermissionTable(finalTablePermissions);
 
     // Navigate back
-    H.selectSidebarItem("collection");
-    H.assertPermissionTable([["Sample Database", "Query builder only"]]);
+    cy.selectSidebarItem("collection");
+    cy.assertPermissionTable([["Sample Database", "Query builder only"]]);
 
     cy.button("Save changes").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Save permissions?");
       cy.contains(
         "collection will only be able to use the query builder for Sample Database.",
@@ -439,19 +438,19 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     // Drill down to tables permissions
     cy.findByTextEnsureVisible("Sample Database").click();
 
-    H.assertPermissionTable(finalTablePermissions);
+    cy.assertPermissionTable(finalTablePermissions);
   });
 
   it("should allow setting create queries to 'query builder only' in group view", () => {
     cy.visit("/admin/permissions");
-    H.selectSidebarItem("collection");
+    cy.selectSidebarItem("collection");
 
-    H.assertPermissionTable([["Sample Database", "No"]]);
+    cy.assertPermissionTable([["Sample Database", "No"]]);
 
     // Drill down to tables permissions
     cy.findByTextEnsureVisible("Sample Database").click();
 
-    H.assertPermissionTable([
+    cy.assertPermissionTable([
       ["Accounts", "No"],
       ["Analytic Events", "No"],
       ["Feedback", "No"],
@@ -463,15 +462,15 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     ]);
 
     // Navigate back
-    H.selectSidebarItem("collection");
+    cy.selectSidebarItem("collection");
 
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder only",
     );
 
-    H.assertPermissionTable([["Sample Database", "Query builder only"]]);
+    cy.assertPermissionTable([["Sample Database", "Query builder only"]]);
 
     // Drill down to tables permissions
     cy.findByTextEnsureVisible("Sample Database").click();
@@ -487,11 +486,11 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       ["Reviews", "Query builder only"],
     ];
 
-    H.assertPermissionTable(finalTablePermissions);
+    cy.assertPermissionTable(finalTablePermissions);
 
     cy.button("Save changes").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Save permissions?");
       cy.contains(
         "collection will only be able to use the query builder for Sample Database.",
@@ -502,13 +501,13 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").should("not.exist");
 
-    H.assertPermissionTable(finalTablePermissions);
+    cy.assertPermissionTable(finalTablePermissions);
 
     // After saving permissions, user should be able to make further edits without refreshing the page
     // metabase#37811
-    H.selectSidebarItem("data");
+    cy.selectSidebarItem("data");
 
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "No",
@@ -517,7 +516,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     cy.button("Refresh the page").should("not.exist");
 
     // User should have the option to change permissions back to query builder only at the database level
-    H.modifyPermission(
+    cy.modifyPermission(
       "Sample Database",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder only",
@@ -531,9 +530,9 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select a database to see group permissions");
 
-    H.selectSidebarItem("Sample Database");
+    cy.selectSidebarItem("Sample Database");
 
-    H.assertPermissionTable([
+    cy.assertPermissionTable([
       ["Administrators", "Query builder and native"],
       ["All Users", "No"],
       ["collection", "No"],
@@ -542,7 +541,7 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       ["readonly", "No"],
     ]);
 
-    H.modifyPermission(
+    cy.modifyPermission(
       "readonly",
       NATIVE_QUERIES_PERMISSION_INDEX,
       "Query builder only",
@@ -556,18 +555,18 @@ describe("scenarios > admin > permissions > create queries > query builder only"
       ["nosql", "Query builder only"],
       ["readonly", "Query builder only"],
     ];
-    H.assertPermissionTable(finalPermissions);
+    cy.assertPermissionTable(finalPermissions);
 
-    H.selectSidebarItem("Orders");
+    cy.selectSidebarItem("Orders");
 
-    H.assertPermissionTable(finalPermissions);
+    cy.assertPermissionTable(finalPermissions);
 
     // Navigate back
     cy.get("a").contains("Sample Database").click();
 
     cy.button("Save changes").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Save permissions?");
       cy.contains(
         "readonly will only be able to use the query builder for Sample Database.",
@@ -578,6 +577,6 @@ describe("scenarios > admin > permissions > create queries > query builder only"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").should("not.exist");
 
-    H.assertPermissionTable(finalPermissions);
+    cy.assertPermissionTable(finalPermissions);
   });
 });

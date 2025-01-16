@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -13,10 +12,10 @@ const MONGO_DB_ID = 2;
 
 describe("issue 4482", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.openTable({
+    cy.openTable({
       table: PRODUCTS_ID,
       mode: "notebook",
     });
@@ -30,7 +29,7 @@ describe("issue 4482", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Created At").click();
 
-    H.visualize();
+    cy.visualize();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("April 1, 2022, 12:00 AM");
@@ -42,7 +41,7 @@ describe("issue 4482", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Created At").click();
 
-    H.visualize();
+    cy.visualize();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("April 1, 2025, 12:00 AM");
@@ -66,12 +65,12 @@ function pickMetric(metric) {
 
 describe("issue 6239", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.openOrdersTable({ mode: "notebook" });
+    cy.openOrdersTable({ mode: "notebook" });
 
-    H.summarize({ mode: "notebook" });
+    cy.summarize({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
@@ -84,15 +83,15 @@ describe("issue 6239", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
-    H.popover().contains("Created At").first().click();
+    cy.popover().contains("Created At").first().click();
   });
 
   it("should be possible to sort by using custom expression (metabase#6239)", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sort").click();
-    H.popover().contains(/^CE$/).click();
+    cy.popover().contains(/^CE$/).click();
 
-    H.visualize();
+    cy.visualize();
 
     // Line chart renders initially. Switch to the table view.
     cy.icon("table2").click();
@@ -105,14 +104,14 @@ describe("issue 6239", () => {
     cy.get("[data-testid=cell-data]").eq(3).invoke("text").should("eq", "1");
 
     // Go back to the notebook editor
-    H.openNotebook();
+    cy.openNotebook();
 
     // Sort descending this time
     cy.icon("arrow_up").click();
     cy.icon("arrow_up").should("not.exist");
     cy.icon("arrow_down");
 
-    H.visualize();
+    cy.visualize();
 
     cy.get("[data-testid=cell-data]")
       .eq(1)
@@ -125,22 +124,22 @@ describe("issue 6239", () => {
 
 describe("issue 9027", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    cy.startNewQuestion();
+    cy.entityPickerModal().within(() => {
+      cy.entityPickerModalTab("Collections").click();
       cy.findByText("Orders").should("exist");
       cy.button("Close").click();
     });
 
-    H.startNewNativeQuestion();
+    cy.openNativeEditor({ fromCurrentPage: true });
 
-    H.focusNativeEditor().type("select 0");
+    cy.focusNativeEditor().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    H.saveQuestion(QUESTION_NAME, undefined, {
+    cy.saveQuestion(QUESTION_NAME, undefined, {
       tab: "Browse",
       path: ["Our analytics"],
     });
@@ -148,36 +147,36 @@ describe("issue 9027", () => {
 
   it("should display newly saved question in the 'Saved Questions' list immediately (metabase#9027)", () => {
     goToSavedQuestionPickerAndAssertQuestion(QUESTION_NAME);
-    H.openNavigationSidebar();
+    cy.openNavigationSidebar();
     archiveQuestion(QUESTION_NAME);
     goToSavedQuestionPickerAndAssertQuestion(QUESTION_NAME, false);
-    H.openNavigationSidebar();
+    cy.openNavigationSidebar();
     unarchiveQuestion(QUESTION_NAME);
     goToSavedQuestionPickerAndAssertQuestion(QUESTION_NAME);
   });
 });
 
 function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
-  H.startNewQuestion();
-  H.entityPickerModal().within(() => {
-    H.entityPickerModalTab("Collections").click();
+  cy.startNewQuestion();
+  cy.entityPickerModal().within(() => {
+    cy.entityPickerModalTab("Collections").click();
     cy.findByText(questionName).should(exists ? "exist" : "not.exist");
     cy.button("Close").click();
   });
 }
 
 function archiveQuestion(questionName) {
-  H.navigationSidebar().findByText("Our analytics").click();
+  cy.navigationSidebar().findByText("Our analytics").click();
   openEllipsisMenuFor(questionName);
-  H.popover().findByText("Move to trash").click();
+  cy.popover().findByText("Move to trash").click();
 }
 
 function unarchiveQuestion(questionName) {
-  H.navigationSidebar().within(() => {
+  cy.navigationSidebar().within(() => {
     cy.findByText("Trash").click();
   });
   openEllipsisMenuFor(questionName);
-  H.popover().findByText("Restore").click();
+  cy.popover().findByText("Restore").click();
 }
 
 function openEllipsisMenuFor(item) {
@@ -189,10 +188,10 @@ function openEllipsisMenuFor(item) {
 
 describe("issue 13097", { tags: "@mongo" }, () => {
   beforeEach(() => {
-    H.restore("mongo-5");
+    cy.restore("mongo-5");
     cy.signInAsAdmin();
 
-    H.withDatabase(MONGO_DB_ID, ({ PEOPLE_ID }) => {
+    cy.withDatabase(MONGO_DB_ID, ({ PEOPLE_ID }) => {
       const questionDetails = {
         dataset_query: {
           type: "query",
@@ -201,14 +200,14 @@ describe("issue 13097", { tags: "@mongo" }, () => {
         },
       };
 
-      const hash = H.adhocQuestionHash(questionDetails);
+      const hash = cy.adhocQuestionHash(questionDetails);
 
       cy.visit(`/question/notebook#${hash}`);
     });
   });
 
   it("should correctly apply distinct count on multiple columns (metabase#13097)", () => {
-    H.summarize({ mode: "notebook" });
+    cy.summarize({ mode: "notebook" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Number of distinct values of ...").click();
@@ -222,7 +221,7 @@ describe("issue 13097", { tags: "@mongo" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State").click();
 
-    H.visualize();
+    cy.visualize();
 
     // cy.log("Reported failing on stats ~v0.36.3");
     cy.get("[data-testid=cell-data]")
@@ -236,12 +235,12 @@ describe("issue 13097", { tags: "@mongo" }, () => {
 
 describe("postgres > user > query", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    cy.restore("postgres-12");
     cy.signInAsAdmin();
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
       ({ body }) => {
         const tableId = body.find(table => table.name === "orders").id;
-        H.openTable({
+        cy.openTable({
           database: WRITABLE_DB_ID,
           table: tableId,
         });
@@ -272,33 +271,31 @@ describe("issue 14957", { tags: "@external" }, () => {
   const PG_DB_NAME = "QA Postgres12";
 
   beforeEach(() => {
-    H.restore("postgres-12");
+    cy.restore("postgres-12");
     cy.signInAsAdmin();
   });
 
   it("should save a question before query has been executed (metabase#14957)", () => {
-    H.startNewNativeQuestion().as("editor");
-
-    cy.findByTestId("gui-builder-data").click();
-    cy.findByLabelText(PG_DB_NAME).click();
-    cy.get("@editor").type("select pg_sleep(60)");
-    H.saveQuestion("14957", undefined, {
+    cy.openNativeEditor({ databaseName: PG_DB_NAME }).type(
+      "select pg_sleep(60)",
+    );
+    cy.saveQuestion("14957", undefined, {
       tab: "Browse",
       path: ["Our analytics"],
     });
-    H.modal().should("not.exist");
+    cy.modal().should("not.exist");
   });
 });
 
 describe("postgres > question > custom columns", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    cy.restore("postgres-12");
     cy.signInAsAdmin();
 
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
       ({ body }) => {
         const tableId = body.find(table => table.name === "orders").id;
-        H.openTable({
+        cy.openTable({
           database: WRITABLE_DB_ID,
           table: tableId,
           mode: "notebook",
@@ -314,7 +311,7 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
     cy.findByText("Pick a function or metric").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: "Percentile([Subtotal], 0.1)" });
+    cy.enterCustomColumnDetails({ formula: "Percentile([Subtotal], 0.1)" });
     cy.findByPlaceholderText("Something nice and descriptive")
       .as("name")
       .click();
@@ -374,7 +371,7 @@ const correctValues = [
 
 describe("issue 15876", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    cy.restore("postgres-12");
     cy.signInAsAdmin();
   });
 
@@ -395,12 +392,12 @@ describe("issue 17512", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("custom expression should work with `case` in nested queries (metabase#17512)", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    cy.openOrdersTable({ mode: "notebook" });
 
     addSummarizeCustomExpression(
       "Distinct(case([Discount] > 0, [Subtotal], [Total]))",
@@ -416,7 +413,7 @@ describe("issue 17512", () => {
 
     addCustomColumn("1 + 1", "CC");
 
-    H.visualize(({ body }) => {
+    cy.visualize(({ body }) => {
       expect(body.error).to.not.exist;
     });
 
@@ -426,11 +423,11 @@ describe("issue 17512", () => {
 });
 
 function addSummarizeCustomExpression(formula, name) {
-  H.summarize({ mode: "notebook" });
-  H.popover().contains("Custom Expression").click();
+  cy.summarize({ mode: "notebook" });
+  cy.popover().contains("Custom Expression").click();
 
-  H.expressionEditorWidget().within(() => {
-    H.enterCustomColumnDetails({
+  cy.expressionEditorWidget().within(() => {
+    cy.enterCustomColumnDetails({
       formula,
       name,
     });
@@ -440,8 +437,8 @@ function addSummarizeCustomExpression(formula, name) {
 
 function addCustomColumn(formula, name) {
   cy.findByText("Custom column").click();
-  H.expressionEditorWidget().within(() => {
-    H.enterCustomColumnDetails({
+  cy.expressionEditorWidget().within(() => {
+    cy.enterCustomColumnDetails({
       formula,
       name,
     });
@@ -480,7 +477,7 @@ describe("issue 17514", () => {
   const dashboardDetails = { parameters: [filter] };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -510,7 +507,7 @@ describe("issue 17514", () => {
 
         cy.editDashboardCard(card, mapFilterToCard);
 
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
 
         cy.wait("@cardQuery");
         cy.findByText("110.93").should("be.visible");
@@ -521,7 +518,7 @@ describe("issue 17514", () => {
       "should not show the run overlay when we apply dashboard filter on a question with removed column and then click through its title (metabase#17514-1)",
       { tags: "@flaky" },
       () => {
-        H.editDashboard();
+        cy.editDashboard();
 
         openVisualizationOptions();
 
@@ -529,9 +526,9 @@ describe("issue 17514", () => {
 
         closeModal();
 
-        H.saveDashboard();
+        cy.saveDashboard();
 
-        H.filterWidget().click();
+        cy.filterWidget().click();
         setAdHocFilter({ timeBucket: "years" });
 
         cy.location("search").should("eq", "?date_filter=past30years");
@@ -558,7 +555,7 @@ describe("issue 17514", () => {
     beforeEach(() => {
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
-      H.openVizSettingsSidebar();
+      cy.openVizSettingsSidebar();
 
       moveColumnToTop("Subtotal");
 
@@ -586,8 +583,8 @@ describe("issue 17514", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Join data").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      cy.entityPickerModal().within(() => {
+        cy.entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
 
@@ -600,7 +597,7 @@ describe("issue 17514", () => {
       });
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
-      H.tableHeaderClick("Subtotal");
+      cy.tableHeaderClick("Subtotal");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter by this column");
     });
@@ -608,7 +605,7 @@ describe("issue 17514", () => {
 });
 
 function openVisualizationOptions() {
-  H.showDashboardCardActions();
+  cy.showDashboardCardActions();
   cy.icon("palette").click({ force: true });
 }
 
@@ -621,13 +618,13 @@ function hideColumn(columnName) {
 }
 
 function closeModal() {
-  H.modal().within(() => {
+  cy.modal().within(() => {
     cy.button("Done").click();
   });
 }
 
 function openNotebookMode() {
-  H.openNotebook();
+  cy.openNotebook();
 }
 
 function removeJoinedTable() {
@@ -652,12 +649,12 @@ function moveColumnToTop(column) {
 
 describe("issue 17910", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   it("revisions should work after creating a question without reloading (metabase#17910)", () => {
-    H.openOrdersTable();
+    cy.openOrdersTable();
     cy.intercept("POST", "/api/card").as("card");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -670,9 +667,9 @@ describe("issue 17910", () => {
       cy.findByText("Not now").click();
     });
 
-    H.questionInfoButton().click();
+    cy.questionInfoButton().click();
 
-    H.sidesheet().within(() => {
+    cy.sidesheet().within(() => {
       cy.findAllByPlaceholderText("Add description")
         .type("A description")
         .blur();
@@ -686,12 +683,12 @@ describe("issue 17910", () => {
 
 describe("issue 17963", { tags: "@mongo" }, () => {
   beforeEach(() => {
-    H.restore("mongo-5");
+    cy.restore("mongo-5");
     cy.signInAsAdmin();
 
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
       const tableId = body.find(table => table.name === "orders").id;
-      H.openTable({
+      cy.openTable({
         database: WRITABLE_DB_ID,
         table: tableId,
         mode: "notebook",
@@ -702,22 +699,24 @@ describe("issue 17963", { tags: "@mongo" }, () => {
   it("should be able to compare two fields using filter expression (metabase#17963)", () => {
     cy.findByRole("button", { name: "Filter" }).click();
 
-    H.popover().contains("Custom Expression").click();
+    cy.popover().contains("Custom Expression").click();
 
     typeAndSelect([
       { string: "dis", field: "Discount" },
       { string: "> quan", field: "Quantity" },
     ]);
 
-    H.blurNativeEditor();
+    cy.blurNativeEditor();
     cy.button("Done").click();
 
-    H.getNotebookStep("filter").findByText("Discount is greater than Quantity");
+    cy.getNotebookStep("filter").findByText(
+      "Discount is greater than Quantity",
+    );
 
-    cy.findByRole("button", { name: /Summarize/ }).click();
-    H.popover().findByText("Count of rows").click();
+    cy.findByRole("button", { name: "Summarize" }).click();
+    cy.popover().findByText("Count of rows").click();
 
-    H.visualize();
+    cy.visualize();
 
     cy.findByTestId("scalar-value").contains("1,337");
   });
@@ -727,7 +726,7 @@ function typeAndSelect(arr) {
   arr.forEach(({ string, field }) => {
     cy.get(".ace_text-input").type(string);
 
-    H.popover().contains(field).click();
+    cy.popover().contains(field).click();
   });
 }
 
@@ -735,11 +734,11 @@ describe("issue 18207", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.openProductsTable({ mode: "notebook" });
-    H.summarize({ mode: "notebook" });
+    cy.openProductsTable({ mode: "notebook" });
+    cy.summarize({ mode: "notebook" });
   });
 
   it("should be possible to use MIN on a string column (metabase#18207, metabase#22155)", () => {
@@ -754,7 +753,7 @@ describe("issue 18207", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Category").click();
 
-    H.visualize();
+    cy.visualize();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey");
@@ -772,7 +771,7 @@ describe("issue 18207", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Category").click();
 
-    H.visualize();
+    cy.visualize();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Widget");
@@ -792,9 +791,9 @@ describe("issue 18207", () => {
   });
 
   it("should be possible to group by a string expression (metabase#18207)", () => {
-    H.popover().contains("Custom Expression").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
+    cy.popover().contains("Custom Expression").click();
+    cy.expressionEditorWidget().within(() => {
+      cy.enterCustomColumnDetails({
         formula: "Max([Vendor])",
         name: "LastVendor",
       });
@@ -805,20 +804,16 @@ describe("issue 18207", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Pick a column to group by").click();
-    H.popover().contains("Category").click();
+    cy.popover().contains("Category").click();
 
-    H.visualize();
+    cy.visualize();
 
     // Why is it not a table?
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
-    H.leftSidebar().within(() => {
+    cy.openVizTypeSidebar();
+    cy.leftSidebar().within(() => {
       cy.icon("table2").click();
-      cy.findByTestId("Table-button").realHover();
-      cy.icon("gear").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Done").click();
+    cy.closeVizSettingsSidebar();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Zemlak-Wiegand");
@@ -827,9 +822,9 @@ describe("issue 18207", () => {
 
 describe("issues 11914, 18978, 18977, 23857", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.createQuestion({
+    cy.createQuestion({
       name: "Repro",
       query: {
         "source-table": `card__${ORDERS_QUESTION_ID}`,
@@ -843,28 +838,28 @@ describe("issues 11914, 18978, 18977, 23857", () => {
     cy.log(
       "Make sure we don't offer to duplicate question with a query for which the user has no permission to run (metabase#23857)",
     );
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.visitQuestion(ORDERS_QUESTION_ID);
     cy.findByLabelText("Move, trash, and more…").click();
-    H.popover().findByText("Duplicate").should("not.exist");
+    cy.popover().findByText("Duplicate").should("not.exist");
 
     cy.log(
       "Make sure we don't offer to duplicate question based on a question with a query for which the user has no permission to run (metabase#23857)",
     );
     cy.findByLabelText("Move, trash, and more…").click(); // close actions menu, without this "Search" button is treated as hidden by cypress
-    H.commandPaletteSearch("Repro", false);
-    H.commandPalette().findByText("Repro").click();
+    cy.commandPaletteSearch("Repro", false);
+    cy.commandPalette().findByText("Repro").click();
     cy.findByLabelText("Move, trash, and more…").click();
-    H.popover().findByText("Duplicate").should("not.exist");
+    cy.popover().findByText("Duplicate").should("not.exist");
 
     cy.log(
       "Make sure we don't prompt user to browse databases from the sidebar",
     );
-    H.openNavigationSidebar();
+    cy.openNavigationSidebar();
     cy.findByLabelText("Browse databases").should("not.exist");
 
     cy.log("Make sure we don't prompt user to create a new query");
-    H.appBar().icon("add").click();
-    H.popover().within(() => {
+    cy.appBar().icon("add").click();
+    cy.popover().within(() => {
       cy.findByText("Dashboard").should("be.visible");
       cy.findByText("Question").should("not.exist");
       cy.findByText(/SQL query/).should("not.exist");
@@ -903,7 +898,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
     assertIsNotAdHoc();
 
     cy.log("Make sure user can change visualization but not save the question");
-    H.openVizTypeSidebar();
+    cy.openVizTypeSidebar();
     cy.findByTestId("Number-button").click();
     cy.findByTestId("scalar-value").should("exist");
     assertSaveIsDisabled();
@@ -930,7 +925,7 @@ function assertNoRefreshButton() {
 }
 
 function assertNoOpenPopover() {
-  cy.get(H.POPOVER_ELEMENT).should("not.exist");
+  cy.get(cy.POPOVER_ELEMENT).should("not.exist");
 }
 
 function saveButton() {
@@ -941,8 +936,8 @@ describe("issue 19341", () => {
   const TEST_NATIVE_QUESTION_NAME = "Native";
 
   beforeEach(() => {
-    H.restore();
-    H.mockSessionProperty("enable-nested-queries", false);
+    cy.restore();
+    cy.mockSessionProperty("enable-nested-queries", false);
     cy.signInAsAdmin();
     cy.createNativeQuestion({
       name: TEST_NATIVE_QUESTION_NAME,
@@ -955,8 +950,8 @@ describe("issue 19341", () => {
 
   it("should correctly disable nested queries (metabase#19341)", () => {
     // Test "Saved Questions" table is hidden in QB data selector
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
+    cy.startNewQuestion();
+    cy.entityPickerModal().within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Orders").should("exist");
       cy.findAllByRole("tab").should("not.exist");
@@ -977,12 +972,12 @@ describe("issue 19341", () => {
         expect(modelTypes).to.include("table");
       });
 
-      H.entityPickerModalTab("Tables").click();
+      cy.entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
 
     cy.icon("join_left_outer").click();
-    H.entityPickerModal().findAllByRole("tab").should("not.exist");
+    cy.entityPickerModal().findAllByRole("tab").should("not.exist");
 
     // Test "Explore results" button is hidden for native questions
     cy.visit("/collection/root");
@@ -996,7 +991,7 @@ describe("issue 19341", () => {
 
 describe("issue 19742", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -1007,14 +1002,14 @@ describe("issue 19742", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
 
-    H.popover().findByText("Question").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    cy.popover().findByText("Question").click();
+    cy.entityPickerModal().within(() => {
+      cy.entityPickerModalTab("Tables").click();
       cy.findByText("Orders").should("exist");
       cy.button("Close").click();
     });
 
-    H.openNavigationSidebar();
+    cy.openNavigationSidebar();
     cy.icon("gear").click();
     selectFromDropdown("Admin settings");
 
@@ -1026,10 +1021,10 @@ describe("issue 19742", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
-    H.popover().findByText("Question").click();
+    cy.popover().findByText("Question").click();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    cy.entityPickerModal().within(() => {
+      cy.entityPickerModalTab("Tables").click();
 
       cy.findByText("Orders").should("not.exist");
       cy.findByText("Products").should("exist");
@@ -1040,7 +1035,7 @@ describe("issue 19742", () => {
 });
 
 function selectFromDropdown(optionName) {
-  H.popover().findByText(optionName).click();
+  cy.popover().findByText(optionName).click();
 }
 
 function hideTable(tableName) {
@@ -1069,7 +1064,7 @@ const QUESTION_2 = {
 
 describe("issue 19893", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -1143,7 +1138,7 @@ const createQ1PlusQ2Question = (questionId1, questionId2) => {
 };
 
 const assertQ1PlusQ2Joins = () => {
-  H.getNotebookStep("join").within(() => {
+  cy.getNotebookStep("join").within(() => {
     cy.findAllByTestId("notebook-cell-item").then(items => {
       cy.wrap(items[0]).should("contain", QUESTION_1.name);
       cy.wrap(items[1]).should("contain", QUESTION_2.name);
@@ -1166,7 +1161,7 @@ const newTableName = "Products with a very long name";
 
 describe("issue 20627", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     renameColumn(ORDERS.PRODUCT_ID, foreignKeyColumnName);
@@ -1174,13 +1169,13 @@ describe("issue 20627", () => {
   });
 
   it("nested queries should handle long column and/or table names (metabase#20627)", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    cy.openOrdersTable({ mode: "notebook" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    cy.entityPickerModal().within(() => {
+      cy.entityPickerModalTab("Tables").click();
       cy.findByText(newTableName).click();
     });
 
@@ -1191,7 +1186,7 @@ describe("issue 20627", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText(newTableName).click();
 
       cy.findByText("Category").click();
@@ -1199,10 +1194,10 @@ describe("issue 20627", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
-    H.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+    cy.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
     cy.button("Done").click();
 
-    H.visualize();
+    cy.visualize();
 
     cy.get("[data-testid=cell-data]")
       .should("contain", "Math")
@@ -1235,7 +1230,7 @@ describe("issue 20809", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createQuestion(questionDetails).then(({ body: { id } }) => {
@@ -1265,21 +1260,21 @@ describe("issue 20809", () => {
         },
       };
 
-      H.visitQuestionAdhoc(nestedQuestion, { mode: "notebook" });
+      cy.visitQuestionAdhoc(nestedQuestion, { mode: "notebook" });
     });
   });
 
   it("nesting should work on a saved question with a filter to implicit/explicit table (metabase#20809)", () => {
     cy.findByTextEnsureVisible("Custom column").click();
 
-    H.enterCustomColumnDetails({
+    cy.enterCustomColumnDetails({
       formula: "1 + 1",
       name: "Two",
     });
 
     cy.button("Done").click();
 
-    H.visualize(response => {
+    cy.visualize(response => {
       expect(response.body.error).to.not.exist;
     });
 

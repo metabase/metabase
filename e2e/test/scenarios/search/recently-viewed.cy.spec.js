@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -6,17 +5,17 @@ import {
 
 describe("search > recently viewed", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.openPeopleTable();
+    cy.openPeopleTable();
     cy.findByTextEnsureVisible("Address");
 
     // "Orders" question
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.visitQuestion(ORDERS_QUESTION_ID);
 
     // "Orders in a dashboard" dashboard
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByTextEnsureVisible("Product ID");
 
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
@@ -24,7 +23,7 @@ describe("search > recently viewed", () => {
 
     cy.intercept("/api/activity/recents?*").as("recent");
     //Because this is testing keyboard navigation, these tests can run in embedded mode
-    H.visitFullAppEmbeddingUrl({
+    cy.visitFullAppEmbeddingUrl({
       url: "/",
       qs: { top_nav: true, search: true },
     });
@@ -77,7 +76,7 @@ describe("search > recently viewed", () => {
 
 describe("Recently Viewed > Entity Picker", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     cy.visit("/");
   });
@@ -88,10 +87,10 @@ describe("Recently Viewed > Entity Picker", () => {
     });
 
     cy.findByTestId("app-bar").button(/New/).click();
-    H.popover().findByText("Dashboard").click();
+    cy.popover().findByText("Dashboard").click();
     cy.findByTestId("collection-picker-button").click();
 
-    H.entityPickerModal().within(() => {
+    cy.entityPickerModal().within(() => {
       cy.findByText("Select a collection").click();
       cy.findByRole("tab", { name: /Recents/ });
       cy.findByRole("tab", { name: /Collections/ });
@@ -102,13 +101,13 @@ describe("Recently Viewed > Entity Picker", () => {
   });
 
   it("shows recently visited dashboard in entity picker", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.visitQuestion(ORDERS_QUESTION_ID);
 
     cy.findByTestId("qb-header").icon("ellipsis").click();
-    H.popover().findByText("Add to dashboard").click();
+    cy.popover().findByText("Add to dashboard").click();
 
-    H.entityPickerModal().within(() => {
+    cy.entityPickerModal().within(() => {
       cy.findByText("Add this question to a dashboard").click();
       cy.findByRole("tab", { name: /Recents/ });
       cy.findByRole("tab", { name: /Dashboards/ });
@@ -125,27 +124,27 @@ describe("Recently Viewed > Entity Picker", () => {
   });
 });
 
-H.describeEE("search > recently viewed > enterprise features", () => {
+cy.describeEE("search > recently viewed > enterprise features", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
 
-    H.createModerationReview({
+    cy.createModerationReview({
       status: "verified",
       moderated_item_id: ORDERS_QUESTION_ID,
       moderated_item_type: "card",
     });
 
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.visitQuestion(ORDERS_QUESTION_ID);
 
     cy.findByTestId("qb-header-left-side").find(".Icon-verified");
   });
 
   it("should show verified badge in the 'Recently viewed' list (metabase#18021)", () => {
-    H.openCommandPalette();
+    cy.openCommandPalette();
 
-    H.commandPalette().within(() => {
+    cy.commandPalette().within(() => {
       cy.icon("verified_filled").should("be.visible");
     });
   });

@@ -1,17 +1,16 @@
-import { H } from "e2e/support";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-H.describeEE("scenarios > premium > content verification", () => {
+cy.describeEE("scenarios > premium > content verification", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   context("without a token", () => {
-    beforeEach(() => H.setTokenFeatures("none"));
+    beforeEach(() => cy.setTokenFeatures("none"));
 
     it("should not be able to verify a saved question", () => {
       cy.log("Gate the API");
@@ -26,16 +25,16 @@ H.describeEE("scenarios > premium > content verification", () => {
         },
       }).then(({ body, status, statusText }) => {
         expect(body).to.deep.include(
-          H.getPartialPremiumFeatureError("Content verification"),
+          cy.getPartialPremiumFeatureError("Content verification"),
         );
         expect(status).to.eq(402);
         expect(statusText).to.eq("Payment Required");
       });
 
       cy.log("Gate the UI");
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      H.openQuestionActions();
-      H.popover()
+      cy.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      cy.openQuestionActions();
+      cy.popover()
         .should("contain", "Add to dashboard")
         .and("not.contain", "Verify this question");
 
@@ -48,8 +47,8 @@ H.describeEE("scenarios > premium > content verification", () => {
       cy.visit(`/model/${ORDERS_COUNT_QUESTION_ID}`);
       cy.wait("@dataset");
 
-      H.openQuestionActions();
-      H.popover()
+      cy.openQuestionActions();
+      cy.popover()
         .should("contain", "Edit query definition")
         .and("not.contain", "Verify this question");
     });
@@ -67,27 +66,27 @@ H.describeEE("scenarios > premium > content verification", () => {
         },
       }).then(({ body, status, statusText }) => {
         expect(body).to.deep.include(
-          H.getPartialPremiumFeatureError("Content verification"),
+          cy.getPartialPremiumFeatureError("Content verification"),
         );
         expect(status).to.eq(402);
         expect(statusText).to.eq("Payment Required");
       });
 
       cy.log("Gate the UI");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openDashboardMenu();
-      H.popover()
+      cy.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.openDashboardMenu();
+      cy.popover()
         .should("contain", "Enter fullscreen")
         .and("not.contain", "Verify this question");
     });
   });
 
   context("premium token with paid features", () => {
-    beforeEach(() => H.setTokenFeatures("all"));
+    beforeEach(() => cy.setTokenFeatures("all"));
 
     describe("an admin", () => {
       it("should be able to verify and unverify a saved question", () => {
-        H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+        cy.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
         verifyQuestion();
 
@@ -98,8 +97,8 @@ H.describeEE("scenarios > premium > content verification", () => {
         });
 
         // 2. Question's history
-        H.questionInfoButton().click();
-        H.sidesheet().within(() => {
+        cy.questionInfoButton().click();
+        cy.sidesheet().within(() => {
           cy.findByText(/You verified this/);
           cy.findByRole("tab", { name: "History" }).click();
           cy.findByText("You verified this");
@@ -107,18 +106,18 @@ H.describeEE("scenarios > premium > content verification", () => {
         cy.findByLabelText("Close").click();
 
         // 3. Recently viewed list
-        H.openCommandPalette();
-        H.commandPalette()
+        cy.openCommandPalette();
+        cy.commandPalette()
           .findByRole("option", { name: "Orders, Count" })
           .find(".Icon-verified_filled");
-        H.commandPaletteInput().type("Orders");
-        H.commandPalette()
+        cy.commandPaletteInput().type("Orders");
+        cy.commandPalette()
           .findByRole("option", { name: "Orders, Count" })
           .find(".Icon-verified_filled");
-        H.closeCommandPalette();
+        cy.closeCommandPalette();
 
         // 4. Search results
-        H.commandPaletteSearch("orders");
+        cy.commandPaletteSearch("orders");
         cy.findAllByTestId("search-result-item")
           .contains("Orders, Count")
           .siblings(".Icon-verified_filled");
@@ -131,7 +130,7 @@ H.describeEE("scenarios > premium > content verification", () => {
           .icon("verified");
 
         cy.log("Go back to the question and remove the verification");
-        H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+        cy.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
         removeQuestionVerification();
 
@@ -141,8 +140,8 @@ H.describeEE("scenarios > premium > content verification", () => {
           .should("not.exist");
 
         // 2. Question's history
-        H.questionInfoButton().click();
-        H.sidesheet().within(() => {
+        cy.questionInfoButton().click();
+        cy.sidesheet().within(() => {
           cy.findByRole("tab", { name: "History" }).click();
           cy.findByText("You removed verification");
           cy.findByText("You verified this"); // Implicit assertion - there can be only one :)
@@ -150,20 +149,20 @@ H.describeEE("scenarios > premium > content verification", () => {
         cy.findByLabelText("Close").click();
 
         // 3. Recently viewed list
-        H.openCommandPalette();
-        H.commandPalette()
+        cy.openCommandPalette();
+        cy.commandPalette()
           .findByRole("option", { name: "Orders, Count" })
           .find(".Icon-verified_filled")
           .should("not.exist");
-        H.commandPaletteInput().type("Orders");
-        H.commandPalette()
+        cy.commandPaletteInput().type("Orders");
+        cy.commandPalette()
           .findByRole("option", { name: "Orders, Count" })
           .find(".Icon-verified_filled")
           .should("not.exist");
-        H.closeCommandPalette();
+        cy.closeCommandPalette();
 
         // 4. Search results
-        H.commandPaletteSearch("orders");
+        cy.commandPaletteSearch("orders");
         cy.findAllByTestId("search-result-item")
           .contains("Orders, Count")
           .siblings(".Icon-verified_filed")
@@ -179,7 +178,7 @@ H.describeEE("scenarios > premium > content verification", () => {
       });
 
       it("should be able to verify and unverify a dashboard", () => {
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        cy.visitDashboard(ORDERS_DASHBOARD_ID);
 
         verifyDashboard();
 
@@ -190,8 +189,8 @@ H.describeEE("scenarios > premium > content verification", () => {
         });
 
         // 2. Question's history
-        H.openDashboardInfoSidebar();
-        H.sidesheet().within(() => {
+        cy.openDashboardInfoSidebar();
+        cy.sidesheet().within(() => {
           cy.findByText(/You verified this/);
           cy.findByRole("tab", { name: "History" }).click();
           cy.findByText("You verified this");
@@ -199,14 +198,14 @@ H.describeEE("scenarios > premium > content verification", () => {
         cy.findByLabelText("Close").click();
 
         // // 3. Recently viewed list
-        H.openCommandPalette();
-        H.commandPalette()
+        cy.openCommandPalette();
+        cy.commandPalette()
           .findByRole("option", { name: "Orders in a dashboard" })
           .find(".Icon-verified_filled");
-        H.closeCommandPalette();
+        cy.closeCommandPalette();
 
         // // 4. Search results
-        H.commandPaletteSearch("orders");
+        cy.commandPaletteSearch("orders");
         cy.findAllByTestId("search-result-item")
           .contains("Orders in a dashboard")
           .siblings(".Icon-verified_filled");
@@ -219,7 +218,7 @@ H.describeEE("scenarios > premium > content verification", () => {
           .icon("verified");
 
         cy.log("Go back to the question and remove the verification");
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        cy.visitDashboard(ORDERS_DASHBOARD_ID);
 
         removeDashboardVerification();
 
@@ -229,8 +228,8 @@ H.describeEE("scenarios > premium > content verification", () => {
           .should("not.exist");
 
         // 2. Question's history
-        H.openDashboardInfoSidebar().click();
-        H.sidesheet().within(() => {
+        cy.openDashboardInfoSidebar().click();
+        cy.sidesheet().within(() => {
           cy.findByRole("tab", { name: "History" }).click();
           cy.findByText("You removed verification");
           cy.findByText("You verified this"); // Implicit assertion - there can be only one :)
@@ -238,15 +237,15 @@ H.describeEE("scenarios > premium > content verification", () => {
         cy.findByLabelText("Close").click();
 
         // 3. Recently viewed list
-        H.openCommandPalette();
-        H.commandPalette()
+        cy.openCommandPalette();
+        cy.commandPalette()
           .findByRole("option", { name: "Orders in a dashboard" })
           .find(".Icon-verified_filled")
           .should("not.exist");
-        H.closeCommandPalette();
+        cy.closeCommandPalette();
 
         // 4. Search results
-        H.commandPaletteSearch("orders");
+        cy.commandPaletteSearch("orders");
         cy.findAllByTestId("search-result-item")
           .contains("Orders in a dashboard")
           .siblings(".Icon-verified_filed")
@@ -264,13 +263,13 @@ H.describeEE("scenarios > premium > content verification", () => {
 
     describe("non-admin user", () => {
       beforeEach(() => {
-        H.createModerationReview({
+        cy.createModerationReview({
           status: "verified",
           moderated_item_type: "card",
           moderated_item_id: ORDERS_COUNT_QUESTION_ID,
         });
 
-        H.createModerationReview({
+        cy.createModerationReview({
           status: "verified",
           moderated_item_type: "dashboard",
           moderated_item_id: ORDERS_DASHBOARD_ID,
@@ -280,7 +279,7 @@ H.describeEE("scenarios > premium > content verification", () => {
       });
 
       it("should be able to see that a question has been verified but can't moderate the question themselves", () => {
-        H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+        cy.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
         cy.findByTestId("qb-header").within(() => {
           cy.findByText("Orders, Count");
@@ -288,20 +287,20 @@ H.describeEE("scenarios > premium > content verification", () => {
         });
 
         cy.log("Non-admin users cannot change question verification status.");
-        H.openQuestionActions();
-        H.popover()
+        cy.openQuestionActions();
+        cy.popover()
           .should("contain", "Add to dashboard")
           .and("not.contain", "Remove verification");
 
-        H.questionInfoButton().click();
-        H.sidesheet().within(() => {
+        cy.questionInfoButton().click();
+        cy.sidesheet().within(() => {
           cy.findAllByText(/A moderator verified this/); // overview tab
           cy.findByRole("tab", { name: "History" }).click();
           cy.findAllByText("A moderator verified this"); // history tab
         });
         cy.findByLabelText("Close").click();
 
-        H.commandPaletteSearch("orders");
+        cy.commandPaletteSearch("orders");
         cy.log("Verified content should show up higher in search results");
         cy.findAllByTestId("search-result-item")
           .eq(0)
@@ -318,7 +317,7 @@ H.describeEE("scenarios > premium > content verification", () => {
       });
 
       it("should be able to see that a dashboard has been verified but can't moderate the dashboard themselves", () => {
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
+        cy.visitDashboard(ORDERS_DASHBOARD_ID);
 
         cy.findByTestId("dashboard-header").within(() => {
           cy.findByText("Orders in a dashboard");
@@ -326,20 +325,20 @@ H.describeEE("scenarios > premium > content verification", () => {
         });
 
         cy.log("Non-admin users cannot change question verification status.");
-        H.openDashboardMenu();
-        H.popover()
+        cy.openDashboardMenu();
+        cy.popover()
           .should("contain", "Enter fullscreen")
           .and("not.contain", "Remove verification");
 
-        H.openDashboardInfoSidebar();
-        H.sidesheet().within(() => {
+        cy.openDashboardInfoSidebar();
+        cy.sidesheet().within(() => {
           cy.findAllByText(/A moderator verified this/); // overview tab
           cy.findByRole("tab", { name: "History" }).click();
           cy.findAllByText("A moderator verified this"); // history tab
         });
         cy.findByLabelText("Close").click();
 
-        H.commandPaletteSearch("orders");
+        cy.commandPaletteSearch("orders");
         cy.log("Verified content should show up higher in search results");
         cy.findAllByTestId("search-result-item")
           .first()
@@ -359,51 +358,51 @@ H.describeEE("scenarios > premium > content verification", () => {
 
   context("token expired or removed", () => {
     beforeEach(() => {
-      H.setTokenFeatures("all");
-      H.createModerationReview({
+      cy.setTokenFeatures("all");
+      cy.createModerationReview({
         status: "verified",
         moderated_item_type: "card",
         moderated_item_id: ORDERS_COUNT_QUESTION_ID,
       });
 
-      H.createModerationReview({
+      cy.createModerationReview({
         status: "verified",
         moderated_item_type: "dashboard",
         moderated_item_id: ORDERS_DASHBOARD_ID,
       });
 
-      H.setTokenFeatures("none");
+      cy.setTokenFeatures("none");
     });
 
     it("should not treat the question as verified anymore", () => {
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      cy.visitQuestion(ORDERS_COUNT_QUESTION_ID);
 
       cy.findByTestId("qb-header").within(() => {
         cy.findByText("Orders, Count");
         cy.icon("verified").should("not.exist");
       });
 
-      H.questionInfoButton().click();
-      H.sidesheet().within(() => {
+      cy.questionInfoButton().click();
+      cy.sidesheet().within(() => {
         cy.findByRole("tab", { name: "History" }).click();
         cy.contains(/created this./);
         cy.contains(/verified this/).should("not.exist");
       });
       cy.findByLabelText("Close").click();
 
-      H.openCommandPalette();
-      H.commandPalette()
+      cy.openCommandPalette();
+      cy.commandPalette()
         .findByRole("option", { name: "Orders, Count" })
         .find(".Icon-verified_filled")
         .should("not.exist");
-      H.commandPaletteInput().type("Orders");
-      H.commandPalette()
+      cy.commandPaletteInput().type("Orders");
+      cy.commandPalette()
         .findByRole("option", { name: "Orders, Count" })
         .find(".Icon-verified_filled")
         .should("not.exist");
-      H.closeCommandPalette();
+      cy.closeCommandPalette();
 
-      H.commandPaletteSearch("orders");
+      cy.commandPaletteSearch("orders");
       cy.log(
         "The question lost the verification status and does not appear high in search results anymore",
       );
@@ -418,22 +417,22 @@ H.describeEE("scenarios > premium > content verification", () => {
     });
 
     it("should not treat the dashboard as verified anymore", () => {
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.visitDashboard(ORDERS_DASHBOARD_ID);
 
       cy.findByTestId("dashboard-header").within(() => {
         cy.findByText("Orders in a dashboard");
         cy.icon("verified").should("not.exist");
       });
 
-      H.openDashboardInfoSidebar();
-      H.sidesheet().within(() => {
+      cy.openDashboardInfoSidebar();
+      cy.sidesheet().within(() => {
         cy.findByRole("tab", { name: "History" }).click();
         cy.contains(/created this./);
         cy.contains(/verified this/).should("not.exist");
       });
       cy.findByLabelText("Close").click();
 
-      H.commandPaletteSearch("orders");
+      cy.commandPaletteSearch("orders");
       cy.log(
         "The question lost the verification status and does not appear high in search results anymore",
       );
@@ -452,7 +451,7 @@ H.describeEE("scenarios > premium > content verification", () => {
 function verifyQuestion() {
   cy.intercept("GET", "/api/card/*").as("loadCard");
 
-  H.openQuestionActions();
+  cy.openQuestionActions();
   cy.findByTextEnsureVisible("Verify this question").click();
 
   cy.wait("@loadCard").then(({ response: { body } }) => {
@@ -481,7 +480,7 @@ function verifyQuestion() {
 function verifyDashboard() {
   cy.intercept("GET", "/api/dashboard/*").as("loadDashboard");
 
-  H.openDashboardMenu();
+  cy.openDashboardMenu();
   cy.findByTextEnsureVisible("Verify this dashboard").click();
 
   cy.wait("@loadDashboard").then(({ response: { body } }) => {
@@ -508,11 +507,11 @@ function verifyDashboard() {
 }
 
 function removeQuestionVerification() {
-  H.openQuestionActions();
+  cy.openQuestionActions();
   cy.findByTextEnsureVisible("Remove verification").click();
 }
 
 function removeDashboardVerification() {
-  H.openDashboardMenu();
+  cy.openDashboardMenu();
   cy.findByTextEnsureVisible("Remove verification").click();
 }

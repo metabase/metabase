@@ -1,8 +1,6 @@
-import { H } from "e2e/support";
-
 describe("metabase > scenarios > navbar > new menu", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.visit("/");
@@ -11,7 +9,7 @@ describe("metabase > scenarios > navbar > new menu", () => {
   });
 
   it("question item opens question notebook editor", () => {
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Question").click();
     });
 
@@ -19,16 +17,16 @@ describe("metabase > scenarios > navbar > new menu", () => {
   });
 
   it("question item opens SQL query editor", () => {
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("SQL query").click();
     });
 
     cy.url("should.contain", "/question#");
-    H.nativeEditor().should("be.visible");
+    cy.nativeEditor().should("be.visible");
   });
 
   it("collection opens modal and redirects to a created collection after saving", () => {
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Collection").click();
     });
 

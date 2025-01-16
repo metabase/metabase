@@ -1,11 +1,10 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > question > trendline", () => {
   function setup(questionDetails) {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
     cy.createQuestion(questionDetails, { visitQuestion: true });
   }
@@ -25,8 +24,8 @@ describe("scenarios > question > trendline", () => {
     });
 
     // Change settings to trendline
-    H.openVizSettingsSidebar();
-    H.leftSidebar().within(() => {
+    cy.openVizSettingsSidebar();
+    cy.leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByText("Trend line").click();
     });
@@ -35,11 +34,12 @@ describe("scenarios > question > trendline", () => {
     cy.get("rect");
 
     // Remove sum of total
-    H.leftSidebar().within(() => {
+    cy.leftSidebar().within(() => {
       cy.findByText("Data").click();
       cy.icon("close").last().click({ force: true });
-      cy.findByText("Done").click();
     });
+
+    cy.closeVizSettingsSidebar();
 
     // Graph should still exist
     cy.findByPlaceholderText("Created At").should("not.exist");
@@ -56,14 +56,14 @@ describe("scenarios > question > trendline", () => {
       },
       display: "bar",
     });
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
     // stack 100%, then enable trend line
-    H.leftSidebar().within(() => {
+    cy.leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByText("Stack - 100%").click();
       cy.findByText("Trend line").click();
     });
     // ensure that two trend lines are present
-    H.trendLine().should("have.length", 2);
+    cy.trendLine().should("have.length", 2);
   });
 });

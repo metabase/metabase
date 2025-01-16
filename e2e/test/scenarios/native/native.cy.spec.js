@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import {
   SAMPLE_DB_ID,
   USER_GROUPS,
@@ -29,12 +28,13 @@ describe("scenarios > question > native", () => {
     cy.intercept("POST", "api/card").as("card");
     cy.intercept("POST", "api/dataset").as("dataset");
     cy.intercept("POST", "api/dataset/native").as("datasetNative");
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   it("lets you create and run a SQL question", () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
+    cy.wait(1000); // attempt to decrease flakiness
     cy.realType("select count(*) from orders");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -42,9 +42,9 @@ describe("scenarios > question > native", () => {
   });
 
   it("should suggest the currently viewed collection when saving question if the user has not recently visited a dashboard", () => {
-    H.visitCollection(THIRD_COLLECTION_ID);
-    H.startNewNativeQuestion({ collection_id: THIRD_COLLECTION_ID });
+    cy.visitCollection(THIRD_COLLECTION_ID);
 
+    cy.openNativeEditor({ fromCurrentPage: true });
     cy.realType("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
@@ -59,7 +59,7 @@ describe("scenarios > question > native", () => {
       cy.findByLabelText(/Where do you want to save this/).click();
     });
 
-    H.entityPickerModal().within(() => {
+    cy.entityPickerModal().within(() => {
       cy.findByText("Orders in a dashboard").click();
       cy.button("Select this dashboard").click();
     });
@@ -70,7 +70,7 @@ describe("scenarios > question > native", () => {
 
     cy.visit("/");
 
-    H.startNewNativeQuestion();
+    cy.openNativeEditor({ fromCurrentPage: true });
     cy.realType("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
@@ -87,7 +87,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("displays an error", { tags: "@flaky" }, () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType("select * from not_a_table");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -95,7 +95,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("displays an error when running selected text", { tags: "@flaky" }, () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType("select * from orders");
     // move left three
     Cypress._.range(3).forEach(() => cy.realPress("ArrowLeft"));
@@ -107,7 +107,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("should handle template tags", { tags: "@flaky" }, () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType(
       `select * from PRODUCTS where RATING > ${DOUBLE_LEFT_BRACKET}Stars}}`,
     );
@@ -118,7 +118,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("should modify parameters accordingly when tags are modified", () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType(
       `select * from PRODUCTS where CATEGORY = ${DOUBLE_LEFT_BRACKET}cat}}`,
     );
@@ -148,7 +148,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("can save a question with no rows", { tags: "@flaky" }, () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType("select * from people where false");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -179,7 +179,7 @@ describe("scenarios > question > native", () => {
     };
 
     cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      H.visitQuestionAdhoc({
+      cy.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
           query: {
@@ -195,8 +195,8 @@ describe("scenarios > question > native", () => {
 
     FILTERS.forEach(operator => {
       cy.log("Apply a filter");
-      H.filter();
-      H.filterField("V", {
+      cy.filter();
+      cy.filterField("V", {
         operator,
         value: "This has a value",
       });
@@ -213,15 +213,15 @@ describe("scenarios > question > native", () => {
         "**Final assertion: Count of rows with 'null' value should be 1**",
       );
       // "Count" is pre-selected option for "Summarize"
-      H.summarize();
+      cy.summarize();
       cy.findByText("Done").click();
       cy.findByTestId("scalar-value").contains("1");
 
       cy.findByTestId("qb-filters-panel").within(() => {
         cy.icon("close").click();
       });
-      H.summarize();
-      H.rightSidebar().within(() => {
+      cy.summarize();
+      cy.rightSidebar().within(() => {
         cy.icon("close").click();
       });
       cy.findByText("Done").click();
@@ -232,14 +232,14 @@ describe("scenarios > question > native", () => {
     "should be able to add new columns after hiding some (metabase#15393)",
     { tags: "@flaky" },
     () => {
-      H.startNewNativeQuestion({ display: "table" }).as("editor");
+      cy.openNativeEditor();
       cy.realType("select 1 as visible, 2 as hidden");
       cy.findByTestId("native-query-editor-container")
         .icon("play")
         .as("runQuery")
         .click();
 
-      H.openVizSettingsSidebar();
+      cy.openVizSettingsSidebar();
       cy.findByTestId("sidebar-left")
         .as("sidebar")
         .within(() => {
@@ -254,7 +254,7 @@ describe("scenarios > question > native", () => {
   );
 
   it("should recognize template tags and save them as parameters", () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType(
       `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}cat}} and RATING >= ${DOUBLE_LEFT_BRACKET}stars}}`,
     );
@@ -292,7 +292,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("should not autorun ad-hoc native queries by default", () => {
-    H.visitQuestionAdhoc(
+    cy.visitQuestionAdhoc(
       {
         display: "scalar",
         dataset_query: {
@@ -311,7 +311,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("should allow to preview a fully parameterized query", () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType(
       `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}category}}`,
     );
@@ -324,7 +324,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("should show errors when previewing a query", () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType(
       `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}category}}`,
     );
@@ -339,7 +339,7 @@ describe("scenarios > question > native", () => {
 // causes error in cypress 13
 describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    cy.restore("postgres-12");
     cy.signInAsAdmin();
     cy.intercept("/api/database?saved=true").as("database");
     cy.updatePermissionsGraph({
@@ -393,7 +393,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
 
     cy.log("#32387");
     cy.findByRole("button", { name: /New/ }).click();
-    H.popover().findByText("SQL query").click();
+    cy.popover().findByText("SQL query").click();
 
     cy.wait("@database");
     cy.go("back");
@@ -413,20 +413,19 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       cy.intercept("POST", "/api/card").as("createQuestion");
       cy.intercept("POST", "/api/dataset").as("dataset");
 
-      H.restore("mongo-5");
+      cy.restore("mongo-5");
       cy.signInAsNormalUser();
 
-      H.startNewNativeQuestion();
-      cy.findByTestId("gui-builder-data").click();
-      cy.findByLabelText(MONGO_DB_NAME).click();
+      cy.openNativeEditor({ newMenuItemTitle: "Native query" });
+      cy.popover().findByText(MONGO_DB_NAME).click();
       cy.findByLabelText("Format query").should("not.exist");
 
       cy.findByTestId("native-query-top-bar").findByText(MONGO_DB_NAME).click();
 
       // Switch to SQL engine which is supported by the formatter
-      H.popover().findByText("Sample Database").click();
+      cy.popover().findByText("Sample Database").click();
 
-      H.focusNativeEditor().type("select * from orders", {
+      cy.focusNativeEditor().type("select * from orders", {
         parseSpecialCharSequences: false,
       });
 
@@ -437,7 +436,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
 
       cy.wait("@sqlFormatter");
 
-      H.nativeEditor().should("be.visible").get(".ace_line").as("lines");
+      cy.nativeEditor().should("be.visible").get(".ace_line").as("lines");
 
       cy.get("@lines").eq(0).should("have.text", "SELECT");
       cy.get("@lines").eq(1).should("have.text", "  *");
@@ -449,12 +448,12 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
 
 describe("scenarios > native question > data reference sidebar", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should show tables", () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     referenceButton().click();
 
     sidebarHeaderTitle().should("have.text", "Sample Database");
@@ -487,16 +486,16 @@ describe("scenarios > native question > data reference sidebar", () => {
       { visitQuestion: true },
     );
     // Move question to personal collection
-    H.openQuestionActions();
-    H.popover().findByTestId("move-button").click();
+    cy.openQuestionActions();
+    cy.popover().findByTestId("move-button").click();
 
-    H.entityPickerModal().within(() => {
+    cy.entityPickerModal().within(() => {
       cy.findByRole("tab", { name: /Collections/ }).click();
       cy.findByText("Bobby Tables's Personal Collection").click();
       cy.button("Move").click();
     });
 
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     referenceButton().click();
 
     dataReferenceSidebar().within(() => {
@@ -512,7 +511,7 @@ describe("scenarios > native question > data reference sidebar", () => {
 
   describe("metrics", () => {
     it("should not show metrics when they are not defined on the selected table", () => {
-      H.startNewNativeQuestion();
+      cy.openNativeEditor();
       referenceButton().click();
       sidebarHeaderTitle().should("have.text", "Sample Database");
 
@@ -523,9 +522,9 @@ describe("scenarios > native question > data reference sidebar", () => {
     });
 
     it("should show metrics defined on tables", () => {
-      H.createQuestion(ORDERS_SCALAR_METRIC);
+      cy.createQuestion(ORDERS_SCALAR_METRIC);
 
-      H.startNewNativeQuestion();
+      cy.openNativeEditor();
       referenceButton().click();
       sidebarHeaderTitle().should("have.text", "Sample Database");
 

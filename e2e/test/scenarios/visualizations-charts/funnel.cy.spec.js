@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -6,10 +5,10 @@ const { PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > funnel chart", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
 
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -21,15 +20,15 @@ describe("scenarios > visualizations > funnel chart", () => {
       },
       display: "funnel",
     });
-    H.openVizSettingsSidebar();
-    H.sidebar().findByText("Data").click();
+    cy.openVizSettingsSidebar();
+    cy.sidebar().findByText("Data").click();
   });
 
   it("should allow you to reorder and show/hide rows", () => {
     cy.log("ensure that rows are shown");
-    H.getDraggableElements().should("have.length", 5);
+    cy.getDraggableElements().should("have.length", 5);
 
-    H.getDraggableElements()
+    cy.getDraggableElements()
       .first()
       .invoke("text")
       .then(name => {
@@ -38,11 +37,11 @@ describe("scenarios > visualizations > funnel chart", () => {
           .first()
           .should("have.text", name);
 
-        H.moveDnDKitElement(H.getDraggableElements().first(), {
+        cy.moveDnDKitElement(cy.getDraggableElements().first(), {
           vertical: 100,
         });
 
-        H.getDraggableElements().eq(2).should("have.text", name);
+        cy.getDraggableElements().eq(2).should("have.text", name);
 
         cy.findAllByTestId("funnel-chart-header")
           .eq(2)
@@ -50,14 +49,14 @@ describe("scenarios > visualizations > funnel chart", () => {
       });
 
     cy.log("toggle row visibility");
-    H.getDraggableElements()
+    cy.getDraggableElements()
       .eq(1)
       .within(() => {
         cy.icon("eye_outline").click({ force: true });
       });
     cy.findAllByTestId("funnel-chart-header").should("have.length", 4);
 
-    H.getDraggableElements()
+    cy.getDraggableElements()
       .eq(1)
       .within(() => {
         cy.icon("eye_crossed_out").click({ force: true });
@@ -66,9 +65,9 @@ describe("scenarios > visualizations > funnel chart", () => {
   });
 
   it("should handle row items being filterd out and returned gracefully", () => {
-    H.moveDnDKitElement(H.getDraggableElements().first(), { vertical: 100 });
+    cy.moveDnDKitElement(cy.getDraggableElements().first(), { vertical: 100 });
 
-    H.getDraggableElements()
+    cy.getDraggableElements()
       .eq(1)
       .within(() => {
         cy.icon("eye_outline").click({ force: true });
@@ -81,7 +80,7 @@ describe("scenarios > visualizations > funnel chart", () => {
       cy.findByLabelText("Filter operator").click();
     });
 
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Is not").click();
     });
 
@@ -92,10 +91,10 @@ describe("scenarios > visualizations > funnel chart", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Apply filters").click();
 
-    H.getDraggableElements().should("have.length", 4);
+    cy.getDraggableElements().should("have.length", 4);
 
     //Ensures that "Google" is still hidden, so it's state hasn't changed.
-    H.getDraggableElements()
+    cy.getDraggableElements()
       .eq(0)
       .within(() => {
         cy.icon("eye_crossed_out").click({ force: true });
@@ -107,10 +106,10 @@ describe("scenarios > visualizations > funnel chart", () => {
       cy.icon("close").click();
     });
 
-    H.getDraggableElements().should("have.length", 5);
+    cy.getDraggableElements().should("have.length", 5);
 
     //Re-added items should appear at the end of the list.
-    H.getDraggableElements().eq(0).should("have.text", "Google");
-    H.getDraggableElements().eq(4).should("have.text", "Facebook");
+    cy.getDraggableElements().eq(0).should("have.text", "Google");
+    cy.getDraggableElements().eq(4).should("have.text", "Facebook");
   });
 });

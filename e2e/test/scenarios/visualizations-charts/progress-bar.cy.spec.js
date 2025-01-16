@@ -1,11 +1,10 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > progress chart", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -35,11 +34,11 @@ describe("scenarios > visualizations > progress chart", () => {
           ],
         });
 
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
       },
     );
 
-    H.dashboardCards()
+    cy.dashboardCards()
       .first()
       .within(() => {
         cy.findByText("18,760").should("be.visible");
@@ -48,8 +47,8 @@ describe("scenarios > visualizations > progress chart", () => {
       });
 
     // check query builder chart render
-    H.dashboardCards().first().findByText(QUESTION_NAME).click();
-    H.queryBuilderMain().within(() => {
+    cy.dashboardCards().first().findByText(QUESTION_NAME).click();
+    cy.queryBuilderMain().within(() => {
       cy.findByText("18,760").should("be.visible");
       cy.findByText("Goal 0").should("be.visible");
       cy.findByText("Goal exceeded").should("be.visible");

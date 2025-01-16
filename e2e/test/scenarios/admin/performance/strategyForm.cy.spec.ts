@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
@@ -31,7 +30,7 @@ import {
 describe("scenarios > admin > performance > strategy form", () => {
   describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       interceptPerformanceRoutes();
       cy.signInAsAdmin();
       cy.visit("/admin");
@@ -117,12 +116,12 @@ describe("scenarios > admin > performance > strategy form", () => {
     });
   });
 
-  H.describeEE("ee", () => {
+  cy.describeEE("ee", () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       interceptPerformanceRoutes();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      cy.setTokenFeatures("all");
     });
 
     it("has the right tabs", () => {
@@ -363,7 +362,7 @@ describe("scenarios > admin > performance > strategy form", () => {
           .contains(
             "No dashboards or questions have their own caching policies yet.",
           );
-        H.visitQuestion(ORDERS_QUESTION_ID);
+        cy.visitQuestion(ORDERS_QUESTION_ID);
         openSidebarCacheStrategyForm("question");
         durationRadioButton().click();
         cy.findByLabelText(/Cache results for this many hours/).type("99");
@@ -386,7 +385,7 @@ describe("scenarios > admin > performance > strategy form", () => {
           .contains(
             "No dashboards or questions have their own caching policies yet.",
           );
-        H.visitQuestion(ORDERS_QUESTION_ID);
+        cy.visitQuestion(ORDERS_QUESTION_ID);
         openSidebarCacheStrategyForm("question");
         durationRadioButton().click();
         cy.findByLabelText(/Cache results for this many hours/).type("99");
@@ -400,7 +399,7 @@ describe("scenarios > admin > performance > strategy form", () => {
         adaptiveRadioButton().click();
         saveCacheStrategyForm({ strategyType: "ttl", model: "database" });
 
-        H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+        cy.visitQuestion(ORDERS_COUNT_QUESTION_ID);
         openSidebarCacheStrategyForm("question");
         durationRadioButton().click();
         cy.findByLabelText(/Cache results for this many hours/).type("24");
@@ -439,7 +438,7 @@ describe("scenarios > admin > performance > strategy form", () => {
     describe("Preemptive caching", () => {
       it("Preemptive caching can be enabled and disabled for duration-based caches", () => {
         // Enable preemptive caching in question settings sidebar
-        H.visitQuestion(ORDERS_QUESTION_ID);
+        cy.visitQuestion(ORDERS_QUESTION_ID);
         openSidebarCacheStrategyForm("question");
         durationRadioButton().click();
         enablePreemptiveCaching();
@@ -462,14 +461,14 @@ describe("scenarios > admin > performance > strategy form", () => {
         checkPreemptiveCachingDisabled();
 
         // Check that it's also disabled in the question sidebar
-        H.visitQuestion(ORDERS_QUESTION_ID);
+        cy.visitQuestion(ORDERS_QUESTION_ID);
         openSidebarCacheStrategyForm("question");
         checkPreemptiveCachingDisabled();
       });
 
       it("Preemptive caching can be enabled and disabled for schedule-based caches", () => {
         // Enable preemptive caching in question settings sidebar
-        H.visitQuestion(ORDERS_QUESTION_ID);
+        cy.visitQuestion(ORDERS_QUESTION_ID);
         openSidebarCacheStrategyForm("question");
         scheduleRadioButton().click();
         enablePreemptiveCaching();
@@ -492,13 +491,13 @@ describe("scenarios > admin > performance > strategy form", () => {
         checkPreemptiveCachingDisabled();
 
         // Check that it's also disabled in the question sidebar
-        H.visitQuestion(ORDERS_QUESTION_ID);
+        cy.visitQuestion(ORDERS_QUESTION_ID);
         openSidebarCacheStrategyForm("question");
         checkPreemptiveCachingDisabled();
       });
 
       it("Preemptive caching is not available for other caching policies, or for databases", () => {
-        H.visitQuestion(ORDERS_QUESTION_ID);
+        cy.visitQuestion(ORDERS_QUESTION_ID);
         openSidebarCacheStrategyForm("question");
         preemptiveCachingSwitch().should("not.exist");
 

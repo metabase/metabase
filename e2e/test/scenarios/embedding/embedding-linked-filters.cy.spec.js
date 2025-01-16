@@ -1,5 +1,3 @@
-import { H } from "e2e/support";
-
 import {
   guiDashboard,
   guiQuestion,
@@ -11,7 +9,7 @@ import {
 
 describe("scenarios > embedding > dashboard > linked filters (metabase#13639, metabase#13868)", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -43,35 +41,35 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           params: {},
         };
 
-        H.visitEmbeddedPage(payload);
+        cy.visitEmbeddedPage(payload);
       });
 
       cy.findByRole("heading", { name: nativeDashboardDetails.name });
-      H.getDashboardCard().contains(nativeQuestionDetails.name);
+      cy.getDashboardCard().contains(nativeQuestionDetails.name);
 
-      H.chartPathWithFillColor("#509EE3").should("have.length", 49);
+      cy.chartPathWithFillColor("#509EE3").should("have.length", 49);
 
       assertOnXYAxisLabels({ xLabel: "STATE", yLabel: "count" });
 
-      H.echartsContainer()
+      cy.echartsContainer()
         .get("text")
         .should("contain", "TX")
         .and("contain", "AK");
 
       openFilterOptions("State");
 
-      H.popover().findByText("AK").click();
-      H.popover().button("Add filter").click();
+      cy.popover().findByText("AK").click();
+      cy.popover().button("Add filter").click();
 
       cy.location("search").should("eq", "?city=&state=AK");
 
-      H.echartsContainer()
+      cy.echartsContainer()
         .get("text")
         .should("contain", "AK")
         .and("not.contain", "TX");
 
-      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
-      H.assertEChartsTooltip({
+      cy.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+      cy.assertEChartsTooltip({
         header: "AK",
         rows: [{ color: "#509EE3", name: "count", value: "68" }],
         blurAfter: true,
@@ -81,19 +79,19 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       searchFieldValuesFilter();
 
-      H.popover()
+      cy.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          cy.fieldValuesInput().blur();
         });
 
-      H.popover().button("Add filter").click();
+      cy.popover().button("Add filter").click();
 
       cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
-      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+      cy.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "AK",
         rows: [{ color: "#509EE3", name: "count", value: "1" }],
       });
@@ -110,16 +108,16 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           auto_apply_filters: false,
         });
 
-        H.visitEmbeddedPage(payload);
+        cy.visitEmbeddedPage(payload);
       });
 
       cy.findByRole("heading", { name: nativeDashboardDetails.name });
-      H.getDashboardCard().contains(nativeQuestionDetails.name);
+      cy.getDashboardCard().contains(nativeQuestionDetails.name);
 
       assertOnXYAxisLabels({ xLabel: "STATE", yLabel: "count" });
 
-      H.chartPathWithFillColor("#509EE3").should("have.length", 49);
-      H.echartsContainer()
+      cy.chartPathWithFillColor("#509EE3").should("have.length", 49);
+      cy.echartsContainer()
         .get("text")
         .should("contain", "AK")
         .and("contain", "TX");
@@ -128,22 +126,22 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       cy.button("Apply").should("not.exist");
 
-      H.popover().findByText("AK").click();
-      H.popover().button("Add filter").click();
+      cy.popover().findByText("AK").click();
+      cy.popover().button("Add filter").click();
 
       cy.button("Apply").should("be.visible").click();
       cy.button("Apply").should("not.exist");
 
       cy.location("search").should("eq", "?city=&state=AK");
 
-      H.echartsContainer()
+      cy.echartsContainer()
         .get("text")
         .should("contain", "AK")
         .and("not.contain", "TX");
 
-      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+      cy.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "AK",
         rows: [{ color: "#509EE3", name: "count", value: "68" }],
         blurAfter: true,
@@ -153,21 +151,21 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       searchFieldValuesFilter();
 
-      H.popover()
+      cy.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          cy.fieldValuesInput().blur();
         });
-      H.popover().button("Add filter").click();
+      cy.popover().button("Add filter").click();
 
       cy.button("Apply").should("be.visible").click();
       cy.button("Apply").should("not.exist");
 
       cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
-      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+      cy.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "AK",
         rows: [{ color: "#509EE3", name: "count", value: "1" }],
       });
@@ -180,16 +178,16 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           params: {},
         };
 
-        H.visitEmbeddedPage(payload, {
+        cy.visitEmbeddedPage(payload, {
           setFilters: { state: "AK" },
         });
       });
 
-      H.filterWidget().should("have.length", 2);
+      cy.filterWidget().should("have.length", 2);
 
-      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+      cy.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "AK",
         rows: [{ color: "#509EE3", name: "count", value: "68" }],
         blurAfter: true,
@@ -199,19 +197,19 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       searchFieldValuesFilter();
 
-      H.popover()
+      cy.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          cy.fieldValuesInput().blur();
         });
 
-      H.popover().button("Add filter").click();
+      cy.popover().button("Add filter").click();
 
       cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
-      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+      cy.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "AK",
         rows: [{ color: "#509EE3", name: "count", value: "1" }],
       });
@@ -224,7 +222,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           params: {},
         };
 
-        H.visitEmbeddedPage(payload, {
+        cy.visitEmbeddedPage(payload, {
           setFilters: { state: "AK" },
           additionalHashOptions: {
             hideFilters: ["state"],
@@ -232,30 +230,30 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         });
       });
 
-      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+      cy.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "AK",
         rows: [{ color: "#509EE3", name: "count", value: "68" }],
         blurAfter: true,
       });
 
-      H.filterWidget().should("have.length", 1).and("contain", "City").click();
+      cy.filterWidget().should("have.length", 1).and("contain", "City").click();
 
       searchFieldValuesFilter();
 
-      H.popover()
+      cy.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          cy.fieldValuesInput().blur();
         });
-      H.popover().button("Add filter").click();
+      cy.popover().button("Add filter").click();
 
       cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
-      H.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
+      cy.chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "AK",
         rows: [{ color: "#509EE3", name: "count", value: "1" }],
       });
@@ -275,19 +273,19 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           params: { state: ["AK"] },
         };
 
-        H.visitEmbeddedPage(payload);
+        cy.visitEmbeddedPage(payload);
       });
 
-      H.filterWidget().should("have.length", 1).and("contain", "City").click();
+      cy.filterWidget().should("have.length", 1).and("contain", "City").click();
 
       searchFieldValuesFilter();
 
-      H.popover()
+      cy.popover()
         .filter(":contains('Add filter')")
         .within(() => {
-          H.fieldValuesInput().blur();
+          cy.fieldValuesInput().blur();
         });
-      H.popover().button("Add filter").click();
+      cy.popover().button("Add filter").click();
 
       cy.location("search").should("eq", "?city=Anchorage");
     });
@@ -320,16 +318,16 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           params: {},
         };
 
-        H.visitEmbeddedPage(payload);
+        cy.visitEmbeddedPage(payload);
       });
 
       // ID filter already comes with the default value
       cy.location("search").should("eq", "?category=&id_filter=1");
 
       // But it should still be editable, and that's why we see two filter widgets
-      H.filterWidget().should("have.length", 2).contains("Category").click();
+      cy.filterWidget().should("have.length", 2).contains("Category").click();
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Gizmo").click();
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gadget").should("not.exist");
@@ -352,13 +350,13 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         };
 
         cy.log("Make sure we can override the default value");
-        H.visitEmbeddedPage(payload, { setFilters: { id_filter: 4 } });
+        cy.visitEmbeddedPage(payload, { setFilters: { id_filter: 4 } });
 
         cy.location("search").should("eq", "?id_filter=4");
 
-        H.filterWidget().should("have.length", 2).contains("Category").click();
+        cy.filterWidget().should("have.length", 2).contains("Category").click();
 
-        H.popover().within(() => {
+        cy.popover().within(() => {
           cy.findByText("Doohickey").click();
           cy.findByText("Gizmo").should("not.exist");
           cy.findByText("Gadget").should("not.exist");
@@ -379,7 +377,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
             (win.location.search = "?category=Widget&id_filter=4&id_filter=29"),
         );
 
-        H.filterWidget()
+        cy.filterWidget()
           .should("have.length", 2)
           .and("contain", "2 selections")
           .and("contain", "Widget");
@@ -400,7 +398,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.findByText("2 selections").click();
 
         // Remove one of the previously set filter values
-        H.popover().within(() => H.removeFieldValuesValue(1));
+        cy.popover().within(() => cy.removeFieldValuesValue(1));
 
         cy.button("Update filter").click();
 
@@ -410,7 +408,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
         openFilterOptions("Category");
 
-        H.popover().within(() => {
+        cy.popover().within(() => {
           cy.findByText("Doohickey");
           cy.findByText("Gizmo").should("not.exist");
           cy.findByText("Gadget").should("not.exist");
@@ -426,7 +424,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           params: {},
         };
 
-        H.visitEmbeddedPage(payload, {
+        cy.visitEmbeddedPage(payload, {
           additionalHashOptions: {
             hideFilters: ["id_filter"],
           },
@@ -437,12 +435,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         .should("have.length", 1)
         .and("contain", "Gizmo");
 
-      H.filterWidget()
+      cy.filterWidget()
         .should("have.length", 1)
         .and("contain", "Category")
         .click();
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Gizmo");
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gadget").should("not.exist");
@@ -464,19 +462,19 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           params: { id_filter: [1] },
         };
 
-        H.visitEmbeddedPage(payload);
+        cy.visitEmbeddedPage(payload);
       });
 
       cy.findByTestId("table-row")
         .should("have.length", 1)
         .and("contain", "Gizmo");
 
-      H.filterWidget()
+      cy.filterWidget()
         .should("have.length", 1)
         .and("contain", "Category")
         .click();
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Gizmo");
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gadget").should("not.exist");
@@ -487,18 +485,18 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 });
 
 function openFilterOptions(name) {
-  H.filterWidget().contains(name).click();
+  cy.filterWidget().contains(name).click();
 }
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  H.echartsContainer().get("text").contains(xLabel);
+  cy.echartsContainer().get("text").contains(xLabel);
 
-  H.echartsContainer().get("text").contains(yLabel);
+  cy.echartsContainer().get("text").contains(yLabel);
 }
 
 function searchFieldValuesFilter() {
   cy.findByTestId("parameter-value-dropdown").within(() => {
-    H.fieldValuesInput().type("An");
+    cy.fieldValuesInput().type("An");
   });
 
   cy.findByTestId("field-values-widget").within(() => {

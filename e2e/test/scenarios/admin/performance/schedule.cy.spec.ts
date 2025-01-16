@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
 import type { ScheduleComponentType } from "metabase/components/Schedule/constants";
 import type { CacheableModel } from "metabase-types/api";
 
@@ -18,12 +17,12 @@ import {
  * that configuring the schedule strategy causes the cache to be invalidated at
  * the appointed time. Nor do they check that the cron expression retrieved
  * from the API is displayed in the UI. */
-H.describeEE("scenarios > admin > performance > schedule strategy", () => {
+cy.describeEE("scenarios > admin > performance > schedule strategy", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     interceptPerformanceRoutes();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
   });
 
   /** An object describing the values to enter in the schedule strategy configuration form. */
@@ -99,7 +98,7 @@ H.describeEE("scenarios > admin > performance > schedule strategy", () => {
           } else {
             getScheduleComponent(componentType).click();
 
-            H.selectDropdown().within(() => {
+            cy.selectDropdown().within(() => {
               cy.findByText(optionToClick).click();
             });
           }

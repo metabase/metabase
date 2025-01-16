@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -54,18 +53,18 @@ const getPulseDetails = ({ card_id, dashboard_id }) => ({
 
 describe("scenarios > account > notifications", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
   });
 
   describe("alerts", () => {
     beforeEach(() => {
       cy.signInAsAdmin().then(() => {
-        H.getCurrentUser().then(({ body: { id: admin_id } }) => {
+        cy.getCurrentUser().then(({ body: { id: admin_id } }) => {
           cy.signInAsNormalUser().then(() => {
-            H.getCurrentUser().then(({ body: { id: user_id } }) => {
+            cy.getCurrentUser().then(({ body: { id: user_id } }) => {
               cy.createQuestion(getQuestionDetails()).then(
                 ({ body: { id: card_id } }) => {
-                  H.createAlert(
+                  cy.createAlert(
                     getAlertDetails({ card_id, user_id, admin_id }),
                   );
                 },
@@ -82,12 +81,12 @@ describe("scenarios > account > notifications", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Not seeing one here?").click();
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByText("Not seeing something listed here?");
         cy.findByText("Got it").click();
       });
 
-      H.modal().should("not.exist");
+      cy.modal().should("not.exist");
     });
 
     it("should be able to see alerts notifications", () => {
@@ -108,18 +107,18 @@ describe("scenarios > account > notifications", () => {
       cy.findByText("Question");
       clickUnsubscribe();
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByText("Confirm you want to unsubscribe");
         cy.findByText("Unsubscribe").click();
         cy.findByText("Unsubscribe").should("not.exist");
       });
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByText("You’re unsubscribed. Delete this alert as well?");
         cy.findByText("Delete this alert").click();
       });
 
-      H.modal().should("not.exist");
+      cy.modal().should("not.exist");
       cy.findByTestId("notification-list").should("not.exist");
     });
 
@@ -132,7 +131,7 @@ describe("scenarios > account > notifications", () => {
       cy.findByText("Question");
       clickUnsubscribe();
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByText("Confirm you want to unsubscribe");
         cy.findByText("Unsubscribe").click();
       });
@@ -148,7 +147,7 @@ describe("scenarios > account > notifications", () => {
         cy.createQuestionAndDashboard({
           questionDetails: getQuestionDetails(),
         }).then(({ body: { card_id, dashboard_id } }) => {
-          H.createPulse(getPulseDetails({ card_id, dashboard_id }));
+          cy.createPulse(getPulseDetails({ card_id, dashboard_id }));
         });
       });
     });
@@ -159,12 +158,12 @@ describe("scenarios > account > notifications", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Not seeing one here?").click();
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByText("Not seeing something listed here?");
         cy.findByText("Got it").click();
       });
 
-      H.modal().should("not.exist");
+      cy.modal().should("not.exist");
     });
 
     it("should be able to see pulses notifications", () => {
@@ -185,7 +184,7 @@ describe("scenarios > account > notifications", () => {
       cy.findByText("Subscription");
       clickUnsubscribe();
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByText("Delete this subscription?");
         cy.findByText("Yes, delete this subscription").click();
       });

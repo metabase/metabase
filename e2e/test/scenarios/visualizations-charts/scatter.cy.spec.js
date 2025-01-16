@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -36,12 +35,12 @@ const testQueryBreakout = {
 
 describe("scenarios > visualizations > scatter", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   it("should show correct labels in tooltip (metabase#15150)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "scatter",
       visualization_settings: {
@@ -51,7 +50,7 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    H.assertEChartsTooltip({
+    cy.assertEChartsTooltip({
       header: "May 2023",
       rows: [
         {
@@ -67,7 +66,7 @@ describe("scenarios > visualizations > scatter", () => {
   });
 
   it("should show correct labels in tooltip when display name has manually set (metabase#11395)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "scatter",
       visualization_settings: {
@@ -85,7 +84,7 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    H.assertEChartsTooltip({
+    cy.assertEChartsTooltip({
       header: "May 2023",
       rows: [
         {
@@ -101,7 +100,7 @@ describe("scenarios > visualizations > scatter", () => {
   });
 
   it("should not show non-hovered breakout series in the tooltip (metabase#50630)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: testQueryBreakout,
       display: "scatter",
       visualization_settings: {
@@ -112,7 +111,7 @@ describe("scenarios > visualizations > scatter", () => {
 
     // Use force=true because this chart has too many bubbles that overlap with each other
     triggerPopoverForBubble(300, true);
-    H.assertEChartsTooltip({
+    cy.assertEChartsTooltip({
       header: "2025",
       rows: [
         {
@@ -122,11 +121,11 @@ describe("scenarios > visualizations > scatter", () => {
       ],
     });
 
-    H.assertEChartsTooltipNotContain(["Gizmo", "Gadget", "Doohickey"]);
+    cy.assertEChartsTooltipNotContain(["Gizmo", "Gadget", "Doohickey"]);
   });
 
   it("should not display data points even when enabled in settings (metabase#13247)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       display: "scatter",
       dataset_query: testQuery,
       visualization_settings: {
@@ -142,7 +141,7 @@ describe("scenarios > visualizations > scatter", () => {
   });
 
   it("should respect circle size in a visualization (metabase#22929)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -159,7 +158,7 @@ select 10 as size, 2 as x, 5 as y`,
       },
     });
 
-    H.cartesianChartCircle().each(([circle], index) => {
+    cy.cartesianChartCircle().each(([circle], index) => {
       const { width, height } = circle.getBoundingClientRect();
       const TOLERANCE = 0.1;
       expect(width).to.be.greaterThan(0);
@@ -186,7 +185,7 @@ select 10 as size, 2 as x, 5 as y`,
       { name: "Quantity", value: "4" },
     ];
 
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       display: "scatter",
       dataset_query: {
         type: "query",
@@ -199,19 +198,19 @@ select 10 as size, 2 as x, 5 as y`,
       },
     });
 
-    H.cartesianChartCircle().first().realHover();
-    H.assertEChartsTooltip({
+    cy.cartesianChartCircle().first().realHover();
+    cy.assertEChartsTooltip({
       header: "15.69",
       rows: allTooltipRows,
     });
 
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
     // Resizing animation due to the sidebar
     cy.wait(200);
 
     const columnsToRemove = allTooltipRows.slice(2).map(row => row.name);
 
-    H.leftSidebar().within(() => {
+    cy.leftSidebar().within(() => {
       cy.findByText("Display").click();
 
       columnsToRemove.map(columnName => {
@@ -222,10 +221,10 @@ select 10 as size, 2 as x, 5 as y`,
       });
     });
 
-    H.cartesianChartCircle().first().realHover();
+    cy.cartesianChartCircle().first().realHover();
 
-    H.assertEChartsTooltipNotContain(columnsToRemove);
-    H.assertEChartsTooltip({
+    cy.assertEChartsTooltipNotContain(columnsToRemove);
+    cy.assertEChartsTooltip({
       header: "15.69",
       rows: allTooltipRows.slice(0, 2),
     });
@@ -240,7 +239,7 @@ function triggerPopoverForBubble(index = 13, force = false) {
     cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
 
-  H.cartesianChartCircle()
+  cy.cartesianChartCircle()
     .eq(index) // Random bubble
     .trigger("mousemove", { force });
 }

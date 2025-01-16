@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -6,13 +5,13 @@ const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("time-series chrome filter widget", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   describe("smoke tests", () => {
     beforeEach(() => {
-      H.visitQuestionAdhoc({
+      cy.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
           query: {
@@ -135,7 +134,7 @@ describe("time-series chrome filter widget", () => {
 
   describe("'Include this' switch", () => {
     beforeEach(() => {
-      H.visitQuestionAdhoc({
+      cy.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
           query: {

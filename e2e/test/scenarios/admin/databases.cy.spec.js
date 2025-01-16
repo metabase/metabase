@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
@@ -20,7 +19,7 @@ describe(
   () => {
     ["mysql", "postgres"].forEach(dialect => {
       it(`should show ${dialect} writable_db with actions enabled`, () => {
-        H.restore(`${dialect}-writable`);
+        cy.restore(`${dialect}-writable`);
         cy.signInAsAdmin();
 
         visitDatabase(WRITABLE_DB_ID).then(({ response: { body } }) => {
@@ -50,7 +49,7 @@ describe("admin > database > add", () => {
 
   function selectFieldOption(fieldName, option) {
     cy.findByLabelText(fieldName).click();
-    H.popover().contains(option).click({ force: true });
+    cy.popover().contains(option).click({ force: true });
   }
 
   function chooseDatabase(database) {
@@ -97,7 +96,7 @@ describe("admin > database > add", () => {
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/database").as("createDatabase");
@@ -114,15 +113,15 @@ describe("admin > database > add", () => {
   describe("external databases", { tags: "@external" }, () => {
     describe("postgres", () => {
       beforeEach(() => {
-        H.popover().within(() => {
-          if (H.isEE) {
+        cy.popover().within(() => {
+          if (cy.isEE) {
             // EE should ship with Oracle and Vertica as options
             cy.findByText("Oracle");
             cy.findByText("Vertica");
           }
         });
 
-        H.popover().contains("PostgreSQL").click({ force: true });
+        cy.popover().contains("PostgreSQL").click({ force: true });
 
         cy.findByTestId("database-form").within(() => {
           cy.findByText("Show advanced options").click();
@@ -145,7 +144,7 @@ describe("admin > database > add", () => {
           cy.findByLabelText("Host").parent().icon("info").realHover();
         });
 
-        H.tooltip()
+        cy.tooltip()
           .findByText(/your databases ip address/i)
           .should("be.visible");
 
@@ -157,12 +156,12 @@ describe("admin > database > add", () => {
             });
 
           // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
-          H.typeAndBlurUsingLabel("Display name", "QA Postgres12");
-          H.typeAndBlurUsingLabel("Host", "localhost");
-          H.typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
-          H.typeAndBlurUsingLabel("Database name", "sample");
-          H.typeAndBlurUsingLabel("Username", "metabase");
-          H.typeAndBlurUsingLabel("Password", "metasample123");
+          cy.typeAndBlurUsingLabel("Display name", "QA Postgres12");
+          cy.typeAndBlurUsingLabel("Host", "localhost");
+          cy.typeAndBlurUsingLabel("Port", QA_POSTGRES_PORT);
+          cy.typeAndBlurUsingLabel("Database name", "sample");
+          cy.typeAndBlurUsingLabel("Username", "metabase");
+          cy.typeAndBlurUsingLabel("Password", "metasample123");
         });
 
         const confirmSSLFields = (visible, hidden) => {
@@ -280,13 +279,13 @@ describe("admin > database > add", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("Additional connection string options");
 
-        H.typeAndBlurUsingLabel("Display name", "QA Mongo");
-        H.typeAndBlurUsingLabel("Host", "localhost");
-        H.typeAndBlurUsingLabel("Port", QA_MONGO_PORT);
-        H.typeAndBlurUsingLabel("Database name", "sample");
-        H.typeAndBlurUsingLabel("Username", "metabase");
-        H.typeAndBlurUsingLabel("Password", "metasample123");
-        H.typeAndBlurUsingLabel("Authentication database (optional)", "admin");
+        cy.typeAndBlurUsingLabel("Display name", "QA Mongo");
+        cy.typeAndBlurUsingLabel("Host", "localhost");
+        cy.typeAndBlurUsingLabel("Port", QA_MONGO_PORT);
+        cy.typeAndBlurUsingLabel("Database name", "sample");
+        cy.typeAndBlurUsingLabel("Username", "metabase");
+        cy.typeAndBlurUsingLabel("Password", "metasample123");
+        cy.typeAndBlurUsingLabel("Authentication database (optional)", "admin");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Save").should("not.be.disabled").click();
@@ -324,11 +323,11 @@ describe("admin > database > add", () => {
         const badPasswordString = `mongodb://metabase:wrongPassword@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
         const validConnectionString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
 
-        H.popover().findByText("MongoDB").click({ force: true });
+        cy.popover().findByText("MongoDB").click({ force: true });
 
         cy.findByTestId("database-form").within(() => {
           cy.findByText("Paste a connection string").click();
-          H.typeAndBlurUsingLabel("Display name", "QA Mongo");
+          cy.typeAndBlurUsingLabel("Display name", "QA Mongo");
           cy.findByLabelText("Port").should("not.exist");
           cy.findByLabelText("Paste your connection string").type(badDBString, {
             delay: 0,
@@ -390,16 +389,16 @@ describe("admin > database > add", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Additional JDBC connection string options");
 
-      H.typeAndBlurUsingLabel("Display name", "QA MySQL8");
-      H.typeAndBlurUsingLabel("Host", "localhost");
-      H.typeAndBlurUsingLabel("Port", QA_MYSQL_PORT);
-      H.typeAndBlurUsingLabel("Database name", "sample");
-      H.typeAndBlurUsingLabel("Username", "metabase");
-      H.typeAndBlurUsingLabel("Password", "metasample123");
+      cy.typeAndBlurUsingLabel("Display name", "QA MySQL8");
+      cy.typeAndBlurUsingLabel("Host", "localhost");
+      cy.typeAndBlurUsingLabel("Port", QA_MYSQL_PORT);
+      cy.typeAndBlurUsingLabel("Database name", "sample");
+      cy.typeAndBlurUsingLabel("Username", "metabase");
+      cy.typeAndBlurUsingLabel("Password", "metasample123");
 
       // Bypass the RSA public key error for MySQL database
       // https://github.com/metabase/metabase/issues/12545
-      H.typeAndBlurUsingLabel(
+      cy.typeAndBlurUsingLabel(
         "Additional JDBC connection string options",
         "allowPublicKeyRetrieval=true",
       );
@@ -436,7 +435,7 @@ describe("admin > database > add", () => {
       cy.visit("/admin/databases/create");
 
       chooseDatabase("BigQuery");
-      H.typeAndBlurUsingLabel("Display name", "BQ");
+      cy.typeAndBlurUsingLabel("Display name", "BQ");
       selectFieldOption("Datasets", "Only these...");
       cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
 
@@ -452,7 +451,7 @@ describe("admin > database > add", () => {
 
 describe("scenarios > admin > databases > exceptions", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -504,9 +503,9 @@ describe("scenarios > admin > databases > exceptions", () => {
 
     cy.visit("/admin/databases/create");
 
-    H.typeAndBlurUsingLabel("Display name", "Test");
-    H.typeAndBlurUsingLabel("Database name", "db");
-    H.typeAndBlurUsingLabel("Username", "admin");
+    cy.typeAndBlurUsingLabel("Display name", "Test");
+    cy.typeAndBlurUsingLabel("Database name", "db");
+    cy.typeAndBlurUsingLabel("Username", "admin");
 
     cy.button("Save").click();
     cy.wait("@createDatabase");
@@ -529,13 +528,13 @@ describe("scenarios > admin > databases > exceptions", () => {
   it("should handle a failure to `GET` the list of all databases (metabase#20471)", () => {
     const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
-    H.isEE && H.setTokenFeatures("all");
+    cy.isEE && cy.setTokenFeatures("all");
 
     cy.intercept(
       {
         method: "GET",
         pathname: "/api/database",
-        query: H.isEE
+        query: cy.isEE
           ? {
               exclude_uneditable_details: "true",
             }
@@ -570,7 +569,7 @@ describe("scenarios > admin > databases > exceptions", () => {
 
 describe("scenarios > admin > databases > sample database", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     cy.intercept("PUT", "/api/database/*").as("databaseUpdate");
   });
@@ -615,7 +614,7 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.findByLabelText("Choose when syncs and scans happen").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Hourly").click();
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Daily").click({ force: true });
     });
 
@@ -631,7 +630,7 @@ describe("scenarios > admin > databases > sample database", () => {
       .within(() => {
         cy.findByText("Daily").click();
       });
-    H.popover().findByText("Weekly").click();
+    cy.popover().findByText("Weekly").click();
 
     cy.button("Save changes").click();
     cy.wait("@databaseUpdate").then(({ response: { body } }) => {
@@ -677,7 +676,7 @@ describe("scenarios > admin > databases > sample database", () => {
     // model
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
     // Create a segment through API
-    H.createSegment({
+    cy.createSegment({
       name: "Small orders",
       description: "All orders with a total under $100.",
       table_id: ORDERS_ID,
@@ -722,7 +721,7 @@ describe("scenarios > admin > databases > sample database", () => {
       .within(() => {
         cy.button("Discard saved field values").click();
       });
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByRole("heading").should(
         "have.text",
         "Discard saved field values",
@@ -738,7 +737,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.wait("@usage_info");
     });
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.button("Delete this content and the DB connection")
         .as("deleteButton")
         .should("be.disabled");
@@ -809,7 +808,7 @@ describe("scenarios > admin > databases > sample database", () => {
 
     cy.button("Remove this database").click();
     cy.wait("@loadDatabaseUsageInfo");
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByLabelText(/Delete \d+ saved questions?/).click();
       cy.findByLabelText(/Delete \d+ model?/).click();
       cy.findByTestId("database-name-confirmation-input").type(
@@ -854,12 +853,12 @@ describe("scenarios > admin > databases > sample database", () => {
   });
 });
 
-H.describeWithSnowplow("add database card", () => {
+cy.describeWithSnowplow("add database card", () => {
   beforeEach(() => {
-    H.resetSnowplow();
-    H.restore();
+    cy.resetSnowplow();
+    cy.restore();
     cy.signInAsAdmin();
-    H.enableTracking();
+    cy.enableTracking();
   });
 
   it("should track the click on the card", () => {
@@ -872,7 +871,7 @@ H.describeWithSnowplow("add database card", () => {
 
     cy.get("@addDatabaseCard").findByText("Add a database").click();
     cy.location("pathname").should("eq", "/admin/databases/create");
-    H.expectGoodSnowplowEvent({
+    cy.expectGoodSnowplowEvent({
       event: "database_add_clicked",
       triggered_from: "db-list",
     });

@@ -1,8 +1,6 @@
-import { H } from "e2e/support";
-
 describe("scenarios > reference > databases", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -78,9 +76,9 @@ describe("scenarios > reference > databases", () => {
     });
 
     it("should sort databases in new UI based question data selection popover", () => {
-      H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      cy.startNewQuestion();
+      cy.entityPickerModal().within(() => {
+        cy.entityPickerModalTab("Tables").click();
         cy.findByTestId("item-picker-level-0").within(() => {
           cy.get("[data-index='0']").should("contain.text", "a");
           cy.get("[data-index='1']").should("contain.text", "b");
@@ -107,8 +105,8 @@ function checkQuestionSourceDatabasesOrder() {
   const lastDatabaseIndex = -1;
   const selector = "[data-element-id=list-item]-title";
 
-  H.startNewQuestion();
-  H.popover().within(() => {
+  cy.startNewQuestion();
+  cy.popover().within(() => {
     cy.findByText("Raw Data").click();
     cy.get(selector).as("databaseName").eq(1).should("have.text", "a");
     cy.get("@databaseName")

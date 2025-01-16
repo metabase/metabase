@@ -1,11 +1,10 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > binning > binning options", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -20,7 +19,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: 50 bins");
 
-      H.chartPathWithFillColor("#509EE3");
+      cy.chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("70");
     });
@@ -35,7 +34,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Quarter");
 
-      H.cartesianChartCircle();
+      cy.cartesianChartCircle();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1 2023");
     });
@@ -50,7 +49,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: 20°");
 
-      H.chartPathWithFillColor("#509EE3");
+      cy.chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("180° W");
     });
@@ -68,7 +67,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: 50 bins");
 
-      H.chartPathWithFillColor("#509EE3");
+      cy.chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("70");
     });
@@ -84,7 +83,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Quarter");
 
-      H.cartesianChartCircle();
+      cy.cartesianChartCircle();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1 2023");
     });
@@ -100,7 +99,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: 20°");
 
-      H.chartPathWithFillColor("#509EE3");
+      cy.chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("180° W");
     });
@@ -108,40 +107,40 @@ describe("scenarios > binning > binning options", () => {
 
   context("via column popover", () => {
     it("should work for number", () => {
-      H.openTable({ table: ORDERS_ID });
-      H.tableHeaderClick("Total");
+      cy.openTable({ table: ORDERS_ID });
+      cy.tableHeaderClick("Total");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       getTitle("Count by Total: Auto binned");
 
-      H.chartPathWithFillColor("#509EE3");
+      cy.chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("60");
     });
 
     it("should work for time series", () => {
-      H.openTable({ table: ORDERS_ID });
-      H.tableHeaderClick("Created At");
+      cy.openTable({ table: ORDERS_ID });
+      cy.tableHeaderClick("Created At");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       getTitle("Count by Created At: Month");
 
-      H.cartesianChartCircle();
+      cy.cartesianChartCircle();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("January 2023");
     });
 
     it("should work for longitude/latitude", () => {
-      H.openTable({ table: PEOPLE_ID });
-      H.tableHeaderClick("Longitude");
+      cy.openTable({ table: PEOPLE_ID });
+      cy.tableHeaderClick("Longitude");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       getTitle("Count by Longitude: Auto binned");
 
-      H.chartPathWithFillColor("#509EE3");
+      cy.chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
     });
@@ -155,22 +154,22 @@ function chooseInitialBinningOption({
   bucketSize,
   mode = null,
 } = {}) {
-  H.openTable({ table, mode });
-  H.summarize({ mode });
+  cy.openTable({ table, mode });
+  cy.summarize({ mode });
 
   if (mode === "notebook") {
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
 
-    H.changeBinningForDimension({
+    cy.changeBinningForDimension({
       name: column,
       fromBinning: defaultBucket,
       toBinning: bucketSize,
     });
 
-    H.visualize();
+    cy.visualize();
   } else {
-    H.changeBinningForDimension({
+    cy.changeBinningForDimension({
       name: column,
       fromBinning: defaultBucket,
       toBinning: bucketSize,

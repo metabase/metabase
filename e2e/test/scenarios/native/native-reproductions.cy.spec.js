@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -39,10 +38,10 @@ describe("issue 12439", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.visitQuestionAdhoc(questionDetails);
+    cy.visitQuestionAdhoc(questionDetails);
   });
 
   it("should allow clicking on a legend in a native question without breaking the UI (metabase#12439)", () => {
@@ -53,25 +52,25 @@ describe("issue 12439", () => {
       cy.findByText("Gizmo").should("be.visible");
       cy.findByText("Doohickey").should("be.visible");
 
-      H.cartesianChartCircle();
+      cy.cartesianChartCircle();
     });
 
     // Make sure buttons are clickable
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
 
-    H.sidebar().contains("X-axis");
-    H.sidebar().contains("Y-axis");
+    cy.sidebar().contains("X-axis");
+    cy.sidebar().contains("Y-axis");
   });
 });
 
 describe("issue 15029", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   it("should allow dots in the variable reference (metabase#15029)", () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType(
       `select * from products where RATING = ${DOUBLE_LEFT_BRACKET}number.of.stars}}`,
       {
@@ -88,7 +87,7 @@ describe("issue 16886", () => {
   const SELECTED_TEXT = "select 1";
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -96,7 +95,8 @@ describe("issue 16886", () => {
     "shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)",
     { tags: "@flaky" },
     () => {
-      H.startNewNativeQuestion().as("editor");
+      cy.openNativeEditor();
+      cy.wait(1000); // attempt to decrease flakiness
       cy.realType(ORIGINAL_QUERY);
       cy.realPress("Home");
       Cypress._.range(SELECTED_TEXT.length).forEach(() =>
@@ -114,7 +114,7 @@ describe("issue 16886", () => {
 
 describe("issue 16914", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.intercept("POST", "api/dataset").as("dataset");
     cy.signInAsAdmin();
   });
@@ -122,7 +122,7 @@ describe("issue 16914", () => {
   it("should recover visualization settings after a failed query (metabase#16914)", () => {
     const FAILING_PIECE = " foo";
 
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       display: "table",
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -134,7 +134,7 @@ describe("issue 16914", () => {
       visualization_settings: {},
     });
 
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left")
       .as("sidebar")
       .within(() => {
@@ -144,17 +144,17 @@ describe("issue 16914", () => {
       });
     cy.button("Done").click();
 
-    H.focusNativeEditor();
+    cy.focusNativeEditor();
     cy.realType(FAILING_PIECE);
-    H.runNativeQuery();
+    cy.runNativeQuery();
 
-    H.focusNativeEditor();
+    cy.focusNativeEditor();
     cy.realPress("End");
     Cypress._.range(FAILING_PIECE.length).forEach(() =>
       cy.realPress(["Shift", "ArrowLeft"]),
     );
     cy.realPress("Backspace");
-    H.runNativeQuery();
+    cy.runNativeQuery();
 
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("Every field is hidden right now").should("not.exist");
@@ -182,9 +182,9 @@ describe("issue 17060", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       display: "table",
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -196,14 +196,14 @@ describe("issue 17060", () => {
       visualization_settings: {},
     });
 
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       rearrangeColumns();
     });
   });
 
   it("should not render duplicated columns (metabase#17060)", () => {
-    H.focusNativeEditor();
+    cy.focusNativeEditor();
     cy.realPress("Home");
     Cypress._.range(SECTION.length).forEach(() => cy.realPress("ArrowRight"));
     Cypress._.range(SELECTED_TEXT.length).forEach(() =>
@@ -222,7 +222,7 @@ describe("issue 18148", () => {
   const dbName = "sqlite";
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.addSQLiteDatabase({
@@ -233,7 +233,7 @@ describe("issue 18148", () => {
   it("should not offer to save the question before it is actually possible to save it (metabase#18148)", () => {
     cy.visit("/");
     cy.findByTestId("app-bar").findByLabelText("New").click();
-    H.popover().findByText("SQL query").click();
+    cy.popover().findByText("SQL query").click();
 
     cy.findByTestId("qb-save-button").should(
       "have.attr",
@@ -242,13 +242,45 @@ describe("issue 18148", () => {
     );
 
     cy.findByTestId("gui-builder-data").should("contain", "Select a database");
-    H.popover().should("contain", "Sample Database").and("contain", dbName);
-    H.popover().findByText(dbName).click();
+    cy.popover().should("contain", "Sample Database").and("contain", dbName);
+    cy.popover().findByText(dbName).click();
 
-    H.focusNativeEditor().realType("select foo");
+    cy.focusNativeEditor().realType("select foo");
 
     cy.findByTestId("qb-save-button").click();
     cy.findByTestId("save-question-modal").findByText("Save").should("exist");
+  });
+});
+
+describe("issue 18418", () => {
+  const questionDetails = {
+    name: "REVIEWS SQL",
+    native: { query: "select REVIEWER from REVIEWS LIMIT 1" },
+  };
+
+  beforeEach(() => {
+    cy.intercept("POST", "/api/card").as("cardCreated");
+
+    cy.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show saved questions DB in native question's DB picker (metabase#18418)", () => {
+    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Explore results").click();
+
+    cy.saveQuestion(undefined, undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
+    });
+
+    cy.openNativeEditor({ fromCurrentPage: true });
+
+    // Clicking native question's database picker usually opens a popover with a list of databases
+    // As default Cypress environment has only the sample database available, we expect no popup to appear
+    cy.get(cy.POPOVER_ELEMENT).should("not.exist");
   });
 });
 
@@ -273,7 +305,7 @@ describe("issue 19451", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestion(question, { visitQuestion: true });
@@ -307,7 +339,7 @@ describe("issue 20044", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -315,7 +347,7 @@ describe("issue 20044", () => {
     cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.signIn("nodata");
 
-      H.visitQuestion(id);
+      cy.visitQuestion(id);
 
       cy.get("[data-testid=cell-data]").contains("1");
       cy.findByText("Explore results").should("not.exist");
@@ -325,9 +357,9 @@ describe("issue 20044", () => {
 
 describe("issue 20625", { tags: "@quarantine" }, () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.updateSetting("native-query-autocomplete-match-style", "prefix");
+    cy.updateSetting("native-query-autocomplete-match-style", "prefix");
     cy.signInAsNormalUser();
     cy.intercept("GET", "/api/database/*/autocomplete_suggestions**").as(
       "autocomplete",
@@ -336,7 +368,7 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
 
   // realpress messes with cypress 13
   it("should continue to request more prefix matches (metabase#20625)", () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType("s");
 
     // autocomplete_suggestions?prefix=s
@@ -352,9 +384,9 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
 
 describe("issue 21034", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.intercept(
       "GET",
       "/api/database/**/autocomplete_suggestions?**",
@@ -363,7 +395,7 @@ describe("issue 21034", () => {
   });
 
   it("should not invoke API calls for autocomplete twice in a row (metabase#18148)", () => {
-    H.focusNativeEditor();
+    cy.focusNativeEditor();
     cy.realType("p");
 
     // Wait until another explicit autocomplete is triggered
@@ -377,7 +409,7 @@ describe("issue 21034", () => {
 
 describe("issue 21550", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.intercept("GET", "/api/collection/root/items?**").as("rootCollection");
@@ -385,13 +417,13 @@ describe("issue 21550", () => {
   });
 
   it("should not show scrollbars for very short snippet (metabase#21550)", () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
 
     cy.icon("snippet").click();
     cy.wait("@rootCollection");
     cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
         "select * from people",
       );
@@ -420,7 +452,7 @@ describe("issue 21597", { tags: "@external" }, () => {
   const secondDatabaseId = SAMPLE_DB_ID + 1;
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -428,23 +460,24 @@ describe("issue 21597", { tags: "@external" }, () => {
     cy.intercept("POST", "/api/card").as("saveNativeQuestion");
 
     // Second DB (copy)
-    H.addPostgresDatabase(databaseCopyName);
+    cy.addPostgresDatabase(databaseCopyName);
 
     // Create a native query and run it
-    H.startNewNativeQuestion().as("editor");
-
-    cy.get("@editor").type(
+    cy.openNativeEditor({
+      databaseName,
+    });
+    cy.realType(
       `SELECT COUNT(*) FROM PRODUCTS WHERE ${DOUBLE_LEFT_BRACKET}FILTER}}`,
     );
 
     cy.findByTestId("variable-type-select").click();
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Field Filter").click();
     });
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Products").click();
     });
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Category").click();
     });
 
@@ -457,7 +490,7 @@ describe("issue 21597", { tags: "@external" }, () => {
     cy.findByTestId("native-query-editor-container")
       .findByText("Sample Database")
       .click();
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText(databaseCopyName).click();
     });
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -479,7 +512,7 @@ describe("issue 21597", { tags: "@external" }, () => {
 
 describe("issue 23510", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -524,15 +557,15 @@ describe("issue 23510", () => {
 
 describe("issue 30680", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should not render native editor buttons when 'Metadata' tab is open (metabase#30680)", () => {
-    H.startNewNativeModel({ query: "select 1" });
+    cy.startNewNativeModel({ query: "select 1" });
     cy.findByTestId("editor-tabs-metadata").should("be.disabled");
 
-    H.runNativeQuery();
+    cy.runNativeQuery();
     cy.findByTestId("editor-tabs-metadata").should("not.be.disabled");
     cy.findByTestId("editor-tabs-metadata-name").click();
 
@@ -543,7 +576,7 @@ describe("issue 30680", () => {
 
 describe("issue 34330", { tags: "@flaky" }, () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
     cy.intercept("GET", "/api/database/*/autocomplete_suggestions**").as(
       "autocomplete",
@@ -551,7 +584,7 @@ describe("issue 34330", { tags: "@flaky" }, () => {
   });
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType("USER");
 
     cy.wait("@autocomplete").then(({ request }) => {
@@ -564,7 +597,7 @@ describe("issue 34330", { tags: "@flaky" }, () => {
   });
 
   it("should call the autocompleter eventually, even when only 1 character was typed (metabase#34330)", () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType("U");
 
     cy.wait("@autocomplete").then(({ request }) => {
@@ -577,7 +610,7 @@ describe("issue 34330", { tags: "@flaky" }, () => {
   });
 
   it("should call the autocompleter when backspacing to a 1-character prefix(metabase#34330)", () => {
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.realType("SE{backspace}");
 
     cy.wait("@autocomplete").then(({ request }) => {
@@ -597,7 +630,7 @@ describe("issue 35344", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
@@ -607,18 +640,18 @@ describe("issue 35344", () => {
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
 
     // make sure normal undo still works
-    H.focusNativeEditor();
+    cy.focusNativeEditor();
     cy.realType("--");
-    expect(H.focusNativeEditor().findByText("--")).to.exist;
+    expect(cy.focusNativeEditor().findByText("--")).to.exist;
 
-    H.focusNativeEditor();
+    cy.focusNativeEditor();
     cy.realPress(["Meta", "z"]);
-    H.focusNativeEditor().findByText("--").should("not.exist");
+    cy.focusNativeEditor().findByText("--").should("not.exist");
 
     // more undoing does not change to empty editor
-    H.focusNativeEditor();
+    cy.focusNativeEditor();
     cy.realPress(["Meta", "z"]);
-    expect(H.focusNativeEditor().findByText("select")).to.exist;
+    expect(cy.focusNativeEditor().findByText("select")).to.exist;
   });
 });
 
@@ -651,7 +684,7 @@ describe("issue 35785", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
 
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
@@ -663,7 +696,7 @@ describe("issue 35785", () => {
     cy.findByTestId("native-query-editor-container")
       .findByTestId("visibility-toggler")
       .click();
-    H.focusNativeEditor();
+    cy.focusNativeEditor();
     cy.realType("{backspace}4");
 
     cy.findByTestId("qb-header").findByRole("button", { name: "Save" }).click();
@@ -680,7 +713,7 @@ describe("issue 35785", () => {
 
 describe("issue 22991", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -701,7 +734,7 @@ describe("issue 22991", () => {
           },
         });
 
-        H.createQuestion(
+        cy.createQuestion(
           {
             ...questionDetails,
             collection_id: restrictedCollection.id,
@@ -714,7 +747,7 @@ describe("issue 22991", () => {
     cy.signOut();
     cy.signInAsNormalUser();
 
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
     cy.get("@questionId").then(questionId => {
       // can't use cy.type because it does not simulate the bug
       cy.realType(`select * from ${DOUBLE_LEFT_BRACKET}#${questionId}`);
@@ -751,7 +784,7 @@ describe("issue 46308", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
   });
@@ -770,6 +803,6 @@ describe("issue 46308", () => {
     cy.findByPlaceholderText("Exclude Category").type("Doohickey");
     getRunQueryButton().click();
 
-    H.cartesianChartCircle().should("have.length", 3);
+    cy.cartesianChartCircle().should("have.length", 3);
   });
 });

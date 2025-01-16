@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -50,148 +49,148 @@ const ORDERS_TIMESERIES_METRIC = {
 
 describe("scenarios > metrics > collection", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   it("should show metrics in collections", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
-    H.createQuestion(ORDERS_TIMESERIES_METRIC);
+    cy.createQuestion(ORDERS_SCALAR_METRIC);
+    cy.createQuestion(ORDERS_TIMESERIES_METRIC);
     cy.visit("/collection/root");
-    H.getPinnedSection().within(() => {
+    cy.getPinnedSection().within(() => {
       cy.findByText("Metrics").should("be.visible");
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByTestId("scalar-container")
         .findByText("18,760")
         .should("be.visible");
       cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
-      H.echartsContainer().should("be.visible");
+      cy.echartsContainer().should("be.visible");
     });
   });
 
   it("should be possible to pin and unpin metrics", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
+    cy.createQuestion(ORDERS_SCALAR_METRIC);
     cy.visit("/collection/root");
-    H.getPinnedSection()
+    cy.getPinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
-    H.getUnpinnedSection()
+    cy.getUnpinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("not.exist");
-    H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
-    H.popover().findByText("Unpin").click();
-    H.getPinnedSection().should("not.exist");
-    H.getUnpinnedSection()
+    cy.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+    cy.popover().findByText("Unpin").click();
+    cy.getPinnedSection().should("not.exist");
+    cy.getUnpinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
-    H.openUnpinnedItemMenu(ORDERS_SCALAR_METRIC.name);
-    H.popover().findByText("Pin this").click();
-    H.getPinnedSection()
+    cy.openUnpinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+    cy.popover().findByText("Pin this").click();
+    cy.getPinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
-    H.getUnpinnedSection()
+    cy.getUnpinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("not.exist");
   });
 
   it("should be possible to add and remove a metric from bookmarks", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
-    H.createQuestion({
+    cy.createQuestion(ORDERS_SCALAR_METRIC);
+    cy.createQuestion({
       ...ORDERS_TIMESERIES_METRIC,
       collection_position: null,
     });
     cy.visit("/collection/root");
 
-    H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
-    H.popover().findByText("Bookmark").click();
-    H.navigationSidebar()
+    cy.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+    cy.popover().findByText("Bookmark").click();
+    cy.navigationSidebar()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
-    H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
-    H.popover().findByText("Remove from bookmarks").click();
-    H.navigationSidebar()
+    cy.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+    cy.popover().findByText("Remove from bookmarks").click();
+    cy.navigationSidebar()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("not.exist");
 
-    H.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
-    H.popover().findByText("Bookmark").click();
-    H.navigationSidebar()
+    cy.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+    cy.popover().findByText("Bookmark").click();
+    cy.navigationSidebar()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("be.visible");
-    H.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
-    H.popover().findByText("Remove from bookmarks").click();
-    H.navigationSidebar()
+    cy.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+    cy.popover().findByText("Remove from bookmarks").click();
+    cy.navigationSidebar()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
   });
 
   it("should be possible to hide the visualization for a pinned metric", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
+    cy.createQuestion(ORDERS_SCALAR_METRIC);
     cy.visit("/collection/root");
-    H.getPinnedSection().within(() => {
+    cy.getPinnedSection().within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByTestId("scalar-container").should("be.visible");
     });
 
-    H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
-    H.popover().findByText("Don’t show visualization").click();
-    H.getPinnedSection().within(() => {
+    cy.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+    cy.popover().findByText("Don’t show visualization").click();
+    cy.getPinnedSection().within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByTestId("scalar-container").should("not.exist");
     });
 
-    H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
-    H.popover().findByText("Show visualization").click();
-    H.getPinnedSection().within(() => {
+    cy.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+    cy.popover().findByText("Show visualization").click();
+    cy.getPinnedSection().within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByTestId("scalar-container").should("be.visible");
     });
   });
 
   it("should be possible to archive, unarchive, and delete a metric", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
-    H.createQuestion({
+    cy.createQuestion(ORDERS_SCALAR_METRIC);
+    cy.createQuestion({
       ...ORDERS_TIMESERIES_METRIC,
       collection_position: null,
     });
     cy.visit("/collection/root");
 
-    H.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
-    H.popover().findByText("Move to trash").click();
-    H.getPinnedSection().should("not.exist");
-    H.undoToast().findByText("Trashed metric").should("be.visible");
-    H.undo();
-    H.getPinnedSection()
+    cy.openPinnedItemMenu(ORDERS_SCALAR_METRIC.name);
+    cy.popover().findByText("Move to trash").click();
+    cy.getPinnedSection().should("not.exist");
+    cy.undoToast().findByText("Trashed metric").should("be.visible");
+    cy.undo();
+    cy.getPinnedSection()
       .findByText(ORDERS_SCALAR_METRIC.name)
       .should("be.visible");
 
-    H.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
-    H.popover().findByText("Move to trash").click();
-    H.getUnpinnedSection()
+    cy.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+    cy.popover().findByText("Move to trash").click();
+    cy.getUnpinnedSection()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
-    H.undoToastList().last().findByText("Trashed metric").should("be.visible");
+    cy.undoToastList().last().findByText("Trashed metric").should("be.visible");
 
     openArchive();
-    H.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
-    H.popover().findByText("Restore").click();
-    H.getUnpinnedSection()
+    cy.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+    cy.popover().findByText("Restore").click();
+    cy.getUnpinnedSection()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
-    H.undoToastList()
+    cy.undoToastList()
       .last()
       .findByText(`${ORDERS_TIMESERIES_METRIC.name} has been restored.`)
       .should("be.visible");
 
-    H.navigationSidebar().findByText("Our analytics").click();
-    H.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
-    H.popover().findByText("Move to trash").click();
+    cy.navigationSidebar().findByText("Our analytics").click();
+    cy.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+    cy.popover().findByText("Move to trash").click();
     openArchive();
-    H.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
-    H.popover().findByText("Delete permanently").click();
-    H.modal().button("Delete permanently").click();
-    H.getUnpinnedSection().should("not.exist");
-    H.undoToastList()
+    cy.openUnpinnedItemMenu(ORDERS_TIMESERIES_METRIC.name);
+    cy.popover().findByText("Delete permanently").click();
+    cy.modal().button("Delete permanently").click();
+    cy.getUnpinnedSection().should("not.exist");
+    cy.undoToastList()
       .last()
       .findByText("This item has been permanently deleted.")
       .should("be.visible");
@@ -205,14 +204,14 @@ describe("scenarios > metrics > collection", () => {
         [FIRST_COLLECTION_ID]: "read",
       },
     });
-    H.createQuestion({
+    cy.createQuestion({
       ...ORDERS_SCALAR_MODEL_METRIC,
       collection_id: FIRST_COLLECTION_ID,
     }).then(({ body: card }) => {
       cy.signIn("nocollection");
-      H.visitCollection(FIRST_COLLECTION_ID);
+      cy.visitCollection(FIRST_COLLECTION_ID);
     });
-    H.getPinnedSection()
+    cy.getPinnedSection()
       .findByTestId("scalar-container")
       .findByText("18,760")
       .should("be.visible");
@@ -220,5 +219,5 @@ describe("scenarios > metrics > collection", () => {
 });
 
 function openArchive() {
-  H.navigationSidebar().findByText("Trash").click();
+  cy.navigationSidebar().findByText("Trash").click();
 }

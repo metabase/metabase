@@ -1,5 +1,3 @@
-import { H } from "e2e/support";
-
 import {
   checkGroupConsistencyAfterDeletingMappings,
   crudGroupMappingsWidget,
@@ -11,11 +9,11 @@ import {
   setupSaml,
 } from "./shared/helpers";
 
-H.describeEE("scenarios > admin > settings > SSO > SAML", () => {
+cy.describeEE("scenarios > admin > settings > SSO > SAML", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
     cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/saml/settings").as("updateSamlSettings");
@@ -38,7 +36,10 @@ H.describeEE("scenarios > admin > settings > SSO > SAML", () => {
     setupSaml();
     cy.visit("/admin/settings/authentication/saml");
 
-    H.typeAndBlurUsingLabel(/SAML Identity Provider URL/, "https://other.test");
+    cy.typeAndBlurUsingLabel(
+      /SAML Identity Provider URL/,
+      "https://other.test",
+    );
     cy.button("Save changes").click();
     cy.wait("@updateSamlSettings");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -53,12 +54,12 @@ H.describeEE("scenarios > admin > settings > SSO > SAML", () => {
     cy.visit("/admin/settings/authentication");
 
     getSamlCard().icon("ellipsis").click();
-    H.popover().findByText("Pause").click();
+    cy.popover().findByText("Pause").click();
     cy.wait("@updateSetting");
     getSamlCard().findByText("Paused").should("exist");
 
     getSamlCard().icon("ellipsis").click();
-    H.popover().findByText("Resume").click();
+    cy.popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getSamlCard().findByText("Active").should("exist");
   });
@@ -68,8 +69,8 @@ H.describeEE("scenarios > admin > settings > SSO > SAML", () => {
     cy.visit("/admin/settings/authentication");
 
     getSamlCard().icon("ellipsis").click();
-    H.popover().findByText("Deactivate").click();
-    H.modal().button("Deactivate").click();
+    cy.popover().findByText("Deactivate").click();
+    cy.modal().button("Deactivate").click();
     cy.wait("@updateSettings");
 
     getSamlCard().findByText("Set up").should("exist");
@@ -112,10 +113,10 @@ const getSamlCard = () => {
 
 const enterSamlSettings = () => {
   getSamlCertificate().then(certificate => {
-    H.typeAndBlurUsingLabel(
+    cy.typeAndBlurUsingLabel(
       /SAML Identity Provider URL/,
       "https://example.test",
     );
-    H.typeAndBlurUsingLabel(/SAML Identity Provider Certificate/, certificate);
+    cy.typeAndBlurUsingLabel(/SAML Identity Provider Certificate/, certificate);
   });
 };

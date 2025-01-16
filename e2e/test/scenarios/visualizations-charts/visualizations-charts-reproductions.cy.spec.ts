@@ -1,11 +1,10 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 43075", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: cy.StructuredQuestionDetails = {
     query: {
       "source-table": PRODUCTS_ID,
       aggregation: [["count"]],
@@ -16,16 +15,16 @@ describe("issue 43075", () => {
   beforeEach(() => {
     cy.viewport(1000, 300);
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("the breakout popover should fit within the window (metabase#43075)", () => {
     cy.findAllByTestId("cell-data").contains("54").click();
-    H.popover().findByText("Break out by…").click();
-    H.popover().findByText("Category").click();
+    cy.popover().findByText("Break out by…").click();
+    cy.popover().findByText("Category").click();
 
     cy.window().then(win => {
       expect(win.document.documentElement.scrollHeight).to.be.lte(
@@ -36,7 +35,7 @@ describe("issue 43075", () => {
 });
 
 describe("issue 41133", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: cy.StructuredQuestionDetails = {
     query: {
       "source-table": PRODUCTS_ID,
     },
@@ -44,15 +43,15 @@ describe("issue 41133", () => {
 
   beforeEach(() => {
     cy.viewport(600, 400);
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("object detail view should be scrollable on narrow screens (metabase#41133)", () => {
     cy.findByTestId("detail-shortcut").eq(0).click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Created At").scrollIntoView().should("be.visible");
       cy.findByText("is connected to:").scrollIntoView().should("be.visible");
     });
@@ -61,10 +60,10 @@ describe("issue 41133", () => {
 
 describe("issue 45255", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -79,15 +78,15 @@ describe("issue 45255", () => {
   });
 
   it("should work on native queries with null dimension values (metabase#45255)", () => {
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
 
     // Has (empty) in the settings sidebar
-    H.sidebar().findByText("(empty)");
+    cy.sidebar().findByText("(empty)");
 
     // Can reorder (empty)
-    H.getDraggableElements().eq(2).should("have.text", "(empty)");
-    H.moveDnDKitElement(H.getDraggableElements().first(), { vertical: 100 });
-    H.getDraggableElements().eq(1).should("have.text", "(empty)");
+    cy.getDraggableElements().eq(2).should("have.text", "(empty)");
+    cy.moveDnDKitElement(cy.getDraggableElements().first(), { vertical: 100 });
+    cy.getDraggableElements().eq(1).should("have.text", "(empty)");
 
     // Has (empty) in the chart
     cy.findByTestId("funnel-chart").findByText("(empty)");
@@ -96,7 +95,7 @@ describe("issue 45255", () => {
 
 describe("issue 49874", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -119,23 +118,23 @@ describe("issue 49874", () => {
       display: "bar",
     };
 
-    H.visitQuestionAdhoc(question);
+    cy.visitQuestionAdhoc(question);
 
-    H.echartsContainer().within(() => {
+    cy.echartsContainer().within(() => {
       cy.findByText("Sum of Quantity").should("be.visible");
       cy.findByText("Sum of Total").should("be.visible");
     });
 
-    H.chartPathWithFillColor("#88BF4D").first().realHover();
+    cy.chartPathWithFillColor("#88BF4D").first().realHover();
 
-    H.echartsContainer().within(() => {
+    cy.echartsContainer().within(() => {
       cy.findByText("Sum of Quantity").should("be.visible");
       cy.findByText("Sum of Total").should("not.exist");
     });
 
-    H.chartPathWithFillColor("#98D9D9").first().realHover();
+    cy.chartPathWithFillColor("#98D9D9").first().realHover();
 
-    H.echartsContainer().within(() => {
+    cy.echartsContainer().within(() => {
       cy.findByText("Sum of Quantity").should("not.exist");
       cy.findByText("Sum of Total").should("be.visible");
     });
@@ -144,7 +143,7 @@ describe("issue 49874", () => {
 
 describe("issue 49529", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -160,20 +159,20 @@ describe("issue 49529", () => {
       display: "bar",
     };
 
-    H.visitQuestionAdhoc(question);
+    cy.visitQuestionAdhoc(question);
 
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
 
     cy.findAllByTestId("chart-setting-select")
       .eq(0)
       .as("dimensionSelect")
       .click();
-    H.popover().findByText("ID").click();
+    cy.popover().findByText("ID").click();
 
-    H.leftSidebar().findByText("Add series breakout").click();
-    H.popover().findByText("Quantity").click();
+    cy.leftSidebar().findByText("Add series breakout").click();
+    cy.popover().findByText("Quantity").click();
 
-    H.leftSidebar().within(() => {
+    cy.leftSidebar().within(() => {
       cy.findByText("Y-axis");
       cy.findByText("Nothing to order");
     });
@@ -182,12 +181,12 @@ describe("issue 49529", () => {
 
 describe("issue 47847", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   it("should show chart tooltip on narrow ordinal line charts", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -204,8 +203,8 @@ describe("issue 47847", () => {
       },
     });
 
-    H.cartesianChartCircleWithColor("#509EE3").eq(0).trigger("mousemove");
-    H.assertEChartsTooltip({
+    cy.cartesianChartCircleWithColor("#509EE3").eq(0).trigger("mousemove");
+    cy.assertEChartsTooltip({
       header: "April 24–30, 2022",
       blurAfter: false,
       footer: null,
@@ -222,12 +221,12 @@ describe("issue 47847", () => {
 
 describe("issue 51926", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   it("should render pivot table when selecting it from another viz type", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -240,8 +239,8 @@ describe("issue 51926", () => {
       display: "pivot",
     });
 
-    H.openVizTypeSidebar();
-    H.leftSidebar().within(() => {
+    cy.openVizTypeSidebar();
+    cy.leftSidebar().within(() => {
       cy.findByTestId("Table-button").click();
       cy.findByTestId("Pivot Table-button").click();
     });
@@ -252,12 +251,12 @@ describe("issue 51926", () => {
 
 describe("issue 51952", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   it("should allow changing column settings for the x-axis column", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -273,10 +272,10 @@ describe("issue 51952", () => {
       visualization_settings: {},
     });
 
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
 
     cy.findByTestId("settings-CREATED_AT").click();
-    H.popover().findByText("Abbreviate days and months").click();
-    H.echartsContainer().findByText("Jan 2024");
+    cy.popover().findByText("Abbreviate days and months").click();
+    cy.echartsContainer().findByText("Jan 2024");
   });
 });

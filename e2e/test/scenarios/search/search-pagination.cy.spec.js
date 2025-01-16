@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -10,7 +9,7 @@ const TOTAL_ITEMS = PAGE_SIZE + 1;
 
 describe("scenarios > search", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -18,18 +17,18 @@ describe("scenarios > search", () => {
     cy.intercept("/api/search", req => {
       expect("Unexpected call to /api/search").to.be.false;
     });
-    H.visitFullAppEmbeddingUrl({
+    cy.visitFullAppEmbeddingUrl({
       url: "/",
       qs: { top_nav: true, search: true },
     });
-    H.getSearchBar().type(" ");
+    cy.getSearchBar().type(" ");
   });
 
   it("should allow users to paginate results", () => {
     generateQuestions(TOTAL_ITEMS);
 
     cy.visit("/");
-    H.commandPaletteSearch("generated_question");
+    cy.commandPaletteSearch("generated_question");
     cy.findByLabelText("Previous page").should("be.disabled");
 
     // First page

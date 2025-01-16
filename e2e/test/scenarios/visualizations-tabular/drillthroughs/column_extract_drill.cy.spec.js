@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -88,9 +87,9 @@ const DATE_QUESTION = {
   },
 };
 
-H.describeWithSnowplow("extract action", () => {
+cy.describeWithSnowplow("extract action", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -98,7 +97,7 @@ H.describeWithSnowplow("extract action", () => {
     describe("should add a date expression for each option", () => {
       DATE_CASES.forEach(({ option, value, example }) => {
         it(option, () => {
-          H.openOrdersTable({ limit: 1 });
+          cy.openOrdersTable({ limit: 1 });
           extractColumnAndCheck({
             column: "Created At",
             option,
@@ -112,7 +111,7 @@ H.describeWithSnowplow("extract action", () => {
 
     describe("should add a new column after the selected column", () => {
       it("ad-hoc question", () => {
-        H.openOrdersTable();
+        cy.openOrdersTable();
         extractColumnAndCheck({
           column: "Created At",
           option: "Year",
@@ -121,7 +120,7 @@ H.describeWithSnowplow("extract action", () => {
       });
 
       it("saved question without viz settings", () => {
-        H.visitQuestion(ORDERS_QUESTION_ID);
+        cy.visitQuestion(ORDERS_QUESTION_ID);
         extractColumnAndCheck({
           column: "Created At",
           option: "Year",
@@ -197,7 +196,7 @@ H.describeWithSnowplow("extract action", () => {
     });
 
     it("should handle duplicate expression names", () => {
-      H.openOrdersTable({ limit: 1 });
+      cy.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
         option: "Hour of day",
@@ -213,18 +212,18 @@ H.describeWithSnowplow("extract action", () => {
     });
 
     it("should be able to modify the expression in the notebook editor", () => {
-      H.openOrdersTable({ limit: 1 });
+      cy.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
         option: "Year",
         value: "2,025",
         extraction: "Extract day, month…",
       });
-      H.openNotebook();
-      H.getNotebookStep("expression").findByText("Year").click();
-      H.enterCustomColumnDetails({ formula: "year([Created At]) + 2" });
-      H.popover().button("Update").click();
-      H.visualize();
+      cy.openNotebook();
+      cy.getNotebookStep("expression").findByText("Year").click();
+      cy.enterCustomColumnDetails({ formula: "year([Created At]) + 2" });
+      cy.popover().button("Update").click();
+      cy.visualize();
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
     });
 
@@ -232,7 +231,7 @@ H.describeWithSnowplow("extract action", () => {
       cy.request("GET", "/api/user/current").then(({ body: user }) => {
         cy.request("PUT", `/api/user/${user.id}`, { locale: "de" });
       });
-      H.openOrdersTable({ limit: 1 });
+      cy.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
         option: "Tag der Woche",
@@ -244,13 +243,13 @@ H.describeWithSnowplow("extract action", () => {
 
   describe("email columns", () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
     });
 
     EMAIL_CASES.forEach(({ option, value, example }) => {
       it(option, () => {
-        H.openPeopleTable({ limit: 1 });
+        cy.openPeopleTable({ limit: 1 });
         extractColumnAndCheck({
           column: "Email",
           option,
@@ -264,7 +263,7 @@ H.describeWithSnowplow("extract action", () => {
 
   describe("url columns", () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
 
       // Make the Email column a URL column for these tests, to avoid having to create a new model
@@ -275,7 +274,7 @@ H.describeWithSnowplow("extract action", () => {
 
     URL_CASES.forEach(({ option, value, example }) => {
       it(option, () => {
-        H.openPeopleTable({ limit: 1 });
+        cy.openPeopleTable({ limit: 1 });
 
         extractColumnAndCheck({
           column: "Email",
@@ -299,16 +298,16 @@ function extractColumnAndCheck({
 }) {
   const requestAlias = _.uniqueId("dataset");
   cy.intercept("POST", "/api/dataset").as(requestAlias);
-  H.tableHeaderClick(column);
+  cy.tableHeaderClick(column);
   // cy.findByRole("columnheader", { name: column }).click();
-  H.popover().findByText(extraction).click();
+  cy.popover().findByText(extraction).click();
   cy.wait(1);
 
   if (example) {
-    H.popover().findByText(option).should("contain", example);
+    cy.popover().findByText(option).should("contain", example);
   }
 
-  H.popover().findByText(option).click();
+  cy.popover().findByText(option).click();
   cy.wait(`@${requestAlias}`);
 
   cy.findAllByRole("columnheader")
@@ -321,19 +320,19 @@ function extractColumnAndCheck({
   }
 }
 
-H.describeWithSnowplow("extract action", () => {
+cy.describeWithSnowplow("extract action", () => {
   beforeEach(() => {
-    H.restore();
-    H.resetSnowplow();
+    cy.restore();
+    cy.resetSnowplow();
     cy.signInAsAdmin();
   });
 
   afterEach(() => {
-    H.expectNoBadSnowplowEvents();
+    cy.expectNoBadSnowplowEvents();
   });
 
   it("should create a snowplow event for the column extraction action", () => {
-    H.openOrdersTable({ limit: 1 });
+    cy.openOrdersTable({ limit: 1 });
 
     cy.wait(1);
 
@@ -344,7 +343,7 @@ H.describeWithSnowplow("extract action", () => {
       extraction: "Extract day, month…",
     });
 
-    H.expectGoodSnowplowEvent({
+    cy.expectGoodSnowplowEvent({
       event: "column_extract_via_column_header",
       custom_expressions_used: ["get-year"],
       database_id: SAMPLE_DB_ID,

@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -98,7 +97,7 @@ const LONGITUDE_BUCKETS = [
 describe("scenarios > binning > binning options", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -197,7 +196,7 @@ describe("scenarios > binning > binning options", () => {
   context("via time series footer (metabase#11183)", () => {
     // TODO: enable again when metabase#35546 is completed
     it.skip("should render time series binning options correctly", () => {
-      H.openTable({ table: ORDERS_ID });
+      cy.openTable({ table: ORDERS_ID });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At").click();
@@ -282,8 +281,8 @@ describe("scenarios > binning > binning options", () => {
 });
 
 function chooseInitialBinningOption({ table, column, mode = null } = {}) {
-  H.openTable({ table, mode });
-  H.summarize({ mode });
+  cy.openTable({ table, mode });
+  cy.summarize({ mode });
 
   if (mode === "notebook") {
     cy.findByText("Count of rows").click();
@@ -298,9 +297,9 @@ function chooseInitialBinningOptionForExplicitJoin({
   baseTableQuery,
   column,
 } = {}) {
-  H.visitQuestionAdhoc({ dataset_query: baseTableQuery });
+  cy.visitQuestionAdhoc({ dataset_query: baseTableQuery });
 
-  H.summarize();
+  cy.summarize();
 
   cy.findByTestId("sidebar-right").within(() => {
     cy.findByText("Count"); // Test fails without this because of some weird race condition
@@ -309,7 +308,7 @@ function chooseInitialBinningOptionForExplicitJoin({
 }
 
 function openBinningListForDimension(column, binning) {
-  H.getBinningButtonForDimension({ name: column, isSelected: true })
+  cy.getBinningButtonForDimension({ name: column, isSelected: true })
     .should("contain", binning)
     .click();
 }
@@ -325,7 +324,7 @@ function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
   // Custom question has two popovers open.
   // The binning options are in the latest (last) one.
   // Using `.last()` works even when only one popover is open so it covers both scenarios.
-  H.popover()
+  cy.popover()
     .last()
     .within(() => {
       if (shouldExpandList) {

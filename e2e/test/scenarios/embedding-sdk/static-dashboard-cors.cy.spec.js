@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
@@ -16,14 +15,14 @@ import {
 
 const STORYBOOK_ID = "embeddingsdk-cypressstaticdashboardwithcors--default";
 
-H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
+cy.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signIn("admin", { skipCache: true });
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
     enableJwtAuth();
 
-    const textCard = H.getTextCardDetails({ col: 16, text: "Text text card" });
+    const textCard = cy.getTextCardDetails({ col: 16, text: "Text text card" });
     const questionCard = {
       id: ORDERS_DASHBOARD_DASHCARD_ID,
       card_id: ORDERS_QUESTION_ID,

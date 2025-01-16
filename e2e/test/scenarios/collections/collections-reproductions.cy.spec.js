@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
@@ -11,7 +10,7 @@ describe("issue 20911", () => {
   const FIRST_COLLECTION = "First collection";
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/collection/graph").as("getGraph");
   });
@@ -19,7 +18,7 @@ describe("issue 20911", () => {
   it("should allow to change sub-collections permissions after access change (metabase#20911)", () => {
     cy.visit("/collection/root/permissions");
     cy.wait("@getGraph");
-    H.assertPermissionTable([
+    cy.assertPermissionTable([
       ["Administrators", "Curate"],
       ["All Users", "No access"],
       ["collection", "Curate"],
@@ -27,32 +26,32 @@ describe("issue 20911", () => {
       ["nosql", "No access"],
       ["readonly", "View"],
     ]);
-    H.modifyPermission(
+    cy.modifyPermission(
       "collection",
       COLLECTION_ACCESS_PERMISSION_INDEX,
       "No access",
       false,
     );
-    H.modifyPermission(
+    cy.modifyPermission(
       "collection",
       COLLECTION_ACCESS_PERMISSION_INDEX,
       "No access",
       true,
     );
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.button("Save").click();
     });
 
-    H.navigationSidebar().within(() => {
+    cy.navigationSidebar().within(() => {
       cy.findByText(FIRST_COLLECTION).click();
     });
-    H.getCollectionActions().within(() => {
+    cy.getCollectionActions().within(() => {
       cy.icon("ellipsis").click();
     });
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.icon("lock").click();
     });
-    H.assertPermissionTable([
+    cy.assertPermissionTable([
       ["Administrators", "Curate"],
       ["All Users", "No access"],
       ["collection", "No access"],
@@ -92,7 +91,7 @@ describe("issue 24660", () => {
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     createParentCollectionAndMoveQuestionToIt(ORDERS_QUESTION_ID);
@@ -100,9 +99,9 @@ describe("issue 24660", () => {
   });
 
   it("should properly show contents of different collections with the same name (metabase#24660)", () => {
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    cy.startNewQuestion();
+    cy.entityPickerModal().within(() => {
+      cy.entityPickerModalTab("Collections").click();
       cy.findAllByText(collectionName).first().click();
 
       cy.findByText(questions[ORDERS_QUESTION_ID]).should("exist");
@@ -111,11 +110,11 @@ describe("issue 24660", () => {
   });
 });
 
-H.describeEE("issue 30235", () => {
+cy.describeEE("issue 30235", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
   });
 
   it("should allow to turn to official collection after moving it from personal to root parent collection (metabase#30235)", () => {
@@ -127,11 +126,11 @@ H.describeEE("issue 30235", () => {
     }).then(({ body: { id } }) => {
       cy.visit(`/collection/${id}`);
 
-      H.moveOpenedCollectionTo("Our analytics");
+      cy.moveOpenedCollectionTo("Our analytics");
 
-      H.openCollectionMenu();
+      cy.openCollectionMenu();
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Make collection official").should("be.visible");
         cy.findByText("Edit permissions").should("be.visible");
       });

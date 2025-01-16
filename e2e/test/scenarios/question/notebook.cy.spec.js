@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -7,20 +6,20 @@ const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
 
 describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
-    H.openOrdersTable();
+    cy.openOrdersTable();
     // save question initially
-    H.saveQuestion(undefined, undefined, {
+    cy.saveQuestion(undefined, undefined, {
       tab: "Browse",
       path: ["Our analytics"],
     });
 
     // enter "notebook" and visualize without changing anything
-    H.openNotebook();
+    cy.openNotebook();
 
     cy.button("Visualize").click();
 
@@ -30,7 +29,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should allow post-aggregation filters", () => {
-    H.openTable({
+    cy.openTable({
       table: ORDERS_ID,
       mode: "notebook",
     });
@@ -40,25 +39,25 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // count orders by user id, filter to the one user with 46 orders
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Pick a function or metric").click();
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Count of rows").click();
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Pick a column to group by").click();
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.contains("User ID").click();
     });
     cy.findByTestId("step-summarize-0-0").within(() => {
       cy.icon("filter").click();
     });
-    H.popover().icon("int").click();
-    H.selectFilterOperator("Equal to");
-    H.popover().within(() => {
+    cy.popover().icon("int").click();
+    cy.selectFilterOperator("Equal to");
+    cy.popover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("46");
       cy.contains("Add filter").click();
     });
 
-    H.visualize();
+    cy.visualize();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("2372"); // user's id in the table
@@ -67,13 +66,13 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("shouldn't show sub-dimensions for FK (metabase#16787)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.summarize({ mode: "notebook" });
-    H.getNotebookStep("summarize")
+    cy.openOrdersTable({ mode: "notebook" });
+    cy.summarize({ mode: "notebook" });
+    cy.getNotebookStep("summarize")
       .findByText("Pick a column to group by")
       .click();
 
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("User ID")
         .findByLabelText("Binning strategy")
         .should("not.exist");
@@ -84,7 +83,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
         query: {
@@ -98,7 +97,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID is between 96 and 97").click();
-    H.popover().findByText("Between").click();
+    cy.popover().findByText("Between").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Is not");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -110,29 +109,29 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
     cy.viewport(1920, 800); // we're looking for a column name beyond the right of the default viewport
     cy.intercept("POST", "/api/dataset").as("dataset");
-    H.openProductsTable({ mode: "notebook" });
+    cy.openProductsTable({ mode: "notebook" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     addSimpleCustomColumn("EXPR");
 
-    H.getNotebookStep("expression").within(() => {
+    cy.getNotebookStep("expression").within(() => {
       cy.icon("add").click();
     });
     addSimpleCustomColumn("EXPR");
 
-    H.getNotebookStep("expression").within(() => {
+    cy.getNotebookStep("expression").within(() => {
       cy.icon("add").click();
     });
     addSimpleCustomColumn("EXPR");
 
-    H.getNotebookStep("expression").within(() => {
+    cy.getNotebookStep("expression").within(() => {
       cy.findByText("EXPR");
       cy.findByText("EXPR (1)");
       cy.findByText("EXPR (2)");
     });
 
-    H.visualize();
+    cy.visualize();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("EXPR");
@@ -143,16 +142,16 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should process the updated expression when pressing Enter", () => {
-    H.openProductsTable({ mode: "notebook" });
-    H.filter({ mode: "notebook" });
+    cy.openProductsTable({ mode: "notebook" });
+    cy.filter({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    H.enterCustomColumnDetails({ formula: "[Price] > 1" });
+    cy.enterCustomColumnDetails({ formula: "[Price] > 1" });
 
     cy.button("Done").click();
 
-    H.getNotebookStep("filter").contains("Price is greater than 1").click();
+    cy.getNotebookStep("filter").contains("Price is greater than 1").click();
 
     // change the corresponding custom expression
     cy.get(".Icon-chevronleft").click();
@@ -167,10 +166,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // the input properly before typing), and this check helps to highlight that.
     cy.findByTestId("expression-editor-textfield").should("not.exist");
 
-    H.getNotebookStep("filter")
+    cy.getNotebookStep("filter")
       .contains("Price is greater than 1")
       .should("exist");
-    H.getNotebookStep("filter")
+    cy.getNotebookStep("filter")
       .contains("Price is less than 5")
       .should("exist");
   });
@@ -206,7 +205,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2").click();
 
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByLabelText("Filter value").focus().type("3").blur();
       cy.button("Update filter").click();
     });
@@ -220,10 +219,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   it("should show an info popover for dimensions listened by the custom expression editor", () => {
     // start a custom question with orders
-    H.openOrdersTable({ mode: "notebook" });
-    H.filter({ mode: "notebook" });
+    cy.openOrdersTable({ mode: "notebook" });
+    cy.filter({ mode: "notebook" });
 
-    H.popover().contains("Custom Expression").click();
+    cy.popover().contains("Custom Expression").click();
 
     cy.findByTestId("expression-editor-textfield").within(() => {
       cy.get(".ace_text-input").focus().type("[");
@@ -236,14 +235,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       .findByLabelText("More info")
       .realHover();
 
-    H.hovercard().within(() => {
+    cy.hovercard().within(() => {
       cy.contains("The date and time an order was submitted.");
       cy.contains("Creation timestamp");
     });
   });
 
   it("should show an info card filter columns in the popover", () => {
-    H.openOrdersTable({ mode: "notebook" });
+    cy.openOrdersTable({ mode: "notebook" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
@@ -257,7 +256,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       .findByLabelText("More info")
       .realHover();
 
-    H.hovercard().within(() => {
+    cy.hovercard().within(() => {
       cy.contains("Foreign Key");
       cy.findByText(/The id of the user/);
     });
@@ -265,10 +264,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   describe.skip("popover rendering issues (metabase#15502)", () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
       cy.viewport(1280, 720);
-      H.startNewQuestion();
+      cy.startNewQuestion();
       cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Orders").click();
     });
@@ -277,11 +276,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       // Initial filter popover usually renders correctly within the viewport
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filters to narrow your answer").as("filter").click();
-      H.popover().isRenderedWithinViewport();
+      cy.popover().isRenderedWithinViewport();
       // Click anywhere outside this popover to close it because the issue with rendering happens when popover opens for the second time
       cy.icon("gear").click();
       cy.get("@filter").click();
-      H.popover().isRenderedWithinViewport();
+      cy.popover().isRenderedWithinViewport();
     });
 
     it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
@@ -301,13 +300,13 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       // This is required because TableInteractive won't render columns
       // that don't fit into the viewport
       cy.viewport(1400, 1000);
-      H.openOrdersTable({ mode: "notebook" });
+      cy.openOrdersTable({ mode: "notebook" });
     });
 
     it("should work on custom column with `case`", () => {
       cy.findByLabelText("Custom column").click();
 
-      H.enterCustomColumnDetails({
+      cy.enterCustomColumnDetails({
         formula: "case([Subtotal] + Tax > 100, 'Big', 'Small')",
       });
 
@@ -317,9 +316,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.button("Done").should("not.be.disabled").click();
 
-      H.getNotebookStep("expression").contains("Example").should("exist");
+      cy.getNotebookStep("expression").contains("Example").should("exist");
 
-      H.visualize();
+      cy.visualize();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Example");
@@ -330,18 +329,18 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should work on custom filter", () => {
-      H.filter({ mode: "notebook" });
+      cy.filter({ mode: "notebook" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Custom Expression").click();
 
-      H.enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
+      cy.enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/^redundant input/i).should("not.exist");
 
       cy.button("Done").should("not.be.disabled").click();
 
-      H.visualize();
+      cy.visualize();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Showing 97 rows");
@@ -364,16 +363,16 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       const [expression, result] = formula;
 
       it(`should work on custom aggregation with ${filter}`, () => {
-        H.summarize({ mode: "notebook" });
-        H.popover().contains("Custom Expression").click();
+        cy.summarize({ mode: "notebook" });
+        cy.popover().contains("Custom Expression").click();
 
-        H.enterCustomColumnDetails({ formula: expression });
+        cy.enterCustomColumnDetails({ formula: expression });
 
         cy.findByPlaceholderText("Something nice and descriptive")
           .click()
           .type(filter);
 
-        H.popover().within(() => {
+        cy.popover().within(() => {
           cy.contains(/^expected closing parenthesis/i).should("not.exist");
           cy.contains(/^redundant input/i).should("not.exist");
         });
@@ -381,7 +380,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
         cy.findByTestId("aggregate-step").contains(filter).should("exist");
 
-        H.visualize();
+        cy.visualize();
 
         cy.findByTestId("qb-header").contains(filter);
         cy.findByTestId("query-builder-main").contains(result);
@@ -392,14 +391,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   // intentional simplification of "Select none" to quickly
   // fix users' pain caused by the inability to unselect all columns
   it("select no columns select the first one", () => {
-    H.openTable({
+    cy.openTable({
       table: ORDERS_ID,
       mode: "notebook",
     });
 
     cy.findByTestId("fields-picker").click();
 
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Select none").click();
       cy.findByLabelText("ID").should("be.disabled");
       cy.findByText("Tax").click();
@@ -408,7 +407,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.findByTestId("step-data-0-0").findByText("Data").click(); //Dismiss popover
 
-    H.visualize();
+    cy.visualize();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tax");
@@ -417,15 +416,15 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should render a field info icon in the fields picker", () => {
-    H.openTable({
+    cy.openTable({
       table: ORDERS_ID,
       mode: "notebook",
     });
 
     cy.findByTestId("fields-picker").click();
-    H.popover().findAllByLabelText("More info").first().realHover();
+    cy.popover().findAllByLabelText("More info").first().realHover();
 
-    H.hovercard().contains("This is a unique ID");
+    cy.hovercard().contains("This is a unique ID");
   });
 
   it("should treat max/min on a name as a string filter (metabase#21973)", () => {
@@ -441,11 +440,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    H.filter();
+    cy.filter();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summaries").click();
 
-    H.filterField("Max of Name", {
+    cy.filterField("Max of Name", {
       operator: "Starts with",
     });
   });
@@ -463,10 +462,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    H.filter();
+    cy.filter();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summaries").click();
-    H.filterField("Min of Vendor", {
+    cy.filterField("Min of Vendor", {
       operator: "ends with",
     });
   });
@@ -491,20 +490,20 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       { visitQuestion: true },
     );
 
-    H.openNotebook();
+    cy.openNotebook();
 
-    H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    cy.join();
+    cy.entityPickerModal().within(() => {
+      cy.entityPickerModalTab("Collections").click();
       cy.findByText("Products model").click();
     });
 
-    H.visualize();
+    cy.visualize();
   });
 
   // flaky test
   it.skip("should show an info popover when hovering over a field picker option for a table", () => {
-    H.startNewQuestion();
+    cy.startNewQuestion();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sample Database").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -515,8 +514,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Total").trigger("mouseenter");
 
-    H.popover().contains("The total billed amount.");
-    H.popover().contains("80.36");
+    cy.popover().contains("The total billed amount.");
+    cy.popover().contains("80.36");
   });
 
   // flaky test
@@ -527,7 +526,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     // start a custom question with question a
-    H.startNewQuestion();
+    cy.startNewQuestion();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved Questions").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -538,8 +537,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A_COLUMN").trigger("mouseenter");
 
-    H.popover().contains("A_COLUMN");
-    H.popover().contains("No description");
+    cy.popover().contains("A_COLUMN");
+    cy.popover().contains("No description");
   });
 
   it("should allow to pick a saved question when there are models", () => {
@@ -549,41 +548,41 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       native: { query: "SELECT * FROM ORDERS" },
     });
 
-    H.startNewQuestion();
+    cy.startNewQuestion();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    cy.entityPickerModal().within(() => {
+      cy.entityPickerModalTab("Collections").click();
       cy.findByText("Orders, Count").click();
     });
 
-    H.visualize();
+    cy.visualize();
   });
 
   it('should not show "median" aggregation option for databases that do not support "percentile-aggregations" driver feature', () => {
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    cy.startNewQuestion();
+    cy.entityPickerModal().within(() => {
+      cy.entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
 
-    H.getNotebookStep("summarize")
+    cy.getNotebookStep("summarize")
       .findByText("Pick a function or metric")
       .click();
 
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Median of ...").should("not.exist");
     });
   });
 
   describe('"median" aggregation function', { tags: "@external" }, () => {
     beforeEach(() => {
-      H.restore("postgres-12");
+      cy.restore("postgres-12");
       cy.signInAsAdmin();
 
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
         ({ body }) => {
           const tableId = body.find(table => table.name === "products").id;
-          H.openTable({
+          cy.openTable({
             database: WRITABLE_DB_ID,
             table: tableId,
             mode: "notebook",
@@ -595,23 +594,23 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     it('should show "median" aggregation option for databases that support "percentile-aggregations" driver feature', () => {
       cy.findByRole("button", { name: "Summarize" }).click();
 
-      H.addSummaryField({ metric: "Median of ...", field: "Price" });
+      cy.addSummaryField({ metric: "Median of ...", field: "Price" });
 
-      H.getNotebookStep("summarize")
+      cy.getNotebookStep("summarize")
         .findByText("Median of Price")
         .should("be.visible");
 
-      H.addSummaryGroupingField({ field: "Category" });
+      cy.addSummaryGroupingField({ field: "Category" });
 
-      H.visualize();
+      cy.visualize();
 
       cy.findByLabelText("Switch to data").click();
       cy.findAllByTestId("header-cell").should("contain", "Median of Price");
     });
 
     it("should support custom columns", () => {
-      H.addCustomColumn();
-      H.enterCustomColumnDetails({
+      cy.addCustomColumn();
+      cy.enterCustomColumnDetails({
         formula: "Price * 10",
         name: "Mega price",
       });
@@ -619,22 +618,22 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.findByRole("button", { name: /Summarize/ }).click();
 
-      H.addSummaryField({ metric: "Median of ...", field: "Mega price" });
-      H.addSummaryField({ metric: "Count of rows" });
-      H.addSummaryGroupingField({ field: "Category" });
-      H.addSummaryGroupingField({ field: "Vendor" });
+      cy.addSummaryField({ metric: "Median of ...", field: "Mega price" });
+      cy.addSummaryField({ metric: "Count of rows" });
+      cy.addSummaryGroupingField({ field: "Category" });
+      cy.addSummaryGroupingField({ field: "Vendor" });
 
-      H.summarize({ mode: "notebook" });
+      cy.summarize({ mode: "notebook" });
 
-      H.addSummaryField({
+      cy.addSummaryField({
         metric: "Median of ...",
         field: "Median of Mega price",
         stage: 1,
       });
-      H.addSummaryField({ metric: "Median of ...", field: "Count", stage: 1 });
-      H.addSummaryGroupingField({ field: "Category", stage: 1 });
+      cy.addSummaryField({ metric: "Median of ...", field: "Count", stage: 1 });
+      cy.addSummaryGroupingField({ field: "Category", stage: 1 });
 
-      H.visualize();
+      cy.visualize();
 
       cy.findByLabelText("Switch to data").click();
       cy.findAllByTestId("header-cell")
@@ -643,39 +642,39 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should support Summarize side panel", () => {
-      H.visualize();
+      cy.visualize();
 
-      H.summarize();
+      cy.summarize();
 
       cy.findByTestId("add-aggregation-button").click();
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Median of ...").should("be.visible");
       });
     });
   });
 
   it("should properly render previews (metabase#28726, metabase#29959, metabase#40608)", () => {
-    H.startNewQuestion();
+    cy.startNewQuestion();
 
     cy.log(
       "Preview should not be possible without the source data (metabase#40608)",
     );
-    H.getNotebookStep("data")
+    cy.getNotebookStep("data")
       .as("dataStep")
       .within(() => {
         cy.findByText("Pick your starting data").should("exist");
         cy.icon("play").should("not.be.visible");
       });
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    cy.entityPickerModal().within(() => {
+      cy.entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
 
     cy.get("@dataStep").icon("play").should("be.visible");
-    H.getNotebookStep("filter").icon("play").should("not.be.visible");
-    H.getNotebookStep("summarize").icon("play").should("not.be.visible");
+    cy.getNotebookStep("filter").icon("play").should("not.be.visible");
+    cy.getNotebookStep("summarize").icon("play").should("not.be.visible");
 
     cy.get("@dataStep").within(() => {
       cy.icon("play").click();
@@ -687,7 +686,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     cy.button("Row limit").click();
-    H.getNotebookStep("limit").within(() => {
+    cy.getNotebookStep("limit").within(() => {
       cy.findByPlaceholderText("Enter a limit").type("5").realPress("Tab");
 
       cy.icon("play").click();
@@ -701,7 +700,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   it("should be able to drag-n-drop query clauses", () => {
     function moveElement({ name, horizontal, vertical, index }) {
-      H.moveDnDKitElement(cy.findByText(name), {
+      cy.moveDnDKitElement(cy.findByText(name), {
         horizontal,
         vertical,
       });
@@ -717,14 +716,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       horizontal,
       vertical,
     }) {
-      H.getNotebookStep(type).findByText(name).click();
-      H.popover().within(() => {
-        H.moveDnDKitElement(cy.findByText("Is"), {
+      cy.getNotebookStep(type).findByText(name).click();
+      cy.popover().within(() => {
+        cy.moveDnDKitElement(cy.findByText("Is"), {
           horizontal,
           vertical,
         });
       });
-      H.getNotebookStep(type)
+      cy.getNotebookStep(type)
         .findAllByTestId("notebook-cell-item")
         .eq(index)
         .should("have.text", name);
@@ -761,14 +760,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
     };
     cy.createQuestion(questionDetails, { visitQuestion: true });
-    H.openNotebook();
-    H.getNotebookStep("expression").within(() => {
+    cy.openNotebook();
+    cy.getNotebookStep("expression").within(() => {
       moveElement({ name: "E1", horizontal: 100, index: 1 });
     });
-    H.getNotebookStep("filter").within(() => {
+    cy.getNotebookStep("filter").within(() => {
       moveElement({ name: "ID is 2", horizontal: -100, index: 0 });
     });
-    H.getNotebookStep("summarize").within(() => {
+    cy.getNotebookStep("summarize").within(() => {
       cy.findByTestId("aggregate-step").within(() => {
         moveElement({ name: "Count", vertical: 100, index: 4 });
       });
@@ -776,7 +775,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         moveElement({ name: "ID", horizontal: 100, index: 1 });
       });
     });
-    H.getNotebookStep("sort").within(() => {
+    cy.getNotebookStep("sort").within(() => {
       moveElement({ name: "Average of Total", horizontal: -100, index: 0 });
     });
     verifyPopoverDoesNotMoveElement({
@@ -814,13 +813,13 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         },
       };
 
-      H.createQuestion(questionDetails, { visitQuestion: true });
+      cy.createQuestion(questionDetails, { visitQuestion: true });
 
-      H.openNotebook();
+      cy.openNotebook();
 
-      H.getNotebookStep("summarize").contains("Revenue").click();
+      cy.getNotebookStep("summarize").contains("Revenue").click();
 
-      H.popover()
+      cy.popover()
         .findByTestId("expression-editor-textfield")
         .contains("[Revenue]");
     });
@@ -853,7 +852,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
-      H.openNotebook();
+      cy.openNotebook();
 
       cy.findByText("Pick a column to group by").click();
       cy.findByText("Created At").click();
@@ -861,14 +860,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       // Sorts ascending by default
       // Revenue appears twice, but it's the only integer column to order by
-      H.popover().icon("int").click();
+      cy.popover().icon("int").click();
 
       // Let's make sure it's possible to sort descending as well
       cy.icon("arrow_up").click();
 
       cy.icon("arrow_down").parent().contains("Revenue");
 
-      H.visualize();
+      cy.visualize();
       // Visualization will render line chart by default. Switch to the table.
       cy.icon("table2").click();
 
@@ -896,7 +895,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it.skip("should open only one bucketing popover at a time (metabase#45036)", () => {
-    H.visitQuestionAdhoc(
+    cy.visitQuestionAdhoc(
       {
         dataset_query: {
           database: SAMPLE_DB_ID,
@@ -908,16 +907,16 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       { mode: "notebook" },
     );
 
-    H.getNotebookStep("summarize")
+    cy.getNotebookStep("summarize")
       .findByText("Pick a column to group by")
       .click();
 
-    H.popover()
+    cy.popover()
       .findByRole("option", { name: "Created At" })
       .findByText("by month")
       .click();
 
-    H.popover()
+    cy.popover()
       .last()
       .within(() => {
         cy.findByText("Year").should("be.visible");
@@ -926,13 +925,13 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         cy.findByText("Hour of day").should("be.visible");
       });
 
-    H.popover()
+    cy.popover()
       .first()
       .findByRole("option", { name: "Price" })
       .findByText("Auto bin")
       .click();
 
-    H.popover()
+    cy.popover()
       .last()
       .within(() => {
         cy.findByText("Auto bin").should("be.visible");
@@ -947,23 +946,23 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   it("should not leave the UI in broken state after adding an aggregation (metabase#48358)", () => {
     cy.visit("/");
-    H.newButton("Question").click();
-    H.entityPickerModal().findByText("Products").click();
-    H.addSummaryField({ metric: "Sum of ...", field: "Price" });
-    H.addSummaryGroupingField({ field: "Created At" });
-    H.addSummaryGroupingField({ field: "Category" });
-    H.visualize();
-    H.saveQuestionToCollection();
-    H.notebookButton().click();
-    H.addSummaryField({ metric: "Sum of ...", field: "Rating" });
-    H.visualize();
-    H.saveSavedQuestion();
-    H.notebookButton().click();
+    cy.newButton("Question").click();
+    cy.entityPickerModal().findByText("Products").click();
+    cy.addSummaryField({ metric: "Sum of ...", field: "Price" });
+    cy.addSummaryGroupingField({ field: "Created At" });
+    cy.addSummaryGroupingField({ field: "Category" });
+    cy.visualize();
+    cy.saveQuestionToCollection();
+    cy.notebookButton().click();
+    cy.addSummaryField({ metric: "Sum of ...", field: "Rating" });
+    cy.visualize();
+    cy.saveSavedQuestion();
+    cy.notebookButton().click();
     cy.findByLabelText("View SQL").click();
-    H.addSummaryField({ metric: "Sum of ...", field: "Price" });
+    cy.addSummaryField({ metric: "Sum of ...", field: "Price" });
 
     cy.findByTestId("loading-indicator").should("not.exist");
-    H.nativeEditor()
+    cy.nativeEditor()
       .get(".ace_line")
       .should("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum"')
       .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."RATING") AS "sum_2"')
@@ -976,7 +975,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // The issue is reproducible on all viewports, but the smaller the viewport is,
     // the more likely the issue is going to occur.
     cy.viewport(300, 800);
-    H.createQuestion(
+    cy.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -991,9 +990,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
       { visitQuestion: true },
     );
-    H.openNotebook();
+    cy.openNotebook();
 
-    H.verifyNotebookQuery("Orders", [
+    cy.verifyNotebookQuery("Orders", [
       {
         expressions: [CUSTOM_COLUMN_LONG_NAME],
         filters: [`${CUSTOM_COLUMN_LONG_NAME} is less than 1000000`],
@@ -1021,12 +1020,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   it("should let the user navigate back (metabase#50971)", () => {
     cy.visit("/");
-    H.newButton("Model").click();
+    cy.newButton("Model").click();
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
 
-    H.entityPickerModal().should("be.visible");
+    cy.entityPickerModal().should("be.visible");
 
     // Cypress can emulate the browser's back button with cy.go('back'), but
     // this does not trigger a confirmation modal, so we need to perform a
@@ -1040,28 +1039,28 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.log(
       'Clicking "Discard changes" in the confirmation modal to verify that this modal is above the data picker modal',
     );
-    H.modal().should("be.visible").contains("Discard changes").click();
+    cy.modal().should("be.visible").contains("Discard changes").click();
     cy.findByTestId("greeting-message").should("be.visible");
   });
 
   it("shows all available columns and groups in the breakout picker (metabase#46832)", () => {
     cy.visit("/");
-    H.newButton("Question").click();
-    H.entityPickerModal().findByText("Orders").click();
-    H.join();
-    H.joinTable("Reviews", "Product ID", "Product ID");
-    H.addSummaryField({ metric: "Count of rows" });
-    H.addSummaryGroupingField({ field: "Created At" });
+    cy.newButton("Question").click();
+    cy.entityPickerModal().findByText("Orders").click();
+    cy.join();
+    cy.joinTable("Reviews", "Product ID", "Product ID");
+    cy.addSummaryField({ metric: "Count of rows" });
+    cy.addSummaryGroupingField({ field: "Created At" });
     cy.findAllByRole("button", { name: "Join data" }).last().click();
-    H.joinTable("Reviews", "Created At: Month", "Created At");
+    cy.joinTable("Reviews", "Created At: Month", "Created At");
     cy.button("Summarize").click();
-    H.addSummaryField({ metric: "Count of rows", stage: 1 });
+    cy.addSummaryField({ metric: "Count of rows", stage: 1 });
 
     cy.log("adding a new breakout");
-    H.getNotebookStep("summarize", { stage: 1 })
+    cy.getNotebookStep("summarize", { stage: 1 })
       .findByText("Pick a column to group by")
       .click();
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Summaries").should("be.visible");
       cy.findByText("Created At: Month").should("be.visible");
       cy.findByText("Count").should("be.visible");
@@ -1079,10 +1078,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     cy.log("editing an existing breakout");
-    H.getNotebookStep("summarize", { stage: 1 })
+    cy.getNotebookStep("summarize", { stage: 1 })
       .findByText("Reviews - Created At: Month → Rating: Auto binned")
       .click();
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Summaries").should("be.visible");
       cy.findByText("Created At: Month").should("not.exist");
       cy.findByText("Count").should("not.exist");
@@ -1102,7 +1101,7 @@ function assertTableRowCount(expectedCount) {
 }
 
 function addSimpleCustomColumn(name) {
-  H.enterCustomColumnDetails({ formula: "C", blur: false });
+  cy.enterCustomColumnDetails({ formula: "C", blur: false });
   cy.findByText("ategory").click();
   cy.findByPlaceholderText("Something nice and descriptive").click().type(name);
   cy.button("Done").click();

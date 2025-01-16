@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -6,25 +5,25 @@ const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > waterfall", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   function verifyWaterfallRendering(xLabel = null, yLabel = null) {
-    H.chartPathWithFillColor("#88BF4D").should("be.visible");
-    H.chartPathWithFillColor("#4C5773").should("be.visible");
-    H.echartsContainer().get("text").contains("Total");
+    cy.chartPathWithFillColor("#88BF4D").should("be.visible");
+    cy.chartPathWithFillColor("#4C5773").should("be.visible");
+    cy.echartsContainer().get("text").contains("Total");
 
     if (xLabel) {
-      H.echartsContainer().get("text").contains(xLabel);
+      cy.echartsContainer().get("text").contains(xLabel);
     }
     if (yLabel) {
-      H.echartsContainer().get("text").contains(yLabel);
+      cy.echartsContainer().get("text").contains(yLabel);
     }
   }
 
   it("should work with ordinal series", () => {
-    H.startNewNativeQuestion().type(
+    cy.openNativeEditor().type(
       "select 'A' as product, 10 as profit union select 'B' as product, -4 as profit",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -36,7 +35,7 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should work with ordinal series and numeric X-axis (metabase#15550)", () => {
-    H.startNewNativeQuestion().type(
+    cy.openNativeEditor().type(
       "select 1 as X, 20 as Y union select 2 as X, -10 as Y",
     );
 
@@ -45,23 +44,23 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
-    H.sidebar().findAllByPlaceholderText("Select a field").first().click();
-    H.popover().findByText("X").click();
+    cy.sidebar().findAllByPlaceholderText("Select a field").first().click();
+    cy.popover().findByText("X").click();
 
-    H.sidebar().findAllByPlaceholderText("Select a field").last().click();
-    H.popover().findByText("Y").click();
+    cy.sidebar().findAllByPlaceholderText("Select a field").last().click();
+    cy.popover().findByText("Y").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Axes").click();
 
-    H.sidebar().findAllByDisplayValue("Linear").first().click();
-    H.popover().findByText("Ordinal").click();
+    cy.sidebar().findAllByDisplayValue("Linear").first().click();
+    cy.popover().findByText("Ordinal").click();
 
     verifyWaterfallRendering("X", "Y");
   });
 
   it("should work with quantitative series", { tags: "@flaky" }, () => {
-    H.startNewNativeQuestion().type(
+    cy.openNativeEditor().type(
       "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -69,18 +68,18 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
-    H.sidebar().findAllByPlaceholderText("Select a field").first().click();
-    H.popover().findByText("X").click();
+    cy.sidebar().findAllByPlaceholderText("Select a field").first().click();
+    cy.popover().findByText("X").click();
 
-    H.sidebar().findAllByPlaceholderText("Select a field").last().click();
-    H.popover().findByText("Y").click();
+    cy.sidebar().findAllByPlaceholderText("Select a field").last().click();
+    cy.popover().findByText("Y").click();
 
     verifyWaterfallRendering("X", "Y");
   });
 
   it("should work with time-series data", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.summarize({ mode: "notebook" });
+    cy.openOrdersTable({ mode: "notebook" });
+    cy.summarize({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -96,7 +95,7 @@ describe("scenarios > visualizations > waterfall", () => {
       .blur();
     cy.button("Done").click();
 
-    H.visualize();
+    cy.visualize();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
@@ -106,8 +105,8 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should hide the Total label if there is no space", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.summarize({ mode: "notebook" });
+    cy.openOrdersTable({ mode: "notebook" });
+    cy.summarize({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -115,13 +114,13 @@ describe("scenarios > visualizations > waterfall", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At").click();
 
-    H.visualize();
+    cy.visualize();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
-    H.echartsContainer().get("text").contains("Total").should("not.exist");
+    cy.echartsContainer().get("text").contains("Total").should("not.exist");
   });
 
   describe("multi-series (metabase#15152)", () => {
@@ -136,10 +135,10 @@ describe("scenarios > visualizations > waterfall", () => {
     };
 
     function testSwitchingToWaterfall() {
-      H.openVizTypeSidebar();
+      cy.openVizTypeSidebar();
       switchToWaterfallDisplay();
 
-      H.echartsContainer().within(() => {
+      cy.echartsContainer().within(() => {
         cy.findByText("Created At: Year").should("exist"); // x-axis
         cy.findByText("Count").should("exist"); // y-axis
         cy.findByText("Sum of Total").should("not.exist");
@@ -155,20 +154,20 @@ describe("scenarios > visualizations > waterfall", () => {
         });
       });
 
-      H.leftSidebar().within(() => {
+      cy.leftSidebar().within(() => {
         cy.findByDisplayValue("Count").should("exist");
         cy.findByDisplayValue("Sum of Total").should("not.exist");
         cy.findByText(/Add another/).should("not.exist");
 
         cy.findByDisplayValue("Count").click();
       });
-      H.popover().findByText("Sum of Total").click();
-      H.leftSidebar().within(() => {
+      cy.popover().findByText("Sum of Total").click();
+      cy.leftSidebar().within(() => {
         cy.findByDisplayValue("Sum of Total").should("exist");
         cy.findByDisplayValue("Count").should("not.exist");
       });
 
-      H.echartsContainer().within(() => {
+      cy.echartsContainer().within(() => {
         cy.findByText("Sum of Total").should("exist"); // x-axis
         cy.findByText("Created At: Year").should("exist"); // y-axis
         cy.findByText("Count").should("not.exist");
@@ -186,12 +185,12 @@ describe("scenarios > visualizations > waterfall", () => {
     }
 
     it("should correctly switch into single-series mode for ad-hoc queries", () => {
-      H.visitQuestionAdhoc({ dataset_query: DATASET_QUERY, display: "line" });
+      cy.visitQuestionAdhoc({ dataset_query: DATASET_QUERY, display: "line" });
       testSwitchingToWaterfall();
     });
 
     it("should correctly switch into single-series mode for ad-hoc queries", () => {
-      H.createQuestion(
+      cy.createQuestion(
         { name: "Q1", query: DATASET_QUERY.query, display: "line" },
         { visitQuestion: true },
       );
@@ -200,7 +199,7 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should not allow you to choose X-axis breakout", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         query: {
@@ -220,20 +219,20 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Visualization").click();
     switchToWaterfallDisplay();
 
-    H.sidebar().findAllByPlaceholderText("Select a field").first().click();
-    H.popover().findByText("Created At: Year").click();
+    cy.sidebar().findAllByPlaceholderText("Select a field").first().click();
+    cy.popover().findByText("Created At: Year").click();
 
-    H.sidebar().findAllByPlaceholderText("Select a field").last().click();
-    H.popover().findByText("Count").click();
+    cy.sidebar().findAllByPlaceholderText("Select a field").last().click();
+    cy.popover().findByText("Count").click();
 
-    H.echartsContainer().should("exist"); // Chart renders after adding a metric
+    cy.echartsContainer().should("exist"); // Chart renders after adding a metric
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Add another/).should("not.exist");
   });
 
   it("should work for unaggregated data (metabase#15465)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -246,11 +245,11 @@ describe("scenarios > visualizations > waterfall", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
     cy.icon("waterfall").click({ force: true });
-    H.chartPathWithFillColor("#88BF4D").should("be.visible");
+    cy.chartPathWithFillColor("#88BF4D").should("be.visible");
   });
 
   it("should display correct values when one of them is 0 (metabase#16246)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -276,7 +275,7 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should now display null values (metabase#16246)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -302,7 +301,7 @@ describe("scenarios > visualizations > waterfall", () => {
       .should("eq", "0.1");
 
     // but the x-axis label and area should still be shown for the null data point
-    H.echartsContainer().findByText("f");
+    cy.echartsContainer().findByText("f");
 
     getWaterfallDataLabels()
       .as("labels")
@@ -314,7 +313,7 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should correctly apply column value scaling in tool-tips (metabase#44176)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -333,9 +332,9 @@ describe("scenarios > visualizations > waterfall", () => {
 
     getWaterfallDataLabels().first().invoke("text").should("eq", "0.2");
 
-    H.chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
+    cy.chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
 
-    H.assertEChartsTooltip({
+    cy.assertEChartsTooltip({
       rows: [
         {
           name: "C2",
@@ -349,12 +348,13 @@ describe("scenarios > visualizations > waterfall", () => {
     const INCREASE_COLOR = "#00FF00";
 
     function getFirstWaterfallSegment() {
-      return H.echartsContainer()
+      return cy
+        .echartsContainer()
         .find(`path[fill='${INCREASE_COLOR}']`)
         .first();
     }
 
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       display: "waterfall",
       dataset_query: {
         type: "query",
@@ -371,22 +371,22 @@ describe("scenarios > visualizations > waterfall", () => {
     });
 
     getFirstWaterfallSegment().realHover();
-    H.assertEChartsTooltip({
+    cy.assertEChartsTooltip({
       header: "2022",
       rows: [{ name: "Count", value: "744", color: INCREASE_COLOR }],
     });
-    H.assertEChartsTooltipNotContain(["Sum of Total"]);
+    cy.assertEChartsTooltipNotContain(["Sum of Total"]);
 
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
 
-    H.leftSidebar().within(() => {
+    cy.leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByPlaceholderText("Enter metric names").click();
     });
     cy.findByRole("option", { name: "Sum of Total" }).click();
 
     getFirstWaterfallSegment().realHover();
-    H.assertEChartsTooltip({
+    cy.assertEChartsTooltip({
       header: "2022",
       rows: [
         { name: "Count", value: "744", color: INCREASE_COLOR },
@@ -396,7 +396,7 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should show tooltip when hovering the total bar (metabase#48118)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       display: "waterfall",
       dataset_query: {
         type: "query",
@@ -411,9 +411,9 @@ describe("scenarios > visualizations > waterfall", () => {
 
     const totalBarColor = "#4C5773";
 
-    H.chartPathWithFillColor(totalBarColor).realHover();
+    cy.chartPathWithFillColor(totalBarColor).realHover();
 
-    H.assertEChartsTooltip({
+    cy.assertEChartsTooltip({
       header: "Total",
       rows: [{ name: "Count", value: "18,760", color: totalBarColor }],
     });
@@ -421,10 +421,10 @@ describe("scenarios > visualizations > waterfall", () => {
 
   describe("scenarios > visualizations > waterfall settings", () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsNormalUser();
 
-      H.startNewNativeQuestion().type("select 'A' as X, -4.56 as Y");
+      cy.openNativeEditor().type("select 'A' as X, -4.56 as Y");
       cy.findByTestId("native-query-editor-container").icon("play").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Visualization").click();
@@ -450,36 +450,35 @@ describe("scenarios > visualizations > waterfall", () => {
         cy.findByRole("switch").click({ force: true });
       });
 
-      H.echartsContainer().get("text").contains("Total").should("not.exist");
+      cy.echartsContainer().get("text").contains("Total").should("not.exist");
 
       cy.get('[data-field-title="Show total"]').within(() => {
         cy.findByRole("switch").click({ force: true });
       });
-      H.echartsContainer().get("text").contains("Total").should("exist");
+      cy.echartsContainer().get("text").contains("Total").should("exist");
     });
 
     it("should allow toggling of value labels", { tags: "@flaky" }, () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
-      H.echartsContainer().get("text").contains("(4.56)").should("not.exist");
+      cy.echartsContainer().get("text").contains("(4.56)").should("not.exist");
 
       cy.get('[data-field-title="Show values on data points"]')
         .findByRole("switch")
         .click({ force: true });
-      H.echartsContainer().get("text").contains("(4.56)").should("be.visible");
+      cy.echartsContainer().get("text").contains("(4.56)").should("be.visible");
     });
   });
 });
 
 const switchToWaterfallDisplay = () => {
   cy.icon("waterfall").click();
-  cy.findByTestId("Waterfall-container").within(() => {
-    cy.icon("gear").click();
-  });
+
+  cy.openVizSettingsSidebar({ isSidebarOpen: true });
 };
 
 function getWaterfallDataLabels() {
   // paint-order='stroke' targets the waterfall labels only
-  return H.echartsContainer().get("text[paint-order='stroke']");
+  return cy.echartsContainer().get("text[paint-order='stroke']");
 }

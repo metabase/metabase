@@ -1,5 +1,3 @@
-import { H } from "e2e/support";
-
 import {
   checkGroupConsistencyAfterDeletingMappings,
   crudGroupMappingsWidget,
@@ -11,7 +9,7 @@ describe(
   { tags: "@external" },
   () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
       cy.intercept("PUT", "/api/setting").as("updateSettings");
       cy.intercept("PUT", "/api/setting/*").as("updateSetting");
@@ -31,7 +29,7 @@ describe(
     });
 
     it("should update ldap settings", () => {
-      H.setupLdap();
+      cy.setupLdap();
       cy.visit("/admin/settings/authentication/ldap");
 
       enterLdapPort("389");
@@ -43,22 +41,22 @@ describe(
     });
 
     it("should allow to disable and enable ldap", () => {
-      H.setupLdap();
+      cy.setupLdap();
       cy.visit("/admin/settings/authentication");
 
       getLdapCard().icon("ellipsis").click();
-      H.popover().findByText("Pause").click();
+      cy.popover().findByText("Pause").click();
       cy.wait("@updateSetting");
       getLdapCard().findByText("Paused").should("exist");
 
       getLdapCard().icon("ellipsis").click();
-      H.popover().findByText("Resume").click();
+      cy.popover().findByText("Resume").click();
       cy.wait("@updateSetting");
       getLdapCard().findByText("Active").should("exist");
     });
 
     it("should not show the user provision UI to OSS users", () => {
-      H.setupLdap();
+      cy.setupLdap();
       cy.visit("/admin/settings/authentication/ldap");
 
       cy.findByTestId("admin-layout-content")
@@ -67,12 +65,12 @@ describe(
     });
 
     it("should allow to reset ldap settings", () => {
-      H.setupLdap();
+      cy.setupLdap();
       cy.visit("/admin/settings/authentication");
 
       getLdapCard().icon("ellipsis").click();
-      H.popover().findByText("Deactivate").click();
-      H.modal().button("Deactivate").click();
+      cy.popover().findByText("Deactivate").click();
+      cy.modal().button("Deactivate").click();
       cy.wait("@updateSettings");
 
       getLdapCard().findByText("Set up").should("exist");
@@ -118,7 +116,7 @@ describe(
     });
 
     it("should allow user login on OSS when LDAP is enabled", () => {
-      H.setupLdap();
+      cy.setupLdap();
       cy.signOut();
       cy.visit("/auth/login");
       cy.findByLabelText("Username or email address").type(
@@ -154,19 +152,19 @@ describe(
   },
 );
 
-H.describeEE(
+cy.describeEE(
   "scenarios > admin > settings > SSO > LDAP",
   { tags: "@external" },
   () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      cy.setTokenFeatures("all");
       cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
     });
 
     it("should allow the user to enable/disable user provisioning", () => {
-      H.setupLdap();
+      cy.setupLdap();
       cy.visit("/admin/settings/authentication/ldap");
 
       const { label, input } = getUserProvisioningInput();
@@ -179,8 +177,8 @@ H.describeEE(
     });
 
     it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
-      H.setupLdap();
-      H.updateSetting("enable-password-login", false);
+      cy.setupLdap();
+      cy.updateSetting("enable-password-login", false);
       cy.signOut();
       cy.visit("/auth/login");
 
@@ -191,7 +189,7 @@ H.describeEE(
     });
 
     it("should allow user login on EE when LDAP is enabled", () => {
-      H.setupLdap();
+      cy.setupLdap();
       cy.signOut();
       cy.visit("/auth/login");
       cy.findByLabelText("Username or email address").type(
@@ -215,7 +213,7 @@ H.describeEE(
             cy.icon("ellipsis").click();
           });
       });
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Edit user").click();
       });
       cy.findByDisplayValue("uid").should("exist");
@@ -229,13 +227,13 @@ const getLdapCard = () => {
 };
 
 const enterLdapPort = value => {
-  H.typeAndBlurUsingLabel("LDAP Port", value);
+  cy.typeAndBlurUsingLabel("LDAP Port", value);
 };
 
 const enterLdapSettings = () => {
-  H.typeAndBlurUsingLabel(/LDAP Host/, "localhost");
-  H.typeAndBlurUsingLabel("LDAP Port", "389");
-  H.typeAndBlurUsingLabel("Username or DN", "cn=admin,dc=example,dc=org");
-  H.typeAndBlurUsingLabel("Password", "adminpass");
-  H.typeAndBlurUsingLabel(/User search base/, "ou=users,dc=example,dc=org");
+  cy.typeAndBlurUsingLabel(/LDAP Host/, "localhost");
+  cy.typeAndBlurUsingLabel("LDAP Port", "389");
+  cy.typeAndBlurUsingLabel("Username or DN", "cn=admin,dc=example,dc=org");
+  cy.typeAndBlurUsingLabel("Password", "adminpass");
+  cy.typeAndBlurUsingLabel(/User search base/, "ou=users,dc=example,dc=org");
 };

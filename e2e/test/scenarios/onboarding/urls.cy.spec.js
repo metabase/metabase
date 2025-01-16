@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -13,7 +12,7 @@ const { admin, normal } = USERS;
 
 describe("URLs", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -91,10 +90,10 @@ describe("URLs", () => {
 
     it("should not slugify users' collections page URL", () => {
       cy.visit("/collection/root");
-      H.navigationSidebar().within(() => {
+      cy.navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });
-      H.popover().findByText("Other users' personal collections").click();
+      cy.popover().findByText("Other users' personal collections").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("All personal collections");
       cy.location("pathname").should("eq", "/collection/users");
@@ -114,7 +113,7 @@ describe("URLs", () => {
       );
       cy.findByTestId("collection-name-heading").should(
         "have.text",
-        `${H.getFullName(admin)}'s Personal Collection`,
+        `${cy.getFullName(admin)}'s Personal Collection`,
       );
 
       cy.visit(
@@ -124,7 +123,7 @@ describe("URLs", () => {
       );
       cy.findByTestId("collection-name-heading").should(
         "have.text",
-        `${H.getFullName(normal)}'s Personal Collection`,
+        `${cy.getFullName(normal)}'s Personal Collection`,
       );
     });
   });

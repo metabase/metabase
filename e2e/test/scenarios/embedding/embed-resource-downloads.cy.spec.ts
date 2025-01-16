@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -12,34 +11,34 @@ const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
  *  Unless the product changes, these should test the same things as `public-resource-downloads.cy.spec.ts`
  */
 
-H.describeWithSnowplowEE(
+cy.describeWithSnowplowEE(
   "Static embed dashboards/questions downloads (results and export as pdf)",
   () => {
     beforeEach(() => {
-      H.resetSnowplow();
+      cy.resetSnowplow();
       cy.deleteDownloadsFolder();
     });
 
     describe("Static embed dashboards", () => {
       before(() => {
-        H.restore("default");
+        cy.restore("default");
         cy.signInAsAdmin();
 
         cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
           enable_embedding: true,
         });
 
-        H.setTokenFeatures("all");
+        cy.setTokenFeatures("all");
 
         cy.signOut();
       });
 
       afterEach(() => {
-        H.expectNoBadSnowplowEvents();
+        cy.expectNoBadSnowplowEvents();
       });
 
       it("#downloads=false should disable both PDF downloads and dashcard results downloads", () => {
-        H.visitEmbeddedPage(
+        cy.visitEmbeddedPage(
           {
             resource: { dashboard: ORDERS_DASHBOARD_ID },
             params: {},
@@ -56,11 +55,11 @@ H.describeWithSnowplowEE(
         cy.findByText("Export as PDF").should("not.exist");
 
         // we should not have any dashcard action in a static embedded/embed scenario, so the menu should not be there
-        H.getDashboardCardMenu().should("not.exist");
+        cy.getDashboardCardMenu().should("not.exist");
       });
 
       it("should be able to download a static embedded dashboard as PDF", () => {
-        H.visitEmbeddedPage(
+        cy.visitEmbeddedPage(
           {
             resource: { dashboard: ORDERS_DASHBOARD_ID },
             params: {},
@@ -77,7 +76,7 @@ H.describeWithSnowplowEE(
 
         cy.verifyDownload("Orders in a dashboard.pdf");
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: "dashboard_pdf_exported",
           dashboard_id: 0,
           dashboard_accessed_via: "static-embed",
@@ -85,7 +84,7 @@ H.describeWithSnowplowEE(
       });
 
       it("should be able to download a static embedded dashcard as CSV", () => {
-        H.visitEmbeddedPage(
+        cy.visitEmbeddedPage(
           {
             resource: { dashboard: ORDERS_DASHBOARD_ID },
             params: {},
@@ -99,12 +98,12 @@ H.describeWithSnowplowEE(
 
         waitLoading();
 
-        H.showDashboardCardActions();
-        H.getDashboardCardMenu().click();
-        H.exportFromDashcard(".csv");
+        cy.showDashboardCardActions();
+        cy.getDashboardCardMenu().click();
+        cy.exportFromDashcard(".csv");
         cy.verifyDownload(".csv", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "dashcard",
           accessed_via: "static-embed",
@@ -116,7 +115,7 @@ H.describeWithSnowplowEE(
         beforeEach(() => {
           cy.signInAsAdmin();
 
-          H.setTokenFeatures("all");
+          cy.setTokenFeatures("all");
 
           // Test parameter with accentuation (metabase#49118)
           const CATEGORY_FILTER = createMockParameter({
@@ -131,7 +130,7 @@ H.describeWithSnowplowEE(
               "source-table": PRODUCTS_ID,
             },
           };
-          H.createDashboardWithQuestions({
+          cy.createDashboardWithQuestions({
             // Can't figure out the type if I extracted `dashboardDetails` to a variable.
             dashboardDetails: {
               name: "Dashboard with a parameter",
@@ -146,7 +145,7 @@ H.describeWithSnowplowEE(
             const dashboardId = dashboard.id;
             cy.wrap(dashboardId).as("dashboardId");
             const questionId = questions[0].id;
-            H.addOrUpdateDashboardCard({
+            cy.addOrUpdateDashboardCard({
               dashboard_id: dashboardId,
               card_id: questionId,
               card: {
@@ -166,7 +165,7 @@ H.describeWithSnowplowEE(
 
         it("should be able to download a static embedded dashcard as CSV", () => {
           cy.get("@dashboardId").then(dashboardId => {
-            H.visitEmbeddedPage(
+            cy.visitEmbeddedPage(
               {
                 resource: { dashboard: Number(dashboardId) },
                 params: {},
@@ -181,12 +180,12 @@ H.describeWithSnowplowEE(
 
           waitLoading();
 
-          H.showDashboardCardActions();
-          H.getDashboardCardMenu().click();
-          H.exportFromDashcard(".csv");
+          cy.showDashboardCardActions();
+          cy.getDashboardCardMenu().click();
+          cy.exportFromDashcard(".csv");
           cy.verifyDownload(".csv", { contains: true });
 
-          H.expectGoodSnowplowEvent({
+          cy.expectGoodSnowplowEvent({
             event: "download_results_clicked",
             resource_type: "dashcard",
             accessed_via: "static-embed",
@@ -198,20 +197,20 @@ H.describeWithSnowplowEE(
 
     describe("Static embed questions", () => {
       before(() => {
-        H.restore("default");
+        cy.restore("default");
         cy.signInAsAdmin();
 
         cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
           enable_embedding: true,
         });
 
-        H.setTokenFeatures("all");
+        cy.setTokenFeatures("all");
 
         cy.signOut();
       });
 
       it("#downloads=false should disable result downloads", () => {
-        H.visitEmbeddedPage(
+        cy.visitEmbeddedPage(
           {
             resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
             params: {},
@@ -229,7 +228,7 @@ H.describeWithSnowplowEE(
       });
 
       it("should be able to download the question as PNG", () => {
-        H.visitEmbeddedPage(
+        cy.visitEmbeddedPage(
           {
             resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
             params: {},
@@ -244,14 +243,14 @@ H.describeWithSnowplowEE(
         waitLoading();
 
         cy.findByTestId("download-button").click();
-        H.popover().within(() => {
+        cy.popover().within(() => {
           cy.findByText(".png").click();
           cy.findByTestId("download-results-button").click();
         });
 
         cy.verifyDownload(".png", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "static-embed",
@@ -260,7 +259,7 @@ H.describeWithSnowplowEE(
       });
 
       it("should be able to download a static embedded card as CSV", () => {
-        H.visitEmbeddedPage(
+        cy.visitEmbeddedPage(
           {
             resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
             params: {},
@@ -276,14 +275,14 @@ H.describeWithSnowplowEE(
 
         cy.findByTestId("download-button").click();
 
-        H.popover().within(() => {
+        cy.popover().within(() => {
           cy.findByText(".csv").click();
           cy.findByTestId("download-results-button").click();
         });
 
         cy.verifyDownload(".csv", { contains: true });
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "question",
           accessed_via: "static-embed",
@@ -295,10 +294,10 @@ H.describeWithSnowplowEE(
         beforeEach(() => {
           cy.signInAsAdmin();
 
-          H.setTokenFeatures("all");
+          cy.setTokenFeatures("all");
 
           // Can't figure out the type if I extracted `questionDetails` to a variable.
-          H.createNativeQuestion(
+          cy.createNativeQuestion(
             {
               name: "Native question with a parameter",
               native: {
@@ -340,7 +339,7 @@ H.describeWithSnowplowEE(
         it("should be able to download a static embedded dashcard as CSV", () => {
           const value = 9999;
           cy.get("@questionId").then(questionId => {
-            H.visitEmbeddedPage(
+            cy.visitEmbeddedPage(
               {
                 resource: { question: Number(questionId) },
                 params: {
@@ -357,18 +356,18 @@ H.describeWithSnowplowEE(
 
           waitLoading();
 
-          H.main().findByText(value).should("exist");
+          cy.main().findByText(value).should("exist");
 
           cy.findByTestId("download-button").click();
 
-          H.popover().within(() => {
+          cy.popover().within(() => {
             cy.findByText(".csv").click();
             cy.findByTestId("download-results-button").click();
           });
 
           cy.verifyDownload(".csv", { contains: true });
 
-          H.expectGoodSnowplowEvent({
+          cy.expectGoodSnowplowEvent({
             event: "download_results_clicked",
             resource_type: "question",
             accessed_via: "static-embed",
@@ -380,4 +379,5 @@ H.describeWithSnowplowEE(
   },
 );
 
-const waitLoading = () => H.main().findByText("Loading...").should("not.exist");
+const waitLoading = () =>
+  cy.main().findByText("Loading...").should("not.exist");

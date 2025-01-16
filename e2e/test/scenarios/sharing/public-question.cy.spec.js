@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -44,20 +43,20 @@ describe("scenarios > public > question", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.updateSetting("enable-public-sharing", true);
+    cy.updateSetting("enable-public-sharing", true);
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
     cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-      H.visitQuestion(id);
+      cy.visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
       cy.findByTestId("visualization-root").should("be.visible");
 
-      H.openNewPublicLinkDropdown("card");
+      cy.openNewPublicLinkDropdown("card");
 
       // Although we already have API helper `visitPublicQuestion`,
       // it makes sense to use the UI here in order to check that the
@@ -67,16 +66,16 @@ describe("scenarios > public > question", () => {
       // On page load, query params are added
       cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-      H.filterWidget().contains("Previous 30 Years");
-      H.filterWidget().contains("Affiliate");
+      cy.filterWidget().contains("Previous 30 Years");
+      cy.filterWidget().contains("Affiliate");
 
       cy.wait("@publicQuery");
 
       // Make sure we can download the public question (metabase#21993)
       cy.get("@uuid").then(publicUuid => {
-        H.downloadAndAssert(
+        cy.downloadAndAssert(
           { fileType: "xlsx", questionId: id, publicUuid },
-          H.assertSheetRowsCount(5),
+          cy.assertSheetRowsCount(5),
         );
       });
     });
@@ -84,12 +83,12 @@ describe("scenarios > public > question", () => {
 
   it("should only allow non-admin users to see a public link if one has already been created", () => {
     cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-      H.createPublicQuestionLink(id);
+      cy.createPublicQuestionLink(id);
       cy.signOut();
       cy.signInAsNormalUser().then(() => {
-        H.visitQuestion(id);
+        cy.visitQuestion(id);
 
-        H.openSharingMenu("Public link");
+        cy.openSharingMenu("Public link");
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");
@@ -113,8 +112,8 @@ describe("scenarios > public > question", () => {
 
               cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
 
-              H.filterWidget().contains("Previous 30 Years");
-              H.filterWidget().contains("Affiliate");
+              cy.filterWidget().contains("Previous 30 Years");
+              cy.filterWidget().contains("Affiliate");
 
               cy.findByTestId("visualization-root").should("be.visible");
             },
@@ -125,13 +124,13 @@ describe("scenarios > public > question", () => {
   );
 
   it("should be able to view public questions with snippets", () => {
-    H.startNewNativeQuestion({ display: "table" }).as("editor");
+    cy.openNativeEditor();
 
     // Create a snippet
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
         "'test'",
       );
@@ -141,7 +140,7 @@ describe("scenarios > public > question", () => {
 
     cy.get("@editor").type("{moveToStart}select ");
 
-    H.saveQuestion(
+    cy.saveQuestion(
       "test question",
       { wrapId: true },
       {
@@ -151,7 +150,7 @@ describe("scenarios > public > question", () => {
     );
 
     cy.get("@questionId").then(id => {
-      H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
+      cy.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
         cy.signOut();
         cy.signInAsNormalUser().then(() => {
           cy.visit(`/public/question/${uuid}`);
@@ -168,13 +167,13 @@ describe("scenarios > public > question", () => {
         query: "SELECT * FROM PEOPLE LIMIT 5",
       },
     }).then(({ body: { id } }) => {
-      H.startNewNativeQuestion({ display: "table" }).as("editor");
+      cy.openNativeEditor();
 
       cy.get("@editor")
         .type("select * from {{#")
         .type(`{leftarrow}{leftarrow}${id}`);
 
-      H.saveQuestion(
+      cy.saveQuestion(
         "test question",
         { wrapId: true },
         {
@@ -183,7 +182,7 @@ describe("scenarios > public > question", () => {
         },
       );
       cy.get("@questionId").then(id => {
-        H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
+        cy.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
           cy.signOut();
           cy.signInAsNormalUser().then(() => {
             cy.visit(`/public/question/${uuid}`);
@@ -196,19 +195,19 @@ describe("scenarios > public > question", () => {
   });
 });
 
-H.describeEE("scenarios [EE] > public > question", () => {
+cy.describeEE("scenarios [EE] > public > question", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
 
-    H.updateSetting("enable-public-sharing", true);
+    cy.updateSetting("enable-public-sharing", true);
   });
 
   it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
-    H.createNativeQuestion(
+    cy.createNativeQuestion(
       {
         name: "Native question with a parameter",
         native: {
@@ -232,7 +231,7 @@ H.describeEE("scenarios [EE] > public > question", () => {
     cy.intercept("/app/locales/de.json").as("deLocale");
 
     cy.get("@questionId").then(id => {
-      H.visitPublicQuestion(id, {
+      cy.visitPublicQuestion(id, {
         params: {
           some_parameter: "some_value",
         },
@@ -244,7 +243,7 @@ H.describeEE("scenarios [EE] > public > question", () => {
 
     cy.wait("@deLocale");
 
-    H.main().findByText("Februar 11, 2025");
+    cy.main().findByText("Februar 11, 2025");
 
     cy.url().should("include", "locale=de");
   });

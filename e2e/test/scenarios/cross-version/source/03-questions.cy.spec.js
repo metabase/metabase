@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import {
   fillAreaUnderLineChart,
   newQuestion,
@@ -49,11 +48,11 @@ it("should create questions", () => {
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Category").click();
 
-  H.visualize();
+  cy.visualize();
 
   cy.get(".bar").should("have.length", 4);
 
-  cy.findByTestId("viz-settings-button").click();
+  cy.openVizSettingsSidebar();
 
   //NOTE: In older versions of Metabase, Display is selected by default. Newer
   // versions default to Data. This will ensure we've selected the right tab
@@ -107,10 +106,10 @@ it("should create questions", () => {
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText("Created At: Quarter");
 
-  H.visualize();
+  cy.visualize();
   cy.get("circle");
 
-  cy.findByTestId("viz-type-button").click();
+  cy.openVizTypeSidebar();
   cy.findByTestId("Area-button").click();
 
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

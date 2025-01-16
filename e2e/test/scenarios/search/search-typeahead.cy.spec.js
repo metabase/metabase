@@ -1,12 +1,11 @@
-import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 
 ["admin", "normal"].forEach(user => {
   describe(`search > ${user} user`, () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signIn(user);
-      H.visitFullAppEmbeddingUrl({
+      cy.visitFullAppEmbeddingUrl({
         url: "/",
         qs: { top_nav: true, search: true },
       });
@@ -31,16 +30,16 @@ import { USERS } from "e2e/support/cypress_data";
 
 describe("command palette", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.updateSetting("search-typeahead-enabled", false);
+    cy.updateSetting("search-typeahead-enabled", false);
     cy.visit("/");
   });
 
   it("should not display search results in the palette when search-typeahead-enabled is false", () => {
-    H.commandPaletteButton().click();
-    H.commandPaletteInput().type("ord");
-    H.commandPalette()
+    cy.commandPaletteButton().click();
+    cy.commandPaletteInput().type("ord");
+    cy.commandPalette()
       .findByRole("option", { name: /View search results/ })
       .should("exist");
   });

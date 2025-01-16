@@ -1,6 +1,5 @@
 import { assocIn } from "icepick";
 
-import { H } from "e2e/support";
 import {
   SAMPLE_DB_ID,
   USER_GROUPS,
@@ -66,11 +65,11 @@ describe(
   { tags: ["@external", "@actions"] },
   () => {
     beforeEach(() => {
-      H.restore("postgres-12");
+      cy.restore("postgres-12");
       cy.signInAsAdmin();
-      H.setActionsEnabledForDB(WRITABLE_DB_ID);
+      cy.setActionsEnabledForDB(WRITABLE_DB_ID);
 
-      H.createModelFromTableName({
+      cy.createModelFromTableName({
         tableName: "orders",
         modelName: "Order",
         idAlias: "modelId",
@@ -106,12 +105,12 @@ describe(
       });
 
       cy.findByRole("link", { name: "New action" }).click();
-      H.fillActionQuery("DELETE FROM orders WHERE id = {{ id }}");
+      cy.fillActionQuery("DELETE FROM orders WHERE id = {{ id }}");
       cy.findByRole("radiogroup", { name: "Field type" })
         .findByText("Number")
         .click();
       cy.findByRole("button", { name: "Save" }).click();
-      H.modal()
+      cy.modal()
         .eq(1)
         .within(() => {
           cy.findByLabelText("Name").type("Delete Order");
@@ -122,7 +121,7 @@ describe(
         .should("be.visible");
 
       openActionEditorFor("Delete Order");
-      H.fillActionQuery(" AND status = 'pending'");
+      cy.fillActionQuery(" AND status = 'pending'");
       cy.findByRole("radiogroup", { name: "Field type" })
         .findByLabelText("Number")
         .should("be.checked");
@@ -135,9 +134,9 @@ describe(
         .should("be.visible");
 
       openActionMenuFor("Delete Order");
-      H.popover().findByText("Archive").click();
+      cy.popover().findByText("Archive").click();
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByText("Archive Delete Order?").should("be.visible");
         cy.findByRole("button", { name: "Archive" }).click();
       });
@@ -145,8 +144,8 @@ describe(
       cy.findByRole("listitem", { name: "Delete Order" }).should("not.exist");
 
       cy.findByLabelText("Actions menu").click();
-      H.popover().findByText("Disable basic actions").click();
-      H.modal().within(() => {
+      cy.popover().findByText("Disable basic actions").click();
+      cy.modal().within(() => {
         cy.findByText("Disable basic actions?").should("be.visible");
         cy.button("Disable").click();
       });
@@ -166,10 +165,10 @@ describe(
       cy.visit("/");
 
       cy.findByTestId("app-bar").findByText("New").click();
-      H.popover().findByText("Action").click();
+      cy.popover().findByText("Action").click();
 
       cy.wait("@getDatabase");
-      H.fillActionQuery(QUERY);
+      cy.fillActionQuery(QUERY);
 
       cy.findByRole("dialog").within(() => {
         cy.findByText(/New Action/)
@@ -179,8 +178,8 @@ describe(
         cy.findByRole("button", { name: "Save" }).click();
       });
 
-      H.modal().eq(1).findByText("Select a model").click();
-      H.entityPickerModal().within(() => {
+      cy.modal().eq(1).findByText("Select a model").click();
+      cy.entityPickerModal().within(() => {
         cy.findByText("Order").click();
       });
 
@@ -201,9 +200,9 @@ describe(
     it("should respect permissions", () => {
       // Enabling actions for sample database as well
       // to test database picker behavior in the action editor
-      H.setActionsEnabledForDB(SAMPLE_DB_ID);
+      cy.setActionsEnabledForDB(SAMPLE_DB_ID);
 
-      H.setTokenFeatures("all");
+      cy.setTokenFeatures("all");
       cy.updatePermissionsGraph({
         [USER_GROUPS.ALL_USERS_GROUP]: {
           [WRITABLE_DB_ID]: {
@@ -230,7 +229,7 @@ describe(
       });
 
       openActionMenuFor(SAMPLE_QUERY_ACTION.name);
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Archive").should("not.exist");
         cy.findByText("View").click();
       });
@@ -259,13 +258,13 @@ describe(
 
       // Check can pick between all databases
       cy.findByRole("dialog").findByText("QA Postgres12").click();
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Sample Database").should("be.visible");
         cy.findByText("QA Postgres12").should("be.visible");
       });
 
       cy.signInAsAdmin();
-      H.setActionsEnabledForDB(SAMPLE_DB_ID, false);
+      cy.setActionsEnabledForDB(SAMPLE_DB_ID, false);
       cy.signIn("normal");
       cy.reload();
 
@@ -280,16 +279,16 @@ describe(
     it("should display parameters for variable template tags only", () => {
       cy.visit("/");
       cy.findByTestId("app-bar").findByText("New").click();
-      H.popover().findByText("Action").click();
+      cy.popover().findByText("Action").click();
 
-      H.fillActionQuery("{{#1-orders-model}}");
+      cy.fillActionQuery("{{#1-orders-model}}");
       cy.findByLabelText("#1-orders-model").should("not.exist");
 
-      H.fillActionQuery("{{snippet:101}}");
+      cy.fillActionQuery("{{snippet:101}}");
       cy.findByLabelText("#1-orders-model").should("not.exist");
       cy.findByLabelText("101").should("not.exist");
 
-      H.fillActionQuery("{{id}}");
+      cy.fillActionQuery("{{id}}");
       cy.findByLabelText("#1-orders-model").should("not.exist");
       cy.findByLabelText("101").should("not.exist");
       cy.findByLabelText("ID").should("be.visible");
@@ -299,7 +298,7 @@ describe(
       const actionName = "Update";
 
       cy.get("@modelId").then(modelId => {
-        H.createImplicitActions({ modelId });
+        cy.createImplicitActions({ modelId });
 
         cy.visit(`/model/${modelId}/detail`);
         cy.wait("@getModel");
@@ -309,7 +308,7 @@ describe(
 
       runActionFor(actionName);
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByLabelText("ID").type("1");
         cy.findByLabelText("User ID").type("999999");
         cy.button(actionName).click();
@@ -341,22 +340,22 @@ describe(
         "disableActionSharing",
       );
 
-      H.resetTestTable({ type: dialect, table: WRITABLE_TEST_TABLE });
-      H.restore(`${dialect}-writable`);
+      cy.resetTestTable({ type: dialect, table: WRITABLE_TEST_TABLE });
+      cy.restore(`${dialect}-writable`);
       cy.signInAsAdmin();
-      H.resyncDatabase({
+      cy.resyncDatabase({
         dbId: WRITABLE_DB_ID,
         tableName: WRITABLE_TEST_TABLE,
       });
 
-      H.createModelFromTableName({
+      cy.createModelFromTableName({
         tableName: WRITABLE_TEST_TABLE,
         idAlias: "writableModelId",
       });
     });
 
     it("should allow action execution from the model detail page", () => {
-      H.queryWritableDB(
+      cy.queryWritableDB(
         `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
         dialect,
       ).then(result => {
@@ -365,7 +364,7 @@ describe(
       });
 
       cy.get("@writableModelId").then(modelId => {
-        H.createAction({
+        cy.createAction({
           ...SAMPLE_WRITABLE_QUERY_ACTION,
           model_id: modelId,
         });
@@ -375,7 +374,7 @@ describe(
 
       runActionFor(SAMPLE_QUERY_ACTION.name);
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
         cy.button(SAMPLE_QUERY_ACTION.name).click();
       });
@@ -384,7 +383,7 @@ describe(
         .findByText(`${SAMPLE_QUERY_ACTION.name} ran successfully`)
         .should("be.visible");
 
-      H.queryWritableDB(
+      cy.queryWritableDB(
         `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
         dialect,
       ).then(result => {
@@ -398,11 +397,11 @@ describe(
       const IMPLICIT_ACTION_NAME = "Update";
 
       cy.get("@writableModelId").then(modelId => {
-        H.createAction({
+        cy.createAction({
           ...SAMPLE_WRITABLE_QUERY_ACTION,
           model_id: modelId,
         });
-        H.createAction({
+        cy.createAction({
           type: "implicit",
           kind: "row/update",
           name: IMPLICIT_ACTION_NAME,
@@ -431,7 +430,7 @@ describe(
         cy.findByRole("form").should("not.exist");
         cy.button(SAMPLE_QUERY_ACTION.name).should("not.exist");
 
-        H.queryWritableDB(
+        cy.queryWritableDB(
           `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
           dialect,
         ).then(result => {
@@ -456,7 +455,7 @@ describe(
         cy.findByRole("form").should("not.exist");
         cy.button(IMPLICIT_ACTION_NAME).should("not.exist");
 
-        H.queryWritableDB(
+        cy.queryWritableDB(
           `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 2`,
           dialect,
         ).then(result => {
@@ -499,7 +498,7 @@ describe(
       verifyScoreValue(0, dialect);
 
       cy.get("@writableModelId").then(modelId => {
-        H.createAction({
+        cy.createAction({
           ...SAMPLE_WRITABLE_QUERY_ACTION,
           model_id: modelId,
         });
@@ -509,7 +508,7 @@ describe(
 
       openActionEditorFor(SAMPLE_QUERY_ACTION.name);
 
-      H.fillActionQuery(" [[and status = {{ current_status}}]]");
+      cy.fillActionQuery(" [[and status = {{ current_status}}]]");
       cy.findAllByTestId("form-field-container")
         .filter(":contains('Current Status')")
         .within(() => {
@@ -517,7 +516,7 @@ describe(
           cy.icon("gear").click();
         });
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByLabelText("Required").uncheck();
       });
 
@@ -525,7 +524,7 @@ describe(
 
       runActionFor(SAMPLE_QUERY_ACTION.name);
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
         cy.findByLabelText("Current Status").should("not.exist");
 
@@ -546,14 +545,14 @@ describe(
           cy.icon("gear").click();
         });
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByLabelText("Required").check();
       });
       cy.findByRole("button", { name: "Update" }).click();
 
       runActionFor(SAMPLE_QUERY_ACTION.name);
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
         cy.findByLabelText("Current Status").should("not.exist");
 
@@ -579,7 +578,7 @@ describe(
 
       runActionFor(SAMPLE_QUERY_ACTION.name);
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
         cy.button(SAMPLE_QUERY_ACTION.name).should("be.disabled");
 
@@ -622,7 +621,7 @@ describe(
 
       runActionFor("Create");
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByLabelText("Created At").should("not.exist");
         cy.findByLabelText("Team Name").type("Zebras");
         cy.findByLabelText("Score").type("1");
@@ -635,7 +634,7 @@ describe(
         .should("be.visible");
 
       // show toast
-      H.queryWritableDB(
+      cy.queryWritableDB(
         `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE team_name = 'Zebras'`,
         dialect,
       ).then(result => {
@@ -649,7 +648,7 @@ describe(
 
     it("should allow public sharing of query action and execution", () => {
       cy.get("@writableModelId").then(modelId => {
-        H.createAction({
+        cy.createAction({
           ...SAMPLE_WRITABLE_QUERY_ACTION,
           model_id: modelId,
         });
@@ -664,7 +663,7 @@ describe(
 
       openActionEditorFor(SAMPLE_WRITABLE_QUERY_ACTION.name);
 
-      H.fillActionQuery(" [[ AND status = {{new_status}} ]]");
+      cy.fillActionQuery(" [[ AND status = {{new_status}} ]]");
 
       cy.findAllByTestId("form-field-container")
         .filter(":contains('New Status')")
@@ -675,7 +674,7 @@ describe(
           cy.icon("gear").click();
         });
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByLabelText("Required").uncheck();
       });
 
@@ -694,7 +693,7 @@ describe(
           `${SAMPLE_WRITABLE_QUERY_ACTION.name} ran successfully`,
         ).should("be.visible");
 
-        H.queryWritableDB(
+        cy.queryWritableDB(
           `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
           dialect,
         ).then(result => {
@@ -747,7 +746,7 @@ describe(
 
         cy.findByText("Update ran successfully").should("be.visible");
 
-        H.queryWritableDB(
+        cy.queryWritableDB(
           `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 2`,
           dialect,
         ).then(result => {
@@ -766,8 +765,8 @@ describe(
         role,
         `GRANT SELECT ON ${WRITABLE_TEST_TABLE} TO ${role};`,
       );
-      H.setTokenFeatures("all");
-      H.queryWritableDB(sql);
+      cy.setTokenFeatures("all");
+      cy.queryWritableDB(sql);
 
       cy.request("PUT", `/api/user/${IMPERSONATED_USER_ID}`, {
         login_attributes: { role },
@@ -797,7 +796,7 @@ describe(
         ],
       );
 
-      H.queryWritableDB(
+      cy.queryWritableDB(
         `SELECT *
          FROM ${WRITABLE_TEST_TABLE}
          WHERE id = 1`,
@@ -808,7 +807,7 @@ describe(
       });
 
       cy.get("@writableModelId").then(modelId => {
-        H.createAction({
+        cy.createAction({
           ...SAMPLE_WRITABLE_QUERY_ACTION,
           model_id: modelId,
         });
@@ -819,7 +818,7 @@ describe(
 
       runActionFor(SAMPLE_QUERY_ACTION.name);
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByLabelText(TEST_PARAMETER.name).type("1");
         cy.button(SAMPLE_QUERY_ACTION.name).click();
 
@@ -828,7 +827,7 @@ describe(
         );
       });
 
-      H.queryWritableDB(
+      cy.queryWritableDB(
         `SELECT *
          FROM ${WRITABLE_TEST_TABLE}
          WHERE id = 1`,
@@ -856,7 +855,7 @@ function openActionMenuFor(actionName) {
 
 function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
   openActionMenuFor(actionName);
-  H.popover()
+  cy.popover()
     .findByText(isReadOnly ? "View" : "Edit")
     .click();
 }
@@ -864,7 +863,7 @@ function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
 function assertQueryEditorDisabled() {
   // Ace doesn't act as a normal input, so we can't use `should("be.disabled")`
   // Instead we'd assert that a user can't type in the editor
-  H.fillActionQuery("QWERTY");
+  cy.fillActionQuery("QWERTY");
   cy.findByText("QWERTY").should("not.exist");
 }
 
@@ -890,7 +889,7 @@ function disableSharingFor(actionName) {
     cy.findByRole("button", { name: "Action settings" }).click();
     cy.findByLabelText("Make public").should("be.checked").click();
   });
-  H.modal()
+  cy.modal()
     .eq(1)
     .within(() => {
       cy.findByText("Disable this public link?").should("be.visible");
@@ -905,7 +904,7 @@ function disableSharingFor(actionName) {
 function resetAndVerifyScoreValue(dialect) {
   const newValue = 0;
 
-  H.queryWritableDB(
+  cy.queryWritableDB(
     `UPDATE ${WRITABLE_TEST_TABLE} SET score = ${newValue} WHERE id = 1`,
     dialect,
   );
@@ -914,7 +913,7 @@ function resetAndVerifyScoreValue(dialect) {
 }
 
 function verifyScoreValue(value, dialect) {
-  H.queryWritableDB(
+  cy.queryWritableDB(
     `SELECT * FROM ${WRITABLE_TEST_TABLE} WHERE id = 1`,
     dialect,
   ).then(result => {

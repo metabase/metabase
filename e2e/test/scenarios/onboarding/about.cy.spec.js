@@ -1,8 +1,6 @@
-import { H } from "e2e/support";
-
 describe("scenarios > about Metabase", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.visit("/");

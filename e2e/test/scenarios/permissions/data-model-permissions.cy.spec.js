@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -7,11 +6,11 @@ const { ORDERS_ID } = SAMPLE_DATABASE;
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DATA_MODEL_PERMISSION_INDEX = 3;
 
-H.describeEE("scenarios > admin > permissions", () => {
+cy.describeEE("scenarios > admin > permissions", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
 
     cy.intercept("PUT", "/api/table/*").as("tableUpdate");
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
@@ -24,13 +23,13 @@ H.describeEE("scenarios > admin > permissions", () => {
   it("allows data model permission for a table in database", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
     // Change permission
-    H.modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Granular");
-    H.modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
+    cy.modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Granular");
+    cy.modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
     savePermissionsGraph();
 
     // Assert the permission has changed
-    H.assertPermissionForItem("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
+    cy.assertPermissionForItem("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
     // Check limited access as a non-admin user
     cy.signInAsNormalUser();
@@ -73,12 +72,12 @@ H.describeEE("scenarios > admin > permissions", () => {
   it("allows changing data model permission for an entire database", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
     // Change data model permission
-    H.modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Yes");
+    cy.modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
     savePermissionsGraph();
 
     // Assert the permission has changed
-    H.assertPermissionForItem("All Users", DATA_MODEL_PERMISSION_INDEX, "Yes");
+    cy.assertPermissionForItem("All Users", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
     // Check limited access as a non-admin user
     cy.signInAsNormalUser();
@@ -107,8 +106,8 @@ H.describeEE("scenarios > admin > permissions", () => {
   it("shows `Field access denied` for foreign keys from tables user does not have access to (metabase#21762)", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
     // Change data model permission
-    H.modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Granular");
-    H.modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
+    cy.modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Granular");
+    cy.modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
     savePermissionsGraph();
 
@@ -127,7 +126,7 @@ H.describeEE("scenarios > admin > permissions", () => {
 
 function savePermissionsGraph() {
   cy.button("Save changes").click();
-  H.modal().within(() => {
+  cy.modal().within(() => {
     cy.findByText("Save permissions?");
     cy.findByText("Are you sure you want to do this?");
     cy.button("Yes").click();

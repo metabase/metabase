@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 function checkFavicon(url) {
@@ -15,11 +14,11 @@ function checkLogo() {
 
 const MB = 1024 * 1024;
 
-H.describeEE("formatting > whitelabel", () => {
+cy.describeEE("formatting > whitelabel", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
   });
 
   describe("company name", () => {
@@ -32,7 +31,7 @@ H.describeEE("formatting > whitelabel", () => {
       // Helps scroll the page up in order to see "Saved" notification
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Application Name").click();
-      H.undoToast().findByText("Changes saved").should("be.visible");
+      cy.undoToast().findByText("Changes saved").should("be.visible");
       cy.findByDisplayValue(COMPANY_NAME);
       cy.log("Company name has been updated!");
     });
@@ -60,7 +59,7 @@ H.describeEE("formatting > whitelabel", () => {
         cy.log("Add a logo");
         cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
           logo_data => {
-            H.updateSetting(
+            cy.updateSetting(
               "application-logo-url",
               `data:image/jpeg;base64,${logo_data}`,
             );
@@ -90,7 +89,7 @@ H.describeEE("formatting > whitelabel", () => {
       it("should work for people that set favicon URL before we change the input to file input", () => {
         const faviconUrl =
           "https://cdn.ecosia.org/assets/images/ico/favicon.ico";
-        H.updateSetting("application-favicon-url", faviconUrl);
+        cy.updateSetting("application-favicon-url", faviconUrl);
         checkFavicon(faviconUrl);
         cy.signInAsNormalUser();
         cy.visit("/");
@@ -110,7 +109,7 @@ H.describeEE("formatting > whitelabel", () => {
           },
           { force: true },
         );
-        H.undoToast().findByText("Changes saved").should("be.visible");
+        cy.undoToast().findByText("Changes saved").should("be.visible");
         cy.readFile("e2e/support/assets/favicon.ico", "base64").then(
           base64Url => {
             const faviconUrl = `data:image/jpeg;base64,${base64Url}`;
@@ -145,7 +144,7 @@ H.describeEE("formatting > whitelabel", () => {
             cy.findByRole("searchbox", {
               name: "Login and unsubscribe pages",
             }).click();
-            H.selectDropdown().findByText("Custom").click();
+            cy.selectDropdown().findByText("Custom").click();
             /**
              * Clicking "Choose File" doesn't actually open the file browser on Cypress,
              * so I need to use `selectFile` with the file input instead.
@@ -167,7 +166,7 @@ H.describeEE("formatting > whitelabel", () => {
             cy.findByRole("searchbox", {
               name: "Login and unsubscribe pages",
             }).click();
-            H.selectDropdown().findByText("Custom").click();
+            cy.selectDropdown().findByText("Custom").click();
             cy.log("test uploading a corrupted file");
             cy.findByTestId("login-page-illustration-setting").within(() => {
               cy.findByTestId("file-input").selectFile(
@@ -201,8 +200,8 @@ H.describeEE("formatting > whitelabel", () => {
                 "The image you chose is corrupted. Please choose another one.",
               ).should("not.exist");
             });
-            H.undoToast().findByText("Changes saved").should("be.visible");
-            H.undoToast().icon("close").click();
+            cy.undoToast().findByText("Changes saved").should("be.visible");
+            cy.undoToast().icon("close").click();
 
             cy.log("test removing the custom illustration");
             cy.findByTestId("login-page-illustration-setting").within(() => {
@@ -212,14 +211,14 @@ H.describeEE("formatting > whitelabel", () => {
               );
               cy.findByDisplayValue("Lighthouse").should("be.visible");
             });
-            H.undoToast().findByText("Changes saved").should("be.visible");
-            H.undoToast().icon("close").click();
+            cy.undoToast().findByText("Changes saved").should("be.visible");
+            cy.undoToast().icon("close").click();
 
             cy.log("test uploading a valid image file");
             cy.findByTestId("login-page-illustration-setting")
               .findByRole("searchbox", { name: "Login and unsubscribe pages" })
               .click();
-            H.selectDropdown().findByText("Custom").click();
+            cy.selectDropdown().findByText("Custom").click();
             cy.findByTestId("login-page-illustration-setting").within(() => {
               cy.findByTestId("file-input").selectFile(
                 {
@@ -230,7 +229,7 @@ H.describeEE("formatting > whitelabel", () => {
               );
               cy.findByText("logo.jpeg").should("be.visible");
             });
-            H.undoToast().findByText("Changes saved").should("be.visible");
+            cy.undoToast().findByText("Changes saved").should("be.visible");
 
             cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
               logo_data => {
@@ -261,7 +260,7 @@ H.describeEE("formatting > whitelabel", () => {
             cy.findByRole("searchbox", {
               name: "Login and unsubscribe pages",
             }).click();
-            H.selectDropdown().findByText("No illustration").click();
+            cy.selectDropdown().findByText("No illustration").click();
 
             cy.signOut();
             cy.visit("/");
@@ -285,7 +284,7 @@ H.describeEE("formatting > whitelabel", () => {
           );
 
           cy.findByRole("searchbox", { name: "Landing page" }).click();
-          H.selectDropdown().findByText("Custom").click();
+          cy.selectDropdown().findByText("Custom").click();
 
           cy.findByTestId("landing-page-illustration-setting").within(() => {
             cy.findByTestId("file-input").selectFile(
@@ -297,7 +296,7 @@ H.describeEE("formatting > whitelabel", () => {
             );
             cy.findByText("logo.jpeg").should("be.visible");
           });
-          H.undoToast().findByText("Changes saved").should("be.visible");
+          cy.undoToast().findByText("Changes saved").should("be.visible");
 
           cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
             logo_data => {
@@ -315,7 +314,7 @@ H.describeEE("formatting > whitelabel", () => {
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
           cy.findByLabelText("Landing page").click();
-          H.selectDropdown().findByText("No illustration").click();
+          cy.selectDropdown().findByText("No illustration").click();
 
           cy.visit("/");
           cy.findByTestId("landing-page-illustration").should("not.exist");
@@ -333,7 +332,7 @@ H.describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When calculations return no results",
           }).click();
-          H.selectDropdown().findByText("Custom").click();
+          cy.selectDropdown().findByText("Custom").click();
 
           cy.findByTestId("no-data-illustration-setting").within(() => {
             cy.findByTestId("file-input").selectFile(
@@ -345,7 +344,7 @@ H.describeEE("formatting > whitelabel", () => {
             );
             cy.findByText("logo.jpeg").should("be.visible");
           });
-          H.undoToast().findByText("Changes saved").should("be.visible");
+          cy.undoToast().findByText("Changes saved").should("be.visible");
 
           cy.createDashboardWithQuestions({
             dashboardName: "No results dashboard",
@@ -364,7 +363,7 @@ H.describeEE("formatting > whitelabel", () => {
 
           cy.log("test custom illustration");
 
-          H.visitDashboard("@dashboardId");
+          cy.visitDashboard("@dashboardId");
           cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
             logo_data => {
               const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
@@ -377,7 +376,7 @@ H.describeEE("formatting > whitelabel", () => {
             },
           );
 
-          H.visitQuestion("@questionId");
+          cy.visitQuestion("@questionId");
           cy.get("@imageDataUrl").then(imageDataUrl => {
             cy.findByAltText("No results").should(
               "have.attr",
@@ -392,12 +391,12 @@ H.describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When calculations return no results",
           }).click();
-          H.selectDropdown().findByText("No illustration").click();
+          cy.selectDropdown().findByText("No illustration").click();
 
-          H.visitDashboard("@dashboardId");
+          cy.visitDashboard("@dashboardId");
           cy.findByAltText("No results").should("not.exist");
 
-          H.visitQuestion("@questionId");
+          cy.visitQuestion("@questionId");
           cy.findByAltText("No results").should("not.exist");
         });
       });
@@ -415,7 +414,7 @@ H.describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When no objects can be found",
           }).click();
-          H.selectDropdown().findByText("Custom").click();
+          cy.selectDropdown().findByText("Custom").click();
 
           cy.findByTestId("no-object-illustration-setting").within(() => {
             cy.findByTestId("file-input").selectFile(
@@ -427,15 +426,15 @@ H.describeEE("formatting > whitelabel", () => {
             );
             cy.findByText("logo.jpeg").should("be.visible");
           });
-          H.undoToast().findByText("Changes saved").should("be.visible");
+          cy.undoToast().findByText("Changes saved").should("be.visible");
 
           cy.log("test custom illustration");
 
           cy.findByRole("navigation").findByText("Exit admin").click();
-          H.appBar().findByText("New").click();
-          H.popover().findByText("Dashboard").click();
-          H.modal().findByTestId("collection-picker-button").click();
-          H.entityPickerModal().within(() => {
+          cy.appBar().findByText("New").click();
+          cy.popover().findByText("Dashboard").click();
+          cy.modal().findByTestId("collection-picker-button").click();
+          cy.entityPickerModal().within(() => {
             cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
               logo_data => {
                 const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
@@ -462,13 +461,13 @@ H.describeEE("formatting > whitelabel", () => {
           cy.findByRole("searchbox", {
             name: "When no objects can be found",
           }).click();
-          H.selectDropdown().findByText("No illustration").click();
+          cy.selectDropdown().findByText("No illustration").click();
 
           cy.findByRole("navigation").findByText("Exit admin").click();
-          H.appBar().findByText("New").click();
-          H.popover().findByText("Dashboard").click();
-          H.modal().findByTestId("collection-picker-button").click();
-          H.entityPickerModal().within(() => {
+          cy.appBar().findByText("New").click();
+          cy.popover().findByText("Dashboard").click();
+          cy.modal().findByTestId("collection-picker-button").click();
+          cy.entityPickerModal().within(() => {
             cy.findByText(emptyCollectionName).click();
             cy.findByAltText("No results").should("not.exist");
 
@@ -513,7 +512,7 @@ H.describeEE("formatting > whitelabel", () => {
         .findByText("Show links and references to Metabase")
         .click();
 
-      H.undoToast().findByText("Changes saved").should("be.visible");
+      cy.undoToast().findByText("Changes saved").should("be.visible");
 
       cy.visit("/");
       cy.findByAltText("Metabot").should("not.exist");
@@ -621,7 +620,7 @@ H.describeEE("formatting > whitelabel", () => {
     });
 
     it("should link to metabase help when the whitelabel feature is disabled (eg OSS)", () => {
-      H.setTokenFeatures("none");
+      cy.setTokenFeatures("none");
 
       cy.signInAsNormalUser();
       cy.visit("/");
@@ -644,19 +643,19 @@ H.describeEE("formatting > whitelabel", () => {
         .clear()
         .type("ftp://something")
         .blur();
-      H.main()
+      cy.main()
         .findByText(/This needs to be/i)
         .should("exist");
 
       getHelpLinkCustomDestinationInput().clear().type("https://").blur();
 
-      H.main()
+      cy.main()
         .findByText("Please make sure this is a valid URL")
         .should("exist");
 
       getHelpLinkCustomDestinationInput().type("example");
 
-      H.main()
+      cy.main()
         .findByText("Please make sure this is a valid URL")
         .should("not.exist");
     });
@@ -671,7 +670,7 @@ H.describeEE("formatting > whitelabel", () => {
     });
 
     it("should not render the widget when users does not have a valid license", () => {
-      H.setTokenFeatures("none");
+      cy.setTokenFeatures("none");
       cy.reload();
       cy.findByLabelText("Landing page custom destination").should("not.exist");
     });
@@ -682,7 +681,7 @@ H.describeEE("formatting > whitelabel", () => {
         .clear()
         .type("/test-1")
         .blur();
-      H.undoToast().findByText("Changes saved").should("be.visible");
+      cy.undoToast().findByText("Changes saved").should("be.visible");
 
       cy.findByTestId("landing-page-error").should("not.exist");
       cy.findByRole("navigation").findByText("Exit admin").click();
@@ -695,7 +694,7 @@ H.describeEE("formatting > whitelabel", () => {
         .clear()
         .type("/test-2")
         .blur();
-      H.undoToast().findByText("Changes saved").should("be.visible");
+      cy.undoToast().findByText("Changes saved").should("be.visible");
 
       // set to valid value then test invalid value is not persisted
       cy.findByLabelText("Landing page custom destination")
@@ -720,12 +719,12 @@ function changeLoadingMessage(message) {
 }
 
 function setApplicationFontTo(font) {
-  H.updateSetting("application-font", font);
+  cy.updateSetting("application-font", font);
 }
 
-const openSettingsMenu = () => H.appBar().icon("gear").click();
+const openSettingsMenu = () => cy.appBar().icon("gear").click();
 
-const helpLink = () => H.popover().findByRole("link", { name: "Help" });
+const helpLink = () => cy.popover().findByRole("link", { name: "Help" });
 
 const getHelpLinkCustomDestinationInput = () =>
   cy.findByPlaceholderText("Enter a URL it should go to");

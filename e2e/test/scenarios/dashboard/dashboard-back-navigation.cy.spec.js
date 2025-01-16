@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -15,9 +14,9 @@ const MAX_XRAY_WAIT_TIMEOUT = 15000;
 
 describe("scenarios > dashboard > dashboard back navigation", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+    cy.setActionsEnabledForDB(SAMPLE_DB_ID);
 
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/card/*").as("card");
@@ -33,49 +32,49 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     const dashboardName = "Orders in a dashboard";
     const backButtonLabel = `Back to ${dashboardName}`;
 
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@dashboard");
     cy.findByTestId("dashcard").findByText("Orders").click();
     cy.wait("@cardQuery");
     cy.findByLabelText(backButtonLabel).should("be.visible");
-    H.openNotebook();
-    H.summarize({ mode: "notebook" });
-    H.popover().findByText("Count of rows").click();
+    cy.openNotebook();
+    cy.summarize({ mode: "notebook" });
+    cy.popover().findByText("Count of rows").click();
     cy.findByLabelText(backButtonLabel).should("be.visible");
-    H.visualize();
+    cy.visualize();
     cy.findByLabelText(backButtonLabel).click();
-    H.modal().button("Discard changes").click();
+    cy.modal().button("Discard changes").click();
     cy.findByTestId("dashboard-header")
       .findByText(dashboardName)
       .should("be.visible");
 
-    H.getDashboardCard().realHover();
-    H.getDashboardCardMenu().click();
-    H.popover().findByText("Edit question").click();
+    cy.getDashboardCard().realHover();
+    cy.getDashboardCardMenu().click();
+    cy.popover().findByText("Edit question").click();
     cy.findByLabelText(backButtonLabel).click();
     cy.findByTestId("dashboard-header")
       .findByText(dashboardName)
       .should("be.visible");
 
-    H.appBar().findByText("Our analytics").click();
+    cy.appBar().findByText("Our analytics").click();
     cy.findByTestId("collection-table").findByText("Orders").click();
     cy.findByLabelText(backButtonLabel).should("not.exist");
   });
 
   it("should expand the native editor when editing a question from a dashboard", () => {
     createDashboardWithNativeCard();
-    H.visitDashboard("@dashboardId");
-    H.getDashboardCard().realHover();
-    H.getDashboardCardMenu().click();
-    H.popover().findByText("Edit question").click();
-    H.nativeEditor().should("be.visible");
+    cy.visitDashboard("@dashboardId");
+    cy.getDashboardCard().realHover();
+    cy.getDashboardCardMenu().click();
+    cy.popover().findByText("Edit question").click();
+    cy.nativeEditor().should("be.visible");
 
-    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
-    H.getDashboardCard().findByText("Orders SQL").click();
+    cy.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
+    cy.getDashboardCard().findByText("Orders SQL").click();
     cy.findByTestId("native-query-top-bar")
       .findByText("This question is written in SQL.")
       .should("be.visible");
-    H.nativeEditor().should("not.be.visible");
+    cy.nativeEditor().should("not.be.visible");
   });
 
   it("should display a back to the dashboard button in table x-ray dashboards", () => {
@@ -83,17 +82,17 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.visit(`/auto/dashboard/table/${ORDERS_ID}?#show=${MAX_CARDS}`);
     cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
-    H.getDashboardCards()
+    cy.getDashboardCards()
       .filter(`:contains("${cardTitle}")`)
       .findByText(cardTitle)
       .click();
     cy.wait("@dataset");
 
-    H.queryBuilderHeader()
+    cy.queryBuilderHeader()
       .findByLabelText(/Back to .*Orders.*/)
       .click();
 
-    H.getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
+    cy.getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
   });
 
   it("should display a back to the dashboard button in model x-ray dashboards", () => {
@@ -102,44 +101,44 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.visit(`/auto/dashboard/model/${ORDERS_QUESTION_ID}?#show=${MAX_CARDS}`);
     cy.wait("@dataset", { timeout: MAX_XRAY_WAIT_TIMEOUT });
 
-    H.getDashboardCards()
+    cy.getDashboardCards()
       .filter(`:contains("${cardTitle}")`)
       .findByText(cardTitle)
       .click();
     cy.wait("@dataset");
 
-    H.queryBuilderHeader()
+    cy.queryBuilderHeader()
       .findByLabelText(/Back to .*Orders.*/)
       .click();
 
-    H.getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
+    cy.getDashboardCards().filter(`:contains("${cardTitle}")`).should("exist");
   });
 
   it("should preserve query results when navigating between the dashboard and the query builder", () => {
     createDashboardWithCards();
-    H.visitDashboard("@dashboardId");
+    cy.visitDashboard("@dashboardId");
     cy.wait("@dashboard");
     cy.wait("@dashcardQuery");
 
-    H.getDashboardCard().within(() => {
+    cy.getDashboardCard().within(() => {
       cy.findByText("110.93").should("be.visible"); // table data
       cy.findByText("Orders").click();
       cy.wait("@cardQuery");
     });
 
-    H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
+    cy.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     // cached data
-    H.getDashboardCard(0).findByText("110.93").should("be.visible");
-    H.getDashboardCard(1).findByText("Text card").should("be.visible");
-    H.getDashboardCard(2).findByText("Action card").should("be.visible");
+    cy.getDashboardCard(0).findByText("110.93").should("be.visible");
+    cy.getDashboardCard(1).findByText("Text card").should("be.visible");
+    cy.getDashboardCard(2).findByText("Action card").should("be.visible");
 
     cy.get("@dashboard.all").should("have.length", 1);
     cy.get("@dashcardQuery.all").should("have.length", 1);
 
-    H.appBar().findByText("Our analytics").click();
+    cy.appBar().findByText("Our analytics").click();
 
-    H.collectionTable().within(() => {
+    cy.collectionTable().within(() => {
       cy.findByText("Test Dashboard").click();
       cy.wait("@dashboard");
       cy.wait("@dashcardQuery");
@@ -148,27 +147,27 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   });
 
   it("should not preserve query results when the question changes during navigation", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@dashboard");
     cy.wait("@dashcardQuery");
 
-    H.getDashboardCard().within(() => {
+    cy.getDashboardCard().within(() => {
       cy.findByText("134.91").should("be.visible"); // table data
       cy.findByText("Orders").click();
       cy.wait("@cardQuery");
     });
 
-    H.queryBuilderHeader().within(() => {
+    cy.queryBuilderHeader().within(() => {
       cy.findByDisplayValue("Orders").clear().type("Orders question").blur();
       cy.wait("@updateCard");
       cy.button(/Summarize/).click();
     });
 
-    H.rightSidebar().within(() => {
+    cy.rightSidebar().within(() => {
       cy.findByText("Total").click();
     });
 
-    H.queryBuilderHeader().within(() => {
+    cy.queryBuilderHeader().within(() => {
       cy.findByText("Save").click();
     });
 
@@ -177,13 +176,13 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
       cy.wait("@updateCard");
     });
 
-    H.queryBuilderHeader().within(() => {
+    cy.queryBuilderHeader().within(() => {
       cy.findByLabelText("Back to Orders in a dashboard").click();
       cy.wait("@dashcardQuery");
       cy.get("@dashboard.all").should("have.length", 1);
     });
 
-    H.getDashboardCard().within(() => {
+    cy.getDashboardCard().within(() => {
       cy.findByText("Orders question").should("be.visible");
       cy.findByText("Count").should("be.visible"); // aggregated data
     });
@@ -192,43 +191,43 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   it("should navigate back to a dashboard with permission errors", () => {
     createDashboardWithPermissionError();
     cy.signInAsNormalUser();
-    H.visitDashboard("@dashboardId");
+    cy.visitDashboard("@dashboardId");
     cy.wait("@dashboard");
     cy.wait("@dashcardQuery");
 
-    H.getDashboardCard(1).findByText(PERMISSION_ERROR);
-    H.getDashboardCard(0).findByText("Orders 1").click();
+    cy.getDashboardCard(1).findByText(PERMISSION_ERROR);
+    cy.getDashboardCard(0).findByText("Orders 1").click();
     cy.wait("@card");
 
-    H.queryBuilderHeader()
+    cy.queryBuilderHeader()
       .findByLabelText("Back to Orders in a dashboard")
       .click();
 
-    H.getDashboardCard(1).findByText(PERMISSION_ERROR);
+    cy.getDashboardCard(1).findByText(PERMISSION_ERROR);
     cy.get("@dashboard.all").should("have.length", 1);
     cy.get("@dashcardQuery.all").should("have.length", 1);
   });
 
   it("should return to dashboard with specific tab selected", () => {
-    H.visitDashboardAndCreateTab({
+    cy.visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
       save: false,
     });
 
     // Add card to second tab
     cy.icon("pencil").click();
-    H.openQuestionsSidebar();
-    H.sidebar().within(() => {
+    cy.openQuestionsSidebar();
+    cy.sidebar().within(() => {
       cy.findByText("Orders, Count").click();
     });
-    H.saveDashboard();
+    cy.saveDashboard();
 
-    H.getDashboardCard().within(() => {
+    cy.getDashboardCard().within(() => {
       cy.findByText("Orders, Count").click();
       cy.wait("@card");
     });
 
-    H.queryBuilderHeader()
+    cy.queryBuilderHeader()
       .findByLabelText("Back to Orders in a dashboard")
       .click();
 
@@ -241,7 +240,7 @@ describe(
   { tags: ["@external", "@actions"] },
   () => {
     beforeEach(() => {
-      H.restore("postgres-12");
+      cy.restore("postgres-12");
       cy.signInAsAdmin();
       cy.intercept("GET", "/api/dashboard/*").as("dashboard");
       cy.intercept("GET", "/api/card/*").as("card");
@@ -263,7 +262,7 @@ describe(
       // initial loading of the dashboard with card
       cy.get("@dashcardQuery.all").should("have.length", 1);
 
-      H.filterWidget().findByPlaceholderText("sleep").clear().type("1{enter}");
+      cy.filterWidget().findByPlaceholderText("sleep").clear().type("1{enter}");
 
       cy.wait("@dashcardQuery");
 
@@ -271,22 +270,28 @@ describe(
       cy.get("@dashcardQuery.all").should("have.length", 2);
 
       cy.log("drill down to the question");
-      H.getDashboardCard().within(() => {
+      cy.getDashboardCard().within(() => {
         cy.findByText("Sleep card").click();
       });
 
-      H.filterWidget().findByPlaceholderText("sleep").should("have.value", "1");
+      cy.filterWidget()
+        .findByPlaceholderText("sleep")
+        .should("have.value", "1");
       // if we do not wait for this query, it's canceled and re-trigered on dashboard
       cy.wait("@card");
 
       cy.log("navigate back to the dashboard");
-      H.queryBuilderHeader().findByLabelText("Back to Sleep dashboard").click();
+      cy.queryBuilderHeader()
+        .findByLabelText("Back to Sleep dashboard")
+        .click();
 
-      H.getDashboardCard().within(() => {
+      cy.getDashboardCard().within(() => {
         cy.findByText("Sleep card").should("be.visible");
       });
 
-      H.filterWidget().findByPlaceholderText("sleep").should("have.value", "1");
+      cy.filterWidget()
+        .findByPlaceholderText("sleep")
+        .should("have.value", "1");
 
       // cached data is used, no re-fetching should happen
       cy.get("@dashcardQuery.all").should("have.length", 2);
@@ -305,17 +310,17 @@ describe(
       });
       cy.wait("@dashboard");
 
-      H.getDashboardCard().within(() => {
+      cy.getDashboardCard().within(() => {
         cy.findByTestId("loading-indicator").should("be.visible");
         cy.findByText("Sleep card").click();
         cy.wait("@card");
       });
 
-      H.queryBuilderHeader().within(() => {
+      cy.queryBuilderHeader().within(() => {
         cy.findByLabelText("Back to Sleep dashboard").click();
       });
 
-      H.getDashboardCard().within(() => {
+      cy.getDashboardCard().within(() => {
         cy.findByText("Sleep card").should("be.visible");
       });
 
@@ -367,13 +372,13 @@ const createDashboardWithCards = () => {
   cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
     cy.createQuestion(questionDetails).then(({ body: { id: question_id } }) => {
       cy.createQuestion(modelDetails).then(({ body: { id: model_id } }) => {
-        H.createAction({ ...actionDetails, model_id }).then(
+        cy.createAction({ ...actionDetails, model_id }).then(
           ({ body: { id: action_id } }) => {
             cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
               dashcards: [
                 { id: -1, card_id: question_id, ...questionDashcardDetails },
-                H.getTextCardDetails({ id: -2, size_y: 1 }),
-                H.getActionCardDetails({ id: -3, action_id }),
+                cy.getTextCardDetails({ id: -2, size_y: 1 }),
+                cy.getActionCardDetails({ id: -3, action_id }),
               ],
             });
           },
