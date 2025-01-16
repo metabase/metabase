@@ -247,7 +247,7 @@ function prattCompiler({
   return mbql;
 }
 
-function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
+export function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
   return (
     typeof err === "object" &&
     err != null &&
