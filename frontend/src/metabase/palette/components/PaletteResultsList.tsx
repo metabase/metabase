@@ -75,10 +75,16 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
         //If we have a link for a child, then click that instead
         const childAnchor = activeRef.current?.querySelector("a");
 
-        if (childAnchor) {
-          childAnchor.click();
+        const target = childAnchor || activeRef?.current;
+
+        if (!target) {
+          return;
+        } else if (event.ctrlKey) {
+          target.dispatchEvent(
+            new MouseEvent("click", { ctrlKey: event.ctrlKey }),
+          );
         } else {
-          activeRef.current?.click();
+          target.click();
         }
       }
     };
