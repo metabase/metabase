@@ -1,11 +1,12 @@
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
-  onOpenChartSettings,
+  onCloseChartSettings,
+  onOpenChartType,
   onReplaceAllVisualizationSettings,
 } from "metabase/query_builder/actions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
@@ -36,17 +37,13 @@ function ChartSettingsSidebarInner({
   const sidebarContentProps = showSidebarTitle
     ? {
         title: t`${visualizations.get(question.display())?.uiName} options`,
-        onBack: () => {
-          dispatch(
-            onOpenChartSettings({
-              initialChartSetting: {
-                section: t`Chart`,
-              },
-            }),
-          );
-        },
+        onBack: () => dispatch(onOpenChartType()),
       }
     : {};
+
+  const handleClose = useCallback(() => {
+    dispatch(onCloseChartSettings());
+  }, [dispatch]);
 
   const card = question.card();
   const series = useMemo(() => {
@@ -63,7 +60,11 @@ function ChartSettingsSidebarInner({
 
   return (
     result && (
-      <SidebarContent className={CS.fullHeight} {...sidebarContentProps}>
+      <SidebarContent
+        className={CS.fullHeight}
+        onDone={handleClose}
+        {...sidebarContentProps}
+      >
         <ErrorBoundary>
           <QuestionChartSettings
             question={question}
@@ -71,8 +72,6 @@ function ChartSettingsSidebarInner({
             onChange={onChange}
             initial={initialChartSetting}
             computedSettings={visualizationSettings}
-            result={result}
-            showSidebarTitle={showSidebarTitle}
           />
         </ErrorBoundary>
       </SidebarContent>

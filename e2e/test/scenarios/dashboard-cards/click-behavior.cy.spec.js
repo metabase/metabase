@@ -2879,7 +2879,7 @@ function verifyVizTypeIsLine() {
   cy.findByTestId("sidebar-content")
     .findByTestId("Line-container")
     .should("have.attr", "aria-selected", "true");
-  H.closeVizSettingsSidebar();
+  H.openVizTypeSidebar();
 }
 
 function getClickMapping(columnName) {
