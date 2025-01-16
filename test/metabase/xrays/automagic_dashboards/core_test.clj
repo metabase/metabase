@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.xrays.automagic-dashboards.core-test
+(ns metabase.xrays.automagic-dashboards.core-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

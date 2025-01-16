@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.db.custom-migrations.metrics-v2-batch-test
+(ns metabase.db.custom-migrations.metrics-v2-batch-test
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
