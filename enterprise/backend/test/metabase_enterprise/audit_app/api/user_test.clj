@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.audit-app.api.user-test
+(ns metabase-enterprise.audit-app.api.user-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.permissions-test :as ee-perms-test]
