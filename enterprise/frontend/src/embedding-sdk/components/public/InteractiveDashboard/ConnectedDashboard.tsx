@@ -121,6 +121,8 @@ const ConnectedDashboardInner = ({
       onNightModeChange={_.noop}
       hasNightModeToggle={false}
       navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
+      autoScrollToDashcardId={undefined}
+      reportAutoScrolledToDashcard={_.noop}
     />
   );
 };

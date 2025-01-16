@@ -127,11 +127,11 @@
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
   [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
   (let [[status _resp] (setup-drive-folder-sync url)]
-      (if (= status :ok)
-        (u/prog1 {:status "loading" :folder_url url} (gsheets! <>))
-        (throw (ex-info (str/join ["Unable to setup drive folder sync.\n"
-                                   "Please check that the folder is shared with the proper service account email "
-                                   "and sharing permissions."]) {})))))
+    (if (= status :ok)
+      (u/prog1 {:status "loading" :folder_url url} (gsheets! <>))
+      (throw (ex-info (str/join ["Unable to setup drive folder sync.\n"
+                                 "Please check that the folder is shared with the proper service account email "
+                                 "and sharing permissions."]) {})))))
 
 (api.macros/defendpoint :get "/folder" :- ::gsheets
   "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to
