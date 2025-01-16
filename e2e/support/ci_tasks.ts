@@ -1,7 +1,13 @@
 import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
 
-const { GITHUB_RUN_ID, GITHUB_TOKEN, HASH, PR_NUMBER, GITHUB_REPOSITORY } =
-  process.env;
+const {
+  GITHUB_RUN_ID,
+  GITHUB_TOKEN,
+  HASH,
+  PR_NUMBER,
+  GITHUB_REPOSITORY,
+  JOB_NAME,
+} = process.env;
 
 const MAX_TEST_LENGTH = 10;
 
@@ -148,9 +154,15 @@ export async function reportCIFailure({
     return null;
   }
 
+  const testPath = test.titlePath.join(" > ");
+
+  const newTestName = JOB_NAME?.toLowerCase().includes("flaky")
+    ? `(_flaky_) ${testPath}`
+    : testPath;
+
   const response = await updateComment({
     fileName: spec.name,
-    testName: test.titlePath.join(" > "),
+    testName: newTestName,
   }).catch(console.error);
 
   if (response?.ok) {
