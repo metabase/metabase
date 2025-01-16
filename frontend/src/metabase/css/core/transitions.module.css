@@ -1,4 +1,4 @@
-:root {
+:where(:global(.mb-wrapper)) {
   --transition-theme-change: background-color 1s linear, border-color 1s linear,
     color 1s linear;
 }
@@ -12,7 +12,7 @@
 }
 
 @media (prefers-reduced-motion) {
-  :root {
+  :where(:global(.mb-wrapper)) {
     --transition-theme-change: none;
   }
 }
