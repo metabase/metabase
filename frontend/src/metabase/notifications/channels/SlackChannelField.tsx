@@ -33,21 +33,17 @@ export const SlackChannelField = ({
   const value = channel.recipients[0]?.details.value ?? "";
 
   const updateChannel = (value: string) => {
-    const recipient = channel.recipients[0];
-
-    const updatedConfig: NotificationHandlerSlack = {
+    onChange({
       ...channel,
       recipients: [
         {
-          ...recipient,
+          type: "notification-recipient/raw-value",
           details: {
             value,
           },
         },
       ],
-    };
-
-    onChange(updatedConfig);
+    });
   };
 
   const handleChange = (value: string) => {

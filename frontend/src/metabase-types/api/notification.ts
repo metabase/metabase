@@ -50,6 +50,7 @@ export type NotificationRecipientRawValue = {
     value: string;
   };
 
+  id?: number;
   created_at?: string;
   updated_at?: string;
 };

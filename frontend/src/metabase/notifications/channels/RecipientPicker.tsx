@@ -6,16 +6,20 @@ import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import { isEmail } from "metabase/lib/email";
-import { recipientIsValid } from "metabase/lib/pulse";
+import {
+  type RecipientPickerValue,
+  recipientIsValid,
+} from "metabase/lib/pulse";
 import { Text } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
+import S from "./RecipientPicker.module.css";
 import { ErrorMessage } from "./RecipientPicker.styled";
 
 interface RecipientPickerProps {
-  recipients?: User[];
+  recipients?: RecipientPickerValue[];
   users: User[];
-  onRecipientsChange: (recipients: User[]) => void;
+  onRecipientsChange: (recipients: RecipientPickerValue[]) => void;
   autoFocus?: boolean;
   invalidRecipientText: (domains: string) => string;
 }
@@ -27,7 +31,7 @@ export const RecipientPicker = ({
   autoFocus = true,
   invalidRecipientText,
 }: RecipientPickerProps) => {
-  const handleOnChange = (newRecipients: User[]) => {
+  const handleOnChange = (newRecipients: RecipientPickerValue[]) => {
     onRecipientsChange(newRecipients);
   };
 
@@ -41,6 +45,7 @@ export const RecipientPicker = ({
           value={recipients}
           options={users ? users.map(user => ({ value: user })) : []}
           onChange={handleOnChange}
+          className={S.tokenField}
           placeholder={
             recipients.length === 0
               ? t`Enter user names or email addresses`

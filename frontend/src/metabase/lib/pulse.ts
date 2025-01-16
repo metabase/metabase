@@ -95,8 +95,13 @@ function pulseChannelsAreValid(pulse: Pulse, channelSpecs: any) {
   );
 }
 
-export function recipientIsValid(recipient: User) {
-  if (recipient.id) {
+export type RecipientPickerValue = (User | { email: string }) & {
+  entityId?: number;
+};
+
+export function recipientIsValid(recipient: RecipientPickerValue) {
+  if ("id" in recipient && recipient.id) {
+    // user entity, added to the platform, no need to validate email
     return true;
   }
 

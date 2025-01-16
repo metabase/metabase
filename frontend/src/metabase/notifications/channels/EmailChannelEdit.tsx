@@ -1,8 +1,13 @@
 import { t } from "ttag";
 
+import type { RecipientPickerValue } from "metabase/lib/pulse";
 import { isNotNull } from "metabase/lib/types";
 import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
-import type { NotificationHandlerEmail, User } from "metabase-types/api";
+import type {
+  NotificationHandlerEmail,
+  NotificationRecipient,
+  User,
+} from "metabase-types/api";
 
 import { RecipientPicker } from "./RecipientPicker";
 
@@ -19,26 +24,58 @@ export const EmailChannelEdit = ({
   onRemoveChannel: () => void;
   onChange: (newConfig: NotificationHandlerEmail) => void;
 }) => {
-  const mappedUsers = channel.recipients
-    .map(recipient =>
-      users.find(
-        ({ id }) =>
-          recipient.type === "notification-recipient/user" &&
-          id === recipient.user_id,
-      ),
-    )
+  const mappedUsers: RecipientPickerValue[] = channel.recipients
+    .map(recipient => {
+      if (recipient.type === "notification-recipient/user") {
+        const user = users.find(({ id }) => id === recipient.user_id);
+        if (user) {
+          return {
+            ...user,
+            entityId: recipient.id,
+          };
+        }
+      }
+
+      if (recipient.type === "notification-recipient/raw-value") {
+        return {
+          entityId: recipient.id,
+          email: recipient.details.value,
+        };
+      }
+    })
     .filter(isNotNull);
 
-  const handleRecipientsChange = (recipients: User[]) =>
-    onChange({
-      ...channel,
-      recipients: recipients.map(({ id }) => ({
-        type: "notification-recipient/user",
-        user_id: id,
-        permissions_group_id: null,
-        details: null,
-      })),
+  const handleRecipientsChange = (recipients: RecipientPickerValue[]) => {
+    const mappedUsers: NotificationRecipient[] = recipients.map(recipient => {
+      let result: NotificationRecipient;
+      if ("id" in recipient) {
+        result = {
+          type: "notification-recipient/user",
+          user_id: recipient.id,
+          permissions_group_id: null,
+          details: null,
+        };
+      } else {
+        result = {
+          type: "notification-recipient/raw-value",
+          details: {
+            value: recipient.email,
+          },
+        };
+      }
+
+      if (recipient.entityId) {
+        result.id = recipient.entityId;
+      }
+
+      return result;
     });
+
+    return onChange({
+      ...channel,
+      recipients: mappedUsers,
+    });
+  };
 
   return (
     <ChannelSettingsBlock

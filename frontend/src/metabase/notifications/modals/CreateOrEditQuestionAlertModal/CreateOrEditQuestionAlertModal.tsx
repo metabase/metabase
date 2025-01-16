@@ -33,6 +33,7 @@ import {
   getQuestion,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
+import { addUndo } from "metabase/redux/undo";
 import { getUser } from "metabase/selectors/user";
 import { Flex, Modal, Select, Stack, Switch, rem } from "metabase/ui";
 import type {
@@ -156,13 +157,40 @@ export const CreateOrEditQuestionAlertModal = ({
 
   const onCreateOrEditAlert = async () => {
     if (notification) {
+      let result;
+
       if (isEditMode) {
-        await updateNotification(
+        result = await updateNotification(
           notification as UpdateAlertNotificationRequest, // TODO: remove typecast
         );
+      } else {
+        result = await createNotification(notification);
+      }
+
+      if (result.error) {
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "error",
+            message: t`An error occurred`,
+          }),
+        );
+
+        // need to throw to show error in ButtonWithStatus
+        throw result.error;
+      }
+
+      dispatch(
+        addUndo({
+          message: isEditMode
+            ? t`Your alert was updated.`
+            : t`Your alert is all set up.`,
+        }),
+      );
+
+      if (isEditMode) {
         onAlertUpdated();
       } else {
-        await createNotification(notification);
         onAlertCreated();
       }
 

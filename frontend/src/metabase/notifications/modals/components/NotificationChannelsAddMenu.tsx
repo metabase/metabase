@@ -31,7 +31,6 @@ export const NotificationChannelsAddMenu = ({
 }: NotificationChannelsAddMenuProps) => {
   return (
     <Menu position="bottom-start">
-      {/* TODO: this doesn't close on click outside */}
       <Menu.Target>
         <Button variant="subtle">{t`Add another destination`}</Button>
       </Menu.Target>
