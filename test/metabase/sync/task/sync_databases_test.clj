@@ -20,7 +20,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest annotations-test
+(deftest ^:parallel annotations-test
   (testing "make sure our annotations are present"
     (is (.isAnnotationPresent SyncAndAnalyzeDatabase org.quartz.DisallowConcurrentExecution))
     (is (.isAnnotationPresent UpdateFieldValues org.quartz.DisallowConcurrentExecution))))

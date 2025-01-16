@@ -734,7 +734,6 @@
     metabase.sync.sync-metadata.fields.our-metadata               fields.our-metadata
     metabase.sync.util                                            sync-util
     metabase.sync.util-test                                       sync.util-test
-    metabase.task.sync-databases                                  task.sync-databases
     metabase.test                                                 mt
     metabase.test.data.dataset-definitions                        defs
     metabase.test.data.env.impl                                   tx.env.impl
