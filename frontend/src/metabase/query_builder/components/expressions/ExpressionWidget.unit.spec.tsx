@@ -106,7 +106,7 @@ describe("ExpressionWidget", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  describe("withName=true", () => {
+  describe("withName = true", () => {
     it("should render Name field", () => {
       setup({ withName: true });
 
@@ -175,7 +175,7 @@ describe("ExpressionWidget", () => {
     });
   });
 
-  describe("startRule: aggregation", () => {
+  describe("startRule = 'aggregation'", () => {
     it("should show 'unknown metric' error if the identifier is not recognized as a dimension (metabase#50753)", async () => {
       setup({ startRule: "aggregation" });
 
