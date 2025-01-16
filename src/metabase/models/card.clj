@@ -1021,7 +1021,7 @@
     (or (display-change-broke-alert? old-card new-card)
         (goal-missing? old-card new-card)
         (multiple-breakouts? new-card))
-    (delete-alert-and-notify! :event/card-update.notification-deleted.card-became-invalid actor new-card)
+    (delete-alert-and-notify! :event/card-update.notification-deleted.card-changed actor new-card)
 
     ;; The change doesn't invalidate the alert, do nothing
     :else

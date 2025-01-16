@@ -6,7 +6,7 @@
 
 (derive ::event :metabase/event)
 (derive :event/card-update.notification-deleted.card-archived ::event)
-(derive :event/card-update.notification-deleted.card-became-invalid ::event)
+(derive :event/card-update.notification-deleted.card-changed ::event)
 
 (methodical/defmethod events/publish-event! ::event
   "When a Card is saved and associated Alerts are deleted send email notifications to recipients of that alert. At the
@@ -17,7 +17,7 @@
                         :event/card-update.notification-deleted.card-archived
                         messages/send-alert-stopped-because-archived-email!
 
-                        :event/card-update.notification-deleted.card-became-invalid
+                        :event/card-update.notification-deleted.card-changed
                         messages/send-alert-stopped-because-changed-email!)
         recipients (->> notifications
                         (mapcat :handlers)
@@ -29,6 +29,6 @@
                                   (-> recipient :user :email)
                                   :notification-recipient/raw-value
                                   (-> recipient :details :value)
-                                  nil))))]
+                                  (throw (ex-info "Unknown recipient type" {:recipient recipient}))))))]
     (when (seq recipients)
       (send-message! card recipients actor))))

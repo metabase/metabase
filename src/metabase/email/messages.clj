@@ -373,7 +373,7 @@
 (def ^:private you-unsubscribed-template   (template-path "notification_card_unsubscribed"))
 (def ^:private removed-template            (template-path "notification_card_you_were_removed"))
 (def ^:private added-template              (template-path "notification_card_you_were_added"))
-(def ^:private stopped-template            (template-path "card_notification_stopped_working"))
+(def ^:private changed-stopped-template    (template-path "card_notification_changed_stopped"))
 (def ^:private archived-template           (template-path "card_notification_archived"))
 
 (defn send-you-unsubscribed-notification-card-email!
@@ -406,7 +406,7 @@
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
   [card recipient-emails archiver]
-  (send-email! recipient-emails not-working-subject stopped-template
+  (send-email! recipient-emails not-working-subject changed-stopped-template
                {:card card
                 :actor archiver}
                true))
