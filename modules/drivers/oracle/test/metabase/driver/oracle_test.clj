@@ -32,9 +32,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.util Base64)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -406,8 +404,10 @@
                                          [(-> (assoc
                                                ssl-details
                                                :ssl-truststore-value
-                                               (.encodeToString (Base64/getEncoder)
-                                                                (mt/file->bytes (:ssl-truststore-path ssl-details)))
+                                               (-> ssl-details
+                                                   :ssl-truststore-path
+                                                   mt/file-path->bytes
+                                                   mt/bytes->base64-data-uri)
                                                :ssl-truststore-options
                                                "uploaded")
                                               (dissoc :ssl-truststore-path))
@@ -415,8 +415,7 @@
                 (testing (str " " variant)
                   (mt/with-temp [:model/Database database {:engine  :oracle,
                                                            :name    (format (str variant " version of %d") (mt/id)),
-                                                           :details (->> details
-                                                                         (driver.u/db-details-client->server :oracle))}]
+                                                           :details details}]
                     (mt/with-db database
                       (testing " can sync correctly"
                         (sync/sync-database! database {:scan :schema})

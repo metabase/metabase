@@ -10,7 +10,14 @@ import {
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { Box, Divider, Group, PopoverBackButton, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Group,
+  PopoverBackButton,
+  Stack,
+} from "metabase/ui";
 
 import {
   FlexibleSizeComponent,
@@ -112,8 +119,10 @@ export const InteractiveQuestionResult = ({
               <>
                 {withChartTypeSelector && (
                   <>
-                    <InteractiveQuestion.ChartTypeDropdown />
-                    <InteractiveQuestion.QuestionSettingsDropdown />
+                    <Button.Group>
+                      <InteractiveQuestion.ChartTypeDropdown />
+                      <InteractiveQuestion.QuestionSettingsDropdown />
+                    </Button.Group>
                     <Divider
                       mx="xs"
                       orientation="vertical"
