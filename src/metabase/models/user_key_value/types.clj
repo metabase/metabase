@@ -80,13 +80,7 @@
 
 (update-user-key-value-schema!)
 
-(def ^:private prod-types-dir "user_key_value_types")
-
-(def ^:private test-types-dir
-  "These schemas are only loaded in tests.
-
-  They should ONLY be used for testing the UserKeyValue store itself."
-  "test_user_key_value_types")
+(def ^:private types-dir "user_key_value_types")
 
 (defn- load-schema
   "Loads a schema with the provided namespace"
@@ -167,11 +161,7 @@
 (defn load-and-watch-schemas
   "In production, just load the schemas. In development, watch for changes as well."
   []
-  (load-all-schemas prod-types-dir)
-  ;; in testing or dev, load the test schemas
-  (when (or config/is-test? config/is-dev?)
-    (load-all-schemas test-types-dir))
+  (load-all-schemas types-dir)
   ;; in dev, watch both types directories for changes
   (when config/is-dev?
-    (watch-directory (io/file (io/resource prod-types-dir)) handle-file-change)
-    (watch-directory (io/file (io/resource test-types-dir)) handle-file-change)))
+    (watch-directory (io/file (io/resource types-dir)) handle-file-change)))
