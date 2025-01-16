@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.xrays.automagic-dashboards.interesting-test
+(ns metabase.xrays.automagic-dashboards.interesting-test
   (:require
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]

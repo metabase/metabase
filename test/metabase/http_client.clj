@@ -27,7 +27,7 @@
    [ring.util.codec :as codec])
   (:import
    (java.io ByteArrayInputStream InputStream)
-   (metabase.async.streaming_response StreamingResponse)))
+   (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 

@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.sync.analyze-test
+(ns metabase.sync.analyze-test
   (:require
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.category :as classifiers.category]
