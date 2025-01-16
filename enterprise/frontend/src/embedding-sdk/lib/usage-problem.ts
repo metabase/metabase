@@ -22,7 +22,7 @@ export const USAGE_PROBLEM_MESSAGES = {
   JWT_PROVIDER_URI_DEPRECATED: `The jwtProviderUri config property has been deprecated. Replace it with authProviderUri.`,
   NO_AUTH_METHOD_PROVIDED: `You must provide either an Auth Provider URI or an API key for authentication.`,
 
-  // TODO: this message is not implemented yet, as it requires /api/session/properties to support CORS first.
+  // This message only works on localhost at the moment, as we cannot detect if embedding is disabled due to CORS restrictions on /api/session/properties.
   EMBEDDING_SDK_NOT_ENABLED: `The embedding SDK is not enabled for this instance. Please enable it in settings to start using the SDK.`,
 } as const;
 
