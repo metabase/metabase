@@ -1,4 +1,3 @@
-; rename this content translation, since each item is a translation
 (def ContentTranslationModel
   "Model for dictionary entries containing translations"
   [:enum "language" "msgid" "translation"])

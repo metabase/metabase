@@ -15,7 +15,6 @@ import { UploadInput } from "metabase/components/upload";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useSelector } from "metabase/lib/redux";
 import {
-  Box,
   Button,
   Group,
   Icon,
@@ -23,7 +22,6 @@ import {
   MultiAutocomplete,
   Stack,
   Text,
-  Tooltip,
 } from "metabase/ui";
 
 export const ContentTranslationConfiguration = () => {
@@ -170,7 +168,7 @@ const DownloadDictionaryModal = ({
       onClose={() => setIsDownloadModalShown(false)}
       size="lg"
     >
-      <Stack pt="md">
+      <Stack pt="md" spacing="lg">
         <Stack spacing="xs">
           <label htmlFor={languageInputId}>
             <Text>{t`Create dictionary entries for these languages:`}</Text>
@@ -185,19 +183,11 @@ const DownloadDictionaryModal = ({
             dropdownPosition="top"
           />
         </Stack>
-        <Tooltip
-          label={t`Select one or more languages first before downloading`}
-          disabled={selectedLocales.length > 0}
-          position="bottom"
-        >
-          <Box>
-            <Button
-              disabled={selectedLocales.length === 0}
-              onClick={triggerDownload}
-              leftIcon={<Icon name="download" />}
-            >{t`Download`}</Button>
-          </Box>
-        </Tooltip>
+        <Button
+          onClick={triggerDownload}
+          leftIcon={<Icon name="download" />}
+          maw="15rem"
+        >{t`Download`}</Button>
       </Stack>
     </Modal>
   );
