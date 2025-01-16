@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.upload.types-test
+(ns metabase.upload.types-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [clojure.walk :as walk]

@@ -1,16 +1,15 @@
 (ns metabase.pulse.send-test
   "These are mostly Alerts test, dashboard subscriptions could be found in
   [[metabase.dashboard-subscription-test]]."
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.channel.email :as email]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
-   [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -18,6 +17,7 @@
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]

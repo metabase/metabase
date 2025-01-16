@@ -474,8 +474,9 @@ describe("scenarios > visualizations > waterfall", () => {
 
 const switchToWaterfallDisplay = () => {
   cy.icon("waterfall").click();
-
-  H.openVizSettingsSidebar({ isSidebarOpen: true });
+  cy.findByTestId("Waterfall-container").within(() => {
+    cy.icon("gear").click();
+  });
 };
 
 function getWaterfallDataLabels() {

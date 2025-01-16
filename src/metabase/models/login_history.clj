@@ -1,7 +1,7 @@
 (ns metabase.models.login-history
   (:require
    [java-time.api :as t]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.models.setting :refer [defsetting]]
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]

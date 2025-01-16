@@ -61,7 +61,7 @@ jobs:
             const specialTests = [
               { name: "embedding-sdk", specs: "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*" },
               { name: "oss-subset", edition: 'oss', tags: "@OSS" },
-              { name: "slow", tags: "@slow" },
+              { name: "slow", tags: "@slow+-@flaky" },
               { name: "mongo", tags: "@mongo" },
             ];
 

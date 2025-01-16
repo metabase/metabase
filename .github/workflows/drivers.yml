@@ -272,21 +272,21 @@ jobs:
             build-static-viz: false
             test-args: >-
               :only '"enterprise/backend/test"'
-              :exclude-tags [:mb/driver-tests]
+            exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
               :only '"test"'
-              :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0
+            exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
-              :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 1
+            exclude-tag: ':mb/driver-tests'
 
     services:
       mysql:
@@ -297,6 +297,22 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: circle_test
     env:
+      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
+      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
+      # it in to the command below.
+      __ADDITIONAL_EXCLUDED_TAG__: >-
+        ${{
+          (
+            github.event_name == 'push' &&
+            (
+              github.ref == 'master' ||
+              startsWith(github.ref, 'release-')
+            ) &&
+            ''
+          ) ||
+          ':mb/old-migrations-test'
+        }}
+      # actual serious env vars below
       CI: 'true'
       DRIVERS: mysql
       MB_DB_TYPE: mysql
@@ -332,6 +348,7 @@ jobs:
           junit-name: ${{ matrix.version.junit-name }}
           test-args: >-
             ${{ matrix.job.test-args }}
+            :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -599,7 +616,7 @@ jobs:
             build-static-viz: false
             test-args: >-
               :only '"enterprise/backend/test"'
-              :exclude-tags [:mb/driver-tests]
+            exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
@@ -607,15 +624,32 @@ jobs:
               :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0
+            exclude-tag: ':mb/driver-tests'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
-              only '"test"'
-              :exclude-tags [:mb/driver-tests]
+              :only '"test"'
               :partition/total 2
               :partition/index 1
+            exclude-tag: ':mb/driver-tests'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
+      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
+      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
+      # it in to the command below.
+      __ADDITIONAL_EXCLUDED_TAG__: >-
+        ${{
+          (
+            github.event_name == 'push' &&
+            (
+              github.ref == 'master' ||
+              startsWith(github.ref, 'release-')
+            ) &&
+            ''
+          ) ||
+          ':mb/old-migrations-test'
+        }}
+      # actual serious env vars below
       CI: 'true'
       DRIVERS: postgres
       MB_DB_TYPE: postgres
@@ -646,6 +680,7 @@ jobs:
           junit-name: 'be-tests-${{ matrix.version.junit-name }}'
           test-args: >-
             ${{ matrix.job.test-args }}
+            :exclude-tags '[ ${{ matrix.job.exclude-tag }} ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
