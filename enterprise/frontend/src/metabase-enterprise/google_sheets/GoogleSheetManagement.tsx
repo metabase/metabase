@@ -59,16 +59,17 @@ export function GSheetManagement() {
         </Button>
       </Box>
       {showModal &&
-        (status === "connected" ? (
-          <GoogleSheetsDisconnectModal
-            onClose={() => setShowModal(false)}
-            reconnect={true}
-          />
-        ) : (
+        (status === "not-connected" ? (
           <GoogleSheetsConnectModal
             onClose={() => setShowModal(false)}
             serviceAccountEmail={serviceAccountEmail}
             folderUrl={folder_url}
+          />
+
+        ) : (
+          <GoogleSheetsDisconnectModal
+            onClose={() => setShowModal(false)}
+            reconnect={true}
           />
         ))}
     </>

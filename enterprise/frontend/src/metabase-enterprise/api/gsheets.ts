@@ -1,3 +1,5 @@
+import type { DatabaseId, Settings } from "metabase-types/api";
+
 import { EnterpriseApi } from "./api";
 
 export const gsheetsApi = EnterpriseApi.injectEndpoints({
@@ -6,6 +8,15 @@ export const gsheetsApi = EnterpriseApi.injectEndpoints({
       query: () => ({
         method: "GET",
         url: "/api/ee/gsheets/service-account",
+      }),
+    }),
+    getGsheetsFolder: builder.query<
+      (Settings["gsheets"] & { db_id: DatabaseId}),
+      void
+    >({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/gsheets/folder",
       }),
     }),
     saveGsheetsFolderLink: builder.mutation<
@@ -29,6 +40,7 @@ export const gsheetsApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useGetServiceAccountQuery,
+  useGetGsheetsFolderQuery,
   useDeleteGsheetsFolderLinkMutation,
   useSaveGsheetsFolderLinkMutation,
 } = gsheetsApi;
