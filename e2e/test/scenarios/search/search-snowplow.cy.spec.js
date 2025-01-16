@@ -122,7 +122,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       });
 
       cy.findByTestId("search-bar-results-container")
-        .findByRole("heading", { name: "PEOPLE" })
+        .findByRole("heading", { name: "People" })
         .click();
 
       H.expectGoodSnowplowEvent({
