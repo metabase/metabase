@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.sample-data-test
+(ns metabase.sample-data-test
   "Tests to make sure the Sample Database syncs the way we would expect."
   (:require
    [clojure.core.memoize :as memoize]

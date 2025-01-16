@@ -3,8 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.channel.email-test :as et]
    [metabase.channel.impl.http-test :as channel.http-test]
-   [metabase.email-test :as et]
    [metabase.http-client :as client]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]

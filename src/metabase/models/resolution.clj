@@ -20,8 +20,8 @@
     :model/CacheConfig                       metabase.models.cache-config
     :model/Card                              metabase.models.card
     :model/CardBookmark                      metabase.models.bookmark
-    :model/Channel                           metabase.models.channel
-    :model/ChannelTemplate                   metabase.models.channel
+    :model/Channel                           metabase.channel.models.channel
+    :model/ChannelTemplate                   metabase.channel.models.channel
     :model/CloudMigration                    metabase.models.cloud-migration
     :model/Collection                        metabase.models.collection
     :model/CollectionBookmark                metabase.models.bookmark

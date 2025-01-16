@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util.malli.fn-test
+(ns metabase.util.malli.fn-test
   (:require
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]

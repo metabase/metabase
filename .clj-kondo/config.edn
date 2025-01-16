@@ -84,8 +84,8 @@
      metabase.actions.test-util/with-actions-test-data-and-actions-enabled
      metabase.actions.test-util/with-actions-test-data-tables
      metabase.analytics.snowplow-test/with-fake-snowplow-collector
-     metabase.email-test/with-expected-messages
-     metabase.email-test/with-fake-inbox
+     metabase.channel.email-test/with-expected-messages
+     metabase.channel.email-test/with-fake-inbox
      metabase.test.data.users/with-group
      metabase.test.data.users/with-group-for-user
      metabase.test.data/with-empty-h2-app-db
@@ -341,7 +341,12 @@
     metabase.audit                 #{metabase.audit}
     metabase.auth-provider         #{metabase.auth-provider}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
-    metabase.channel               #{metabase.channel.core
+    ;; TODO -- this has too many API namespaces, ideally it would only expose `metabase.channel.core`,
+    ;; `metabase.channel.init`, and `metabase.channel.api`.
+    metabase.channel               #{metabase.channel.api
+                                     metabase.channel.core
+                                     metabase.channel.email
+                                     metabase.channel.email.messages
                                      metabase.channel.init
                                      metabase.channel.render.core
                                      metabase.channel.template.core}
@@ -355,9 +360,6 @@
                                      metabase.db.setup}                                             ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
     metabase.driver                :any                                                             ; TODO -- 19 namespaces!!!! CRY
     metabase.eid-translation       #{metabase.eid-translation}
-    metabase.email                 #{metabase.email
-                                     metabase.email.messages
-                                     metabase.email.result-attachment}                              ; TODO -- consolidate these into a real API namespace.
     metabase.embed                 #{metabase.embed.settings}
     metabase.events                #{metabase.events metabase.events.init}
     metabase.formatter             #{metabase.formatter}
@@ -458,7 +460,6 @@
     metabase.core                  :any
     metabase.db                    :any
     metabase.driver                :any
-    metabase.email                 :any
     metabase.embed                 :any
     metabase.events                :any
     metabase.formatter             :any
@@ -651,8 +652,6 @@
     metabase.driver.sql.parameters.substitute                     sql.params.substitute
     metabase.driver.sql.parameters.substitution                   sql.params.substitution
     metabase.eid-translation                                      eid-translation
-    metabase.email-test                                           et
-    metabase.email.messages                                       messages
     metabase.formatter                                            formatter
     metabase.http-client                                          client
     metabase.legacy-mbql.normalize                                mbql.normalize
@@ -666,7 +665,6 @@
     metabase.models.collection                                    collection
     metabase.models.collection.graph                              graph
     metabase.models.collection-permission-graph-revision          c-perm-revision
-    metabase.models.channel                                       models.channel
     metabase.models.dashboard-card                                dashboard-card
     metabase.models.database                                      database
     metabase.models.dependency                                    dependency
