@@ -159,7 +159,7 @@ export async function reportCIFailure({
     : testPath;
 
   const response = await updateComment({
-    fileName: "`spec.name`",
+    fileName: `\`${spec.name}\``,
     testName: newTestName,
   }).catch(console.error);
 
