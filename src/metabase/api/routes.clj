@@ -26,7 +26,6 @@
    [metabase.api.login-history :as api.login-history]
    [metabase.api.model-index :as api.model-index]
    [metabase.api.native-query-snippet :as api.native-query-snippet]
-   [metabase.api.notify :as api.notify]
    [metabase.api.permissions :as api.permissions]
    [metabase.api.persist :as api.persist]
    [metabase.api.premium-features :as api.premium-features]
@@ -55,6 +54,7 @@
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
    [metabase.setup.api :as setup.api]
+   [metabase.sync.api :as sync.api]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (when config/ee-available?
@@ -97,7 +97,7 @@
   (context "/login-history"        [] (+auth api.login-history/routes))
   (context "/model-index"          [] (+auth api.model-index/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
-  (context "/notify"               [] (+static-apikey api.notify/routes))
+  (context "/notify"               [] (+static-apikey sync.api/notify-routes))
   (context "/permissions"          [] (+auth api.permissions/routes))
   (context "/persist"              [] (+auth api.persist/routes))
   (context "/premium-features"     [] (+auth api.premium-features/routes))

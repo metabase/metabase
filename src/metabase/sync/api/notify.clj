@@ -1,4 +1,4 @@
-(ns metabase.api.notify
+(ns metabase.sync.api.notify
   "/api/notify/* endpoints which receive inbound etl server notifications."
   (:require
    [clojure.string :as str]
@@ -6,7 +6,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]

@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
    [metabase.models.field-values :as field-values]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data :as data]
