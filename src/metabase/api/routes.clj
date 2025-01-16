@@ -18,6 +18,7 @@
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.database :as api.database]
    [metabase.api.dataset :as api.dataset]
+   [metabase.api.dictionary :as api.dictionary]
    [metabase.api.docs :as api.docs]
    [metabase.api.email :as api.email]
    [metabase.api.embed :as api.embed]
@@ -88,6 +89,7 @@
   (context "/dashboard"            [] (+auth api.dashboard/routes))
   (context "/database"             [] (+auth api.database/routes))
   (context "/dataset"              [] (+auth api.dataset/routes))
+  (context "/dictionary"           [] (+auth api.dictionary/routes))
   (context "/docs"                 [] api.docs/routes)
   (context "/email"                [] (+auth api.email/routes))
   (context "/embed"                [] (+message-only-exceptions api.embed/routes))

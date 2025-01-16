@@ -2,6 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -22,6 +23,7 @@ import {
   trackTrackingPermissionChanged,
 } from "../analytics";
 import { CloudPanel } from "../components/CloudPanel";
+import { ContentTranslationConfiguration } from "../components/ContentTranslationConfiguration/ContentTranslationConfiguration";
 import { BccToggleWidget } from "../components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "../components/Email/SettingsEmailForm";
 import {
@@ -353,9 +355,14 @@ export const ADMIN_SETTINGS_SECTIONS = {
         },
       },
       {
-        key: "dynamic-dictionary",
-        display_name: t`Content translation dictionary`,
-        type: "text",
+        display_name: t`Content localization`,
+        description: "",
+        key: "content-localization",
+        widget: () => (
+          <ErrorBoundary>
+            <ContentTranslationConfiguration />
+          </ErrorBoundary>
+        ),
       },
       {
         key: "report-timezone",
@@ -404,7 +411,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
-
   "public-sharing": {
     name: t`Public Sharing`,
     order: 90,

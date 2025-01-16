@@ -1,12 +1,9 @@
 /** Entry in a dictionary used for content translation */
-export type ContentTranslationDictionaryEntry = [
-  // Locale code e.g. "es"
-  string,
-  // Msgid e.g. "Hello"
-  string,
-  // Msgstr e.g. "Hola"
-  string,
-];
+export type ContentTranslationDictionaryEntry = {
+  locale: string;
+  msgid: string;
+  msgstr: string;
+};
 
 /** A dictionary used for content translation */
 export type ContentTranslationDictionary = ContentTranslationDictionaryEntry[];

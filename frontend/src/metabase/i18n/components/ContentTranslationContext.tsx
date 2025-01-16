@@ -1,12 +1,9 @@
 import { type ReactNode, createContext, useContext } from "react";
 
-import { useLocale, useUserSetting } from "metabase/common/hooks";
+import { useListContentTranslationsQuery } from "metabase/api/content-translation";
+import { useLocale } from "metabase/common/hooks";
 
-import {
-  type ContentTranslationContextObject,
-  type ContentTranslationDictionary,
-  isValidContentTranslationDictionary,
-} from "../types";
+import type { ContentTranslationContextObject } from "../types";
 import { translateProperty, translateString } from "../utils";
 
 export const ContentTranslationContext =
@@ -21,40 +18,23 @@ export const ContentTranslationProvider = ({
 }: {
   children: ReactNode;
 }) => {
-  // This needs to be an instance level setting
-  const [stringifiedDictionary, setStringifiedDictionary] =
-    useUserSetting("dynamic-dictionary");
-
-  let dictionary: ContentTranslationDictionary | null = [];
-  try {
-    const parsedDictionary = JSON.parse(stringifiedDictionary || "");
-    dictionary = isValidContentTranslationDictionary(parsedDictionary)
-      ? parsedDictionary
-      : null;
-    if (!dictionary) {
-      throw new Error("Invalid dictionary", parsedDictionary);
-    }
-  } catch (e) {
-    console.error(
-      "Failed to parse content translation dictionary from settings",
-      e,
-    );
-  }
-
-  const setDictionary = (newDictionary: ContentTranslationDictionary) => {
-    setStringifiedDictionary(JSON.stringify(newDictionary));
-  };
-
-  if (!dictionary?.length) {
-    // hard code this for now
-    setDictionary([["en", "Monkeys", "Monkeys!!!!"]]);
-  }
   const locale = useLocale();
+  const {
+    data,
+    error,
+    // TODO: the loading state is not represented
+    isLoading: _isLoading,
+  } = useListContentTranslationsQuery({
+    locale,
+  });
+
+  if (error) {
+    console.error("Error while retrieving content translations", error);
+  }
 
   const contextValue = {
-    dictionary: dictionary || [],
+    dictionary: data?.data || [],
     locale,
-    setDictionary,
     shouldLocalize: true,
   };
 

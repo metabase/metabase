@@ -11,7 +11,7 @@ export const translateString = (
   }
 
   const matches = dictionary.filter(entry => {
-    const [entryLocaleCode, entryMsgid] = entry.map(s => s.trim());
+    const { locale: entryLocaleCode, msgid: entryMsgid } = entry;
     return locale === entryLocaleCode && msgid === entryMsgid;
   });
 
@@ -19,7 +19,7 @@ export const translateString = (
     console.error("Multiple matches for:", locale, msgid);
   }
 
-  return matches[0]?.[2] || msgid;
+  return matches[0]?.msgstr || msgid;
 };
 
 type LocalizedProperty<T, K extends keyof T> =

@@ -10469,6 +10469,51 @@ databaseChangeLog:
                   type: ${timestamp_type}
                   remarks: The timestamp at which a user was deactivated
 
+  - changeSet:
+      id: v53.2025-01-15T11:00:00
+      author: rafpaf
+      comment: 'Content translation table'
+      changes:
+        - createTable:
+            tableName: content_translations
+            remarks: Content translations
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: locale
+                  remarks: Locale
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: msgid
+                  remarks: The raw string
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: msgstr
+                  remarks: The translation
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v53.2025-01-15T13:00:00
+      author: rafpaf
+      comment: Rename content-translation table
+      changes:
+        - renameTable:
+            newTableName: content_translation
+            oldTableName: content_translations
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
