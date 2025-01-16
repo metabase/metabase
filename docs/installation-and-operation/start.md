@@ -8,7 +8,7 @@ The birth, care, and feeding of your Metabase.
 
 ## [Installing Metabase](./installing-metabase.md)
 
-Start here.
+Options for installing Metabase.
 
 ## [Migrating to a production database](./migrating-from-h2.md)
 

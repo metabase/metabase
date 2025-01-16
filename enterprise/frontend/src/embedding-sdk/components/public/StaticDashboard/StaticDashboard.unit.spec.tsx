@@ -8,8 +8,9 @@ import {
   setupDashboardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
-import { renderWithProviders, screen } from "__support__/ui";
+import { screen } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import {
@@ -92,12 +93,11 @@ const setup = async (options: SetupOptions = {}) => {
     }),
   });
 
-  renderWithProviders(
+  renderWithSDKProviders(
     <Box h="500px">
       <StaticDashboard dashboardId={dashboardId} {...props} />
     </Box>,
     {
-      mode: "sdk",
       sdkProviderProps: {
         authConfig: createMockAuthProviderUriConfig({
           authProviderUri: "http://TEST_URI/sso/metabase",

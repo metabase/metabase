@@ -16,7 +16,6 @@ export * from "./email";
 export * from "./field";
 export * from "./group";
 export * from "./impersonation";
-export * from "./metabot";
 export * from "./model-indexes";
 export * from "./native-query-snippet";
 export * from "./revision";
