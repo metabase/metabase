@@ -5,10 +5,10 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
+   [metabase.channel.email :as email]
    [metabase.config :as config]
    [metabase.core.core :as mbc]
    [metabase.db :as mdb]
-   [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.util :as qp.util]
@@ -20,7 +20,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest merge-count-maps-test
+(deftest ^:parallel merge-count-maps-test
   (testing "Merging maps with various scenarios"
     (are [expected input-maps _description]
          (= expected (#'stats/merge-count-maps input-maps))
@@ -203,7 +203,7 @@
      :num_by_latency (frequencies (for [{latency :running_time} executions]
                                     (bin-large-number (/ latency 1000))))}))
 
-(def query-execution-defaults
+(def ^:private query-execution-defaults
   {:hash         (qp.util/query-hash {})
    :running_time 1
    :result_rows  1

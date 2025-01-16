@@ -10,7 +10,6 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
    [metabase.api.card :as api.card]
-   [metabase.api.pivots :as api.pivots]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.driver :as driver]
@@ -31,6 +30,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.request.core :as request]
    [metabase.task :as task]
    [metabase.task.persist-refresh :as task.persist-refresh]
@@ -3514,7 +3514,7 @@
                 (t2/update! :model/Database other-db-id {:uploads_enabled false})
                 (is (nil? (:based_on_upload (request card))))))))))))
 
-(deftest ^:mb/once based-on-upload-test
+(deftest based-on-upload-test
   (run-based-on-upload-test!
    (fn [card]
      (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))))

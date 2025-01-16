@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util.delay-test
+(ns metabase.util.delay-test
   (:require [clojure.test :refer :all]
             [metabase.util.delay :as delay]))
 

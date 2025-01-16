@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.serialization.v2.load-test
+(ns metabase-enterprise.serialization.v2.load-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
