@@ -1,4 +1,3 @@
-/* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "assertTabIsSelected"] }] */
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
@@ -40,7 +39,7 @@ const setup = (props: SetupOpts) => {
   );
 };
 
-describe("BaseChartSettings", () => {
+describe("ChartSettings", () => {
   it("should not crash if there are no widgets", () => {
     expect(() => setup({ widgets: [] })).not.toThrow();
   });
@@ -58,9 +57,8 @@ describe("BaseChartSettings", () => {
     setup({
       widgets: [widget({ section: "Foo" }), widget({ section: "Bar" })],
     });
-
-    assertTabIsSelected("Foo");
-    assertTabIsNotSelected("Bar");
+    expect(screen.getByLabelText("Foo")).toBeChecked();
+    expect(screen.getByLabelText("Bar")).not.toBeChecked();
   });
 
   it("should default to the DEFAULT_TAB_PRIORITY", () => {
@@ -71,8 +69,8 @@ describe("BaseChartSettings", () => {
       ],
     });
 
-    assertTabIsSelected("Display");
-    assertTabIsNotSelected("Foo");
+    expect(screen.getByLabelText("Foo")).not.toBeChecked();
+    expect(screen.getByLabelText("Display")).toBeChecked();
   });
 
   it("should be able to switch sections", () => {
@@ -80,13 +78,11 @@ describe("BaseChartSettings", () => {
       widgets: [widget({ section: "Foo" }), widget({ section: "Bar" })],
     });
 
-    assertTabIsSelected("Foo");
-    assertTabIsNotSelected("Bar");
-
+    expect(screen.getByLabelText("Foo")).toBeChecked();
+    expect(screen.getByLabelText("Bar")).not.toBeChecked();
     fireEvent.click(screen.getByText("Bar"));
-
-    assertTabIsSelected("Bar");
-    assertTabIsNotSelected("Foo");
+    expect(screen.getByLabelText("Foo")).not.toBeChecked();
+    expect(screen.getByLabelText("Bar")).toBeChecked();
   });
 
   it("should show widget names", () => {
@@ -137,17 +133,3 @@ describe("BaseChartSettings", () => {
     expect(screen.queryByText("Foo")).not.toBeInTheDocument();
   });
 });
-
-function assertTabIsSelected(name: string) {
-  expect(screen.getByRole("tab", { name })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-}
-
-function assertTabIsNotSelected(name: string) {
-  expect(screen.getByRole("tab", { name })).toHaveAttribute(
-    "aria-selected",
-    "false",
-  );
-}
