@@ -54,6 +54,30 @@
                       (binding [search.ingestion/*disable-updates* true]
                         (thunk))))
 
+(defn- migrations-versions []
+  (letfn [(form->version [form]
+            (cond
+              (sequential? form)
+              (some form->version form)
+
+              (string? form)
+              (some-> (re-find #"^(v\d{2,})\." form) second)))]
+    (with-open [r (java.io.PushbackReader. (java.io.FileReader. "test/metabase/db/custom_migrations_test.clj"))]
+      (binding [*ns*        (the-ns 'metabase.db.custom-migrations-test)
+                *read-eval* false]
+        (into []
+              (comp (take-while some?)
+                    (keep form->version))
+              (repeatedly #(read {:eof nil} r)))))))
+
+;; Kooky that I have to write this, but I do. Make sure people keep tests in order -- I don't want to find any more 52
+;; tests sandwiched between 48 tests.
+(deftest ^:parallel order-your-migration-tests-test
+  (testing "Migrations tests should be grouped together by major version and those major versions should be in order"
+    (let [versions (migrations-versions)]
+      (is (= (sort versions)
+             versions)))))
+
 (jobs/defjob AbandonmentEmail [_] :default)
 
 (defn- table-default [table]

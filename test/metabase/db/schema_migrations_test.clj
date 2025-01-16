@@ -52,6 +52,30 @@
                       (binding [search.ingestion/*disable-updates* true]
                         (thunk))))
 
+(defn- migrations-versions []
+  (letfn [(form->version [form]
+            (cond
+              (sequential? form)
+              (some form->version form)
+
+              (string? form)
+              (some-> (re-find #"^(v\d{2,})\." form) second)))]
+    (with-open [r (java.io.PushbackReader. (java.io.FileReader. "test/metabase/db/schema_migrations_test.clj"))]
+      (binding [*ns*        (the-ns 'metabase.db.schema-migrations-test)
+                *read-eval* false]
+        (into []
+              (comp (take-while some?)
+                    (keep form->version))
+              (repeatedly #(read {:eof nil} r)))))))
+
+;; Kooky that I have to write this, but I do. Make sure people keep tests in order -- I don't want to find any more 52
+;; tests sandwiched between 48 tests.
+(deftest ^:parallel order-your-migration-tests-test
+  (testing "Migrations tests should be grouped together by major version and those major versions should be in order"
+    (let [versions (migrations-versions)]
+      (is (= (sort versions)
+             versions)))))
+
 ;;;
 ;;; 45 tests
 ;;;
@@ -2684,7 +2708,9 @@
       (t2/delete! :model/Setting :key "embedding-app-origin")
       (migrate!)
       (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-interactive")))
-      (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-sdk")))))
+      (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-sdk"))))))
+
+(deftest ^:mb/old-migrations-test populate-embedding-origin-settings-works-2
   (testing "Check that embedding-origins settings are propigated when embedding-app-origin is set to some value"
     (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
       (t2/delete! :model/Setting :key "embedding-app-origin")
