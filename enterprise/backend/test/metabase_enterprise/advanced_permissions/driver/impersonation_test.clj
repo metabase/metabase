@@ -9,7 +9,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]

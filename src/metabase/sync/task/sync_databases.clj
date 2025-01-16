@@ -1,4 +1,4 @@
-(ns metabase.task.sync-databases
+(ns metabase.sync.task.sync-databases
   "Scheduled tasks for syncing metadata/analyzing and caching FieldValues for connected Databases.
 
   There always UpdateFieldValues and SyncAndAnalyzeDatabase jobs present. Databases add triggers to these jobs. And
