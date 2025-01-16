@@ -184,6 +184,22 @@ jobs:
               :partition/total 2
               :partition/index 1
     name: "Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
+    env:
+      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
+      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
+      # it in to the command below.
+      __ADDITIONAL_EXCLUDED_TAG__: >-
+        ${{
+          (
+            github.event_name == 'push' &&
+            (
+              github.ref == 'master' ||
+              startsWith(github.ref, 'release-')
+            ) &&
+            ''
+          ) ||
+          ':mb/old-migrations-test'
+        }}
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -207,10 +223,10 @@ jobs:
           path: resources/frontend_client/app/dist
 
       - name: Run ${{ matrix.job.name }}
-        id: run-java-tests
+        id: Run Backend Unit Tests
         run: >-
           clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
-          :exclude-tags [:mb/driver-tests]
+          :exclude-tags [:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]
           ${{ matrix.job.test-args }}
 
       - name: Upload Test Results
