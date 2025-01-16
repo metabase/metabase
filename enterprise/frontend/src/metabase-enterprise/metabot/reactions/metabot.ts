@@ -1,4 +1,9 @@
-import type { MetabotWriteBackReaction } from "metabase-types/api";
+import { push } from "react-router-redux";
+
+import type {
+  MetabotRedirectReaction,
+  MetabotWriteBackReaction,
+} from "metabase-types/api";
 
 import { sendWritebackMessageRequest } from "../state";
 
@@ -9,5 +14,19 @@ export const writeBack: ReactionHandler<
 > = reaction => {
   return async ({ dispatch }) => {
     await dispatch(sendWritebackMessageRequest(reaction.message));
+  };
+};
+
+export const redirect: ReactionHandler<MetabotRedirectReaction> = reaction => {
+  const redirectUrl = new URL(`${window.location.origin}${reaction.url}`);
+
+  return async ({ dispatch }) => {
+    await dispatch(
+      push({
+        pathname: redirectUrl.pathname,
+        hash: redirectUrl.hash,
+        search: redirectUrl.search,
+      }),
+    );
   };
 };

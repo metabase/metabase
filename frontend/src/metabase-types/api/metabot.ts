@@ -133,6 +133,11 @@ export type MetabotChangeChartAppearanceReaction = {
   } | null;
 };
 
+export type MetabotRedirectReaction = {
+  type: "metabot.reaction/redirect";
+  url: string;
+};
+
 export type MetabotReaction =
   | MetabotChangeChartAppearanceReaction
   | MetabotChangeColumnSettingsReaction
@@ -143,7 +148,8 @@ export type MetabotReaction =
   | MetabotConfirmationReaction
   | MetabotWriteBackReaction
   | MetabotApiCallReaction
-  | MetabotRunQueryReaction;
+  | MetabotRunQueryReaction
+  | MetabotRedirectReaction;
 
 export type MetabotCardInfo = {
   type: CardType;

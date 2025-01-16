@@ -4,6 +4,7 @@
   All reactions must have a `:type` with the namespace `metabot.reaction`, but declaring a schema for it is optional.
   If you want to declare a schema, you can use [[defreaction]]."
   (:require
+   [clojure.set :as set]
    [malli.core :as mc]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -78,3 +79,19 @@
   [:map
    [:type [:= :metabot.reaction/run-query]]
    [:dataset_query :map]])
+
+(defreaction :metabot.reaction/redirect
+  [:map
+   [:type [:= :metabot.reaction/redirect]]
+   [:url :string]])
+
+(def ^:private terminating-reaction-types
+  "If one of these reactions is present in the reactions vector, stop the loop
+   and return the result to the user."
+  #{:metabot.reaction/redirect})
+
+(defn has-terminating-reaction?
+  "Checks if the envelope reactions vector contains a terminating reaction"
+  [reactions]
+  (let [reaction-types (->> reactions (map :type) set)]
+    (seq (set/intersection terminating-reaction-types reaction-types))))

@@ -27,6 +27,7 @@
                           .getBytes
                           codecs/bytes->b64-str)
                       id)]
-      {:output (str (public-settings/site-url) "/auto/dashboard/" entity-type "/" entity-id)})
+      {:output (str (public-settings/site-url) "/auto/dashboard/" entity-type "/" entity-id)
+       :reactions [{:type :metabot.reaction/redirect :url (str "/auto/dashboard/" entity-type "/" entity-id)}]})
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))

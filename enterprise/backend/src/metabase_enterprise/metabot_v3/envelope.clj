@@ -6,6 +6,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
+   [metabase-enterprise.metabot-v3.reactions :as reactions]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
@@ -84,8 +85,7 @@
                                    (filter #(not-empty (:content %)))
                                    (map message->reaction)
                                    (into []))]
-    (into llm-message-reactions
-          (metabot-v3.context/create-reactions (:context e)))))
+    (into [] (concat llm-message-reactions (:reactions e) (metabot-v3.context/create-reactions (:context e))))))
 
 (defn add-user-message
   "Given a user message (a string) adds it to the envelope."
@@ -166,8 +166,9 @@
   "Does this envelope require a new response from the LLM?"
   [e]
   (let [last-message (->> e history peek)]
-    (or (is-tool-call-response? last-message)
-        (is-user-message? last-message))))
+    (and (not (reactions/has-terminating-reaction? (:reactions e)))
+         (or (is-tool-call-response? last-message)
+             (is-user-message? last-message)))))
 
 (defn tool-calls-requiring-invocation
   "Gets a list of all the tool calls in the chat history that have not yet been responded to."
