@@ -91,6 +91,8 @@ export function getSdkUsageProblem(
       )
       // For SSO, the token features and the toggle must both be enabled.
       .with({ isSSO: true, hasTokenFeature: true, isEnabled: true }, () => null)
+      // Note that we cannot detect if embedding is disabled on non-localhost environments, as
+      // CORS is disabled on /api/session/properties.
       .with(
         {
           isSSO: true,
