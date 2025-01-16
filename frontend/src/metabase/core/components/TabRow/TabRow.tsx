@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/sortable";
 import {
   type ReactNode,
+  forwardRef,
   useCallback,
   useLayoutEffect,
   useRef,
@@ -45,9 +46,11 @@ function TabRowInner<T>({
   children,
   itemIds,
   handleDragEnd,
+  forwardedRef,
   ...props
 }: TabRowProps<T>) {
   const tabListRef = useRef<HTMLDivElement>(null);
+
   const [scrollPosition, setScrollPosition] = useState(0);
   const [showScrollRight, setShowScrollRight] = useState(false);
   const showScrollLeft = scrollPosition > 0;
@@ -103,6 +106,7 @@ function TabRowInner<T>({
     <TabList
       onChange={onChange as (value: unknown) => void}
       onScroll={event => setScrollPosition(event.currentTarget.scrollLeft)}
+      rootRef={forwardedRef}
       ref={tabListRef}
       {...props}
     >
@@ -129,9 +133,11 @@ function TabRowInner<T>({
   );
 }
 
-export const TabRow = ExplicitSize<TabRowProps<unknown>>()(TabRowInner) as <T>(
-  props: TabRowProps<T>,
-) => ReactNode;
+export const TabRow = ExplicitSize<TabRowProps<unknown>>()(
+  forwardRef((props, ref) => (
+    <TabRowInner {...props} forwardedRef={ref}></TabRowInner>
+  )),
+) as <T>(props: TabRowProps<T>) => ReactNode;
 
 interface ScrollArrowProps {
   direction: "left" | "right";

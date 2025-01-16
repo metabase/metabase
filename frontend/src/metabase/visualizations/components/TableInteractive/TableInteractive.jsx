@@ -1174,6 +1174,7 @@ class TableInteractive extends Component {
 
             return (
               <TableInteractiveRoot
+                ref={this.props.forwardedRef}
                 bg={backgroundColor}
                 className={cx(
                   className,
@@ -1364,7 +1365,9 @@ export default _.compose(
   ExplicitSize({
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
+  Component =>
+    forwardRef((props, ref) => <Component {...props} forwardedRef={ref} />),
   memoizeClass(
     "_getCellClickedObjectCached",
     "_visualizationIsClickableCached",

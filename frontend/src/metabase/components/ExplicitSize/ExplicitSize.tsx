@@ -99,22 +99,22 @@ function ExplicitSize<T>({
           if (selector && element instanceof Element) {
             element = element.querySelector(selector) || element;
           }
-          console.log(
-            !selector && element !== this.elementRef?.current
-              ? "DIFFERENT"
-              : "SAME",
-            displayName,
-            wrapped,
-            element,
-            !selector ? this.elementRef?.current : element,
-          );
 
           if (!selector && element !== this.elementRef?.current) {
+            console.log(
+              !selector && element !== this.elementRef?.current
+                ? "DIFFERENT"
+                : "SAME",
+              displayName,
+              wrapped,
+              element,
+              !selector ? this.elementRef?.current : element,
+            );
             console.error(
-              "*********  element and elementRef DO NOT MATCH. ************",
+              `${displayName}: *********  element and elementRef DO NOT MATCH. ************`,
             );
             throw new Error(
-              "*********  element and elementRef DO NOT MATCH. ************",
+              `${displayName}: *********  element and elementRef DO NOT MATCH. ************`,
             );
           }
 
@@ -263,7 +263,6 @@ function ExplicitSize<T>({
             </div>
           );
         } else {
-          console.log(ComposedComponent.displayName);
           return (
             <ComposedComponent
               ref={el => {
