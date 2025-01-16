@@ -105,8 +105,8 @@
 
 (defn sync-upload-test-table!
   "Creates a table in the app db and syncs it synchronously, setting is_upload=true. Returns the table instance.
-  The result is identical to if the table was synced with [[metabase.sync/sync-database!]], but faster because it skips
-  syncing every table in the test database."
+  The result is identical to if the table was synced with [[metabase.sync.core/sync-database!]], but faster because it
+  skips syncing every table in the test database."
   [& {:keys [database table-name schema-name]}]
   (let [table-name  (ddl.i/format-name driver/*driver* table-name)
         schema-name (or (some->> schema-name (ddl.i/format-name driver/*driver*))
