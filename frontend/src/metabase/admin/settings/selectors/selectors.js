@@ -353,6 +353,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
         },
       },
       {
+        key: "dynamic-dictionary",
+        display_name: t`Content translation dictionary`,
+        type: "text",
+      },
+      {
         key: "report-timezone",
         display_name: t`Report Timezone`,
         type: "select",

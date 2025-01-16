@@ -16,6 +16,10 @@ import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
+import {
+  ContentTranslationContext,
+  getContentTranslationFunction,
+} from "metabase/i18n/components/ContentTranslationContext";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
@@ -102,8 +106,11 @@ const mapDispatchToProps = dispatch => ({
 });
 
 class TableInteractive extends Component {
-  constructor(props) {
-    super(props);
+  static contextType = ContentTranslationContext;
+  constructor(props, context) {
+    super(props, context);
+
+    this.tc = getContentTranslationFunction(this.context);
 
     this.state = {
       columnIsExpanded: [],
@@ -603,7 +610,11 @@ class TableInteractive extends Component {
 
     const column = cols[columnIndex];
     const row = rows[rowIndex];
-    const value = row[columnIndex];
+
+    // HACK: This is a roundabout method of localizing the value because tc
+    // expects to localize the property of an object
+    const obj = { value: row[columnIndex] };
+    const value = this.tc(obj, "value");
 
     const columnSettings = settings.column(column);
     const clicked = this.getCellClickedObject(rowIndex, columnIndex);

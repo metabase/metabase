@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useSet } from "react-use";
 
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { isDesktopSafari } from "metabase/lib/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
@@ -78,8 +79,9 @@ function _CartesianChart(props: VisualizationProps) {
 
   const chartRef = useRef<EChartsType>();
 
+  const tc = useTranslateContent();
   const hasTitle = showTitle && settings["card.title"];
-  const title = settings["card.title"] || card.name;
+  const title = settings["card.title"] || tc(card, "name");
   const description = settings["card.description"];
 
   const legendItems = useMemo(

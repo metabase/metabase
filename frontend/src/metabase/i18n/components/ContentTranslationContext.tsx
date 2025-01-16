@@ -13,7 +13,7 @@ export const ContentTranslationContext =
   createContext<ContentTranslationContextObject>({
     shouldLocalize: true,
     dictionary: [],
-    locale: "fr", //hard-code for now
+    locale: "en",
   });
 
 export const ContentTranslationProvider = ({
@@ -67,9 +67,14 @@ export const ContentTranslationProvider = ({
 
 export const useTranslateContent = () => {
   const context = useContext(ContentTranslationContext);
-  const tc = (obj: any, property: string) =>
+  return getContentTranslationFunction(context);
+};
+
+export const getContentTranslationFunction = (
+  context: ContentTranslationContextObject,
+) => {
+  return (obj: any, property: string) =>
     translateProperty(obj, property, (msgid: string) =>
       translateString(msgid, context),
     );
-  return tc;
 };

@@ -43,7 +43,13 @@ export const translateProperty = <
   }
   const localizedKey = `${property}_localized`;
   const msgid = obj[property] as T[K];
-  (obj as Record<typeof localizedKey, any>)[localizedKey] ??=
-    translateString?.(msgid);
-  return (obj[localizedKey] as NonNullable<LocalizedProperty<T, K>>) || msgid;
+  const translated = translateString?.(msgid) as NonNullable<
+    LocalizedProperty<T, K>
+  >;
+  try {
+    (obj as Record<typeof localizedKey, any>)[localizedKey] ??= translated;
+  } catch (e) {
+    console.error("Couldn't cache translation", e);
+  }
+  return translated || msgid;
 };
