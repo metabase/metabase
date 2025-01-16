@@ -41,6 +41,7 @@ export const setupSdkState = ({
   const settingValuesWithToken = {
     ...settingValues,
     "token-features": tokenFeatures,
+    "enable-embedding-sdk": settingValues?.["enable-embedding-sdk"] ?? true,
   };
 
   setupCurrentUserEndpoint(currentUser);
