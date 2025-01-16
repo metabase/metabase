@@ -11,7 +11,6 @@ export * from "./embed-share";
 export * from "./embedding-homepage";
 export * from "./event";
 export * from "./invite";
-export * from "./metabot";
 export * from "./model";
 export * from "./question";
 export * from "./serialization";
