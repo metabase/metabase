@@ -89,39 +89,11 @@
   (update-user-key-value-schema!))
 
 (defn- load-schema-from-file
-  "Load a schema from an EDN file, using its name as the namespace."
+  "Load a schema from an EDN file, using its filename as the namespace."
   [^File file]
   (let [namespace (file->namespace file)
         schema  (-> file slurp edn/read-string)]
     (load-schema schema namespace)))
-
-(defn load-all-schemas
-  "Load all schemas from the a given resource path."
-  [dir]
-  (u.files/with-open-path-to-resource [dir dir]
-    (with-open [ds (Files/newDirectoryStream dir)]
-      (let [schemas (reduce
-                     (fn [acc ^Path f]
-                       (let [schema (try
-                                      (-> f
-                                          (Files/newInputStream (u/varargs OpenOption))
-                                          slurp
-                                          edn/read-string)
-                                      (catch Throwable e
-                                        (throw
-                                         (ex-info (format "Error loading schema %s: %s" (str f) (ex-message e))
-                                                  {:f f}
-                                                  e))))
-                             namespace (keyword "namespace"
-                                                (-> f
-                                                    .getFileName
-                                                    (str/replace #"\.edn$" "")))]
-                         (conj acc [schema namespace])))
-                     []
-                     ds)]
-        (doseq [[schema n] schemas]
-          (load-schema schema n))
-        (update-user-key-value-schema!)))))
 
 (defn watch-directory
   "Only used in dev. Watch a directory for changes and call the callback with the affected file."
@@ -158,10 +130,39 @@
               ;; this is solely for dev.
               (defnamespace namespace [:and true? false?]))))
 
+(defn load-all-schemas-prod
+  "Loads all type schemas from the a given resource path. This is the production code path which doesn't implement
+  file-watching, and works when running in a JAR."
+  [dir]
+  (u.files/with-open-path-to-resource [dir dir]
+    (with-open [ds (Files/newDirectoryStream dir)]
+      (let [schemas (reduce
+                     (fn [acc ^Path file]
+                       (let [schema (try
+                                      (-> file
+                                          (Files/newInputStream (u/varargs OpenOption))
+                                          slurp
+                                          edn/read-string)
+                                      (catch Throwable e
+                                        (throw
+                                         (ex-info (format "Error loading schema %s: %s" (str file) (ex-message e))
+                                                  {}
+                                                  e))))
+                             namespace (keyword "namespace"
+                                                (-> file
+                                                    .getFileName
+                                                    (str/replace #"\.edn$" "")))]
+                         (conj acc [schema namespace])))
+                     []
+                     ds)]
+        (doseq [[schema namespace] schemas]
+          (load-schema schema namespace))
+        (update-user-key-value-schema!)))))
+
 (defn load-and-watch-schemas
   "In production, just load the schemas. In development, watch for changes as well."
   []
-  (load-all-schemas types-dir)
+  (load-all-schemas-prod types-dir)
   ;; in dev, watch both types directories for changes
   (when config/is-dev?
     (watch-directory (io/file (io/resource types-dir)) handle-file-change)))
