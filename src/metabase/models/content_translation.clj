@@ -31,7 +31,7 @@
                           :from [[(t2/table-name :model/Table) :t]]}))))
 
 
-(defn get-field-value-display-names
+(defn get-field-values
   "List all field values"
   []
   (let [field-values (t2/query {:select [:fv.values]
@@ -47,9 +47,9 @@
   []
   (let [column-names (get-column-display-names)
         table-names (get-table-display-names)
-        field-values (get-field-value-display-names)
+        field-values (get-field-values)
         all-names (concat column-names table-names field-values)]
-    (take 100 (distinct (filter string? all-names)))))
+    (distinct (filter string? all-names))))
 
 (defn get-translations
   "List the translations stored in the content_translation table"

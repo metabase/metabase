@@ -10473,9 +10473,14 @@ databaseChangeLog:
       id: v53.2025-01-15T11:00:00
       author: rafpaf
       comment: 'Content translation table'
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: content_translation
       changes:
         - createTable:
-            tableName: content_translations
+            tableName: content_translation
             remarks: Content translations
             columns:
               - column:
@@ -10504,15 +10509,6 @@ databaseChangeLog:
                   type: varchar(255)
                   constraints:
                     nullable: true
-
-  - changeSet:
-      id: v53.2025-01-15T13:00:00
-      author: rafpaf
-      comment: Rename content-translation table
-      changes:
-        - renameTable:
-            newTableName: content_translation
-            oldTableName: content_translations
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
