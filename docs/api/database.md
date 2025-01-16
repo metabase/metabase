@@ -113,6 +113,8 @@ Return a list of `Card` autocomplete suggestions for a given `query` in a given 
 
 -  **`query`** value must be a non-blank string.
 
+-  **`include_dashboard_questions`** value must be a valid boolean string ('true' or 'false').
+
 ## `GET /api/database/:id/fields`
 
 Get a list of all `Fields` in `Database`.

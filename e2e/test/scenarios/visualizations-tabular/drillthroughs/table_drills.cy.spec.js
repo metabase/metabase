@@ -392,7 +392,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills > nulls", ()
       .click({ force: true });
 
     H.popover().within(() => {
-      cy.findByText("Filter by this date").should("be.visible");
+      cy.findByText("Filter by this date and time").should("be.visible");
       cy.findByText("Is empty").should("be.visible");
       cy.findByText("Not empty").should("be.visible").click();
     });

@@ -5,10 +5,9 @@
    [metabase.api.common :as api]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
-   (java.io ByteArrayOutputStream File)
+   (java.io ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
    (java.security KeyStore KeyStore$PasswordProtection KeyStore$SecretKeyEntry)
    (javax.crypto SecretKey)
@@ -41,14 +40,8 @@
   "Initializes and returns a `KeyStore` instance from the given `ks-bytes` (keystore contents) and `ks-password`."
   {:added "0.41.0"}
   ^KeyStore [^bytes ks-bytes ^chars ks-password]
-  (let [^File temp-file (File/createTempFile "temp-keystore_" ".jks")]
-    (with-open [out (io/output-stream temp-file)]
-      (.write out ks-bytes))
-    (.deleteOnExit temp-file)
-    ;; Java 9 added a getInstance method that takes the file and password as params, but since we still support JDK 8,
-    ;; we have to do it this way
-    (doto (KeyStore/getInstance (KeyStore/getDefaultType))
-      (.load (io/input-stream temp-file) ks-password))))
+  (doto (KeyStore/getInstance (KeyStore/getDefaultType))
+    (.load (io/input-stream ks-bytes) ks-password)))
 
 (defn- assert-entries [^String protection-password ^KeyStore ks entries]
   (let [protection (KeyStore$PasswordProtection. (.toCharArray protection-password))]
@@ -64,13 +57,14 @@
         (let [key-alias "my-secret-key"
               key-value "cromulent"
               ks-pw     "embiggen"
-              ks        (create-test-jks-instance ks-pw {key-alias key-value})]
-          (.store ks baos (.toCharArray ks-pw))
-          (t2.with-temp/with-temp [:model/Database {:keys [details] :as database} {:engine  :secret-test-driver
-                                                                                   :name    "Test DB with keystore"
-                                                                                   :details {:host                    "localhost"
-                                                                                             :keystore-value          (.toByteArray baos)
-                                                                                             :keystore-password-value ks-pw}}]
+              _         (doto (create-test-jks-instance ks-pw {key-alias key-value})
+                          (.store baos (.toCharArray ks-pw)))
+              ks-bytes (.toByteArray baos)]
+          (mt/with-temp [:model/Database {:keys [details] :as database} {:engine  :secret-test-driver
+                                                                         :name    "Test DB with keystore"
+                                                                         :details {:host                    "localhost"
+                                                                                   :keystore-value          (mt/bytes->base64-data-uri ks-bytes)
+                                                                                   :keystore-password-value ks-pw}}]
             (is (some? database))
             (is (not (contains? details :keystore-value)) "keystore-value was removed from details")
             (is (contains? details :keystore-id) "keystore-id was added to details")
@@ -80,4 +74,5 @@
                   ks-pw-str            (String. ^bytes ks-pw-bytes StandardCharsets/UTF_8)
                   {:keys [value]}      (t2/select-one :model/Secret :id (:keystore-id details))
                   ks                   (bytes->keystore value (.toCharArray ks-pw-str))]
+              (is (= (seq ks-bytes) (seq value)))
               (assert-entries ks-pw-str ks {key-alias key-value}))))))))

@@ -89,6 +89,8 @@ function setup({
       showClickBehaviorSidebar={jest.fn()}
       onChangeLocation={jest.fn()}
       downloadsEnabled
+      autoScroll={false}
+      reportAutoScrolledToDashcard={jest.fn()}
     />,
     {
       storeInitialState: {

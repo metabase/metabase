@@ -3,7 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 

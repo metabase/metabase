@@ -62,6 +62,7 @@
 
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:token"
   "Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
 
@@ -93,6 +94,7 @@
      :constraints       constraints
      :options           options)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
@@ -103,6 +105,7 @@
   [token & query-params]
   (run-query-for-unsigned-token-async (unsign-and-translate-ids token) :api (api.embed.common/parse-query-params query-params)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [token export-format format_rows pivot_results :as {:keys [query-params]}]
@@ -121,6 +124,7 @@
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/dashboard/:token"
   "Fetch a Dashboard via a JSON Web Token signed with the `embedding-secret-key`.
 
@@ -164,6 +168,7 @@
      :qp               qp
      :middleware       middleware)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
@@ -180,6 +185,7 @@
 
 ;;; -------------------------------------------------- Field Values --------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:token/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by an embedded Card."
   [token field-id]
@@ -189,6 +195,7 @@
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.public/card-and-field-id->values card-id field-id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/dashboard/:token/field/:field-id/values"
   "Fetch FieldValues for a Field that is used as a param in an embedded Dashboard."
   [token field-id]
@@ -200,6 +207,7 @@
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by an embedded Card."
   [token field-id search-field-id value limit]
@@ -212,6 +220,7 @@
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.public/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/dashboard/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in an embedded Dashboard."
   [token field-id search-field-id value limit]
@@ -227,6 +236,7 @@
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:token/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Cards."
@@ -239,6 +249,7 @@
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.public/card-field-remapped-values card-id field-id remapped-id value)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Dashboards."
@@ -251,6 +262,7 @@
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
                       :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -280,18 +292,21 @@
 ;; variables whose name includes `id-` e.g. `id-query-params` below are ones that are keyed by ID; ones whose name
 ;; includes `slug-` are keyed by slug.
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
   [token param-key :as {:keys [query-params]}]
   (api.embed.common/dashboard-param-values token param-key nil
                                            (api.embed.common/parse-query-params query-params)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [token param-key prefix :as {:keys [query-params]}]
   (api.embed.common/dashboard-param-values token param-key prefix
                                            (api.embed.common/parse-query-params query-params)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
   [token param-key]
@@ -303,6 +318,7 @@
                                          :card           card
                                          :param-key      param-key})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [token param-key prefix]
@@ -315,6 +331,7 @@
                                          :param-key      param-key
                                          :search-prefix  prefix})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/pivot/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
@@ -327,6 +344,7 @@
                                       :api (api.embed.common/parse-query-params query-params)
                                       :qp qp.pivot/run-pivot-query))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"

@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.api.setting-test
+(ns metabase.api.setting-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

@@ -1282,7 +1282,7 @@ H.describeEE("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.popover().should("contain.text", "Filter by this value");
 
       getTableCell(COLUMN_INDEX.CREATED_AT).click();
-      H.popover().should("contain.text", "Filter by this date");
+      H.popover().should("contain.text", "Filter by this date and time");
 
       H.editDashboard();
 
@@ -2875,11 +2875,11 @@ function customizeLinkText(text) {
 }
 
 function verifyVizTypeIsLine() {
-  cy.findByTestId("viz-type-button").click();
+  H.openVizTypeSidebar();
   cy.findByTestId("sidebar-content")
     .findByTestId("Line-container")
     .should("have.attr", "aria-selected", "true");
-  cy.findByTestId("viz-type-button").click();
+  H.openVizTypeSidebar();
 }
 
 function getClickMapping(columnName) {

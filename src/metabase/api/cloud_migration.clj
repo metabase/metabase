@@ -7,9 +7,10 @@
    [compojure.core :refer [GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.models.cloud-migration :as cloud-migration]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Initiate a new cloud migration."
   [_]
@@ -33,12 +34,14 @@
           400 {:status 400 :body "Cannot migrate this Metabase version."}
           {:status 500})))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Get the latest cloud migration, if any."
   [_]
   (api/check-superuser)
   (t2/select-one :model/CloudMigration {:order-by [[:created_at :desc]]}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/cancel"
   "Cancel any ongoing cloud migrations, if any."
   [_]

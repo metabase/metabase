@@ -41,7 +41,8 @@ const elements = [
     value: null,
     is_env_setting: false,
     env_name: "MB_JWT_IDENTITY_PROVIDER_URI",
-    description: "URL of JWT based login page",
+    description:
+      "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK.",
     originalValue: null,
     display_name: "JWT Identity Provider URI",
     type: "string",

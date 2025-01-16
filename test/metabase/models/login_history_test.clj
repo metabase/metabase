@@ -9,8 +9,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,13 +24,13 @@
         (is (= true
                (#'login-history/first-login-ever? history-1))))
       (testing "add a history item for a *different* device -- should be the first login with this device"
-        (t2.with-temp/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device-2}]
+        (mt/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device-2}]
           (is (= true
                  (#'login-history/first-login-on-this-device? history-1)))
           (is (= false
                  (#'login-history/first-login-ever? history-1)))
           (testing "add a second history item for device 1 -- should *not* be the first login with this device"
-            (t2.with-temp/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device-1}]
+            (mt/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device-1}]
               (is (= false
                      (#'login-history/first-login-on-this-device? history-1)))
               (is (= false
@@ -89,12 +88,12 @@
 
                   (testing "don't send email on subsequent login from same device"
                     (mt/reset-inbox!)
-                    (t2.with-temp/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device}]
+                    (mt/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device}]
                       (is (= {}
                              @mt/inbox))))))))))))
 
   (testing "don't send email if the setting is disabled by setting MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE=FALSE"
-    (t2.with-temp/with-temp [:model/User {user-id :id}]
+    (mt/with-temp [:model/User {user-id :id}]
       (mt/with-fake-inbox
         ;; can't use `mt/with-temporary-setting-values` here because it's a read-only setting
         (mt/with-temp-env-var-value! [mb-send-email-on-first-login-from-new-device "FALSE"]

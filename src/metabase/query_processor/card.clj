@@ -13,7 +13,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.cache-config :as cache-config]
    [metabase.models.query :as query]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -240,7 +240,7 @@
 
 (mu/defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
-  `metabase.async.streaming_response.StreamingResponse` (see [[metabase.async.streaming-response]]) that should be
+  `metabase.server.streaming_response.StreamingResponse` (see [[metabase.server.streaming-response]]) that should be
   returned as the result of an API endpoint fn, but you can return something different by passing a different `:make-run`
   option. `:make-run` has a signature.
 

@@ -119,7 +119,8 @@
 
 (defn do-with-open-path-to-resource
   "Impl for `with-open-path-to-resource`."
-  [^String resource f]
+  [resource f]
+  {:pre [(some? resource)]}
   (let [url (io/resource resource)]
     (when-not url
       (throw (FileNotFoundException. (trs "Resource does not exist."))))

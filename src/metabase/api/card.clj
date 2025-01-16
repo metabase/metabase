@@ -4,13 +4,12 @@
    [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
-   [metabase.analyze :as analyze]
+   [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.api.query-metadata :as api.query-metadata]
-   [metabase.compatibility :as compatibility]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.convert :as lib.convert]
@@ -30,8 +29,8 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
+   [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
@@ -143,6 +142,7 @@
                                          :join [[model :m] [:= :t.id :m.table_id]]
                                          :where [:= :m.id model-id]}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_metric`,
@@ -212,6 +212,7 @@
         collection.root/hydrate-root-collection
         (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id ignore_view context]
@@ -232,6 +233,7 @@
     (doseq [dashboard dashboards]
       (api/write-check dashboard))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/dashboards"
   "Get a list of `{:name ... :id ...}` pairs for all the dashboards this card appears in."
   [id]
@@ -245,7 +247,7 @@
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
   [metadata-provider dataset-query]
-  (let [pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)]
+  (let [pMBQL-query (-> dataset-query card.metadata/normalize-dataset-query lib.convert/->pMBQL)]
     (lib/query metadata-provider pMBQL-query)))
 
 (defn- card-columns-from-names
@@ -325,7 +327,7 @@
 (def ^:private supported-series-display-type (set (keys (methods series-are-compatible?))))
 
 (defn- fetch-compatible-series*
-  "Implementaiton of `fetch-compatible-series`.
+  "Implementation of `fetch-compatible-series`.
 
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
@@ -401,8 +403,9 @@
                                 new-cards)
        new-cards))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/series"
-  "Fetches a list of comptatible series with the card with id `card_id`.
+  "Fetches a list of compatible series with the card with id `card_id`.
 
   - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.
   - `query` to search card by name.
@@ -430,6 +433,7 @@
       :last-cursor last_cursor
       :page-size   (request/limit)})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
   [id include start end]
@@ -482,6 +486,7 @@
                       {:type        card-type
                        :status-code 400})))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [:as {{:keys [collection_id collection_position dashboard_id dataset_query description display entity_id
@@ -511,6 +516,7 @@
         hydrate-card-details
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
   [id]
@@ -527,7 +533,7 @@
 (defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
   [card-before-updates card-updates]
-  (let [card-updates (m/update-existing card-updates :dataset_query compatibility/normalize-dataset-query)]
+  (let [card-updates (m/update-existing card-updates :dataset_query card.metadata/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
       (check-permissions-for-query (:dataset_query card-updates)))))
 
@@ -616,6 +622,7 @@
         (card.metadata/save-metadata-async! metadata-future card))
       card)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update a `Card`."
   [id delete_old_dashcards :as {body :body}]
@@ -624,6 +631,7 @@
    body CardUpdateSchema}
   (update-card! id body (boolean delete_old_dashcards)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/query_metadata"
   "Get all of the required query metadata for a card."
   [id]
@@ -632,6 +640,7 @@
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id"
   "Hard delete a Card. To soft delete, use `PUT /api/card/:id`"
   [id]
@@ -713,6 +722,7 @@
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with
   `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
@@ -724,6 +734,7 @@
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
@@ -744,6 +755,7 @@
    :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
@@ -769,6 +781,7 @@
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:card-id/public_link"
   "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
@@ -785,6 +798,7 @@
                              {:public_uuid       <>
                               :made_public_by_id api/*current-user-id*})))}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
   [card-id]
@@ -797,6 +811,7 @@
                :made_public_by_id nil})
   {:status 204, :body nil})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/public"
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
@@ -804,6 +819,7 @@
   (validation/check-public-sharing-enabled)
   (t2/select [:model/Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/embeddable"
   "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
   and a signed JWT."
@@ -812,6 +828,7 @@
   (validation/check-embedding-enabled)
   (t2/select [:model/Card :name :id], :enable_embedding true, :archived false))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/pivot/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache]
@@ -823,6 +840,7 @@
                                   :qp           qp.pivot/run-pivot-query
                                   :ignore-cache ignore_cache))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
   query in place of the model's query."
@@ -846,6 +864,7 @@
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
       api/generic-204-no-content)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:card-id/refresh"
   "Refresh the persisted model caching `card-id`."
   [card-id]
@@ -860,6 +879,7 @@
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:card-id/unpersist"
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."
@@ -901,6 +921,7 @@
                        {:status-code 400})))
      (custom-values/parameter->values param query (fn [] (mapping->field-values card param query))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:card-id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`.
 
@@ -911,6 +932,7 @@
    param-key ms/NonBlankString}
   (param-values (api/read-check :model/Card card-id) param-key))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:card-id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
 
@@ -947,6 +969,7 @@
                              (tru "There was an error uploading the file"))}})
     (finally (io/delete-file file :silently))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
   [:as {raw-params :params}]

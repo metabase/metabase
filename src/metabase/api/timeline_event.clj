@@ -12,6 +12,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new [[TimelineEvent]]."
   [:as {{:keys [name description timestamp time_matters timezone icon timeline_id source question_id archived] :as body} :body}]
@@ -48,12 +49,14 @@
                                (boolean question_id) (assoc :question_id question_id)))
       (first (t2/insert-returning-instances! :model/TimelineEvent tl-event)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
   [id]
   {id ms/PositiveInt}
   (api/read-check :model/TimelineEvent id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update a [[TimelineEvent]]."
   [id :as {{:keys [name description timestamp time_matters timezone icon timeline_id archived]
@@ -78,6 +81,7 @@
                                     :non-nil #{:name}))
     (t2/select-one :model/TimelineEvent :id id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id"
   "Delete a [[TimelineEvent]]."
   [id]

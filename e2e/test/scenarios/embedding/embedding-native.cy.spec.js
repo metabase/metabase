@@ -89,8 +89,10 @@ describe("scenarios > embedding > native questions", () => {
 
       // Created At: Q2 2023
       H.filterWidget().contains("Created At").click();
-      cy.findByTestId("select-year-picker").click();
-      H.selectDropdown().contains("2023").click();
+      H.popover().within(() => {
+        cy.findByText(/20\d+/).click();
+        cy.contains("2023").click();
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q2").click();
 

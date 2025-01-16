@@ -10,8 +10,7 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util :as u]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [metabase.util :as u])
   (:import
    (java.time OffsetDateTime)))
 
@@ -41,9 +40,9 @@
   (testing "Ensure that coerced values only get coerced once. #33861"
     (mt/dataset
       toucan-ms-incidents
-      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                                          :type     :query
-                                                                          :query    {:source-table (mt/id :incidents)}}}]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :incidents)}}}]
         (is (= [[1 4 "2015-06-06T10:40:00Z"]
                 [2 0 "2015-06-10T19:51:00Z"]]
                (mt/rows (qp/process-query {:database (mt/id)
@@ -396,7 +395,8 @@
              {:field-name "as_bytes"
               :base-type {:natives {:postgres "BYTEA"
                                     :h2       "BYTEA"
-                                    :mysql    "VARBINARY(100)"}}
+                                    :mysql    "VARBINARY(100)"
+                                    :redshift "VARBYTE"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
     [["foo" (.getBytes "20190421164300")]
@@ -416,11 +416,6 @@
 
 ;;; Currently broken for Presto. See #46848
 (defmethod driver/database-supports? [:presto-jdbc ::yyyymmddhhss-binary-timestamps]
-  [_driver _feature _database]
-  false)
-
-;;; Not working for Redshift either. See #46850
-(defmethod driver/database-supports? [:redshift ::yyyymmddhhss-binary-timestamps]
   [_driver _feature _database]
   false)
 

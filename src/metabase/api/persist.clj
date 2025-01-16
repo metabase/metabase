@@ -56,6 +56,7 @@
                     :next-fire-time (get-in db-id->fire-time [database_id :next-fire-time])))
            results))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
@@ -79,6 +80,7 @@
      :limit  (request/limit)
      :offset (request/offset)}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:persisted-info-id"
   "Fetch a particular [[PersistedInfo]] by id."
   [persisted-info-id]
@@ -87,6 +89,7 @@
     (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
     persisted-info))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:card-id"
   "Fetch a particular [[PersistedInfo]] by card-id."
   [card-id]
@@ -103,6 +106,7 @@
     [:fn {:error/message (deferred-tru "String representing a cron schedule")} #(= 7 (count (str/split % #" ")))]]
    (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/set-refresh-schedule"
   "Set the cron schedule to refresh persisted models.
    Shape should be JSON like {cron: \"0 30 1/8 * * ? *\"}."
@@ -119,6 +123,7 @@
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/enable"
   "Enable global setting to allow databases to persist models."
   []
@@ -142,6 +147,7 @@
                   {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/disable"
   "Disable global setting to allow databases to persist models. This will remove all tasks to refresh tables, remove
   that option from databases which might have it enabled, and delete all cached tables."

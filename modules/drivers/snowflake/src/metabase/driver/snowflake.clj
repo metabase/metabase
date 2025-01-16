@@ -99,28 +99,15 @@
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
   Snowflake driver expects a java.security.PrivateKey instance."
-  [{:keys [user password account private-key-options]
+  [{:keys [user password account]
     :as   details}]
   (if password
     details
-    (let [base-details (apply dissoc details (vals (secret/->sub-props "private-key")))
-          secret-map   (secret/db-details-prop->secret-map details "private-key")
-          private-key-file (cond
-                             ;; Local file path
-                             (= private-key-options "local")
-                             (secret/value->file! secret-map :snowflake)
-
-                             ;; Uploaded file stored in `secrets` table
-                             :else
-                             ;; Why setting `:private-key-options` to "uploaded"? To fix the issue #41852. Snowflake's database edit gui
-                             ;; is designed in a way, that `:private-key-options` are not sent if `hosting` enterprise feature is enabled.
-                             ;; The option must be set to "uploaded" for base64 decoding to happen. Setting that option at this point is fine
-                             ;; because the alternative ("local") is ruled out already in this `cond` branch.
-                             (let [decoded (secret/get-secret-string (assoc details :private-key-options "uploaded") "private-key")]
-                               (secret/value->file! {:connection-property-name "private-key-file"
-                                                     :value                    decoded})))]
-      (assoc (handle-conn-uri base-details user account private-key-file)
-             :private_key_file private-key-file))))
+    (let [private-key-file (secret/value-as-file! :snowflake details "private-key")]
+      (-> details
+          (secret/clean-secret-properties-from-details :snowflake)
+          (handle-conn-uri user account private-key-file)
+          (assoc :private_key_file private-key-file)))))
 
 (defn- quote-name
   [raw-name]
@@ -150,7 +137,7 @@
     spec))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
-  [_ {:keys [account additional-options host use-hostname], :as details}]
+  [_ {:keys [account additional-options host use-hostname password use-password], :as details}]
   (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
     (log/warn (str "You should not set WEEK_START in Snowflake connection options; this might lead to incorrect "
                    "results. Set the Start of Week Setting instead.")))
@@ -184,6 +171,11 @@
                    ;; see https://github.com/metabase/metabase/issues/27856
                    (cond-> (:quote-db-name details)
                      (update :db quote-name))
+                   (cond-> use-password
+                     (dissoc :private-key))
+                   ;; password takes precedence if `use-password` is missing
+                   (cond-> (or (false? use-password) (not password))
+                     (dissoc :password))
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
                    (m/update-existing :schema upcase-not-nil)

@@ -19,8 +19,7 @@
    [metabase.test.util :as tu]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.random :as u.random]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -271,7 +270,7 @@
            binding-forms-and-option-maps])]
     `(do
        (initialize/initialize-if-needed! :web-server)
-       (t2.with-temp/with-temp ~[:model/Card model model-def]
+       (mt/with-temp ~[:model/Card model model-def]
          (tu/with-model-cleanup [:model/Action]
            (let [~custom-binding ~model
                  ~@(mapcat (fn [[binding-form option-map]]

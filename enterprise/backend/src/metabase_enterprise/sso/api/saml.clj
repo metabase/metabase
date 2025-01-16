@@ -5,12 +5,13 @@
    [compojure.core :refer [PUT]]
    [metabase.api.common :as api]
    [metabase.models.setting :as setting]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
    [saml20-clj.core :as saml]))
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/settings"
   "Update SAML related settings. You must be a superuser to do this."
   [:as {settings :body}]

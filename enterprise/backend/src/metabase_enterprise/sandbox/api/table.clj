@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -86,6 +86,7 @@
       ;; Not sandboxed, so user can fetch full metadata
       table)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/query_metadata"
   "This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has sandboxed permissions
   that only gives them access to a subset of columns for a given table, those inaccessable columns should also be

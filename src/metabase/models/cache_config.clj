@@ -48,7 +48,10 @@
     {:model    (:model row)
      :model_id (:model_id row)
      :strategy (-> (:config row)
-                   (assoc :type (:strategy row)))}))
+                   (assoc :type (:strategy row))
+                   (cond->
+                    (#{:duration :schedule} (:strategy row))
+                     (assoc :refresh_automatically (:refresh_automatically row))))}))
 
 (defn card-strategy
   "Shapes `row` into strategy for a given `card`."
@@ -60,10 +63,11 @@
 (defn config->row
   "Transform cache config from API form into db storage form."
   [{:keys [model model_id strategy]}]
-  {:model    model
-   :model_id model_id
-   :strategy (:type strategy)
-   :config   (dissoc strategy :type)})
+  {:model                 model
+   :model_id              model_id
+   :strategy              (:type strategy)
+   :config                (dissoc strategy :type :refresh_automatically)
+   :refresh_automatically (:refresh_automatically strategy)})
 
 (defn get-list
   "Get a list of cache configurations for given `models` and a `collection`."
