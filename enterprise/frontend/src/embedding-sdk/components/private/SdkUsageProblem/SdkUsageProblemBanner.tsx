@@ -132,7 +132,7 @@ export const SdkUsageProblemBanner = ({
                 Hide {severity}
               </Button>
 
-              <ExternalLink href={problem.documentationUrl}>
+              <ExternalLink role="link" href={problem.documentationUrl}>
                 <Button
                   fz="sm"
                   variant="outline"

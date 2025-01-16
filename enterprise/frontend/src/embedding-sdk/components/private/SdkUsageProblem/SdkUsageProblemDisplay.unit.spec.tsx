@@ -83,6 +83,16 @@ describe("SdkUsageProblemDisplay", () => {
         /Attempting to use this in other ways is in breach of our usage policy/,
       ),
     ).toBeInTheDocument();
+
+    // Verify the documentation URL for license-related issues
+    const docsLink = within(card).getByRole("link", {
+      name: /View documentation/,
+    });
+
+    expect(docsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/upgrade",
+    );
   });
 
   it("shows a warning when API keys are used in localhost", async () => {
@@ -100,6 +110,15 @@ describe("SdkUsageProblemDisplay", () => {
         /This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO./,
       ),
     ).toBeInTheDocument();
+
+    const docsLink = within(card).getByRole("link", {
+      name: /View documentation/,
+    });
+
+    expect(docsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#authenticating-people-from-your-server",
+    );
   });
 
   it("shows an error when API keys are used in production", async () => {
@@ -134,11 +153,21 @@ describe("SdkUsageProblemDisplay", () => {
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
     expect(
-      within(screen.getByTestId(PROBLEM_CARD_TEST_ID)).getByText(
+      within(card).getByText(
         /must provide either an Auth Provider URI or an API key for authentication/,
       ),
     ).toBeInTheDocument();
+
+    const docsLink = within(card).getByRole("link", {
+      name: /View documentation/,
+    });
+
+    expect(docsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#authenticating-people-from-your-server",
+    );
   });
 
   it("shows an error when both an Auth Provider URI and API keys are provided", async () => {
@@ -153,10 +182,20 @@ describe("SdkUsageProblemDisplay", () => {
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
     expect(
-      within(screen.getByTestId(PROBLEM_CARD_TEST_ID)).getByText(
+      within(card).getByText(
         /cannot use both an Auth Provider URI and API key authentication at the same time/,
       ),
     ).toBeInTheDocument();
+
+    const docsLink = within(card).getByRole("link", {
+      name: /View documentation/,
+    });
+
+    expect(docsLink).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#authenticating-people-from-your-server",
+    );
   });
 });
