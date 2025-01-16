@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.task.creator-sentiment-emails-test
+(ns metabase.task.creator-sentiment-emails-test
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]

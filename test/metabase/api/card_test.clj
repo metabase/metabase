@@ -3514,7 +3514,7 @@
                 (t2/update! :model/Database other-db-id {:uploads_enabled false})
                 (is (nil? (:based_on_upload (request card))))))))))))
 
-(deftest ^:mb/once based-on-upload-test
+(deftest based-on-upload-test
   (run-based-on-upload-test!
    (fn [card]
      (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))))

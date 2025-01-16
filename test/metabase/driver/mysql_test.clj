@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.driver.mysql-test
+(ns metabase.driver.mysql-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]

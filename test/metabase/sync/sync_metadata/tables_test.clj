@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.sync.sync-metadata.tables-test
+(ns metabase.sync.sync-metadata.tables-test
   "Test for the logic that syncs Table models with the metadata fetched from a DB."
   (:require
    [clojure.java.jdbc :as jdbc]
