@@ -1,5 +1,3 @@
-import { StaticQuestion } from "@metabase/embedding-sdk-react";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createNativeQuestion,
@@ -8,16 +6,17 @@ import {
 } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
-  mountInteractiveQuestion,
-  mountSdkContent,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
+import {
+  mountInteractiveQuestion,
+  mountStaticQuestion,
+} from "e2e/support/helpers/component-testing-sdk/component-embedding-sdk-question-helpers";
 import type { DatasetColumn } from "metabase-types/api";
-import { mountStaticQuestion } from "e2e/support/helpers/component-testing-sdk/component-embedding-sdk-static-question-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describeEE("scenarios > embedding-sdk > native questions", () => {
+describeEE("scenarios > embedding-sdk > interactive-question > native", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
@@ -45,7 +44,7 @@ describeEE("scenarios > embedding-sdk > native questions", () => {
     mockAuthProviderAndJwtSignIn();
   });
 
-  it("supports passing sql parameters to interactive questions", () => {
+  it("supports passing sql parameters to native questions", () => {
     mountInteractiveQuestion({ initialSqlParameters: { ID: ORDERS_ID } });
 
     cy.wait("@cardQuery").then(({ response }) => {
