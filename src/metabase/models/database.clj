@@ -16,7 +16,6 @@
    [metabase.models.secret :as secret]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
@@ -135,8 +134,7 @@
   [database]
   (try
     ;; this is done this way to avoid circular dependencies
-    (classloader/require 'metabase.task.sync-databases)
-    ((resolve 'metabase.task.sync-databases/check-and-schedule-tasks-for-db!) database)
+    ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database)
     (catch Throwable e
       (log/error e "Error scheduling tasks for DB"))))
 
@@ -153,8 +151,7 @@
   "Unschedule any currently pending sync operation tasks for `database`."
   [database]
   (try
-    (classloader/require 'metabase.task.sync-databases)
-    ((resolve 'metabase.task.sync-databases/unschedule-tasks-for-db!) database)
+    ((requiring-resolve 'metabase.sync.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
       (log/error e "Error unscheduling tasks for DB."))))
 
@@ -178,10 +175,10 @@
   [database]
   (u/prog1 database
     (set-new-database-permissions! database)
-    ;; schedule the Database sync & analyze tasks
-    ;; This will not do anything when coming from [[metabase-enterprise.advanced-config.file/initialize!]],
-    ;; since the scheduler will not be up yet.
-    ;; Thus, we call [[metabase.task.sync-databases/check-and-schedule-tasks!]] from [[metabase.core/init!]] to self-heal.
+    ;; schedule the Database sync & analyze tasks This will not do anything when coming
+    ;; from [[metabase-enterprise.advanced-config.file/initialize!]], since the scheduler will not be up yet. Thus, we
+    ;; call [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]] from [[metabase.core.core/init!]] to
+    ;; self-heal.
     (check-and-schedule-tasks-for-db! (t2.realize/realize database))))
 
 (def ^:private ^:dynamic *normalizing-details*
@@ -273,9 +270,9 @@
 
 (t2/define-after-update :model/Database
   [database]
-  ;; This will not do anything when coming from [[metabase-enterprise.advanced-config.file/initialize!]],
-  ;; since the scheduler will not be up yet.
-  ;; Thus, we call [[metabase.task.sync-databases/check-and-schedule-tasks!]] from [[metabase.core/init!]] to self-heal.
+  ;; This will not do anything when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
+  ;; scheduler will not be up yet. Thus, we call [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]]
+  ;; from [[metabase.core/init!]] to self-heal.
   (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
 
 (t2/define-before-insert :model/Database

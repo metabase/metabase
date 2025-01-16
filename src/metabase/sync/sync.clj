@@ -1,4 +1,4 @@
-(ns metabase.sync
+(ns metabase.sync.sync
   "Combined functions for running the entire Metabase sync process.
    This delegates to a few distinct steps, which in turn are broken out even further:
 
