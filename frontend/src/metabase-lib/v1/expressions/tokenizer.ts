@@ -247,6 +247,14 @@ export function tokenize(expression: string): {
     return { type, value, start, end: index, error };
   };
 
+  const skipWhitespaceLeft = (index: number) => {
+    let newIndex = index;
+    while (newIndex > 0 && isWhiteSpace(source.charCodeAt(newIndex))) {
+      --newIndex;
+    }
+    return newIndex;
+  };
+
   const scanBracketIdentifier = () => {
     const start = index;
     const bracket = source[start];
@@ -259,10 +267,10 @@ export function tokenize(expression: string): {
       if (ch === "]") {
         break;
       } else if (ch === "[") {
-        index -= 2; // end the current token early so it does not overlap with the next one
+        index -= 1; // allow this character to be parsed again, so it can be recognized as a start of another bracket identifier
 
         const type = TOKEN.Identifier;
-        const end = index;
+        const end = skipWhitespaceLeft(index - 1) + 1;
         const error = t`Bracket identifier in another bracket identifier`;
         return { type, start, end, error };
       } else if (ch === "\\") {
