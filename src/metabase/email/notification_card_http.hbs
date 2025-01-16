@@ -1,0 +1,24 @@
+{
+  "body": {{#with payload}}
+    {
+      "type": "alert",
+      "alert_id": {{notification_card.id}},
+      "alert_creator_id": {{../creator.id}},
+      "alert_creator_name": "{{../creator.common_name}}",
+      "data": {
+        "type": "question",
+        "question_id": {{card.id}},
+        "question_name": "{{card.name}}",
+        "question_url": "{{card-url card.id}}",
+        "visualization": "{{card_part.visualization}}",
+        "raw_data": {{#with card_part.result.data}}
+          {
+            "cols": {{{json (pluck cols "name")}}},
+            "rows": {{{json ../card_part.raw_data.rows}}}
+          }
+        {{/with}}
+      },
+      "sent_at": "{{../now}}"
+    }
+  {{/with}}
+}

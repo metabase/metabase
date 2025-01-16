@@ -40,7 +40,7 @@
              (.namingPattern "send-notification-thread-pool-%d"))))))
 
 (def ^:private default-retry-config
-  {:max-attempts            7
+  {:max-attempts            1
    :initial-interval-millis 500
    :multiplier              2.0
    :randomization-factor    0.1

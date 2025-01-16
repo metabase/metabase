@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.json :as json]
    [metabase.util.urls :as urls])
   (:import
    (com.github.jknack.handlebars
@@ -114,10 +115,24 @@
   [id [parameters] _kparams _options]
   (urls/dashboard-url id (map #(update-keys % keyword) parameters)))
 
+(defhelper json
+  "Convert a Clojure data structure to a JSON string."
+  [data _params _kparams _options]
+  (json/encode data))
+
+(defhelper pluck
+  "Pluck a key from a collection of maps.
+
+  {{pluck users 'name'}}"
+  [col [k] _kparams _options]
+  (map #(clojure.core/get % k) col))
+
 (def default-helpers
   "A list of default helpers."
   {"equals"        equals
    "format-date"   format-date
+   "pluck"         pluck
    "now"           now
    "card-url"      card-url
-   "dashboard-url" dashboard-url})
+   "dashboard-url" dashboard-url
+   "json"          json})
