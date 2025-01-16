@@ -168,7 +168,9 @@ const defaultConfig = {
 
     require("@cypress/grep/src/plugin")(config);
 
-    cypressSplit(on, config, getSplittableSpecs);
+    if (isCI) {
+      cypressSplit(on, config, getSplittableSpecs);
+    }
 
     return config;
   },
