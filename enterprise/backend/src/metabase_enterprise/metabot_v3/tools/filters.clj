@@ -71,11 +71,10 @@
 
 (defn- add-breakout
   [query {:keys [column field_granularity]}]
-  (when (and field_granularity
-             (not (lib.types.isa/temporal? column)))
-    (throw (ex-info "field_granularity can only be specified for date fields" {})))
   (let [expr (cond-> column
-               field_granularity (lib/with-temporal-bucket (keyword field_granularity)))]
+               (and field_granularity
+                    (lib.types.isa/temporal? column))
+               (lib/with-temporal-bucket (keyword field_granularity)))]
     (lib/breakout query expr)))
 
 (defn- query-metric
