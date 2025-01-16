@@ -64,6 +64,7 @@
    [java-time.api :as t]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
+   [metabase.channel.email :as email]
    [metabase.config :as config]
    [metabase.core.core :as mbc]
    [metabase.db :as mdb]
@@ -71,7 +72,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.channel.email :as email]
    [metabase.models.setting :as setting]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -436,3 +436,11 @@
                                      :sender-name :email-from-name,
                                      :sender      :email-from-address,
                                      :reply-to    :email-reply-to}))))
+
+(defn setup-instance!
+  "Set up an instance for testing. This is useful for bootstrapping an instance in the REPL."
+  []
+  ;; setup test users
+  (mt/initialize-if-needed! :test-users)
+  ;; setup test db
+  (mt/id))
