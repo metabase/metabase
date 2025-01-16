@@ -622,7 +622,7 @@
                                    :target  [:dimension [:template-tag "filter"]]}]})))))))
 
 (deftest ^:parallel no-value-template-tag-defaults-raw-value-test
-  (testing "should not throw an Exception if no :value is specified for a required parameter w hen defaults are provided"
+  (testing "should not throw an Exception if no :value is specified for a required parameter when defaults are provided"
     (testing "Raw value template tags"
       (is (= {"filter" "Foo"}
              (query->params-map
