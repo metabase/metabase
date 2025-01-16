@@ -82,8 +82,8 @@ export const ColumnItem = ({
         />
       )}
     </Group>
-    <Group className={CS.flex1} px="xs">
-      {icon && <Icon name={icon} />}
+    <Group className={CS.flex1} px="xs" noWrap>
+      {icon && <Icon name={icon} className={CS.flexNoShrink} />}
       <Text lh="normal" fw="bold">
         {title}
       </Text>
