@@ -175,32 +175,36 @@ describe("ExpressionWidget", () => {
     });
   });
 
-  it("should show 'unknown metric' error if the identifier is not recognized as a dimension (metabase#50753)", async () => {
-    setup({ startRule: "aggregation" });
+  describe("startRule: aggregation", () => {
+    it("should show 'unknown metric' error if the identifier is not recognized as a dimension (metabase#50753)", async () => {
+      setup({ startRule: "aggregation" });
 
-    await userEvent.paste("[Imagination]");
-    await userEvent.tab();
+      await userEvent.paste("[Imagination]");
+      await userEvent.tab();
 
-    const doneButton = screen.getByRole("button", { name: "Done" });
-    expect(doneButton).toBeDisabled();
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      expect(doneButton).toBeDisabled();
 
-    expect(screen.getByText("Unknown Metric: Imagination")).toBeInTheDocument();
-  });
+      expect(
+        screen.getByText("Unknown Metric: Imagination"),
+      ).toBeInTheDocument();
+    });
 
-  it("should show 'no aggregation found' error if the identifier is recognized as a dimension (metabase#50753)", async () => {
-    setup({ startRule: "aggregation" });
+    it("should show 'no aggregation found' error if the identifier is recognized as a dimension (metabase#50753)", async () => {
+      setup({ startRule: "aggregation" });
 
-    await userEvent.paste("[Total] / [Subtotal]");
-    await userEvent.tab();
+      await userEvent.paste("[Total] / [Subtotal]");
+      await userEvent.tab();
 
-    const doneButton = screen.getByRole("button", { name: "Done" });
-    expect(doneButton).toBeDisabled();
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      expect(doneButton).toBeDisabled();
 
-    expect(
-      screen.getByText(
-        "No aggregation found in: Total. Use functions like Sum() or custom Metrics",
-      ),
-    ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "No aggregation found in: Total. Use functions like Sum() or custom Metrics",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 });
 
