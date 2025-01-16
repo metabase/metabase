@@ -222,8 +222,8 @@ jobs:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
 
-      - name: Run ${{ matrix.job.name }}
-        id: Run Backend Unit Tests
+      - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
+        id: run-java-tests
         run: >-
           clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
           :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
