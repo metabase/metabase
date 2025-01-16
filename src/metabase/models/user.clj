@@ -375,8 +375,8 @@
   (u/prog1 (insert-new-user! (assoc new-user :sso_source "google"))
     ;; send an email to everyone including the site admin if that's set
     (when (integrations.common/send-new-sso-user-admin-email?)
-      (classloader/require 'metabase.email.messages)
-      ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
+      (classloader/require 'metabase.channel.email.messages)
+      ((resolve 'metabase.channel.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
 
 (mu/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins

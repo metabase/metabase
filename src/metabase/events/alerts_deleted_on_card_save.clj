@@ -1,7 +1,7 @@
 (ns metabase.events.alerts-deleted-on-card-save
   (:require
    [medley.core :as m]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.events :as events]
    [methodical.core :as methodical]))
 
