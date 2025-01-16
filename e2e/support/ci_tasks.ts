@@ -44,9 +44,7 @@ function extractTestsFromCommentText(body: string) {
   const tableLines = body.split("\n").filter(line => line.includes("|"));
   const testLines = tableLines.slice(2);
   const testData = testLines.map(line => {
-    const [fileName, testName] = line
-      .split("|")
-      .map(cell => cell.replace(/\`/g, "").trim());
+    const [fileName, testName] = line.split("|").map(cell => cell.trim());
     return { fileName, testName };
   });
 
@@ -66,7 +64,7 @@ function getCommentText(tests: TestInfo[]) {
 
   File | Test Name
   ---- | ---------
-  ${tests.map(({ fileName, testName }) => `\`${fileName}\` | \`${testName}\``).join("\n")}
+  ${tests.map(({ fileName, testName }) => `${fileName} | ${testName}`).join("\n")}
 `;
 }
 
@@ -161,15 +159,13 @@ export async function reportCIFailure({
     : testPath;
 
   const response = await updateComment({
-    fileName: spec.name,
+    fileName: "`spec.name`",
     testName: newTestName,
   }).catch(console.error);
 
   if (response?.ok) {
     console.log(
-      `Updated failure notice in PR: ${PR_NUMBER} - ${spec.name} - ${test.titlePath.join(
-        " > ",
-      )}`,
+      `Updated failure notice in PR: ${PR_NUMBER} - ${spec.name} - ${testPath}`,
     );
   }
 
