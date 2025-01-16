@@ -78,7 +78,7 @@
               :database-position 0
               :pk? true}
              {:name "name"
-              :database-type "VARCHAR"
+              :database-type "TEXT"
               :database-required false
               :database-is-auto-increment false
               :base-type :type/Text
@@ -92,14 +92,14 @@
               :json-unfolding false
               :database-position 2}
              {:name "latitude"
-              :database-type "DOUBLE"
+              :database-type "FLOAT"
               :database-required false
               :database-is-auto-increment false
               :base-type :type/Float
               :json-unfolding false
               :database-position 3}
              {:name "longitude"
-              :database-type "DOUBLE"
+              :database-type "FLOAT"
               :database-required false
               :database-is-auto-increment false
               :base-type :type/Float
