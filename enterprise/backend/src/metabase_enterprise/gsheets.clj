@@ -47,7 +47,7 @@
                        (setting/set-value-of-type! :json :gsheets <>)))))
 
 (mr/def ::gsheets [:map
-                   [:status                      [:enum "not-connected" "connected"]]
+                   [:status                      [:enum "not-connected" "loading" "complete"]]
                    [:folder_url {:optional true} ms/NonBlankString]])
 
 (defn- ->config
@@ -92,6 +92,7 @@
                                             [:type [:= "gdrive"]]
                                             [:status [:enum "syncing" "active" "initializing" "error"]]
                                             [:last-sync-at [:maybe :time/zoned-date-time]]
+                                            [:last-sync-started-at [:maybe :time/zoned-date-time]]
                                             [:created-at :time/zoned-date-time]
                                             [:updated-at :time/zoned-date-time]
                                              ;; unclear if `hosted-instance-resource-id` or `hosted-instance-id` are relevant
@@ -107,6 +108,7 @@
       (some-> (filter #(= "gdrive" (:type %)) body)
               first
               (m/update-existing :last-sync-at u.date/parse)
+              (m/update-existing :last-sync-started-at u.date/parse)
               (m/update-existing :created-at u.date/parse)
               (m/update-existing :updated-at u.date/parse)))))
 
@@ -114,7 +116,7 @@
 ;; FE <-> MB APIs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(api.macros/defendpoint :get "/service-account" :- [:map [:status [:maybe :string]]]
+(api.macros/defendpoint :get "/service-account" :- [:map [:email [:maybe :string]]]
   "Checks to see if service-account is setup or not, delegates to HM only if we haven't set it from a metabase cluster
   before."
   []
@@ -138,29 +140,36 @@
   stop showing the setup widget.
 
   Returns the gsheets shape, with the attached datawarehouse's db id in db_id."
-  [] :- ::gsheets
+  [] :- [:or  [:map [:error :string]]]
   (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
     (assert (some? attached-dwh) "No attached dwh found.")
-    (if-let [{:keys [status]
-              last-gdrive-sync-at :last-sync-at
-              :as _gdrive-conn} (get-gdrive-connection)]
-      (let [dwh-sync-ended-at (t2/select-one-fn :ended_at :model/TaskHistory
-                                               :db_id (:id attached-dwh)
-                                               :task "sync"
-                                               :status :success
-                                               {:order-by [[:ended_at :desc]]})]
-        (-> (if (and
-                 ;; HM says the connection is active
-                 (= status :active)
-                 ;; We have synced the dwh before (so we have ended_at time)
-                 dwh-sync-ended-at
-                 ;; We finished a sync of the dwh in metabase after the HM conn was synced.
-                 (t/after? dwh-sync-ended-at last-gdrive-sync-at))
-              (let [new-gsheets (assoc (gsheets) :status "complete")]
-                (gsheets! new-gsheets) new-gsheets)
-              (gsheets))
-            (assoc :db_id (:id attached-dwh))))
-      {:error "google drive connection not found."})))
+    (def o (if-let [{:keys [status last-sync-at last-sync-started-at]
+                     :as _gdrive-conn} #p (get-gdrive-connection)]
+             (let [dwh-sync-ended-at (t2/select-one-fn :ended_at :model/TaskHistory
+                                                       :db_id (:id (t2/select-one :model/Database :is_attached_dwh true))
+                                                       :task "sync"
+                                                       :status :success
+                                                       {:order-by [[:ended_at :desc]]})]
+               (def last-sync-started-at last-sync-started-at)
+               (def last-sync-at last-sync-at)
+               (def status status)
+               (def dwh-sync-ended-at dwh-sync-ended-at)
+               (-> (if (and
+                        ;; HM says the connection is active
+                        #p (= status :active)
+                        ;; We have synced the dwh before (so we have ended_at time)
+                        #p dwh-sync-ended-at
+                        ;; make sure it's not nil:
+                        #p last-sync-at
+                        ;; We finished a sync of the dwh in metabase after the HM conn was synced.
+                        #p (t/after? (t/instant dwh-sync-ended-at)
+                                     (t/instant last-sync-at)))
+                     (let [new-gsheets (assoc (gsheets) :status "complete")]
+                       (gsheets! new-gsheets) new-gsheets)
+                     (gsheets))
+                   (assoc :db_id (:id attached-dwh))))
+             {:error "google drive connection not found."}))
+    o))
 
 (api.macros/defendpoint :delete "/folder"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
@@ -174,9 +183,11 @@
       (gsheets! <>)
       (throw (ex-info "Unable to find google drive connection." {})))))
 
+
 (api/define-routes)
 
 (comment
+  (require '[metabase.sync.sync-metadata :as sync-metadata])
 
   (setting/set-value-of-type! :string :store-api-url "http://localhost:5010")
 
@@ -205,6 +216,18 @@
   ;; See the gdrive connection:
   (get-gdrive-connection)
 
+
+  {:updated-at #t "2025-01-16T21:45:27Z[UTC]",
+   :hosted-instance-resource-id 6,
+   :last-sync-at nil,
+   :error-detail nil,
+   :type "gdrive",
+   :hosted-instance-id "a6f2352d-c194-4d46-a46c-9ea616e9fc65",
+   :last-sync-started-at "2025-01-16T21:45:27Z",
+   :status "syncing",
+   :id "a20ec80b-bff2-489e-925a-98a70a5ccf46",
+   :created-at #t "2025-01-16T21:45:24Z[UTC]"}
+
   ;; it has a status. once it's active, it's good to go.
 
   (defn- trigger-resync* [gdrive-conn-id]
@@ -214,11 +237,36 @@
                               (format "/api/v2/mb/connections/%s/sync" gdrive-conn-id))]
       status))
 
+  (trigger-resync* (:id (get-gdrive-connection)))
+
+  (t2/select-one-fn :ended_at :model/TaskHistory
+                    :db_id (:id (t2/select-one :model/Database :is_attached_dwh true))
+                    :task "sync"
+                    :status :success
+                    {:order-by [[:ended_at :desc]]})
+
+  ;; trigger the notify call:
+  (let [database (t2/select-one :model/Database :is_attached_dwh true)]
+    (sync-metadata/sync-db-metadata! database))
+
+
   #_:clj-kondo/ignore
   (defn- trigger-gdrive-resync
     []
-    (if-let [gdrive-conn-id (get-gdrive-connection)]
+    (if-let [gdrive-conn-id (:id (get-gdrive-connection))]
       (trigger-resync* gdrive-conn-id)
       (throw (ex-info "No gdrive connections found." {}))))
+
+
+  (defn reset-all! []
+    (let [[_ connections] (hm.client/make-request (->config) :get "/api/v2/mb/connections")]
+      (doseq [{:keys [id]} (:body connections)]
+        (println "deleting" id)
+        (hm.client/make-request (->config)
+                                :delete
+                                (str "/api/v2/mb/connections/" id)))
+      (gsheets! gsheets-not-connected)
+      [(:body (second (hm.client/make-request (->config) :get "/api/v2/mb/connections")))
+       (gsheets)]))
 
   )
