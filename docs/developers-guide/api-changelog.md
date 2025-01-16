@@ -8,7 +8,7 @@ title: API changelog
 
 - The alert system has been migrated from the legacy pulse infrastructure to the new notification system. This migration includes the following changes:
 
-  - The majority of `/api/alert` endpoints have been removed in favor of the new `/api/notification` endpoints. For backwards compatibility, these endpoints will remain available until the next release:
+  - The majority of `/api/alert` endpoints have been removed in favor of the new `/api/notification` endpoints. For backward compatibility, these endpoints will remain available until the next release:
     - `GET /api/alert`
     - `GET /api/alert/:id` 
     - `DELETE /api/alert/:id/subscription`
