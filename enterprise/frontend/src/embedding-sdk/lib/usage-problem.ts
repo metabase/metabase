@@ -97,6 +97,7 @@ export function getSdkUsageProblem(
         {
           isSSO: true,
           hasTokenFeature: true,
+          isLocalhost: true,
           isEnabled: false,
         },
         () => toError("EMBEDDING_SDK_NOT_ENABLED"),
