@@ -403,7 +403,6 @@ export type UserSettings = {
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
   "trial-banner-dismissal-timestamp"?: string | null;
-  "dynamic-dictionary"?: string | null;
 };
 
 /**
