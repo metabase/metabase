@@ -936,6 +936,21 @@
                        :base-type {:native "timestampltz"}}]
     (rows-for-good-datetimes-in-belize)]])
 
+(deftest ^:parallel sync-datetime-types
+  (mt/test-driver
+    :snowflake
+    (mt/dataset
+      good-datetimes-in-belize
+      (is (= [["id" "NUMBER" :type/Number 0]
+              ["IN_Z_OFFSET" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 1]
+              ["IN_VARIOUS_OFFSETS" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 2]
+              ["JUST_NTZ" "TIMESTAMPNTZ" :type/DateTime 3]
+              ["JUST_LTZ" "TIMESTAMPLTZ" :type/DateTimeWithTZ 4]]
+             (sort-by last
+                      (into []
+                            (map (juxt :name :database-type :base-type :database-position))
+                            (driver/describe-fields :snowflake (mt/db)))))))))
+
 ;; The test needs user with no report timezone set and database timezone other than UTC. That's the reason for redefs
 ;; prior to dataset generation.
 (deftest ^:synchronized correct-timestamp-type-querying-test

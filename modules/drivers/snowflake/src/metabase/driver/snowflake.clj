@@ -756,7 +756,12 @@
                         [[:- :c.ORDINAL_POSITION [:inline 1]] :database-position]
                         [:c.TABLE_SCHEMA :table-schema]
                         [:c.TABLE_NAME :table-name]
-                        [[:upper :c.DATA_TYPE] :database-type]
+                        [[:case-expr [:upper :c.DATA_TYPE]
+                          [:inline "TIMESTAMP_TZ"] [:inline "TIMESTAMPTZ"]
+                          [:inline "TIMESTAMP_LTZ"] [:inline "TIMESTAMPLTZ"]
+                          [:inline "TIMESTAMP_NTZ"] [:inline "TIMESTAMPNTZ"]
+                          :else [:upper :c.DATA_TYPE]]
+                         :database-type]
                         [[:!= :c.IDENTITY_GENERATION nil] :database-is-auto-increment]
                         [[:and
                           [:or [:= :COLUMN_DEFAULT nil] [:= [:lower :COLUMN_DEFAULT] [:inline "null"]]]
