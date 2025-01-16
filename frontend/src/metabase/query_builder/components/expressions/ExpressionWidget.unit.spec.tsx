@@ -176,7 +176,7 @@ describe("ExpressionWidget", () => {
   });
 
   it("should show 'unknown metric' error if the identifier is not recognized as a dimension (metabase#50753)", async () => {
-    setup({ startRule: "aggregation", withName: true });
+    setup({ startRule: "aggregation" });
 
     await userEvent.paste("[Imagination]");
     await userEvent.tab();
@@ -188,7 +188,7 @@ describe("ExpressionWidget", () => {
   });
 
   it("should show 'no aggregation found' error if the identifier is recognized as a dimension (metabase#50753)", async () => {
-    setup({ startRule: "aggregation", withName: true });
+    setup({ startRule: "aggregation" });
 
     await userEvent.paste("[Total] / [Subtotal]");
     await userEvent.tab();
