@@ -32,7 +32,10 @@ export const DashboardSelector = ({
   return (
     <Flex>
       <DashboardPickerButton onClick={() => setIsOpen(true)}>
-        {dashboard?.name || t`Select a dashboard`}
+        {
+          // NOTE: Could be localized
+          dashboard?.name || t`Select a dashboard`
+        }
       </DashboardPickerButton>
       {isOpen && (
         <DashboardPickerModal

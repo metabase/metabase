@@ -6,6 +6,8 @@ import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmb
 
 import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbeddedDashboard";
 
+// embedding routes are in this file
+
 export const getRoutes = store => (
   <Route>
     <Route path="embed" component={PublicApp}>

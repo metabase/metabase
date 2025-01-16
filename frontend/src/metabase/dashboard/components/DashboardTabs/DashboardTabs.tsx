@@ -4,6 +4,8 @@ import { Sortable } from "metabase/core/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
 import { TabButton } from "metabase/core/components/TabButton";
 import { TabRow } from "metabase/core/components/TabRow";
+import { MaybeTranslationCannotBeEditedHoverCard } from "metabase/i18n/MaybeTranslationCannotBeEditedHoverCard";
+import { L } from "metabase/i18n/utils";
 import type { DashboardId } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
@@ -68,18 +70,26 @@ export function DashboardTabs({
             menuItems={menuItems}
           />
         ) : (
-          tabs.map(tab => (
-            <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
-              <TabButton.Renameable
-                value={tab.id}
-                label={tab.name}
-                onRename={name => renameTab(tab.id, name)}
-                canRename={isEditing && hasMultipleTabs}
-                showMenu={isEditing}
-                menuItems={menuItems}
-              />
-            </Sortable>
-          ))
+          tabs.map(tab => {
+            const localizedName = L(tab, "name");
+            const isNameLocalized = localizedName !== tab.name;
+            return (
+              <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
+                <MaybeTranslationCannotBeEditedHoverCard
+                  isLocalized={isNameLocalized}
+                >
+                  <TabButton.Renameable
+                    value={tab.id}
+                    label={localizedName}
+                    onRename={name => renameTab(tab.id, name)}
+                    canRename={isEditing && hasMultipleTabs && !isNameLocalized}
+                    showMenu={isEditing}
+                    menuItems={menuItems}
+                  />
+                </MaybeTranslationCannotBeEditedHoverCard>
+              </Sortable>
+            );
+          })
         )}
         {isEditing && (
           <CreateTabButton

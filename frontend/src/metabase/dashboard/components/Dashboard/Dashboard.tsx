@@ -23,6 +23,7 @@ import type {
 } from "metabase/dashboard/types";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { useDispatch } from "metabase/lib/redux";
 import type {
   CardId,
@@ -208,6 +209,8 @@ function Dashboard(props: DashboardProps) {
 
   const dispatch = useDispatch();
 
+  const tc = useTranslateContent();
+
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -234,7 +237,8 @@ function Dashboard(props: DashboardProps) {
   const canRestore = Boolean(dashboard?.can_restore);
   const canDelete = Boolean(dashboard?.can_delete);
   const tabHasCards = currentTabDashcards.length > 0;
-  const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
+  const dashboardHasCards =
+    dashboard && dashboard.dashcards && dashboard.dashcards.length > 0;
 
   const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
@@ -420,7 +424,7 @@ function Dashboard(props: DashboardProps) {
           <DashboardStyled>
             {dashboard.archived && (
               <ArchivedEntityBanner
-                name={dashboard.name}
+                name={tc(dashboard, "name")}
                 entityType="dashboard"
                 canMove={canWrite}
                 canRestore={canRestore}

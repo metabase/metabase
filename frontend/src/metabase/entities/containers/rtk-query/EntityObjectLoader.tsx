@@ -59,6 +59,7 @@ interface Props<Entity, EntityWrapper> {
   wrapped?: boolean;
 }
 
+// NOTE: Perhaps we could localize here
 const defaultTransformResponse = (data: unknown, _query: EntityQuery) => data;
 
 /**

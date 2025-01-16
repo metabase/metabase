@@ -19,6 +19,7 @@ import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
+import { L } from "metabase/i18n/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
@@ -172,7 +173,8 @@ const OverviewTab = ({
     <Stack spacing="lg">
       <SidesheetCard title={t`Description`} pb="md">
         <SidesheetEditableDescription
-          description={dashboard.description}
+          description={L(dashboard, "description")}
+          isLocalized={L(dashboard, "description") !== dashboard.description}
           onChange={handleDescriptionChange}
           canWrite={canWrite}
           onFocus={() => setDescriptionError("")}

@@ -28,6 +28,7 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
+import { ContentTranslationProvider } from "metabase/i18n/components/ContentTranslationContext";
 import { connect } from "metabase/lib/redux";
 import { type DispatchFn, useDispatch } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
@@ -213,33 +214,35 @@ const PublicOrEmbeddedDashboardInner = ({
 
   return (
     <LocaleProvider locale={locale} shouldWaitForLocale>
-      <PublicOrEmbeddedDashboardView
-        dashboard={dashboard}
-        hasNightModeToggle={hasNightModeToggle}
-        isFullscreen={isFullscreen}
-        isNightMode={isNightMode}
-        onFullscreenChange={onFullscreenChange}
-        onNightModeChange={onNightModeChange}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        refreshPeriod={refreshPeriod}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        selectedTabId={selectedTabId}
-        parameters={parameters}
-        parameterValues={parameterValues}
-        draftParameterValues={draftParameterValues}
-        setParameterValue={setParameterValue}
-        setParameterValueToDefault={setParameterValueToDefault}
-        dashboardId={dashboardId}
-        background={background}
-        bordered={bordered}
-        titled={titled}
-        theme={theme}
-        hideParameters={hideParameters}
-        navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-        slowCards={slowCards}
-        cardTitled={cardTitled}
-        downloadsEnabled={downloadsEnabled}
-      />
+      <ContentTranslationProvider>
+        <PublicOrEmbeddedDashboardView
+          dashboard={dashboard}
+          hasNightModeToggle={hasNightModeToggle}
+          isFullscreen={isFullscreen}
+          isNightMode={isNightMode}
+          onFullscreenChange={onFullscreenChange}
+          onNightModeChange={onNightModeChange}
+          onRefreshPeriodChange={onRefreshPeriodChange}
+          refreshPeriod={refreshPeriod}
+          setRefreshElapsedHook={setRefreshElapsedHook}
+          selectedTabId={selectedTabId}
+          parameters={parameters}
+          parameterValues={parameterValues}
+          draftParameterValues={draftParameterValues}
+          setParameterValue={setParameterValue}
+          setParameterValueToDefault={setParameterValueToDefault}
+          dashboardId={dashboardId}
+          background={background}
+          bordered={bordered}
+          titled={titled}
+          theme={theme}
+          hideParameters={hideParameters}
+          navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+          slowCards={slowCards}
+          cardTitled={cardTitled}
+          downloadsEnabled={downloadsEnabled}
+        />
+      </ContentTranslationProvider>
     </LocaleProvider>
   );
 };
