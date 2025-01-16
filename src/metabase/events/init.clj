@@ -15,5 +15,4 @@
    [metabase.events.revision]
    [metabase.events.schema]
    [metabase.events.slack]
-   [metabase.events.sync-database]
    [metabase.events.view-log]))

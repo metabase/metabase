@@ -4,7 +4,7 @@
    [metabase.api.database :as api.database]
    [metabase.auth-provider :as auth-provider]
    [metabase.http-client :as client]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.json :as json]))
