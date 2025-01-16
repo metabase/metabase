@@ -808,9 +808,8 @@
   :test/notification
   {:exec-args {:only ["test/metabase/notification"
                       "test/metabase/channel"
-                      metabase.api.channel-test
                       metabase.events.notification-test
-                      metabase.models.channel-test
+                      metabase.channel.models.channel-test
                       metabase.models.notification-test
                       metabase.task.notification-test]}}
 

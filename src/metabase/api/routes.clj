@@ -11,7 +11,6 @@
    [metabase.api.cache :as api.cache]
    [metabase.api.card :as api.card]
    [metabase.api.cards :as api.cards]
-   [metabase.api.channel :as api.channel]
    [metabase.api.cloud-migration :as api.cloud-migration]
    [metabase.api.collection :as api.collection]
    [metabase.api.common :refer [context defroutes]]
@@ -19,7 +18,6 @@
    [metabase.api.database :as api.database]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.docs :as api.docs]
-   [metabase.api.email :as api.email]
    [metabase.api.embed :as api.embed]
    [metabase.api.field :as api.field]
    [metabase.api.geojson :as api.geojson]
@@ -52,6 +50,7 @@
    [metabase.api.user :as api.user]
    [metabase.api.user-key-value :as api.user-key-value]
    [metabase.api.util :as api.util]
+   [metabase.channel.api :as channel.api]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
    [metabase.setup.api :as setup.api]
@@ -84,12 +83,12 @@
   (context "/cards"                [] (+auth api.cards/routes))
   (context "/cloud-migration"      [] (+auth api.cloud-migration/routes))
   (context "/collection"           [] (+auth api.collection/routes))
-  (context "/channel"              [] (+auth api.channel/routes))
+  (context "/channel"              [] (+auth channel.api/channel-routes))
   (context "/dashboard"            [] (+auth api.dashboard/routes))
   (context "/database"             [] (+auth api.database/routes))
   (context "/dataset"              [] (+auth api.dataset/routes))
   (context "/docs"                 [] api.docs/routes)
-  (context "/email"                [] (+auth api.email/routes))
+  (context "/email"                [] (+auth channel.api/email-routes))
   (context "/embed"                [] (+message-only-exceptions api.embed/routes))
   (context "/field"                [] (+auth api.field/routes))
   (context "/geojson"              [] api.geojson/routes)
