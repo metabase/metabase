@@ -204,8 +204,7 @@ function prattCompiler({
       const metric = parseMetric(name, options);
       if (!metric) {
         const dimension = parseDimension(name, options);
-        const segment = parseSegment(name, options);
-        const isNameKnown = Boolean(dimension || segment);
+        const isNameKnown = Boolean(dimension);
 
         if (isNameKnown) {
           const error = c(
