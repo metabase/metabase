@@ -1,4 +1,4 @@
-(ns ^:mb/old-migrations-tests metabase.db.custom-migrations.metrics-v2-batch-test
+(ns ^:mb/old-migrations-test metabase.db.custom-migrations.metrics-v2-batch-test
   "These are 'old' tests now since this migration happened in 51."
   (:require
    [clojure.data.csv :as csv]
