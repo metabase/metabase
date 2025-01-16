@@ -2,10 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
    [metabase.channel.shared :as channel.shared]
-   [metabase.email.result-attachment :as email.result-attachment]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.notification.payload.execute :as notification.payload.execute]

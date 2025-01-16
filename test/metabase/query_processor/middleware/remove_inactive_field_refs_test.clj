@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.query-processor.middleware.remove-inactive-field-refs-test
+(ns metabase.query-processor.middleware.remove-inactive-field-refs-test
   (:require
    [clojure.test :refer :all]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]

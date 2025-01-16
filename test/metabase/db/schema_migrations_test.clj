@@ -7,7 +7,15 @@
   4. run migration(s) after that point (verify that they actually run)
   5. verify that data looks like what we'd expect after running migration(s)
 
-  See `metabase.db.schema-migrations-test.impl` for the implementation of this functionality."
+  See [[metabase.db.schema-migrations-test.impl]] for the implementation of this functionality.
+
+  As of #52254, any tests marked `^:mb/old-migrations-test` are only run on pushes to `master` or `release-`
+  branches (i.e., PR merges). We don't need to run tests for ancient migrations on every single random PR, but it's
+  good to run them occasionally just to be sure we didn't break stuff.
+
+  My policy is that migrations for any version older than the current backport target are 'old'. For example at the
+  time of this writing our current release is 52.6, meaning `master` is targeting 53.x; all migrations shipped with
+  51.x or older are now 'old'."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -44,22 +52,33 @@
                       (binding [search.ingestion/*disable-updates* true]
                         (thunk))))
 
-(deftest rollback-test
-  (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
-    ;; using test-migrations to excercise all drivers
-    (impl/test-migrations ["v46.00-001" "v46.00-002"] [migrate!]
-      (let [get-last-id (fn []
-                          (-> {:datasource (mdb/app-db)}
-                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
-                              first
-                              :id))]
-        (migrate!)
-        (let [latest-id (get-last-id)]
-          (migrate! :down 45)
-          ;; will always be the last v44 migration
-          (is (= "v45.00-057" (get-last-id)))
-          (migrate!)
-          (is (= latest-id (get-last-id))))))))
+(defn- migrations-versions []
+  (letfn [(form->version [form]
+            (cond
+              (sequential? form)
+              (some form->version form)
+
+              (string? form)
+              (some-> (re-find #"^(v\d{2,})\." form) second)))]
+    (with-open [r (java.io.PushbackReader. (java.io.FileReader. "test/metabase/db/schema_migrations_test.clj"))]
+      (binding [*ns*        (the-ns 'metabase.db.schema-migrations-test)
+                *read-eval* false]
+        (into []
+              (comp (take-while some?)
+                    (keep form->version))
+              (repeatedly #(read {:eof nil} r)))))))
+
+;; Kooky that I have to write this, but I do. Make sure people keep tests in order -- I don't want to find any more 52
+;; tests sandwiched between 48 tests.
+(deftest ^:parallel order-your-migration-tests-test
+  (testing "Migrations tests should be grouped together by major version and those major versions should be in order"
+    (let [versions (migrations-versions)]
+      (is (= (sort versions)
+             versions)))))
+
+;;;
+;;; 45 tests
+;;;
 
 (defn- create-raw-user!
   "create a user but skip pre and post insert steps"
@@ -73,7 +92,7 @@
                                          :is_active    true
                                          :is_superuser false)))
 
-(deftest make-database-details-not-null-test
+(deftest ^:mb/old-migrations-test make-database-details-not-null-test
   (testing "Migrations v45.00-042 and v45.00-043: set default value of '{}' for Database rows with NULL details"
     (impl/test-migrations ["v45.00-042" "v45.00-043"] [migrate!]
       (let [database-id (first (t2/insert-returning-pks! (t2/table-name :model/Database) (-> (dissoc (mt/with-temp-defaults :model/Database) :details :settings)
@@ -84,7 +103,7 @@
         (is (partial= {:details {}}
                       (t2/select-one :model/Database :id database-id)))))))
 
-(deftest populate-collection-created-at-test
+(deftest ^:mb/old-migrations-test populate-collection-created-at-test
   (testing "Migrations v45.00-048 thru v45.00-050: add Collection.created_at and populate it"
     (impl/test-migrations ["v45.00-048" "v45.00-050"] [migrate!]
       (let [database-id              (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:details   "{}"
@@ -142,7 +161,28 @@
               (is (not= (t/offset-date-time #t "2022-10-20T02:09Z")
                         empty-collection-created-at)))))))))
 
-(deftest deduplicate-dimensions-test
+;;;
+;;; 46 tests
+;;;
+
+(deftest ^:mb/old-migrations-test rollback-test
+  (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
+    ;; using test-migrations to excercise all drivers
+    (impl/test-migrations ["v46.00-001" "v46.00-002"] [migrate!]
+      (let [get-last-id (fn []
+                          (-> {:datasource (mdb/app-db)}
+                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
+                              first
+                              :id))]
+        (migrate!)
+        (let [latest-id (get-last-id)]
+          (migrate! :down 45)
+          ;; will always be the last v44 migration
+          (is (= "v45.00-057" (get-last-id)))
+          (migrate!)
+          (is (= latest-id (get-last-id))))))))
+
+(deftest ^:mb/old-migrations-test deduplicate-dimensions-test
   (testing "Migrations v46.00-029 thru v46.00-031: make Dimension field_id unique instead of field_id + name"
     (impl/test-migrations ["v46.00-029" "v46.00-031"] [migrate!]
       (let [database-id (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:details   "{}"
@@ -191,7 +231,7 @@
                    "F2 D1"}
                  (t2/select-fn-set :name :model/Dimension {:order-by [[:id :asc]]}))))))))
 
-(deftest able-to-delete-db-with-actions-test
+(deftest ^:mb/old-migrations-test able-to-delete-db-with-actions-test
   (testing "Migrations v46.00-084 and v46.00-085 set delete CASCADE for action.model_id to
            fix the bug of unable to delete database with actions"
     (impl/test-migrations ["v46.00-084" "v46.00-085"] [migrate!]
@@ -232,7 +272,46 @@
         (migrate!)
         (is (t2/delete! :model/Database :id db-id))))))
 
-(deftest migrate-field-database-type-test
+(deftest ^:mb/old-migrations-test backfill-permission-id-test
+  (testing "Migrations v46.00-088-v46.00-90: backfill `permission_id` FK on sandbox table"
+    (impl/test-migrations ["v46.00-088" "v46.00-090"] [migrate!]
+      (let [db-id    (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "DB"
+                                                                                       :engine     "h2"
+                                                                                       :created_at :%now
+                                                                                       :updated_at :%now
+                                                                                       :details    "{}"}))
+            table-id (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                    :schema     "SchemaName"
+                                                                                    :name       "Table"
+                                                                                    :created_at :%now
+                                                                                    :updated_at :%now
+                                                                                    :active     true}))
+            _        (t2/query-one {:insert-into :sandboxes
+                                    :values      [{:group_id             1
+                                                   :table_id             table-id
+                                                   :attribute_remappings "{\"foo\", 1}"}
+                                                  {:group_id             2
+                                                   :table_id             table-id
+                                                   :attribute_remappings "{\"foo\", 1}"}]})
+            perm-id  (first (t2/insert-returning-pks! (t2/table-name :model/Permissions)
+                                                      [{:group_id 1
+                                                        :object   "/db/1/schema/SchemaName/table/1/query/segmented/"}
+                                                       {:group_id 1
+                                                        :object   "/db/1/schema//table/1/query/segmented/"}]))]
+        ;; Two rows are present in `sandboxes`
+        (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}" :permission_id nil}
+                {:id 2, :group_id 2, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}" :permission_id nil}]
+               (mdb.query/query {:select [:*] :from [:sandboxes]})))
+        (migrate!)
+        ;; Only the sandbox with a corresponding `Permissions` row is present
+        (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
+               (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
+
+;;;
+;;; 47 tests
+;;;
+
+(deftest ^:mb/old-migrations-test migrate-field-database-type-test
   (testing "Migration v47.00-001: set base-type to type/JSON for JSON database-types for postgres and mysql"
     (impl/test-migrations ["v47.00-001"] [migrate!]
       (let [[pg-db-id
@@ -287,7 +366,7 @@
                 mysql-field-1-id :type/SerializedJSON
                 mysql-field-2-id :type/Text)))))))
 
-(deftest migrate-google-auth-test
+(deftest ^:mb/old-migrations-test migrate-google-auth-test
   (testing "Migrations v47.00-009 and v47.00-012: migrate google_auth into sso_source"
     (impl/test-migrations ["v47.00-009" "v47.00-012"] [migrate!]
       (t2/query-one {:insert-into :core_user
@@ -312,7 +391,7 @@
                                :from     [:core_user]
                                :order-by [[:id :asc]]}))))))
 
-(deftest migrate-ldap-auth-test
+(deftest ^:mb/old-migrations-test migrate-ldap-auth-test
   (testing "Migration v47.00-013 and v47.00-014: migrate ldap_auth into sso_source"
     (impl/test-migrations ["v47.00-013" "v47.00-014"] [migrate!]
       (t2/query-one {:insert-into :core_user
@@ -337,7 +416,7 @@
                                :from     [:core_user]
                                :order-by [[:id :asc]]}))))))
 
-(deftest migrate-grid-from-18-to-24-test
+(deftest ^:mb/old-migrations-test migrate-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-031" "v47.00-032"] [migrate!]
     (let [user         (create-raw-user! (mt/random-email))
           dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
@@ -394,42 +473,11 @@
             (is (true? (custom-migrations-test/no-cards-are-overlap? rollbacked-to-18)))
             (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-18 18))))))))
 
-(deftest backfill-permission-id-test
-  (testing "Migrations v46.00-088-v46.00-90: backfill `permission_id` FK on sandbox table"
-    (impl/test-migrations ["v46.00-088" "v46.00-090"] [migrate!]
-      (let [db-id    (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "DB"
-                                                                                       :engine     "h2"
-                                                                                       :created_at :%now
-                                                                                       :updated_at :%now
-                                                                                       :details    "{}"}))
-            table-id (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
-                                                                                    :schema     "SchemaName"
-                                                                                    :name       "Table"
-                                                                                    :created_at :%now
-                                                                                    :updated_at :%now
-                                                                                    :active     true}))
-            _        (t2/query-one {:insert-into :sandboxes
-                                    :values      [{:group_id             1
-                                                   :table_id             table-id
-                                                   :attribute_remappings "{\"foo\", 1}"}
-                                                  {:group_id             2
-                                                   :table_id             table-id
-                                                   :attribute_remappings "{\"foo\", 1}"}]})
-            perm-id  (first (t2/insert-returning-pks! (t2/table-name :model/Permissions)
-                                                      [{:group_id 1
-                                                        :object   "/db/1/schema/SchemaName/table/1/query/segmented/"}
-                                                       {:group_id 1
-                                                        :object   "/db/1/schema//table/1/query/segmented/"}]))]
-        ;; Two rows are present in `sandboxes`
-        (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}" :permission_id nil}
-                {:id 2, :group_id 2, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}" :permission_id nil}]
-               (mdb.query/query {:select [:*] :from [:sandboxes]})))
-        (migrate!)
-        ;; Only the sandbox with a corresponding `Permissions` row is present
-        (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
-               (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
+;;;
+;;; 48 tests
+;;;
 
-(deftest add-revision-most-recent-test
+(deftest ^:mb/old-migrations-test add-revision-most-recent-test
   (testing "Migrations v48.00-008-v48.00-009: add `revision.most_recent`"
     (impl/test-migrations ["v48.00-007"] [migrate!]
       (let [user-id         (:id (create-raw-user! (mt/random-email)))
@@ -479,35 +527,7 @@
         (is (= #{true} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
                                          :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new]])))))))
 
-(deftest ^:parallel fks-are-indexed-test
-  (when (= (mdb/db-type) :postgres)
-    (let [excluded-fks #{{:table_name  "field_usage"
-                          :column_name "query_execution_id"}
-                         {:table_name  "pulse_channel"
-                          :column_name "channel_id"}}
-          indexed-fks  (t2/query
-                        "SELECT
-                              conrelid::regclass::text AS table_name,
-                              a.attname AS column_name
-                          FROM
-                              pg_constraint AS c
-                              JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
-                          WHERE
-                              c.contype = 'f'
-                              AND NOT EXISTS (
-                                  SELECT 1
-                                  FROM pg_index AS i
-                                  WHERE i.indrelid = c.conrelid
-                                    AND a.attnum = ANY(i.indkey)
-                              )
-                          ORDER BY
-                              table_name,
-                              column_name;")]
-      (doseq [fk indexed-fks]
-        (testing (format "Consider adding an index on %s.%s or add it to the excluded-fks set" (:table_name fk) (:column_name fk))
-          (is (contains? excluded-fks fk)))))))
-
-(deftest remove-collection-color-test
+(deftest ^:mb/old-migrations-test remove-collection-color-test
   (testing "Migration v48.00-019"
     (impl/test-migrations ["v48.00-019"] [migrate!]
       (with-redefs [;; Urgh. `collection/is-trash?` will select the Trash collection (cached) based on its `type`. But as of this
@@ -528,7 +548,7 @@
           (testing "should drop the existing color column"
             (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color)))))))))
 
-(deftest audit-v2-views-test
+(deftest ^:mb/old-migrations-test audit-v2-views-test
   (testing "Migrations v48.00-029 - end"
     ;; Use an open-ended migration range so that we can detect if any migrations added after these views broke the view
     ;; queries
@@ -558,7 +578,7 @@
                    clojure.lang.ExceptionInfo
                    (t2/query (str "SELECT 1 FROM " view-name))))))))))
 
-(deftest activity-data-migration-postgres-mysql-test
+(deftest ^:mb/old-migrations-test activity-data-migration-postgres-mysql-test
   (testing "Migration v48.00-049"
     (when (#{:postgres :mysql} (mdb/db-type))
       (impl/test-migrations "v48.00-049" [migrate!]
@@ -592,7 +612,7 @@
                             :table_id 6}}
                  (t2/select-one :model/AuditLog)))))))))
 
-(deftest activity-data-migration-h2-test
+(deftest ^:mb/old-migrations-test activity-data-migration-h2-test
   (testing "Migration v48.00-049"
     (when (= (mdb/db-type) :h2)
       (impl/test-migrations "v48.00-049" [migrate!]
@@ -626,7 +646,7 @@
                             :table_id 6}}
                  (t2/select-one :model/AuditLog)))))))))
 
-(deftest inactive-fields-fk-migration-test
+(deftest ^:mb/old-migrations-test inactive-fields-fk-migration-test
   (testing "Migration v48.00-051"
     (impl/test-migrations ["v48.00-051"] [migrate!]
       (let [database-id (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:details   "{}"
@@ -664,7 +684,7 @@
                  :semantic_type      nil}
                 (t2/select-one (t2/table-name :model/Field) :id field-2-id)))))))
 
-(deftest audit-v2-downgrade-test
+(deftest ^:mb/old-migrations-test audit-v2-downgrade-test
   (testing "Migration v48.00-050, and v48.00-54"
     (impl/test-migrations "v48.00-054" [migrate!]
       (let [_db-audit-id (first (t2/insert-returning-pks! (t2/table-name :model/Database)
@@ -713,7 +733,11 @@
         (is (= 0 (t2/count :collection :type "instance_analytics")))
         (is (= 0 (t2/count :core_user :id 13371338)))))))
 
-(deftest remove-legacy-pulse-tests
+;;;
+;;; 49 tests
+;;;
+
+(deftest ^:mb/old-migrations-test remove-legacy-pulse-tests
   (testing "v49.00-000"
     (impl/test-migrations "v49.00-000" [migrate!]
       (let [user-id (:id (create-raw-user! (mt/random-email)))
@@ -750,16 +774,7 @@
         (is (t2/exists? :pulse :id alert-id))
         (is (not (t2/exists? :pulse :id legacy-pulse-id)))))))
 
-(deftest ^:parallel no-tiny-int-columns
-  (when (= (mdb/db-type) :mysql)
-    (testing "All boolean columns in mysql, mariadb should be bit(1)"
-      (is (= [{:table_name "DATABASECHANGELOGLOCK" :column_name "LOCKED"}] ;; outlier because this is liquibase's table
-             (t2/query
-              (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type LIKE 'tinyint%%' AND table_schema = '%s';"
-                      (with-open [conn (-> (mdb/app-db) .getConnection)]
-                        (.getCatalog conn)))))))))
-
-(deftest index-database-changelog-test
+(deftest ^:mb/old-migrations-test index-database-changelog-test
   (testing "we should have an unique constraint on databasechangelog.(id,author,filename)"
     (impl/test-migrations "v49.00-000" [migrate!]
       (migrate!)
@@ -774,20 +789,22 @@
                :h2       "SELECT COUNT(*) as count FROM information_schema.indexes
                            WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1';"))))))))
 
-(deftest enable-public-sharing-default-test
+(deftest ^:mb/old-migrations-test enable-public-sharing-default-test
   (testing "enable-public-sharing is not set for new instances"
     (impl/test-migrations "v49.2024-02-09T13:55:26" [migrate!]
       (migrate!)
       (is (nil?
-           (t2/select-one-fn :value (t2/table-name :model/Setting) :key "enable-public-sharing")))))
+           (t2/select-one-fn :value (t2/table-name :model/Setting) :key "enable-public-sharing"))))))
 
+(deftest ^:mb/old-migrations-test enable-public-sharing-default-test-2
   (testing "enable-public-sharing defaults to false for already-initalized instances"
     (impl/test-migrations "v49.2024-02-09T13:55:26" [migrate!]
       (create-raw-user! (mt/random-email))
       (migrate!)
       (is (= "false"
-             (t2/select-one-fn :value (t2/table-name :model/Setting) :key "enable-public-sharing")))))
+             (t2/select-one-fn :value (t2/table-name :model/Setting) :key "enable-public-sharing"))))))
 
+(deftest ^:mb/old-migrations-test enable-public-sharing-default-test-3
   (testing "enable-public-sharing remains true if already set"
     (impl/test-migrations "v49.2024-02-09T13:55:26" [migrate!]
       (create-raw-user! (mt/random-email))
@@ -796,7 +813,7 @@
       (is (= "true"
              (t2/select-one-fn :value (t2/table-name :model/Setting) :key "enable-public-sharing"))))))
 
-(deftest fix-multiple-revistion-most-recent-test
+(deftest ^:mb/old-migrations-test fix-multiple-revistion-most-recent-test
   (testing "Migrations v49.2024-05-07T10:00:00: Set revision.most_recent = true ensures that there is only one most recent revision per model_id"
     (when (= (mdb/db-type) :mysql)
       (impl/test-migrations "v49.2024-05-07T10:00:00" [migrate!]
@@ -878,6 +895,315 @@
                   true  #{rev-dash-1-new rev-dash-2-new rev-card-1-new rev-card-2-new rev-card-3-new}}
                  (update-vals (group-by :most_recent (t2/select (t2/table-name :model/Revision))) #(set (map :id %))))))))))
 
+(deftest ^:mb/old-migrations-test populate-is-defective-duplicate-test
+  (testing "Migration v49.2024-06-27T00:00:02 populates is_defective_duplicate correctly"
+    (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
+      (when (= (mdb/db-type) :postgres)
+          ;; This is to test what happens when Postgres is rolled back to 48 from 49, and
+          ;; then rolled back to 49 again. The rollback to 48 will cause the
+          ;; idx_uniq_field_table_id_parent_id_name_2col index to be dropped
+        (t2/query "DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;"))
+      (let [db-id (t2/insert-returning-pk! :metabase_database
+                                           {:details    "{}"
+                                            :created_at :%now
+                                            :updated_at :%now
+                                            :engine     "h2"
+                                            :is_sample  false
+                                            :name       "populate-is-defective-duplicate-test-db"})
+            table! (fn []
+                     (t2/insert-returning-instance! :metabase_table
+                                                    {:db_id      db-id
+                                                     :name       (mt/random-name)
+                                                     :created_at :%now
+                                                     :updated_at :%now
+                                                     :active     true}))
+            field! (fn [table values]
+                     (t2/insert-returning-instance! :metabase_field
+                                                    (merge {:table_id      (:id table)
+                                                            :parent_id     nil
+                                                            :base_type     "type/Text"
+                                                            :database_type "TEXT"
+                                                            :created_at    :%now
+                                                            :updated_at    :%now}
+                                                           values)))
+            earlier #t "2023-01-01T00:00:00"
+            later   #t "2024-01-01T00:00:00"
+              ; 1.
+            table-1 (table!)
+            cases-1 {; field                                                                                 ; is_defective_duplicate
+                     (field! table-1 {:name "F1", :active true,  :nfc_path "NOT NULL", :created_at later})   false
+                     (field! table-1 {:name "F1", :active false, :nfc_path nil,        :created_at earlier}) true}
+              ; 2.
+            table-2 (table!)
+            cases-2 {(field! table-2 {:name "F2", :active true,  :nfc_path nil,        :created_at later})   false
+                     (field! table-2 {:name "F2", :active true,  :nfc_path "NOT NULL", :created_at earlier}) true}
+              ; 3.
+            table-3 (table!)
+            cases-3 {(field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at earlier}) false
+                     (field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at later})   true}
+              ; 4.
+            table-4 (table!)
+            cases-4 {(field! table-4 {:name "F4", :active true,  :nfc_path nil,        :created_at earlier}) false
+                     (field! table-4 {:name "F4", :active false, :nfc_path nil,        :created_at later})   true
+                     (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at earlier}) true
+                     (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at later})   true}
+              ; 5.
+            table-5 (table!)
+            field-no-parent-1   (field! table-5 {:name "F5", :active true,  :parent_id nil})
+            field-no-parent-2   (field! table-5 {:name "F5", :active false, :parent_id nil})
+            field-with-parent-1 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-1)})
+            field-with-parent-2 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-2)})
+            cases-5 {field-no-parent-1 false
+                     field-no-parent-2 true
+                     field-with-parent-1 false
+                     field-with-parent-2 false}
+            assert-defective-cases (fn [field->defective?]
+                                     (doseq [[field-before defective?] field->defective?]
+                                       (let [field-after (t2/select-one :metabase_field :id (:id field-before))]
+                                         (is (= defective? (:is_defective_duplicate field-after))))))]
+        (migrate!)
+        (testing "1. Active is 1st preference"
+          (assert-defective-cases cases-1))
+        (testing "2. NULL nfc_path is 2nd preference"
+          (assert-defective-cases cases-2))
+        (testing "3. Earlier created_at is 3rd preference"
+          (assert-defective-cases cases-3))
+        (testing "4. More than two fields can be defective"
+          (assert-defective-cases cases-4))
+        (testing "5. Fields with different parent_id's are not defective duplicates"
+          (assert-defective-cases cases-5))
+        (when (not= (mdb/db-type) :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+          (testing "Migrate down succeeds"
+            (migrate! :down 48)))))))
+
+(deftest ^:mb/old-migrations-test is-defective-duplicate-constraint-test
+  (testing "Migrations for H2 and MySQL to prevent duplicate fields"
+    (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
+      (let [db-id (t2/insert-returning-pk! :metabase_database
+                                           {:details    "{}"
+                                            :created_at :%now
+                                            :updated_at :%now
+                                            :engine     "h2"
+                                            :is_sample  false
+                                            :name       "populate-is-defective-duplicate-test-db"})
+            table (t2/insert-returning-instance! :metabase_table
+                                                 {:db_id      db-id
+                                                  :name       (mt/random-name)
+                                                  :created_at :%now
+                                                  :updated_at :%now
+                                                  :active     true})
+            field! (fn [values]
+                     (t2/insert-returning-instance! :metabase_field
+                                                    (merge {:table_id      (:id table)
+                                                            :parent_id     nil
+                                                            :base_type     "type/Text"
+                                                            :database_type "TEXT"
+                                                            :created_at    :%now
+                                                            :updated_at    :%now}
+                                                           values)))
+            field-no-parent-1     (field! {:name "F1", :active true, :parent_id nil})
+            field-no-parent-2     (field! {:name "F2", :active true, :parent_id nil})
+            defective+field-thunk [; A field is defective if they have non-unique (table, name) but parent_id is NULL
+                                   [true  #(field! {:name "F1", :active true, :parent_id nil, :nfc_path "NOT NULL"})]
+                                   ; A field is not defective if they have non-unique (table, name) but different parent_id
+                                   [false #(field! {:name "F1", :active true, :parent_id (:id field-no-parent-1)})]
+                                   [false #(field! {:name "F1", :active true, :parent_id (:id field-no-parent-2)})]]
+            fields-to-clean-up    (atom [])
+            clean-up-fields!      (fn []
+                                    (t2/delete! :metabase_field :id [:in (map :id @fields-to-clean-up)])
+                                    (reset! fields-to-clean-up []))]
+        (if (= (mdb/db-type) :postgres)
+          (testing "Before the migrations, Postgres does not allow fields to have the same table, name, but different parent_id"
+            (doseq [[defective? field-thunk] defective+field-thunk]
+              (if defective?
+                (is (thrown? Exception (field-thunk)))
+                (let [field (field-thunk)]
+                  (is (some? field))
+                  (swap! fields-to-clean-up conj field)))))
+          (testing "Before the migrations, all fields are allowed"
+            (doseq [[_ field-thunk] defective+field-thunk]
+              (let [field (field-thunk)]
+                (is (some? field))
+                (swap! fields-to-clean-up conj field)))))
+        (migrate!)
+        (clean-up-fields!)
+        (testing "After the migrations, only allow fields that have the same table, name, but different parent_id"
+          (doseq [[defective? field-thunk] defective+field-thunk]
+            (if defective?
+              (is (thrown? Exception (field-thunk)))
+              (let [field (field-thunk)]
+                (is (some? field))
+                (swap! fields-to-clean-up conj field)))))
+        (when (not= (mdb/db-type) :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+          (testing "Migrate down succeeds"
+            (migrate! :down 48))
+          (clean-up-fields!)
+          (testing "After rolling back the migrations, all fields are allowed"
+            ;; Postgres' unique index is removed on rollback, so we can add defective fields
+            ;; This is needed to allow load-from-h2 to Postgres and then downgrading to work
+            (testing "After migrating down, all fields are allowed"
+              (doseq [[_ field-thunk] defective+field-thunk]
+                (is (some? (field-thunk))))))
+          (testing "Migrate up again succeeds"
+            (migrate!)))))))
+
+(deftest ^:mb/old-migrations-test is-defective-duplicate-constraint-load-from-h2
+  (testing "Test that you can use load-from-h2 with fields that meet the conditions for is_defective_duplicate=TRUE"
+    ;; In this test:
+    ;; 1. starting from an H2 app DB, create a field that meets the conditions for is_defective_duplicate=TRUE
+    ;; 2. migrate, adding constraints around is_defective_duplicate to prevent duplicates
+    ;; 3. test load-from-h2 works successfully by migrating to MySQL or Postgres
+    ;; 4. test you can downgrade and upgrade again after that
+    (when (#{:mysql :postgres} (mdb/db-type))
+      (let [original-app-db-type (mdb/db-type)]
+        (impl/test-migrations-for-driver!
+         :h2
+         ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"]
+         (fn [migrate!]
+           (let [db-id (t2/insert-returning-pk! :metabase_database
+                                                {:details    "{}"
+                                                 :created_at :%now
+                                                 :updated_at :%now
+                                                 :engine     "h2"
+                                                 :is_sample  false
+                                                 :name       ""})
+                 table (t2/insert-returning-instance! :metabase_table
+                                                      {:db_id      db-id
+                                                       :name       (mt/random-name)
+                                                       :created_at :%now
+                                                       :updated_at :%now
+                                                       :active     true})
+                 field! (fn [values]
+                          (t2/insert-returning-instance! :metabase_field
+                                                         (merge {:table_id      (:id table)
+                                                                 :active        true
+                                                                 :parent_id     nil
+                                                                 :base_type     "type/Text"
+                                                                 :database_type "TEXT"
+                                                                 :created_at    :%now
+                                                                 :updated_at    :%now}
+                                                                values)))
+                 _normal-field           (field! {:name "F1", :parent_id nil})
+                 create-defective-field! #(field! {:name "F1", :parent_id nil})
+                 defective-field-id      (:id (create-defective-field!))]
+             (testing "Before the migration, creating a defective duplicate field is allowed"
+               (is (some? defective-field-id)))
+             (migrate!)
+             (testing "After the migration, defective duplicate fields are not allowed"
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unique index" (field! {:name "F1", :parent_id nil}))))
+             (mt/with-temp-dir [dir nil]
+               (let [h2-filename (str dir "/dump")]
+                 (dump-to-h2/dump-to-h2! h2-filename) ; this migrates the DB back to the newest and creates a dump
+                 (let [db-def      {:database-name "field-test-db"}
+                       data-source (load-from-h2-test/get-data-source original-app-db-type db-def)]
+                   (load-from-h2-test/create-current-database! original-app-db-type db-def data-source)
+                   (binding [mdb.connection/*application-db* (mdb.connection/application-db original-app-db-type data-source)]
+                     (load-from-h2/load-from-h2! h2-filename)
+                     (testing "The defective field should still exist after loading from H2"
+                       (is (= #{defective-field-id}
+                              (t2/select-pks-set (t2/table-name :model/Field) :is_defective_duplicate true)))))
+                   (when-not (= original-app-db-type :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+                     (testing "Migrating down to 48 should still work"
+                       (migrate! :down 48))
+                     (testing "The defective field should still exist after loading from H2 and downgrading"
+                       (is (t2/exists? (t2/table-name :model/Field) :id defective-field-id)))
+                     (testing "Migrating up again should still work"
+                       (migrate!)))))))))))))
+
+(deftest ^:mb/old-migrations-test deactivate-defective-duplicates-test
+  (testing "Migration v49.2024-06-27T00:00:09"
+    (impl/test-migrations ["v49.2024-06-27T00:00:09"] [migrate!]
+      (let [db-id         (t2/insert-returning-pk! :metabase_database
+                                                   {:details    "{}"
+                                                    :created_at :%now
+                                                    :updated_at :%now
+                                                    :engine     "h2"
+                                                    :is_sample  false
+                                                    :name       "some_db"})
+            table         (t2/insert-returning-instance! :metabase_table
+                                                         {:db_id      db-id
+                                                          :name       "some_table"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :active     true})
+            field!        (fn [values]
+                            (t2/insert-returning-instance! :metabase_field
+                                                           (merge {:table_id      (:id table)
+                                                                   :active        true
+                                                                   :parent_id     nil
+                                                                   :base_type     "type/Text"
+                                                                   :database_type "TEXT"
+                                                                   :created_at    :%now
+                                                                   :updated_at    :%now}
+                                                                  values)))
+            active+field [[true  (field! {:name "x", :is_defective_duplicate true,  :nfc_path "[\"x\",\"y\"]"})]
+                          [true  (field! {:name "x", :is_defective_duplicate false, :nfc_path nil})]
+                          [false (field! {:name "x", :is_defective_duplicate true,  :nfc_path nil})]
+                          [false (field! {:name "x", :is_defective_duplicate true,  :nfc_path "[\"x\"]"})]]]
+        (migrate!)
+        (testing "After the migration, fields are deactivated correctly"
+          (doseq [[active? field] active+field]
+            (is (= active? (t2/select-one-fn :active :metabase_field (:id field))))))))))
+
+(deftest ^:mb/old-migrations-test populate-new-permission-fields-works
+  (testing "Migration v49.2024-08-21T08:33:10"
+    (impl/test-migrations ["v49.2024-08-21T08:33:06" "v49.2024-08-21T08:33:10"] [migrate!]
+      (let [read-coll-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
+                                                                     {:slug "foo"}))
+            read-coll-path (perms/collection-read-path read-coll-id)
+            write-coll-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
+                                                                      {:slug "foo"}))
+            write-coll-path (perms/collection-readwrite-path write-coll-id)
+
+            ;; a nonexistent collection permission - should get deleted!
+            nonexistent-path "/collection/99123457/"
+            nonexistent-read-path "/collection/99123456/read/"
+
+            both-perms-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
+                                                                      {:slug "foo"}))]
+        (t2/insert! :permissions {:object nonexistent-path
+                                  :group_id (u/the-id (perms-group/all-users))})
+        (t2/insert! :permissions {:object nonexistent-read-path
+                                  :group_id (u/the-id (perms-group/all-users))})
+        (t2/insert! :permissions {:object read-coll-path :group_id (u/the-id (perms-group/all-users))})
+        (t2/insert! :permissions {:object write-coll-path :group_id (u/the-id (perms-group/all-users))})
+
+        (t2/insert! :permissions {:object (perms/collection-readwrite-path both-perms-id)
+                                  :group_id (u/the-id (perms-group/all-users))})
+        (t2/insert! :permissions {:object (perms/collection-read-path both-perms-id)
+                                  :group_id (u/the-id (perms-group/all-users))})
+
+        (migrate!)
+        (testing "the valid permissions objects got updated correctly"
+          (is (= [{:collection_id read-coll-id
+                   :perm_type :perms/collection-access
+                   :perm_value :read
+                   :object (str "/collection/" read-coll-id "/read/")}
+                  {:collection_id write-coll-id
+                   :perm_type :perms/collection-access
+                   :perm_value :read-and-write
+                   :object (str "/collection/" write-coll-id "/")}
+                  ;; NOTE: We have two `:perms/collection-access` values for `both-perms-id`, because there were two
+                  ;; permissions rows to start with. The migration doesn't do any kind of coalescing or deduplication
+                  ;; - we may want do do that down the road.
+                  {:collection_id both-perms-id
+                   :perm_type :perms/collection-access
+                   :perm_value :read-and-write
+                   :object (str "/collection/" both-perms-id "/")}
+                  {:collection_id both-perms-id
+                   :perm_type :perms/collection-access
+                   :perm_value :read
+                   :object (str "/collection/" both-perms-id "/read/")}]
+                 (->> [read-coll-id write-coll-id both-perms-id]
+                      (mapcat #(t2/select :model/Permissions :collection_id %))
+                      (map #(select-keys % [:collection_id :perm_type :perm_value :object]))))))
+        (testing "the invalid permissions (for a nonexistent table) were deleted"
+          (is (empty? (t2/select :model/Permissions :object [:in [nonexistent-path nonexistent-read-path]]))))))))
+
+;;;
+;;; 50 tests
+;;;
+
 (defn- clear-permissions!
   []
   (t2/delete! (t2/table-name :model/Permissions) {:where [:not= :object "/"]})
@@ -885,7 +1211,7 @@
   (t2/delete! :connection_impersonations)
   (t2/delete! :sandboxes))
 
-(deftest data-access-permissions-schema-migration-basic-test
+(deftest ^:mb/old-migrations-test data-access-permissions-schema-migration-basic-test
   (testing "Data access permissions are correctly migrated from `permissions` to `data_permissions`"
     (impl/test-migrations "v50.2024-01-10T03:27:30" [migrate!]
       (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
@@ -1024,7 +1350,7 @@
                                       (t2/table-name :model/DataPermissions)
                                       :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/data-access"))))))))
 
-(deftest native-query-editing-permissions-schema-migration-test
+(deftest ^:mb/old-migrations-test native-query-editing-permissions-schema-migration-test
   (testing "Native query editing permissions are correctly migrated from `permissions` to `data_permissions`"
     (impl/test-migrations "v50.2024-01-10T03:27:31" [migrate!]
       (let [group-id (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
@@ -1058,7 +1384,7 @@
                                         (t2/table-name :model/DataPermissions)
                                         :db_id db-id :table_id nil :group_id group-id :perm_type "perms/native-query-editing"))))))))
 
-(deftest download-results-permissions-schema-migration-test
+(deftest ^:mb/old-migrations-test download-results-permissions-schema-migration-test
   (testing "Download results permissions are correctly migrated from `permissions` to `data_permissions`"
     (impl/test-migrations "v50.2024-01-10T03:27:32" [migrate!]
       (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
@@ -1204,7 +1530,7 @@
                                    (t2/table-name :model/DataPermissions)
                                    :db_id db-id :table_id table-id-3 :group_id group-id))))))))
 
-(deftest manage-table-metadata-permissions-schema-migration-test
+(deftest ^:mb/old-migrations-test manage-table-metadata-permissions-schema-migration-test
   (testing "Manage table metadata permissions are correctly migrated from `permissions` to `data_permissions`"
     (impl/test-migrations "v50.2024-01-10T03:27:33" [migrate!]
       (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
@@ -1267,7 +1593,7 @@
                                    (t2/table-name :model/DataPermissions)
                                    :db_id db-id :table_id table-id :group_id group-id :perm_type "perms/manage-table-metadata"))))))))
 
-(deftest manage-database-permissions-schema-migration-test
+(deftest ^:mb/old-migrations-test manage-database-permissions-schema-migration-test
   (testing "Manage database permissions are correctly migrated from `permissions` to `data_permissions`"
     (impl/test-migrations "v50.2024-01-10T03:27:34" [migrate!]
       (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
@@ -1292,7 +1618,7 @@
                                         (t2/table-name :model/DataPermissions)
                                         :db_id db-id :group_id group-id :perm_type "perms/manage-database"))))))))
 
-(deftest create-internal-user-test
+(deftest ^:mb/old-migrations-test create-internal-user-test
   (testing "The internal user is created if it doesn't already exist"
     (impl/test-migrations "v50.2024-03-28T16:30:35" [migrate!]
       (let [get-users #(t2/query "SELECT * FROM core_user")]
@@ -1310,7 +1636,9 @@
                   :sso_source       nil
                   :type             "internal"
                   :date_joined      some?}]
-                (get-users))))))
+                (get-users)))))))
+
+(deftest ^:mb/old-migrations-test create-internal-user-test-2
   (testing "The internal user isn't created again if it already exists"
     (impl/test-migrations "v50.2024-03-28T16:30:35" [migrate!]
       (t2/insert-returning-pks!
@@ -1333,7 +1661,7 @@
         (migrate!)
         (is (= users-before (get-users)))))))
 
-(deftest data-permissions-migration-rollback-test
+(deftest ^:mb/old-migrations-test data-permissions-migration-rollback-test
   (testing "Data permissions are correctly rolled back from `data_permissions` to `permissions`"
     (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-19T21:32:04"] [migrate!]
       (let [migrate-up!  (fn []
@@ -1502,7 +1830,7 @@
         (migrate! :down 49)
         (is (nil? (t2/select-fn-vec :object (t2/table-name :model/Permissions) :group_id group-id)))))))
 
-(deftest cache-config-migration-test
+(deftest ^:mb/old-migrations-test cache-config-migration-test
   (testing "Caching config is correctly copied over"
     (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
       ;; this peculiar setup is to reproduce #44012, `enable-query-caching` should be unencrypted for the condition
@@ -1556,7 +1884,7 @@
                 (->> (t2/select :cache_config)
                      (mapv #(update % :config json/decode+kw)))))))))
 
-(deftest cache-config-handle-big-value-test
+(deftest ^:mb/old-migrations-test cache-config-handle-big-value-test
   (testing "Caching config is correctly copied over"
     (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
@@ -1570,7 +1898,7 @@
               (->> (t2/select :cache_config)
                    (mapv #(update % :config json/decode+kw))))))))
 
-(deftest cache-config-migration-test-2
+(deftest ^:mb/old-migrations-test cache-config-migration-test-2
   (testing "And not copied if caching is disabled"
     (impl/test-migrations ["v50.2024-04-12T12:33:07"] [migrate!]
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "false")}
@@ -1586,7 +1914,7 @@
       (is (= []
              (t2/select :cache_config))))))
 
-(deftest cache-config-mysql-update-test
+(deftest ^:mb/old-migrations-test cache-config-mysql-update-test
   (when (= (mdb/db-type) :mysql)
     (testing "Root cache config for mysql is updated with correct values"
       (encryption-test/with-secret-key "whateverwhatever"
@@ -1613,7 +1941,7 @@
                   (-> (t2/select-one :cache_config)
                       (update :config json/decode+kw)))))))))
 
-(deftest cache-config-old-id-cleanup
+(deftest ^:mb/old-migrations-test cache-config-old-id-cleanup
   (testing "Cache config migration old id is removed from databasechangelog"
     (impl/test-migrations ["v50.2024-06-28T12:35:50"] [migrate!]
       (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
@@ -1632,7 +1960,7 @@
         (migrate!)
         (is (nil? (t2/select-one clog :id "v50.2024-04-12T12:33:09")))))))
 
-(deftest split-data-permissions-migration-test
+(deftest ^:mb/old-migrations-test split-data-permissions-migration-test
   (testing "View Data and Create Query permissions are created correctly based on existing data permissions"
     (impl/test-migrations ["v50.2024-02-26T22:15:54" "v50.2024-02-26T22:15:55"] [migrate!]
       (let [group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
@@ -1755,7 +2083,7 @@
                                    :db_id db-id :table_id table-id-2 :group_id group-id :perm_type "perms/create-queries"))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
-(deftest split-data-permissions-legacy-no-self-service-migration-test
+(deftest ^:mb/old-migrations-test split-data-permissions-legacy-no-self-service-migration-test
   (testing "view-data is set to `legacy-no-self-service` for groups that meet specific conditions"
     (impl/test-migrations ["v50.2024-02-26T22:15:54" "v50.2024-02-26T22:15:55"] [migrate!]
       (let [user-id    (:id (create-raw-user! (mt/random-email)))
@@ -1948,7 +2276,7 @@
           (is (nil? (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
                                       :db_id db-id :table_id table-id-2 :group_id group-id-1 :perm_type "perms/view-data"))))))))
 
-(deftest split-data-permissions-migration-rollback-test
+(deftest ^:mb/old-migrations-test split-data-permissions-migration-rollback-test
   (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-26T22:15:55"] [migrate!]
     (let [migrate-up!  (fn []
                          (migrate!)
@@ -2064,7 +2392,7 @@
         (is (= #{(format "/block/db/%d/" db-id)}
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))))))
 
-(deftest dbs-with-a-single-blocked-table-downgrade-to-blocked-dbs
+(deftest ^:mb/old-migrations-test dbs-with-a-single-blocked-table-downgrade-to-blocked-dbs
   (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-26T22:15:55"] [migrate!]
     (let [user-id      (t2/insert-returning-pk! (t2/table-name :model/User)
                                                 {:first_name  "Howard"
@@ -2118,7 +2446,7 @@
            (t2/select-fn-set :object :model/Permissions :group_id group-id)
            (str "/block/db/" db-id "/"))))))
 
-(deftest sandboxing-rollback-test
+(deftest ^:mb/old-migrations-test sandboxing-rollback-test
   ;; Rollback tests flake on MySQL, so only run on Postgres/H2
   (when (#{:postgres :h2} (mdb/db-type))
     (testing "Can we rollback to 49 when sandboxing is configured"
@@ -2179,7 +2507,7 @@
                    (format "/db/%d/schema/SchemaName/table/%d/" db-id table-id-3)}
                  (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))))))
 
-(deftest view-count-test
+(deftest ^:mb/old-migrations-test view-count-test
   (testing "report_card.view_count and report_dashboard.view_count should be populated"
     (impl/test-migrations ["v50.2024-04-25T16:29:31" "v50.2024-04-25T16:29:36"] [migrate!]
       (let [user-id 13371338 ; use internal user to avoid creating a real user
@@ -2224,7 +2552,7 @@
         (is (= 1 (t2/select-one-fn :view_count :report_card card-id)))
         (is (= 2 (t2/select-one-fn :view_count :report_dashboard dash-id)))))))
 
-(deftest trash-migrations-test
+(deftest ^:mb/old-migrations-test trash-migrations-test
   (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
     (with-redefs [collection/is-trash? (constantly false)]
       (let [collection-id    (t2/insert-returning-pk! (t2/table-name :model/Collection)
@@ -2255,7 +2583,7 @@
             (is (= (str "/" collection-id "/")
                    (t2/select-one-fn :location :model/Collection :id subcollection-id)))))))))
 
-(deftest trash-migrations-make-archive-operation-ids-correctly
+(deftest ^:mb/old-migrations-test trash-migrations-make-archive-operation-ids-correctly
   (impl/test-migrations ["v50.2024-05-29T14:04:47" "v50.2024-05-29T18:42:15"] [migrate!]
     (with-redefs [collection/is-trash? (constantly false)]
       (let [relevant-collection-ids (atom #{})
@@ -2318,312 +2646,11 @@
                      #{b h}} ;; => not archived at all, `archive_operation_id` is nil
                    (set (vals archive-operation-id->collection-ids))))))))))
 
-(deftest populate-is-defective-duplicate-test
-  (testing "Migration v49.2024-06-27T00:00:02 populates is_defective_duplicate correctly"
-    (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
-      (when (= (mdb/db-type) :postgres)
-          ;; This is to test what happens when Postgres is rolled back to 48 from 49, and
-          ;; then rolled back to 49 again. The rollback to 48 will cause the
-          ;; idx_uniq_field_table_id_parent_id_name_2col index to be dropped
-        (t2/query "DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;"))
-      (let [db-id (t2/insert-returning-pk! :metabase_database
-                                           {:details    "{}"
-                                            :created_at :%now
-                                            :updated_at :%now
-                                            :engine     "h2"
-                                            :is_sample  false
-                                            :name       "populate-is-defective-duplicate-test-db"})
-            table! (fn []
-                     (t2/insert-returning-instance! :metabase_table
-                                                    {:db_id      db-id
-                                                     :name       (mt/random-name)
-                                                     :created_at :%now
-                                                     :updated_at :%now
-                                                     :active     true}))
-            field! (fn [table values]
-                     (t2/insert-returning-instance! :metabase_field
-                                                    (merge {:table_id      (:id table)
-                                                            :parent_id     nil
-                                                            :base_type     "type/Text"
-                                                            :database_type "TEXT"
-                                                            :created_at    :%now
-                                                            :updated_at    :%now}
-                                                           values)))
-            earlier #t "2023-01-01T00:00:00"
-            later   #t "2024-01-01T00:00:00"
-              ; 1.
-            table-1 (table!)
-            cases-1 {; field                                                                                 ; is_defective_duplicate
-                     (field! table-1 {:name "F1", :active true,  :nfc_path "NOT NULL", :created_at later})   false
-                     (field! table-1 {:name "F1", :active false, :nfc_path nil,        :created_at earlier}) true}
-              ; 2.
-            table-2 (table!)
-            cases-2 {(field! table-2 {:name "F2", :active true,  :nfc_path nil,        :created_at later})   false
-                     (field! table-2 {:name "F2", :active true,  :nfc_path "NOT NULL", :created_at earlier}) true}
-              ; 3.
-            table-3 (table!)
-            cases-3 {(field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at earlier}) false
-                     (field! table-3 {:name "F3", :active true,  :nfc_path nil,        :created_at later})   true}
-              ; 4.
-            table-4 (table!)
-            cases-4 {(field! table-4 {:name "F4", :active true,  :nfc_path nil,        :created_at earlier}) false
-                     (field! table-4 {:name "F4", :active false, :nfc_path nil,        :created_at later})   true
-                     (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at earlier}) true
-                     (field! table-4 {:name "F4", :active false, :nfc_path "NOT NULL", :created_at later})   true}
-              ; 5.
-            table-5 (table!)
-            field-no-parent-1   (field! table-5 {:name "F5", :active true,  :parent_id nil})
-            field-no-parent-2   (field! table-5 {:name "F5", :active false, :parent_id nil})
-            field-with-parent-1 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-1)})
-            field-with-parent-2 (field! table-5 {:name "F5", :active true,  :parent_id (:id field-no-parent-2)})
-            cases-5 {field-no-parent-1 false
-                     field-no-parent-2 true
-                     field-with-parent-1 false
-                     field-with-parent-2 false}
-            assert-defective-cases (fn [field->defective?]
-                                     (doseq [[field-before defective?] field->defective?]
-                                       (let [field-after (t2/select-one :metabase_field :id (:id field-before))]
-                                         (is (= defective? (:is_defective_duplicate field-after))))))]
-        (migrate!)
-        (testing "1. Active is 1st preference"
-          (assert-defective-cases cases-1))
-        (testing "2. NULL nfc_path is 2nd preference"
-          (assert-defective-cases cases-2))
-        (testing "3. Earlier created_at is 3rd preference"
-          (assert-defective-cases cases-3))
-        (testing "4. More than two fields can be defective"
-          (assert-defective-cases cases-4))
-        (testing "5. Fields with different parent_id's are not defective duplicates"
-          (assert-defective-cases cases-5))
-        (when (not= (mdb/db-type) :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
-          (testing "Migrate down succeeds"
-            (migrate! :down 48)))))))
+;;;
+;;; 51 tests
+;;;
 
-(deftest is-defective-duplicate-constraint-test
-  (testing "Migrations for H2 and MySQL to prevent duplicate fields"
-    (impl/test-migrations ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"] [migrate!]
-      (let [db-id (t2/insert-returning-pk! :metabase_database
-                                           {:details    "{}"
-                                            :created_at :%now
-                                            :updated_at :%now
-                                            :engine     "h2"
-                                            :is_sample  false
-                                            :name       "populate-is-defective-duplicate-test-db"})
-            table (t2/insert-returning-instance! :metabase_table
-                                                 {:db_id      db-id
-                                                  :name       (mt/random-name)
-                                                  :created_at :%now
-                                                  :updated_at :%now
-                                                  :active     true})
-            field! (fn [values]
-                     (t2/insert-returning-instance! :metabase_field
-                                                    (merge {:table_id      (:id table)
-                                                            :parent_id     nil
-                                                            :base_type     "type/Text"
-                                                            :database_type "TEXT"
-                                                            :created_at    :%now
-                                                            :updated_at    :%now}
-                                                           values)))
-            field-no-parent-1     (field! {:name "F1", :active true, :parent_id nil})
-            field-no-parent-2     (field! {:name "F2", :active true, :parent_id nil})
-            defective+field-thunk [; A field is defective if they have non-unique (table, name) but parent_id is NULL
-                                   [true  #(field! {:name "F1", :active true, :parent_id nil, :nfc_path "NOT NULL"})]
-                                   ; A field is not defective if they have non-unique (table, name) but different parent_id
-                                   [false #(field! {:name "F1", :active true, :parent_id (:id field-no-parent-1)})]
-                                   [false #(field! {:name "F1", :active true, :parent_id (:id field-no-parent-2)})]]
-            fields-to-clean-up    (atom [])
-            clean-up-fields!      (fn []
-                                    (t2/delete! :metabase_field :id [:in (map :id @fields-to-clean-up)])
-                                    (reset! fields-to-clean-up []))]
-        (if (= (mdb/db-type) :postgres)
-          (testing "Before the migrations, Postgres does not allow fields to have the same table, name, but different parent_id"
-            (doseq [[defective? field-thunk] defective+field-thunk]
-              (if defective?
-                (is (thrown? Exception (field-thunk)))
-                (let [field (field-thunk)]
-                  (is (some? field))
-                  (swap! fields-to-clean-up conj field)))))
-          (testing "Before the migrations, all fields are allowed"
-            (doseq [[_ field-thunk] defective+field-thunk]
-              (let [field (field-thunk)]
-                (is (some? field))
-                (swap! fields-to-clean-up conj field)))))
-        (migrate!)
-        (clean-up-fields!)
-        (testing "After the migrations, only allow fields that have the same table, name, but different parent_id"
-          (doseq [[defective? field-thunk] defective+field-thunk]
-            (if defective?
-              (is (thrown? Exception (field-thunk)))
-              (let [field (field-thunk)]
-                (is (some? field))
-                (swap! fields-to-clean-up conj field)))))
-        (when (not= (mdb/db-type) :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
-          (testing "Migrate down succeeds"
-            (migrate! :down 48))
-          (clean-up-fields!)
-          (testing "After rolling back the migrations, all fields are allowed"
-            ;; Postgres' unique index is removed on rollback, so we can add defective fields
-            ;; This is needed to allow load-from-h2 to Postgres and then downgrading to work
-            (testing "After migrating down, all fields are allowed"
-              (doseq [[_ field-thunk] defective+field-thunk]
-                (is (some? (field-thunk))))))
-          (testing "Migrate up again succeeds"
-            (migrate!)))))))
-
-(deftest is-defective-duplicate-constraint-load-from-h2
-  (testing "Test that you can use load-from-h2 with fields that meet the conditions for is_defective_duplicate=TRUE"
-    ;; In this test:
-    ;; 1. starting from an H2 app DB, create a field that meets the conditions for is_defective_duplicate=TRUE
-    ;; 2. migrate, adding constraints around is_defective_duplicate to prevent duplicates
-    ;; 3. test load-from-h2 works successfully by migrating to MySQL or Postgres
-    ;; 4. test you can downgrade and upgrade again after that
-    (when (#{:mysql :postgres} (mdb/db-type))
-      (let [original-app-db-type (mdb/db-type)]
-        (impl/test-migrations-for-driver!
-         :h2
-         ["v49.2024-06-27T00:00:00" "v49.2024-06-27T00:00:08"]
-         (fn [migrate!]
-           (let [db-id (t2/insert-returning-pk! :metabase_database
-                                                {:details    "{}"
-                                                 :created_at :%now
-                                                 :updated_at :%now
-                                                 :engine     "h2"
-                                                 :is_sample  false
-                                                 :name       ""})
-                 table (t2/insert-returning-instance! :metabase_table
-                                                      {:db_id      db-id
-                                                       :name       (mt/random-name)
-                                                       :created_at :%now
-                                                       :updated_at :%now
-                                                       :active     true})
-                 field! (fn [values]
-                          (t2/insert-returning-instance! :metabase_field
-                                                         (merge {:table_id      (:id table)
-                                                                 :active        true
-                                                                 :parent_id     nil
-                                                                 :base_type     "type/Text"
-                                                                 :database_type "TEXT"
-                                                                 :created_at    :%now
-                                                                 :updated_at    :%now}
-                                                                values)))
-                 _normal-field           (field! {:name "F1", :parent_id nil})
-                 create-defective-field! #(field! {:name "F1", :parent_id nil})
-                 defective-field-id      (:id (create-defective-field!))]
-             (testing "Before the migration, creating a defective duplicate field is allowed"
-               (is (some? defective-field-id)))
-             (migrate!)
-             (testing "After the migration, defective duplicate fields are not allowed"
-               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unique index" (field! {:name "F1", :parent_id nil}))))
-             (mt/with-temp-dir [dir nil]
-               (let [h2-filename (str dir "/dump")]
-                 (dump-to-h2/dump-to-h2! h2-filename) ; this migrates the DB back to the newest and creates a dump
-                 (let [db-def      {:database-name "field-test-db"}
-                       data-source (load-from-h2-test/get-data-source original-app-db-type db-def)]
-                   (load-from-h2-test/create-current-database! original-app-db-type db-def data-source)
-                   (binding [mdb.connection/*application-db* (mdb.connection/application-db original-app-db-type data-source)]
-                     (load-from-h2/load-from-h2! h2-filename)
-                     (testing "The defective field should still exist after loading from H2"
-                       (is (= #{defective-field-id}
-                              (t2/select-pks-set (t2/table-name :model/Field) :is_defective_duplicate true)))))
-                   (when-not (= original-app-db-type :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
-                     (testing "Migrating down to 48 should still work"
-                       (migrate! :down 48))
-                     (testing "The defective field should still exist after loading from H2 and downgrading"
-                       (is (t2/exists? (t2/table-name :model/Field) :id defective-field-id)))
-                     (testing "Migrating up again should still work"
-                       (migrate!)))))))))))))
-
-(deftest deactivate-defective-duplicates-test
-  (testing "Migration v49.2024-06-27T00:00:09"
-    (impl/test-migrations ["v49.2024-06-27T00:00:09"] [migrate!]
-      (let [db-id         (t2/insert-returning-pk! :metabase_database
-                                                   {:details    "{}"
-                                                    :created_at :%now
-                                                    :updated_at :%now
-                                                    :engine     "h2"
-                                                    :is_sample  false
-                                                    :name       "some_db"})
-            table         (t2/insert-returning-instance! :metabase_table
-                                                         {:db_id      db-id
-                                                          :name       "some_table"
-                                                          :created_at :%now
-                                                          :updated_at :%now
-                                                          :active     true})
-            field!        (fn [values]
-                            (t2/insert-returning-instance! :metabase_field
-                                                           (merge {:table_id      (:id table)
-                                                                   :active        true
-                                                                   :parent_id     nil
-                                                                   :base_type     "type/Text"
-                                                                   :database_type "TEXT"
-                                                                   :created_at    :%now
-                                                                   :updated_at    :%now}
-                                                                  values)))
-            active+field [[true  (field! {:name "x", :is_defective_duplicate true,  :nfc_path "[\"x\",\"y\"]"})]
-                          [true  (field! {:name "x", :is_defective_duplicate false, :nfc_path nil})]
-                          [false (field! {:name "x", :is_defective_duplicate true,  :nfc_path nil})]
-                          [false (field! {:name "x", :is_defective_duplicate true,  :nfc_path "[\"x\"]"})]]]
-        (migrate!)
-        (testing "After the migration, fields are deactivated correctly"
-          (doseq [[active? field] active+field]
-            (is (= active? (t2/select-one-fn :active :metabase_field (:id field))))))))))
-
-(deftest populate-new-permission-fields-works
-  (testing "Migration v49.2024-08-21T08:33:10"
-    (impl/test-migrations ["v49.2024-08-21T08:33:06" "v49.2024-08-21T08:33:10"] [migrate!]
-      (let [read-coll-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
-                                                                     {:slug "foo"}))
-            read-coll-path (perms/collection-read-path read-coll-id)
-            write-coll-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
-                                                                      {:slug "foo"}))
-            write-coll-path (perms/collection-readwrite-path write-coll-id)
-
-            ;; a nonexistent collection permission - should get deleted!
-            nonexistent-path "/collection/99123457/"
-            nonexistent-read-path "/collection/99123456/read/"
-
-            both-perms-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
-                                                                      {:slug "foo"}))]
-        (t2/insert! :permissions {:object nonexistent-path
-                                  :group_id (u/the-id (perms-group/all-users))})
-        (t2/insert! :permissions {:object nonexistent-read-path
-                                  :group_id (u/the-id (perms-group/all-users))})
-        (t2/insert! :permissions {:object read-coll-path :group_id (u/the-id (perms-group/all-users))})
-        (t2/insert! :permissions {:object write-coll-path :group_id (u/the-id (perms-group/all-users))})
-
-        (t2/insert! :permissions {:object (perms/collection-readwrite-path both-perms-id)
-                                  :group_id (u/the-id (perms-group/all-users))})
-        (t2/insert! :permissions {:object (perms/collection-read-path both-perms-id)
-                                  :group_id (u/the-id (perms-group/all-users))})
-
-        (migrate!)
-        (testing "the valid permissions objects got updated correctly"
-          (is (= [{:collection_id read-coll-id
-                   :perm_type :perms/collection-access
-                   :perm_value :read
-                   :object (str "/collection/" read-coll-id "/read/")}
-                  {:collection_id write-coll-id
-                   :perm_type :perms/collection-access
-                   :perm_value :read-and-write
-                   :object (str "/collection/" write-coll-id "/")}
-                  ;; NOTE: We have two `:perms/collection-access` values for `both-perms-id`, because there were two
-                  ;; permissions rows to start with. The migration doesn't do any kind of coalescing or deduplication
-                  ;; - we may want do do that down the road.
-                  {:collection_id both-perms-id
-                   :perm_type :perms/collection-access
-                   :perm_value :read-and-write
-                   :object (str "/collection/" both-perms-id "/")}
-                  {:collection_id both-perms-id
-                   :perm_type :perms/collection-access
-                   :perm_value :read
-                   :object (str "/collection/" both-perms-id "/read/")}]
-                 (->> [read-coll-id write-coll-id both-perms-id]
-                      (mapcat #(t2/select :model/Permissions :collection_id %))
-                      (map #(select-keys % [:collection_id :perm_type :perm_value :object]))))))
-        (testing "the invalid permissions (for a nonexistent table) were deleted"
-          (is (empty? (t2/select :model/Permissions :object [:in [nonexistent-path nonexistent-read-path]]))))))))
-
-(deftest populate-enabled-embedding-settings-works
+(deftest ^:mb/old-migrations-test populate-enabled-embedding-settings-works
   (testing "Check that embedding settings are nil when enable-embedding is nil"
     (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
       (t2/delete! :model/Setting :key "enable-embedding")
@@ -2648,7 +2675,7 @@
       (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
       (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk"))))))
 
-(deftest populate-enabled-embedding-settings-encrypted-works
+(deftest ^:mb/old-migrations-test populate-enabled-embedding-settings-encrypted-works
   (testing "With encryption turned on > "
     (mt/with-temp-env-var-value! [MB_ENCRYPTION_SECRET_KEY "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]
       (testing "Check that embedding settings are nil when enable-embedding is nil"
@@ -2675,13 +2702,15 @@
           (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
           (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk"))))))))
 
-(deftest populate-embedding-origin-settings-works
+(deftest ^:mb/old-migrations-test populate-embedding-origin-settings-works
   (testing "Check that embedding-origins are unset when embedding-app-origin is unset"
     (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
       (t2/delete! :model/Setting :key "embedding-app-origin")
       (migrate!)
       (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-interactive")))
-      (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-sdk")))))
+      (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-sdk"))))))
+
+(deftest ^:mb/old-migrations-test populate-embedding-origin-settings-works-2
   (testing "Check that embedding-origins settings are propigated when embedding-app-origin is set to some value"
     (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
       (t2/delete! :model/Setting :key "embedding-app-origin")
@@ -2690,7 +2719,7 @@
       (migrate!)
       (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origins-interactive"))))))
 
-(deftest populate-embedding-origin-settings-encrypted-works
+(deftest ^:mb/old-migrations-test populate-embedding-origin-settings-encrypted-works
   (testing "With encryption turned on > "
     (mt/with-temp-env-var-value! [MB_ENCRYPTION_SECRET_KEY "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]
       (testing "Check that embedding-origins are unset when embedding-app-origin is unset"
@@ -2706,3 +2735,7 @@
           (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origin")))
           (migrate!)
           (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origins-interactive"))))))))
+
+;;;
+;;; 53+ tests should go below this line please <3
+;;;

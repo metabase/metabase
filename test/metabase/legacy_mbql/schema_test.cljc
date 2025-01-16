@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.legacy-mbql.schema-test
+(ns metabase.legacy-mbql.schema-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]

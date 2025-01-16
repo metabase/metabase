@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.serialization.v2.extract-test
+(ns metabase-enterprise.serialization.v2.extract-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
