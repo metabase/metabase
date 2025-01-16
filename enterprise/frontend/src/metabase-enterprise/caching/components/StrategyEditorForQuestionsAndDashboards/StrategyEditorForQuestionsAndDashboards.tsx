@@ -355,7 +355,6 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
       </tr>
     )}
     className={Styles.CacheableItemTable}
-    locale="en-US"
   />
 );
 
