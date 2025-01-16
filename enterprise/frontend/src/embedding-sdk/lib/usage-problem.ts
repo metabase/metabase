@@ -20,10 +20,9 @@ export const USAGE_PROBLEM_MESSAGES = {
   SSO_WITHOUT_LICENSE: `Usage without a valid license for this feature is only allowed for evaluation purposes, using API keys and only on localhost. Attempting to use this in other ways is in breach of our usage policy.`,
   CONFLICTING_AUTH_METHODS: `You cannot use both an Auth Provider URI and API key authentication at the same time.`,
   JWT_PROVIDER_URI_DEPRECATED: `The jwtProviderUri config property has been deprecated. Replace it with authProviderUri.`,
-
-  // TODO: this message is pending on the "allowing CORS for /api/session/properties" PR to be merged
   NO_AUTH_METHOD_PROVIDED: `You must provide either an Auth Provider URI or an API key for authentication.`,
 
+  // TODO: this message is not implemented yet, as it requires /api/session/properties to support CORS first.
   EMBEDDING_SDK_NOT_ENABLED: `The embedding SDK is not enabled for this instance. Please enable it in settings to start using the SDK.`,
 } as const;
 
@@ -92,6 +91,15 @@ export function getSdkUsageProblem(
       )
       // For SSO, the token features and the toggle must both be enabled.
       .with({ isSSO: true, hasTokenFeature: true, isEnabled: true }, () => null)
+      .with(
+        {
+          isSSO: true,
+          hasTokenFeature: true,
+          isLocalhost: true,
+          isEnabled: false,
+        },
+        () => toError("EMBEDDING_SDK_NOT_ENABLED"),
+      )
       .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError("SSO_WITHOUT_LICENSE"),
       )
