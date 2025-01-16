@@ -38,7 +38,7 @@ const setup = (options: Options) => {
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
-    "enable-embedding-sdk": options.isEmbeddingSdkEnabled,
+    "enable-embedding-sdk": options.isEmbeddingSdkEnabled ?? true,
   });
 
   const state = createMockState({
@@ -204,7 +204,7 @@ describe("SdkUsageProblemDisplay", () => {
     );
   });
 
-  // Note that we cannot detect this on non-localhost environments, as
+  // Caveat: we cannot detect this on non-localhost environments, as
   // CORS is disabled on /api/session/properties.
   it("shows an error when Embedding SDK is disabled on localhost", async () => {
     setup({
