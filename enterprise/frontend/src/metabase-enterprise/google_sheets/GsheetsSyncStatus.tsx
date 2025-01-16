@@ -23,24 +23,32 @@ export const GsheetsSyncStatus = () => {
     }
   }, [folderSync]);
 
-  if (!showStatus) {
-    return null;
-  }
+  // if (!showStatus) {
+  //   return null;
+  // }
+
+  const isComplete = false; //folderSync?.status === "complete";
 
   return (
     <StatusLarge
       status={{
-        title: t`Importing Google Sheets...`,
-        items: [{
-          title: t`Google Sheets`,
-          icon: "google_drive",
-          description: folderSync?.status === "complete"
-           ? <Link to={`browse/databases/${folderSync?.db_id}`}>{t`Start Exploring`}</Link>
-           : undefined,
-          isInProgress: folderSync?.status !== "complete",
-          isCompleted: folderSync?.status === "complete",
-          isAborted: false,
-        }]
+        title: isComplete
+          ? t`Imported Google Sheets`
+          : t`Importing Google Sheets...`,
+        items: [
+          {
+            title: t`Google Sheets`,
+            icon: "google_drive",
+            description: isComplete ? (
+              <Link
+                to={`browse/databases/${folderSync?.db_id}`}
+              >{t`Start Exploring`}</Link>
+            ) : undefined,
+            isInProgress: !isComplete,
+            isCompleted: isComplete,
+            isAborted: false,
+          },
+        ],
       }}
       isActive
       onDismiss={() => setShowStatus(false)}
