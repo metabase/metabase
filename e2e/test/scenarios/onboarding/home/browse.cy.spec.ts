@@ -9,6 +9,40 @@ const filterButton = () =>
     .findByTestId("browse-models-header")
     .findByRole("button", { name: /Filters/i });
 
+describe("browse > models", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("correctly displays models empty states", () => {
+    cy.log(
+      "Models explanation banner is visible initially but can be dismissed",
+    );
+    cy.visit("/browse/models");
+    cy.findAllByRole("complementary")
+      .filter(
+        ":contains(Create models to clean up and combine tables to make your data easier to explore)",
+      )
+      .as("banner");
+    cy.get("@banner").should("be.visible");
+    cy.findByRole("button", { name: "Dismiss" }).click();
+    cy.get("@banner").should("not.exist");
+
+    cy.log("Removing the last model from the page displays an empty state");
+    cy.findAllByTestId("model-name").should("have.length", 1); // sanity check
+    cy.request("PUT", `/api/card/${ORDERS_MODEL_ID}`, {
+      archived: true,
+    });
+    cy.reload();
+    cy.get("iframe").as("YouTubeVideo").should("be.visible");
+    cy.get("@banner").should("not.exist");
+    cy.findByRole("heading", {
+      name: "Create models to clean up and combine tables to make your data easier to explore",
+    }).should("be.visible");
+  });
+});
+
 H.describeWithSnowplow("scenarios > browse", () => {
   beforeEach(() => {
     H.resetSnowplow();
