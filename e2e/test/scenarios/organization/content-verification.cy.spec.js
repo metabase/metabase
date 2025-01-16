@@ -304,7 +304,7 @@ H.describeEE("scenarios > premium > content verification", () => {
         H.commandPaletteSearch("orders");
         cy.log("Verified content should show up higher in search results");
         cy.findAllByTestId("search-result-item")
-          .eq(1)
+          .eq(0)
           .within(() => {
             cy.findByText("Orders, Count");
             cy.icon("verified_filled");
