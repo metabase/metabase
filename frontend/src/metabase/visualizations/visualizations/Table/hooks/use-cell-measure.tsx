@@ -1,6 +1,14 @@
 import { useCallback, useMemo, useRef } from "react";
+
 import { BodyCell } from "../cell/BodyCell";
 import { HeaderCell } from "../cell/HeaderCell";
+
+export type CellMeasurer = (content: string, width?: number) => CellSize;
+
+export interface CellSize {
+  width: number;
+  height: number;
+}
 
 export const useCellMeasure = (
   cell: React.ReactNode,
@@ -18,16 +26,15 @@ export const useCellMeasure = (
           left: "-9999px",
           visibility: "hidden",
           pointerEvents: "none",
-          overflow: "hidden",
           zIndex: -999,
         }}
       >
         {cell}
       </div>
     );
-  }, []);
+  }, [cell]);
 
-  const measureDimensions = useCallback(
+  const measureDimensions: CellMeasurer = useCallback(
     (content: string, containerWidth?: number) => {
       const rootEl = rootRef.current;
       const contentCell = rootEl?.querySelector(contentNodeSelector);
@@ -46,7 +53,7 @@ export const useCellMeasure = (
         height: boundingRect.height,
       };
     },
-    [],
+    [contentNodeSelector],
   );
 
   return {
@@ -56,7 +63,10 @@ export const useCellMeasure = (
 };
 
 export const useTableCellsMeasure = () => {
-  const bodyCellToMeasure = useMemo(() => <BodyCell value="" />, []);
+  const bodyCellToMeasure = useMemo(
+    () => <BodyCell wrap={true} value="" />,
+    [],
+  );
   const {
     measureDimensions: measureBodyCellDimensions,
     measureRoot: measureBodyCellRoot,
