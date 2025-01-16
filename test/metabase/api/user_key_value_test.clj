@@ -11,7 +11,7 @@
 
 (use-fixtures :once
   (fn [f]
-    (user-kv.types/load-all-schemas test-types-dir)
+    (user-kv.types/load-all-schemas-prod test-types-dir)
     (f)))
 
 (deftest it-works
