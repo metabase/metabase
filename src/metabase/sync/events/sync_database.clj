@@ -1,7 +1,7 @@
-(ns metabase.events.sync-database
+(ns metabase.sync.events.sync-database
   (:require
    [metabase.events :as events]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]

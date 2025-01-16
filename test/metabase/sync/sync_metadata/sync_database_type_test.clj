@@ -2,7 +2,7 @@
   "Tests to make sure the newly added Field.database_type field gets populated, even for existing Fields."
   (:require
    [clojure.test :refer :all]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.util :as u]

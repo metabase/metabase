@@ -77,7 +77,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.handler :as handler]
    [metabase.server.instance :as server]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test-runner]
    [metabase.test.data.impl :as data.impl]

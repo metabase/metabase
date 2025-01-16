@@ -1,4 +1,4 @@
-(ns ^:deprecated ^:mb/once metabase.sync-test
+(ns ^:deprecated ^:mb/once metabase.sync.sync-test
   "Tests for sync behavior that use a imaginary `SyncTestDriver`. These are kept around mainly because they've already
   been written. For newer sync tests see `metabase.sync.*` test namespaces.
 
@@ -7,7 +7,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.sync :as sync]
+   [metabase.sync.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.mock.util :as mock.util]

@@ -1,4 +1,4 @@
-(ns metabase.task.sync-databases-test
+(ns metabase.sync.task.sync-databases-test
   "Tests for the logic behind scheduling the various sync operations of Databases. Most of the actual logic we're
   testing is part of [[metabase.models.database]], so there's an argument to be made that these sorts of tests could
   just as easily belong to a `database-test` namespace."
@@ -8,14 +8,14 @@
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time.api :as t]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task :as task]
-   [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues)
+   (metabase.sync.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues)
    (org.quartz TriggerKey)))
 
 (set! *warn-on-reflection* true)

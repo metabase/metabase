@@ -98,11 +98,11 @@
      metabase.query-processor.streaming.interface/write-row!
      metabase.sample-data/try-to-extract-sample-database!
      metabase.setup.core/create-token!
+     metabase.sync.core/sync-database!
      metabase.sync.sync-metadata.fields.sync-metadata/update-field-metadata-if-needed!
      metabase.sync.sync-metadata/sync-db-metadata!
      metabase.sync.util-test/sync-database!
      metabase.sync.util/store-sync-summary!
-     metabase.sync/sync-database!
      metabase.task.index-values/job-init!
      metabase.task.persist-refresh/job-init!
      metabase.task.persist-refresh/refresh-tables!
