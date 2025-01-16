@@ -1,5 +1,6 @@
 import type { MetabaseVisualizationClickEvent } from "embedding-sdk/types/custom-click-actions";
-import type { ClickObject } from "metabase-lib";
+import type { ClickObject, ClickObjectDataRow } from "metabase-lib";
+import type { RowValue } from "metabase-types/api";
 
 export function transformSdkClickObject(
   clicked: ClickObject,
@@ -14,5 +15,22 @@ export function transformSdkClickObject(
     type: "table",
     value: clicked.value,
     column,
+    row: clicked.data && getRowObject(clicked.data),
   };
+}
+
+export function getRowObject(
+  rows: ClickObjectDataRow[],
+): Record<string, RowValue> {
+  const row: Record<string, RowValue> = {};
+
+  for (const { value, col } of rows) {
+    if (!col?.name) {
+      continue;
+    }
+
+    row[col.name] = value;
+  }
+
+  return row;
 }

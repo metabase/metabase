@@ -6,6 +6,7 @@ export type MetabaseTableClickEvent = {
   type: "table";
   column?: MetabaseDatasetColumn;
   value?: RowValue;
+  row?: Record<string, RowValue>;
 };
 
 export type MetabaseDatasetColumn = {
