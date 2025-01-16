@@ -62,7 +62,6 @@ interface DashCardVisualizationProps {
 
   isAction: boolean;
   isPreviewing: boolean;
-  isEmbedded: boolean;
   isClickBehaviorSidebarOpen: boolean;
   isEditingDashCardClickBehavior: boolean;
   isEditingDashboardLayout: boolean;
@@ -109,7 +108,6 @@ export function DashCardVisualization({
   isAction,
   isSlow,
   isPreviewing,
-  isEmbedded,
   isPublicOrEmbedded,
   isXray,
   isEditingDashboardLayout,
@@ -253,9 +251,6 @@ export function DashCardVisualization({
         [CS.pointerEventsNone]: isEditingDashboardLayout,
         [CS.overflowAuto]: visualizationOverlay,
         [CS.overflowHidden]: !visualizationOverlay,
-      })}
-      classNameWidgets={cx({
-        [cx(CS.textLight, CS.textMediumHover)]: isEmbedded,
       })}
       dashboard={dashboard}
       dashcard={dashcard}
