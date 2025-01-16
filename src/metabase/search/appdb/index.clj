@@ -15,6 +15,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
+   (org.h2.jdbc JdbcSQLSyntaxErrorException)
    (org.postgresql.util PSQLException)))
 
 (comment
@@ -184,8 +185,9 @@
     (try
       (specialization/batch-upsert! table-name entries)
       (catch Exception e
-        ;; TODO we should handle the H2, MySQL, and MariaDB flavors here too
-        (if (instance? PSQLException (ex-cause e))
+        ;; TODO we should handle the MySQL and MariaDB flavors here too
+        (if (or (instance? PSQLException (ex-cause e))
+                (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
           ;; Suppress database errors, which are likely due to stale tracking data.
           (sync-tracking-atoms!)
           (throw e))))))

@@ -1,3 +1,10 @@
 .transitionColor {
   transition: color 0.3s linear;
 }
+
+.transitionThemeChange {
+  transition:
+    background-color 1s linear,
+    border-color 1s linear,
+    color 1s linear;
+}
