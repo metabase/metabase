@@ -946,7 +946,11 @@ class TableInteractive extends Component {
                     data-testid={columnInfoPopoverTestId}
                   />
                 )}
-                {columnTitle}
+                {
+                  // HACK: This works around the fact that tc expects to look
+                  // up the property of an object
+                  this.tc({ columnTitle }, "columnTitle")
+                }
                 {isSortable && !isRightAligned && (
                   <Icon
                     className={cx("Icon", CS.ml1)}
