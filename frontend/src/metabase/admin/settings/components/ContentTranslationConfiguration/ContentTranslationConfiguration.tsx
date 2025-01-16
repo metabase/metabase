@@ -174,12 +174,14 @@ const DownloadDictionaryModal = ({
             <Text>{t`Create dictionary entries for these languages:`}</Text>
           </label>
           <MultiAutocomplete
+            shouldCreate={() => false}
             id={languageInputId}
             onChange={(values: string[]) =>
               setSelectedLocales(values.map(value => value.toString()))
             }
             value={selectedLocales}
             data={availableLocales}
+            // So the download button isn't obscured
             dropdownPosition="top"
           />
         </Stack>
