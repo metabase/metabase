@@ -210,6 +210,19 @@ class Table extends Component<TableProps, TableState> {
         getDefault: column => displayNameForColumn(column),
       },
       click_behavior: {},
+      text_align: {
+        title: t`Align`,
+        widget: "radio",
+        getDefault: column => {
+          return isNumber(column) ? "right" : "left";
+        },
+        props: {
+          options: [
+            { name: t`Left`, value: "left" },
+            { name: t`Right`, value: "right" },
+          ],
+        },
+      },
     };
 
     if (isNumber(column)) {
@@ -221,8 +234,9 @@ class Table extends Component<TableProps, TableState> {
     }
 
     if (isString(column)) {
-      settings["text-wrapping"] = {
+      settings["text_wrapping"] = {
         title: t`Wrap text`,
+        default: false,
         widget: "toggle",
         inline: true,
       };

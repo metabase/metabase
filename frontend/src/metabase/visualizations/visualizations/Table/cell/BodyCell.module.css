@@ -9,10 +9,14 @@
 
 .content {
   width: 100%;
-  white-space: normal !important;
-  text-overflow: unset !important;
-  overflow: visible !important;
+  overflow: visible;
   line-height: 1.4;
+}
+
+.noWrap {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .clickable {

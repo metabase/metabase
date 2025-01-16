@@ -33,26 +33,14 @@ import {
   useState,
 } from "react";
 
-import { formatValue } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
 import {
   getIsShowingRawTable,
   getQueryBuilderMode,
   getUiControls,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
-import { cachedFormatter } from "metabase/visualizations/echarts/cartesian/utils/formatter";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationProps,
-} from "metabase/visualizations/types";
-import {
-  isFK,
-  isNumber,
-  isPK,
-  isString,
-} from "metabase-lib/v1/types/utils/isa";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   DatasetData,
   RowValue,
@@ -61,13 +49,11 @@ import type {
 } from "metabase-types/api";
 
 import styles from "./Table.module.css";
-import { BodyCell } from "./cell/BodyCell";
-import { HeaderCell } from "./cell/HeaderCell";
 import { useTableCellsMeasure } from "./hooks/use-cell-measure";
+import { useColumns } from "./hooks/use-columns";
 
 const ROW_HEIGHT = 36;
 const MIN_COLUMN_WIDTH = 60;
-const DEFAULT_COLUMN_WIDTH = 150;
 
 interface TableProps extends VisualizationProps {
   onZoomRow?: (objectId: number | string) => void;
@@ -84,42 +70,12 @@ interface DraggableCellProps {
   cell: Cell<RowValues, unknown>;
 }
 
-interface UseColumnsProps {
-  cols: DatasetData["cols"];
-  columnWidths: number[];
-  settings: ComputedVisualizationSettings;
-  onVisualizationClick?: (args: any) => void;
-  data: DatasetData;
-  measureBodyCellDimensions: (value: any, width: number) => { width: number };
-  measureHeaderCellDimensions: (value: any, width: number) => { width: number };
-  isMeasureRootMounted: boolean;
-}
-
 interface UseVirtualGridProps {
   bodyRef: React.RefObject<HTMLDivElement>;
   table: ReactTable<RowValues>;
   data: DatasetData;
   columnFormatters: ((value: RowValue) => any)[];
-  descriptionIndices: number[];
   measureBodyCellDimensions: (value: any, width: number) => { height: number };
-}
-
-function pickRowsToMeasure(
-  rows: DatasetData["rows"],
-  columnIndex: number,
-  count = 10,
-) {
-  const rowIndexes = [];
-  for (
-    let rowIndex = 0;
-    rowIndex < rows.length && rowIndexes.length < count;
-    rowIndex++
-  ) {
-    if (rows[rowIndex][columnIndex] != null) {
-      rowIndexes.push(rowIndex);
-    }
-  }
-  return rowIndexes;
 }
 
 const DraggableHeader = ({ header, onResize }: DraggableHeaderProps) => {
@@ -192,121 +148,18 @@ const DraggableCell = ({ cell }: DraggableCellProps) => {
   );
 };
 
-const useColumns = ({
-  cols,
-  columnWidths,
-  settings,
-  onVisualizationClick,
-  data,
-  measureBodyCellDimensions,
-  measureHeaderCellDimensions,
-  isMeasureRootMounted,
-}: UseColumnsProps) => {
-  const columnFormatters = useMemo(() => {
-    return cols.map(col => {
-      const columnSettings = settings.column?.(col);
-      return cachedFormatter(value =>
-        formatValue(value, {
-          ...columnSettings,
-          column: col,
-          type: "cell",
-          jsx: true,
-          rich: true,
-        }),
-      );
-    });
-  }, [cols, settings]);
-
-  const columns = useMemo(() => {
-    return cols.map((col, index) => {
-      const align = isNumber(col) ? "right" : "left";
-      const isPill = isPK(col) || isFK(col);
-
-      let columnWidth = columnWidths[index];
-      if (!columnWidth && isMeasureRootMounted) {
-        const headerWidth = measureHeaderCellDimensions(
-          col.display_name,
-          0,
-        ).width;
-
-        const sampleRows = pickRowsToMeasure(data.rows, index);
-        const cellWidths = sampleRows.map(rowIndex => {
-          const value = data.rows[rowIndex][index];
-          const formattedValue = columnFormatters[index](value);
-          return measureBodyCellDimensions(formattedValue, 0).width;
-        });
-
-        columnWidth = Math.max(headerWidth, ...cellWidths, MIN_COLUMN_WIDTH);
-      } else if (!columnWidth) {
-        columnWidth = DEFAULT_COLUMN_WIDTH;
-      }
-
-      return {
-        id: index.toString(),
-        accessorFn: (row: RowValues) => row[index],
-        header: () => (
-          <HeaderCell
-            name={col.display_name}
-            align={align}
-            onClick={event =>
-              onVisualizationClick?.({
-                column: col,
-                element: event.currentTarget,
-              })
-            }
-          />
-        ),
-        cell: (props: { getValue: () => RowValue; row: { index: number } }) => {
-          const value = props.getValue();
-          const backgroundColor = settings["table._cell_background_getter"]?.(
-            value,
-            props.row.index,
-            col.name,
-          );
-
-          return (
-            <BodyCell
-              variant={isPill ? "pill" : "text"}
-              value={value}
-              formatter={columnFormatters[index]}
-              align={align}
-              backgroundColor={backgroundColor}
-              onClick={event => {
-                onVisualizationClick?.({
-                  value,
-                  column: col,
-                  element: event.currentTarget,
-                });
-              }}
-            />
-          );
-        },
-        size: columnWidth,
-      };
-    });
-  }, [
-    cols,
-    columnFormatters,
-    onVisualizationClick,
-    settings,
-    columnWidths,
-    data.rows,
-    measureBodyCellDimensions,
-    measureHeaderCellDimensions,
-    isMeasureRootMounted,
-  ]);
-
-  return { columns, columnFormatters };
-};
-
 const useVirtualGrid = ({
   bodyRef,
   table,
   data,
+  columns,
   columnFormatters,
-  descriptionIndices,
   measureBodyCellDimensions,
 }: UseVirtualGridProps) => {
+  const wrappedColumns = useMemo(() => {
+    return columns.filter(col => col.wrap);
+  }, [columns]);
+
   const { rows: tableRows } = table.getRowModel();
   const visibleColumns = table.getVisibleLeafColumns();
 
@@ -326,20 +179,20 @@ const useVirtualGrid = ({
     getItemKey: index => tableRows[index].id,
     measureElement: element => {
       const rowIndex = element?.getAttribute("data-index");
-      if (!rowIndex) {
+
+      if (!rowIndex || wrappedColumns.length === 0) {
         return ROW_HEIGHT;
       }
 
       const height = Math.max(
-        ...descriptionIndices.map(colIndex => {
-          const value = data.rows[parseInt(rowIndex, 10)][colIndex];
-          const formattedValue = columnFormatters[colIndex](value);
-          const columnWidth = 150;
-          return measureBodyCellDimensions(formattedValue, columnWidth).height;
-        }),
+        ...wrappedColumns.map(column => {
+          const value = data.rows[parseInt(rowIndex, 10)][column.datasetIndex];
+          const formattedValue = columnFormatters[column.datasetIndex](value);
+          return measureBodyCellDimensions(formattedValue, column.size).height;
+        }, ROW_HEIGHT),
       );
 
-      return height || ROW_HEIGHT;
+      return height;
     },
   });
 
@@ -375,20 +228,8 @@ export const _Table = ({
 }: TableProps) => {
   const { rows, cols } = data;
   const bodyRef = useRef<HTMLDivElement>(null);
-  const [isMeasureRootMounted, setIsMeasureRootMounted] = useState(false);
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
     cols.map((_col, index) => index.toString()),
-  );
-
-  const descriptionIndices = useMemo(() => {
-    return data.cols
-      .map((col, index) => (isString(col) ? index : null))
-      .filter(isNotNull);
-  }, [data.cols]);
-
-  const columnWidths = useMemo(
-    () => settings["table.column_widths"] || [],
-    [settings],
   );
 
   const {
@@ -397,19 +238,12 @@ export const _Table = ({
     measureRoot,
   } = useTableCellsMeasure();
 
-  const measureRootRef = useCallback((node: HTMLElement | null) => {
-    setIsMeasureRootMounted(!!node);
-  }, []);
-
-  const { columns, columnFormatters } = useColumns({
-    cols,
-    columnWidths,
+  const { columns, columnFormatters, columnWidths } = useColumns({
     settings,
     onVisualizationClick,
     data,
     measureBodyCellDimensions,
     measureHeaderCellDimensions,
-    isMeasureRootMounted,
   });
 
   const table = useReactTable({
@@ -420,6 +254,7 @@ export const _Table = ({
     },
     onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
+    columnResizeMode: "onEnd",
   });
 
   const sensors = useSensors(
@@ -448,9 +283,17 @@ export const _Table = ({
         const columns = settings["table.columns"]?.slice() || [];
         columns.splice(newIndex, 0, columns.splice(oldIndex, 1)[0]);
 
-        onUpdateVisualizationSettings({
+        const settingsUpdate = {
           "table.columns": columns,
-        });
+        };
+
+        const widths = settings["table.column_widths"];
+        if (Array.isArray(widths) && widths.length > 0) {
+          // TODO: what if this setting is outdated?
+          const newWidths = widths.slice();
+          newWidths.splice(newIndex, 0, newWidths.splice(oldIndex, 1)[0]);
+        }
+        onUpdateVisualizationSettings(settingsUpdate);
 
         setColumnOrder(columnOrder => {
           const oldIndex = columnOrder.indexOf(active.id as string);
@@ -489,8 +332,8 @@ export const _Table = ({
     bodyRef,
     table,
     data,
+    columns,
     columnFormatters,
-    descriptionIndices,
     measureBodyCellDimensions,
   });
 
@@ -596,7 +439,7 @@ export const _Table = ({
           </div>
         </div>
       </div>
-      <div ref={measureRootRef}>{measureRoot}</div>
+      {measureRoot}
     </DndContext>
   );
 };
