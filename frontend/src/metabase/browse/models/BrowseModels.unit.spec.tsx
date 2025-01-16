@@ -275,9 +275,43 @@ const mockModels = [
 ];
 
 describe("BrowseModels", () => {
-  it("displays a 'no models' message in the Models tab when no models exist", async () => {
-    setup(0);
-    expect(await screen.findByText("No models here yet")).toBeInTheDocument();
+  describe("Empty states", () => {
+    it("displays an explanation about how to use models when no models exist", async () => {
+      setup(0);
+
+      const emptyState = await screen.findByTestId("empty-state");
+      const title =
+        "Create models to clean up and combine tables to make your data easier to explore";
+      const description =
+        "Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.";
+
+      expect(await within(emptyState).findByText(title)).toBeInTheDocument();
+      expect(
+        await within(emptyState).findByText(description),
+      ).toBeInTheDocument();
+
+      expect(
+        await within(emptyState).findByRole("link", { name: "Read the docs" }),
+      ).toHaveAttribute(
+        "href",
+        "https://www.metabase.com/docs/latest/data-modeling/models.html",
+      );
+    });
+
+    it("should display embedded YouTube video (that doesn't auto play) when no models exist", async () => {
+      setup(0);
+
+      const emptyState = await screen.findByTestId("empty-state");
+      const youtubeVideo = await within(emptyState).findByTitle(
+        "Use Models in Metabase | Getting started with Metabase",
+      );
+      expect(youtubeVideo).toBeInTheDocument();
+      expect(youtubeVideo).toHaveAttribute("src");
+
+      const src = youtubeVideo.getAttribute("src");
+      expect(src).toContain("youtube.com");
+      expect(src).toContain("autoplay=0");
+    });
   });
 
   it("displays the Our Analytics collection if it has a model", async () => {

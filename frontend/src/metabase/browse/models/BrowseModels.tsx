@@ -87,7 +87,7 @@ export const BrowseModels = () => {
         <BrowseSection>
           <Stack mb="lg" spacing="md" w="100%">
             {isEmpty ? (
-              <Stack spacing="lg" align="center">
+              <Stack spacing="lg" align="center" data-testid="empty-state">
                 <Box maw="45rem" w="100%">
                   <ModelsVideo autoplay={0} />
                 </Box>
