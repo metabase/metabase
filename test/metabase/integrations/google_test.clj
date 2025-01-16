@@ -1,7 +1,7 @@
 (ns metabase.integrations.google-test
   (:require
    [clojure.test :refer :all]
-   [metabase.email-test :as et]
+   [metabase.channel.email-test :as et]
    [metabase.integrations.google :as google]
    [metabase.integrations.google.interface :as google.i]
    [metabase.models.interface :as mi]
