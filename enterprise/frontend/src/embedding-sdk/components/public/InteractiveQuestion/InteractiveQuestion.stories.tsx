@@ -38,7 +38,14 @@ export default {
 };
 
 const Template: StoryFn<InteractiveQuestionComponentProps> = args => {
-  return <InteractiveQuestion {...args} />;
+  return (
+    <InteractiveQuestion
+      onVisualizationClick={event => {
+        console.log("InteractiveQuestion::onVisualizationClick:", event);
+      }}
+      {...args}
+    />
+  );
 };
 
 export const Default = {

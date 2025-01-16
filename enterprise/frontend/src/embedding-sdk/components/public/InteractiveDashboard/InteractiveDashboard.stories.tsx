@@ -28,7 +28,14 @@ export default {
 };
 
 const Template: StoryFn<InteractiveDashboardProps> = args => {
-  return <InteractiveDashboard {...args} />;
+  return (
+    <InteractiveDashboard
+      onVisualizationClick={event => {
+        console.log("onVisualizationClick:", event);
+      }}
+      {...args}
+    />
+  );
 };
 
 export const Default = {
