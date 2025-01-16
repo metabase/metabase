@@ -24,7 +24,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 export const setupSdkState = ({
   currentUser = createMockUser(),
-  settingValues = createMockSettings(),
+  settingValues = createMockSettings({ "enable-embedding-sdk": true }),
   tokenFeatures = createMockTokenFeatures({ embedding_sdk: true }),
   settingDefinitions = [],
   sdkState = createMockSdkState({
@@ -41,7 +41,6 @@ export const setupSdkState = ({
   const settingValuesWithToken = {
     ...settingValues,
     "token-features": tokenFeatures,
-    "enable-embedding-sdk": settingValues?.["enable-embedding-sdk"] ?? true,
   };
 
   setupCurrentUserEndpoint(currentUser);
