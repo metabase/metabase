@@ -5,6 +5,8 @@ import { useSelector } from "metabase/lib/redux";
 import { hasActiveUploads } from "metabase/redux/uploads";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
+// FIXME: setup an enterprise plugin
+import { GsheetsSyncStatus } from "metabase-enterprise/google_sheets/GsheetsSyncStatus";
 
 import DatabaseStatus from "../../containers/DatabaseStatus";
 import { DownloadsStatus } from "../DownloadsStatus";
@@ -27,6 +29,7 @@ const StatusListing = () => {
   return (
     <StatusListingRoot data-testid="status-root-container">
       {isAdmin && <DatabaseStatus />}
+      <GsheetsSyncStatus />
       <FileUploadStatus />
       <DownloadsStatus />
     </StatusListingRoot>

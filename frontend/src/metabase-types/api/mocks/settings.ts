@@ -207,7 +207,7 @@ export const createMockSettings = (
   "enable-xrays": false,
   engines: createMockEngines(),
   "example-dashboard-id": 1,
-  gsheets: { status: "no-auth", folder_url: null },
+  gsheets: { status: "not-connected", folder_url: null },
   "has-user-setup": true,
   "hide-embed-branding?": true,
   "instance-creation": dayjs().toISOString(),
