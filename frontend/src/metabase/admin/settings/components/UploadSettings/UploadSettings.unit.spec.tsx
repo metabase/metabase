@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupSchemaEndpoints } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
@@ -53,6 +54,7 @@ const TEST_DATABASES = [
 interface SetupOpts {
   databases?: Database[];
   uploadsSettings?: UploadsSettings;
+  isHosted?: boolean;
 }
 
 function setup({
@@ -62,9 +64,13 @@ function setup({
     schema_name: null,
     table_prefix: null,
   },
+  isHosted = false,
 }: SetupOpts = {}) {
   const state = createMockState({
     entities: createMockEntitiesState({ databases }),
+    settings: mockSettings({
+      "is-hosted?": isHosted,
+    }),
   });
   const metadata = getMetadata(state);
 
@@ -90,7 +96,7 @@ function setup({
         } as any,
       }}
     />,
-    { storeInitialState: {} },
+    { storeInitialState: state },
   );
   return { updateSpy, savingSpy, savedSpy, clearSpy };
 }
@@ -559,6 +565,21 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should show a warning for h2 databases", async () => {
     setup();
+    await userEvent.click(await screen.findByText("Select a database"));
+
+    await userEvent.click(await screen.findByText("Db Cinco")); // h2
+
+    expect(
+      screen.getByText(/uploads to the Sample Database are for testing only/i),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByText("Additional terms apply."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should show an extended warning for h2 databases on hosted instances", async () => {
+    setup({ isHosted: true });
     await userEvent.click(await screen.findByText("Select a database"));
 
     await userEvent.click(await screen.findByText("Db Cinco")); // h2
