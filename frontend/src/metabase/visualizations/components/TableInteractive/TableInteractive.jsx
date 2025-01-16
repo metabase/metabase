@@ -921,7 +921,9 @@ class TableInteractive extends Component {
             stageIndex={-1}
             column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
             timezone={data.results_timezone}
-            disabled={this.props.clicked != null || !hasMetadataPopovers}
+            disabled={
+              this.props.clicked != null || !hasMetadataPopovers || isDragging
+            }
             openDelay={500}
             showFingerprintInfo
           >
