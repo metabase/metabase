@@ -42,7 +42,7 @@
    :dashboard                  nil
    :effective_location         nil
    :location                   nil
-   :bookmark                   nil
+   :bookmark                   false
    :collection                 default-collection
    :collection_authority_level nil
    :collection_position        nil
@@ -81,7 +81,7 @@
                   :id (mt/id :checkins))))
 
 (defn- clean-result [result]
-  (dissoc (u/remove-nils result) :bookmark :database_id :model_id :model_index_id :table_id :dataset_query :last_editor_id :last_edited_at
+  (dissoc (u/remove-nils result) :database_id :model_id :model_index_id :table_id :last_editor_id :last_edited_at
           :creator_common_name :creator_id
           ;; false for new search segments... not sure why
           :created_at))
@@ -618,9 +618,7 @@
                      :model/DashboardBookmark _ {:dashboard_id (u/the-id dashboard)
                                                  :user_id      (mt/user->id :crowberto)}]
         (is (= (on-search-types #{"dashboard" "card"}
-                                ;; TODO the restore :bookmark to the return map
-                                identity
-                                ;; #(assoc % :bookmark true)
+                                #(assoc % :bookmark true)
                                 (default-results-with-collection))
                (search-request-data :crowberto :q "test")))))))
 
