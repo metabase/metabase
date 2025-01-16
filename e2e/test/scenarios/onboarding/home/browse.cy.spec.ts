@@ -1,4 +1,5 @@
 import { H } from "e2e/support";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -99,7 +100,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
   });
 
   it("browsing to a database only triggers a request for schemas for that specific database", () => {
-    cy.intercept("GET", "/api/database/1/schemas").as(
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schemas`).as(
       "schemasForSampleDatabase",
     );
     cy.intercept(
