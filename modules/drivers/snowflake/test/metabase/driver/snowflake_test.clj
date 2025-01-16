@@ -67,7 +67,7 @@
             (mt/run-mbql-query venues
               {:aggregation [[:count]]}))))))
 
-(deftest describe-fields-test
+(deftest ^:parallel describe-fields-test
   (mt/test-driver
     :snowflake
     (is (=? [{:name "id"
