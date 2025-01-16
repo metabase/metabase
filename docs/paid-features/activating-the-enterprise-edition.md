@@ -53,10 +53,20 @@ Depending on your organization’s setup, you may need to take additional config
 
 ## IP addresses to whitelist
 
-If you're hosting Metabase behind a firewall that blocks outgoing connections, you'll need to allow these IP addresses to ensure access to `token-check.metabase.com` to verify your license.
+If you're hosting Metabase behind a firewall that blocks outgoing connections, **you must allow outbound stateful connections to port 443 on the all of the following IP addresses**:
 
 ```
 23.23.111.13
 44.199.18.109
 44.212.138.188
 ```
+
+To verify your license with a token check to `token-check.metabase.com`, your Metabase will make GET HTTP requests to these IP addresses and parse their responses. If you can't allow outbound connections for security reasons, please [contact us](https://www.metabase.com/help/premium).
+
+## Note about Zscaler deployments
+
+When Metabase is deployed inside infrastructure that uses Zscaler, you should do the following:
+
+1. Contact your networking team and let them know that Metabase will need to perform token checks in order for paid features to work. If you need an air-gapped version of Metabase, [contact us](https://www.metabase.com/help/premium).
+2. Make sure Zscaler isn't acting as a proxy or DNS for the server where Metabase is running. Metabase needs a direct connection to the token check service without any gateway acting as a proxy.
+3. Make sure the server where Metabase is running isn't using Zscaler root CA certificates for all websites. Otherwise, the Java virtual machine where Metabase runs will determine that the certificate authority is incorrect.

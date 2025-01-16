@@ -14,9 +14,3 @@ export const ColumnPickerHeaderTitleContainer = styled.a`
   cursor: pointer;
   gap: 0.5rem;
 `;
-
-export const ColumnPickerHeaderTitle = styled.span`
-  display: inline-block;
-  font-weight: 700;
-  font-size: 1.17em;
-`;

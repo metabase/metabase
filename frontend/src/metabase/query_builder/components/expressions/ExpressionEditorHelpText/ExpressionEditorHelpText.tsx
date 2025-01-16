@@ -1,25 +1,17 @@
+import cx from "classnames";
 import type { RefObject } from "react";
 import { Fragment } from "react";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { DEFAULT_POPOVER_Z_INDEX } from "metabase/ui";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
+import { Box, Icon, Text } from "metabase/ui";
 import { getHelpDocsUrl } from "metabase-lib/v1/expressions/helper-text-strings";
 import type { HelpText } from "metabase-lib/v1/expressions/types";
 
-import {
-  ArgumentTitle,
-  ArgumentsGrid,
-  BlockSubtitleText,
-  Container,
-  Divider,
-  DocumentationLink,
-  ExampleCode,
-  FunctionHelpCode,
-  FunctionHelpCodeArgument,
-  LearnMoreIcon,
-} from "./ExpressionEditorHelpText.styled";
+import ExpressionEditorHelpTextS from "./ExpressionEditorHelpText.module.css";
 
 export type ExpressionEditorHelpTextContentProps = {
   helpText: HelpText | null | undefined;
@@ -47,49 +39,83 @@ export const ExpressionEditorHelpTextContent = ({
   return (
     <>
       {/* Prevent stealing focus from input box causing the help text to be closed (metabase#17548) */}
-      <Container
+      <Box
+        className={ExpressionEditorHelpTextS.Container}
         onMouseDown={evt => evt.preventDefault()}
         data-testid="expression-helper-popover"
       >
-        <FunctionHelpCode data-testid="expression-helper-popover-structure">
+        <Box
+          className={ExpressionEditorHelpTextS.FunctionHelpCode}
+          data-testid="expression-helper-popover-structure"
+        >
           {structure}
           {args != null && (
             <>
               (
               {args.map(({ name }, index) => (
                 <span key={name}>
-                  <FunctionHelpCodeArgument>{name}</FunctionHelpCodeArgument>
+                  <Text
+                    component="span"
+                    className={
+                      ExpressionEditorHelpTextS.FunctionHelpCodeArgument
+                    }
+                  >
+                    {name}
+                  </Text>
                   {index + 1 < args.length && ", "}
                 </span>
               ))}
               )
             </>
           )}
-        </FunctionHelpCode>
-        <Divider />
+        </Box>
+        <Box className={ExpressionEditorHelpTextS.Divider} />
 
-        <div>{description}</div>
+        <Text>{description}</Text>
 
         {args != null && (
-          <ArgumentsGrid data-testid="expression-helper-popover-arguments">
+          <Box
+            className={ExpressionEditorHelpTextS.ArgumentsGrid}
+            data-testid="expression-helper-popover-arguments"
+          >
             {args.map(({ name, description: argDescription }) => (
               <Fragment key={name}>
-                <ArgumentTitle>{name}</ArgumentTitle>
-                <div>{argDescription}</div>
+                <Box
+                  className={cx(
+                    ExpressionEditorHelpTextS.ArgumentTitle,
+                    CS.textMonospace,
+                  )}
+                >
+                  {name}
+                </Box>
+                <Text lh="normal">{argDescription}</Text>
               </Fragment>
             ))}
-          </ArgumentsGrid>
+          </Box>
         )}
 
-        <BlockSubtitleText>{t`Example`}</BlockSubtitleText>
-        <ExampleCode>{helpText.example}</ExampleCode>
+        <Box
+          className={ExpressionEditorHelpTextS.BlockSubtitleText}
+        >{t`Example`}</Box>
+        <Box
+          className={cx(
+            ExpressionEditorHelpTextS.ExampleCode,
+            CS.textMonospace,
+          )}
+        >
+          {helpText.example}
+        </Box>
         {showMetabaseLinks && (
-          <DocumentationLink href={docsUrl} target="_blank">
-            <LearnMoreIcon name="reference" size={12} />
+          <ExternalLink
+            className={ExpressionEditorHelpTextS.DocumentationLink}
+            href={docsUrl}
+            target="_blank"
+          >
+            <Icon m="0.25rem 0.5rem" name="reference" size={12} />
             {t`Learn more`}
-          </DocumentationLink>
+          </ExternalLink>
         )}
-      </Container>
+      </Box>
     </>
   );
 };
@@ -109,7 +135,6 @@ export const ExpressionEditorHelpText = ({
       reference={target}
       placement="bottom-start"
       visible
-      zIndex={DEFAULT_POPOVER_Z_INDEX}
       content={<ExpressionEditorHelpTextContent helpText={helpText} />}
     />
   );

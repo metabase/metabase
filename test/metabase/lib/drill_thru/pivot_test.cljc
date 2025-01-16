@@ -53,20 +53,34 @@
                           (lib/available-drill-thrus query -1 context)))))))
 
 (deftest ^:parallel returns-pivot-test-1b-no-pivots-without-aggregation
-  (lib.drill-thru.tu/test-drill-not-returned
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-drill-not-returned
+   "single-stage query"
    {:drill-type   :drill-thru/pivot
     :click-type   :cell
     :query-type   :unaggregated
     :query-table  "ORDERS"
-    :column-name  "CREATED_AT"}))
+    :column-name  "CREATED_AT"}
+
+   "multi-stage query"
+   {:custom-query #(lib.drill-thru.tu/append-filter-stage
+                    %
+                    "CREATED_AT"
+                    (fn [col]
+                      (lib/= col "2025-01-01T13:24:00")))}))
 
 (deftest ^:parallel returns-pivot-test-1c-no-pivots-for-column-click
-  (lib.drill-thru.tu/test-drill-not-returned
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-drill-not-returned
+   "single-stage query"
    {:drill-type   :drill-thru/pivot
     :click-type   :header
     :query-type   :aggregated
     :query-table  "ORDERS"
-    :column-name  "count"}))
+    :column-name  "count"}
+
+   "multi-stage query"
+   {:custom-query #(lib.drill-thru.tu/append-filter-stage % "count")}))
 
 (defn- orders-count-with-breakouts [breakout-values]
   {:drill-type   :drill-thru/pivot
@@ -107,33 +121,64 @@
   [(meta/field-metadata :orders :product-id)
    6])
 
+(defn- variant-with-count-filter-stage [base-case]
+  {:custom-query (lib.drill-thru.tu/append-filter-stage (:custom-query base-case) "count")})
+
 (deftest ^:parallel returns-pivot-test-1d-no-pivots-date+address
-  (lib.drill-thru.tu/test-drill-not-returned
-   (orders-count-with-breakouts [bv-date bv-address])))
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-drill-not-returned
+   "single-stage query"
+   (orders-count-with-breakouts [bv-date bv-address])
+   "multi-stage-query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-1e-no-pivots-address+category
-  (lib.drill-thru.tu/test-drill-not-returned
-   (orders-count-with-breakouts [bv-address bv-category1])))
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-drill-not-returned
+   "single-stage query"
+   (orders-count-with-breakouts [bv-address bv-category1])
+   "multi-stage-query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-1f-no-pivots-triple-category
-  (lib.drill-thru.tu/test-drill-not-returned
-   (orders-count-with-breakouts [bv-category1 bv-category2 bv-category3])))
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-drill-not-returned
+   "single-stage query"
+   (orders-count-with-breakouts [bv-category1 bv-category2 bv-category3])
+   "multi-stage-query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-1g-no-pivots-unknown-type
-  (lib.drill-thru.tu/test-drill-not-returned
-   (orders-count-with-breakouts [bv-unknown])))
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-drill-not-returned
+   "single-stage query"
+   (orders-count-with-breakouts [bv-unknown])
+   "multi-stage-query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-1h-no-pivots-unknown+date
-  (lib.drill-thru.tu/test-drill-not-returned
-   (orders-count-with-breakouts [bv-unknown bv-date])))
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-drill-not-returned
+   "single-stage query"
+   (orders-count-with-breakouts [bv-unknown bv-date])
+   "multi-stage-query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-1i-no-pivots-unknown+category
-  (lib.drill-thru.tu/test-drill-not-returned
-   (orders-count-with-breakouts [bv-unknown bv-category2])))
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-drill-not-returned
+   "single-stage query"
+   (orders-count-with-breakouts [bv-unknown bv-category2])
+   "multi-stage-query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-1j-no-pivots-unknown+address
-  (lib.drill-thru.tu/test-drill-not-returned
-   (orders-count-with-breakouts [bv-unknown bv-address])))
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-drill-not-returned
+   "single-stage query"
+   (orders-count-with-breakouts [bv-unknown bv-address])
+   "multi-stage-query"
+   variant-with-count-filter-stage))
 
 (defn- expecting [dim-names pivot-types]
   {:expected {:type       :drill-thru/pivot
@@ -146,44 +191,79 @@
                                (into {}))}})
 
 (deftest ^:parallel returns-pivot-test-2a-cat+loc-with-date
-  (lib.drill-thru.tu/test-returns-drill
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-returns-drill
+   "single-stage query"
    (merge (orders-count-with-breakouts [bv-date])
-          (expecting ["CREATED_AT"] [:category :location]))))
+          (expecting ["CREATED_AT"] [:category :location]))
+   "multi-stage query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-2b-cat+loc-with-date+category
-  (lib.drill-thru.tu/test-returns-drill
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-returns-drill
+   "single-stage query"
    (merge (orders-count-with-breakouts [bv-date bv-category1])
-          (expecting ["CREATED_AT" "CATEGORY"] [:category :location]))))
+          (expecting ["CREATED_AT" "CATEGORY"] [:category :location]))
+   "multi-stage query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-3a-cat+time-with-address
-  (lib.drill-thru.tu/test-returns-drill
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-returns-drill
+   "single-stage query"
    (merge (orders-count-with-breakouts [bv-address])
-          (expecting ["STATE"] [:category :time]))))
+          (expecting ["STATE"] [:category :time]))
+   "multi-stage query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-3b-cat+time-with-category
-  (lib.drill-thru.tu/test-returns-drill
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-returns-drill
+   "single-stage query"
    (merge (orders-count-with-breakouts [bv-category2])
-          (expecting ["SOURCE"] [:category :time]))))
+          (expecting ["SOURCE"] [:category :time]))
+   "multi-stage query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-3c-cat+time-with-category+category
-  (lib.drill-thru.tu/test-returns-drill
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-returns-drill
+   "single-stage query"
    (merge (orders-count-with-breakouts [bv-category2 bv-category1])
-          (expecting ["SOURCE" "CATEGORY"] [:category :time]))))
+          (expecting ["SOURCE" "CATEGORY"] [:category :time]))
+   "multi-stage query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel returns-pivot-test-4a-none-with-no-breakouts
-  (lib.drill-thru.tu/test-returns-drill
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-returns-drill
+   "single-stage query"
    (merge (orders-count-with-breakouts [])
-          (expecting [] [:category :location :time]))))
+          (expecting [] [:category :location :time]))
+   "multi-stage query"
+   variant-with-count-filter-stage))
 
 (deftest ^:parallel pivot-application-test-1
-  (lib.drill-thru.tu/test-drill-application
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-drill-application
+   "single-stage query"
    (merge orders-date-only-test-case
           {:expected       {:type :drill-thru/pivot}
-            ;; Expecting the original query with filters for the old breakouts, and one new breakout by CATEGORY.
+           ;; Expecting the original query with filters for the old breakouts, and one new breakout by CATEGORY.
            :drill-args     [(meta/field-metadata :products :category)]
            :expected-query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
                                (update-in [:stages 0] dissoc :breakout)
                                (lib/filter (lib/= (meta/field-metadata :orders :created-at)
                                                   (get-in lib.drill-thru.tu/test-queries
                                                           ["ORDERS" :aggregated :row "CREATED_AT"])))
-                               (lib/breakout (meta/field-metadata :products :category)))})))
+                               (lib/breakout (meta/field-metadata :products :category)))})
+   "multi-stage query"
+   (fn [base-case]
+     {:custom-query (-> base-case
+                        :custom-query
+                        (lib.drill-thru.tu/append-filter-stage "count"))
+      :expected-query (-> base-case
+                          :expected-query
+                          (assoc-in [:stages 0 :filters 0 2 2] "CREATED_AT")
+                          (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))})))

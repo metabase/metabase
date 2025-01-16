@@ -32,6 +32,10 @@ export function tooltip() {
   return cy.get(".emotion-Tooltip-tooltip");
 }
 
+export function selectDropdown() {
+  return cy.get('[data-testid="select-dropdown"]');
+}
+
 export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }

@@ -37,7 +37,9 @@ export function SelectListItem({
       hasRightIcon={!!rightIcon}
     >
       {icon && <ItemIcon color="brand" {...iconProps} />}
-      <ItemTitle data-testid="option-text">{name}</ItemTitle>
+      <ItemTitle fw="bold" lh="normal" data-testid="option-text">
+        {name}
+      </ItemTitle>
       {rightIconProps.name && <ItemIcon {...rightIconProps} />}
     </BaseSelectListItem>
   );
