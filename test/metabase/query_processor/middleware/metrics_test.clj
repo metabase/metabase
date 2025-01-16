@@ -819,7 +819,7 @@
         (is (= 2162
                (ffirst (mt/rows (qp/process-query query)))))))))
 
-(deftest ^:parallel ^:mb/once fetch-referenced-metrics-test
+(deftest ^:parallel fetch-referenced-metrics-test
   (testing "Metric's aggregation `:name` is used in expanded aggregation (#48625)"
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))

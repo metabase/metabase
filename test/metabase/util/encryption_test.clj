@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util.encryption-test
+(ns metabase.util.encryption-test
   "Tests for encryption of Metabase DB details."
   (:require
    [buddy.core.codecs :as codecs]

@@ -7,47 +7,44 @@ import {
   DateRangePicker,
   type DateRangePickerValue,
 } from "metabase/querying/filters/components/DatePicker/SpecificDatePicker/DateRangePicker";
-import {
-  deserializeDateFilter,
-  serializeDateFilter,
-} from "metabase/querying/parameters/utils/dates";
+import { serializeDateParameterValue } from "metabase/querying/parameters/utils/dates";
+import { normalizeDateParameterValue } from "metabase/querying/parameters/utils/normalize";
+import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DateRangeWidgetProps = {
-  value: string | undefined;
+  value: ParameterValueOrArray | null | undefined;
   submitButtonLabel?: string;
   onChange: (value: string) => void;
 };
 
 export function DateRangeWidget({
-  value: valueText,
+  value,
   submitButtonLabel = t`Apply`,
   onChange,
 }: DateRangeWidgetProps) {
-  const [value, setValue] = useState(
-    () => getPickerValue(valueText) ?? getPickerDefaultValue(),
+  const [pickerValue, setPickerValue] = useState(
+    () => getPickerValue(value) ?? getPickerDefaultValue(),
   );
 
   const handleSubmit = () => {
-    onChange(getWidgetValue(value));
+    onChange(getWidgetValue(pickerValue));
   };
 
   return (
     <DateRangePicker
-      value={value}
+      value={pickerValue}
       submitButtonLabel={submitButtonLabel}
       hasTimeToggle
-      onChange={setValue}
+      onChange={setPickerValue}
       onSubmit={handleSubmit}
     />
   );
 }
 
 function getPickerValue(
-  valueText: string | undefined,
+  value: ParameterValueOrArray | null | undefined,
 ): DateRangePickerValue | undefined {
-  const value =
-    valueText != null ? deserializeDateFilter(valueText) : undefined;
-  return match(value)
+  return match(normalizeDateParameterValue(value))
     .returnType<DateRangePickerValue | undefined>()
     .with({ type: "specific", operator: "between" }, ({ values, hasTime }) => ({
       dateRange: [values[0], values[1]],
@@ -62,11 +59,11 @@ function getPickerDefaultValue(): DateRangePickerValue {
   return { dateRange: [past30Days, today], hasTime: false };
 }
 
-function getWidgetValue(value: DateRangePickerValue) {
-  return serializeDateFilter({
+function getWidgetValue({ dateRange, hasTime }: DateRangePickerValue) {
+  return serializeDateParameterValue({
     type: "specific",
     operator: "between",
-    values: value.dateRange,
-    hasTime: value.hasTime,
+    values: dateRange,
+    hasTime,
   });
 }

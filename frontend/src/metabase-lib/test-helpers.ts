@@ -180,7 +180,7 @@ interface BreakoutClauseOpts {
 
 interface ExpressionClauseOpts {
   name: string;
-  operator: Lib.ExpressionOperatorName;
+  operator: Lib.ExpressionOperator;
   args: (Lib.ExpressionArg | Lib.ExpressionClause)[];
   options?: Lib.ExpressionOptions | null;
 }

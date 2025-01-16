@@ -54,10 +54,13 @@
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data
                         auto-retry
+                        string-to-bytes
+                        bytes-to-string
                         decode-base64
                         decode-base64-to-bytes
                         deref-with-timeout
                         encode-base64
+                        encode-base64-bytes
                         filtered-stacktrace
                         full-exception-chain
                         host-port-up?
@@ -65,15 +68,12 @@
                         poll
                         host-up?
                         ip-address?
-                        metabase-namespace-symbols
                         sorted-take
                         varargs
                         with-timeout
                         with-us-locale]
                        [u.str
-                        build-sentence]
-                       [u.ns
-                        find-and-load-namespaces!]))
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."

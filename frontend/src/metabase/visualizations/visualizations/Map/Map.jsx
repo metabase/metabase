@@ -134,7 +134,6 @@ export class Map extends Component {
   static settings = {
     ...columnSettings({ hidden: true }),
     "map.type": {
-      section: t`Options`,
       title: t`Map type`,
       widget: "select",
       props: {
@@ -186,7 +185,6 @@ export class Map extends Component {
       ],
     },
     "map.pin_type": {
-      section: t`Options`,
       title: t`Pin type`,
       // Don't expose this in the UI for now
       // widget: "select",
@@ -211,7 +209,6 @@ export class Map extends Component {
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     },
     ...fieldSetting("map.latitude_column", {
-      section: t`Options`,
       title: t`Latitude field`,
       fieldFilter: isNumeric,
       getDefault: ([{ data }]) => (_.find(data.cols, isLatitude) || {}).name,
@@ -219,7 +216,6 @@ export class Map extends Component {
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     }),
     ...fieldSetting("map.longitude_column", {
-      section: t`Options`,
       title: t`Longitude field`,
       fieldFilter: isNumeric,
       getDefault: ([{ data }]) => (_.find(data.cols, isLongitude) || {}).name,
@@ -227,7 +223,6 @@ export class Map extends Component {
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     }),
     ...fieldSetting("map.metric_column", {
-      section: t`Options`,
       title: t`Metric field`,
       fieldFilter: isMetric,
       getHidden: (series, vizSettings) =>
@@ -236,7 +231,6 @@ export class Map extends Component {
           vizSettings["map.pin_type"] !== "grid"),
     }),
     "map.region": {
-      section: t`Options`,
       title: t`Region map`,
       widget: "select",
       getDefault: ([{ card, data }]) => {
@@ -260,17 +254,14 @@ export class Map extends Component {
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     },
     ...metricSetting("map.metric", {
-      section: t`Options`,
       title: t`Metric field`,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     ...dimensionSetting("map.dimension", {
-      section: t`Options`,
       title: t`Region field`,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     "map.colors": {
-      section: t`Options`,
       title: t`Color`,
       widget: ColorRangeSelector,
       props: {
@@ -290,28 +281,24 @@ export class Map extends Component {
     "map.center_latitude": {},
     "map.center_longitude": {},
     "map.heat.radius": {
-      section: t`Options`,
       title: t`Radius`,
       widget: "number",
       default: 30,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.blur": {
-      section: t`Options`,
       title: t`Blur`,
       widget: "number",
       default: 60,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.min-opacity": {
-      section: t`Options`,
       title: t`Min Opacity`,
       widget: "number",
       default: 0,
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.max-zoom": {
-      section: t`Options`,
       title: t`Max Zoom`,
       widget: "number",
       default: 1,

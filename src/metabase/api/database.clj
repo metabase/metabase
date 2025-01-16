@@ -31,10 +31,8 @@
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.sample-data :as sample-data]
-   [metabase.sync.analyze :as analyze]
-   [metabase.sync.field-values :as sync.field-values]
+   [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
-   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
@@ -359,7 +357,6 @@
       true                         add-can-upload
       include-editable-data-model? check-db-data-model-perms
       (mi/can-write? database)     (->
-                                    secret/expand-db-details-inferred-secret-values
                                     (assoc :can-manage true)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -872,7 +869,7 @@
     (merge (:details database)
            (reduce
             (fn [details k]
-              (if (= database/protected-password (get details k))
+              (if (= secret/protected-password (get details k))
                 (m/update-existing details k (constantly (get-in database [:details k])))
                 details))
             details
@@ -938,8 +935,8 @@
    settings           [:maybe ms/Map]}
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (t2/select-one :model/Database :id id))
+        incoming-details  details
         details           (some->> details
-                                   (driver.u/db-details-client->server (or engine (:engine existing-database)))
                                    (upsert-sensitive-fields existing-database))
         ;; verify that we can connect to the database if `:details` OR `:engine` have changed.
         details-changed?  (some-> details (not= (:details existing-database)))
@@ -990,8 +987,11 @@
           (events/publish-event! :event/database-update {:object db
                                                          :user-id api/*current-user-id*
                                                          :previous-object existing-database})
-         ;; return the DB with the expanded schedules back in place
-          (add-expanded-schedules db))))))
+          (-> db
+              ;; return the DB with the expanded schedules back in place
+              add-expanded-schedules
+              ;; return the DB with the passed in details in place
+              (m/update-existing :details #(merge incoming-details %))))))))
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
@@ -1028,9 +1028,10 @@
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
-        (future
-          (sync-metadata/sync-db-metadata! db)
-          (analyze/analyze-db! db))
+        (sync/submit-task!
+         (fn []
+           (sync/sync-db-metadata! db)
+           (sync/analyze-db! db)))
         {:status :ok}))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -1071,8 +1072,10 @@
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
       (if *rescan-values-async*
-        (future (sync.field-values/update-field-values! db))
-        (sync.field-values/update-field-values! db))))
+        (sync/submit-task!
+         (fn []
+           (sync/update-field-values! db)))
+        (sync/update-field-values! db))))
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]
