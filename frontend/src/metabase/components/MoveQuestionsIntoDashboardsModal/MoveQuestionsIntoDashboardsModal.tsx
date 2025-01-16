@@ -16,7 +16,7 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
     const [acknowledgedInfoStep, setAcknowledgedInfoStep] = useState(false);
 
     // const collectionId = Urls.extractCollectionId(params.slug);
-    const candidates = new Array(24).fill(null);
+    const candidates = new Array(124).fill(null);
 
     const handleBulkMoveQuestionIntoDashboards = async () => {
       handleClose();

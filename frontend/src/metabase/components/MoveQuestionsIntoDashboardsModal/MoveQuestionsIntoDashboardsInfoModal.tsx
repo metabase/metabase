@@ -20,16 +20,17 @@ export const MoveQuestionsIntoDashboardsInfoModal = ({
     withCloseButton={false}
   >
     <List spacing="md" mt="1.25rem">
-      <List.Item icon={<Icon name="ai" c="brand" />}>
-        Instead of cluttering up this collection, each saved question will be
-        moved into and stored inside of the dashboard it appears in.
+      <List.Item icon={<Icon name="ai" c="brand" mb="-2px" />} lh="1.5rem">
+        {t`Instead of cluttering up this collection, each saved question will be moved into and stored inside of the dashboard it appears in.`}
       </List.Item>
-      <List.Item icon={<Icon name="collection" c="brand" />}>
-        We’ll only move questions in this collection that appear in a single
-        dashboard in this collection.
+      <List.Item
+        icon={<Icon name="collection" c="brand" mb="-2px" />}
+        lh="1.5rem"
+      >
+        {t`We’ll only move questions in this collection that appear in a single dashboard in this collection.`}
       </List.Item>
-      <List.Item icon={<Icon name="group" c="brand" />}>
-        Permissions won’t be changed.
+      <List.Item icon={<Icon name="group" c="brand" mb="-2px" />} lh="1.5rem">
+        {t`Permissions won’t be changed.`}
       </List.Item>
     </List>
 
