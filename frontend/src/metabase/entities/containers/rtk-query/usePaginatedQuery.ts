@@ -3,8 +3,6 @@ import { useCallback, useMemo, useState } from "react";
 import type { EntityQuery } from "./types";
 
 /**
- * Replacement for paginationState HOC
- *
  * @deprecated exists for backwards compatibility
  */
 export const usePaginatedQuery = (

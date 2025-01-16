@@ -52,6 +52,14 @@
      :depends-on-namespace (:namespace ns-dep)
      :depends-on-module    (:module ns-dep)}))
 
+(defn external-usages-by-namespace
+  "Return a map of module namespace => set of external namespaces using it"
+  [module-symb]
+  (into (sorted-map)
+        (map (fn [[k v]]
+               [k (into (sorted-set) (map :namespace) v)]))
+        (group-by :depends-on-namespace (external-usages module-symb))))
+
 (defn externally-used-namespaces
   "All namespaces from a module that are used outside that module."
   [module-symb]

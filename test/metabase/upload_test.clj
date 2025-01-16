@@ -105,8 +105,8 @@
 
 (defn sync-upload-test-table!
   "Creates a table in the app db and syncs it synchronously, setting is_upload=true. Returns the table instance.
-  The result is identical to if the table was synced with [[metabase.sync/sync-database!]], but faster because it skips
-  syncing every table in the test database."
+  The result is identical to if the table was synced with [[metabase.sync.core/sync-database!]], but faster because it
+  skips syncing every table in the test database."
   [& {:keys [database table-name schema-name]}]
   (let [table-name  (ddl.i/format-name driver/*driver* table-name)
         schema-name (or (some->> schema-name (ddl.i/format-name driver/*driver*))
@@ -1182,7 +1182,7 @@
                     (:name new-field)
                     (:display_name new-field))))))))))
 
-(deftest ^:mb/once csv-upload-snowplow-test
+(deftest csv-upload-snowplow-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (snowplow-test/with-fake-snowplow-collector
       (do-with-uploaded-example-csv!
@@ -1213,7 +1213,7 @@
                        :user-id (str (mt/user->id :rasta))}
                       (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
 
-(deftest ^:mb/once csv-upload-audit-log-test
+(deftest csv-upload-audit-log-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-premium-features #{:audit-app}
       (do-with-uploaded-example-csv!
@@ -1257,14 +1257,13 @@
   [_driver _feature _database]
   true)
 
-;;; TODO -- The test below is currently broken for Redshift. This test was incorrectly marked `^:mb/once` prior to
-;;; #47681; I fixed that, but then Redshift tests started failing. We should fix the test so it can run against
-;;; Redshift.
+;;; TODO -- The test below is currently broken for Redshift. This test was incorrectly disabled #47681; I fixed that,
+;;; but then Redshift tests started failing. We should fix the test so it can run against Redshift.
 (defmethod driver/database-supports? [:redshift ::create-csv-upload!-failure-test]
   [_driver _feature _database]
   false)
 
-(deftest ^:mb/once create-csv-upload!-failure-test
+(deftest create-csv-upload!-failure-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads ::create-csv-upload!-failure-test)
     (mt/with-empty-db
       (testing "Uploads must be enabled"
@@ -1316,7 +1315,7 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
-(deftest ^:mb/once create-csv-upload!-schema-does-not-sync-test
+(deftest create-csv-upload!-schema-does-not-sync-test
   ;; We only need to test this for a single driver, and the way this test has been written is coupled to Postgres
   (mt/test-driver :postgres
     (mt/with-empty-db
@@ -1775,7 +1774,7 @@
                        (rows-for-table table)))))
             (io/delete-file file)))))))
 
-(deftest ^:mb/once update-snowplow-test
+(deftest update-snowplow-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
@@ -1816,7 +1815,7 @@
                         :user-id (str (mt/user->id :crowberto))}
                        (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
 
-(deftest ^:mb/once update-audit-log-test
+(deftest update-audit-log-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)

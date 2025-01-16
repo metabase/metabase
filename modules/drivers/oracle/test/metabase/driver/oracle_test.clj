@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [environ.core :as env]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -18,7 +19,7 @@
    [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
@@ -31,9 +32,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.util Base64)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -388,7 +387,7 @@
 (deftest oracle-connect-with-ssl-test
   ;; ridiculously hacky test; hopefully it can be simplified; see inline comments for full explanations
   (mt/test-driver :oracle
-    (if (System/getenv "MB_ORACLE_SSL_TEST_SSL") ; only even run this test if this env var is set
+    (if (some-> (env/env :mb-oracle-ssl-test-ssl) Boolean/parseBoolean)
       ;; swap out :oracle env vars with any :oracle-ssl ones that were defined
       (mt/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
         ;; need to get a fresh instance of details to pick up env key changes
@@ -405,8 +404,10 @@
                                          [(-> (assoc
                                                ssl-details
                                                :ssl-truststore-value
-                                               (.encodeToString (Base64/getEncoder)
-                                                                (mt/file->bytes (:ssl-truststore-path ssl-details)))
+                                               (-> ssl-details
+                                                   :ssl-truststore-path
+                                                   mt/file-path->bytes
+                                                   mt/bytes->base64-data-uri)
                                                :ssl-truststore-options
                                                "uploaded")
                                               (dissoc :ssl-truststore-path))
@@ -414,8 +415,7 @@
                 (testing (str " " variant)
                   (mt/with-temp [:model/Database database {:engine  :oracle,
                                                            :name    (format (str variant " version of %d") (mt/id)),
-                                                           :details (->> details
-                                                                         (driver.u/db-details-client->server :oracle))}]
+                                                           :details details}]
                     (mt/with-db database
                       (testing " can sync correctly"
                         (sync/sync-database! database {:scan :schema})

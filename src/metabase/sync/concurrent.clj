@@ -16,7 +16,7 @@
 (defonce ^:private executor
   (delay (Executors/newFixedThreadPool 1 ^ThreadFactory thread-factory)))
 
-(defn submit-task
+(defn submit-task!
   "Submit a task to the single thread executor. This will attempt to serialize repeated requests to sync tables. It
   obviously cannot work across multiple instances."
   ^Future [^Callable f]

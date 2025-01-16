@@ -1,79 +1,63 @@
+import cx from "classnames";
 import { t } from "ttag";
 
+import ButtonGroup from "metabase/core/components/ButtonGroup";
+import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   onCloseChartSettings,
+  onCloseChartType,
   onOpenChartSettings,
+  onOpenChartType,
 } from "metabase/query_builder/actions";
+import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import { getUiControls } from "metabase/query_builder/selectors";
-import { Button, type ButtonProps, Flex, Icon, rem } from "metabase/ui";
-import { getIconForVisualizationType } from "metabase/visualizations";
-import type Question from "metabase-lib/v1/Question";
+import { Group } from "metabase/ui";
 import type { QueryBuilderUIControls } from "metabase-types/store";
 
-interface LeftViewFooterButtonGroup {
-  question: Question;
-}
+import S from "./LeftViewFooterButtonGroup.module.css";
 
-export const LeftViewFooterButtonGroup = ({
-  question,
-}: LeftViewFooterButtonGroup) => {
-  const { isShowingChartSettingsSidebar }: QueryBuilderUIControls =
-    useSelector(getUiControls);
+export const LeftViewFooterButtonGroup = () => {
+  const {
+    isShowingChartSettingsSidebar,
+    isShowingChartTypeSidebar,
+  }: QueryBuilderUIControls = useSelector(getUiControls);
 
   const dispatch = useDispatch();
 
-  const vizIcon = getIconForVisualizationType(question.display());
-
   return (
-    <Flex gap="0.75rem">
-      {isShowingChartSettingsSidebar ? (
-        <DoneButton onClick={() => dispatch(onCloseChartSettings())} />
-      ) : (
-        <VisualizationButton
-          leftIcon={<Icon name={vizIcon} />}
-          onClick={() => dispatch(onOpenChartSettings())}
+    <Group className={cx(CS.flex1, S.Root)}>
+      <ButtonGroup className={S.FooterButtonGroup}>
+        <ViewButton
+          medium
+          labelBreakpoint="sm"
+          data-testid="viz-type-button"
+          active={isShowingChartTypeSidebar}
+          className={S.Button}
+          onClick={
+            isShowingChartTypeSidebar
+              ? () => dispatch(onCloseChartType())
+              : () => dispatch(onOpenChartType())
+          }
+        >
+          {t`Visualization`}
+        </ViewButton>
+        <ViewButton
+          className={S.Button}
+          active={isShowingChartSettingsSidebar}
+          icon="gear"
+          iconSize={16}
+          medium
+          onlyIcon
+          labelBreakpoint="sm"
+          data-testid="viz-settings-button"
+          onClick={
+            isShowingChartSettingsSidebar
+              ? () => dispatch(onCloseChartSettings())
+              : () => dispatch(onOpenChartSettings())
+          }
         />
-      )}
-    </Flex>
+      </ButtonGroup>
+    </Group>
   );
 };
-
-function VisualizationButton(props: ButtonProps) {
-  return (
-    <Button
-      variant="default"
-      pt={rem(7)}
-      pb={rem(7)}
-      styles={{
-        root: {
-          backgroundColor: "var(--mb-color-brand-lighter)",
-          color: "var(--mb-color-brand)",
-          border: 0,
-
-          "&:hover": {
-            backgroundColor: "var(--mb-color-focus)",
-          },
-        },
-      }}
-      data-testid="viz-settings-button"
-      {...props}
-    >
-      {t`Visualization`}
-    </Button>
-  );
-}
-
-function DoneButton(props: ButtonProps) {
-  return (
-    <Button
-      variant="filled"
-      pt={rem(7)}
-      pb={rem(7)}
-      data-testid="viz-settings-done-button"
-      {...props}
-    >
-      {t`Done`}
-    </Button>
-  );
-}

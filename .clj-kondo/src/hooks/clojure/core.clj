@@ -49,13 +49,15 @@
      metabase-enterprise.advanced-permissions.models.permissions/update-db-download-permissions!
      metabase-enterprise.internal-user/install-internal-user!
      metabase-enterprise.sso.integrations.saml-test/call-with-login-attributes-cleared!
-     metabase.actions/perform-action!
+     metabase.actions.actions/perform-action!
      metabase.analytics.snowplow-test/fake-track-event-impl!
      metabase.analytics.snowplow/track-event-impl!
      metabase.api.public-test/add-card-to-dashboard!
+     metabase.channel.email-test/reset-inbox!
+     metabase.channel.email/send-email!
      metabase.cmd.dump-to-h2/dump-to-h2!
      metabase.cmd.load-from-h2/load-from-h2!
-     metabase.core/ensure-audit-db-installed!
+     metabase.core.core/ensure-audit-db-installed!
      metabase.db.schema-migrations-test.impl/run-migrations-in-range!
      metabase.db.setup/migrate!
      metabase.db.setup/setup-db!
@@ -65,8 +67,6 @@
      metabase.driver.postgres-test/create-enums-db!
      metabase.driver.postgres-test/drop-if-exists-and-create-db!
      metabase.driver.sql-jdbc.execute/execute-statement!
-     metabase.email-test/reset-inbox!
-     metabase.email/send-email!
      metabase.models.action/insert!
      metabase.models.collection.graph-test/clear-graph-revisions!
      metabase.models.collection.graph-test/do-with-n-temp-users-with-personal-collections!
@@ -97,12 +97,12 @@
      metabase.query-processor.streaming.interface/finish!
      metabase.query-processor.streaming.interface/write-row!
      metabase.sample-data/try-to-extract-sample-database!
-     metabase.setup/create-token!
+     metabase.setup.core/create-token!
+     metabase.sync.core/sync-database!
      metabase.sync.sync-metadata.fields.sync-metadata/update-field-metadata-if-needed!
      metabase.sync.sync-metadata/sync-db-metadata!
      metabase.sync.util-test/sync-database!
      metabase.sync.util/store-sync-summary!
-     metabase.sync/sync-database!
      metabase.task.index-values/job-init!
      metabase.task.persist-refresh/job-init!
      metabase.task.persist-refresh/refresh-tables!
@@ -272,8 +272,7 @@
 
 (defn- module-api-namespaces
   "Set API namespaces for a given module. `:any` means you can use anything, there are no API namespaces for this
-  module (yet). If unspecified, the default is just the namespace with the same name as the module e.g.
-  `metabase.db`."
+  module (yet). If unspecified, the default is just the `<module>.core` namespace."
   [module config]
   (let [module-config (get-in config [:api-namespaces module])]
     (cond
@@ -284,7 +283,7 @@
       module-config
 
       :else
-      #{module})))
+      #{(symbol (str module ".core"))})))
 
 (defn- lint-modules [ns-form-node config]
   (let [ns-symb (ns-form-node->ns-symb ns-form-node)]

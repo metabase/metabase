@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.cmd.load-and-dump-test
+(ns metabase.cmd.load-and-dump-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]

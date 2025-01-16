@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.legacy-mbql.normalize-test
+(ns metabase.legacy-mbql.normalize-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.set :as set]

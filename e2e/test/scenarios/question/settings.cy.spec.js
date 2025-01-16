@@ -101,14 +101,14 @@ describe("scenarios > question > settings", () => {
         .as("title")
         .should("have.text", "Products → Title");
 
-      cy.findByTestId("chartsettings-sidebar-scrollable").scrollTo("top");
-      cy.findByTestId("chartsettings-sidebar-scrollable").should(([$el]) => {
+      cy.findByTestId("chartsettings-sidebar").scrollTo("top");
+      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
         expect($el.scrollTop).to.eql(0);
       });
 
       H.moveDnDKitElement(cy.get("@title"), { vertical: 15 });
 
-      cy.findByTestId("chartsettings-sidebar-scrollable").should(([$el]) => {
+      cy.findByTestId("chartsettings-sidebar").should(([$el]) => {
         expect($el.scrollTop).to.be.greaterThan(0);
       });
     });

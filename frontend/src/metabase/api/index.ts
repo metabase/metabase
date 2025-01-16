@@ -30,4 +30,5 @@ export * from "./table";
 export * from "./task";
 export * from "./timeline";
 export * from "./timeline-event";
+export * from "./user-key-value";
 export * from "./user";
