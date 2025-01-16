@@ -17,10 +17,8 @@
    (java.io BufferedWriter OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
 
-
 (defn- format-csv-to-stream [os display-names locales]
-  (let [
-        ; If no locales were provided, we'll write all the rows out once with an empty locale
+  (let [; If no locales were provided, we'll write all the rows out once with an empty locale
         locales (if (empty? locales) [""] locales)
         writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
         headers ["Language" "String" "Translation"]]
@@ -38,13 +36,11 @@
   "Provides downloadable content translation dictionary in csv. Example URL: /csv/es-fr"
   [locales-string]
   (let [locales (str/split locales-string #"-")]
-    (sr/streaming-response {
-                            :content-type "text/csv; charset=utf-8"
+    (sr/streaming-response {:content-type "text/csv; charset=utf-8"
                             :status 200
                             :headers {"Content-Disposition" (format "attachment; filename=\"content_dictionary_%s.csv\""
-                                                                    (u.date/format (t/zoned-date-time)))}
-                            } [os canceled-chan]
-                           (format-csv-to-stream os (ct/get-all-display-names) locales))))
+                                                                    (u.date/format (t/zoned-date-time)))}} [os canceled-chan]
+      (format-csv-to-stream os (ct/get-all-display-names) locales))))
 
 (defn import-translations!
   "Import translations from CSV and insert or update rows in the content_translation table."

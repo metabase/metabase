@@ -20,16 +20,15 @@
   "List the display names of all columns"
   []
   (distinct (map :display_name
-    (t2/query {:select [:f.display_name]
-                          :from [[(t2/table-name :model/Field) :f]]}))))
+                 (t2/query {:select [:f.display_name]
+                            :from [[(t2/table-name :model/Field) :f]]}))))
 
 (defn get-table-display-names
   "List the display names of all tables"
   []
   (distinct (map :display_name
-  (t2/query {:select [:t.display_name]
-                          :from [[(t2/table-name :model/Table) :t]]}))))
-
+                 (t2/query {:select [:t.display_name]
+                            :from [[(t2/table-name :model/Table) :t]]}))))
 
 (defn get-field-values
   "List all field values"
@@ -39,8 +38,7 @@
     (->> field-values
          (map (comp json/decode str :values))
          (mapcat identity)
-         (distinct)
-         )))
+         (distinct))))
 
 (defn get-all-display-names
   "Concatenate and return display names from columns, tables, and field values."
