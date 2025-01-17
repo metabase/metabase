@@ -1001,8 +1001,7 @@ describe("issue 28971", () => {
 });
 
 describe("issue 29378", () => {
-  // TODO: This is throwing a lint error. Not sure how this happened
-  const _ACTION_DETAILS = {
+  const ACTION_DETAILS = {
     name: "Update orders quantity",
     description: "Set orders quantity to the same value",
     type: "query",
@@ -1025,6 +1024,35 @@ describe("issue 29378", () => {
     H.restore();
     cy.signInAsAdmin();
     H.setActionsEnabledForDB(SAMPLE_DB_ID);
+  });
+
+  it("should not crash the model detail page after searching for an action (metabase#29378)", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    H.createAction(ACTION_DETAILS);
+
+    cy.visit(`/model/${ORDERS_QUESTION_ID}/detail`);
+    cy.findByRole("tab", { name: "Actions" }).click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(ACTION_DETAILS.name).should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(ACTION_DETAILS.dataset_query.native.query).should(
+      "be.visible",
+    );
+
+    cy.findByRole("tab", { name: "Used by" }).click();
+    H.commandPaletteSearch(ACTION_DETAILS.name, false);
+    H.commandPalette()
+      .findByRole("option", { name: ACTION_DETAILS.name })
+      .should("exist");
+    H.closeCommandPalette();
+
+    cy.findByRole("tab", { name: "Actions" }).click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(ACTION_DETAILS.name).should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(ACTION_DETAILS.dataset_query.native.query).should(
+      "be.visible",
+    );
   });
 });
 
