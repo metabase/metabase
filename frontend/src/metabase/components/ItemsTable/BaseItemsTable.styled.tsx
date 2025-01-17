@@ -6,7 +6,6 @@ import EntityItem from "metabase/components/EntityItem";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
-import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 import type { TextProps } from "metabase/ui";
 import { FixedSizeIcon, Text } from "metabase/ui";
 
@@ -128,11 +127,6 @@ SortingIcon.defaultProps = {
   size: 8,
 };
 
-export const ModelDetailLink = styled(BaseModelDetailLink)`
-  color: var(--mb-color-text-medium);
-  visibility: hidden;
-`;
-
 export const SortingControlContainer = styled.div<{
   isActive: boolean;
   isSortable?: boolean;
@@ -196,12 +190,6 @@ export const TBody = styled.tbody`
       &:first-of-type {
         border-end-start-radius: 8px;
       }
-    }
-  }
-
-  tr:hover {
-    ${ModelDetailLink} {
-      visibility: visible;
     }
   }
 `;
