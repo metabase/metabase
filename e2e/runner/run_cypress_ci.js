@@ -19,13 +19,7 @@ const snapshot = async () => {
 
 const runTests = async () => {
   printBold("Running Cypress Tests");
-  await runCypress(baseUrl)
-    .then(exitCode => {
-      process.exit(exitCode);
-    })
-    .catch(() => {
-      process.exit(1);
-    });
+  await runCypress(baseUrl, exitCode => process.exit(exitCode));
 };
 
 if (mode === "start") {
