@@ -18,6 +18,8 @@
 
 (set! *warn-on-reflection* true)
 
+;;; TODO -- by convention these should either have class-like names e.g. `JSONQuery` and `SupportedActionType` or we
+;;; should use [[metabase.util.malli.registry/def]] and register them and make them namespaced keywords
 (def ^:private json-query-schema
   [:and
    string?

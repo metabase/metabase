@@ -403,7 +403,9 @@
   "Find all alerts for `card-ids`, used for admin users"
   [{:keys [archived? card-ids]
     :or   {archived? false}} :- [:map
-                                 [:card-ids [:sequential {:min 1} pos-int?]]
+                                 [:card-ids [:or
+                                             [:sequential {:min 1} pos-int?]
+                                             [:set {:min 1} pos-int?]]]
                                  [:archived? {:optional true} boolean?]]]
   (when (seq card-ids)
     (map (comp notification->alert hydrate-notification)
