@@ -1,4 +1,4 @@
-import type { Location, LocationDescriptor } from "history";
+import type { LocationDescriptor } from "history";
 import type * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { replace } from "react-router-redux";
@@ -24,10 +24,8 @@ import type { Card, CollectionId, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 type OwnProps = {
-  location: Location;
   params: {
     slug: string;
-    tab?: string;
   };
   children: React.ReactNode;
 };
@@ -66,12 +64,9 @@ const mapDispatchToProps = {
   onChangeLocation: replace,
 };
 
-const FALLBACK_TAB = "usage";
-
 function ModelDetailPage({
   model,
   actions,
-  location,
   children,
   loadMetadataForCard,
   fetchTableForeignKeys,
@@ -89,7 +84,8 @@ function ModelDetailPage({
   const hasDataPermissions = isEditable;
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
-  const hasActionsTab = hasActions || hasActionsEnabled;
+  const shouldShowActionsUI = hasActions || hasActionsEnabled;
+
   const supportsNestedQueries =
     database != null && database.hasFeature("nested-queries");
 
@@ -105,17 +101,6 @@ function ModelDetailPage({
     const table = model.metadata().table(sourceTableId);
     return table;
   }, [model]);
-
-  const tab = useMemo(() => {
-    const pathname = location.pathname;
-
-    if (pathname.endsWith("/actions/new")) {
-      return "actions";
-    }
-
-    const [tab] = pathname.split("/").reverse();
-    return tab ?? FALLBACK_TAB;
-  }, [location.pathname]);
 
   useMount(() => {
     const card = model.card();
@@ -137,11 +122,11 @@ function ModelDetailPage({
   }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
 
   useEffect(() => {
-    if (tab === "actions" && !hasActionsTab) {
-      const nextUrl = Urls.modelDetail(model.card(), FALLBACK_TAB);
+    if (!shouldShowActionsUI) {
+      const nextUrl = Urls.model(model.card());
       onChangeLocation(nextUrl);
     }
-  }, [model, tab, hasActionsTab, onChangeLocation]);
+  }, [model, shouldShowActionsUI, onChangeLocation]);
 
   const handleNameChange = useCallback(
     (name: string | undefined) => {
@@ -179,9 +164,8 @@ function ModelDetailPage({
       <ModelDetailPageView
         model={model}
         mainTable={mainTable}
-        tab={tab}
         hasDataPermissions={hasDataPermissions}
-        hasActionsTab={hasActionsTab}
+        shouldShowActionsUI={shouldShowActionsUI}
         hasNestedQueriesEnabled={hasNestedQueriesEnabled}
         supportsNestedQueries={supportsNestedQueries}
         onChangeName={handleNameChange}
