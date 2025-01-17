@@ -15,8 +15,9 @@
     (doseq [path valid-paths]
       (testing (pr-str path)
         (is (= true
-               (perms.u/valid-path? path))))))
+               (perms.u/valid-path? path)))))))
 
+(deftest ^:parallel valid-path-test-2
   (testing "invalid paths"
     (doseq [[reason paths]
             {"Native READ permissions are DEPRECATED as of v0.30 so they should no longer be treated as valid"

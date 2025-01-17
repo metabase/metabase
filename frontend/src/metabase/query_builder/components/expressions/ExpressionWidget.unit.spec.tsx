@@ -106,7 +106,7 @@ describe("ExpressionWidget", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  describe("withName=true", () => {
+  describe("withName = true", () => {
     it("should render Name field", () => {
       setup({ withName: true });
 
@@ -172,6 +172,36 @@ describe("ExpressionWidget", () => {
         expect.anything(),
       );
       expect(getRecentExpressionClauseInfo().displayName).toBe("1 + 1");
+    });
+  });
+
+  describe("startRule = 'aggregation'", () => {
+    it("should show 'unknown metric' error if the identifier is not recognized as a dimension (metabase#50753)", async () => {
+      setup({ startRule: "aggregation" });
+
+      await userEvent.paste("[Imaginary]");
+      await userEvent.tab();
+
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      expect(doneButton).toBeDisabled();
+
+      expect(screen.getByText("Unknown Metric: Imaginary")).toBeInTheDocument();
+    });
+
+    it("should show 'no aggregation found' error if the identifier is recognized as a dimension (metabase#50753)", async () => {
+      setup({ startRule: "aggregation" });
+
+      await userEvent.paste("[Total] / [Subtotal]");
+      await userEvent.tab();
+
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      expect(doneButton).toBeDisabled();
+
+      expect(
+        screen.getByText(
+          "No aggregation found in: Total. Use functions like Sum() or custom Metrics",
+        ),
+      ).toBeInTheDocument();
     });
   });
 });

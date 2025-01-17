@@ -6,6 +6,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
    [toucan2.connection :as t2.connection]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -82,7 +83,7 @@
         (assert (= t2.connection/*current-connectable* conn))
         (if-not (.next rs)
           (respond nil)
-          (with-open [is (.getBinaryStream rs 1)]
+          (with-open [is (encryption/maybe-decrypt-stream (.getBinaryStream rs 1))]
             (respond is)))))))
 
 (defn- purge-old-cache-entries!
@@ -102,17 +103,18 @@
   creating a new entry."
   [^bytes query-hash ^bytes results]
   (log/debugf "Caching results for query with hash %s." (pr-str (i/short-hex-hash query-hash)))
-  (try
-    (or (pos? (t2/update! :model/QueryCache {:query_hash query-hash}
-                          {:updated_at (t/offset-date-time)
-                           :results    results}))
-        (first (t2/insert-returning-instances! :model/QueryCache
-                                               :updated_at (t/offset-date-time)
-                                               :query_hash query-hash
-                                               :results    results)))
-    (catch Throwable e
-      (log/error e "Error saving query results to cache.")))
-  nil)
+  (let [final-results (encryption/maybe-encrypt-for-stream results)]
+    (try
+      (or (pos? (t2/update! :model/QueryCache {:query_hash query-hash}
+                            {:updated_at (t/offset-date-time)
+                             :results    final-results}))
+          (first (t2/insert-returning-instances! :model/QueryCache
+                                                 :updated_at (t/offset-date-time)
+                                                 :query_hash query-hash
+                                                 :results final-results)))
+      (catch Throwable e
+        (log/error e "Error saving query results to cache.")))
+    nil))
 
 (defmethod i/cache-backend :db
   [_]

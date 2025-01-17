@@ -1,6 +1,5 @@
 const CypressBackend = require("./cypress-runner-backend");
 const generateSnapshots = require("./cypress-runner-generate-snapshots");
-const getVersion = require("./cypress-runner-get-version");
 const runCypress = require("./cypress-runner-run-tests");
 const { printBold } = require("./cypress-runner-utils");
 
@@ -11,9 +10,6 @@ const baseUrl = e2eHost || server.host;
 
 const init = async () => {
   if (!e2eHost) {
-    printBold("Metabase version info");
-    await getVersion();
-
     printBold("Starting backend");
     await CypressBackend.start(server);
 

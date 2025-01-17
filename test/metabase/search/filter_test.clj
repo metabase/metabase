@@ -2,14 +2,10 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.test :refer :all]
-   [metabase.models]
+   [metabase.models.resolution]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]))
-
-(comment
-  ;; We load this to ensure all the search-models are registered
-  metabase.models/keep-me)
 
 (defn- filter-keys []
   (remove #{:ids} (map :context-key (vals search.config/filters))))

@@ -26,7 +26,6 @@ import * as Lib from "metabase-lib";
 import DatasetEditor from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
-import { ViewFooter } from "../../ViewFooter";
 import ViewSidebar from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
@@ -238,10 +237,6 @@ const ViewInner = props => {
             <ViewRightSidebarContainer {...props} />
           </ViewSidebar>
         </Flex>
-
-        {queryBuilderMode !== "notebook" && (
-          <ViewFooter className={CS.flexNoShrink} />
-        )}
       </Flex>
 
       {isShowingNewbModal && (
