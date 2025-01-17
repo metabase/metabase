@@ -750,6 +750,21 @@
                   (not port) (assoc :port 443))]
     (driver/incorporate-ssh-tunnel-details :sql-jdbc details)))
 
+(defmethod driver/describe-fields :snowflake
+  [driver database & args]
+  (let [pks (sql-jdbc.execute/do-with-connection-with-options
+             driver database nil
+             (fn [^java.sql.Connection conn]
+               (with-open [stmt (.prepareStatement conn (format "show primary keys in database \"%s\";" (get-in database [:details :db])))
+                           rset (.executeQuery stmt)]
+                 (into #{} (map (juxt :schema_name :table_name :column_name)) (resultset-seq rset)))))]
+    (eduction
+     (map (fn [col]
+            (let [lookup ((juxt :table-schema :table-name :name) col)
+                  pk? (contains? pks lookup)]
+              (assoc col :pk? pk?))))
+     (apply (get-method driver/describe-fields :sql-jdbc) driver database args))))
+
 (defmethod sql-jdbc.sync/describe-fields-sql :snowflake
   [driver & {:keys [schema-names table-names details]}]
   (sql/format {:select [[:c.COLUMN_NAME :name]
@@ -776,8 +791,6 @@
                           [:= :IS_NULLABLE [:inline "NO"]]
                           [:not [:!= :c.IDENTITY_GENERATION nil]]]
                          :database-required]
-                        [[:= :c.IS_IDENTITY [:inline "YES"]] :pk?]
-                        [:c.*]
                         [[:nullif :c.COMMENT [:inline ""]] :field-comment]]
                :from [[[:raw (format "\"%s\".\"%s\".\"%s\"" (:db details) "INFORMATION_SCHEMA" "COLUMNS")] :c]]
                :where
