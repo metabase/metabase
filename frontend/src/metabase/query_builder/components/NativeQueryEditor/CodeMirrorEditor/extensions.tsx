@@ -18,12 +18,14 @@ import {
   indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
+import { Prec } from "@codemirror/state";
 import {
   Decoration,
   EditorView,
   MatchDecorator,
   ViewPlugin,
   drawSelection,
+  keymap,
 } from "@codemirror/view";
 import { type Tag, tags } from "@lezer/highlight";
 import type { EditorState, Extension } from "@uiw/react-codemirror";
@@ -82,6 +84,7 @@ export function useExtensions({
       tagDecorator(),
       folds(),
       indentUnit.of("\t"),
+      disableCmdEnter(),
     ]
       .flat()
       .filter(isNotNull);
@@ -92,6 +95,19 @@ export function useExtensions({
     cardTagCompletion,
     referencedCardCompletion,
   ]);
+}
+
+function disableCmdEnter() {
+  // Stop Cmd+Enter in CodeMirror from inserting a newline
+  // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
+  return Prec.highest(
+    keymap.of([
+      {
+        key: "Mod-Enter",
+        run: () => true,
+      },
+    ]),
+  );
 }
 
 function nonce() {
