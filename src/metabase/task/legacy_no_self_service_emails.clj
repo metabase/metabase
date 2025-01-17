@@ -2,10 +2,10 @@
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.channel.email :as email]
+   [metabase.channel.email.messages :as messages]
    [metabase.channel.template.core :as channel.template]
    [metabase.config :as config]
-   [metabase.email :as email]
-   [metabase.email.messages :as messages]
    [metabase.task :as task]
    [metabase.util.log :as log]
    [metabase.util.urls :as urls]
@@ -13,7 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private template-path "metabase/email/legacy_no_self_service.hbs")
+(def ^:private template-path "metabase/channel/email/legacy_no_self_service.hbs")
 
 (defn- legacy-no-self-service-groups
   "Returns a list of groups that have `legacy-no-self-service` as their `view-data` permissions level for any database."

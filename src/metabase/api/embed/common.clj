@@ -12,9 +12,9 @@
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation :as eid-translation]
-   [metabase.models :as models]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
+   [metabase.models.resolution :as models.resolution]
    [metabase.models.setting :refer [defsetting]]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.query-processor.card :as qp.card]
@@ -29,10 +29,12 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(comment
-  models/keep-me)
-
 (set! *warn-on-reflection* true)
+
+(comment
+  ;; load dynamic model resolution code... should already be loaded by [[metabase.core.init]] so this is mostly here for
+  ;; the benefit of tests
+  models.resolution/keep-me)
 
 (defn- valid-param-value?
   "Is V a valid param value? (If it is a String, is it non-blank?)"
@@ -281,29 +283,36 @@
 
 ;;; -------------------------------------- Entity ID transformation functions ------------------------------------------
 
-(def ^:private api-models
-  "The models that we will service for entity-id transformations."
-  (->> (descendants :metabase/model)
-       (filter #(= (namespace %) "model"))
-       (filter (fn has-entity-id?
-                 [model] (or ;; toucan1 models
-                          (isa? model :metabase.models.interface/entity-id)
-                          ;; toucan2 models
-                          (isa? model :hook/entity-id))))
-       (map keyword)
-       set))
+(defn- api-model?
+  [model]
+  (isa? (t2/resolve-model model) :hook/entity-id))
 
+;;; This is no longer calculated dynamically so we don't have to load ~20 model namespaces just to figure out which ones
+;;; derive from `:hook/entity-id` just to generate Malli schemas. -- Cam
 (def ^:private api-name->model
-  "Map of model names used on the API to their corresponding model."
-  (->> api/model->db-model
-       (map (fn [[k v]] [(keyword k) (:db-model v)]))
-       (filter (fn [[_ v]] (contains? api-models v)))
-       (into {})))
+  "Map of model names used on the API to their corresponding model. A test makes sure this map stays in sync."
+  {:action            :model/Action
+   :card              :model/Card
+   :collection        :model/Collection
+   :dashboard         :model/Dashboard
+   :dashboard-card    :model/DashboardCard
+   :dashboard-tab     :model/DashboardTab
+   :dataset           :model/Card
+   :dimension         :model/Dimension
+   :metric            :model/Card
+   :permissions-group :model/PermissionsGroup
+   :pulse             :model/Pulse
+   :pulse-card        :model/PulseCard
+   :pulse-channel     :model/PulseChannel
+   :segment           :model/Segment
+   :snippet           :model/NativeQuerySnippet
+   :timeline          :model/Timeline
+   :user              :model/User})
 
 (defn- ->model
   "Takes a model keyword or an api-name and returns the corresponding model keyword."
   [model-or-api-name]
-  (if (contains? api-models model-or-api-name)
+  (if (api-model? model-or-api-name)
     model-or-api-name
     (api-name->model model-or-api-name)))
 

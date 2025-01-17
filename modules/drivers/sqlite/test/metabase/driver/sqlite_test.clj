@@ -7,7 +7,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.query-processor :as qp]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

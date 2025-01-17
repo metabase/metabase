@@ -88,6 +88,8 @@
   --mb-color-background-disabled: var(--mb-base-color-gray-10);
   --mb-color-background-inverse: var(--mb-color-bg-black);
   --mb-color-background-brand: var(--mb-base-color-brand-40);
+  /* The primary color is still `bg-error` not `background-error` */
+  --mb-color-background-error-secondary: var(--mb-base-color-lobster-5);
   --mb-color-icon-primary: var(--mb-base-color-brand-40);
   --mb-color-icon-primary-disabled: var(--mb-base-color-gray-30);
   --mb-color-icon-secondary: var(--mb-base-color-brand-20);
@@ -199,19 +201,6 @@
   --mb-base-color-orion-alpha-20: hsla(204, 66%, 8%, 0.44);
   --mb-base-color-orion-alpha-10: hsla(204, 66%, 8%, 0.44);
   --mb-base-color-orion-alpha-5: hsla(204, 66%, 8%, 0.44);
-
-  /* Ocean */
-  --mb-base-color-ocean-100: hsla(208, 100%, 9%, 1);
-  --mb-base-color-ocean-90: hsla(208, 89%, 15%, 1);
-  --mb-base-color-ocean-80: hsla(208, 82%, 22%, 1);
-  --mb-base-color-ocean-70: hsla(208, 80%, 31%, 1);
-  --mb-base-color-ocean-60: hsla(208, 78%, 42%, 1);
-  --mb-base-color-ocean-50: hsla(208, 68%, 53%, 1);
-  --mb-base-color-ocean-40: hsla(208, 72%, 60%, 1);
-  --mb-base-color-ocean-30: hsla(208, 73%, 74%, 1);
-  --mb-base-color-ocean-20: hsla(209, 73%, 88%, 1);
-  --mb-base-color-ocean-10: hsla(208, 79%, 96%, 1);
-  --mb-base-color-ocean-5: hsla(208, 75%, 98%, 1);
 
   /* Lobster */
   --mb-base-color-lobster-100: hsla(0, 81%, 11%, 1);

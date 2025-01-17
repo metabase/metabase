@@ -1,9 +1,10 @@
 (ns metabase.models.secret
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [java-time.api :as t]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -15,8 +16,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (java.io File)
-   (java.nio.charset StandardCharsets)))
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
@@ -35,108 +35,12 @@
    :kind   mi/transform-keyword
    :source mi/transform-keyword})
 
-;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
-
-(defn value->string
-  "Returns the value of the given `secret` as a String.  `secret` can be a Secret model object, or a
-  secret-map (i.e. return value from `db-details-prop->secret-map`)."
-  {:added "0.42.0"}
-  ^String [{:keys [value] :as _secret}]
-  (cond (string? value)
-        value
-        (bytes? value)
-        (String. ^bytes value StandardCharsets/UTF_8)))
-
-(defn conn-props->secret-props-by-name
-  "For the given `conn-props` (output of `driver/connection-properties`), return a map of all `:type` `:secret`
-  properties, keyed by property name."
-  {:added "0.42.0"}
-  [conn-props]
-  (->> (filter #(= :secret (keyword (:type %))) conn-props)
-       (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})))
-
-(defn value->file!*
-  "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
-  its source, a `File` referring to that is returned. Otherwise, the `:value` is written to a temporary file, which is
-  then returned.
-
-  `driver?` is an optional argument that is only used if an ostensibly existing file value (i.e. `:file-path`) can't be
-  resolved, in order to render a more user-friendly error message (by looking up the display names of the connection
-  properties involved).
-
-  `ext?` is an optional argument that sets the file extension used for the temporary file, if one needs to be created."
-  {:added "0.42.0"}
-  (^File [secret]
-   (value->file!* secret nil))
-  (^File [secret driver?]
-   (value->file!* secret driver? nil))
-  (^File [{:keys [connection-property-name id value] :as secret} driver? ext?]
-   (if (= :file-path (:source secret))
-     (let [secret-val          (value->string secret)
-           ^File existing-file (File. secret-val)]
-       (if (.exists existing-file)
-         existing-file
-         (let [error-source (cond
-                              id
-                              (tru "Secret ID {0}" id)
-
-                              (and connection-property-name driver?)
-                              (let [secret-props (-> (driver/connection-properties driver?)
-                                                     conn-props->secret-props-by-name)]
-                                (tru "File path for {0}" (-> (get secret-props connection-property-name)
-                                                             :display-name)))
-
-                              :else
-                              (tru "Path"))]
-           (throw (ex-info (tru "{0} points to non-existent file: {1}" error-source secret-val)
-                           {:file-path secret-val
-                            :secret    secret})))))
-     (let [^File tmp-file (doto (File/createTempFile "metabase-secret_" ext?)
-                            ;; make the file only readable by owner
-                            (.setReadable false false)
-                            (.setReadable true true)
-                            (.deleteOnExit))]
-       (log/tracef "Creating temp file for secret %s value at %s" (or id "") (.getAbsolutePath tmp-file))
-       (with-open [out (io/output-stream tmp-file)]
-         (let [^bytes v (cond
-                          (string? value)
-                          (.getBytes ^String value "UTF-8")
-
-                          (bytes? value)
-                          ^bytes value)]
-           (.write out v)))
-       tmp-file))))
-
-(def
-  ^java.io.File
-  ^{:arglists '([{:keys [connection-property-name id value] :as secret} & [driver? ext?]])}
-  value->file!
-  "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
-  its source, a `File` referring to that is returned. Otherwise, the `:value` is written to a temporary file, which is
-  then returned.
-
-  `driver?` is an optional argument that is only used if an ostensibly existing file value (i.e. `:file-path`) can't be
-  resolved, in order to render a more user-friendly error message (by looking up the display names of the connection
-  properties involved).
-
-  `ext?` is an optional argument that sets the file extension used for the temporary file, if one needs to be created."
-  (memoize/memo
-   (with-meta value->file!*
-              {::memoize/args-fn (fn [[secret _driver? ext?]]
-                          ;; not clear if value->string could return nil due to the cond so we'll just cache on a key
-                          ;; that is unique
-                                   [(vec (:value secret)) ext?])})))
-
-(defn ->sub-props
-  "Return a map of secret subproperties for the property `connection-property-name`."
-  [connection-property-name]
-  (let [sub-prop-types [:path :value :options :id]
-        sub-prop #(keyword (str connection-property-name "-" (name %)))]
-    (zipmap sub-prop-types (map sub-prop sub-prop-types))))
-
-(def uploaded-base-64-prefix-pattern
-  "Regex for parsing base64 encoded file uploads."
-  #"^data:application/([^;]*);base64,")
+(methodical/defmethod mi/to-json :model/Secret
+  "Never include the secret value in JSON."
+  [secret json-generator]
+  (next-method
+   (dissoc secret :value)
+   json-generator))
 
 (defn latest-for-id
   "Returns the latest Secret instance for the given `id` (meaning the one with the highest `version`)."
@@ -144,95 +48,10 @@
   [id]
   (t2/select-one :model/Secret :id id {:order-by [[:version :desc]]}))
 
-(defn db-details-prop->secret-map
-  "Returns a map containing `:value` and `:source` for the given `conn-prop-nm`. `conn-prop-nm` is expected to be the
-  name of a connection property having `:type` `:secret`, and the relevant sub-properties (ex: -value, -path, etc.) will
-  be resolved in order to calculate the returned map.
-
-  This returned map represents a partial Secret model instance (having some of the required properties set), but also
-  represents a discrete property that can be used in connection testing (even without the Secret needing to be
-  persisted). In addition to possibly having `:value` and `:source` populated (if the secret value can be resolved), its
-  keys will always include:
-
-  `:connection-property-name` - the `conn-prop-nm` that was initially passed in, for use later in error handling.
-  `:subprops` - a sequence of subproperties (keywords) that represent all secret related subproperties that might
-                exist and be manipulated by the secret handling code (which are used to ensure all these internal and
-                intermediate subproperties are removed from the connection-properties before building the JDBC spec)."
-  {:added "0.42.0"}
-  [details conn-prop-nm]
-  (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id}
-        (->sub-props conn-prop-nm)
-        value  (cond
-                 ;; ssl-root-certs will need their prefix removed, and to be base 64 decoded (#20319)
-                 (and (value-kw details) (#{"ssl-client-cert" "ssl-root-cert"} conn-prop-nm)
-                      (re-find uploaded-base-64-prefix-pattern (value-kw details)))
-                 (-> (value-kw details) (str/replace-first uploaded-base-64-prefix-pattern "") u/decode-base64)
-
-                 (and (value-kw details) (#{"ssl-key"} conn-prop-nm)
-                      (re-find uploaded-base-64-prefix-pattern (value-kw details)))
-                 (.decode (java.util.Base64/getDecoder)
-                          (str/replace-first (value-kw details) uploaded-base-64-prefix-pattern ""))
-
-                 ;; the -value suffix was specified; use that
-                 (value-kw details)
-                 (value-kw details)
-
-                 ;; the -path suffix was specified; this is actually a :file-path
-                 (path-kw details)
-                 (u/prog1 (path-kw details)
-                   (when (premium-features/is-hosted?)
-                     (throw (ex-info
-                             (tru "{0} (a local file path) cannot be used in Metabase hosted environment" path-kw)
-                             {:invalid-db-details-entry (select-keys details [path-kw])}))))
-
-                 (id-kw details)
-                 (:value (latest-for-id (id-kw details))))
-        source (cond
-                 ;; set the :source due to the -path suffix (see above))
-                 (and (not= "uploaded" (options-kw details)) (path-kw details))
-                 :file-path
-
-                 (id-kw details)
-                 (:source (latest-for-id (id-kw details))))]
-    (cond-> {:connection-property-name conn-prop-nm, :subprops [path-kw value-kw id-kw]}
-      value
-      (assoc :value value
-             :source source))))
-
-(defn get-secret-string
-  "Get the value of a secret property from the database details as a string."
-  [details secret-property]
-  (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id} (->sub-props secret-property)
-        id (id-kw details)
-        ;; When a secret is updated, we get both a new value as well as the ID of old secret.
-        value (or (when-let [value (value-kw details)]
-                    (if (string? value)
-                      value
-                      (String. ^bytes value "UTF-8")))
-                  (when id
-                    (String. ^bytes (:value (latest-for-id id)) "UTF-8")))]
-    (case (options-kw details)
-      "uploaded" (try
-                   ;; When a secret is updated, the value has already been decoded
-                   ;; instead of checking if the string is base64 encoded, we just
-                   ;; try to decoded it and leave it as is if the attempt fails.
-                   (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
-                   (catch IllegalArgumentException _
-                     value))
-      "local" (slurp (if id value (path-kw details)))
-      value)))
-
-(def
-  ^{:doc "The attributes of a secret which, if changed, will result in a version bump" :private true}
-  bump-version-keys
-  [:kind :source :value])
-
 (defn upsert-secret-value!
   "Inserts a new secret value, or updates an existing one, for the given parameters.
    * if there is no existing Secret instance, inserts with the given field values
-   * if there is an existing latest Secret instance, and the value (or any of the supporting fields, like kind or
-       source) has changed, then inserts a new version with the given parameters.
-   * if there is an existing latest Secret instance, but none of the aforementioned fields changed, then update it"
+   * if there is an existing latest Secret instance, then inserts a new version with the given parameters."
   {:added "0.42.0"}
   [existing-id nm kind src value]
   (let [insert-new     (fn [id v]
@@ -250,13 +69,40 @@
                            (t2/select-one :model/Secret :id (or id (u/the-id inserted)) :version v)))
         latest-version (when existing-id (latest-for-id existing-id))]
     (if latest-version
-      (if (= (select-keys latest-version bump-version-keys) [kind src value])
-        (pos? (t2/update! :model/Secret {:id existing-id :version (:version latest-version)}
-                          {:name nm}))
-        (insert-new (u/the-id latest-version) (inc (:version latest-version))))
+      (insert-new (u/the-id latest-version) (inc (:version latest-version)))
       (insert-new nil 1))))
 
-(defn reduce-over-details-secret-values
+;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
+
+(defn- ->possible-secret-property-names
+  "Return a map of secret subproperties for the property `connection-property-name`."
+  [connection-property-name]
+  ;; created-at :creator-id :source :kind are legacy keys
+  (let [sub-prop-types [:path :value :options :created-at :creator-id :source :kind]
+        sub-prop #(keyword (str connection-property-name "-" (name %)))]
+    (zipmap sub-prop-types (map sub-prop sub-prop-types))))
+
+(defn- ->id-kw [conn-prop-nm]
+  (keyword (str conn-prop-nm "-id")))
+
+(def uploaded-base-64-prefix-pattern
+  "Regex for parsing base64 encoded file uploads."
+  #"^data:application/([^;]*);base64,")
+
+(def ^:const protected-password
+  "The string to replace passwords with when serializing Databases."
+  "**MetabasePass**")
+
+(defn secret-conn-props-by-name
+  "For the driver return a map of all `:type` `:secret` properties, keyed by property name."
+  [driver]
+  (let [conn-props-fn (get-method driver/connection-properties driver)]
+    (when (fn? conn-props-fn)
+      (->> (filter #(= :secret (keyword (:type %))) (conn-props-fn driver))
+           (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})
+           not-empty))))
+
+(defn- reduce-over-details-secret-values
   "Reduces over the given `db-details` (a Database details map), for any secret type connection properties under the
   given `driver`, using the given `reduce-fn`, and returns the accumulated result.
 
@@ -269,70 +115,270 @@
   values."
   {:added "0.42.0"}
   [driver db-details reduce-fn]
-  (let [conn-props-fn (get-method driver/connection-properties driver)]
-    (if (and (map? db-details) (fn? conn-props-fn))
-      (let [conn-props            (conn-props-fn driver)
-            conn-secrets-by-name  (conn-props->secret-props-by-name conn-props)]
-        (reduce-kv reduce-fn db-details conn-secrets-by-name))
+  (if (map? db-details)
+    (reduce-kv reduce-fn db-details (secret-conn-props-by-name driver))
+    db-details))
+
+(defn- secret-map-from-details
+  "Returns a canonical secret-map containing `:source` and `:value` based solely on `:details`
+   When `:details` comes from the client, it may contain updated values for a secret.
+   If these properties are not present, return nil.
+
+   This is the case:
+   - before database insert and update
+   - during connection testing.
+
+   The `-value` property may be base64 encoded and should be decoded.
+   `:value` is type `bytes` or nil
+
+   The `-options` property may, or may not be present. If not `-value` should be used."
+  [details conn-prop]
+  (let [kws (->possible-secret-property-names (:name conn-prop))
+        value (when-let [^String value (get details (:value kws))]
+                (let [data-uri? (re-find uploaded-base-64-prefix-pattern value)
+                      secret-props (m/index-by (comp keyword :name) (driver.u/expand-secret-conn-prop conn-prop))
+                      treatment (get-in secret-props [(:value kws) :treat-before-posting] "base64")]
+                  (if (and data-uri? (= treatment "base64"))
+                    (-> value
+                        (str/replace-first uploaded-base-64-prefix-pattern "")
+                        u/decode-base64-to-bytes)
+                    (u/string-to-bytes value))))
+        has-path? (contains? details (:path kws))
+        has-value? (contains? details (:value kws))
+        options (get details (:options kws))
+        path (get details (:path kws))
+        path-map (when has-path?
+                   {:source :file-path :value path})
+        value-map (when has-value?
+                    {:source :uploaded :value value})
+        secret-map (case (keyword options)
+                     :local
+                     path-map
+
+                     :uploaded
+                     value-map
+
+                     ;; fallback
+                     (cond
+                       has-value? value-map
+                       has-path? path-map))]
+    (when (and path (premium-features/is-hosted?))
+      (throw (ex-info
+              (tru "{0} (a local file path) cannot be used in Metabase hosted environment" (:path kws))
+              {:invalid-db-details-entry (select-keys details [(:path kws)])})))
+
+    ;; If the client sent us back protected-password then it should be ignored and value loaded from Secret.
+    (when (and secret-map (not= (:value secret-map) protected-password))
+      (update secret-map :value #(some-> % codecs/to-bytes)))))
+
+(defn- resolve-secret-map
+  "Returns a canonical map containing `:value` and `:source` for the given `secret-property`.
+   May also include `:id` if the value is coming from a persisted Secret.
+
+   If `:details` contains expanded secrets from the client (i.e. during connection testing) it will be preferred.
+   If a `-id` property exists, that will be used to lookup the Secret.
+   Otherwise return nil."
+  [driver details secret-property]
+  (let [conn-prop (get (secret-conn-props-by-name driver) secret-property)
+        detail-map (secret-map-from-details details conn-prop)
+        secret-id (get details (->id-kw secret-property))
+        result (cond
+                 detail-map detail-map
+                 secret-id (latest-for-id secret-id))
+        result-source (:source result)]
+    (when (:value result)
+      (cond-> result
+        ;; Normalizes legacy
+        (not result-source) (assoc :source :uploaded)))))
+
+(defn- unresolved-value-string
+  "Reads the secret-value, which is probably bytes into a string.
+
+   Private because getting the file-path is an implementation detail of Secret."
+  [secret-value]
+  (cond (string? secret-value)
+        secret-value
+        (bytes? secret-value)
+        (u/bytes-to-string secret-value)))
+
+;;; ---------------------------------------------- Fetching secrets ----------------------------------------------
+
+(defn value-as-string
+  "Retrieves a secret as a string.
+   If the secret source is `:file-path` then read the file and return the contents.
+   Otherwise return the secret value."
+  [driver details secret-property]
+  (when-let [{source :source secret-value :value} (resolve-secret-map driver details secret-property)]
+    (let [s (unresolved-value-string secret-value)]
+      (if (= :file-path source)
+        (slurp s)
+        s))))
+
+(defn- value-as-file*
+  [driver details secret-property & [ext]]
+  (when-let [{source :source secret-value :value secret-id :id} (resolve-secret-map driver details secret-property)]
+    (if (= :file-path source)
+      (let [secret-value (unresolved-value-string secret-value)
+            ^File existing-file (File. ^String secret-value)]
+        (if (.exists existing-file)
+          existing-file
+          (let [file-path (if secret-id protected-password secret-value)
+                error-source (let [secret-props (secret-conn-props-by-name driver)]
+                               (tru "File path for {0}" (-> (get secret-props secret-property)
+                                                            :display-name)))]
+            (throw (ex-info (tru "{0} points to non-existent file: {1}" error-source file-path)
+                            {:file-path file-path
+                             :secret secret-id})))))
+      (let [^File tmp-file (doto (File/createTempFile "metabase-secret_" ext)
+                             ;; make the file only readable by owner
+                             (.setReadable false false)
+                             (.setReadable true true)
+                             (.deleteOnExit))]
+        (log/tracef "Creating temp file for secret %s value at %s" (or secret-id "") (.getAbsolutePath tmp-file))
+        (with-open [out (io/output-stream tmp-file)]
+          (let [^bytes v (codecs/to-bytes secret-value)]
+            (.write out v)))
+        tmp-file))))
+
+(def
+  ^java.io.File
+  ^{:arglists '([driver details secret-property & [ext]])}
+  value-as-file!
+  "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
+  its source, a `File` referring to that is returned. Otherwise, the `:value` is written to a temporary file, which is
+  then returned.
+
+  `ext?` is an optional argument that sets the file extension used for the temporary file, if one needs to be created."
+  (memoize/memo value-as-file*))
+
+;;; ---------------------------------------------- Database Details ----------------------------------------------
+
+(defn delete-orphaned-secrets!
+  "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
+  simply delete any Secret whose ID appears in the details blob, since every Secret instance that is currently created
+  is exclusively associated with a single Database.
+
+  In the future, if/when we allow arbitrary association of secret instances to database instances, this will need to
+  change and become more complicated (likely by consulting a many-to-many join table)."
+  [{:keys [id details] :as database}]
+  (when-let [possible-secret-prop-names (seq (keys (secret-conn-props-by-name (driver.u/database->driver database))))]
+    (doseq [secret-id (reduce (fn [acc prop-name]
+                                (if-let [secret-id (get details (->id-kw prop-name))]
+                                  (conj acc secret-id)
+                                  acc))
+                              []
+                              possible-secret-prop-names)]
+      (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
+      (t2/delete! :model/Secret :id secret-id))))
+
+(defn- hydrate-redacted-secret
+  [db-details conn-prop-nm _conn-prop]
+  (let [kws (->possible-secret-property-names conn-prop-nm)
+        secret-id (get db-details (->id-kw conn-prop-nm))]
+    ;; If db-details contains secret properties, we must be in a PUT and we want to return to client as is.
+    ;; This is true because otherwise [[handle-incoming-client-secrets!]] and
+    ;; [[clean-secret-properties-from-database]] would have removed them.
+    (cond
+      (not-empty (select-keys db-details (vals kws)))
+      db-details
+
+      ;; Otherwise we want to return options and path from the Secret but redacted value
+      secret-id
+      (let [{:keys [source] :as secret} (latest-for-id secret-id)]
+        (cond-> db-details
+          (= source :file-path)
+          (->
+           (assoc (:path kws) (unresolved-value-string (:value secret))
+                  (:options kws) "local"))
+
+          (not= source :file-path)
+          (->
+           (assoc (:value kws) protected-password
+                  (:options kws) "uploaded"))))
+
+      :else
       db-details)))
 
-(defn expand-inferred-secret-values
-  "Expand certain secret sub-properties in the `db-details`, depending on the secret type, for admin purposes.  This is
-  invoked as part of a KV reduction over secret type connection-properties, so `conn-prop-nm` (a String), and
-  `conn-prop` (a map containing the connection property definition) are also passed as parameters.
+(defn to-json-hydrate-redacted-secrets
+  "To satisfy clients we need to return the keys they send us in details.
+   This is a transformation on `:model/Database` `to-json`
 
-  `secret-or-id?` is an optional param that, if passed, will be used to look up the derived secret values (to avoid a
-  redundant app DB query if the caller already has this; if a nil param value is passed, then the secret ID will be
-  looked up from the `:db-details` map at `conn-prop-nm`).
-
-  The keys/value pairs that may be added into `db-details`:
-
-   - <prop>-value - the secret value itself, in the case that the secret is a file-path type (as opposed to a value we
-                    store directly); the purpose of expanding this is to repopulate the file paths in the UI at the
-                    cost of \"exposing\" the file path (which itself shouldn't be too risky, especially since it will
-                    only be shown to admins); only populated for file type secret values
-   - <prop>-creator-id - the ID of the user who \"created\" the secret value for <prop> (i.e. the last person who
-                         updated it), for audit purposes; only populated for non-file type secret values
-   - <prop>-created-at - the timestamp of the last time the secret value for <prop> was changed or updated; only
-                         populated for non-file type secret values"
-  {:added "0.42.0"}
-  [db-details conn-prop-nm _conn-prop & [secret-or-id]]
-  (let [subprop (fn [prop-nm]
-                  (keyword (str conn-prop-nm prop-nm)))
-        secret* (cond (int? secret-or-id)
-                      (latest-for-id secret-or-id)
-
-                      (mi/instance-of? :model/Secret secret-or-id)
-                      secret-or-id
-
-                      :else ; default; app DB look up from the ID in db-details
-                      (latest-for-id (get db-details (subprop "-id"))))
-        src     (:source secret*)]
-    ;; always populate the -source, -creator-id, and -created-at sub properties
-    (cond-> (assoc db-details (subprop "-source") src
-                   (subprop "-creator-id") (:creator_id secret*))
-
-      (some? (:created_at secret*))
-      (assoc (subprop "-created-at") (t/format :iso-offset-date-time (:created_at secret*)))
-
-      (= :file-path src) ; for file path sources only, populate the value
-      (assoc (subprop "-value") (value->string secret*)))))
-
-(defn expand-db-details-inferred-secret-values
-  "Expand certain inferred secret sub-properties in the `database` `:details`, for the purpose of serving requests by
-  users with write permissions for the DB (ex: to edit an existing database or view its current details). This is to
-  populate certain values that shouldn't be stored in the details blob itself, but which can be derived from the
-  details->secret association itself. Refer to the docstring for [[expand-inferred-secret-values]] for full details."
-  {:added "0.42.0"}
+   Fetches the stored secret and fills in `-path` `-options` `-value` for each secret property"
   [database]
-  (update database :details (fn [details]
-                              (reduce-over-details-secret-values (driver.u/database->driver database)
-                                                                 details
-                                                                 expand-inferred-secret-values))))
+  (let [driver (driver.u/database->driver database)]
+    (m/update-existing
+     database
+     :details
+     (fn [details]
+       (reduce-over-details-secret-values
+        driver
+        details
+        hydrate-redacted-secret)))))
 
-(methodical/defmethod mi/to-json :model/Secret
-  "Never include the secret value in JSON."
-  [secret json-generator]
-  (next-method
-   (dissoc secret :value)
-   json-generator))
+(defn clean-secret-properties-from-details
+  "Ensures that all possible secret property values are removed from `:details`.
+
+   This can be used to cleanup `details` in connection properties which should always use
+   secret getters above."
+  [details driver]
+  (reduce-over-details-secret-values
+   driver
+   details
+   (fn [db-details conn-prop-nm _conn-prop]
+     (apply dissoc db-details (vals (->possible-secret-property-names conn-prop-nm))))))
+
+(defn clean-secret-properties-from-database
+  "Ensures that all possible secret property values are removed from `:details`.
+   This is a transformation on `:model/Database` `results-transform`."
+  [database]
+  (m/update-existing
+   database
+   :details
+   #(clean-secret-properties-from-details
+     %
+     (driver.u/database->driver database))))
+
+(defn handle-incoming-client-secrets!
+  "Converts incoming secret values in `:details` into Secrets.
+   This is a transformation on `:model/Database` `before-insert` and `before-update`.
+
+   Only the Secret id should be stored in `:details`. All other secret props should be cleared.
+
+   A secret prop like `{:type :secret, :secret-kind :pem-cert :name :private-key}` can get expanded by
+   [[driver.u/connection-props-server->client]] into these connection properties:
+
+   ```
+   [:private-key-value ;; IMPORTANT if `is-hosted?` this is the only prop that will be present.
+    :private-key-options
+    :private-key-path]
+   ```
+
+   In this case, we want to look for a `:private-key-id` in the `original-details` which would indicate
+   that we have stored a Secret before. We upsert the secret-value (which could be `-path` or `-value`).
+   We clear out all the possible secret-keys `-value`, `-options`, `-path` and store the `-id`."
+  [{:keys [details] :as database}]
+  (let [{original-details :details} (t2/original database)
+        updated-details (reduce-over-details-secret-values
+                         (driver.u/database->driver database)
+                         details
+                         (fn [db-details conn-prop-nm conn-prop]
+                           (let [kws (->possible-secret-property-names conn-prop-nm)
+                                 id-kw (keyword (str conn-prop-nm "-id"))
+                                 secret-id (get original-details id-kw)
+                                 secret (secret-map-from-details db-details conn-prop)
+                                 cleared-details (apply dissoc db-details (vals kws))]
+                             (if secret
+                               (if (:value secret)
+                                 (let [{:keys [id]} (upsert-secret-value!
+                                                     secret-id
+                                                     (format "%s for %s" (:display-name conn-prop) (:name database))
+                                                     (:secret-kind conn-prop)
+                                                     (:source secret)
+                                                     (:value secret))]
+                                   (assoc cleared-details id-kw id))
+                                 (do
+                                   (t2/delete! :model/Secret :id secret-id)
+                                   (dissoc cleared-details id-kw)))
+                                ;; Don't throw out a secret even if the client didn't sent it back
+                               (m/assoc-some cleared-details id-kw secret-id)))))]
+    (assoc database :details updated-details)))

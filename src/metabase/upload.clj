@@ -26,9 +26,7 @@
    [metabase.models.table :as table]
    [metabase.permissions.util :as perms-util]
    [metabase.public-settings :as public-settings]
-   [metabase.sync :as sync]
-   [metabase.sync.sync-metadata.fields :as sync-fields]
-   [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.sync.core :as sync]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
@@ -407,7 +405,7 @@
 
 (defn- scan-and-sync-table!
   [database table]
-  (sync-fields/sync-fields-for-table! database table)
+  (sync/sync-fields-for-table! database table)
   (case *auxiliary-sync-steps*
     :asynchronous (future (sync/sync-table! table))
     :synchronous (sync/sync-table! table)
@@ -523,9 +521,9 @@
         schema+table-name (table-identifier {:schema schema :name table-name})
         {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file)
         ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-        table             (sync-tables/create-table! db {:name         table-name
-                                                         :schema       (not-empty schema)
-                                                         :display_name display-name})
+        table             (sync/create-table! db {:name         table-name
+                                                  :schema       (not-empty schema)
+                                                  :display_name display-name})
         _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
         _sync             (scan-and-sync-table! db table)
         _set_names        (set-display-names! (:id table) columns)

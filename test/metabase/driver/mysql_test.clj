@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.driver.mysql-test
+(ns metabase.driver.mysql-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -18,11 +18,10 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.action :as action]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test.string-extracts-test
-    :as string-extracts-test]
+   [metabase.query-processor-test.string-extracts-test :as string-extracts-test]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.sync :as sync]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]

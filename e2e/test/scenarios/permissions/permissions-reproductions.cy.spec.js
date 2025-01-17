@@ -282,13 +282,18 @@ describe("UI elements that make no sense for users without data permissions (met
 
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    H.openVizTypeSidebar();
+    cy.findByTestId("viz-settings-button");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Visualization").click();
 
     cy.findByTestId("display-options-sensible");
     cy.icon("line").click();
+    cy.findByTestId("Line-button").realHover();
+    cy.findByTestId("Line-container").within(() => {
+      cy.icon("gear").click();
+    });
 
-    H.openVizSettingsSidebar({ isSidebarOpen: true });
-
+    cy.findByTextEnsureVisible("Line options");
     cy.findByTestId("qb-save-button")
       .as("saveButton")
       .should("have.attr", "data-disabled");
