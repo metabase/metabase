@@ -303,6 +303,7 @@
   "Sets a cell to the provided value, with an appropriate style if necessary.
 
   This is based on the equivalent multimethod in Docjure, but adapted to support Metabase viz settings."
+  {:arglists '([cell value styles typed-styles])}
   (fn [^Cell _cell value _styles _typed-styles]
     (type value)))
 
