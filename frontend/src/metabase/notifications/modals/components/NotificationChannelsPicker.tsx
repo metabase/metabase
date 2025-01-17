@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useListChannelsQuery } from "metabase/api";
+import { useListChannelsQuery, useListUsersQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { EmailChannelEdit } from "metabase/notifications/channels/EmailChannelEdit";
@@ -30,7 +30,6 @@ const DEFAULT_CHANNELS_CONFIG = {
 interface NotificationChannelsPickerProps {
   notificationHandlers: NotificationHandler[];
   channels: ChannelApiResponse["channels"] | undefined;
-  users: User[];
   onChange: (newHandlers: NotificationHandler[]) => void;
   emailRecipientText: string;
   getInvalidRecipientText: (domains: string) => string;
@@ -39,12 +38,14 @@ interface NotificationChannelsPickerProps {
 export const NotificationChannelsPicker = ({
   notificationHandlers,
   channels: nullableChannels,
-  users,
   onChange,
   getInvalidRecipientText,
 }: NotificationChannelsPickerProps) => {
   const { data: notificationChannels = [] } = useListChannelsQuery();
+  const { data: users } = useListUsersQuery({});
   const user = useSelector(getUser);
+
+  const usersListOptions: User[] = users?.data || (user ? [user] : []);
 
   const addChannel = (channel: ChannelToAddOption) => {
     let newChannel: NotificationHandler;
@@ -152,7 +153,7 @@ export const NotificationChannelsPicker = ({
       {channels.email.configured && !!emailChannel && (
         <EmailChannelEdit
           channel={emailChannel}
-          users={users}
+          users={usersListOptions}
           invalidRecipientText={getInvalidRecipientText}
           onChange={newConfig => onChannelChange(emailChannel, newConfig)}
           onRemoveChannel={() => onRemoveChannel(emailChannel)}

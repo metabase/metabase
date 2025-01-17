@@ -10,7 +10,6 @@ import {
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
   useListChannelsQuery,
-  useListUsersQuery,
   useUpdateNotificationMutation,
 } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
@@ -111,7 +110,6 @@ export const CreateOrEditQuestionAlertModal = ({
   const subscription = notification?.subscriptions[0];
 
   const { data: channelSpec } = useGetChannelInfoQuery();
-  const { data: users } = useListUsersQuery({});
   const { data: hookChannels } = useListChannelsQuery();
 
   const [createNotification] = useCreateNotificationMutation();
@@ -279,7 +277,6 @@ export const CreateOrEditQuestionAlertModal = ({
               <NotificationChannelsPicker
                 notificationHandlers={notification.handlers}
                 channels={channelSpec ? channelSpec.channels : undefined}
-                users={users?.data || []}
                 onChange={(newHandlers: NotificationHandler[]) => {
                   setNotification({
                     ...notification,
