@@ -6,12 +6,15 @@ import {
   type TagsInputProps,
   __BaseInputProps,
   __InputStylesNames,
+  getOptionsLockup,
   getParsedComboboxData,
   useCombobox,
 } from "@mantine/core";
 import { useId, useMergedRef, useUncontrolled } from "@mantine/hooks";
 import type React from "react";
 import { forwardRef, useEffect, useRef } from "react";
+
+import { Icon } from "metabase/ui";
 
 import { filterPickedTags } from "./filter-picked-tags";
 import { getSplittedTags } from "./get-splitted-tags";
@@ -101,6 +104,7 @@ export const MetabaseTagsInput = forwardRef(function _MetabaseTagsInput(
 
   const _id = useId(id);
   const parsedData = getParsedComboboxData(data);
+  const optionsLockup = getOptionsLockup(parsedData);
   const inputRef = useRef<HTMLInputElement>(null);
   const _ref = useMergedRef(inputRef, ref);
 
@@ -218,22 +222,24 @@ export const MetabaseTagsInput = forwardRef(function _MetabaseTagsInput(
     }
   };
 
-  const values = _value.map((item, index) => (
-    <Pill
-      key={`${item}-${index}`}
-      withRemoveButton={!readOnly}
-      onRemove={() => {
-        const next_value = _value.slice();
-        next_value.splice(index, 1);
-        setValue(next_value);
-        onRemove?.(item);
-      }}
-      unstyled={unstyled}
-      disabled={disabled}
-    >
-      {item}
-    </Pill>
-  ));
+  const values = _value.map((item, index) => {
+    return (
+      <Pill
+        key={`${item}-${index}`}
+        withRemoveButton={!readOnly && !optionsLockup[item]?.disabled}
+        onRemove={() => {
+          const next_value = _value.slice();
+          next_value.splice(index, 1);
+          setValue(next_value);
+          onRemove?.(item);
+        }}
+        unstyled={unstyled}
+        disabled={disabled}
+      >
+        {optionsLockup[item]?.label || item}
+      </Pill>
+    );
+  });
 
   useEffect(() => {
     if (selectFirstOptionOnChange) {
@@ -288,7 +294,10 @@ export const MetabaseTagsInput = forwardRef(function _MetabaseTagsInput(
             variant={variant}
             disabled={disabled}
             radius={radius}
-            rightSection={rightSection || clearButton}
+            rightSection={
+              rightSection ||
+              clearButton || <Icon name="chevrondown" data-combobox-chevron /> // This should really be <Combobox.Chevron />
+            }
             rightSectionWidth={rightSectionWidth}
             rightSectionPointerEvents={rightSectionPointerEvents}
             rightSectionProps={rightSectionProps}

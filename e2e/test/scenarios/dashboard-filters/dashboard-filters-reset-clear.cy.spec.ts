@@ -241,8 +241,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       updateValue: (label, value) => {
         filter(label).click();
         H.dashboardParametersPopover().within(() => {
-          H.fieldValuesInput().click().clear().clear();
-          H.fieldValuesInput().type(`${value}`).blur();
+          H.fieldValuesInput().type(`{selectAll}{backspace}${value}`).blur();
           cy.button("Update filter").click();
         });
       },

@@ -649,6 +649,8 @@ describe("dashboard filters auto-wiring", () => {
       cy.clock();
       H.selectDashboardFilter(H.getDashboardCard(0), "Name");
 
+      cy.tick(1000);
+
       H.undoToast().should("be.visible");
 
       // AUTO_WIRE_TOAST_TIMEOUT
@@ -659,10 +661,12 @@ describe("dashboard filters auto-wiring", () => {
       removeFilterFromDashCard(0);
 
       H.selectDashboardFilter(H.getDashboardCard(0), "Name");
+      cy.tick(1000);
 
-      cy.clock();
+      // cy.clock();
       H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
 
+      cy.tick(1000);
       H.undoToast().should("be.visible");
 
       // AUTO_WIRE_UNDO_TOAST_TIMEOUT

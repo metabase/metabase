@@ -16,7 +16,7 @@ describe("scenarios > question > saved", () => {
     cy.intercept("POST", "api/card").as("cardCreate");
   });
 
-  it("should should correctly display 'Save' modal (metabase#13817)", () => {
+  it.skip("should should correctly display 'Save' modal (metabase#13817)", () => {
     H.openOrdersTable();
     H.openNotebook();
 

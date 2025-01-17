@@ -147,8 +147,11 @@ export function MultiAutocomplete({
       onFocus={handleFocus}
       onSearchChange={handleSearchChange}
       onPasteCapture={handlePaste}
-      onBlur={e => onBlur?.(e)}
-      rightSection={rightSection ?? (showInfoIcon ? infoIcon : null)}
+      onBlur={e => {
+        setIsFocused(false);
+        onBlur?.(e);
+      }}
+      rightSection={rightSection ?? (showInfoIcon ? infoIcon : undefined)}
       acceptValueOnBlur
       role="combobox"
       nothingFoundMessage={nothingFoundMessage}
