@@ -10,11 +10,11 @@ import {
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
   useListChannelsQuery,
+  useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import SchedulePicker from "metabase/containers/SchedulePicker";
-import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import {
   alertIsValid,
@@ -36,7 +36,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { addUndo } from "metabase/redux/undo";
 import { getUser } from "metabase/selectors/user";
-import { Flex, Modal, Select, Stack, Switch, rem } from "metabase/ui";
+import { Button, Flex, Modal, Select, Stack, Switch, rem } from "metabase/ui";
 import type {
   CreateAlertNotificationRequest,
   Notification,
@@ -114,6 +114,8 @@ export const CreateOrEditQuestionAlertModal = ({
 
   const [createNotification] = useCreateNotificationMutation();
   const [updateNotification] = useUpdateNotificationMutation();
+  const [sendUnsavedNotification, { isLoading }] =
+    useSendUnsavedNotificationMutation();
 
   const triggerOptions = useMemo(
     () =>
@@ -200,6 +202,22 @@ export const CreateOrEditQuestionAlertModal = ({
       }
 
       await dispatch(updateUrl(question, { dirty: false }));
+    }
+  };
+
+  const onSendNow = async () => {
+    if (notification) {
+      const result = await sendUnsavedNotification(notification);
+
+      if (result.error) {
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "error",
+            message: t`An error occurred`,
+          }),
+        );
+      }
     }
   };
 
@@ -309,19 +327,29 @@ export const CreateOrEditQuestionAlertModal = ({
           </Stack>
         </Modal.Body>
         <Flex
-          justify="flex-end"
+          justify="space-between"
           px="2.5rem"
           py="1.5rem"
           className={CS.borderTop}
         >
-          <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
-          <ButtonWithStatus
-            titleForState={{
-              default: isEditMode && hasChanges ? t`Save changes` : t`Done`,
-            }}
-            disabled={!isValid}
-            onClickOperation={onCreateOrEditAlert}
-          />
+          <Button
+            variant="outline"
+            color="brand"
+            loading={isLoading}
+            onClick={onSendNow}
+          >
+            {isLoading ? t`Sending…` : t`Send now`}
+          </Button>
+          <div>
+            <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
+            <ButtonWithStatus
+              titleForState={{
+                default: isEditMode && hasChanges ? t`Save changes` : t`Done`,
+              }}
+              disabled={!isValid}
+              onClickOperation={onCreateOrEditAlert}
+            />
+          </div>
         </Flex>
       </Modal.Content>
     </Modal.Root>

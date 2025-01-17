@@ -77,6 +77,16 @@ export const notificationApi = Api.injectEndpoints({
           ]),
       },
     ),
+    sendUnsavedNotification: builder.mutation<
+      void,
+      CreateNotificationRequest | UpdateNotificationRequest
+    >({
+      query: body => ({
+        method: "POST",
+        url: `/api/notification/send`,
+        body,
+      }),
+    }),
   }),
 });
 
@@ -90,4 +100,5 @@ export const {
   useCreateNotificationMutation,
   useUpdateNotificationMutation,
   useUnsubscribeFromNotificationMutation,
+  useSendUnsavedNotificationMutation,
 } = notificationApi;
