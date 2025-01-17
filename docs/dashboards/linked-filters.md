@@ -43,15 +43,10 @@ The filter(s) you select in the **linked filters** tab will be the parent filter
 
 ### Linked filters ignore relationships defined by models and questions
 
-A single dashboard filter can be wired to the same column on multiple dashboard cards, so dashboard filters — including linked filters — can only use table-level information about the column to populate possible filter values, and can't rely on any logic included in any specific dashboard card.
+Linked filters are only "aware" of relationships defined in the table metadata. This constraint lets people connect filters to the same column on multiple dashboard cards (across multiple tabs), but the constraint also means that:
 
-For linked filters specifically, this means that they can only use relationships specified on the table level in Table Metadata, and they will ignore any relationships specified only the model or question level.
-
-In particular, this means that:
-
-- Joining tables in a question or a model source, or even setting foreign key relationships in model metadata only, is **not sufficient** to enable linked filter values. You need to specify relationships in table metadata.
-
-- Linked dashboard filters will not use any filter or join logic from any underlying card or model.
+- Linked filters can't see relationships defined by joins in models or questions.
+- Linked filters can't use any filter or join logic from any underlying card or model
 
 For example, say you have a table with State and City columns, and you build a model that filters out rows with `City = San Francisco`. You ask a question based on that model, and add it to a dashboard. You add State and City filters to the dashboard, and link them. If you select were to select `State = CA`, the city filter may still show `San Francisco` as option, even though there are no records with `San Francisco` in the question and the underlying model, because the filter only "knows" about the underlying table metadata (which includes sample values for the column).
 
@@ -67,4 +62,4 @@ Metabase uses database column metadata to populate values for linked filters, wh
 
 ## Troubleshooting linked filters
 
-If you're not seeing what you expect with linked filters, make sure that your table relationships are [set up to support linked filters](). See [Troubleshooting linked filters](../troubleshooting-guide/linked-filters.md) for more troubleshooting information.
+If you're not seeing what you expect with linked filters, make sure that your table relationships are [set up to support linked filters](#set-up-tables-for linked-filters) . See [Troubleshooting linked filters](../troubleshooting-guide/linked-filters.md) for more troubleshooting information.
