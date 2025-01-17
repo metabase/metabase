@@ -2387,3 +2387,303 @@
                     (filter #(= (:model %) "card"))
                     first
                     :dashboard)))))))
+
+(deftest ^:parallel demo-issue-1
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-2
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-3
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-4
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-5
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-6
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-7
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-8
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-9
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-10
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-11
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-12
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-13
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-14
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-15
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-16
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-17
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-18
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-19
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-20
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-21
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-22
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-23
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-24
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
+
+(deftest ^:parallel demo-issue-25
+  (mt/with-temp [:model/Collection {coll-id-1 :id} {}
+                 :model/Collection {coll-id-2 :id} {}
+                 :model/Card {card-id-1 :id} {:collection_id coll-id-1}
+                 :model/Card {card-id-2 :id} {:collection_id coll-id-2}
+                 :model/Dashboard {dash-id-1 :id} {:collection_id coll-id-1}
+                 :model/Dashboard {dash-id-2 :id} {:collection_id coll-id-2}
+                 :model/DashboardCard _ {:dashboard_id dash-id-1 :card_id card-id-1}
+                 :model/DashboardCard _ {:dashboard_id dash-id-2 :card_id card-id-2}]
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-1) :in_dashboards)
+    (t2/hydrate (t2/select :model/Card :collection_id coll-id-2) :in_dashboards)))
