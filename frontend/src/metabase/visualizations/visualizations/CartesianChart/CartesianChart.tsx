@@ -165,7 +165,7 @@ function _CartesianChart(props: VisualizationProps) {
         isQueryBuilder={isQueryBuilder}
         onSelectSeries={onSelectSeries}
         onToggleSeriesVisibility={
-          canToggleSeriesVisibility && handleToggleSeriesVisibility
+          canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
         }
         canRemoveSeries={canRemoveSeries}
         onRemoveSeries={onRemoveSeries}
