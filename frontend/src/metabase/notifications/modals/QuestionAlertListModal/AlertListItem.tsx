@@ -1,30 +1,30 @@
 import cx from "classnames";
-import { useState } from "react";
-import { jt, t } from "ttag";
+import { type MouseEvent, useState } from "react";
+import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import { getNotificationEnabledChannelsMap } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
-import { Box, Button, Flex, Group, Icon, Text, Tooltip } from "metabase/ui";
+import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 import type { Notification } from "metabase-types/api";
 
 import { AlertCreatorTitle } from "./AlertCreatorTitle";
 import S from "./AlertListItem.module.css";
+import { AlertListItemActionButton } from "./AlertListItemActionButton";
 
 type AlertListItemProps = {
   alert: Notification;
-  onUnsubscribe: (alert: Notification) => void;
-  onDelete: () => void;
   canEdit: boolean;
-  onEdit: () => void;
+  onEdit: (alert: Notification) => void;
+  onUnsubscribe: (alert: Notification) => void;
+  onDelete: (alert: Notification) => void;
 };
 
 export const AlertListItem = ({
   alert,
-  onUnsubscribe,
   canEdit,
   onEdit,
+  onUnsubscribe,
   onDelete,
 }: AlertListItemProps) => {
   const user = useSelector(getUser);
@@ -33,20 +33,20 @@ export const AlertListItem = ({
 
   const enabledChannelsMap = getNotificationEnabledChannelsMap(alert);
 
-  const handleUnsubscribe = async () => {
-    try {
-      // TODO: implement
-      // await dispatch(unsubscribeFromAlert(alert));
-      onUnsubscribe(alert);
-    } catch (e) {
-      // TODO: error message
-    }
+  const handleEdit = () => {
+    onEdit(alert);
   };
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleUnsubscribe = (e: MouseEvent) => {
     e.stopPropagation();
 
-    onDelete();
+    onUnsubscribe(alert);
+  };
+
+  const handleDelete = (e: MouseEvent) => {
+    e.stopPropagation();
+
+    onDelete(alert);
   };
 
   const handleMouseEnter = () => {
@@ -69,7 +69,7 @@ export const AlertListItem = ({
       w="100%"
       py="0.5rem"
       px="0.75rem"
-      onClick={onEdit}
+      onClick={handleEdit}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -96,23 +96,18 @@ export const AlertListItem = ({
       {showHoverActions && (
         <div>
           {canEdit && (
-            <Tooltip label={t`Delete this alert`}>
-              <Button
-                color="brand"
-                aria-label={t`Delete this alert`}
-                leftIcon={<Icon name="trash" />}
-                mr="-0.6875rem"
-                size="xs"
-                variant="subtle"
-                onClick={handleDelete}
-              />
-            </Tooltip>
+            <AlertListItemActionButton
+              label={t`Delete this alert`}
+              iconName="trash"
+              onClick={handleDelete}
+            />
           )}
           {!canEdit && (
-            <a
-              className={cx(CS.link, CS.ml2)}
+            <AlertListItemActionButton
+              label={t`Unsubscribe from this`}
+              iconName="unsubscribe"
               onClick={handleUnsubscribe}
-            >{jt`Unsubscribe`}</a>
+            />
           )}
         </div>
       )}

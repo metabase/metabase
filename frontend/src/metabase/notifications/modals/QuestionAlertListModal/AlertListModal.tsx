@@ -2,7 +2,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useSelector } from "metabase/lib/redux";
-import { getUser } from "metabase/selectors/user";
+import {
+  canManageSubscriptions as canManageSubscriptionsSelector,
+  getUser,
+} from "metabase/selectors/user";
 import { Button, Modal, Stack, rem } from "metabase/ui";
 import type { Notification } from "metabase-types/api";
 
@@ -14,6 +17,7 @@ type AlertListModalProps = {
   onCreate: () => void;
   onEdit: (notification: Notification) => void;
   onDelete: (notification: Notification) => void;
+  onUnsubscribe: (notification: Notification) => void;
   onClose: () => void;
 };
 
@@ -23,9 +27,11 @@ export const AlertListModal = ({
   onCreate,
   onEdit,
   onDelete,
+  onUnsubscribe,
   onClose,
 }: AlertListModalProps) => {
   const user = useSelector(getUser);
+  const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
   const isAdmin = user?.is_superuser;
 
   // close list if there are no alerts (e.g. after delete)
@@ -41,15 +47,6 @@ export const AlertListModal = ({
 
   const isCreatedByCurrentUser = (alert: Notification) => {
     return user ? alert.creator.id === user.id : false;
-  };
-
-  const onUnsubscribe = () => {
-    const alertCount = questionAlerts.length;
-
-    // if we have just unsubscribed from the last alert, close the popover
-    if (alertCount <= 1) {
-      onClose();
-    }
   };
 
   const [ownAlerts, othersAlerts] = _.partition(
@@ -75,16 +72,19 @@ export const AlertListModal = ({
         </Modal.Header>
         <Modal.Body p="2.5rem">
           <Stack spacing="1rem" mb="2rem">
-            {sortedQuestionAlerts.map(alert => (
-              <AlertListItem
-                key={alert.id}
-                alert={alert}
-                canEdit={isAdmin || isCreatedByCurrentUser(alert)}
-                onEdit={() => onEdit(alert)}
-                onDelete={() => onDelete(alert)}
-                onUnsubscribe={onUnsubscribe}
-              />
-            ))}
+            {sortedQuestionAlerts.map(alert => {
+              const canEditAlert = isAdmin || canManageSubscriptions;
+              return (
+                <AlertListItem
+                  key={alert.id}
+                  alert={alert}
+                  canEdit={canEditAlert}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onUnsubscribe={onUnsubscribe}
+                />
+              );
+            })}
           </Stack>
           <div>
             <Button variant="filled" onClick={onCreate}>{t`New alert`}</Button>
