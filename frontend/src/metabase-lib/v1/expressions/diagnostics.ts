@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import * as Lib from "metabase-lib";
 import type { Expr, Node } from "metabase-lib/v1/expressions/pratt";
@@ -203,6 +203,18 @@ function prattCompiler({
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
+        const dimension = parseDimension(name, options);
+        const isNameKnown = Boolean(dimension);
+
+        if (isNameKnown) {
+          const error = c(
+            "{0} is an identifier of the field provided by user in a custom expression",
+          )
+            .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`;
+
+          throw new ResolverError(error, node);
+        }
+
         throw new ResolverError(t`Unknown Metric: ${name}`, node);
       }
 
