@@ -1134,10 +1134,12 @@
       (testing "A plain copy with nothing special"
         (mt/with-temp [:model/Dashboard dashboard {:name        "Test Dashboard"
                                                    :description "A description"
+                                                   :width       "full"
                                                    :creator_id  (mt/user->id :rasta)}]
           (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard)))]
             (is (=? {:name          "Test Dashboard"
                      :description   "A description"
+                     :width         "full"
                      :creator_id    (mt/user->id :rasta)
                      :collection    false
                      :collection_id false}
