@@ -17,4 +17,4 @@
                          (.getBytes "UTF-8")
                          codecs/bytes->b64-str)]
       {:output (str "Results can be seen at: " (public-settings/site-url) "/question#" query-hash)})
-    {:output "query not found"}))
+    {:output (str "No query found with query_id " query-id)}))

@@ -7,6 +7,13 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(defn handle-agent-error
+  "Return an agent output for agent errors, re-throw `e` otherwise."
+  [e]
+  (if (-> e ex-data :agent-error?)
+    {:output (ex-message e)}
+    (throw e)))
+
 (defn convert-field-type
   "Return tool type for `column`."
   [column]
