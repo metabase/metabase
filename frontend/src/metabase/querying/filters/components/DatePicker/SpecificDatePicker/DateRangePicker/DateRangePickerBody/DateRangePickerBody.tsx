@@ -22,19 +22,24 @@ interface DateRangePickerBodyProps {
 }
 
 export function DateRangePickerBody({
-  value: [startDate, endDate],
+  value,
   hasTime,
   onChange,
 }: DateRangePickerBodyProps) {
-  const [hasEndDate, setHasEndDate] = useState(true);
+  const [startDate, endDate] = value;
+  const [inProgressDateRange, setInProgressDateRange] =
+    useState<DatesRangeValue | null>(value);
 
-  const handleRangeChange = ([newStartDate, newEndDate]: DatesRangeValue) => {
-    setHasEndDate(newEndDate != null);
+  const handleRangeChange = (newDateRange: DatesRangeValue) => {
+    const [newStartDate, newEndDate] = newDateRange;
     if (newStartDate && newEndDate) {
       onChange([
         setDatePart(startDate, newStartDate),
         setDatePart(endDate, newEndDate),
       ]);
+      setInProgressDateRange(null);
+    } else {
+      setInProgressDateRange(newDateRange);
     }
   };
 
@@ -92,7 +97,7 @@ export function DateRangePickerBody({
       )}
       <DatePicker
         type="range"
-        value={[startDate, hasEndDate ? endDate : null]}
+        value={inProgressDateRange ?? value}
         defaultDate={startDate}
         numberOfColumns={2}
         allowSingleDateInRange

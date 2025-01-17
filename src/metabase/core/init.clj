@@ -11,7 +11,10 @@
    [metabase.driver.init]
    [metabase.events.init]
    [metabase.logger.init]
+   [metabase.models.init]
    [metabase.notification.init]
+   [metabase.query-analysis.init]
+   [metabase.search.init]
    [metabase.task.init]))
 
 ;; load EE init code on system launch if it exists.

@@ -12,7 +12,12 @@
           {
             "name": "moment-timezone",
             "message": "Moment is deprecated, please use dayjs"
-          }
+          },
+          {
+            "name": "react-redux",
+            "importNames": ["useSelector", "useDispatch", "connect"],
+            "message": "Please import from `metabase/lib/redux` instead."
+          },
         ]
       }
     ]

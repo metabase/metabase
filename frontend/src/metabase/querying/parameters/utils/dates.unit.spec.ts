@@ -1,13 +1,16 @@
 import type { DateFilterValue } from "metabase/querying/filters/types";
 
-import { deserializeDateFilter, serializeDateFilter } from "./dates";
+import {
+  deserializeDateParameterValue,
+  serializeDateParameterValue,
+} from "./dates";
 
 type TestCase = {
   text: string;
   value: DateFilterValue;
 };
 
-describe("serializeDateFilter", () => {
+describe("serializeDateParameterValue", () => {
   it.each<TestCase>([
     {
       text: "2020-01-02",
@@ -281,8 +284,8 @@ describe("serializeDateFilter", () => {
       },
     },
   ])("should serialize and deserialize $text", ({ text, value }) => {
-    expect(serializeDateFilter(value)).toEqual(text);
-    expect(deserializeDateFilter(text)).toEqual(value);
+    expect(serializeDateParameterValue(value)).toEqual(text);
+    expect(deserializeDateParameterValue(text)).toEqual(value);
   });
 
   it.each<string>([
@@ -307,6 +310,6 @@ describe("serializeDateFilter", () => {
     "2024-ab",
     "Q5-2020",
   ])("should ignore invalid input %s", text => {
-    expect(deserializeDateFilter(text)).toBeUndefined();
+    expect(deserializeDateParameterValue(text)).toBeUndefined();
   });
 });

@@ -14,7 +14,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.related :as related]
    [metabase.request.core :as request]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
@@ -26,6 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -605,7 +605,7 @@
   "Return related entities."
   [id]
   {id ms/PositiveInt}
-  (-> (t2/select-one :model/Table :id id) api/read-check related/related))
+  (-> (t2/select-one :model/Table :id id) api/read-check xrays/related))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id/fields/order"

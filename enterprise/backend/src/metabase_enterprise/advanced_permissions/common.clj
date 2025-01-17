@@ -154,21 +154,15 @@
   "Returns the default view-data permission level for a new database for a given group. This is `blocked` if the
   group has block permissions for any existing database, or if any connection impersonation policies or sandboxes
   exist. Otherwise, it is `unrestricted`."
-  ;; We use :feature :none here since sandboxing uses a different feature flag from block perms & connection
-  ;; impersonation, so we need to check the flags in the function body.
-  :feature :none
+  :feature :advanced-permissions
   [group-id]
   (if (or
-       (and
-        (premium-features/enable-advanced-permissions?)
-        (t2/exists? :model/DataPermissions
-                    :perm_type :perms/view-data
-                    :perm_value :blocked
-                    :group_id group-id))
-       (and
-        (premium-features/enable-advanced-permissions?)
-        (t2/exists? :model/ConnectionImpersonation
-                    :group_id group-id))
+       (t2/exists? :model/DataPermissions
+                   :perm_type :perms/view-data
+                   :perm_value :blocked
+                   :group_id group-id)
+       (t2/exists? :model/ConnectionImpersonation
+                   :group_id group-id)
        (and
         (premium-features/enable-sandboxes?)
         (t2/exists? :model/GroupTableAccessPolicy
@@ -178,14 +172,28 @@
 
 (defenterprise new-table-view-data-permission-level
   "Returns the view-data permission level to set for a new table in a given group and database. This is `blocked`
-  if the group has `blocked` for the DB or any table in the DB; otherwise it is `unrestricted`."
+  if the group has `blocked` for the database or any table in the DB, if any connection impersonation policies or
+  sandboxes exist for the database and group. otherwise it is `unrestricted`."
   :feature :advanced-permissions
   [db-id group-id]
-  (if (t2/exists? :model/DataPermissions
-                  :db_id db-id
-                  :perm_type :perms/view-data
-                  :perm_value :blocked
-                  :group_id group-id)
+  ;; We don't check for connection impersonations here, because impersonations are set at the DB-level, so a new table
+  ;; should get `:unrestricted` permissions and then inherit the DB-level impersonation policy.
+  (if (or
+       (t2/exists? :model/DataPermissions
+                   :db_id db-id
+                   :perm_type :perms/view-data
+                   :perm_value :blocked
+                   :group_id group-id)
+       (and
+        (premium-features/enable-sandboxes?)
+        (t2/exists?
+         :model/GroupTableAccessPolicy
+         {:select [:s.id]
+          :from [[(t2/table-name :model/GroupTableAccessPolicy) :s]]
+          :join [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
+          :where [:and
+                  [:= :s.group_id group-id]
+                  [:= :t.db_id db-id]]})))
     :blocked
     :unrestricted))
 
@@ -193,22 +201,18 @@
   "Returns the default view-data permission level for a new group for a given database. This is `blocked` if All Users
   has block permissions for the database, or if any connection impersonation policies or sandboxes exist. Otherwise, it
   is `unrestricted`."
-  :feature :none
+  :feature :advanced-permissions
   [db-id]
   (let [all-users-group-id (u/the-id (perms-group/all-users))]
     (if (or
-         (and
-          (premium-features/enable-advanced-permissions?)
-          (t2/exists? :model/DataPermissions
-                      :perm_type :perms/view-data
-                      :perm_value :blocked
-                      :db_id db-id
-                      :group_id all-users-group-id))
-         (and
-          (premium-features/enable-advanced-permissions?)
-          (t2/exists? :model/ConnectionImpersonation
-                      :group_id all-users-group-id
-                      :db_id db-id))
+         (t2/exists? :model/DataPermissions
+                     :perm_type :perms/view-data
+                     :perm_value :blocked
+                     :db_id db-id
+                     :group_id all-users-group-id)
+         (t2/exists? :model/ConnectionImpersonation
+                     :group_id all-users-group-id
+                     :db_id db-id)
          (and
           (premium-features/enable-sandboxes?)
           (t2/exists? :model/GroupTableAccessPolicy

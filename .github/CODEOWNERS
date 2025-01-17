@@ -6,8 +6,23 @@ enterprise/backend/src/metabase_enterprise/audit_app @noahmoss
 enterprise/backend/src/metabase_enterprise/sso @noahmoss
 enterprise/backend/src/metabase_enterprise/task/truncate_audit_table.clj @noahmoss
 enterprise/backend/src/metabase_enterprise/internal_user.clj @noahmoss
+enterprise/frontend/src/embedding-sdk @metabase/embedding
+frontend/src/metabase/embedding-sdk @metabase/embedding
 frontend/src/metabase/ui @metabase/core-frontend-admin-webapp
 src/metabase/**/*permissions* @noahmoss
 src/metabase/integrations @noahmoss
 snowplow/* @metabase/data
 e2e/* @filiphric
+
+#
+# Backend modules <=> teams that own them
+#
+
+src/metabase/actions/** @metabase/core-backend-admin-webapp
+test/metabase/actions/** @metabase/core-backend-admin-webapp
+
+src/metabase/query_analysis/** @metabase/core-backend-querying
+test/metabase/query_analysis/** @metabase/core-backend-querying
+
+src/metabase/setup/** @metabase/core-backend-admin-webapp
+test/metabase/setup/** @metabase/core-backend-admin-webapp

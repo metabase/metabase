@@ -15,6 +15,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
+   [metabase.models.resolution]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
@@ -41,6 +42,10 @@
    (toucan2.instance Instance)))
 
 (set! *warn-on-reflection* true)
+
+(comment
+  ;; load this so dynamic model resolution works as expected
+  metabase.models.resolution/keep-me)
 
 (p/import-vars
  [models.dispatch

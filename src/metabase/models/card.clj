@@ -38,7 +38,7 @@
    [metabase.moderation :as moderation]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
-   [metabase.query-analysis :as query-analysis]
+   [metabase.query-analysis.core :as query-analysis]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.util :as u]
