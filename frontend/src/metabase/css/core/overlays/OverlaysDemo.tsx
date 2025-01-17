@@ -126,16 +126,21 @@ const _Launchers = ({
           </HoverCard.Dropdown>
         </HoverCard>
         <MantineSelect
-          data={[
-            {
-              label: "Mantine Select option 1",
-              value: "1",
-            },
-            {
-              label: "Mantine Select option 2",
-              value: "2",
-            },
-          ]}
+          data={
+            [
+              {
+                label: "Mantine Select option 1",
+                value: "1",
+              },
+              {
+                label: "Mantine Select option 2",
+                value: "2",
+              },
+            ] as {
+              label: string;
+              value: string;
+            }[]
+          }
           defaultValue={"1"}
         />
         <TippyTooltip tooltip="Legacy tooltip content">

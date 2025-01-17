@@ -5,7 +5,6 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-
 import { DATE_PICKER_OPERATORS } from "metabase/querying/filters/constants";
 import type {
   DatePickerOperator,

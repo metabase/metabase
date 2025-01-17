@@ -1,6 +1,7 @@
 import { Modal } from "@mantine/core";
-import { t } from "ttag";
 import cx from "classnames";
+import { t } from "ttag";
+
 import Animation from "metabase/css/core/animation.module.css";
 import ZIndex from "metabase/css/core/z-index.module.css";
 

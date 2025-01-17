@@ -1,8 +1,9 @@
 import { type MantineThemeOverride, Tooltip } from "@mantine/core";
 import cx from "classnames";
 
-import TooltipStyles from "./Tooltip.module.css";
 import ZIndex from "metabase/css/core/z-index.module.css";
+
+import TooltipStyles from "./Tooltip.module.css";
 
 export const tooltipOverrides: MantineThemeOverride["components"] = {
   Tooltip: Tooltip.extend({

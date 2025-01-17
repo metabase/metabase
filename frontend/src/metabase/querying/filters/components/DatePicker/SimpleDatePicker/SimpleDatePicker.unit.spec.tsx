@@ -1,9 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  mockScrollIntoView,
   renderWithProviders,
   screen,
-  mockScrollIntoView,
 } from "__support__/ui";
 import {
   DATE_PICKER_OPERATORS,

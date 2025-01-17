@@ -1,5 +1,4 @@
 import { HoverCard, type MantineThemeOverride } from "@mantine/core";
-import ZIndex from "metabase/css/core/z-index.module.css";
 
 import HoverCardStyles from "./HoverCard.module.css";
 
