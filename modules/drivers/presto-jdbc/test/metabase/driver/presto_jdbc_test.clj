@@ -282,3 +282,7 @@
         (finally
           (.delete truststore)
           (.delete keystore))))))
+
+(deftest bytes-to-varbinary-test
+  (is (= ["TO_UTF8(?)" "a string"]
+         (sql/format (sql.qp/->honeysql :presto-jdbc (.getBytes "a string"))))))
