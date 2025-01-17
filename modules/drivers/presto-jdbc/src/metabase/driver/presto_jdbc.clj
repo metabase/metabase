@@ -23,6 +23,7 @@
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -135,7 +136,7 @@
 
 (defmethod sql.qp/->honeysql [:presto-jdbc (Class/forName "[B")]
   [_driver bs]
-  [:to_utf8 (String. bs)])
+  [:from_base64 (u/encode-base64-bytes bs)])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
   [_ [_ t]]
