@@ -113,9 +113,7 @@ export const ColumnItem = ({
       {onEnable && (
         <ChartSettingActionIcon
           icon="eye_crossed_out"
-          onClick={e => {
-            onEnable(e.currentTarget);
-          }}
+          onClick={e => onEnable(e.currentTarget)}
           data-testid={`${title}-show-button`}
         />
       )}
