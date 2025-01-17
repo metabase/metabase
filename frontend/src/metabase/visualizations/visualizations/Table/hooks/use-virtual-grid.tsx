@@ -9,13 +9,18 @@ import { ROW_HEIGHT } from "../constants";
 
 import type { CellMeasurer } from "./use-cell-measure";
 
+interface PivotedDatasetData extends DatasetData {
+  sourceRows: RowValues[];
+}
+
 interface UseVirtualGridProps {
   bodyRef: React.RefObject<HTMLDivElement>;
   table: ReactTable<RowValues>;
   columns: any[];
-  data: DatasetData;
+  data: DatasetData | PivotedDatasetData;
   columnFormatters: ((value: RowValue) => React.ReactNode)[];
   measureBodyCellDimensions: CellMeasurer;
+  isPivoted?: boolean;
 }
 
 export const useVirtualGrid = ({
@@ -25,9 +30,10 @@ export const useVirtualGrid = ({
   columns,
   columnFormatters,
   measureBodyCellDimensions,
+  isPivoted = false,
 }: UseVirtualGridProps) => {
   const wrappedColumns = useMemo(() => {
-    return columns.filter(col => col.isWrapped);
+    return columns.filter(col => col.wrap);
   }, [columns]);
 
   const { rows: tableRows } = table.getRowModel();
@@ -56,9 +62,13 @@ export const useVirtualGrid = ({
 
       const height = Math.max(
         ...wrappedColumns.map(column => {
-          const value = data.rows[parseInt(rowIndex, 10)][column.datasetIndex];
+          const value =
+            isPivoted && "sourceRows" in data
+              ? data.sourceRows[parseInt(rowIndex, 10)][column.datasetIndex]
+              : data.rows[parseInt(rowIndex, 10)][column.datasetIndex];
           const formattedValue = columnFormatters[column.datasetIndex](value);
-          return measureBodyCellDimensions(formattedValue, column.size).height;
+          const formattedString = formattedValue?.toString() ?? "";
+          return measureBodyCellDimensions(formattedString, column.size).height;
         }, ROW_HEIGHT),
       );
 
