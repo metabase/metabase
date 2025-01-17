@@ -72,9 +72,7 @@ export const useDashboardUrlParams = ({
   useEffect(() => {
     const { font } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
 
-    if (font) {
-      setFont(font);
-    }
+    setFont(font ?? null);
   }, [location.hash, setFont]);
 
   return {
