@@ -51,20 +51,17 @@
    :creator_common_name        nil
    :creator_id                 false
    :dashboardcard_count        nil
-   :database_id                false
    :database_name              nil
    :description                nil
    :display                    nil
    :id                         true
    :initial_sync_status        nil
-   :model_id                   false
    :model_name                 nil
    :moderated_status           nil
    :last_editor_common_name    nil
    :last_editor_id             false
    :last_edited_at             false
    :pk_ref                     nil
-   :model_index_id             false ;; columns ending in _id get booleaned
    :table_description          nil
    :table_id                   false
    :table_name                 nil
@@ -81,7 +78,7 @@
                   :id (mt/id :checkins))))
 
 (defn- clean-result [result]
-  (dissoc (u/remove-nils result) :database_id :model_id :model_index_id :table_id :last_editor_id :last_edited_at
+  (dissoc (u/remove-nils result) :database_id :table_id :last_editor_id :last_edited_at
           :creator_common_name :creator_id
           ;; false for new search segments... not sure why
           :created_at))
@@ -659,9 +656,6 @@
                               (:data (make-search-request :crowberto [:q search-term])))]
             (model-index/add-values! model-index)
 
-            ;; TODO This is necessary because we've disabled model-index realtime sync due to toucan issues
-            (search/reindex!)
-
             (is (= #{"Dallas-Fort Worth" "Fort Lauderdale" "Fort Myers"
                      "Fort Worth" "Fort Smith" "Fort Wayne"}
                    (into #{} (comp relevant (map :name)) (search! "fort"))))
@@ -669,11 +663,9 @@
             (let [normalize (fn [x] (-> x (update :pk_ref mbql.normalize/normalize) clean-result))]
               (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
                                  :name           "Rome"
-                                 ;; TODO make sure model_id and model_index_id come through
-                                 ;:model_id       (:id model)
+                                 :model_id       (:id model)
                                  :model_name     (:name model)
-                                 ;:model_index_id (mt/malli=? :int)
-                                 }}
+                                 :model_index_id (mt/malli=? :int)}}
                       (into {} (comp relevant (map (juxt :name normalize)))
                             (search! "rome")))))))))))
 
@@ -708,9 +700,6 @@
               normalize     (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
           (model-index/add-values! model-index-1)
           (model-index/add-values! model-index-2)
-
-          ;; TODO This is necessary because we've disabled model-index realtime sync due to toucan issues
-          (search/reindex!)
 
           (testing "Indexed entities returned if a non-admin user has full data perms and collection access"
             (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
