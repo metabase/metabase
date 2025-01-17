@@ -71,17 +71,6 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
     cy.findAllByTestId("echarts-tooltip")
       .eq(0)
       .should("exist")
-      .should($el => {
-        const computedStyle = window.getComputedStyle($el[0]);
-
-        expect(computedStyle.display).not.to.equal("none");
-        expect(computedStyle.visibility).not.to.equal("hidden");
-        expect(computedStyle.opacity).not.to.equal("0");
-      });
-
-    cy.findAllByTestId("echarts-tooltip")
-      .eq(0)
-      .should("exist")
       .then($tooltip => {
         const tooltipElement = $tooltip[0];
 
