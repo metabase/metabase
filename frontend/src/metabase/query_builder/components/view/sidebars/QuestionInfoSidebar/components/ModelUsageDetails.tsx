@@ -33,7 +33,12 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
   }
 
   if (cards.length === 0) {
-    return <Text>{t`This model is not used by any questions yet.`}</Text>;
+    return (
+      <Text
+        lh={1}
+        color="text-medium"
+      >{t`This model is not used by any questions yet.`}</Text>
+    );
   }
 
   return (
