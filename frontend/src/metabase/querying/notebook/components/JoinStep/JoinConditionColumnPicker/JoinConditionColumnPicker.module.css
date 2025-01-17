@@ -1,0 +1,58 @@
+.JoinColumnPicker {
+  color: var(--mb-color-brand);
+}
+
+.JoinCellItem {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  transition:
+    background 300ms linear,
+    border 300ms linear,
+    color 300ms linear;
+  cursor: pointer;
+
+  &.isReadOnly {
+    cursor: default;
+  }
+
+  &.hasColumnStyle {
+    min-height: 39px;
+    padding: 6px 16px 6px 10px;
+    border-radius: 6px;
+    background-color: var(--mb-color-brand);
+
+    &.isOpen {
+      background-color: color-mix(in srgb, var(--mb-color-brand), white 10%);
+    }
+
+    &:hover,
+    &:focus {
+      background-color: color-mix(in srgb, var(--mb-color-brand), white 10%);
+    }
+  }
+
+  &.noColumnStyle {
+    --no-column-style-alpha-color: color-mix(
+      in srgb,
+      var(--mb-color-brand),
+      white 45%
+    );
+
+    min-height: 34px;
+    padding: 8px 20px;
+    color: var(--no-column-style-alpha-color);
+    border: 2px solid var(--no-column-style-alpha-color);
+    border-radius: 4px;
+
+    &.isOpen {
+      border-color: var(--mb-color-brand);
+    }
+
+    &:hover,
+    &:focus {
+      border-color: var(--mb-color-brand);
+    }
+  }
+}

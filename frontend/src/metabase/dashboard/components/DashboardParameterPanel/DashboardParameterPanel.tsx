@@ -1,3 +1,7 @@
+import cx from "classnames";
+
+import TransitionS from "metabase/css/core/transitions.module.css";
+import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import {
   getDashboardComplete,
   getIsEditing,
@@ -47,7 +51,6 @@ export function DashboardParameterPanel({
       <ParametersWidgetContainer
         hasScroll
         isSticky
-        isFullscreen={isFullscreen}
         isNightMode={shouldRenderAsNightMode}
         data-testid="edit-dashboard-parameters-widget-container"
       >
@@ -63,13 +66,16 @@ export function DashboardParameterPanel({
 
   return (
     <ParametersWidgetContainer
+      className={cx({
+        [TransitionS.transitionThemeChange]: isFullscreen,
+      })}
       hasScroll={hasScroll}
-      isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
       isSticky={isParametersWidgetContainersSticky(visibleParameters.length)}
       data-testid="dashboard-parameters-widget-container"
     >
       <ParametersFixedWidthContainer
+        id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
         isFixedWidth={dashboard?.width === "fixed"}
         data-testid="fixed-width-filters"
       >

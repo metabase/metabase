@@ -5,10 +5,7 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_DASHBOARD_ID,
-  THIRD_COLLECTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -38,6 +35,7 @@ describe("scenarios > question > native", () => {
 
   it("lets you create and run a SQL question", () => {
     H.openNativeEditor();
+    cy.wait(1000); // attempt to decrease flakiness
     cy.realType("select count(*) from orders");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -58,12 +56,21 @@ describe("scenarios > question > native", () => {
         "have.text",
         "Third collection",
       );
-
-      cy.button("Cancel").click();
+      cy.log("after selecting a dashboard, it should be the new suggestion");
+      cy.findByLabelText(/Where do you want to save this/).click();
     });
 
-    cy.log("after visiting a dashboard, it should be the new suggestion");
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.entityPickerModal().within(() => {
+      cy.findByText("Orders in a dashboard").click();
+      cy.button("Select this dashboard").click();
+    });
+
+    cy.findByTestId("save-question-modal")
+      .findByLabelText(/Where do you want to save this/)
+      .should("have.text", "Orders in a dashboard");
+
+    cy.visit("/");
+
     H.openNativeEditor({ fromCurrentPage: true });
     cy.realType("select count(*) from orders");
 
@@ -100,7 +107,7 @@ describe("scenarios > question > native", () => {
     cy.contains('Table "ORD" not found');
   });
 
-  it("should handle template tags", () => {
+  it("should handle template tags", { tags: "@flaky" }, () => {
     H.openNativeEditor();
     cy.realType(
       `select * from PRODUCTS where RATING > ${DOUBLE_LEFT_BRACKET}Stars}}`,
@@ -233,12 +240,14 @@ describe("scenarios > question > native", () => {
         .as("runQuery")
         .click();
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       cy.findByTestId("sidebar-left")
         .as("sidebar")
-        .contains(/hidden/i)
-        .siblings("[data-testid$=hide-button]")
-        .click();
+        .within(() => {
+          cy.findByTestId("draggable-item-HIDDEN")
+            .icon("eye_outline")
+            .click({ force: true });
+        });
       cy.get("@editor").type("{movetoend}, 3 as added");
       cy.get("@runQuery").click();
       cy.get("@sidebar").contains(/added/i);

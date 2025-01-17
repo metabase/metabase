@@ -33,8 +33,9 @@ describe("Dashboard > Dashboard Questions", () => {
       H.modal().findByText("Orders in a dashboard");
       H.modal().button("Save").click();
 
-      // should take you to the edit dashboard screen
+      // should take you to the edit dashboard screen + url has hash param to auto-scroll
       cy.url().should("include", "/dashboard/");
+      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
       H.dashboardCards().findByText("Orders with a discount");
       cy.findByTestId("edit-bar").findByText("You're editing this dashboard.");
 
@@ -57,6 +58,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.modal().button("Done").click();
       H.undoToast().findByText("First collection");
       H.appBar().findByText("First collection"); // breadcrumb should change
+      H.appBar().findByText("Orders in a dashboard").should("not.exist"); // dashboard name should no longer be visible
 
       // card should still be visible in dashboard
       cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
@@ -194,7 +196,9 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Okay").click();
       });
 
-      // its in the new dash
+      // its in the new dash + url has hash param to auto-scroll
+      cy.url().should("include", "/dashboard/");
+      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
       H.undoToast().findByText("Orders in a dashboard");
       H.dashboardCards().findByText("Total Orders").should("be.visible");
 
@@ -346,8 +350,15 @@ describe("Dashboard > Dashboard Questions", () => {
       );
 
       cy.get("@dashboardId").then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        //Simulate having picked the dashboard in the entity picker previously
+        cy.request("POST", "/api/activity/recents", {
+          context: "selection",
+          model: "dashboard",
+          model_id: dashboardId,
+        });
       });
+
+      cy.visit("/");
 
       cy.findByLabelText("Navigation bar").findByText("New").click();
       H.popover().findByText("Question").click();
@@ -368,12 +379,8 @@ describe("Dashboard > Dashboard Questions", () => {
         .should("exist");
     });
 
-    it("can save a native question to a dashboard", () => {
-      cy.visit("/");
-      H.newButton("SQL query").click();
-
-      H.focusNativeEditor();
-      cy.realType("SELECT COUNT(*) / 2 as half_count FROM ORDERS");
+    it("can save a native question to a dashboard", { tags: "@flaky" }, () => {
+      H.startNewNativeQuestion({ query: "SELECT 123" });
 
       H.queryBuilderHeader().button("Save").click();
       H.modal().within(() => {
@@ -464,7 +471,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.dashboardCards().findAllByText("Orders").should("have.length", 1);
     });
 
-    it("can share a dashboard card via public link", () => {
+    it("can share a dashboard card via public link", { tags: "@flaky" }, () => {
       H.createQuestion(
         {
           name: "Total Orders",
@@ -759,7 +766,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // add the quanity question to the blue dashboard
       H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
+      H.openQuestionsSidebar();
 
       H.sidebar().findByText("First collection").click();
       H.sidebar().findByText("Average Quantity by Month Question").click();
@@ -771,7 +778,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // add the total question to the purple dashboard
       H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
+      H.openQuestionsSidebar();
 
       H.sidebar().findByText("First collection").click();
       H.sidebar().findByText("Average Order Total by Month Question").click();
@@ -904,7 +911,7 @@ describe("Dashboard > Dashboard Questions", () => {
       });
 
       H.editDashboard();
-      H.openAddQuestionMenu("Existing Question");
+      H.openQuestionsSidebar();
       H.sidebar()
         .findByText(/our analyt/i)
         .click();

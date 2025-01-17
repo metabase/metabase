@@ -5,8 +5,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (defn- cached-metadata
   "Fetch the names of all the objects currently in the QP Store."
@@ -30,8 +29,8 @@
 
 (deftest ^:parallel validate-database-test
   (testing "If the Table does not belong to the current Database, does it throw an Exception?"
-    (t2.with-temp/with-temp [:model/Database {database-id :id} {}
-                             :model/Table    {table-id :id}    {:db_id database-id}]
+    (mt/with-temp [:model/Database {database-id :id} {}
+                   :model/Table    {table-id :id}    {:db_id database-id}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Failed to fetch :metadata/table \d+: either it does not exist, or it belongs to a different Database"

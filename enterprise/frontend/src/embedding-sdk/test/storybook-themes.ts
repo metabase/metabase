@@ -1,5 +1,5 @@
 import { defineMetabaseTheme } from "embedding-sdk/components/public";
-import type { MetabaseTheme } from "embedding-sdk/types/theme";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 export const darkColors = {
   primary: "#DF75E9",

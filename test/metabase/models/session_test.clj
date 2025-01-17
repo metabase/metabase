@@ -1,7 +1,7 @@
 (ns metabase.models.session-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.session :as session :refer [Session]]
+   [metabase.models.session :as session]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -12,9 +12,9 @@
   ;; the way we'd expect :/
 (defn- new-session! []
   (try
-    (first (t2/insert-returning-instances! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)}))
+    (first (t2/insert-returning-instances! :model/Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)}))
     (finally
-      (t2/delete! Session :id (str test-uuid)))))
+      (t2/delete! :model/Session :id (str test-uuid)))))
 
 (deftest new-session-include-test-test
   (testing "when creating a new Session, it should come back with an added `:type` key"

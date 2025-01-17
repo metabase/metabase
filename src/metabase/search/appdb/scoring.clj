@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
@@ -96,7 +96,7 @@
    :from   [:recent_views]
    :where  [:and
             [:= :recent_views.user_id current-user-id]
-            [:= :recent_views.model_id :search_index.model_id]
+            [:= [:cast :recent_views.model_id :text] :search_index.model_id]
             [:= :recent_views.model
              [:case
               [:= :search_index.model [:inline "dataset"]] [:inline "card"]
@@ -178,7 +178,7 @@
      [:and
       [:= :search_index.model [:inline model-name]]
       [:= (keyword (str table-name ".user_id")) user-id]
-      [:= :search_index.model_id (keyword (str table-name "." model-name "_id"))]]]))
+      [:= :search_index.model_id [:cast (keyword (str table-name "." model-name "_id")) :text]]]]))
 
 (defn- join-bookmarks [qry user-id]
   (apply sql.helpers/left-join qry (mapcat #(bookmark-join % user-id) bookmarked-models)))

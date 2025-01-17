@@ -11,7 +11,7 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
-import type { Table } from "./table";
+import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
@@ -59,7 +59,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   last_query_start: string | null;
   average_query_time: number | null;
   cache_ttl: number | null;
-  based_on_upload?: number | null; // table id of upload table, if any
+  based_on_upload?: TableId | null; // table id of upload table, if any
 
   archived: boolean;
 
@@ -332,6 +332,11 @@ export interface CreateCardRequest {
   collection_position?: number;
   result_metadata?: Field[];
   cache_ttl?: number;
+}
+
+export interface CreateCardFromCsvRequest {
+  collection_id?: CollectionId;
+  file: File;
 }
 
 export interface UpdateCardRequest {

@@ -1521,7 +1521,7 @@ describe("issue 32483", () => {
 
 describe("issue 32963", () => {
   function assertLineChart() {
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     H.leftSidebar().within(() => {
       cy.findByTestId("Line-container").should(
         "have.attr",

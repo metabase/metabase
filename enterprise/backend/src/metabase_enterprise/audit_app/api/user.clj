@@ -7,12 +7,11 @@
    [metabase.api.user :as api.user]
    [metabase.audit :as audit]
    [metabase.models.interface :as mi]
-   [metabase.models.pulse :refer [Pulse]]
-   [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/audit-info"
   "Gets audit info for the current user if he has permissions to access the audit collection.
   Otherwise return an empty map."
@@ -28,6 +27,7 @@
        {(u/slugify (:name question-overview)) (:id question-overview)
         (u/slugify (:name dashboard-overview)) (:id dashboard-overview)}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id/subscriptions"
   "Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).
   Archive all Alerts and DashboardSubscriptions created by the User. Only allowed for admins or for the current user."
@@ -36,9 +36,9 @@
   (api.user/check-self-or-superuser id)
   ;; delete all `PulseChannelRecipient` rows for this User, which means they will no longer receive any
   ;; Alerts/DashboardSubscriptions
-  (t2/delete! PulseChannelRecipient :user_id id)
+  (t2/delete! :model/PulseChannelRecipient :user_id id)
   ;; archive anything they created.
-  (t2/update! Pulse {:creator_id id, :archived false} {:archived true})
+  (t2/update! :model/Pulse {:creator_id id, :archived false} {:archived true})
   api/generic-204-no-content)
 
 (api/define-routes)

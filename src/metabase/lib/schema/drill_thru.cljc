@@ -5,7 +5,6 @@
   For example, adding a filter like `created_at < 2022-01-01`, or following a foreign key."
   (:require
    [metabase.lib.schema :as-alias lib.schema]
-   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -179,13 +178,6 @@
    [:map
     [:type         [:= :drill-thru/combine-columns]]]])
 
-(mr/def ::drill-thru.compare-aggregations
-  [:merge
-   ::drill-thru.common
-   [:map
-    [:type         [:= :drill-thru/compare-aggregations]]
-    [:aggregation  [:ref ::lib.schema.aggregation/aggregation]]]])
-
 ;;; TODO FIXME -- it seems like underlying records drills also include `:dimensions` and `:column-ref`...
 ;;; see [[metabase.lib.drill-thru.underlying-records/underlying-records-drill]]... this should be part of the schema
 (mr/def ::drill-thru.underlying-records
@@ -317,7 +309,6 @@
     [:drill-thru/column-filter            ::drill-thru.column-filter]
     [:drill-thru/column-extract           ::drill-thru.column-extract]
     [:drill-thru/combine-columns          ::drill-thru.combine-columns]
-    [:drill-thru/compare-aggregations     ::drill-thru.compare-aggregations]
     [:drill-thru/underlying-records       ::drill-thru.underlying-records]
     [:drill-thru/automatic-insights       ::drill-thru.automatic-insights]
     [:drill-thru/zoom-in.timeseries       ::drill-thru.zoom-in.timeseries]

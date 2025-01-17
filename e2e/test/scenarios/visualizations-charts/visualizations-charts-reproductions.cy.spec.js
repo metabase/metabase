@@ -51,11 +51,9 @@ const externalDatabaseId = 2;
 
 describe("issue 16170", { tags: "@mongo" }, () => {
   function replaceMissingValuesWith(value) {
-    cy.findByText("Replace missing values with")
-      .parent()
-      .within(() => {
-        cy.findByTestId("select-button").click();
-      });
+    cy.get('[data-field-title="Replace missing values with"]').within(() => {
+      cy.findByTestId("chart-setting-select").click();
+    });
 
     H.popover().contains(value).click();
   }
@@ -88,7 +86,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
   ["Zero", "Nothing"].forEach(replacementValue => {
     it(`replace missing values with "${replacementValue}" should work on Mongo (metabase#16170)`, () => {
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       H.openSeriesSettings("Count");
 
@@ -358,13 +356,14 @@ describe("issue 18063", () => {
     display: "map",
   };
 
-  function selectFieldValue(field, value) {
-    cy.findByText(field)
-      .parent()
-      .within(() => {
-        cy.findByText("Select a field").click();
-      });
+  function toggleFieldSelectElement(field) {
+    return cy.get(`[data-field-title="${field}"]`).within(() => {
+      cy.findByPlaceholderText("Select a field").click();
+    });
+  }
 
+  function selectFieldValue(field, value) {
+    toggleFieldSelectElement(field);
     H.popover().findByText(value).click();
   }
 
@@ -375,15 +374,19 @@ describe("issue 18063", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     // Select a Pin map
-    cy.findByTestId("viz-settings-button").click();
-    cy.findAllByTestId("select-button").contains("Region map").click();
-
+    H.openVizSettingsSidebar();
+    cy.findByTestId("chart-settings-widget-map.type")
+      .findByDisplayValue("Region map")
+      .click();
     H.popover().contains("Pin map").click();
 
-    // Click anywhere to close both popovers that open automatically. Need to click twice to dismiss both popovers
+    // Click on the popovers to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New question").click().click();
+    ["Latitude field", "Longitude field"].forEach(field =>
+      H.leftSidebar().within(() => {
+        toggleFieldSelectElement(field);
+      }),
+    );
   });
 
   it("should show the correct tooltip details for pin map even when some locations are null (metabase#18063)", () => {
@@ -500,9 +503,8 @@ describe("issue 20548", () => {
     assertOnLegendItemFrequency("Count", 1);
     assertOnLegendItemFrequency("Sum of Price", 1);
 
-    cy.findByTestId("viz-settings-button").click();
-    // Implicit assertion - it would fail if it finds more than one "Count" in the sidebar
-    H.sidebar().findAllByText("Count").should("have.length", 1);
+    H.openVizSettingsSidebar();
+    H.sidebar().findByDisplayValue("Count").should("be.visible");
   });
 });
 
@@ -526,12 +528,15 @@ describe("issue 21452", () => {
 
     H.visitQuestionAdhoc(questionDetails);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
   });
 
   it("should not fire POST request after every character during display name change (metabase#21452)", () => {
     H.openSeriesSettings("Cumulative sum of Quantity");
-    cy.findByDisplayValue("Cumulative sum of Quantity").clear().type("Foo");
+    H.popover()
+      .findByDisplayValue("Cumulative sum of Quantity")
+      .clear()
+      .type("Foo");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Display type").click();
     // Dismiss the popup and close settings
@@ -577,7 +582,7 @@ describe("issue 21504", () => {
       display: "pie",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
       cy.findByText("January 2025").should("be.visible");
@@ -689,7 +694,7 @@ describe.skip("issue 22527", () => {
   it("should render negative values in a scatter visualziation (metabase#22527)", () => {
     assertion();
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTextEnsureVisible("Data").click();
     });
@@ -1223,7 +1228,7 @@ H.describeEE("issue 49160", () => {
 
     H.echartsContainer().findByText("200").should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().findByText("Gizmo");
   });

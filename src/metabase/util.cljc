@@ -54,10 +54,13 @@
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data
                         auto-retry
+                        string-to-bytes
+                        bytes-to-string
                         decode-base64
                         decode-base64-to-bytes
                         deref-with-timeout
                         encode-base64
+                        encode-base64-bytes
                         filtered-stacktrace
                         full-exception-chain
                         host-port-up?
@@ -65,15 +68,12 @@
                         poll
                         host-up?
                         ip-address?
-                        metabase-namespace-symbols
                         sorted-take
                         varargs
                         with-timeout
                         with-us-locale]
                        [u.str
-                        build-sentence]
-                       [u.ns
-                        find-and-load-namespaces!]))
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
@@ -337,7 +337,7 @@
 (defn email?
   "Is `s` a valid email address string?"
   ^Boolean [^String s]
-  (boolean (when (string? s)
+  (boolean (when (and (string? s) (str/includes? s "@")) ;; early bail
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (lower-case-en s)))))
 
@@ -365,10 +365,15 @@
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [s]
-  #?(:clj  (let [validator (UrlValidator. (u.jvm/varargs String ["http" "https"])
-                                          (RegexValidator. url-regex-pattern)
-                                          UrlValidator/ALLOW_LOCAL_URLS)]
-             (.isValid validator (str s)))
+  #?(:clj  (and s
+                ;; UrlValidator is very expensive when non-URLs are passed to it, so we verify if the string looks
+                ;; urlish before passing to UrlValidator.
+                (str/includes? s "://")
+                (let [validator (UrlValidator. (u.jvm/varargs String ["http" "https"])
+                                               (RegexValidator. url-regex-pattern)
+                                               UrlValidator/ALLOW_LOCAL_URLS)]
+                  ;; (swap! -args conj s)
+                  (.isValid validator (str s))))
      :cljs (try
              (let [url (js/URL. (str s))]
                (boolean (and (re-matches (js/RegExp. url-regex-pattern "u")
@@ -1188,3 +1193,12 @@
                             ba)))]
               (gen))
       :cljs (throw (ex-info "Seeded NanoIDs are not supported in CLJS" {:seed-str seed-str})))))
+
+(defn update-some
+  "Update a value by key in the `m`, if it's `some?`. If `nil` is returned, dissoc it instead"
+  [m k f & args]
+  (let [v (get m k)
+        res (when v (apply f v args))]
+    (if res
+      (assoc m k res)
+      (dissoc m k))))

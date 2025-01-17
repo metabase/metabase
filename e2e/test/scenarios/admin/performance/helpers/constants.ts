@@ -21,10 +21,12 @@ export const sampleDurationStrategy: DurationStrategy = {
   type: "duration",
   duration: 48,
   unit: CacheDurationUnit.Hours,
+  refresh_automatically: false,
 };
 export const sampleScheduleStrategy: ScheduleStrategy = {
   type: "schedule",
   schedule: "0 0 * * * ?", // Invalidate hourly at the start of the hour
+  refresh_automatically: false,
 };
 export const sampleDoNotCacheStrategy: DoNotCacheStrategy = { type: "nocache" };
 

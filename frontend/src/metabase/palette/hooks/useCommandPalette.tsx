@@ -24,6 +24,7 @@ import {
   getDocsUrl,
   getSettings,
 } from "metabase/selectors/settings";
+import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, type IconName } from "metabase/ui";
 import {
@@ -43,6 +44,10 @@ export const useCommandPalette = ({
   const dispatch = useDispatch();
   const docsUrl = useSelector(state => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canUserAccessSettings = useSelector(canAccessSettings);
+
   const isSearchTypeaheadEnabled = useSetting("search-typeahead-enabled");
 
   // Used for finding actions within the list
@@ -259,9 +264,10 @@ export const useCommandPalette = ({
   const adminActions = useMemo<PaletteAction[]>(() => {
     // Subpaths - i.e. paths to items within the main Admin tabs - are needed
     // in the command palette but are not part of the main list of admin paths
-    const adminSubpaths = getPerformanceAdminPaths(
-      PLUGIN_CACHING.getTabMetadata(),
-    );
+    const adminSubpaths = isAdmin
+      ? getPerformanceAdminPaths(PLUGIN_CACHING.getTabMetadata())
+      : [];
+
     const paths = [...adminPaths, ...adminSubpaths];
     return paths.map(adminPath => ({
       id: `admin-page-${adminPath.key}`,
@@ -270,12 +276,20 @@ export const useCommandPalette = ({
       perform: () => dispatch(push(adminPath.path)),
       section: "admin",
     }));
-  }, [adminPaths, dispatch]);
+  }, [isAdmin, adminPaths, dispatch]);
 
-  const adminSettingsActions = useMemo<PaletteAction[]>(() => {
+  const settingsActions = useMemo<PaletteAction[]>(() => {
+    if (!canUserAccessSettings) {
+      return [];
+    }
+
     return Object.entries(settingsSections)
       .filter(([slug, section]) => {
         if (section.getHidden?.(settingValues)) {
+          return false;
+        }
+
+        if (section.adminOnly && !isAdmin) {
           return false;
         }
 
@@ -288,12 +302,19 @@ export const useCommandPalette = ({
         perform: () => dispatch(push(`/admin/settings/${slug}`)),
         section: "admin",
       }));
-  }, [settingsSections, settingValues, dispatch]);
+  }, [
+    canUserAccessSettings,
+    isAdmin,
+    settingsSections,
+    settingValues,
+    dispatch,
+  ]);
 
-  useRegisterActions(
-    hasQuery ? [...adminActions, ...adminSettingsActions] : [],
-    [adminActions, adminSettingsActions, hasQuery],
-  );
+  useRegisterActions(hasQuery ? [...adminActions, ...settingsActions] : [], [
+    adminActions,
+    settingsActions,
+    hasQuery,
+  ]);
 };
 
 export const getSearchResultSubtext = (wrappedSearchResult: any) => {

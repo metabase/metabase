@@ -7,12 +7,7 @@
   (:require
    [compojure.core :refer [DELETE GET POST]]
    [metabase.api.common :as api]
-   [metabase.models.bookmark
-    :as bookmark
-    :refer [CardBookmark CollectionBookmark DashboardBookmark]]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.bookmark :as bookmark]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -28,10 +23,11 @@
 
 (def ^:private lookup
   "Lookup map from model as a string to [model bookmark-model item-id-key]."
-  {"card"       [Card       CardBookmark       :card_id]
-   "dashboard"  [Dashboard  DashboardBookmark  :dashboard_id]
-   "collection" [Collection CollectionBookmark :collection_id]})
+  {"card"       [:model/Card       :model/CardBookmark       :card_id]
+   "dashboard"  [:model/Dashboard  :model/DashboardBookmark  :dashboard_id]
+   "collection" [:model/Collection :model/CollectionBookmark :collection_id]})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Fetch all bookmarks for the user"
   []
@@ -39,6 +35,7 @@
   ;; below
   (bookmark/bookmarks-for-user api/*current-user-id*))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:model/:id"
   "Create a new bookmark for user."
   [model id]
@@ -51,6 +48,7 @@
                [400 "Bookmark already exists"])
     (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id api/*current-user-id*}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:model/:id"
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."
   [model id]
@@ -63,6 +61,7 @@
                 item-key id)
     api/generic-204-no-content))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/ordering"
   "Sets the order of bookmarks for user."
   [:as {{:keys [orderings]} :body}]

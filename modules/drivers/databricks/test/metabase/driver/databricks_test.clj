@@ -8,6 +8,7 @@
    [metabase.driver.databricks :as databricks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [toucan2.core :as t2]))
 
 ;; Because the datasets that are tested are preloaded, it is fine just to modify the database details to sync other schemas.
@@ -287,3 +288,15 @@
       (is (true? (driver/can-connect? :databricks (:details (mt/db))))))
     (testing "Can connect returns false for catalog that is NOT present on the instance (#49444)"
       (is (false? (driver/can-connect? :databricks (assoc (:details (mt/db)) :catalog "xixixix")))))))
+
+(deftest can-connect-using-m2m-test
+  (mt/test-driver
+    :databricks
+    (testing "Can connect using m2m (#51276)"
+      (is (true? (driver/can-connect?
+                  :databricks
+                  (-> (:details (mt/db))
+                      (dissoc :token)
+                      (assoc :use-m2m      true
+                             :client-id    (tx/db-test-env-var-or-throw :databricks :client-id)
+                             :oauth-secret (tx/db-test-env-var-or-throw :databricks :oauth-secret)))))))))

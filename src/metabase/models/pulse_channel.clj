@@ -111,11 +111,6 @@
 
 ;; ## Entity
 
-(def PulseChannel
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/PulseChannel)
-
 (methodical/defmethod t2/table-name :model/PulseChannel [_model] :pulse_channel)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :pulse_channel] [_original-model _k] :model/PulseChannel)
 
@@ -164,7 +159,7 @@
   ;; This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
   ;; deleted. Archives `Pulse` if the channel being deleted is its last channel."
   (when *archive-parent-pulse-when-last-channel-is-deleted*
-    (let [other-channels-count (t2/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
+    (let [other-channels-count (t2/count :model/PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
       (when (zero? other-channels-count)
         (t2/update! :model/Pulse pulse-id {:archived true}))))
   ;; it's best if this is done in after-delete, but toucan2 doesn't support that yet See toucan2#70S
@@ -283,7 +278,7 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
-    (t2/update! PulseChannel id
+    (t2/update! :model/PulseChannel id
                 {:details        (cond-> details
                                    (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
                  :enabled        enabled
@@ -312,7 +307,7 @@
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
         id                 (t2/insert-returning-pk!
-                            PulseChannel
+                            :model/PulseChannel
                             :pulse_id       pulse_id
                             :channel_type   channel_type
                             :channel_id     channel_id
@@ -331,7 +326,7 @@
     ;; return the id of our newly created channel
     id))
 
-(methodical/defmethod mi/to-json PulseChannel
+(methodical/defmethod mi/to-json :model/PulseChannel
   "Don't include `:emails`, we use that purely internally"
   [pulse-channel json-generator]
   (next-method (m/dissoc-in pulse-channel [:details :emails]) json-generator))

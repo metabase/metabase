@@ -86,14 +86,14 @@ describe("issue 11249", () => {
   it("should not allow adding more series when all columns are used (metabase#11249)", () => {
     H.visitQuestionAdhoc(questionDetails);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByText("Data").click();
-      cy.findByText("Count").should("not.exist");
+      cy.findByDisplayValue("Count").should("not.exist");
 
       cy.findByText("Add another series").click();
-      cy.findByText("Count").should("be.visible");
+      cy.findByDisplayValue("Count").should("be.visible");
       cy.findByText("Add another series").should("not.exist");
     });
   });
@@ -167,11 +167,11 @@ describe("issue 15353", () => {
   });
 
   it("should be able to change field name used for values (metabase#15353)", () => {
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.sidebar()
-      .contains("Count")
-      .siblings("[data-testid$=settings-button]")
-      .click();
+      .findByTestId("draggable-item-Count")
+      .icon("ellipsis")
+      .click({ force: true });
 
     cy.findByDisplayValue("Count").type(" renamed").blur();
 
@@ -321,7 +321,7 @@ describe.skip("issue 19373", () => {
 
   it("should return correct sum of the distinct values in row totals (metabase#19373)", () => {
     // Convert to the pivot table manually to reflect the real-world scenario
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Pivot Table-button").should("be.visible").click();
     cy.wait("@pivotDataset");
 
@@ -391,14 +391,13 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
   });
 
   it("should not duplicate column in settings when removing and adding it back", () => {
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // remove column
     cy.findByTestId("sidebar-content")
-      .findByText("Subtotal")
-      .parent()
-      .find(".Icon-eye_outline")
-      .click();
+      .findByTestId("draggable-item-Subtotal")
+      .icon("eye_outline")
+      .click({ force: true });
 
     // rerun query
     cy.findAllByTestId("run-button").first().click();
@@ -407,10 +406,9 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
 
     // add column back again
     cy.findByTestId("sidebar-content")
-      .findByText("Subtotal")
-      .parent()
-      .find(".Icon-eye_crossed_out")
-      .click();
+      .findByTestId("draggable-item-Subtotal")
+      .icon("eye_crossed_out")
+      .click({ force: true });
 
     // fails because there are 2 columns, when there should be one
     cy.findByTestId("sidebar-content").findByText("Subtotal");
@@ -519,7 +517,7 @@ describe("issue 28304", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count by Created At: Month").should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.leftSidebar().should("not.contain", "[Unknown]");
     H.leftSidebar().should("contain", "Created At");
     H.leftSidebar().should("contain", "Count");
@@ -580,7 +578,7 @@ describe("issue 25250", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID").should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.moveDnDKitElement(H.getDraggableElements().contains("Product ID"), {
       vertical: -100,
     });
@@ -610,7 +608,7 @@ describe("issue 30039", () => {
   });
 });
 
-describe("issue 37726", () => {
+describe("issue 37726", { tags: "@flaky" }, () => {
   const PIVOT_QUESTION = {
     name: "Pivot table with custom column width",
     display: "pivot",
@@ -969,7 +967,7 @@ describe("issue 7884", () => {
     cy.findAllByTestId("header-cell").eq(1).should("contain.text", "C1");
 
     cy.log("verify column order in viz settings");
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.getDraggableElements().eq(0).should("contain.text", "C3");
     H.getDraggableElements().eq(1).should("contain.text", "C1");
   });
@@ -1041,7 +1039,7 @@ describe("issue 12368", () => {
       cy.findByText("Ean").should("be.visible");
       cy.findByText("Vendor2").should("be.visible");
     });
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.button("Add or remove columns").should("be.visible");
       cy.findByText("Pivot column").should("not.exist");
@@ -1089,7 +1087,7 @@ describe("issue 32718", () => {
       cy.findByText("Category").should("not.exist");
       cy.findByText("Created At").should("be.visible");
     });
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Detail-button").click();
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("ID").should("be.visible");

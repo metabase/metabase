@@ -12,27 +12,35 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.embed.common :as api.embed.common]
    [metabase.config :as config]
+   [metabase.db :as mdb]
+   [metabase.driver :as driver]
    [metabase.logger :as logger]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.troubleshooting :as troubleshooting]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.response :as response]))
+   [metabase.util.system-info :as u.system-info]
+   [ring.util.response :as response]
+   [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/password_check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
   [:as {{:keys [password]} :body}]
   {password ms/ValidPassword} ;; if we pass the su/ValidPassword test we're g2g
   {:valid true})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/logs"
   "Logs."
   []
   (validation/check-has-application-permission :monitoring)
   (logger/messages))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/stats"
   "Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see
   what is being phoned home."
@@ -40,6 +48,7 @@
   (validation/check-has-application-permission :monitoring)
   (stats/legacy-anonymous-usage-stats))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/random_token"
   "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
    Intended for use when creating a value for `embedding-secret-key`."
@@ -68,6 +77,7 @@
          (log/warn e)
          (throw e))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/product-feedback"
   "Endpoint to provide feedback from the product"
   [:as {{:keys [comments source email]} :body}]
@@ -77,14 +87,40 @@
   (future (send-feedback! comments source email))
   api/generic-204-no-content)
 
+(defn- metabase-info
+  "Make it easy for the user to tell us what they're using"
+  []
+  (merge
+   {:databases            (t2/select-fn-set :engine :model/Database)
+    :run-mode             (config/config-kw :mb-run-mode)
+    :plan-alias           (or (premium-features/plan-alias) "")
+    :version              config/mb-version-info
+    :settings             {:report-timezone (driver/report-timezone)}
+    :hosting-env          (stats/environment-type)
+    :application-database (mdb/db-type)}
+   (when-not (premium-features/is-hosted?)
+     {:application-database-details (t2/with-connection [^java.sql.Connection conn]
+                                      (let [metadata (.getMetaData conn)]
+                                        {:database    {:name    (.getDatabaseProductName metadata)
+                                                       :version (.getDatabaseProductVersion metadata)}
+                                         :jdbc-driver {:name    (.getDriverName metadata)
+                                                       :version (.getDriverVersion metadata)}}))})
+   (when (premium-features/airgap-enabled)
+     {:airgap-token       :enabled
+      :max-users          (premium-features/max-users-allowed)
+      :current-user-count (premium-features/active-users-count)
+      :valid-thru         (:valid-thru (premium-features/token-status))})))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/bug_report_details"
   "Returns version and system information relevant to filing a bug report against Metabase."
   []
   (validation/check-has-application-permission :monitoring)
-  (cond-> {:metabase-info (troubleshooting/metabase-info)}
+  (cond-> {:metabase-info (metabase-info)}
     (not (premium-features/is-hosted?))
-    (assoc :system-info (troubleshooting/system-info))))
+    (assoc :system-info (u.system-info/system-info))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/diagnostic_info/connection_pool_info"
   "Returns database connection pool info for the current Metabase instance."
   []
@@ -93,6 +129,7 @@
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
     (assoc (response/response {:connection-pools pool-info}) :headers headers, :status 200)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/entity_id"
   "Translate entity IDs to model IDs."
   [:as {{:keys [entity_ids]} :body}]

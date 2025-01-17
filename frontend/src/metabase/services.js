@@ -137,10 +137,6 @@ export const CardApi = {
     ),
   ),
   create: POST("/api/card"),
-  uploadCSV: POST("/api/card/from-csv", {
-    formData: true,
-    fetch: true,
-  }),
   get: GET("/api/card/:cardId"),
   update: PUT("/api/card/:id"),
   delete: DELETE("/api/card/:id"),
@@ -552,13 +548,6 @@ export const ActionsApi = {
   executeDashcardAction: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
-};
-
-export const MetabotApi = {
-  modelPrompt: POST("/api/metabot/model/:modelId"),
-  databasePrompt: POST("/api/metabot/database/:databaseId"),
-  databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
-  sendFeedback: POST("/api/metabot/feedback"),
 };
 
 export const CacheConfigApi = {

@@ -12,10 +12,7 @@ import { connect } from "metabase/lib/redux";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { Flex, Icon, Text, Transition } from "metabase/ui";
-import {
-  MOBILE_DEFAULT_CARD_HEIGHT,
-  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
-} from "metabase/visualizations/shared/utils/sizes";
+import { getMobileHeight } from "metabase/visualizations/shared/utils/sizes";
 import type Question from "metabase-lib/v1/Question";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { isParameterVariableTarget } from "metabase-lib/v1/parameters/utils/targets";
@@ -35,7 +32,6 @@ import {
   Warning,
 } from "./DashCardCardParameterMapper.styled";
 import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";
-import { useResetParameterMapping } from "./hooks";
 
 const mapStateToProps = (
   state: State,
@@ -83,12 +79,6 @@ export function DashCardCardParameterMapper({
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
   const isNative = isQuestion && isNativeDashCard(dashcard);
 
-  useResetParameterMapping({
-    editingParameter,
-    isNative,
-    dashcardId: dashcard.id,
-  });
-
   const selectedMappingOption = getMappingOptionByTarget(
     mappingOptions,
     dashcard,
@@ -98,8 +88,7 @@ export function DashCardCardParameterMapper({
   );
 
   const layoutHeight = isMobile
-    ? MOBILE_HEIGHT_BY_DISPLAY_TYPE[dashcard.card.display] ||
-      MOBILE_DEFAULT_CARD_HEIGHT
+    ? getMobileHeight(dashcard.card.display, dashcard.size_y)
     : dashcard.size_y;
 
   const shouldShowAutoConnectHint =
