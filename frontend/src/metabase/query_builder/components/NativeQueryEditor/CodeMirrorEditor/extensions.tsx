@@ -3,6 +3,7 @@ import {
   type CompletionResult,
   type CompletionSource,
   autocompletion,
+  moveCompletionSelection,
 } from "@codemirror/autocomplete";
 import { json } from "@codemirror/lang-json";
 import {
@@ -106,6 +107,14 @@ function disableCmdEnter() {
       {
         key: "Mod-Enter",
         run: () => true,
+      },
+      {
+        key: "Mod-j",
+        run: moveCompletionSelection(true),
+      },
+      {
+        key: "Mod-k",
+        run: moveCompletionSelection(false),
       },
     ]),
   );
