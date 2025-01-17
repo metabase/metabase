@@ -87,7 +87,7 @@ function newNativeCardHash(
  *
  * @example
  * H.startNewNativeQuestion({ query: "SELECT * FROM ORDERS" });
- * @param {object} config
+ * @param {object} [config]
  * @param {number} config.database
  * @param {string} config.query
  */
