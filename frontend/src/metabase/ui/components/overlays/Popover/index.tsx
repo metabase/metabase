@@ -20,7 +20,7 @@ type ExtendedPopoverDropdownProps = PopoverDropdownProps & {
 
 const PopoverDropdown = forwardRef(function PopoverDropdown(
   props: ExtendedPopoverDropdownProps,
-  ref: Ref<HTMLElement>,
+  ref: Ref<HTMLDivElement>,
 ) {
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
@@ -45,6 +45,7 @@ const PopoverDropdown = forwardRef(function PopoverDropdown(
   );
 });
 
+// @ts-expect-error -- our types are better
 PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
 // @ts-expect-error -- our types are better
 MantinePopover.Dropdown = PopoverDropdown;

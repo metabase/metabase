@@ -113,10 +113,7 @@ describe("Schedule utility functions", () => {
     });
 
     it("should return an empty string if all objects have no labels", () => {
-      const data: SelectProps["data"] = [
-        { value: "first" },
-        { value: "second" },
-      ];
+      const data = [{ value: "first" }, { value: "second" }];
       const result = getLongestSelectLabel(data);
       expect(result).toBe("");
     });

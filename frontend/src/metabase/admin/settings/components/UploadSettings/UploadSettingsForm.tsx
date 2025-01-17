@@ -305,7 +305,7 @@ const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
           multiline
           maw="30rem"
         >
-          <Text span underline weight={700}>{t`Additional terms apply.`}</Text>
+          <Text span td="underline" fw={700}>{t`Additional terms apply.`}</Text>
         </Tooltip>
       )}
     </Alert>

@@ -324,7 +324,8 @@ export const MetabaseTagsInput = forwardRef(function _MetabaseTagsInput(
           >
             <Pill.Group disabled={disabled} unstyled={unstyled} role="list">
               {values}
-              <Combobox.EventsTarget /* autoComplete={autoComplete} */>
+              <Combobox.EventsTarget>
+                {/* @ts-expect-error - I've removed some thing that mantine thinks is required as a library, as an end user aren't */}
                 <PillsInput.Field
                   ref={_ref}
                   unstyled={unstyled}
@@ -352,7 +353,7 @@ export const MetabaseTagsInput = forwardRef(function _MetabaseTagsInput(
             </Pill.Group>
           </PillsInput>
         </Combobox.DropdownTarget>
-
+        {/* @ts-expect-error - I've removed some thing that mantine thinks is required as a library, as an end user aren't */}
         <OptionsDropdown
           data={filterPickedTags({ data: parsedData, value: _value })}
           hidden={readOnly || disabled}

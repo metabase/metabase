@@ -120,7 +120,9 @@ export const combineConsecutiveStrings = (arr: ReactNode[]) => {
   }, []);
 };
 
-export const getLongestSelectLabel = (data: SelectProps["data"] = []): string =>
+export const getLongestSelectLabel = (
+  data: SelectProps["data"] | { value: string }[] = [],
+): string =>
   [...data].reduce<string>((acc: string, option) => {
     let label: string;
     if (typeof option === "string") {

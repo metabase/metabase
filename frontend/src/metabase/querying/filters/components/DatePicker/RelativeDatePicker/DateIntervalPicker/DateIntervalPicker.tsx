@@ -91,7 +91,7 @@ export function DateIntervalPicker({
             aria-label={t`Starting from…`}
             c="var(--mb-color-text-secondary)"
             variant="subtle"
-            leftIcon={<Icon name="arrow_left_to_line" />}
+            leftSection={<Icon name="arrow_left_to_line" />}
             onClick={handleStartingFromClick}
           />
         </Tooltip>
