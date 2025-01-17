@@ -70,10 +70,10 @@
   (mt/test-driver
     :snowflake
     (is (=? [{:name "id"
-              :database-type "NUMBER"
+              :database-type "INTEGER"
               :database-required false
               :database-is-auto-increment true
-              :base-type :type/Number
+              :base-type :type/Integer
               :json-unfolding false
               :database-position 0
               :pk? true}
@@ -85,10 +85,10 @@
               :json-unfolding false
               :database-position 1}
              {:name "category_id"
-              :database-type "NUMBER"
+              :database-type "INTEGER"
               :database-required false
               :database-is-auto-increment false
-              :base-type :type/Number
+              :base-type :type/Integer
               :json-unfolding false
               :database-position 2}
              {:name "latitude"
@@ -106,10 +106,10 @@
               :json-unfolding false
               :database-position 4}
              {:name "price"
-              :database-type "NUMBER"
+              :database-type "INTEGER"
               :database-required false
               :database-is-auto-increment false
-              :base-type :type/Number
+              :base-type :type/Integer
               :json-unfolding false
               :database-position 5}]
             (sort-by :database-position
@@ -359,7 +359,7 @@
                  (t2/select-fn-set :name :model/Table :db_id (mt/id))))
           (testing "the fields for dynamic tables are synced correctly"
             (is (= #{{:name "name" :base_type :type/Text}
-                     {:name "id" :base_type :type/Number}}
+                     {:name "id" :base_type :type/Integer}}
                    (set (t2/select [:model/Field :name :base_type]
                                    :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (mt/id))))))))))))
 
@@ -941,7 +941,7 @@
     :snowflake
     (mt/dataset
       good-datetimes-in-belize
-      (is (= [["id" "NUMBER" :type/Number 0]
+      (is (= [["id" "INTEGER" :type/Integer 0]
               ["IN_Z_OFFSET" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 1]
               ["IN_VARIOUS_OFFSETS" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 2]
               ["JUST_NTZ" "TIMESTAMPNTZ" :type/DateTime 3]

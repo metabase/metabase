@@ -756,10 +756,22 @@
                         [[:- :c.ORDINAL_POSITION [:inline 1]] :database-position]
                         [:c.TABLE_SCHEMA :table-schema]
                         [:c.TABLE_NAME :table-name]
-                        [[:case-expr [:upper :c.DATA_TYPE]
-                          [:inline "TIMESTAMP_TZ"] [:inline "TIMESTAMPTZ"]
-                          [:inline "TIMESTAMP_LTZ"] [:inline "TIMESTAMPLTZ"]
-                          [:inline "TIMESTAMP_NTZ"] [:inline "TIMESTAMPNTZ"]
+                        [[:case
+                          [:= [:upper :c.DATA_TYPE] [:inline "TIMESTAMP_TZ"]]
+                          [:inline "TIMESTAMPTZ"]
+
+                          [:= [:upper :c.DATA_TYPE] [:inline "TIMESTAMP_LTZ"]]
+                          [:inline "TIMESTAMPLTZ"]
+
+                          [:= [:upper :c.DATA_TYPE] [:inline "TIMESTAMP_NTZ"]]
+                          [:inline "TIMESTAMPNTZ"]
+
+                          ;; From https://github.com/snowflakedb/snowflake-jdbc/blob/master/src/main/java/net/snowflake/client/jdbc/SnowflakeColumnMetadata.java#L153C50-L153C59
+                          [:and
+                           [:= [:upper :c.DATA_TYPE] [:inline "NUMBER"]]
+                           [:= :c.NUMERIC_SCALE [:inline 0]]]
+                          [:inline "INTEGER"]
+
                           :else [:upper :c.DATA_TYPE]]
                          :database-type]
                         [[:!= :c.IDENTITY_GENERATION nil] :database-is-auto-increment]
