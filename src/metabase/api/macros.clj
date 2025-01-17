@@ -249,9 +249,10 @@
 (defn- invalid-params-errors [schema explanation specific-errors]
   (or (when (= (mc/type schema) :map)
         (into {}
-              (keep (fn [child]
-                      (when (contains? (set (keys specific-errors)) (first child))
-                        [(first child) (umd/describe (last child))])))
+              (let [specific-error-keys (set (keys specific-errors))]
+                (keep (fn [child]
+                        (when (contains? specific-error-keys (first child))
+                          [(first child) (umd/describe (last child))]))))
               (mc/children schema)))
       (me/humanize explanation {:wrap #(umd/describe (:schema %))})))
 
