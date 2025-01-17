@@ -78,10 +78,14 @@
                   :id (mt/id :checkins))))
 
 (defn- clean-result [result]
-  (dissoc (u/remove-nils result) :database_id :table_id :last_editor_id :last_edited_at
-          :creator_common_name :creator_id
-          ;; false for new search segments... not sure why
-          :created_at))
+  (cond-> (dissoc (u/remove-nils result) :database_id :table_id :last_editor_id :last_edited_at
+                  :creator_common_name :creator_id
+                  ;; false for new search segments... not sure why
+                  :created_at)
+    (false? (:model_id result))
+    (dissoc :model_id)
+    (false? (:model_index_id result))
+    (dissoc :model_index_id)))
 
 (defn- cleaned-results [results]
   ;; WIP need to get these fields matching
