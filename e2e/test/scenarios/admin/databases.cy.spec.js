@@ -9,6 +9,7 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { createQuestion } from "e2e/support/helpers";
 
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 
@@ -689,7 +690,7 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     // metric
-    cy.createQuestion({
+    createQuestion({
       name: "Revenue",
       description: "Sum of orders subtotal",
       type: "metric",

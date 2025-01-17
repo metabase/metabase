@@ -6,6 +6,7 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -179,7 +180,7 @@ describe("scenarios > question > native", () => {
       },
     };
 
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       H.visitQuestionAdhoc({
         dataset_query: {
           database: SAMPLE_DB_ID,
@@ -366,7 +367,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       [USER_GROUPS.NOSQL_GROUP]: { root: "write" },
     });
 
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "Secret Orders",
         native: {
@@ -477,7 +478,7 @@ describe("scenarios > native question > data reference sidebar", () => {
   });
 
   it("should show models", () => {
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "Native Products Model",
         description: "A model of the Products table",

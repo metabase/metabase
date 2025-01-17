@@ -5,6 +5,7 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createNativeQuestion, createQuestion } from "e2e/support/helpers";
 
 const {
   ORDERS_ID,
@@ -52,7 +53,7 @@ describe.skip("issue 12496", () => {
       .find("input")
       .eq(input);
   const setup = unit => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: `Orders by Created At: ${unit}`,
         query: {
@@ -386,7 +387,7 @@ describe("issue 22730", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "22730",
         native: {
@@ -494,7 +495,7 @@ describe("issue 24994", () => {
   });
 
   it("should allow updating filters (metabase#24994)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
 
     // Three filters
     cy.findByTestId("filters-visibility-control").contains("3").click();
@@ -750,7 +751,7 @@ describe.skip("issue 26861", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(nativeQuery, { visitQuestion: true });
+    createNativeQuestion(nativeQuery, { visitQuestion: true });
   });
 
   it("exclude filter shouldn't break native questions with field filters (metabase#26861)", () => {
@@ -787,7 +788,7 @@ describe("issue 27123", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("exclude filter should not resolve to 'Days of the week' regardless of the chosen granularity  (metabase#27123)", () => {
@@ -850,7 +851,7 @@ describe("issue 30312", () => {
   });
 
   it("can use a drill filter on an aggregated column (metabase#30312)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -902,7 +903,7 @@ describe("issue 31340", () => {
 
     cy.wait("@fieldUpdate");
 
-    cy.createQuestion(
+    createQuestion(
       {
         query: {
           "source-table": PEOPLE_ID,
@@ -1017,7 +1018,7 @@ describe("metabase#32985", () => {
       fk_target_field_id: REVIEWS.REVIEWER,
     });
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
 
     H.tableHeaderClick("Email");
 

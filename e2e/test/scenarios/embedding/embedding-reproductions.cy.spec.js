@@ -1,6 +1,13 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  createNativeQuestion,
+  createNativeQuestionAndDashboard,
+  createQuestion,
+  createQuestionAndDashboard,
+  editDashboardCard,
+} from "e2e/support/helpers";
 import { defer } from "metabase/lib/promise";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -57,7 +64,7 @@ describe.skip("issue 15860", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails: {
         name: "Q1",
         query: { "source-table": PRODUCTS_ID },
@@ -83,7 +90,7 @@ describe.skip("issue 15860", () => {
       },
     }).then(({ body: { card_id: q1, dashboard_id } }) => {
       // Create a second question with the same source table
-      cy.createQuestion({
+      createQuestion({
         name: "Q2",
         query: { "source-table": PRODUCTS_ID },
       }).then(({ body: { id: q2 } }) => {
@@ -212,7 +219,7 @@ describe("issue 20438", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -278,7 +285,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "20634",
         native: {
@@ -384,7 +391,7 @@ describe("issues 20845, 25031", () => {
 
       const questionDetails = getQuestionDetails(value);
 
-      cy.createNativeQuestionAndDashboard({
+      createNativeQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: { id, dashboard_id, card_id } }) => {
@@ -545,7 +552,7 @@ describe("issue 27643", () => {
 
       cy.get("@postgresInvoicesExpectedInvoiceId")
         .then(fieldId => {
-          cy.createNativeQuestionAndDashboard({
+          createNativeQuestionAndDashboard({
             questionDetails: getQuestionDetails(fieldId),
             dashboardDetails,
           });
@@ -566,7 +573,7 @@ describe("issue 27643", () => {
             ],
           };
 
-          cy.editDashboardCard(dashboardCard, mapFilterToCard);
+          editDashboardCard(dashboardCard, mapFilterToCard);
         });
     });
 
@@ -667,7 +674,7 @@ H.describeEE("issue 30535", () => {
       },
     });
 
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    createQuestion(questionDetails).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -752,7 +759,7 @@ describe("dashboard preview", () => {
         [filter3.slug]: "enabled",
       },
     };
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { card_id, dashboard_id } }) => {
@@ -837,7 +844,7 @@ describe("dashboard preview", () => {
         [filter3.slug]: "locked",
       },
     };
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { card_id, dashboard_id } }) => {
@@ -939,7 +946,7 @@ describe("issue 40660", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {

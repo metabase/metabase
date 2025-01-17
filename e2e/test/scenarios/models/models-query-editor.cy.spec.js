@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 import { selectFromDropdown } from "./helpers/e2e-models-helpers";
 
@@ -120,7 +121,7 @@ describe("scenarios > models query editor", () => {
 
   describe("native models", () => {
     it("allows to edit native model query", () => {
-      cy.createNativeQuestion(
+      createNativeQuestion(
         {
           name: "Native Model",
           type: "model",
@@ -161,7 +162,7 @@ describe("scenarios > models query editor", () => {
     });
 
     it("allows for canceling changes", () => {
-      cy.createNativeQuestion(
+      createNativeQuestion(
         {
           name: "Native Model",
           type: "model",
@@ -203,7 +204,7 @@ describe("scenarios > models query editor", () => {
     });
 
     it("handles failing queries", () => {
-      cy.createNativeQuestion(
+      createNativeQuestion(
         {
           name: "Erroring Model",
           type: "model",

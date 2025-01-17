@@ -4,6 +4,7 @@ import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createQuestion } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -104,7 +105,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
     });
 
     it("should not be possible to create goal based alert for a multi-series question", () => {
-      cy.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
+      createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
 
       H.openSharingMenu("Create alert");
       cy.wait("@channel");

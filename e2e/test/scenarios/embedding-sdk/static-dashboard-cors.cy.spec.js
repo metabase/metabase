@@ -4,6 +4,7 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createDashboard } from "e2e/support/helpers";
 import { visitFullAppEmbeddingUrl } from "e2e/support/helpers/e2e-embedding-helpers";
 import {
   EMBEDDING_SDK_STORY_HOST,
@@ -36,7 +37,7 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       },
     };
 
-    cy.createDashboard(
+    createDashboard(
       {
         name: "Embedding Sdk Test Dashboard",
         dashcards: [questionCard, textCard],

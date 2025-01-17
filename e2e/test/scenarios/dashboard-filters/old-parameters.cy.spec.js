@@ -1,5 +1,9 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createNativeQuestionAndDashboard,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -32,7 +36,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
         parameters: [filter],
       };
 
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
           cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
             dashcards: [
@@ -93,7 +97,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       const dashboardDetails = { parameters: [filter] };
 
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
           cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
             dashcards: [
@@ -164,7 +168,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       const dashboardDetails = { parameters: [filter] };
 
-      cy.createNativeQuestionAndDashboard({
+      createNativeQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {

@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createDashboard, createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -543,7 +544,7 @@ describe("scenarios > visualizations > line chart", () => {
             ],
           ],
         }).then(({ body: { id: question2Id } }) => {
-          cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+          createDashboard().then(({ body: { id: dashboardId } }) => {
             addBothSeriesToDashboard({
               dashboardId,
               firstCardId: question1Id,
@@ -586,7 +587,7 @@ describe("scenarios > visualizations > line chart", () => {
         name: "16249_Q3",
         aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
       }).then(({ body: { id: question1Id } }) => {
-        cy.createQuestion({
+        createQuestion({
           name: "16249_Q4",
           query: {
             "source-table": PRODUCTS_ID,
@@ -597,7 +598,7 @@ describe("scenarios > visualizations > line chart", () => {
           },
           display: "line",
         }).then(({ body: { id: question2Id } }) => {
-          cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+          createDashboard().then(({ body: { id: dashboardId } }) => {
             addBothSeriesToDashboard({
               dashboardId,
               firstCardId: question1Id,
@@ -665,7 +666,7 @@ describe("scenarios > visualizations > line chart", () => {
     }
 
     function createOrdersQuestionWithAggregation({ name, aggregation } = {}) {
-      return cy.createQuestion({
+      return createQuestion({
         name,
         query: {
           "source-table": ORDERS_ID,

@@ -1,4 +1,5 @@
 import { H } from "e2e/support";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > rows", () => {
   beforeEach(() => {
@@ -13,7 +14,7 @@ describe("scenarios > visualizations > rows", () => {
       `should not collapse rows when last value is ${testValue} (metabase#14285)`,
       { browser: "firefox" },
       () => {
-        cy.createNativeQuestion(
+        createNativeQuestion(
           {
             name: "14285",
             native: {
@@ -45,7 +46,7 @@ describe("scenarios > visualizations > rows", () => {
   });
 
   it("should display a row chart", () => {
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "14285",
         native: {

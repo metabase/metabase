@@ -1,8 +1,10 @@
+import { createNativeQuestion } from "e2e/support/helpers";
+
 // until we have a test dataset that includes boolean data, we can use this questions to test booleans
 export function setupBooleanQuery(questionName = "Boolean Query") {
   cy.intercept("POST", "/api/dataset").as("dataset");
 
-  cy.createNativeQuestion(
+  createNativeQuestion(
     {
       name: questionName,
       native: {

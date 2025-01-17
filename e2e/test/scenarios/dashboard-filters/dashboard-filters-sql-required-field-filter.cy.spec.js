@@ -2,6 +2,7 @@ import { produce } from "immer";
 
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createNativeQuestionAndDashboard } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
 
@@ -48,7 +49,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
   });
 
   it("should apply default of the SQL field filter if the dashboard doesn't have a filter connected to it", () => {
-    cy.createNativeQuestionAndDashboard({
+    createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: dashboardCard }) => {
@@ -65,7 +66,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
   });
 
   it("should apply default of the SQL field filter if the dashboard filter is empty", () => {
-    cy.createNativeQuestionAndDashboard({
+    createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: dashboardCard }) => {
@@ -79,7 +80,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
           },
         ],
       };
-      cy.editDashboardCard(dashboardCard, mapFilterToCard);
+      editDashboardCard(dashboardCard, mapFilterToCard);
       H.visitDashboard(dashboard_id);
     });
 
@@ -92,7 +93,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
   });
 
   it("should respect default filter precedence (dashboard filter, then SQL field filters)", () => {
-    cy.createNativeQuestionAndDashboard({
+    createNativeQuestionAndDashboard({
       questionDetails: questionDetailsWithRequiredFilter,
       dashboardDetails,
     }).then(({ body: dashboardCard }) => {
@@ -106,7 +107,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
           },
         ],
       };
-      cy.editDashboardCard(dashboardCard, mapFilterToCard);
+      editDashboardCard(dashboardCard, mapFilterToCard);
       H.visitDashboard(dashboard_id);
     });
 
@@ -122,7 +123,9 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
     cy.location("search").should("eq", "?category=");
 
     // The default shouldn't apply, so we should get an error
-    cy.findByTestId("dashcard").contains("Gizmo");
+    cy.findByTestId("dashcard").contains(
+      "There was a problem displaying this chart.",
+    );
 
     // The empty filter widget
     H.filterWidget().contains("Category");
@@ -131,7 +134,9 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
 
     // This part confirms that the issue metabase#13960 has been fixed
     cy.location("search").should("eq", "?category=");
-    cy.findByTestId("dashcard").contains("Gizmo");
+    cy.findByTestId("dashcard").contains(
+      "There was a problem displaying this chart.",
+    );
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");

@@ -1,5 +1,11 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createCollection,
+  createDashboard,
+  createQuestion,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -146,17 +152,17 @@ H.describeEE("official collections", () => {
 });
 
 function testOfficialBadgePresence(expectBadge = true) {
-  cy.createCollection({
+  createCollection({
     name: COLLECTION_NAME,
     authority_level: "official",
   }).then(response => {
     const { id: collectionId } = response.body;
-    cy.createQuestion({
+    createQuestion({
       name: "Official Question",
       collection_id: collectionId,
       query: TEST_QUESTION_QUERY,
     });
-    cy.createDashboard({
+    createDashboard({
       name: "Official Dashboard",
       collection_id: collectionId,
     });
@@ -206,12 +212,12 @@ function testOfficialBadgeInSearch({
 }
 
 function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
-  cy.createCollection({
+  createCollection({
     name: COLLECTION_NAME,
     authority_level: "official",
   }).then(response => {
     const { id: collectionId } = response.body;
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails: {
         name: "Official Question",
         collection_id: collectionId,

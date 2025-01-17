@@ -5,6 +5,12 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  createDashboard,
+  createDashboardWithQuestions,
+  createNativeQuestionAndDashboard,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -36,7 +42,7 @@ describe("scenarios > dashboard > parameters", () => {
   it("one filter should search across multiple fields", () => {
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
 
-    cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
+    createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
       // add the same question twice
       H.updateDashboardCards({
         dashboard_id: id,
@@ -123,7 +129,7 @@ describe("scenarios > dashboard > parameters", () => {
       parameters: [startsWith, endsWith],
     };
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           dashcards: [
@@ -266,7 +272,7 @@ describe("scenarios > dashboard > parameters", () => {
       parameters: [matchingFilterType],
     };
 
-    cy.createNativeQuestionAndDashboard({
+    createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -388,7 +394,7 @@ describe("scenarios > dashboard > parameters", () => {
       cy.spy().as("fetchAllCategories"),
     ).as("filterValues");
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.log("Connect all filters to the card");
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -551,7 +557,7 @@ describe("scenarios > dashboard > parameters", () => {
       parameters: [parameter1Details, parameter2Details],
     };
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
       },
@@ -683,7 +689,7 @@ describe("scenarios > dashboard > parameters", () => {
         query: { "source-table": PEOPLE_ID, limit: 5 },
       };
 
-      cy.createDashboardWithQuestions({
+      createDashboardWithQuestions({
         dashboardDetails: {
           parameters: [textFilter],
         },

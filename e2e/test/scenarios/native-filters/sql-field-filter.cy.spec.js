@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
@@ -199,7 +200,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
     };
 
     it("should work despite it not showing up in the widget type list", () => {
-      cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+      createNativeQuestion(questionDetails, { visitQuestion: true });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 42 rows");
 

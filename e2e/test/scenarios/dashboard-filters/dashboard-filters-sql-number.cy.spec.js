@@ -1,4 +1,5 @@
 import { H } from "e2e/support";
+import { createNativeQuestionAndDashboard } from "e2e/support/helpers";
 
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
@@ -16,7 +17,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+    createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
         H.visitQuestion(card_id);
 
@@ -144,7 +145,7 @@ describe("scenarios > dashboard > filters > SQL > number", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {

@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -13,7 +14,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("can see x-ray options when a custom column is present (#16680)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "16680",
         display: "line",
@@ -282,7 +283,7 @@ describe("scenarios > question > custom column", () => {
 
     cy.signInAsAdmin();
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "13857",
         query: {
@@ -315,7 +316,7 @@ describe("scenarios > question > custom column", () => {
     const CC_NAME = "OneisOne";
     cy.signInAsAdmin();
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "14080",
         query: {
@@ -349,7 +350,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should create custom column after aggregation with 'cum-sum/count' (metabase#13634)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "13634",
         query: {
@@ -378,7 +379,7 @@ describe("scenarios > question > custom column", () => {
   it("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
     const CC_NAME = "Double the fun";
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "14193",
         query: {
@@ -416,7 +417,7 @@ describe("scenarios > question > custom column", () => {
     // Uppercase is important for this reproduction on H2
     const CC_NAME = "CATEGORY";
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "14255",
         query: {
@@ -440,7 +441,7 @@ describe("scenarios > question > custom column", () => {
   it("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
     const CE_NAME = "Rounded price";
 
-    cy.createQuestion({
+    createQuestion({
       name: "14775",
       query: {
         "source-table": ORDERS_ID,
@@ -526,7 +527,7 @@ describe("scenarios > question > custom column", () => {
   });
 
   it("should handle brackets in the name of the custom column (metabase#15316)", () => {
-    cy.createQuestion({
+    createQuestion({
       name: "15316",
       query: {
         "source-table": ORDERS_ID,

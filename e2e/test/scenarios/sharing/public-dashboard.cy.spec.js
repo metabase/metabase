@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createNativeQuestionAndDashboard } from "e2e/support/helpers";
 
 const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -70,7 +71,7 @@ const prepareDashboard = () => {
 
   cy.intercept("/api/dashboard/*/public_link").as("publicLink");
 
-  cy.createNativeQuestionAndDashboard({
+  createNativeQuestionAndDashboard({
     questionDetails,
     dashboardDetails,
   }).then(

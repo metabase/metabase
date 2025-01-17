@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createQuestionAndDashboard } from "e2e/support/helpers";
 
 import {
   applyFilterByType,
@@ -15,7 +16,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails: {
         query: { "source-table": ORDERS_ID, limit: 5 },
       },

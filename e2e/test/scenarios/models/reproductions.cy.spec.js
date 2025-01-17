@@ -6,6 +6,13 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  createDashboard,
+  createNativeQuestion,
+  createQuestion,
+  createQuestionAndDashboard,
+  editDashboardCard,
+} from "e2e/support/helpers";
+import {
   createMockActionParameter,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
@@ -40,7 +47,7 @@ describe("issue 19180", () => {
   });
 
   it("shouldn't drop native model query results after leaving the query editor", () => {
-    cy.createNativeQuestion(QUESTION).then(({ body: { id: QUESTION_ID } }) => {
+    createNativeQuestion(QUESTION).then(({ body: { id: QUESTION_ID } }) => {
       cy.request("PUT", `/api/card/${QUESTION_ID}`, { type: "model" }).then(
         () => {
           cy.visit(`/model/${QUESTION_ID}/query`);
@@ -274,7 +281,7 @@ describe("issue 20517", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(modelDetails).then(({ body: { id } }) => {
+    createQuestion(modelDetails).then(({ body: { id } }) => {
       cy.intercept("POST", `/api/card/${id}/query`).as("modelQuery");
       cy.intercept("PUT", `/api/card/${id}`).as("updateModel");
       cy.visit(`/model/${id}/metadata`);
@@ -319,7 +326,7 @@ describe.skip("issue 20624", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    createNativeQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("models metadata should override previously defined column settings (metabase#20624)", () => {
@@ -401,7 +408,7 @@ describe("issue 22517", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "22517",
         native: { query: "select * from orders" },
@@ -455,7 +462,7 @@ describe("issue 22518", () => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         native: {
           query: "select 1 id, 'a' foo",
@@ -516,7 +523,7 @@ describe.skip("issue 22519", () => {
   });
 
   it("model query should not fail when data model is using casting (metabase#22519)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("xavier");
@@ -547,7 +554,7 @@ describe("filtering based on the remapped column name should result in a correct
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion({
+    createNativeQuestion({
       native: {
         query:
           'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
@@ -621,7 +628,7 @@ describe("filtering based on the remapped column name should result in a correct
 
 describe("issue 23024", () => {
   function addModelToDashboardAndVisit() {
-    cy.createDashboard().then(({ body: { id } }) => {
+    createDashboard().then(({ body: { id } }) => {
       cy.get("@modelId").then(cardId => {
         H.addOrUpdateDashboardCard({
           dashboard_id: id,
@@ -640,7 +647,7 @@ describe("issue 23024", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         native: {
           query: `select *
@@ -730,7 +737,7 @@ describe("issue 23421", () => {
   });
 
   it("`visualization_settings` should not break UI (metabase#23421)", () => {
-    cy.createNativeQuestion(emptyColumnsQuestionDetails, {
+    createNativeQuestion(emptyColumnsQuestionDetails, {
       visitQuestion: true,
     });
     H.openQuestionActions();
@@ -743,7 +750,7 @@ describe("issue 23421", () => {
   });
 
   it("`visualization_settings` with hidden columns should not break UI (metabase#23421)", () => {
-    cy.createNativeQuestion(hiddenColumnsQuestionDetails, {
+    createNativeQuestion(hiddenColumnsQuestionDetails, {
       visitQuestion: true,
     });
     H.openQuestionActions();
@@ -792,7 +799,7 @@ describe("issue 23449", () => {
   });
 
   it("should work with the remapped custom values from data model (metabase#23449)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
     cy.findByTextEnsureVisible("Perfecto");
 
     turnIntoModel();
@@ -820,7 +827,7 @@ describe("issue 25537", () => {
 
   it("should be able to pick a saved model when using a non-english locale (metabase#25537)", () => {
     setLocale("de");
-    cy.createQuestion(questionDetails);
+    createQuestion(questionDetails);
 
     H.startNewQuestion();
     H.entityPickerModal().within(() => {
@@ -850,7 +857,7 @@ describe("issue 26091", () => {
   });
 
   it("should allow to choose a newly created model in the data picker (metabase#26091)", () => {
-    cy.createQuestion(modelDetails);
+    createQuestion(modelDetails);
     cy.visit("/");
 
     startNewQuestion();
@@ -1086,7 +1093,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
@@ -1116,12 +1123,12 @@ describe("issue 29517 - nested question based on native model with remapped valu
         display: "line",
       };
 
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: nestedQuestionDetails,
       }).then(({ body: card }) => {
         const { card_id, dashboard_id } = card;
 
-        cy.editDashboardCard(card, {
+        editDashboardCard(card, {
           visualization_settings: {
             click_behavior: {
               type: "link",
@@ -1213,7 +1220,7 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
   });
 
   it("should allow to run the model query after changing custom columns (metabase#29951)", () => {
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    createQuestion(questionDetails).then(({ body: { id } }) => {
       cy.visit(`/model/${id}/query`);
     });
 
@@ -1257,7 +1264,7 @@ describe("issue 31309", () => {
   });
 
   it("should duplicate a model with its original aggregation and breakout", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "model",
         query: TEST_QUERY,
@@ -1318,7 +1325,7 @@ describe("issue 31663", () => {
       "idFields",
     );
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Products Model",
         type: "model",
@@ -1359,7 +1366,7 @@ describe("issue 31905", () => {
 
     cy.intercept("GET", "/api/card/*").as("card");
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Orders Model",
         type: "model",
@@ -1504,7 +1511,7 @@ describe("issue 32483", () => {
           ],
         };
 
-        cy.createDashboard(dashboardDetails).then(
+        createDashboard(dashboardDetails).then(
           ({ body: { id: dashboardId } }) => {
             H.visitDashboard(dashboardId);
           },
@@ -1539,7 +1546,7 @@ describe("issue 32963", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Orders Model",
         type: "model",

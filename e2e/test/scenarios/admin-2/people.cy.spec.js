@@ -7,6 +7,7 @@ import {
   COLLECTION_GROUP_ID,
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createQuestionAndDashboard } from "e2e/support/helpers";
 
 const { sandboxed, normal, admin, nodata, nocollection } = USERS;
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
@@ -530,7 +531,7 @@ H.describeEE("scenarios > admin > people", () => {
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {
     H.getCurrentUser().then(({ body: { id: user_id } }) => {
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
       }).then(({ body: { card_id, dashboard_id } }) => {
         H.createAlert(getAlertDetails({ user_id, card_id }));

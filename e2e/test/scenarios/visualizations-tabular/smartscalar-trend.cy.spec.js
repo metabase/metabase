@@ -2,6 +2,7 @@ import Color from "color";
 
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createQuestion } from "e2e/support/helpers";
 import { colors } from "metabase/lib/colors";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -25,7 +26,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should allow data settings to be changed and display should reflect changes", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "13710",
         query: {
@@ -157,7 +158,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should handle up to 3 comparisons", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -230,7 +231,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   it("should reset 'another column' comparison when it becomes invalid", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion(
+    createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -345,7 +346,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should allow display settings to be changed and display should reflect changes", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "13710",
         query: {
@@ -431,7 +432,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should work regardless of column order (metabase#13710)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "13710",
         query: {

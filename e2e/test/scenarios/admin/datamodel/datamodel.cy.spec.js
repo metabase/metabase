@@ -6,6 +6,7 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -509,7 +510,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       semantic_type: null,
     });
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "14124",
         query: {
@@ -1010,7 +1011,7 @@ describe("scenarios > admin > databases > table", () => {
     });
 
     it("question with joins (metabase#15947-2)", () => {
-      cy.createQuestion({
+      createQuestion({
         name: "15947",
         query: {
           "source-table": ORDERS_ID,

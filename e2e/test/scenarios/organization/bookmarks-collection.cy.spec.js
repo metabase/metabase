@@ -4,6 +4,7 @@ import {
   ADMIN_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createQuestion } from "e2e/support/helpers";
 
 const adminFullName = USERS.admin.first_name + " " + USERS.admin.last_name;
 const adminPersonalCollectionName = adminFullName + "'s Personal Collection";
@@ -93,7 +94,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
   });
 
   it("adds and removes bookmarks from Model in collection", () => {
-    cy.createQuestion({
+    createQuestion({
       name: "Orders Model",
       query: { "source-table": STATIC_ORDERS_ID, aggregation: [["count"]] },
       type: "model",

@@ -8,6 +8,15 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  createCollection,
+  createDashboard,
+  createDashboardWithQuestions,
+  createNativeQuestion,
+  createNativeQuestionAndDashboard,
+  createQuestion,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
   createMockDashboardCard,
@@ -38,7 +47,7 @@ describe("issue 12578", () => {
 
   it("should not fetch cards that are still loading when refreshing", () => {
     cy.clock(Date.now());
-    cy.createQuestionAndDashboard({ questionDetails: ORDERS_QUESTION }).then(
+    createQuestionAndDashboard({ questionDetails: ORDERS_QUESTION }).then(
       ({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
       },
@@ -123,7 +132,7 @@ describe("issue 12926", () => {
     it("should stop the ongoing query when removing a card from a dashboard", () => {
       slowDownDashcardQuery();
 
-      cy.createNativeQuestionAndDashboard({
+      createNativeQuestionAndDashboard({
         questionDetails,
       }).then(({ body: { dashboard_id } }) => {
         cy.visit(`/dashboard/${dashboard_id}`);
@@ -141,7 +150,7 @@ describe("issue 12926", () => {
     it("should re-fetch the query when doing undo on the removal", () => {
       slowDownDashcardQuery();
 
-      cy.createNativeQuestionAndDashboard({
+      createNativeQuestionAndDashboard({
         questionDetails,
       }).then(({ body: { dashboard_id } }) => {
         cy.visit(`/dashboard/${dashboard_id}`);
@@ -159,7 +168,7 @@ describe("issue 12926", () => {
     });
 
     it("should not break virtual cards (metabase#35545)", () => {
-      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+      createDashboard().then(({ body: { id: dashboardId } }) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -176,9 +185,9 @@ describe("issue 12926", () => {
   describe("saving a dashboard that retriggers a non saved query (negative id)", () => {
     it("should stop the ongoing query", () => {
       // this test requires the card to be manually added to the dashboard, as it requires the dashcard id to be negative
-      cy.createNativeQuestion(questionDetails);
+      createNativeQuestion(questionDetails);
 
-      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+      createDashboard().then(({ body: { id: dashboardId } }) => {
         H.visitDashboard(dashboardId);
       });
 
@@ -223,15 +232,15 @@ describe("issue 13736", () => {
   });
 
   it("should work even if some cards are broken (metabase#13736)", () => {
-    cy.createQuestion(questionDetails, {
+    createQuestion(questionDetails, {
       wrapId: true,
       idAlias: "failingQuestionId",
     });
-    cy.createQuestion(questionDetails, {
+    createQuestion(questionDetails, {
       wrapId: true,
       idAlias: "successfulQuestionId",
     });
-    cy.createDashboard({ name: "13736 Dashboard" }).then(
+    createDashboard({ name: "13736 Dashboard" }).then(
       ({ body: { id: dashboardId } }) => {
         cy.wrap(dashboardId).as("dashboardId");
       },
@@ -410,7 +419,7 @@ describe("issue 17879", () => {
     targetDateUnit = "default",
   }) {
     if (targetDateUnit === "default") {
-      cy.createQuestion({
+      createQuestion({
         name: "Q1 - 17879",
         query: {
           "source-table": ORDERS_ID,
@@ -418,7 +427,7 @@ describe("issue 17879", () => {
         },
       });
     } else {
-      cy.createQuestion({
+      createQuestion({
         name: "Q1 - 17879",
         query: {
           "source-table": ORDERS_ID,
@@ -431,7 +440,7 @@ describe("issue 17879", () => {
       });
     }
 
-    cy.createDashboardWithQuestions({
+    createDashboardWithQuestions({
       dashboardName: "Dashboard with aggregated Q2",
       questions: [
         {
@@ -602,13 +611,13 @@ describe("issue 28756", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
+    createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
       ({ body: restrictedCollection }) => {
         restrictCollectionForNonAdmins(restrictedCollection.id);
 
-        cy.createCollection({ name: UNRESTRICTED_COLLECTION_NAME }).then(
+        createCollection({ name: UNRESTRICTED_COLLECTION_NAME }).then(
           ({ body: unrestrictedCollection }) => {
-            cy.createQuestionAndDashboard({
+            createQuestionAndDashboard({
               dashboardDetails: {
                 collection_id: unrestrictedCollection.id,
               },
@@ -715,7 +724,7 @@ describe("issue 31274", () => {
   });
 
   it("should not clip dashcard actions (metabase#31274)", () => {
-    cy.createDashboard().then(({ body: dashboard }) => {
+    createDashboard().then(({ body: dashboard }) => {
       const dashcards = createTextCards(3);
       cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
         dashcards,
@@ -744,7 +753,7 @@ describe("issue 31274", () => {
   });
 
   it("renders cross icon on the link card without clipping", () => {
-    cy.createDashboard().then(({ body: dashboard }) => {
+    createDashboard().then(({ body: dashboard }) => {
       H.visitDashboard(dashboard.id);
       H.editDashboard(dashboard.id);
     });
@@ -795,7 +804,7 @@ describe("issue 31697", () => {
     H.restore();
     cy.signInAsAdmin();
     H.createSegment(segmentDetails).then(({ body: segment }) => {
-      cy.createQuestion(getQuestionDetails(segment), { wrapId: true });
+      createQuestion(getQuestionDetails(segment), { wrapId: true });
     });
     cy.intercept("GET", "/api/automagic-dashboards/**").as("xrayDashboard");
   });
@@ -841,7 +850,7 @@ describe("issue 31766", () => {
 
     const dashboardDetails = { name: "Orders in a dashboard" };
 
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
       cardDetails: { size_x: 16, size_y: 8 },
@@ -922,28 +931,22 @@ describe("issue 34382", () => {
       parameters: [filterDetails],
     };
 
-    cy.createDashboard(dashboardDetails).then(
-      ({ body: { id: dashboard_id } }) => {
-        cy.createQuestion(questionDetails).then(
-          ({ body: { id: question_id } }) => {
-            cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-              dashcards: [
-                {
-                  id: -1,
-                  card_id: question_id,
-                  ...questionDashcardDetails,
-                  ...getParameterMapping({ card_id: question_id }, [
-                    filterDetails,
-                  ]),
-                },
-              ],
-            });
-          },
-        );
+    createDashboard(dashboardDetails).then(({ body: { id: dashboard_id } }) => {
+      createQuestion(questionDetails).then(({ body: { id: question_id } }) => {
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
+            {
+              id: -1,
+              card_id: question_id,
+              ...questionDashcardDetails,
+              ...getParameterMapping({ card_id: question_id }, [filterDetails]),
+            },
+          ],
+        });
+      });
 
-        cy.wrap(dashboard_id).as("dashboardId");
-      },
-    );
+      cy.wrap(dashboard_id).as("dashboardId");
+    });
   };
 
   function addFilterValue(value) {
@@ -1038,7 +1041,7 @@ describe("should not redirect users to other pages when linking an entity (metab
   });
 
   it("should not redirect users to search item", () => {
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: TEST_QUESTION_NAME,
       native: { query: "SELECT 1" },
     });
@@ -1455,7 +1458,7 @@ describe("issue 42165", () => {
       "dashcardQuery",
     );
 
-    cy.createDashboardWithQuestions({
+    createDashboardWithQuestions({
       dashboardDetails: {
         parameters: [
           createMockParameter({

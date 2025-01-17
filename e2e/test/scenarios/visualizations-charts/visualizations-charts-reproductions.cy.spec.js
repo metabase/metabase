@@ -1,6 +1,13 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createNativeQuestion,
+  createNativeQuestionAndDashboard,
+  createQuestion,
+  createQuestionAndDashboard,
+  editDashboardCard,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -33,7 +40,7 @@ describe("issue 13504", () => {
   });
 
   it("should remove post-aggregation filters from a multi-stage query (metabase#13504)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
 
     H.cartesianChartCircle().eq(0).click({ force: true });
 
@@ -80,7 +87,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
         display: "line",
       };
 
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      createQuestion(questionDetails, { visitQuestion: true });
     });
   });
 
@@ -154,7 +161,7 @@ describe("issue 17524", () => {
 
   describe("scenario 1", () => {
     beforeEach(() => {
-      cy.createNativeQuestion(nativeQuestionDetails, { visitQuestion: true });
+      createNativeQuestion(nativeQuestionDetails, { visitQuestion: true });
     });
 
     it("should not alter visualization type when applying filter on a native question (metabase#17524-1)", () => {
@@ -172,7 +179,7 @@ describe("issue 17524", () => {
 
   describe("scenario 2", () => {
     beforeEach(() => {
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      createQuestion(questionDetails, { visitQuestion: true });
     });
 
     it("should not alter visualization type when applying filter on a QB question (metabase#17524-2)", () => {
@@ -244,7 +251,7 @@ describe("issue 18061", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: dashboardCard }) => {
         const { dashboard_id, card_id } = dashboardCard;
 
@@ -275,7 +282,7 @@ describe("issue 18061", () => {
           ],
         };
 
-        cy.editDashboardCard(dashboardCard, mapFilterToCard);
+        editDashboardCard(dashboardCard, mapFilterToCard);
       },
     );
   });
@@ -371,7 +378,7 @@ describe("issue 18063", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    createNativeQuestion(questionDetails, { visitQuestion: true });
 
     // Select a Pin map
     H.openVizSettingsSidebar();
@@ -484,7 +491,7 @@ describe("issue 20548", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
     H.summarize();
   });
 
@@ -616,7 +623,7 @@ describe("issue 21665", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    createNativeQuestionAndDashboard({
       questionDetails: Q1,
       dashboardDetails: { name: "21665D" },
     }).then(({ dashboardId, questionId }) => {
@@ -630,7 +637,7 @@ describe("issue 21665", () => {
       cy.log("dashboard id", dashboardId);
       cy.wrap(dashboardId).as("dashboardId");
 
-      cy.createNativeQuestion(Q2);
+      createNativeQuestion(Q2);
 
       H.visitDashboard(dashboardId);
       H.editDashboard();
@@ -688,7 +695,7 @@ describe.skip("issue 22527", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    createNativeQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should render negative values in a scatter visualziation (metabase#22527)", () => {
@@ -734,7 +741,7 @@ describe("issue 25007", () => {
   });
 
   it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    createNativeQuestion(questionDetails, { visitQuestion: true });
     clickLineDot({ index: 1 });
     H.popover().findByTextEnsureVisible("May 1–7, 2022");
   });
@@ -801,7 +808,7 @@ describe("issue 27279", () => {
   });
 
   it("should reflect/apply sorting to the x-axis (metabase#27279)", () => {
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       H.visitQuestionAdhoc({
         dataset_query: {
           type: "query",
@@ -919,7 +926,7 @@ describe("issue 27427", () => {
   };
 
   function assertStaticVizRender(questionDetails, callback) {
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.request({
         method: "GET",
         url: `/api/pulse/preview_card/${id}`,
@@ -1080,7 +1087,7 @@ describe("issue 33208", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         native: {
           query:

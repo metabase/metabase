@@ -1,5 +1,11 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createDashboard,
+  createNativeQuestion,
+  createQuestion,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -10,7 +16,7 @@ describe("scenarios > question > null", () => {
   });
 
   it("should display rows whose value is `null` (metabase#13571)", () => {
-    cy.createQuestion({
+    createQuestion({
       name: "13571",
       query: {
         "source-table": ORDERS_ID,
@@ -37,7 +43,7 @@ describe("scenarios > question > null", () => {
 
   it("pie chart should handle `0`/`null` values (metabase#13626)", () => {
     // Preparation for the test: "Arrange and Act phase" - see repro steps in #13626
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails: {
         name: "13626",
         query: {
@@ -98,17 +104,17 @@ describe("scenarios > question > null", () => {
   });
 
   it("dashboard should handle cards with null values (metabase#13801)", () => {
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "13801_Q1",
       native: { query: "SELECT null", "template-tags": {} },
       display: "scalar",
     }).then(({ body: { id: Q1_ID } }) => {
-      cy.createNativeQuestion({
+      createNativeQuestion({
         name: "13801_Q2",
         native: { query: "SELECT 0", "template-tags": {} },
         display: "scalar",
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+        createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           cy.log("Add both previously created questions to the dashboard");
 
           H.updateDashboardCards({

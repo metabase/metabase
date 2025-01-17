@@ -1,6 +1,10 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createQuestion,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
 const {
@@ -557,7 +561,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
   describe("dashboards", () => {
     it("should be scrollable even when tiny (metabase#24678)", () => {
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: {
           name: QUESTION_NAME,
           query: testQuery.query,
@@ -580,7 +584,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     it("should allow filtering drill through (metabase#14632) (metabase#14465)", () => {
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: {
           name: QUESTION_NAME,
           query: testQuery.query,
@@ -616,7 +620,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.viewport(1400, 800); // Row totals on embed preview was getting cut off at the normal width
       cy.log("Create a question");
 
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: {
           name: QUESTION_NAME,
           query: testQuery.query,
@@ -1026,7 +1030,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       },
     };
 
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails: {
         name: QUESTION_NAME,
         query,
@@ -1446,7 +1450,7 @@ function createTestQuestion({ display = "pivot", visitQuestion = true } = {}) {
   const { query } = testQuery;
   const questionDetails = { name: QUESTION_NAME, query, display };
 
-  return cy.createQuestion(questionDetails, { visitQuestion });
+  return createQuestion(questionDetails, { visitQuestion });
 }
 
 function assertOnPivotSettings() {

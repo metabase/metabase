@@ -1,4 +1,5 @@
 import { H } from "e2e/support";
+import { createDashboard, createNativeQuestion } from "e2e/support/helpers";
 
 ["dashboard", "question"].forEach(resource => {
   describe(`embed modal behavior for ${resource}s`, () => {
@@ -769,7 +770,7 @@ function toSecond(milliseconds) {
 
 function createResource(resource) {
   if (resource === "question") {
-    return cy.createNativeQuestion({
+    return createNativeQuestion({
       name: "Question",
       native: {
         query: `
@@ -826,7 +827,7 @@ function createResource(resource) {
       type: "string/contains",
     };
 
-    return cy.createDashboard({
+    return createDashboard({
       name: "Dashboard",
       parameters: [dateFilter, numberFilter, textFilter],
     });

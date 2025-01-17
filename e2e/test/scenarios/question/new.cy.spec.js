@@ -8,6 +8,7 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createCollection } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -425,7 +426,7 @@ describe("scenarios > question > new", () => {
 
     beforeEach(() => {
       cy.intercept("POST", "/api/card").as("createQuestion");
-      cy.createCollection(collectionInRoot).then(({ body: { id } }) => {
+      createCollection(collectionInRoot).then(({ body: { id } }) => {
         H.createDashboard({
           name: "Extra Dashboard",
           collection_id: id,

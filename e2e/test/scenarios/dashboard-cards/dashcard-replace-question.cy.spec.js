@@ -5,6 +5,7 @@ import {
   FIRST_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createDashboard, createQuestion } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
   createMockHeadingDashboardCard,
@@ -109,10 +110,10 @@ H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
 
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    cy.createQuestion(MAPPED_QUESTION_CREATE_INFO).then(
+    createQuestion(MAPPED_QUESTION_CREATE_INFO).then(
       ({ body: { id: mappedQuestionId } }) => {
-        cy.createQuestion(NEXT_QUESTION_CREATE_INFO).then(() => {
-          cy.createDashboard(DASHBOARD_CREATE_INFO).then(
+        createQuestion(NEXT_QUESTION_CREATE_INFO).then(() => {
+          createDashboard(DASHBOARD_CREATE_INFO).then(
             ({ body: { id: dashboardId } }) => {
               cy.request("PUT", `/api/dashboard/${dashboardId}`, {
                 dashcards: getDashboardCards(mappedQuestionId),

@@ -5,6 +5,11 @@ import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  createDashboard,
+  createNativeQuestion,
+  createQuestion,
+} from "e2e/support/helpers";
 
 import {
   assertIsModel,
@@ -24,7 +29,7 @@ describe("scenarios > models", () => {
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Products",
         query: { "source-table": PRODUCTS_ID },
@@ -83,7 +88,7 @@ describe("scenarios > models", () => {
   });
 
   it("allows to turn a native question into a model", () => {
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "Product Model",
         native: {
@@ -140,7 +145,7 @@ describe("scenarios > models", () => {
     FROM people
     GROUP BY
       Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count`;
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "People Model with long alias",
         native: {
@@ -513,7 +518,7 @@ describe("scenarios > models", () => {
   });
 
   it("shouldn't allow to turn native questions with variables into models", () => {
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         native: {
           query: "SELECT * FROM products WHERE {{ID}}",
@@ -565,7 +570,7 @@ describe("scenarios > models", () => {
   });
 
   it("shouldn't allow using variables in native models", () => {
-    cy.createNativeQuestion({
+    createNativeQuestion({
       native: { query: "SELECT * FROM products" },
     }).then(({ body: { id: modelId } }) => {
       cy.request("PUT", `/api/card/${modelId}`, { type: "model" }).then(() => {
@@ -580,7 +585,7 @@ describe("scenarios > models", () => {
 
   it("should correctly show native models for no-data users", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "TEST MODEL",
       type: "model",
       native: {
@@ -629,11 +634,11 @@ describe("scenarios > models", () => {
     };
 
     beforeEach(() => {
-      cy.createQuestion(modelDetails, { wrapId: true, idAlias: "modelId" });
+      createQuestion(modelDetails, { wrapId: true, idAlias: "modelId" });
     });
 
     it("should allow adding models to dashboards", () => {
-      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+      createDashboard().then(({ body: { id: dashboardId } }) => {
         H.visitDashboard(dashboardId);
         H.editDashboard();
         H.openQuestionsSidebar();

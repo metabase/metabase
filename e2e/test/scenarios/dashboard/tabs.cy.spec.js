@@ -9,6 +9,10 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  createDashboard,
+  createNativeQuestionAndDashboard,
+} from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
@@ -288,7 +292,7 @@ describe("scenarios > dashboard > tabs", () => {
         }),
       ];
 
-      cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+      createDashboard().then(({ body: { id: dashboard_id } }) => {
         H.updateDashboardCards({ dashboard_id, cards });
 
         H.visitDashboard(dashboard_id);
@@ -327,7 +331,7 @@ describe("scenarios > dashboard > tabs", () => {
       },
       collection_id: ADMIN_PERSONAL_COLLECTION_ID,
     };
-    cy.createNativeQuestionAndDashboard({
+    createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails: {
         collection_id: NORMAL_PERSONAL_COLLECTION_ID,

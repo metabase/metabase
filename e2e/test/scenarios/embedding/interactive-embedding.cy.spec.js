@@ -9,6 +9,7 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createDashboard } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
   createMockTextDashboardCard,
@@ -983,7 +984,7 @@ H.describeEE("scenarios > embedding > full app", () => {
           },
         ],
       };
-      cy.createDashboard(dashboardDetails).then(
+      createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
           const textDashcard = H.getTextCardDetails({
             col: 0,

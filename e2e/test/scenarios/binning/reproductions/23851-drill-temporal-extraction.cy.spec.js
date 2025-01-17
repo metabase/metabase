@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -23,7 +24,7 @@ describe("issue 23851", () => {
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
       semantic_type: null,
     });
-    cy.createQuestion(
+    createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,

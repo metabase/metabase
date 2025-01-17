@@ -1,6 +1,11 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createDashboard,
+  createNativeQuestion,
+  createQuestion,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -13,7 +18,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should allow brush date filter", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Brush Date Temporal Filter",
         query: {
@@ -82,7 +87,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         display: "line",
       };
 
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      createQuestion(questionDetails, { visitQuestion: true });
 
       H.queryBuilderMain().within(() => {
         cy.findByLabelText("Legend").findByText("Gadget").should("exist");
@@ -111,7 +116,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should correctly drill through on a card with multiple series (metabase#11442)", () => {
-    cy.createQuestion({
+    createQuestion({
       name: "11442_Q1",
       query: {
         "source-table": ORDERS_ID,
@@ -120,7 +125,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "line",
     }).then(({ body: { id: Q1_ID } }) => {
-      cy.createQuestion({
+      createQuestion({
         name: "11442_Q2",
         query: {
           "source-table": PRODUCTS_ID,
@@ -131,7 +136,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         },
         display: "line",
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.createDashboard({ name: "11442D" }).then(
+        createDashboard({ name: "11442D" }).then(
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add the first question to the dashboard");
 
@@ -173,7 +178,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should allow drill-through on combined cards with different amount of series (metabase#13457)", () => {
-    cy.createQuestion({
+    createQuestion({
       name: "13457_Q1",
       query: {
         "source-table": ORDERS_ID,
@@ -182,7 +187,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "line",
     }).then(({ body: { id: Q1_ID } }) => {
-      cy.createQuestion({
+      createQuestion({
         name: "13457_Q2",
         query: {
           "source-table": ORDERS_ID,
@@ -194,7 +199,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         },
         display: "line",
       }).then(({ body: { id: Q2_ID } }) => {
-        cy.createDashboard({ name: "13457D" }).then(
+        createDashboard({ name: "13457D" }).then(
           ({ body: { id: DASHBOARD_ID } }) => {
             cy.log("Add the first question to the dashboard");
 
@@ -238,7 +243,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   it("should drill through a nested query", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion({
+    createQuestion({
       name: "CA People",
       query: { "source-table": PEOPLE_ID, limit: 5 },
     });
@@ -275,7 +280,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it.skip("should drill through a with date filter (metabase#12496)", () => {
-    cy.createQuestion({
+    createQuestion({
       name: "Orders by Created At: Week",
       query: {
         "source-table": ORDERS_ID,
@@ -360,7 +365,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display correct value in a tooltip for unaggregated data (metabase#11907)", () => {
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "11907",
         native: {
@@ -454,14 +459,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
     );
 
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "14495_SQL",
       native: { query: "SELECT * FROM ORDERS", "template-tags": {} },
     }).then(({ body: { id: SQL_ID } }) => {
       const ALIAS = `Question ${SQL_ID}`;
 
       // Create a QB question and join it with the previously created native question
-      cy.createQuestion({
+      createQuestion({
         name: "14495",
         query: {
           "source-table": PEOPLE_ID,
@@ -575,7 +580,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should parse value on click through on the first row of pie chart (metabase#15250)", () => {
-    cy.createQuestion({
+    createQuestion({
       name: "15250",
       query: {
         "source-table": PRODUCTS_ID,
@@ -584,7 +589,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
       display: "pie",
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+      createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         H.addOrUpdateDashboardCard({
           card_id: QUESTION_ID,
           dashboard_id: DASHBOARD_ID,
@@ -689,7 +694,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display proper drills on chart click for line chart", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Line chart drills",
         query: {
@@ -733,7 +738,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display proper drills on chart click for bar chart", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Line chart drills",
         query: {
@@ -784,7 +789,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   });
 
   it("should display proper drills on chart click for query grouped by state", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Line chart drills",
         query: {

@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createNativeQuestion, createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -89,12 +90,12 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should join a native question (metabase#37100)", () => {
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "question a",
       native: { query: "select ID, PRODUCT_ID, TOTAL from orders" },
     });
 
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "question b",
       native: { query: "select * from products" },
     });
@@ -161,7 +162,7 @@ describe("scenarios > question > joined questions", () => {
       "metadata",
     );
 
-    cy.createQuestion({
+    createQuestion({
       name: "Q1",
       query: {
         aggregation: ["sum", ["field", ORDERS.TOTAL, null]],
@@ -172,7 +173,7 @@ describe("scenarios > question > joined questions", () => {
       },
     });
 
-    cy.createQuestion({
+    createQuestion({
       name: "Q2",
       query: {
         aggregation: ["sum", ["field", PRODUCTS.RATING, null]],

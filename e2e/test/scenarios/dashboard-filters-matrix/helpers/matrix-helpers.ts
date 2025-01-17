@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createDashboardWithQuestions } from "e2e/support/helpers";
 import type { ValuesQueryType } from "metabase-types/api";
 
 import { matrix } from "./matrix";
@@ -121,7 +122,7 @@ function setup(test: TestCase) {
       ...parameterSource(test, otherCardId),
     };
 
-    cy.createDashboardWithQuestions({
+    createDashboardWithQuestions({
       dashboardDetails: {
         parameters: [parameter],
       },

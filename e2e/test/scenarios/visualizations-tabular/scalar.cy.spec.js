@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createQuestionAndDashboard } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -24,7 +25,7 @@ describe("scenarios > visualizations > scalar", () => {
       cy.skipOn(size === "mobile");
 
       cy.viewport(width, height);
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: {
           name: "12629",
           query: {

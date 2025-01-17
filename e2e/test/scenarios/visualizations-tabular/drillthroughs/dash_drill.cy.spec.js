@@ -2,6 +2,10 @@ import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  createDashboard,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -85,7 +89,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       const CARD_NAME = "Multiscalar Question";
 
       beforeEach(() => {
-        cy.createQuestionAndDashboard({
+        createQuestionAndDashboard({
           questionDetails: {
             name: CARD_NAME,
             // Create muliscalar card
@@ -132,7 +136,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       it("should respect visualization type when entering a question from a dashboard (metabase#13415)", () => {
         const QUESTION_NAME = "13415";
 
-        cy.createQuestionAndDashboard({
+        createQuestionAndDashboard({
           questionDetails: {
             name: QUESTION_NAME,
             query: {
@@ -203,7 +207,7 @@ function clickScalarCardTitle(card_name) {
 }
 
 function addCardToNewDashboard(dashboard_name, card_id) {
-  cy.createDashboard({ name: dashboard_name }).then(
+  createDashboard({ name: dashboard_name }).then(
     ({ body: { id: dashboard_id } }) => {
       H.addOrUpdateDashboardCard({ card_id, dashboard_id });
       H.visitDashboard(dashboard_id);

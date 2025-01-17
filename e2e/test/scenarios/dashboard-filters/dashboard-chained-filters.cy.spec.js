@@ -2,6 +2,7 @@ import { H } from "e2e/support";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { createDashboard, createQuestion } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
@@ -211,12 +212,12 @@ describe("scenarios > dashboard > chained filter", () => {
         const TEST_TABLE_ID = this.testTableId;
         const UUID_FIELD_ID = this.uuidFieldId;
 
-        cy.createQuestion({
+        createQuestion({
           name: "15170",
           database: WRITABLE_DB_ID,
           query: { "source-table": TEST_TABLE_ID },
         }).then(({ body: { id: QUESTION_ID } }) => {
-          cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+          createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
             // Add filter to the dashboard
             cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
               parameters: [

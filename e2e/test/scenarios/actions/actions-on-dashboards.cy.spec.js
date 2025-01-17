@@ -2,6 +2,7 @@ import { assocIn } from "icepick";
 
 import { H } from "e2e/support";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { createDashboard } from "e2e/support/helpers";
 import { many_data_types_rows } from "e2e/support/test_tables_data";
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
@@ -266,21 +267,19 @@ const MODEL_NAME = "Test Action Model";
               });
             })
             .then(({ body: action }) => {
-              cy.createDashboard(dashboardDetails).then(
-                ({ body: dashboard }) => {
-                  H.updateDashboardCards({
-                    dashboard_id: dashboard.id,
-                    cards: [
-                      H.getActionCardDetails({
-                        action_id: action.id,
-                        label: "Create",
-                      }),
-                    ],
-                  });
-                  cy.visit(`/dashboard/${dashboard.id}`);
-                  cy.wrap(dashboard.id).as("dashboardId");
-                },
-              );
+              createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+                H.updateDashboardCards({
+                  dashboard_id: dashboard.id,
+                  cards: [
+                    H.getActionCardDetails({
+                      action_id: action.id,
+                      label: "Create",
+                    }),
+                  ],
+                });
+                cy.visit(`/dashboard/${dashboard.id}`);
+                cy.wrap(dashboard.id).as("dashboardId");
+              });
             });
 
           cy.log("The action should be visible in the dashboard");
@@ -322,21 +321,19 @@ const MODEL_NAME = "Test Action Model";
               });
             })
             .then(({ body: action }) => {
-              cy.createDashboard(dashboardDetails).then(
-                ({ body: dashboard }) => {
-                  H.updateDashboardCards({
-                    dashboard_id: dashboard.id,
-                    cards: [
-                      H.getActionCardDetails({
-                        action_id: action.id,
-                        label: "Create",
-                      }),
-                    ],
-                  });
-                  cy.visit(`/dashboard/${dashboard.id}`);
-                  cy.wrap(dashboard.id).as("dashboardId");
-                },
-              );
+              createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+                H.updateDashboardCards({
+                  dashboard_id: dashboard.id,
+                  cards: [
+                    H.getActionCardDetails({
+                      action_id: action.id,
+                      label: "Create",
+                    }),
+                  ],
+                });
+                cy.visit(`/dashboard/${dashboard.id}`);
+                cy.wrap(dashboard.id).as("dashboardId");
+              });
             });
 
           cy.log("The action should be visible in the dashboard");
@@ -1204,7 +1201,7 @@ describe(
         cy.findByPlaceholderText("My new fantastic action").type(ACTION_NAME);
         cy.findByTestId("create-action-form").button("Create").click();
 
-        cy.createDashboard({ name: "action packed dashboard" }).then(
+        createDashboard({ name: "action packed dashboard" }).then(
           ({ body: { id: dashboardId } }) => {
             H.visitDashboard(dashboardId);
           },
@@ -1263,7 +1260,7 @@ function createDashboardWithActionButton({
   idFilter = false,
   hideField,
 }) {
-  cy.createDashboard({ name: "action packed dashboard" }).then(
+  createDashboard({ name: "action packed dashboard" }).then(
     ({ body: { id: dashboardId } }) => {
       cy.wrap(dashboardId).as("dashboardId");
       H.visitDashboard(dashboardId);

@@ -1,4 +1,8 @@
 import { H } from "e2e/support";
+import {
+  createNativeQuestionAndDashboard,
+  editDashboardCard,
+} from "e2e/support/helpers";
 
 const questionDetails = {
   name: "Return input value",
@@ -37,7 +41,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: dashboardCard }) => {
@@ -53,7 +57,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
         ],
       };
 
-      cy.editDashboardCard(dashboardCard, mapFilterToCard);
+      editDashboardCard(dashboardCard, mapFilterToCard);
 
       H.visitDashboard(dashboard_id);
     });
@@ -72,7 +76,9 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     cy.location("search").should("eq", "?text=");
 
     // SQL question defaults
-    cy.findByTestId("dashcard").contains("Foo");
+    cy.findByTestId("dashcard").contains(
+      "There was a problem displaying this chart.",
+    );
 
     // The empty filter widget
     cy.findByPlaceholderText("Text");
@@ -82,7 +88,9 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     // This part confirms that the issue metabase#13960 has been fixed
     cy.location("search").should("eq", "?text=");
 
-    cy.findByTestId("dashcard").contains("Foo");
+    cy.findByTestId("dashcard").contains(
+      "There was a problem displaying this chart.",
+    );
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");

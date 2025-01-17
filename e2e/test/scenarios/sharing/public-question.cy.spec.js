@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
@@ -51,7 +52,7 @@ describe("scenarios > public > question", () => {
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
-    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+    createNativeQuestion(questionData).then(({ body: { id } }) => {
       H.visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
@@ -83,7 +84,7 @@ describe("scenarios > public > question", () => {
   });
 
   it("should only allow non-admin users to see a public link if one has already been created", () => {
-    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+    createNativeQuestion(questionData).then(({ body: { id } }) => {
       H.createPublicQuestionLink(id);
       cy.signOut();
       cy.signInAsNormalUser().then(() => {
@@ -105,7 +106,7 @@ describe("scenarios > public > question", () => {
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it("should be able to view public questions", () => {
-        cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+        createNativeQuestion(questionData).then(({ body: { id } }) => {
           cy.request("POST", `/api/card/${id}/public_link`).then(
             ({ body: { uuid } }) => {
               setUser();
@@ -162,7 +163,7 @@ describe("scenarios > public > question", () => {
   });
 
   it("should be able to view public questions with card template tags", () => {
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "Nested Question",
       native: {
         query: "SELECT * FROM PEOPLE LIMIT 5",

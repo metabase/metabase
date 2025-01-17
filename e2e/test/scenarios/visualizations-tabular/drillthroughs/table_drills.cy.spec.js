@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createNativeQuestion, createQuestion } from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID, ACCOUNTS_ID } = SAMPLE_DATABASE;
 
@@ -92,7 +93,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   });
 
   it("should display proper drills on cell click for query aggregated by category", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         query: {
           "source-table": REVIEWS_ID,
@@ -145,7 +146,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   });
 
   it("should display proper drills on cell click for query aggregated by date", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         query: {
           "source-table": REVIEWS_ID,
@@ -190,7 +191,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
 
   describe("native query", () => {
     it("should display proper drills on cell click for unaggregated query", () => {
-      cy.createNativeQuestion(
+      createNativeQuestion(
         {
           name: "table_drills",
           native: { query: "select * from reviews limit 3" },
@@ -276,7 +277,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     it("should display proper drills on cell click for query aggregated by category", () => {
-      cy.createNativeQuestion(
+      createNativeQuestion(
         {
           name: "table_drills",
           native: {
@@ -335,7 +336,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     it("should display proper drills on cell click for query aggregated by date", () => {
-      cy.createNativeQuestion(
+      createNativeQuestion(
         {
           name: "table_drills",
           native: {

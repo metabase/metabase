@@ -6,6 +6,12 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  archiveCollection,
+  createNativeQuestion,
+  createQuestion,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID, PRODUCTS } =
@@ -42,13 +48,13 @@ describe.skip("issue 13347", { tags: "@external" }, () => {
     H.withDatabase(
       PG_DB_ID,
       ({ ORDERS_ID }) =>
-        cy.createQuestion({
+        createQuestion({
           name: "Q1",
           query: { "source-table": ORDERS_ID },
           database: PG_DB_ID,
         }),
 
-      cy.createNativeQuestion({
+      createNativeQuestion({
         name: "Q2",
         native: { query: "SELECT * FROM ORDERS" },
         database: PG_DB_ID,
@@ -112,7 +118,7 @@ H.describeEE("postgres > user > query", { tags: "@external" }, () => {
 
     H.withDatabase(PG_DB_ID, ({ PEOPLE, PEOPLE_ID }) => {
       // Question with a custom column created with `regextract`
-      cy.createQuestion({
+      createQuestion({
         name: "14873",
         query: {
           "source-table": PEOPLE_ID,
@@ -198,7 +204,7 @@ describe("issue 19603", () => {
     cy.request("GET", "/api/collection/").then(({ body }) => {
       const { id } = body.find(c => c.slug === "second_collection");
 
-      cy.archiveCollection(id);
+      archiveCollection(id);
     });
   });
 
@@ -595,7 +601,7 @@ H.describeEE("issue 24966", () => {
       login_attributes: { attr_cat: "Gizmo" },
     });
 
-    cy.createNativeQuestion(sandboxingQuestion).then(({ body: { id } }) => {
+    createNativeQuestion(sandboxingQuestion).then(({ body: { id } }) => {
       H.visitQuestion(id);
 
       cy.sandboxTable({
@@ -608,7 +614,7 @@ H.describeEE("issue 24966", () => {
     });
 
     // Add the saved products table to the dashboard
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails: {
         query: {
           "source-table": PRODUCTS_ID,

@@ -3,6 +3,7 @@ import { onlyOn } from "@cypress/skip-test";
 import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { createNativeQuestionAndDashboard } from "e2e/support/helpers";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -30,7 +31,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
               cy.signInAsAdmin();
-              cy.createNativeQuestionAndDashboard({
+              createNativeQuestionAndDashboard({
                 questionDetails,
                 dashboardDetails: { name: dashboardName },
               }).then(({ body: { dashboard_id } }) => {

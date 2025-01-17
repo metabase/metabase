@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { createDashboardWithQuestions } from "e2e/support/helpers";
 
 function checkFavicon(url) {
   cy.request("/api/setting/application-favicon-url")
@@ -347,7 +348,7 @@ H.describeEE("formatting > whitelabel", () => {
           });
           H.undoToast().findByText("Changes saved").should("be.visible");
 
-          cy.createDashboardWithQuestions({
+          createDashboardWithQuestions({
             dashboardName: "No results dashboard",
             questions: [
               {

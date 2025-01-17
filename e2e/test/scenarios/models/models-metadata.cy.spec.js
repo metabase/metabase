@@ -1,5 +1,10 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createDashboard,
+  createNativeQuestion,
+  createQuestion,
+} from "e2e/support/helpers";
 
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 
@@ -25,7 +30,7 @@ describe("scenarios > models metadata", () => {
         type: "model",
       };
 
-      cy.createQuestion(modelDetails).then(({ body: { id } }) => {
+      createQuestion(modelDetails).then(({ body: { id } }) => {
         cy.visit(`/model/${id}`);
         cy.wait("@dataset");
       });
@@ -110,7 +115,7 @@ describe("scenarios > models metadata", () => {
   });
 
   it("should edit native model metadata", () => {
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "Native Model",
         type: "model",
@@ -160,7 +165,7 @@ describe("scenarios > models metadata", () => {
   });
 
   it("should allow setting column relations (metabase#29318)", () => {
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "Native Model",
         type: "model",
@@ -182,7 +187,7 @@ describe("scenarios > models metadata", () => {
   });
 
   it("should keep metadata in sync with the query", () => {
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "Native Model",
         type: "model",
@@ -215,7 +220,7 @@ describe("scenarios > models metadata", () => {
   it("should allow reverting to a specific metadata revision", () => {
     cy.intercept("POST", "/api/revision/revert").as("revert");
 
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "Native Model",
       type: "model",
       native: {
@@ -268,7 +273,7 @@ describe("scenarios > models metadata", () => {
 
   describe("native models metadata overwrites", { viewportWidth: 1400 }, () => {
     beforeEach(() => {
-      cy.createNativeQuestion(
+      createNativeQuestion(
         {
           name: "Native Model",
           type: "model",
@@ -370,7 +375,7 @@ describe("scenarios > models metadata", () => {
 
     it("should allow drills on FK columns from dashboards (metabase#42130)", () => {
       cy.get("@modelId").then(modelId => {
-        cy.createDashboard().then(response => {
+        createDashboard().then(response => {
           const dashboardId = response.body.id;
           H.addOrUpdateDashboardCard({
             dashboard_id: dashboardId,
@@ -419,7 +424,7 @@ describe("scenarios > models metadata", () => {
         },
       };
 
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      createQuestion(questionDetails, { visitQuestion: true });
       cy.findAllByTestId("header-cell").should("not.contain", "Vendor");
 
       H.openQuestionActions();

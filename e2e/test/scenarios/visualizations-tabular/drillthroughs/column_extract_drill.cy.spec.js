@@ -4,6 +4,7 @@ import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -130,7 +131,7 @@ H.describeWithSnowplow("extract action", () => {
       });
 
       it("saved question with viz settings", () => {
-        cy.createQuestion(
+        createQuestion(
           {
             query: {
               "source-table": ORDERS_ID,
@@ -177,7 +178,7 @@ H.describeWithSnowplow("extract action", () => {
     });
 
     it("should add an expression based on a breakout column", () => {
-      cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
+      createQuestion(DATE_QUESTION, { visitQuestion: true });
       extractColumnAndCheck({
         column: "Created At: Month",
         option: "Month of year",
@@ -187,7 +188,7 @@ H.describeWithSnowplow("extract action", () => {
     });
 
     it("should add an expression based on an aggregation column", () => {
-      cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
+      createQuestion(DATE_QUESTION, { visitQuestion: true });
       extractColumnAndCheck({
         column: "Min of Created At",
         option: "Year",

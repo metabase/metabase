@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createQuestion } from "e2e/support/helpers";
 import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
 const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -17,7 +18,7 @@ describe("scenarios > model indexes", () => {
     cy.intercept("PUT", "/api/card/*").as("cardUpdate");
     cy.intercept("GET", "/api/card/*").as("cardGet");
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Products Model",
         query: { "source-table": PRODUCTS_ID },
@@ -143,7 +144,7 @@ describe("scenarios > model indexes", () => {
   });
 
   it("should be able to see details of a record outside the first 2000", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "People Model",
         query: { "source-table": PEOPLE_ID },

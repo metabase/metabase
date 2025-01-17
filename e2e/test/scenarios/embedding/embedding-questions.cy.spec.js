@@ -4,6 +4,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createNativeQuestion, createQuestion } from "e2e/support/helpers";
 
 import {
   joinedQuestion,
@@ -62,7 +63,7 @@ describe("scenarios > embedding > questions", () => {
   it("should display the regular GUI question correctly", () => {
     const { name: title, description } = regularQuestion;
 
-    cy.createQuestion(regularQuestion).then(({ body: { id } }) => {
+    createQuestion(regularQuestion).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -102,7 +103,7 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display the GUI question with aggregation correctly", () => {
-    cy.createQuestion(questionWithAggregation).then(({ body: { id } }) => {
+    createQuestion(questionWithAggregation).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -131,12 +132,12 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display the nested GUI question correctly", () => {
-    cy.createQuestion(regularQuestion).then(({ body: { id } }) => {
+    createQuestion(regularQuestion).then(({ body: { id } }) => {
       const nestedQuestion = {
         query: { "source-table": `card__${id}`, limit: 10 },
       };
 
-      cy.createQuestion(nestedQuestion).then(({ body: { id: nestedId } }) => {
+      createQuestion(nestedQuestion).then(({ body: { id: nestedId } }) => {
         cy.request("PUT", `/api/card/${nestedId}`, { enable_embedding: true });
 
         H.visitQuestion(nestedId);
@@ -173,7 +174,7 @@ describe("scenarios > embedding > questions", () => {
   });
 
   it("should display GUI question with explicit joins correctly", () => {
-    cy.createQuestion(joinedQuestion).then(({ body: { id } }) => {
+    createQuestion(joinedQuestion).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
@@ -293,7 +294,7 @@ H.describeEE("scenarios > embedding > questions > downloads", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    createNativeQuestion(questionDetails, {
       wrapId: true,
     });
   });

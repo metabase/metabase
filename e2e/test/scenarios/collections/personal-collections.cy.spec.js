@@ -5,6 +5,7 @@ import {
   NORMAL_USER_ID,
   NO_DATA_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createCollection } from "e2e/support/helpers";
 
 describe("personal collections", () => {
   beforeEach(() => {
@@ -120,7 +121,7 @@ describe("personal collections", () => {
     });
 
     it("should be able view other users' personal sub-collections (metabase#15339)", () => {
-      cy.createCollection({
+      createCollection({
         name: "Foo",
         parent_id: NO_DATA_PERSONAL_COLLECTION_ID,
       });

@@ -1,4 +1,8 @@
 import { H } from "e2e/support";
+import {
+  createNativeQuestionAndDashboard,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 
 import {
   guiDashboard,
@@ -17,7 +21,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
   context("SQL question with field filters", () => {
     beforeEach(() => {
-      cy.createNativeQuestionAndDashboard({
+      createNativeQuestionAndDashboard({
         questionDetails: nativeQuestionDetails,
         dashboardDetails: nativeDashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -295,7 +299,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
   context("GUI question in the dashboard", () => {
     beforeEach(() => {
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: guiQuestion,
         dashboardDetails: guiDashboard,
       }).then(({ body: { id, card_id, dashboard_id } }) => {

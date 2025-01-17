@@ -2,6 +2,7 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 
 import { H } from "e2e/support";
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { createQuestionAndDashboard } from "e2e/support/helpers";
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
 const FIRST_SCORE_ROW_ID = 11;
@@ -57,7 +58,7 @@ describe(
           cy.get("@modelId").then(modelId => {
             H.createImplicitActions({ modelId });
 
-            cy.createQuestionAndDashboard({
+            createQuestionAndDashboard({
               questionDetails: {
                 name: "Score detail",
                 display: "object",
@@ -167,7 +168,7 @@ describe(
                   });
                 });
                 objectDetailModal().icon("close").click();
-                assertSuccessfullUpdateToast();
+                assertSuccessfulUpdateToast();
                 assertUpdatedScoreInTable();
 
                 cy.log(`As ${name} user: run delete action`);
@@ -177,7 +178,7 @@ describe(
                 });
                 openDeleteObjectModal();
                 deleteObjectModal().findByText("Delete forever").click();
-                assertSuccessfullDeleteToast();
+                assertSuccessfulDeleteToast();
                 assertUpdatedScoreNotInTable();
               });
             });
@@ -299,7 +300,7 @@ function assertUpdatedScoreNotInTable() {
     .should("not.exist");
 }
 
-function assertSuccessfullUpdateToast() {
+function assertSuccessfulUpdateToast() {
   cy.log("it shows a toast informing the update was successful");
   H.undoToastList()
     .last()
@@ -308,7 +309,7 @@ function assertSuccessfullUpdateToast() {
     .should("contain.text", "Successfully updated");
 }
 
-function assertSuccessfullDeleteToast() {
+function assertSuccessfulDeleteToast() {
   cy.log("it shows a toast informing the delete was successful");
   H.undoToastList()
     .last()

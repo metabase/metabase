@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createCollection, createNativeQuestion } from "e2e/support/helpers";
 
 import {
   getRunQueryButton,
@@ -267,7 +268,7 @@ describe("issue 18418", () => {
   });
 
   it("should not show saved questions DB in native question's DB picker (metabase#18418)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    createNativeQuestion(questionDetails, { visitQuestion: true });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Explore results").click();
@@ -309,7 +310,7 @@ describe("issue 19451", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(question, { visitQuestion: true });
+    createNativeQuestion(question, { visitQuestion: true });
   });
 
   it("question field filter shows all tables from a selected database (metabase#19451)", () => {
@@ -345,7 +346,7 @@ describe("issue 20044", () => {
   });
 
   it("nodata user should not see 'Explore results' (metabase#20044)", () => {
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.signIn("nodata");
 
       H.visitQuestion(id);
@@ -518,7 +519,7 @@ describe("issue 23510", () => {
   });
 
   it("loads metadata when it is not cached (metabase#23510)", () => {
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         database: 1,
         name: "Q23510",
@@ -636,7 +637,7 @@ describe("issue 35344", () => {
   });
 
   it("should not allow the user to undo to the empty editor (metabase#35344)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    createNativeQuestion(questionDetails, { visitQuestion: true });
 
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
 
@@ -688,7 +689,7 @@ describe("issue 35785", () => {
     H.restore();
     cy.signInAsNormalUser();
 
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    createNativeQuestion(questionDetails, { visitQuestion: true });
 
     cy.intercept("GET", "/api/search?*").as("getSearchResults");
   });
@@ -727,7 +728,7 @@ describe("issue 22991", () => {
       },
     };
 
-    cy.createCollection({ name: "Restricted Collection" }).then(
+    createCollection({ name: "Restricted Collection" }).then(
       ({ body: restrictedCollection }) => {
         cy.updateCollectionGraph({
           [USER_GROUPS.COLLECTION_GROUP]: {
@@ -787,7 +788,7 @@ describe("issue 46308", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    createNativeQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should persist viz settings when saving a question without a required filter selected (metabase#46308)", () => {
