@@ -68,7 +68,7 @@ function recursiveParse(source) {
       }
       expectOp(OP.Comma, t`comma`);
     }
-    expectOp(OP.CloseParenthesis, t`opening parenthesis`);
+    expectOp(OP.CloseParenthesis, t`closing parenthesis`);
     return params;
   };
 
