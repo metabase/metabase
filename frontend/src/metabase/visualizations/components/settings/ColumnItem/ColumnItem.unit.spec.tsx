@@ -23,13 +23,7 @@ const setup = (props?: SetupProps) => {
       onEdit={onEdit}
       onEnable={onEnable}
       onColorChange={onColorChange}
-      className={props?.className}
-      color={props?.color}
-      role={props?.role}
-      draggable={props?.draggable}
-      icon={props?.icon}
-      removeIcon={props?.removeIcon}
-      accentColorOptions={props?.accentColorOptions}
+      {...props}
     />,
   );
 
