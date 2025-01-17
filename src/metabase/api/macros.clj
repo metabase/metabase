@@ -247,7 +247,8 @@
       (me/humanize {:wrap mu/humanize-include-value})))
 
 (defn- invalid-params-errors [schema explanation specific-errors]
-  (or (when (= (mc/type schema) :map)
+  (or (when (and (map? specific-errors)
+                 (= (mc/type schema) :map))
         (into {}
               (let [specific-error-keys (set (keys specific-errors))]
                 (keep (fn [child]

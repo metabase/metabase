@@ -221,8 +221,8 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [parameters], :as _body} :- [:map
-                                       [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]
+   {:keys [parameters], :as _body} :- [:maybe [:map
+                                               [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
   (let [{:keys [type] :as action} (api/check-404 (action/select-action :id id :archived false))]
     (snowplow/track-event! ::snowplow/action
                            {:event     :action-executed
