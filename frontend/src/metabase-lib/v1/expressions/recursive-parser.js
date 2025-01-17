@@ -26,15 +26,15 @@ function recursiveParse(source) {
   const next = () => tokens.shift();
 
   // Throw an error if the next token isn't the expected operator
-  const expectOp = nextOp => {
+  const expectOp = (nextOp, nextOpName) => {
     const token = next();
     if (!token) {
-      throw new Error(t`Unexpected end of input, expecting ${nextOp}`);
+      throw new Error(t`Unexpected end of input, expecting ${nextOpName}`);
     }
     const { type, op, start, end } = token;
     if (type !== TOKEN.Operator || op !== nextOp) {
       const text = source.substring(start, end);
-      throw new Error(t`Expecting ${nextOp} but got ${text} instead`);
+      throw new Error(t`Expecting ${nextOpName} but got ${text} instead`);
     }
   };
 
@@ -46,10 +46,10 @@ function recursiveParse(source) {
 
   // Group ::= "(" Expression ")"
   const parseGroup = () => {
-    expectOp(OP.OpenParenthesis);
+    expectOp(OP.OpenParenthesis, t`opening parenthesis`);
     const expr = parseExpression();
     const terminated = matchOps([OP.CloseParenthesis]);
-    expectOp(OP.CloseParenthesis);
+    expectOp(OP.CloseParenthesis, t`closing parenthesis`);
     if (!terminated) {
       throw new Error(t`Expecting a closing parenthesis`);
     }
@@ -58,7 +58,7 @@ function recursiveParse(source) {
 
   // Parameters ::= "(" * Expression ")"
   const parseParameters = () => {
-    expectOp(OP.OpenParenthesis);
+    expectOp(OP.OpenParenthesis, t`opening parenthesis`);
     const params = [];
     while (!matchOps([OP.Comma, OP.CloseParenthesis])) {
       const expr = parseExpression();
@@ -66,9 +66,9 @@ function recursiveParse(source) {
       if (!matchOps([OP.Comma])) {
         break;
       }
-      expectOp(OP.Comma);
+      expectOp(OP.Comma, t`comma`);
     }
-    expectOp(OP.CloseParenthesis);
+    expectOp(OP.CloseParenthesis, t`opening parenthesis`);
     return params;
   };
 
