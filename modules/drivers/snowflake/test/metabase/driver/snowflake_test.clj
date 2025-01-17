@@ -26,6 +26,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
@@ -70,50 +71,50 @@
   (mt/test-driver
     :snowflake
     (is (=? [{:name "id"
-              :database-type "INTEGER"
+              :database-type "NUMBER"
               :database-required false
               :database-is-auto-increment true
-              :base-type :type/Integer
+              :base-type :type/Number
               :json-unfolding false
               :database-position 0
               :pk? true}
              {:name "name"
-              :database-type "TEXT"
+              :database-type "VARCHAR"
               :database-required false
               :database-is-auto-increment false
               :base-type :type/Text
               :json-unfolding false
               :database-position 1}
              {:name "category_id"
-              :database-type "INTEGER"
+              :database-type "NUMBER"
               :database-required false
               :database-is-auto-increment false
-              :base-type :type/Integer
+              :base-type :type/Number
               :json-unfolding false
               :database-position 2}
              {:name "latitude"
-              :database-type "FLOAT"
+              :database-type "DOUBLE"
               :database-required false
               :database-is-auto-increment false
               :base-type :type/Float
               :json-unfolding false
               :database-position 3}
              {:name "longitude"
-              :database-type "FLOAT"
+              :database-type "DOUBLE"
               :database-required false
               :database-is-auto-increment false
               :base-type :type/Float
               :json-unfolding false
               :database-position 4}
              {:name "price"
-              :database-type "INTEGER"
+              :database-type "NUMBER"
               :database-required false
               :database-is-auto-increment false
-              :base-type :type/Integer
+              :base-type :type/Number
               :json-unfolding false
               :database-position 5}]
             (sort-by :database-position
-                     (into [] (driver/describe-fields :snowflake (mt/db) {:table-names ["venues"]})))))))
+                     (into [] (fetch-metadata/fields-metadata (mt/db) {:table-names ["venues"]})))))))
 
 (deftest ^:parallel quote-name-test
   (is (nil? (#'driver.snowflake/quote-name nil)))
@@ -359,7 +360,7 @@
                  (t2/select-fn-set :name :model/Table :db_id (mt/id))))
           (testing "the fields for dynamic tables are synced correctly"
             (is (= #{{:name "name" :base_type :type/Text}
-                     {:name "id" :base_type :type/Integer}}
+                     {:name "id" :base_type :type/Number}}
                    (set (t2/select [:model/Field :name :base_type]
                                    :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id (mt/id))))))))))))
 
@@ -941,7 +942,7 @@
     :snowflake
     (mt/dataset
       good-datetimes-in-belize
-      (is (= [["id" "INTEGER" :type/Integer 0]
+      (is (= [["id" "NUMBER" :type/Number 0]
               ["IN_Z_OFFSET" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 1]
               ["IN_VARIOUS_OFFSETS" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 2]
               ["JUST_NTZ" "TIMESTAMPNTZ" :type/DateTime 3]
@@ -949,7 +950,7 @@
              (sort-by last
                       (into []
                             (map (juxt :name :database-type :base-type :database-position))
-                            (driver/describe-fields :snowflake (mt/db)))))))))
+                            (fetch-metadata/fields-metadata (mt/db)))))))))
 
 ;; The test needs user with no report timezone set and database timezone other than UTC. That's the reason for redefs
 ;; prior to dataset generation.

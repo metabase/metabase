@@ -756,21 +756,17 @@
                         [[:- :c.ORDINAL_POSITION [:inline 1]] :database-position]
                         [:c.TABLE_SCHEMA :table-schema]
                         [:c.TABLE_NAME :table-name]
-                        [[:case
-                          [:= [:upper :c.DATA_TYPE] [:inline "TIMESTAMP_TZ"]]
-                          [:inline "TIMESTAMPTZ"]
+                        [[:case-expr [:upper :c.DATA_TYPE]
+                          [:inline "TIMESTAMP_TZ"] [:inline "TIMESTAMPTZ"]
 
-                          [:= [:upper :c.DATA_TYPE] [:inline "TIMESTAMP_LTZ"]]
-                          [:inline "TIMESTAMPLTZ"]
+                          [:inline "TIMESTAMP_LTZ"] [:inline "TIMESTAMPLTZ"]
 
-                          [:= [:upper :c.DATA_TYPE] [:inline "TIMESTAMP_NTZ"]]
-                          [:inline "TIMESTAMPNTZ"]
+                          [:inline "TIMESTAMP_NTZ"] [:inline "TIMESTAMPNTZ"]
 
-                          ;; From https://github.com/snowflakedb/snowflake-jdbc/blob/master/src/main/java/net/snowflake/client/jdbc/SnowflakeColumnMetadata.java#L153C50-L153C59
-                          [:and
-                           [:= [:upper :c.DATA_TYPE] [:inline "NUMBER"]]
-                           [:= :c.NUMERIC_SCALE [:inline 0]]]
-                          [:inline "INTEGER"]
+                          ;; These are synonymous, but we want consistency with getColumnMetadata
+                          [:inline "FLOAT"] [:inline "DOUBLE"]
+
+                          [:inline "TEXT"] [:inline "VARCHAR"]
 
                           :else [:upper :c.DATA_TYPE]]
                          :database-type]
