@@ -37,7 +37,9 @@
   "Makes a request to the store-api-url with the given method, path, and body.
 
   Returns a tuple of [:ok response] if the request was successful, or [:error response] if it failed."
-  [config :- [:map [:store-api-url :string] [:api-key :string]]
+  [config :- [:map
+              [:store-api-url :string]
+              [:api-key :string]]
    method :- [:enum :get :head :post :put :delete :options :copy :move :patch]
    url :- :string
    & [body]]
