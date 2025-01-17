@@ -40,7 +40,7 @@
   (let [session-type (if anti-csrf-token :full-app-embed :normal)]
     (assoc session :type session-type)))
 
-(defn- maybe-send-login-from-new-device-email
+(defn maybe-send-login-from-new-device-email
   "If set to send emails on first login from new devices, that is the case, and its not the users first login, send an
   email from a separate thread."
   [history-record]
