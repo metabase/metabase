@@ -79,16 +79,16 @@
                                  [:body [:sequential [:map
                                                       [:type [:= "text/html; charset=utf-8"]]
                                                       [:content :string]]]]]]]
-                        @mt/inbox))
+                              @mt/inbox))
                   (let [message  (-> @mt/inbox (get email) first :body first :content)
                         site-url (public-settings/site-url)]
                     (testing (format "\nMessage = %s\nsite-url = %s" (pr-str message) (pr-str site-url))
                       (is (string? message))
                       (when (string? message)
                         (doseq [expected-str [(format "We've noticed a new login on your <a href=\"%s\">Metabase</a> account."
-                                                (or site-url ""))
+                                                      (or site-url ""))
                                               (format "We noticed a login on your <a href=\"%s\">Metabase</a> account from a new device."
-                                                (or site-url ""))
+                                                      (or site-url ""))
                                               "Browser (Chrome/Windows) - San Francisco, California, United States"
                                               ;; `format-human-readable` has slightly different output on different JVMs
                                               (u.date/format-human-readable #t "2021-04-02T15:52:00-07:00[US/Pacific]")]]
@@ -98,7 +98,7 @@
                     (mt/reset-inbox!)
                     (mt/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device}]
                       (is (= {}
-                            @mt/inbox))))))))))))
+                             @mt/inbox))))))))))))
 
   (testing "don't send email if the setting is disabled by setting MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE=FALSE"
     (mt/with-temp [:model/User {user-id :id}]
@@ -108,4 +108,4 @@
           (mt/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id (str (random-uuid))}
                          :model/LoginHistory _ {:user_id user-id, :device_id (str (random-uuid))}]
             (is (= {}
-                  @mt/inbox))))))))
+                   @mt/inbox))))))))
