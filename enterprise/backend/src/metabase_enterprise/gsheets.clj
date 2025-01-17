@@ -22,18 +22,16 @@
 
 (defsetting gsheets
   #_"
-  Information about Google Sheets Integration.
-
   This value can have 3 states:
 
   1) The Google Sheets Folder is not setup.
   {:status \"not-connected\"}
 
-  2) We have uploaded a Folder url to HM, but have not synced it in MB yet.
+  2) We have uploaded a Folder URL to HM, but have not synced it in MB yet.
   {:status \"loading\"
    :folder_url \"https://drive.google.com/drive/abc\"}
 
-  2)  Google Sheets Integration is enabled, and a folder has been setup to sync.
+  2)  Google Sheets Integration is enabled, and users can view their google sheets tables.
   {:status \"complete\"
    :folder_url \"https://drive.google.com/drive/abc\"}
   "
@@ -128,6 +126,7 @@
 (api.macros/defendpoint :post "/folder" :- ::gsheets
   "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase."
   [{} {} {:keys [url]} :- [:map [:url ms/NonBlankString]]]
+  (api/check-superuser)
   (let [[status _resp] (setup-drive-folder-sync url)]
     (if (= status :ok)
       (u/prog1 {:status "loading" :folder_url url} (gsheets! <>))
@@ -141,6 +140,7 @@
 
   Returns the gsheets shape, with the attached datawarehouse's db id in db_id."
   [] :- [:or ::gsheets [:map [:error :string]]]
+  (api/check-superuser)
   (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
     (assert (some? attached-dwh) "No attached dwh found.")
     (if-let [{:keys [status]
@@ -165,7 +165,8 @@
 (api.macros/defendpoint :delete "/folder"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []
-  (if-let [conn-id (get-gdrive-connection)]
+  (api/check-superuser)
+  (if-let [conn-id (:id (get-gdrive-connection))]
     (let [[status _] (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" conn-id))]
       (if (= status :ok)
         (u/prog1 gsheets-not-connected (gsheets! <>))
@@ -176,7 +177,7 @@
 
 (api/define-routes)
 
-(comment
+(comment ;; TEMP (gsheets)
 
   (setting/set-value-of-type! :string :store-api-url "http://localhost:5010")
 
@@ -191,42 +192,11 @@
   ;; copy the link, for me it's:
   @(def url "https://drive.google.com/drive/folders/1H2gz8_TUsCNyFpooFeQB8Y7FXRZA_esH?usp=sharing")
 
-  ;; :post "/folder":
-  (let [[status _resp] (setup-drive-folder-sync url)]
-    (if (= status :ok)
-      (u/prog1 {:status "connected" :folder_url url} (gsheets! <>))
-      (throw (ex-info (str/join ["Unable to setup drive folder sync.\n"
-                                 "Please check that the folder is shared with the proper service account email "
-                                 "and sharing permissions."]) {}))))
-  ;; now Im connected:
-  (gsheets)
-  ;; => {:status "connected", :folder_url "https://drive.google.com/drive/folders/1H2gz8_TUsCNyFpooFeQB8Y7FXRZA_esH?usp=sharing"}
-
-  ;; See the gdrive connection:
   (get-gdrive-connection)
 
-  {:updated-at #t "2025-01-16T21:45:27Z[UTC]",
-   :hosted-instance-resource-id 6,
-   :last-sync-at nil,
-   :error-detail nil,
-   :type "gdrive",
-   :hosted-instance-id "a6f2352d-c194-4d46-a46c-9ea616e9fc65",
-   :last-sync-started-at "2025-01-16T21:45:27Z",
-   :status "syncing",
-   :id "a20ec80b-bff2-489e-925a-98a70a5ccf46",
-   :created-at #t "2025-01-16T21:45:24Z[UTC]"}
-
-  ;; it has a status. once it's "active", it's not yet good to go:
-  ;; we need to complete a sync in metabase (triggered by the notify API)
-
-  (defn- trigger-resync* [gdrive-conn-id]
-    (let [[status _response] (hm.client/make-request
-                              (->config)
-                              :put
-                              (format "/api/v2/mb/connections/%s/sync" gdrive-conn-id))]
-      status))
-
-  (trigger-resync* (:id (get-gdrive-connection)))
+  ;; trigger-resync
+  (hm.client/make-request (->config) :put
+                          (format "/api/v2/mb/connections/%s/sync" (:id (get-gdrive-connection))))
 
   (t2/select-one-fn :ended_at :model/TaskHistory
                     :db_id (:id (t2/select-one :model/Database :is_attached_dwh true))
@@ -235,16 +205,10 @@
                     {:order-by [[:ended_at :desc]]})
 
   (require '[metabase.sync.sync-metadata :as sync-metadata])
-  ;; trigger the notify call:
+
+  ;; This is what the notify endpoint calls:
   (let [database (t2/select-one :model/Database :is_attached_dwh true)]
     (sync-metadata/sync-db-metadata! database))
-
-  #_:clj-kondo/ignore
-  (defn- trigger-gdrive-resync
-    []
-    (if-let [gdrive-conn-id (:id (get-gdrive-connection))]
-      (trigger-resync* gdrive-conn-id)
-      (throw (ex-info "No gdrive connections found." {}))))
 
   (defn reset-all! []
     (let [[_ connections] (hm.client/make-request (->config) :get "/api/v2/mb/connections")]
