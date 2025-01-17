@@ -41,8 +41,8 @@
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
 
-(defn- collapse-id [row]
-  (assoc row :id (parse-long (first (str/split (:id row) #":")))))
+(defn- collapse-id [{:keys [id] :as row}]
+  (assoc row :id (if (number? id) id (parse-long (first (str/split (:id row) #":"))))))
 
 (defn- rehydrate [weights active-scorers index-row]
   (-> (json/decode+kw (:legacy_input index-row))
