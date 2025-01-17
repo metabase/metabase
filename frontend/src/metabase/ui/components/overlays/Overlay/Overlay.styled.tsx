@@ -1,12 +1,11 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { type MantineThemeOverride, Overlay } from "@mantine/core";
 
-import ZIndex from "metabase/css/core/z-index.module.css";
+import OverlayStyles from "./Overlay.module.css";
 
-export const getOverlayOverrides = (): MantineThemeOverride["components"] => ({
-  Overlay: {
-    defaultProps: {
-      withinPortal: true,
+export const overlayOverrides: MantineThemeOverride["components"] = {
+  Overlay: Overlay.extend({
+    classNames: {
+      root: OverlayStyles.root,
     },
-    classNames: { root: ZIndex.Overlay },
-  },
-});
+  }),
+};
