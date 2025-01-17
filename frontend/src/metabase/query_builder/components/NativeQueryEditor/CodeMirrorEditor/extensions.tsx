@@ -1,5 +1,6 @@
 import {
   type CompletionContext,
+  type CompletionResult,
   type CompletionSource,
   autocompletion,
 } from "@codemirror/autocomplete";
@@ -236,9 +237,13 @@ function language({ engine, completers = [] }: LanguageOptions) {
 
   // Wraps the language completer so that it does not trigger when we're
   // inside a variable or tag
-  async function completeFromLanguage(context: CompletionContext) {
+  async function completeFromLanguage(
+    context: CompletionContext,
+  ): Promise<CompletionResult | null> {
     const facets = context.state.facet(language.language.data.reader);
-    const complete = facets.find(facet => facet.autocomplete)?.autocomplete;
+    const complete: CompletionSource | undefined = facets.find(
+      facet => facet.autocomplete,
+    )?.autocomplete;
 
     const tag = matchTagAtCursor(context.state, {
       allowOpenEnded: true,
@@ -249,7 +254,18 @@ function language({ engine, completers = [] }: LanguageOptions) {
       return null;
     }
 
-    return complete?.(context);
+    const result = await complete?.(context);
+    if (!result) {
+      return null;
+    }
+
+    return {
+      ...result,
+      options: result.options.map(option => ({
+        ...option,
+        detail: option.detail ?? "keyword",
+      })),
+    };
   }
 
   return [
