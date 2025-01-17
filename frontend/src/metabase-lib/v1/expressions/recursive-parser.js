@@ -63,7 +63,7 @@ function recursiveParse(source) {
     while (!matchOps([OP.Comma, OP.CloseParenthesis])) {
       const expr = parseExpression();
       params.push(expr);
-      if (!matchOps([OP.Comma])) {
+      if (!matchOps([OP.Comma]) && matchOps([OP.CloseParenthesis])) {
         break;
       }
       expectOp(OP.Comma, t`comma`);
