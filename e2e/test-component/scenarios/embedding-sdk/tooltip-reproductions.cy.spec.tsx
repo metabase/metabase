@@ -83,30 +83,13 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
       .eq(0)
       .should("exist")
       .then($tooltip => {
-        // Smart visibility check with elementsFromPoint.
-        // Using `.should("be.visible")` does not work here as Cypress incorrectly
-        // reports the tooltip is obscured by the bar chart, even though it has a higher z-index.
         const tooltipElement = $tooltip[0];
-        const tooltipRect = tooltipElement.getBoundingClientRect();
 
-        // Temporarily enable pointer events for tooltip so elementsFromPoint can see it.
-        tooltipElement.style.pointerEvents = "auto";
-
-        // Get all elements at the tooltip's center point
-        const elementsAtPoint = document.elementsFromPoint(
-          tooltipRect.left + tooltipRect.width / 2,
-          tooltipRect.top + tooltipRect.height / 2,
-        );
-
-        // Restore original pointer-events
-        tooltipElement.style.pointerEvents = "none";
-
-        // Find the topmost element we clicked on.
-        const topmostElement = elementsAtPoint[0];
-
-        // The tooltip is indeed visible if we clicked on child of the tooltip :)
+        // The tooltip is indeed visible if we clicked on a child of the tooltip.
+        // Using `.should("be.visible")` does not work here as Cypress incorrectly
+        // reports the tooltip is obscured by the bar chart even though it has a higher z-index.
         const isTopmostElementChildOfTooltip = checkIfElementIsChildOf(
-          topmostElement,
+          getVisibleTopmostElement(tooltipElement),
           element => element === tooltipElement,
         );
 
@@ -114,6 +97,28 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
       });
   });
 });
+
+/**
+ * Get the topmost element that is visible and not obscured by other elements.
+ **/
+function getVisibleTopmostElement(targetElement: HTMLElement) {
+  const targetElementRect = targetElement.getBoundingClientRect();
+
+  // Temporarily enable pointer events for tooltip so elementsFromPoint can see it.
+  targetElement.style.pointerEvents = "auto";
+
+  // Get all elements at the tooltip's center point
+  const elementsAtPoint = document.elementsFromPoint(
+    targetElementRect.left + targetElementRect.width / 2,
+    targetElementRect.top + targetElementRect.height / 2,
+  );
+
+  // Restore original pointer-events
+  targetElement.style.pointerEvents = "none";
+
+  // Find the topmost element we clicked on.
+  return elementsAtPoint[0];
+}
 
 function checkIfElementIsChildOf(
   element: Element,
