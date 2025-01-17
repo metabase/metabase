@@ -90,11 +90,22 @@ describe("ColumnItem", () => {
   });
 
   describe("draggable functionality", () => {
-    it("should render with draggable attributes when draggable is true", () => {
+    it("should not render drag handle when draggable is false", () => {
+      setup({ draggable: false });
+
+      expect(screen.queryByLabelText("grabber icon")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("draggable-item-Column Title"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render drag handle when draggable is true", () => {
       setup({ draggable: true });
 
-      const draggableItem = screen.getByTestId("draggable-item-Column Title");
-      expect(draggableItem).toBeInTheDocument();
+      expect(screen.getByLabelText("grabber icon")).toBeVisible();
+      expect(
+        screen.getByTestId("draggable-item-Column Title"),
+      ).toBeInTheDocument();
     });
   });
 });
