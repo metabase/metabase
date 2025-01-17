@@ -5,12 +5,14 @@ export const getTimeInputOverrides =
     TimeInput: {
       defaultProps: {
         size: "md",
+        inputWrapperOrder: ["label", "description", "input", "error"],
       },
       styles: () => ({
         input: {
           color: "var(--mb-color-text-primary)",
           backgroundColor: "var(--mb-color-background)",
         },
+        error: { "&::first-letter": { textTransform: "capitalize" } },
       }),
     },
   });

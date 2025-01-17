@@ -16,7 +16,7 @@
 
 (defmulti base-query
   "Generate the basic shape of the index table query, to be augmented with rankers and filters."
-  {:arglists '([_table-name _search-term _search-ctx _select-items])}
+  {:arglists '([table-name search-term search-ctx select-items])}
   db-type)
 
 (defmulti batch-upsert!
@@ -31,7 +31,7 @@
 
 (defmulti text-score
   "The HoneySQL expression used to calculate a text score for the given entry."
-  {:arglists '([_search-ctx])}
+  {:arglists '([search-ctx])}
   db-type)
 
 (defmulti view-count-percentile-query

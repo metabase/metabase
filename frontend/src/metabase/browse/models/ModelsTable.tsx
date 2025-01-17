@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import EntityItem from "metabase/components/EntityItem";
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
@@ -67,8 +66,7 @@ export const ModelsTable = ({
     DEFAULT_SORTING_OPTIONS,
   );
 
-  const locale = useLocale();
-  const sortedModels = sortModels(models, sortingOptions, locale);
+  const sortedModels = sortModels(models, sortingOptions);
 
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
   const collectionWidth = 38.5;

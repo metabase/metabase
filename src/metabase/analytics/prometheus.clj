@@ -195,7 +195,9 @@
 (defn- product-collectors
   []
   ;; Iapetos will use "default" if we do not provide a namespace, so explicitly set, e.g. `metabase-email`:
-  [(prometheus/counter :metabase-email/messages
+  [(prometheus/counter :metabase-csv-upload/failed
+                       {:description "Number of failures when uploading CSV."})
+   (prometheus/counter :metabase-email/messages
                        {:description "Number of emails sent."})
    (prometheus/counter :metabase-email/message-errors
                        {:description "Number of errors when sending emails."})

@@ -71,11 +71,10 @@
       (tru "{0} by {1}" aggregations dimensions)
       aggregations)))
 
-(defmulti
-  ^{:private true
-    :arglists '([fieldset [op & args]])}
-  humanize-filter-value (fn [_ [op & _args]]
-                          (qp.util/normalize-token op)))
+(defmulti ^:private humanize-filter-value
+  {:arglists '([fieldset [op & args]])}
+  (fn [_ [op & _args]]
+    (qp.util/normalize-token op)))
 
 (def ^:private unit-name (comp {:minute-of-hour  (deferred-tru "minute")
                                 :hour-of-day     (deferred-tru "hour")

@@ -302,6 +302,7 @@
 
 (defmulti series-are-compatible?
   "Check if the `second-card` is compatible to be used as series of `card`."
+  {:arglists '([card second-card database-id->metadata-provider])}
   (fn [card _second-card _database-id->metadata-provider]
     (:display card)))
 

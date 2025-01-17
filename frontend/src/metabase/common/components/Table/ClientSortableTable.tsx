@@ -7,7 +7,6 @@ import TableS from "./Table.module.css";
 import { useTableSorting } from "./useTableSorting";
 
 export type ClientSortableTableProps<T extends BaseRow> = TableProps<T> & {
-  locale: string;
   formatValueForSorting?: (row: T, columnName: string) => any;
   defaultSortColumn?: string;
   defaultSortDirection?: SortDirection;
@@ -25,7 +24,6 @@ export function ClientSortableTable<Row extends BaseRow>({
   formatValueForSorting = (row: Row, columnName: string) => row[columnName],
   defaultSortColumn,
   defaultSortDirection,
-  locale,
   ...rest
 }: ClientSortableTableProps<Row>) {
   const {
@@ -38,7 +36,6 @@ export function ClientSortableTable<Row extends BaseRow>({
     rows,
     defaultSortColumn,
     formatValueForSorting,
-    locale,
   });
 
   return (

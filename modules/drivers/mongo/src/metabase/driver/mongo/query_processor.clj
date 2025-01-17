@@ -808,7 +808,9 @@
 ;; MongoDB doesn't support negating top-level filter clauses. So we can leverage the MBQL lib's `negate-filter-clause`
 ;; to negate everything, with the exception of the string filter clauses, which we will convert to a `{not <regex}`
 ;; clause (see `->rvalue` for `::not` above). `negate` below wraps the MBQL lib function
-(defmulti ^:private negate mbql.u/dispatch-by-clause-name-or-class)
+(defmulti ^:private negate
+  {:arglists '([mbql-clause])}
+  mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod negate :default [clause]
   (mbql.u/negate-filter-clause clause))
@@ -828,7 +830,9 @@
     pipeline-ctx
     (update pipeline-ctx :query conj {$match (compile-filter filter-clause)})))
 
-(defmulti ^:private compile-cond mbql.u/dispatch-by-clause-name-or-class)
+(defmulti ^:private compile-cond
+  {:arglists '([mbql-clause])}
+  mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod compile-cond :between [[_ field min-val max-val]]
   (compile-cond [:and [:>= field min-val] [:< field max-val]]))

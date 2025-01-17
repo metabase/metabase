@@ -341,7 +341,9 @@ describe("scenarios > models metadata", () => {
 
         // Drill to People table
         // FK column is mapped to real DB column
-        H.queryBuilderHeader().button("Filter").click();
+        H.queryBuilderHeader()
+          .button(/Filter/)
+          .click();
 
         H.modal().within(() => {
           cy.findByRole("tablist").within(() => {

@@ -1550,7 +1550,9 @@ describe("issue 32963", () => {
   });
 
   it("should pick sensible display for model based questions (metabase#32963)", () => {
-    cy.findByTestId("qb-header").button("Summarize").click();
+    cy.findByTestId("qb-header")
+      .button(/Summarize/)
+      .click();
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     H.rightSidebar().within(() => {

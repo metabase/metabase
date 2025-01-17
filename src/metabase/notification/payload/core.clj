@@ -138,6 +138,7 @@
 
 (defmulti payload
   "Given a notification info, return the notification payload."
+  {:arglists '([notification-info])}
   :payload_type)
 
 (mu/defn notification-payload :- NotificationPayload
@@ -150,6 +151,7 @@
 
 (defmulti should-send-notification?
   "Determine whether a notification should be sent. Default to true."
+  {:arglists '([notification-payload])}
   :payload_type)
 
 (defmethod should-send-notification? :default

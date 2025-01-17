@@ -174,8 +174,12 @@ H.describeEE("scenarios > embedding > full app", () => {
 
       cy.icon("refresh").should("be.visible");
       cy.findByTestId("notebook-button").should("be.visible");
-      cy.button("Summarize").should("be.visible");
-      cy.button("Filter").should("be.visible");
+      cy.findByTestId("qb-header")
+        .button(/Summarize/)
+        .should("be.visible");
+      cy.findByTestId("qb-header")
+        .button(/Filter/)
+        .should("be.visible");
     });
 
     it("should hide the question header by a param", () => {
@@ -209,8 +213,8 @@ H.describeEE("scenarios > embedding > full app", () => {
 
       cy.icon("refresh").should("be.visible");
       cy.findByTestId("notebook-button").should("not.exist");
-      cy.button("Summarize").should("not.exist");
-      cy.button("Filter").should("not.exist");
+      cy.button(/Summarize/).should("not.exist");
+      cy.button(/Filter/).should("not.exist");
     });
 
     it("should send 'X-Metabase-Client' header for api requests", () => {

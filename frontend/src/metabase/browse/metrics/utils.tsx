@@ -42,7 +42,6 @@ export const getSecondarySortColumn = (
 export function sortMetrics(
   metrics: MetricResult[],
   sortingOptions: SortingOptions,
-  localeCode: string = "en",
 ) {
   const { sort_column, sort_direction } = sortingOptions;
 
@@ -51,8 +50,7 @@ export function sortMetrics(
     return metrics;
   }
 
-  const compare = (a: string, b: string) =>
-    a.localeCompare(b, localeCode, { sensitivity: "base" });
+  const compare = (a: string, b: string) => a.localeCompare(b);
 
   return [...metrics].sort((metricA, metricB) => {
     const a = getValueForSorting(metricA, sort_column);

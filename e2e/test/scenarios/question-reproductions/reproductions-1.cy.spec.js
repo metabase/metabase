@@ -712,7 +712,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
 
     H.getNotebookStep("filter").findByText("Discount is greater than Quantity");
 
-    cy.findByRole("button", { name: "Summarize" }).click();
+    cy.findByRole("button", { name: /Summarize/ }).click();
     H.popover().findByText("Count of rows").click();
 
     H.visualize();

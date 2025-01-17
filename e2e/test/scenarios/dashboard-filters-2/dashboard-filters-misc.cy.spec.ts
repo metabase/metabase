@@ -205,7 +205,9 @@ describe("pivot tables", () => {
       .findByTestId("legend-caption-title")
       .click();
     cy.wait("@datasetPivot");
-    cy.button("Filter").click();
+    cy.findByTestId("qb-header")
+      .button(/Filter/)
+      .click();
     H.modal().findByText("Summaries").should("not.exist");
 
     function verifyDateMappingOptions() {

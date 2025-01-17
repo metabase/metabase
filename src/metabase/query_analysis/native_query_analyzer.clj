@@ -308,6 +308,7 @@
   to return tables that are in the query.
 
   If it is unable to analyze the query, it should return an error of the form `:query-analysis.error/...`"
+  {:arglists '([driver query opts])}
   (fn [driver _query _opts] driver)
   :hierarchy #'driver/hierarchy)
 

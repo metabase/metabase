@@ -71,6 +71,7 @@
 
 (defmulti ^:private fetch-cache-stmt-ee*
   "Generate prepared statement for a db cache backend for a given strategy"
+  {:arglists '([strategy query-hash conn])}
   (fn [strategy _hash _conn] (:type strategy)))
 
 (defmethod fetch-cache-stmt-ee* :ttl [strategy query-hash conn]

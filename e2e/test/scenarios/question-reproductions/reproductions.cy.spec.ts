@@ -32,7 +32,7 @@ describe("issue 39487", () => {
     checkSingleDateFilter();
 
     cy.log("filter modal");
-    cy.button("Filter").click();
+    cy.button(/Filter/).click();
     H.modal().findByText("After Jan 1, 2015").click();
     checkSingleDateFilter();
     H.modal().button("Close").click();
@@ -73,7 +73,7 @@ describe("issue 39487", () => {
     checkDateRangeFilter();
 
     cy.log("filter modal");
-    cy.button("Filter").click();
+    cy.button(/Filter/).click();
     H.modal().findByText("May 1 – Jun 1, 2024").click();
     checkDateRangeFilter();
     H.modal().button("Close").click();

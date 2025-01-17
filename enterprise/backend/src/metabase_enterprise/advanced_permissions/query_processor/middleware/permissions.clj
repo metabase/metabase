@@ -18,15 +18,17 @@
   [query]
   (some-> query :info :context name (str/includes? "download")))
 
-(defmulti ^:private current-user-download-perms-level :type)
+(defmulti ^:private current-user-download-perms-level
+  {:arglists '([mbql-query])}
+  :type)
 
 (defmethod current-user-download-perms-level :default
   [_]
   :one-million-rows)
 
 (defmethod current-user-download-perms-level :native
-  [{database :database}]
-  (data-perms/native-download-permission-for-user api/*current-user-id* database))
+  [{database-id :database}]
+  (data-perms/native-download-permission-for-user api/*current-user-id* database-id))
 
 (defmethod current-user-download-perms-level :query
   [{db-id :database, :as query}]

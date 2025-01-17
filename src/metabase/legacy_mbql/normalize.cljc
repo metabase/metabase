@@ -83,6 +83,7 @@
 (declare normalize-tokens)
 
 (defmulti ^:private normalize-mbql-clause-tokens
+  {:arglists '([mbql-clause])}
   (comp maybe-normalize-token first))
 
 (defmethod normalize-mbql-clause-tokens :aggregation
