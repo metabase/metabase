@@ -89,6 +89,14 @@ function nativeEditorType(
       case "{backspace}":
         return cy.realPress(["Backspace"]);
 
+      case "{nextcompletion}":
+        cy.wait(50);
+        return cy.realPress(["Meta", "j"]);
+
+      case "{prevcompletion}":
+        cy.wait(50);
+        return cy.realPress(["Meta", "k"]);
+
       case "{{}":
         return cy.realType("{");
     }
