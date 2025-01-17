@@ -79,7 +79,6 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
         options: deduped.map(([value, meta]) => ({
           label: value,
           detail: meta,
-          boost: 50,
         })),
         validFor(text: string) {
           if (data.length >= AUTOCOMPLETE_SUGGESTIONS_LIMIT) {
@@ -127,7 +126,6 @@ export function useSnippetCompletion() {
           label: snippet.name,
           apply: tag.hasClosingTag ? snippet.name : `${snippet.name} }}`,
           detail: t`Snippet`,
-          boost: 50,
         })),
       };
     },
@@ -191,7 +189,6 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
           apply: tag.hasClosingTag
             ? `#${id}-${slugg(name)}`
             : `#${id}-${slugg(name)} }}`,
-          boost: 50,
         })),
         validFor(text: string) {
           if (data.length >= AUTOCOMPLETE_CARD_SUGGESTIONS_LIMIT) {
@@ -267,7 +264,6 @@ export function useReferencedCardCompletion({
         options: results.map(column => ({
           label: column.field.name,
           detail: `${column.card.name} :${column.field.base_type}`,
-          boost: 50,
         })),
       };
     },
