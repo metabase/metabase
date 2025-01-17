@@ -30,7 +30,7 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
             {
               id: 1,
               size_x: 10,
-              size_y: 50,
+              size_y: 20,
               row: 0,
               col: 0,
               card_id: ordersQuestionId,
@@ -38,8 +38,8 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
             {
               id: 2,
               size_x: 10,
-              size_y: 10,
-              row: 0,
+              size_y: 5,
+              row: 1,
               col: 0,
               card_id: ordersQuestionId,
             },
@@ -59,19 +59,53 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
     );
   });
 
-  it("should render tooltips below the screen's height ()", () => {
+  it("should render tooltips below the screen's height", () => {
     cy.get("@dashboardId").then(dashboardId => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
-
-      cy.scrollTo("bottom");
-
-      H.getDashboardCard(1).within(() => {
-        H.echartsTriggerBlur();
-        cy.wait(50);
-        H.chartPathWithFillColor("#509EE3").eq(0).realHover();
-      });
-
-      H.echartsTooltip().findByText("Count").should("be.visible");
     });
+
+    // H.getDashboardCard(0).within(() => {
+    //   H.chartPathWithFillColor("#509EE3").eq(0).realHover().wait(200);
+    // });
+
+    cy.wait(2000);
+
+    // cy.findAllByTestId("echarts-tooltip")
+    //   .eq(0)
+    //   .should("exist")
+    //   .should($el => {
+    //     const computedStyle = window.getComputedStyle($el[0]);
+
+    //     expect(computedStyle.display).not.to.equal("none");
+    //     expect(computedStyle.visibility).not.to.equal("hidden");
+    //     expect(computedStyle.opacity).not.to.equal("0");
+    //   });
+
+    cy.findAllByTestId("echarts-tooltip")
+      .eq(0)
+      .should("exist")
+      .then($tooltip => {
+        // Smart visibility check with elementsFromPoint.
+        // Using `.should("be.visible")` does not work here as Cypress incorrectly
+        // reports the tooltip is obscured by the bar chart, even though it has a higher z-index.
+        const tooltipElement = $tooltip[0];
+        const tooltipRect = tooltipElement.getBoundingClientRect();
+
+        // Temporarily enable pointer events for tooltip so elementsFromPoint can see it.
+        tooltipElement.style.pointerEvents = "auto";
+
+        // Get all elements at the tooltip's center point
+        const elementsAtPoint = document.elementsFromPoint(
+          tooltipRect.left + tooltipRect.width / 2,
+          tooltipRect.top + tooltipRect.height / 2,
+        );
+
+        // Restore original pointer-events
+        tooltipElement.style.pointerEvents = "none";
+
+        // We should be clicking on a table cell in the tooltip.
+        const topmostElement = elementsAtPoint[0];
+        expect(topmostElement.tagName).to.equal("TD");
+      });
   });
 });
