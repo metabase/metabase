@@ -238,8 +238,8 @@
 (defn temp-csv
   [file-basename content]
   (prog1 (File/createTempFile file-basename ".csv")
-    (with-open [file (io/writer <>)]
-      (.write ^java.io.Writer file ^String content))))
+         (with-open [file (io/writer <>)]
+           (.write ^java.io.Writer file ^String content))))
 
 (defn mock-send-email!
   "To stub out email sending, instead returning the would-be email contents as a string"

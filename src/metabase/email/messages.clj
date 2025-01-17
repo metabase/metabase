@@ -373,8 +373,8 @@
 (def ^:private you-unsubscribed-template   (template-path "notification_card_unsubscribed"))
 (def ^:private removed-template            (template-path "notification_card_you_were_removed"))
 (def ^:private added-template              (template-path "notification_card_you_were_added"))
-(def ^:private stopped-template            (template-path "alert_stopped_working"))
-(def ^:private archived-template           (template-path "alert_archived"))
+(def ^:private changed-stopped-template    (template-path "card_notification_changed_stopped"))
+(def ^:private archived-template           (template-path "card_notification_archived"))
 
 (defn send-you-unsubscribed-notification-card-email!
   "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `notification`"
@@ -397,17 +397,19 @@
 
 (defn send-alert-stopped-because-archived-email!
   "Email to notify users when a card associated to their alert has been archived"
-  [alert user {:keys [first_name last_name] :as _archiver}]
-  (let [{card-id :id card-name :name} (first-card alert)]
-    (send-email! [(:email user)] not-working-subject archived-template {:archiveURL   (urls/archive-url)
-                                                                        :questionName (format "%s (#%d)" card-name card-id)
-                                                                        :archiverName (format "%s %s" first_name last_name)})))
+  [card recipient-emails archiver]
+  (send-email! recipient-emails not-working-subject archived-template
+               {:card card
+                :actor archiver}
+               true))
 
 (defn send-alert-stopped-because-changed-email!
   "Email to notify users when a card associated to their alert changed in a way that invalidates their alert"
-  [alert user {:keys [first_name last_name] :as _archiver}]
-  (let [edited-text (format "the question was edited by %s %s" first_name last_name)]
-    (send-email! [(:email user)] not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause edited-text))))
+  [card recipient-emails archiver]
+  (send-email! recipient-emails not-working-subject changed-stopped-template
+               {:card card
+                :actor archiver}
+               true))
 
 (defn send-broken-subscription-notification!
   "Email dashboard and subscription creators information about a broken subscription due to bad parameters"

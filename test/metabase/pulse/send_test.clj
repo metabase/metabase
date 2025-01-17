@@ -132,7 +132,7 @@
                       (f {:card-id card-id, :pulse-id pulse-id}
                          ((keyword "channel" (name channel-type))
                           (pulse.test-util/with-captured-channel-send-messages!
-                            (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
+                            (mt/with-temporary-setting-values [site-url "https://testmb.com"]
                               (pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))))))
                     (thunk []
                       (if fixture
@@ -197,7 +197,7 @@
                 {:title           pulse.test-util/card-name
                  :rendered-info   {:attachments false
                                    :content     true}
-                 :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                 :title_link      (str "https://testmb.com/question/" card-id)
                  :attachment-name "image.png"
                  :channel-id      "FOO"
                  :fallback        pulse.test-util/card-name}]}
@@ -236,7 +236,7 @@
               (is (= (rasta-alert-message {:message [{pulse.test-util/card-name                            true
                                                       "More results have been included"                    false
                                                       "ID</th>"                                            true
-                                                      "<a href=\\\"https://metabase.com/testmb/dashboard/" false}
+                                                      "<a href=\\\"https://testmb.com/dashboard/" false}
                                                      pulse.test-util/png-attachment
                                                      pulse.test-util/csv-attachment]})
                      (mt/summarize-multipart-single-email
@@ -244,7 +244,7 @@
                       test-card-regex
                       #"More results have been included"
                       #"ID</th>"
-                      #"<a href=\"https://metabase.com/testmb/dashboard/"))))
+                      #"<a href=\"https://testmb.com/dashboard/"))))
 
             :slack
             (fn [{:keys [card-id]} [pulse-results]]
@@ -257,7 +257,7 @@
                            {:title           pulse.test-util/card-name
                             :rendered-info   {:attachments false
                                               :content     true}
-                            :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                            :title_link      (str "https://testmb.com/question/" card-id)
                             :attachment-name "image.png"
                             :channel-id      "FOO"
                             :fallback        pulse.test-util/card-name}]}
@@ -398,7 +398,7 @@
                                       {:title           pulse.test-util/card-name
                                        :rendered-info   {:attachments false
                                                          :content     true}
-                                       :title_link      (str "https://metabase.com/testmb/question/" card-id)
+                                       :title_link      (str "https://testmb.com/question/" card-id)
                                        :attachment-name "image.png"
                                        :channel-id      "FOO"
                                        :fallback        pulse.test-util/card-name}]}
