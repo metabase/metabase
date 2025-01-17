@@ -133,7 +133,7 @@
   [_ bool]
   [:raw (if bool "TRUE" "FALSE")])
 
-(defmethod sql.qp/->honeysql [:presto-jdbc (type (byte-array 0))]
+(defmethod sql.qp/->honeysql [:presto-jdbc (Class/forName "[B")]
   [_driver bs]
   [:to_utf8 (String. bs)])
 
