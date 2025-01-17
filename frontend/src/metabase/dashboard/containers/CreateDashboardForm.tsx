@@ -118,7 +118,7 @@ export function CreateDashboardForm({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton title={t`Create`} variant="filled" />
+            <FormSubmitButton label={t`Create`} variant="filled" />
           </FormFooter>
         </Form>
       )}
