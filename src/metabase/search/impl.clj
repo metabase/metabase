@@ -399,7 +399,7 @@
 
 (defn- hydrate-dashboards [results]
   (->> (t2/hydrate results [:dashboard :moderation_status])
-       (map (fn [row] (u/update-some row :dashboard #(select-keys % [:id :name :moderation_status]))))
+       (map #(u/update-some % :dashboard select-keys [:id :name :moderation_status]))
        (map #(dissoc % :dashboard_id))))
 
 (mu/defn search
