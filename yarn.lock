@@ -23531,11 +23531,6 @@ tinycolor2@^1.4.1:
   resolved "https://registry.yarnpkg.com/tinycolor2/-/tinycolor2-1.4.2.tgz#3f6a4d1071ad07676d7fa472e1fac40a719d8803"
   integrity sha512-vJhccZPs965sV/L2sU4oRQVAos0pQXwsvTLkWYdqJ+a8Q5kPFzJTuOFwy7UniPli44NKQGAglksjvOcpo95aZA==
 
-tinykeys@^3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/tinykeys/-/tinykeys-3.0.0.tgz#528e59749f4d5f1e9d994f343fddca9eb1b608f8"
-  integrity sha512-nazawuGv5zx6MuDfDY0rmfXjuOGhD5XU2z0GLURQ1nzl0RUe9OuCJq+0u8xxJZINHe+mr7nw8PWYYZ9WhMFujw==
-
 tinyglobby@^0.2.0:
   version "0.2.10"
   resolved "https://registry.yarnpkg.com/tinyglobby/-/tinyglobby-0.2.10.tgz#e712cf2dc9b95a1f5c5bbd159720e15833977a0f"
@@ -23543,6 +23538,11 @@ tinyglobby@^0.2.0:
   dependencies:
     fdir "^6.4.2"
     picomatch "^4.0.2"
+
+tinykeys@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/tinykeys/-/tinykeys-3.0.0.tgz#528e59749f4d5f1e9d994f343fddca9eb1b608f8"
+  integrity sha512-nazawuGv5zx6MuDfDY0rmfXjuOGhD5XU2z0GLURQ1nzl0RUe9OuCJq+0u8xxJZINHe+mr7nw8PWYYZ9WhMFujw==
 
 tippy.js@^6.3.1, tippy.js@^6.3.5:
   version "6.3.5"
