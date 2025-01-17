@@ -1,29 +1,34 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
-import { useSelector } from "metabase/lib/redux";
-import { getQuestionWithParameters } from "metabase/query_builder/selectors";
 import { getUrl } from "metabase/querying/notebook/components/NotebookDataPicker/utils";
-import { Flex, Icon, Stack } from "metabase/ui";
+import { Flex, Icon, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 import { ToggleFullList } from "./ToggleFullList";
 import { useExpandableList } from "./hooks";
 import type { QuestionSource } from "./types";
 import { getIconPropsForSource } from "./utils";
 
-export const QuestionSourceTables = () => {
-  /** Retrieve current question from the Redux store */
-  const questionWithParameters = useSelector(getQuestionWithParameters);
-
+/** Displays tables linked to the question via a foreign-key relationship */
+export const TablesLinkedToQuestion = ({
+  question,
+}: {
+  question: Question;
+}) => {
   const joinedTablesWithIcons: QuestionSource[] = useMemo(() => {
-    const query = questionWithParameters?.query();
+    const query = question?.query();
+
     if (!query) {
       return [];
     }
     const stageIndexes = Lib.stageIndexes(query);
+
     const joinedTables = stageIndexes.flatMap(stageIndex => {
       const joins = Lib.joins(query, stageIndex);
+
       const joinedThings = joins.map(join => {
         const thing = Lib.joinedThing(query, join);
         const url = getUrl({ query, table: thing, stageIndex }) as string;
@@ -37,18 +42,25 @@ export const QuestionSourceTables = () => {
       ...source,
       iconProps: getIconPropsForSource(source),
     }));
-  }, [questionWithParameters]);
+  }, [question]);
 
   const { filtered, isExpanded, toggle } = useExpandableList(
     joinedTablesWithIcons,
   );
 
-  if (!questionWithParameters || !joinedTablesWithIcons.length) {
+  if (!question) {
     return null;
   }
 
   return (
     <Stack spacing="sm">
+      {!filtered.length && (
+        <Text lh={1} color="text-medium">
+          {question.type() === "model"
+            ? t`This model is not linked to any tables.`
+            : t`This question is not linked to any tables.`}
+        </Text>
+      )}
       {filtered.map(({ href, name, iconProps }) => (
         <Link to={href} key={href} variant="brand">
           <Flex gap="sm" lh="1.25rem">
