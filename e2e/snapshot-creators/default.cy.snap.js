@@ -316,7 +316,7 @@ describe("snapshots", () => {
 
   // TODO: It'd be nice to have one file per snapshot.
   // To do that we need to enforce execution order among them.
-  describe.skip("withSqlite", () => {
+  describe("withSqlite", () => {
     it("withSqlite", () => {
       restore("default");
       cy.signInAsAdmin();
