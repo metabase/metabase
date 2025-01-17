@@ -254,7 +254,7 @@
 ;;;; Datetime truncation functions
 
 ;;; If `expr` is a date, we need to cast it to a timestamp before we can truncate to a finer granularity Ideally, we
-;;; should make this conditional. There's a generic approach above, but different use cases should b tested.
+;;; should make this conditional. There's a generic approach above, but different use cases should be tested.
 (defmethod sql.qp/date [:athena :minute]  [_driver _unit expr] [:date_trunc (h2x/literal :minute) expr])
 (defmethod sql.qp/date [:athena :hour]    [_driver _unit expr] [:date_trunc (h2x/literal :hour) expr])
 (defmethod sql.qp/date [:athena :day]     [_driver _unit expr] [:date_trunc (h2x/literal :day) expr])

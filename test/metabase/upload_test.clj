@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.upload-test
+(ns ^:mb/driver-tests ^:mb/upload-tests metabase.upload-test
   (:require
    [clj-bom.core :as bom]
    [clojure.data.csv :as csv]
@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -1308,7 +1309,19 @@
              #"Unsupported File Type"
              (do-with-uploaded-example-csv!
               {:file (write-empty-gzip (tmp-file "sneaky" ".csv"))}
-              identity)))))))
+              identity))))
+      (testing "Driver error"
+        (let [metrics (atom {})]
+          (with-redefs [driver/create-table! (fn [& _args] (throw (Exception. "Boom")))
+                        prometheus/inc! #(swap! metrics update % (fnil inc 0))]
+            (is (thrown-with-msg?
+                 Exception
+                 #"Boom"
+                 (do-with-uploaded-example-csv!
+                  {:file (tmp-file "file" ".csv")}
+                  identity)))
+            (testing "Prometheus alerted"
+              (is (= 1 (:metabase-csv-upload/failed @metrics))))))))))
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]

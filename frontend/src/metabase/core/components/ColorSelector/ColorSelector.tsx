@@ -30,7 +30,7 @@ export const ColorSelector = ({
   return (
     <Popover opened={opened} onClose={close} position="bottom-start">
       <Popover.Target>
-        <Center>
+        <Center data-testid="color-selector-button">
           <ColorPill {...props} color={value} onClick={toggle} />
         </Center>
       </Popover.Target>
