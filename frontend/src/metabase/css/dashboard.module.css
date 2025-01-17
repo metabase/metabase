@@ -59,6 +59,7 @@
 
 /* Night mode transition */
 .Dashboard.DashboardFullscreen,
+.Dashboard.DashboardFullscreen .ParameterFieldSet,
 .Dashboard.DashboardFullscreen .DashCard .Card {
   transition: var(--transition-theme-change);
 }

@@ -157,29 +157,23 @@ export const EmbedFrame = ({
       hasScroll={hasFrameScroll}
       isBordered={bordered}
       hasVisibleOverflowWhenPriting={isPublicDashboard}
-      className={cx(
-        className,
-        EmbedFrameS.EmbedFrame,
-        TransitionS.transitionThemeChange,
-        {
-          [EmbedFrameS.NoBackground]: !background,
-        },
-      )}
+      className={cx(className, EmbedFrameS.EmbedFrame, {
+        [EmbedFrameS.NoBackground]: !background,
+      })}
       data-testid="embed-frame"
       data-embed-theme={theme}
     >
       <ContentContainer
         id={DASHBOARD_PDF_EXPORT_ROOT_ID}
         className={cx(
+          EmbedFrameS.ContentContainer,
           EmbedFrameS.WithThemeBackground,
-          TransitionS.transitionThemeChange,
         )}
       >
         {hasHeader && (
           <Header
             className={cx(
               EmbedFrameS.EmbedFrameHeader,
-              TransitionS.transitionThemeChange,
               SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS,
             )}
             data-testid="embed-frame-header"
@@ -215,7 +209,7 @@ export const EmbedFrame = ({
               </DashboardTabsContainer>
             )}
 
-            <Separator className={TransitionS.transitionThemeChange} />
+            <Separator className={EmbedFrameS.Separator} />
           </Header>
         )}
 
@@ -260,10 +254,7 @@ export const EmbedFrame = ({
       </ContentContainer>
       {showFooter && (
         <Footer
-          className={cx(
-            EmbedFrameS.EmbedFrameFooter,
-            TransitionS.transitionThemeChange,
-          )}
+          className={cx(EmbedFrameS.EmbedFrameFooter)}
           variant={footerVariant}
         >
           {hasEmbedBranding && <LogoBadge dark={theme === "night"} />}

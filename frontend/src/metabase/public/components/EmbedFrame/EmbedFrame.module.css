@@ -30,6 +30,18 @@ body:where(:global(.mb-wrapper)) {
   background-color: var(--mb-color-bg-dashboard);
 }
 
+.EmbedFrame,
+.EmbedFrame .DashCard .Card,
+.EmbedFrame .ContentContainer,
+.EmbedFrame .EmbedFrameHeader,
+.EmbedFrame .Separator,
+.EmbedFrame .ParameterFieldSet,
+.EmbedFrame .ParametersWidgetContainer,
+.EmbedFrame .EmbedFrameFooter,
+.EmbedFrame .LogoBadge {
+  transition: var(--transition-theme-change);
+}
+
 [data-metabase-theme="night"][data-metabase-theme="night"],
 /**
   * role="tooltip" works with both legacy and Mantine popover,

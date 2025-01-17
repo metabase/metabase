@@ -3,10 +3,9 @@ import { type PropsWithChildren, type ReactNode, useState } from "react";
 
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
-import TransitionS from "metabase/css/core/transitions.module.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
-import { useSelector } from "metabase/lib/redux";
-import { getIsEmbedded, getIsEmbeddingSdk } from "metabase/selectors/embed";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -97,23 +96,20 @@ export const ParameterWidget = ({
   children,
   dragHandle,
 }: ParameterWidgetProps) => {
-  const isWithinIframe = useSelector(getIsEmbedded);
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
-
   const [isFocused, setIsFocused] = useState(false);
   const isEditingParameter = editingParameter?.id === parameter.id;
   const fieldHasValueOrFocus = parameter.value != null || isFocused;
   const legend = fieldHasValueOrFocus ? parameter.name : "";
 
-  const isEmbedded = isWithinIframe || isEmbeddingSdk;
-
   if (!isEditing || !setEditingParameter) {
     return (
       <Box fz={isFullscreen ? "md" : undefined}>
         <ParameterFieldSet
-          className={cx(className, {
-            [TransitionS.transitionThemeChange]: isFullscreen || isEmbedded,
-          })}
+          className={cx(
+            className,
+            DashboardS.ParameterFieldSet,
+            EmbedFrameS.ParameterFieldSet,
+          )}
           legend={legend}
           required={enableParameterRequiredBehavior && parameter.required}
           noPadding={true}

@@ -2,7 +2,8 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import TransitionS from "metabase/css/core/transitions.module.css";
+
+import EmbedFrameS from "../EmbedFrame.module.css";
 
 import LogoBadgeStyle from "./LogoBadge.module.css";
 import MetabaseLogoWithText from "./metabase_logo_with_text.svg?component";
@@ -14,14 +15,10 @@ export const LogoBadge = ({ dark }: { dark: boolean }) => {
 
   return (
     <ExternalLink
-      className={cx(
-        LogoBadgeStyle.metabaseLink,
-        TransitionS.transitionThemeChange,
-        {
-          [LogoBadgeStyle.dark]: dark,
-          [LogoBadgeStyle.light]: !dark,
-        },
-      )}
+      className={cx(EmbedFrameS.LogoBadge, LogoBadgeStyle.metabaseLink, {
+        [LogoBadgeStyle.dark]: dark,
+        [LogoBadgeStyle.light]: !dark,
+      })}
       href={`https://www.metabase.com/powered-by-metabase?utm_medium=referral&utm_source=product&utm_campaign=powered_by_metabase&utm_content=${utmContentValue}`}
       target="_blank"
     >
