@@ -138,7 +138,9 @@
                            (let [column (if-let [temporal-unit (::lib.underlying/temporal-unit column)]
                                           (lib.temporal-bucket/with-temporal-bucket column temporal-unit)
                                           column)]
-                             [(lib.filter/= column value)]))]
+                             (if (some? value)
+                               [(lib.filter/= column value)]
+                               [(lib.filter/is-null column)])))]
     (reduce
      (fn [query filter-clause]
        (lib.filter/filter query stage-number filter-clause))
