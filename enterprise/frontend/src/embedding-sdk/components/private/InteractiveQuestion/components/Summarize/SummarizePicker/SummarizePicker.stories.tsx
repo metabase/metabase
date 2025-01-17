@@ -2,7 +2,7 @@ import { InteractiveQuestion } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import { Center, Popover } from "metabase/ui";
 
-import { SummarizePicker } from "./SummarizePicker";
+import { SummarizePicker } from "../SummarizePicker";
 
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 

@@ -24,7 +24,6 @@
   :visibility :admin
   :export?    true
   :type       :boolean
-  :setter     :none
   :default    true
   :audit      :getter)
 
@@ -43,7 +42,6 @@
   :visibility :admin
   :export?    true
   :type       :boolean
-  :setter     :none
   :default    true
   :audit      :getter)
 
