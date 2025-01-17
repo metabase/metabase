@@ -26,7 +26,7 @@ You can get a license by signing up for a free trial of the [Pro or Enterprise e
 - [Enterprise Docker image](https://hub.docker.com/r/metabase/metabase-enterprise/) at `metabase/metabase-enterprise:latest`. (RECOMMENDED)
 - [Enterprise JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar).
 
-You'll also want to set up a dedicated [application database](../installation-and-operation/configuring-application-database.md).
+You'll also need to set up a dedicated [application database](../installation-and-operation/configuring-application-database.md) to store your Metabase data.
 
 ### Enter your license
 
