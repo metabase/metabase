@@ -101,6 +101,36 @@ jobs:
         with:
           name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
+  reset-e2e-test-comment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Remove test results comment
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            const { owner, repo } = context.repo;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: context.issue.number,
+            }).catch(console.error);
+
+            if (!comments) {
+              return;
+            }
+
+            const comment = comments.find((comment) => comment.body.includes('## e2e tests failed on '));
+
+            if (comment) {
+              await github.rest.issues.deleteComment({
+                owner,
+                repo,
+                comment_id: comment.id,
+              });
+            }
+
   e2e-tests:
     name: ${{ matrix.name }}-${{ matrix.edition }}
     uses: ./.github/workflows/e2e-test.yml
