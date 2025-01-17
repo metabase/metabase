@@ -108,7 +108,7 @@ function nativeEditorType(
 
 export const NativeEditor = {
   get: nativeEditor,
-  type(text: string, options: TypeOptions) {
+  type(text: string, options: TypeOptions = {}) {
     nativeEditorType(text, options);
     return NativeEditor;
   },
