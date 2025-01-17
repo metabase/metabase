@@ -66,9 +66,9 @@ type ListParams = {
 /**
  * @deprecated use "metabase/api" instead
  */
+// @ts-expect-error -- deprecated self-referential type
 const Collections = createEntity({
   name: "collections",
-  path: "/api/collection",
   schema: CollectionSchema,
 
   displayNameOne: t`collection`,

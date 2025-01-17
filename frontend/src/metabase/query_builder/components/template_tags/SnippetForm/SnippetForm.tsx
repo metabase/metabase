@@ -13,6 +13,7 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import { Form, FormProvider } from "metabase/forms";
+import type { $TS_FIXME } from "metabase/lib/entities-types";
 import * as Errors from "metabase/lib/errors";
 import { connect } from "metabase/lib/redux";
 import { Flex } from "metabase/ui";
@@ -109,7 +110,9 @@ function SnippetForm({
   const handleCreate = useCallback(
     async (values: SnippetFormValues) => {
       const action = await handleCreateSnippet(values);
-      const snippet = Snippets.HACK_getObjectFromAction(action);
+      const snippet = Snippets.HACK_getObjectFromAction(
+        action as $TS_FIXME,
+      ) as $TS_FIXME;
       onCreate?.(snippet);
     },
     [handleCreateSnippet, onCreate],
@@ -118,7 +121,9 @@ function SnippetForm({
   const handleUpdate = useCallback(
     async (values: UpdateSnippetFormValues) => {
       const action = await handleUpdateSnippet(values);
-      const nextSnippet = Snippets.HACK_getObjectFromAction(action);
+      const nextSnippet = Snippets.HACK_getObjectFromAction(
+        action as $TS_FIXME,
+      ) as $TS_FIXME;
       onUpdate?.(nextSnippet, snippet as NativeQuerySnippet);
     },
     [snippet, handleUpdateSnippet, onUpdate],

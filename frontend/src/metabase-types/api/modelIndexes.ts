@@ -1,8 +1,6 @@
 import type { CardId } from "./card";
 import type { FieldReference } from "./query";
 
-export type NormalizedIndexedEntity = IndexedEntity;
-
 export type ModelIndex = {
   id: number;
   model_id: CardId;
