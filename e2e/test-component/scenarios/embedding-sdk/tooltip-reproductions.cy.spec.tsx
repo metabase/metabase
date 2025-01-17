@@ -94,19 +94,18 @@ function getVisibleTopmostElement(targetElement: HTMLElement) {
   const targetElementRect = targetElement.getBoundingClientRect();
   const originalPointerEvents = targetElement.style.pointerEvents;
 
-  // Temporarily enable pointer events for tooltip so elementsFromPoint can see it.
+  // Temporarily enable pointer events for the target element so elementsFromPoint can see it.
   targetElement.style.pointerEvents = "auto";
 
-  // Get all elements at the tooltip's center point
+  // Get all elements at the target element's center point
   const elementsAtPoint = document.elementsFromPoint(
     targetElementRect.left + targetElementRect.width / 2,
     targetElementRect.top + targetElementRect.height / 2,
   );
 
-  // Restore original pointer-events
   targetElement.style.pointerEvents = originalPointerEvents;
 
-  // Find the topmost element we clicked on.
+  // The topmost element is the first element of elementsAtPoint.
   return elementsAtPoint[0];
 }
 
