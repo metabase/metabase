@@ -8,7 +8,8 @@
   [_ {:keys [message]} _env]
   (let [{:keys [id]} (client/select-metric-request
                       (t2/select [:model/Card :id :name :description]
-                                 :type [:= "metric"])
+                                 :type [:= "metric"]
+                                 :archived [:= false])
                       message)]
     (if-let [result (when id
                       (dummy-tools/metric-details id))]
