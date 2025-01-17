@@ -293,7 +293,6 @@ export class NativeQueryEditor extends Component<
 
     if (newHeight > element.offsetHeight) {
       element.style.height = `${newHeight}px`;
-      this.editor.current?.resize();
     }
   }
 
@@ -401,7 +400,6 @@ export class NativeQueryEditor extends Component<
             if (typeof resizableBoxProps?.onResizeStop === "function") {
               resizableBoxProps.onResizeStop(e, data);
             }
-            this.editor.current?.resize();
           }}
         >
           <>

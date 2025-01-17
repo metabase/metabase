@@ -27,7 +27,6 @@ export type EditorProps = {
 
 export interface EditorRef {
   focus: () => void;
-  resize: () => void;
   getSelectionTarget: () => Element | null;
 }
 
@@ -64,9 +63,6 @@ export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
       return {
         focus() {
           editor.current?.editor?.focus();
-        },
-        resize() {
-          // noop
         },
         getSelectionTarget() {
           return document.querySelector(".cm-selectionBackground");
