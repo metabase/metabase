@@ -103,9 +103,35 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
         // Restore original pointer-events
         tooltipElement.style.pointerEvents = "none";
 
-        // We should be clicking on a table cell in the tooltip.
+        // Find the topmost element we clicked on.
         const topmostElement = elementsAtPoint[0];
-        expect(topmostElement.tagName).to.equal("TD");
+
+        // The tooltip is indeed visible if we clicked on child of the tooltip :)
+        const isTopmostElementChildOfTooltip = checkIfElementIsChildOf(
+          topmostElement,
+          element => element.getAttribute("data-testid") === "echarts-tooltip",
+        );
+
+        expect(isTopmostElementChildOfTooltip).to.equal(true);
       });
   });
 });
+
+function checkIfElementIsChildOf(
+  element: Element,
+  parentPredicate: (element: Element) => boolean,
+): boolean {
+  let currentElement = element;
+
+  while (currentElement && currentElement !== document.body) {
+    if (parentPredicate(currentElement)) {
+      return true;
+    }
+
+    if (currentElement.parentElement) {
+      currentElement = currentElement.parentElement;
+    }
+  }
+
+  return false;
+}
