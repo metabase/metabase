@@ -28,6 +28,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
+   (com.facebook.presto.common.type SqlVarbinary)
    (com.facebook.presto.jdbc PrestoConnection)
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)
@@ -132,6 +133,10 @@
 (defmethod sql.qp/->honeysql [:presto-jdbc Boolean]
   [_ bool]
   [:raw (if bool "TRUE" "FALSE")])
+
+(defmethod sql.qp/->honeysql [:presto-jdbc byte []]
+  [_driver bs]
+  (SqlVarbinary. bs))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
   [_ [_ t]]
