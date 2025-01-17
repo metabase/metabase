@@ -40,7 +40,7 @@ OR
 
 ## Upgrading from the open-source edition of Metabase
 
-If you've been running the open-source edition of Metabase, you'll also need to change to the Enterprise Edition (that goes for both the Pro and Enterprise plans).
+If you've been running the open-source edition of Metabase, you'll need to change to the Enterprise Edition (that goes for both the Pro and Enterprise plans).
 
 Assuming you've been using a [production application database](../installation-and-operation/configuring-application-database.md), you can simply swap out the OSS Docker image or JAR for the Enterprise Edition.
 
