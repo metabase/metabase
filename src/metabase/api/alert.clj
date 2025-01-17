@@ -163,7 +163,7 @@
   [alert]
   (when (email/email-configured?)
     (doseq [recipient (collect-alert-recipients alert)]
-./      (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))))
+      (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))))
 
 (api.macros/defendpoint :put "/:id"
   "Update a `Alert` with ID."
