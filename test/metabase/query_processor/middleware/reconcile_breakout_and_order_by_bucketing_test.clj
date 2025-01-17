@@ -30,6 +30,14 @@
             :breakout [[:field 2 {:source-field 1, :temporal-unit :day}]]
             :order-by [[:asc [:field 2 {:source-field 1}]]]))))
 
+  (testing "should also work with original temporal unit"
+    (is (= (mbql-query
+            :breakout [[:field 2 {:source-field 1, :temporal-unit :day :original-temporal-unit "month"}]]
+            :order-by [[:asc [:field 2 {:source-field 1, :temporal-unit :day :original-temporal-unit "month"}]]])
+           (reconcile-breakout-and-order-by-bucketing
+            :breakout [[:field 2 {:source-field 1, :temporal-unit :day :original-temporal-unit "month"}]]
+            :order-by [[:asc [:field 2 {:source-field 1}]]]))))
+
   (testing "...and with field literals"
     (is (= (mbql-query
             :breakout [[:field "Corn Field" {:base-type :type/Text, :temporal-unit :day}]]
@@ -37,6 +45,15 @@
            (reconcile-breakout-and-order-by-bucketing
             :breakout [[:field "Corn Field" {:base-type :type/Text, :temporal-unit :day}]]
             :order-by [[:asc [:field "Corn Field" {:base-type :type/Text}]]])))))
+
+(deftest bucket-unbucketed-temporal-expressions-test
+  (testing "will unbucketed datetime order-bys get bucketed if Expression it references is bucketed in a `breakout` clause?"
+    (is (= (mbql-query
+            :breakout [[:expression "Corn Field" {:base-type :type/Text, :temporal-unit :day}]]
+            :order-by [[:asc [:expression "Corn Field" {:base-type :type/Text, :temporal-unit :day}]]])
+           (reconcile-breakout-and-order-by-bucketing
+            :breakout [[:expression "Corn Field" {:base-type :type/Text, :temporal-unit :day}]]
+            :order-by [[:asc [:expression "Corn Field" {:base-type :type/Text}]]])))))
 
 (deftest dont-bucket-fields-not-in-breakout-test
   (testing (str "unbucketed datetimes in order-bys should be left undisturbed if they are not referenced in the "

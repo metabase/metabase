@@ -37,7 +37,7 @@
   [driver database-or-table-or-field-name]
   (let [name' ((get-method ddl.i/format-name :sql-jdbc) driver (str/replace database-or-table-or-field-name #"-" "_"))]
     (if (= name' "test_data")
-      "v2_test_data"
+      "v3_test_data"
       name')))
 
 (defmethod tx/dbdef->connection-details :athena
