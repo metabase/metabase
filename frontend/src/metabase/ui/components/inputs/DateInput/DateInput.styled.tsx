@@ -15,6 +15,9 @@ export const getDateInputOverrides =
           color: "var(--mb-color-text-primary)",
           backgroundColor: "var(--mb-color-background)",
         },
+        error: {
+          "&::first-letter": { textTransform: "capitalize" },
+        },
       }),
     },
   });

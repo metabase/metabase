@@ -60,6 +60,7 @@ export const getSelectInputOverrides = (
     },
     error: {
       ref: getStylesRef("error"),
+      "&::first-letter": { textTransform: "capitalize" },
     },
     wrapper: {
       ref: getStylesRef("wrapper"),

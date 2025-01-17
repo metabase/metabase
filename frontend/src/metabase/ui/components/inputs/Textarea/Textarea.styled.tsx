@@ -9,5 +9,8 @@ export const getTextareaOverrides = (): MantineThemeOverride["components"] => ({
       maxRows: 6,
       inputWrapperOrder: ["label", "description", "input", "error"],
     },
+    styles: {
+      error: { "&::first-letter": { textTransform: "capitalize" } },
+    },
   },
 });

@@ -128,6 +128,9 @@ export const getMultiSelectOverrides =
           borderColor: "var(--mb-color-border)",
           overflow: "auto",
         },
+        error: {
+          "&::first-letter": { textTransform: "capitalize" },
+        },
       }),
       variants: {
         default: () => ({
