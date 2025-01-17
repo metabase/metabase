@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import {
   EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID,
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
-} from "embedding-sdk/config";
+} from "metabase/embedding-sdk/config";
 
 import { PublicComponentStylesWrapper } from "./PublicComponentStylesWrapper";
 

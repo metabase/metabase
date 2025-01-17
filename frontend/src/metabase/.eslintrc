@@ -6,7 +6,8 @@
         "patterns": [
           "metabase-enterprise",
           "metabase-enterprise/*",
-          "cljs/metabase.lib*"
+          "cljs/metabase.lib*",
+          "/embedding-sdk"
         ],
         "paths": [
           {

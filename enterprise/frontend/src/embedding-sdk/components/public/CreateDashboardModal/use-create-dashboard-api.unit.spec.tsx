@@ -2,7 +2,8 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupDashboardCreateEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { screen } from "__support__/ui";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import type { Dashboard } from "metabase-types/api";
 
@@ -76,10 +77,9 @@ function setup() {
 
   const onDashboardCreateSpy = jest.fn();
 
-  renderWithProviders(
+  renderWithSDKProviders(
     <TestComponent {...mockProps} onDashboardCreate={onDashboardCreateSpy} />,
     {
-      mode: "sdk",
       sdkProviderProps: {
         authConfig: createMockAuthProviderUriConfig(),
       },

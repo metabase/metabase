@@ -88,27 +88,14 @@
       :column-name "max"
       :expected    #(->> % (map :type) (filter #{:drill-thru/underlying-records}) count (= 1))})))
 
-(deftest ^:parallel returns-underlying-records-for-multi-stage-queries-test
+(deftest ^:parallel returns-underlying-records-for-multi-stage-query-test
   (lib.drill-thru.tu/test-returns-drill
    {:drill-type   :drill-thru/underlying-records
     :click-type   :cell
     :query-type   :aggregated
     :query-kinds  [:mbql]
     :column-name  "count"
-    :custom-query (let [base-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                                       (lib/aggregate (lib/count))
-                                       (lib/breakout (meta/field-metadata :orders :product-id))
-                                       (lib/breakout (-> (meta/field-metadata :orders :created-at)
-                                                         (lib/with-temporal-bucket :month)))
-                                       lib/append-stage)
-                        count-col  (m/find-first #(= (:name %) "count")
-                                                 (lib/returned-columns base-query))
-                        _          (is (some? count-col))
-                        query      (lib/filter base-query (lib/> count-col 0))]
-                    query)
-    :custom-row   {"PRODUCT_ID" 3
-                   "CREATED_AT" "2023-12-01"
-                   "count"      77}
+    :custom-query #(lib.drill-thru.tu/append-filter-stage % "count")
     :expected     {:type       :drill-thru/underlying-records
                    :row-count  77
                    :table-name "Orders"
@@ -122,7 +109,7 @@
                                 {:column     {:name       "CREATED_AT"
                                               :lib/source :source/previous-stage}
                                  :column-ref [:field {} "CREATED_AT"]
-                                 :value      "2023-12-01"}]}}))
+                                 :value      "2022-12-01T00:00:00+02:00"}]}}))
 
 (def ^:private last-month
   #?(:cljs (let [now    (js/Date.)

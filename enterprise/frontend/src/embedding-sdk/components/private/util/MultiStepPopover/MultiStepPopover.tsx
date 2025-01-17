@@ -33,7 +33,9 @@ const MultiStepPopoverContent = ({
   currentStep,
   onClose,
   children,
-}: MultiStepPopoverProps & PopoverProps) => {
+  ...popoverProps
+}: MultiStepPopoverProps &
+  Omit<PopoverProps, "children" | "onClose" | "opened">) => {
   const findChild = <T extends ReactElement>(
     predicate: (child: ReactElement) => child is T,
   ): T | null => {
@@ -57,6 +59,7 @@ const MultiStepPopoverContent = ({
       position="bottom-start"
       opened={currentStep !== null}
       onClose={onClose}
+      {...popoverProps}
     >
       <Popover.Target>{targetElement}</Popover.Target>
       <Popover.Dropdown>{currentStepContent}</Popover.Dropdown>

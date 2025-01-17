@@ -51,7 +51,7 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (nil? value)
-             (not (lib.drill-thru.common/aggregation-sourced? query column))
+             (not (lib.underlying/aggregation-sourced? query column))
              (not (lib.types.isa/primary-key? column))
              (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/comment?     column))

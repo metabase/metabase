@@ -1,4 +1,4 @@
-import type { ChartColor } from "embedding-sdk/types/theme";
+import type { ChartColor } from "metabase/embedding-sdk/theme";
 
 /**
  * Map the input chart colors from the theme settings to the

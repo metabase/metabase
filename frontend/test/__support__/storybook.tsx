@@ -1,7 +1,7 @@
 // Storybook helpers
 
-import type { MetabaseTheme } from "embedding-sdk";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";

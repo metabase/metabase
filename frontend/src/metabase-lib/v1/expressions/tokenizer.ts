@@ -259,8 +259,18 @@ export function tokenize(expression: string): {
       if (ch === "]") {
         break;
       } else if (ch === "[") {
+        index -= 1; // allow this character to be parsed again, so it can be recognized as a start of another bracket identifier
+
+        let lastNonWhitespaceIndex = index - 1;
+        while (
+          lastNonWhitespaceIndex > 0 &&
+          isWhiteSpace(source.charCodeAt(lastNonWhitespaceIndex))
+        ) {
+          --lastNonWhitespaceIndex;
+        }
+
         const type = TOKEN.Identifier;
-        const end = index;
+        const end = lastNonWhitespaceIndex + 1;
         const error = t`Bracket identifier in another bracket identifier`;
         return { type, start, end, error };
       } else if (ch === "\\") {

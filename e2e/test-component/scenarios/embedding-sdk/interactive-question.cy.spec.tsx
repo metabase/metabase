@@ -35,18 +35,18 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    createQuestion(
-      {
-        name: "47563",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
-          breakout: [["field", ORDERS.PRODUCT_ID, null]],
-          limit: 2,
-        },
+    createQuestion({
+      name: "47563",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
+        breakout: [["field", ORDERS.PRODUCT_ID, null]],
+        limit: 2,
       },
-      { wrapId: true },
-    );
+    }).then(({ body: question }) => {
+      cy.wrap(question.id).as("questionId");
+      cy.wrap(question.entity_id).as("questionEntityId");
+    });
 
     cy.signOut();
 
@@ -272,6 +272,63 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
 
     cy.on("uncaught:exception", error => {
       expect(error.message.includes("Stage 1 does not exist")).to.be.false;
+    });
+  });
+
+  describe("loading behavior for both entity IDs and number IDs (metabase#49581)", () => {
+    const successTestCases = [
+      {
+        name: "correct entity ID",
+        questionIdAlias: "@questionEntityId",
+      },
+      {
+        name: "correct number ID",
+        questionIdAlias: "@questionId",
+      },
+    ];
+
+    const failureTestCases = [
+      {
+        name: "wrong entity ID",
+        questionId: "VFCGVYPVtLzCtt4teeoW4",
+      },
+      {
+        name: "one too many entity ID character",
+        questionId: "VFCGVYPVtLzCtt4teeoW49",
+      },
+      {
+        name: "wrong number ID",
+        questionId: 9999,
+      },
+    ];
+
+    successTestCases.forEach(({ name, questionIdAlias }) => {
+      it(`should load question content for ${name}`, () => {
+        cy.get(questionIdAlias).then(questionId => {
+          mountInteractiveQuestion({ questionId });
+        });
+
+        getSdkRoot().within(() => {
+          cy.findByText("Product ID").should("be.visible");
+          cy.findByText("Max of Quantity").should("be.visible");
+        });
+      });
+    });
+
+    failureTestCases.forEach(({ name, questionId }) => {
+      it(`should show an error message for ${name}`, () => {
+        mountInteractiveQuestion(
+          { questionId },
+          { shouldAssertCardQuery: false },
+        );
+
+        getSdkRoot().within(() => {
+          const expectedErrorMessage = `Question ${questionId} not found. Make sure you pass the correct ID.`;
+          cy.findByRole("alert").should("have.text", expectedErrorMessage);
+          cy.findByText("Product ID").should("not.exist");
+          cy.findByText("Max of Quantity").should("not.exist");
+        });
+      });
     });
   });
 });

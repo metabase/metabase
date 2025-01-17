@@ -1,4 +1,7 @@
-import type { MetabaseColor, MetabaseColors } from "embedding-sdk/types/theme";
+import type {
+  MetabaseColor,
+  MetabaseColors,
+} from "metabase/embedding-sdk/theme";
 import { colors } from "metabase/lib/colors";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
 

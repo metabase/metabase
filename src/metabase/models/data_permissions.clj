@@ -846,7 +846,7 @@
 
 (mu/defn set-new-table-permissions!
   "Sets permissions for a single table all the provided groups, based on the following rules:
-    - :view-data is set to :blocked if any other tables in the DB are :blocked
+    - :view-data is set to :blocked if any other tables in the DB are :blocked or sandboxed
     - If all existing tables in the schema have the same permission value, the new table is set to match them.
     - If permissions are set at the DB-level, no table permission is inserted.
     - Otherwise we use the provided `default-value`."
@@ -859,35 +859,58 @@
                     {perm-type (Permissions perm-type)})))
   (when (seq groups-or-ids)
     (t2/with-transaction [_conn]
-      (let [group-ids          (map u/the-id groups-or-ids)
-            table              (if (map? table-or-id)
-                                 table-or-id
-                                 (t2/select-one [:model/Table :id :db_id :schema] :id table-or-id))
-            db-id              (:db_id table)
-            schema-name        (:schema table)
-            db-level-perms     (t2/select :model/DataPermissions
-                                          :perm_type (u/qualified-name perm-type)
-                                          :db_id db-id
-                                          :table_id nil
-                                          {:where [:in :group_id group-ids]})
-            db-level-group-ids (set (map :group_id db-level-perms))
-            granular-group-ids (set/difference (set group-ids) db-level-group-ids)
-            new-perms          (map (fn [group-id]
-                                      {:perm_type   perm-type
-                                       :group_id    group-id
-                                       :perm_value  (or
-                                                     ;; Make sure we set `blocked` data access if any other table in the
-                                                     ;; DB has `blocked`
-                                                     (and (= perm-type :perms/view-data)
-                                                          (new-table-view-data-permission-level db-id group-id))
+      (let [group-ids              (map u/the-id groups-or-ids)
+            table                  (if (map? table-or-id)
+                                     table-or-id
+                                     (t2/select-one [:model/Table :id :db_id :schema] :id table-or-id))
+            db-id                  (:db_id table)
+            schema-name            (:schema table)
+            db-level-perms         (t2/select :model/DataPermissions
+                                              :perm_type (u/qualified-name perm-type)
+                                              :db_id db-id
+                                              :table_id nil
+                                              {:where [:in :group_id group-ids]})
+            db-level-group-ids     (set (map :group_id db-level-perms))
+            new-perms              (reduce
+                                    (fn [new-perms group-id]
+                                      (let [new-value (or
+                                                       ;; Make sure we set `blocked` data access if we're on EE and *any*
+                                                       ;; other table in the DB has `blocked` or `sandboxed`
+                                                       (and (= perm-type :perms/view-data)
+                                                            (new-table-view-data-permission-level db-id group-id))
+                                                       ;; Otherwise, if all tables in the schema have the same
+                                                       ;; value, use that value for the new table
+                                                       (schema-permission-value db-id group-id schema-name perm-type)
+                                                       ;; Otherwise, use the default value passed in
+                                                       default-value)
+                                            new-perm {:perm_type   perm-type
+                                                      :group_id    group-id
+                                                      :perm_value  new-value
+                                                      :db_id       db-id
+                                                      :table_id    (u/the-id table)
+                                                      :schema_name schema-name}]
+                                        (cond
+                                          ;; Perms that are being added at the table-level for a group currently set at the DB
+                                          ;; level. This should only happen when adding a table to a DB where some existing
+                                          ;; tables are sandboxed, because the DB might have `:unrestricted` DB-level perms which
+                                          ;; need to be split out to table-level perms.
+                                          (and (db-level-group-ids group-id)
+                                               (= new-value :blocked))
+                                          (update new-perms :going-granular conj new-perm)
 
-                                                     ;; If all tables in the schema have the same value, use that value
-                                                     ;; for the new table
-                                                     (schema-permission-value db-id group-id schema-name perm-type)
+                                          ;; Otherwise, we only add a new table-level permission row if existing perms
+                                          ;; are table-level
+                                          (not (db-level-group-ids group-id))
+                                          (update new-perms :simple-perms conj new-perm)
 
-                                                     default-value)
-                                       :db_id       db-id
-                                       :table_id    (u/the-id table)
-                                       :schema_name schema-name})
-                                    granular-group-ids)]
-        (t2/insert! :model/DataPermissions new-perms)))))
+                                          :else
+                                          new-perms)))
+                                    {:simple-perms [] :going-granular []}
+                                    group-ids)
+            {:keys [going-granular
+                    simple-perms]} new-perms]
+        ;; These perms might need existing DB-level perms to be broken out to table-level perms
+        (doseq [{:keys [perm_type perm_value group_id]} going-granular]
+          (set-table-permission! group_id table perm_type perm_value))
+        ;; These perms can be inserted raw, and don't require changes to existing perms in the DB
+        (t2/insert! :model/DataPermissions simple-perms)))))

@@ -31,9 +31,6 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       dropdown: {
         background: "var(--mb-color-background)",
         borderColor: "var(--mb-color-border)",
-        ">div": {
-          maxHeight: "none !important",
-        },
         padding: 0,
         overflow: "auto",
       },

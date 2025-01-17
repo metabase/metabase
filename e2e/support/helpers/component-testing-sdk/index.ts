@@ -1,2 +1,2 @@
 export * from "./component-embedding-sdk-helpers";
-export * from "./component-embedding-sdk-interactive-question-helpers";
+export * from "./component-embedding-sdk-question-helpers";

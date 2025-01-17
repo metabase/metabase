@@ -125,6 +125,7 @@ export const getMultiSelectOverrides =
         dropdown: {
           backgroundColor: "var(--mb-color-background)",
           borderColor: "var(--mb-color-border)",
+          overflow: "auto",
         },
       }),
       variants: {

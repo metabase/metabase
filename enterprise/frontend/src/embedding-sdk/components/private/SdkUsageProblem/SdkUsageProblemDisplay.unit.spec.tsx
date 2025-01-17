@@ -5,8 +5,9 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk/lib/is-localhost";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import {
   createMockApiKeyConfig,
   createMockAuthProviderUriConfig,
@@ -45,10 +46,9 @@ const setup = (options: Options) => {
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValues);
 
-  return renderWithProviders(<div>hello!</div>, {
+  return renderWithSDKProviders(<div>hello!</div>, {
     sdkProviderProps: { authConfig: options.authConfig },
     storeInitialState: state,
-    mode: "sdk",
   });
 };
 

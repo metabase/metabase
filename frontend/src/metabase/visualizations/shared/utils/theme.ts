@@ -1,4 +1,4 @@
-import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
+import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 import { color } from "metabase/lib/colors";
 import type { MantineThemeOther } from "metabase/ui";
 import { getSizeInPx } from "metabase/visualizations/shared/utils/size-in-px";

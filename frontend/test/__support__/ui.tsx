@@ -14,13 +14,6 @@ import { Router, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
-import {
-  MetabaseProviderInternal,
-  type MetabaseProviderProps,
-} from "embedding-sdk/components/public/MetabaseProvider";
-import { sdkReducers } from "embedding-sdk/store";
-import type { SdkStoreState } from "embedding-sdk/store/types";
-import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
@@ -42,7 +35,7 @@ interface ReducerObject {
 export interface RenderWithProvidersOptions {
   // the mode changes the reducers and initial state to be used for
   // public or sdk-specific tests
-  mode?: "default" | "public" | "sdk";
+  mode?: "default" | "public";
   initialRoute?: string;
   storeInitialState?: Partial<State>;
   withRouter?: boolean;
@@ -51,7 +44,6 @@ export interface RenderWithProvidersOptions {
   withDND?: boolean;
   withUndos?: boolean;
   customReducers?: ReducerObject;
-  sdkProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
 }
 
@@ -71,7 +63,6 @@ export function renderWithProviders(
     withDND = false,
     withUndos = false,
     customReducers,
-    sdkProviderProps = null,
     theme,
     ...options
   }: RenderWithProvidersOptions = {},
@@ -82,18 +73,6 @@ export function renderWithProviders(
   if (mode === "public") {
     const publicReducerNames = Object.keys(publicReducers);
     initialState = _.pick(initialState, ...publicReducerNames) as State;
-  } else if (mode === "sdk") {
-    const sdkReducerNames = Object.keys(sdkReducers);
-    initialState = _.pick(
-      { sdk: createMockSdkState(), ...initialState },
-      ...sdkReducerNames,
-    ) as SdkStoreState;
-
-    // Enable the embedding_sdk premium feature by default in SDK tests, unless explicitly disabled.
-    // Without this, SDK components will not render due to missing token features.
-    if (!storeInitialState.settings && initialState.settings) {
-      initialState.settings.values["token-features"].embedding_sdk = true;
-    }
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
@@ -106,9 +85,7 @@ export function renderWithProviders(
 
   let reducers;
 
-  if (mode === "sdk") {
-    reducers = sdkReducers;
-  } else if (mode === "public") {
+  if (mode === "public") {
     reducers = publicReducers;
   } else {
     reducers = mainReducers;
@@ -133,24 +110,7 @@ export function renderWithProviders(
     storeMiddleware,
   ) as unknown as Store<State>;
 
-  // Prevent spamming the console during tests
-  if (sdkProviderProps) {
-    sdkProviderProps.allowConsoleLog = false;
-  }
-
   const wrapper = (props: any) => {
-    if (mode === "sdk") {
-      return (
-        <MetabaseReduxProvider store={store}>
-          <MetabaseProviderInternal
-            {...props}
-            {...sdkProviderProps}
-            store={store}
-          />
-        </MetabaseReduxProvider>
-      );
-    }
-
     return (
       <TestWrapper
         {...props}

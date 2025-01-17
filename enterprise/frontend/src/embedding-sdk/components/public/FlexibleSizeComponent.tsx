@@ -2,6 +2,9 @@ import type { CSSProperties, PropsWithChildren } from "react";
 
 import { Box } from "metabase/ui";
 
+export const FLEXIBLE_SIZE_DEFAULT_HEIGHT = "600px";
+export const FLEXIBLE_SIZE_DEFAULT_WIDTH = "100%";
+
 export type FlexibleSizeProps = PropsWithChildren<{
   height?: CSSProperties["height"];
   width?: CSSProperties["width"];
@@ -10,8 +13,8 @@ export type FlexibleSizeProps = PropsWithChildren<{
 }>;
 
 export const FlexibleSizeComponent = ({
-  height: propHeight = "600px",
-  width: propWidth = "100%",
+  height: propHeight = FLEXIBLE_SIZE_DEFAULT_HEIGHT,
+  width: propWidth = FLEXIBLE_SIZE_DEFAULT_WIDTH,
   className,
   style,
   children,

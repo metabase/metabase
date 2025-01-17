@@ -34,4 +34,22 @@ describe("tokenizer", () => {
       { type: TOKEN.Operator, op: ")", start: 34, end: 35 }, // )
     ]);
   });
+
+  it("tokenizes incomplete bracket identifier followed by whitespace (metabase#50925)", () => {
+    const { tokens } = tokenize("[Pr [Price]");
+
+    expect(tokens).toEqual([
+      { type: TOKEN.Identifier, start: 0, end: 3 }, // [Pr
+      { type: TOKEN.Identifier, start: 4, end: 11 }, // [Price]
+    ]);
+  });
+
+  it("tokenizes incomplete bracket identifier followed by bracket identifier (metabase#50925)", () => {
+    const { tokens } = tokenize("[Pr[Price]");
+
+    expect(tokens).toEqual([
+      { type: TOKEN.Identifier, start: 0, end: 3 }, // [Pr
+      { type: TOKEN.Identifier, start: 3, end: 10 }, // [Price]
+    ]);
+  });
 });

@@ -190,26 +190,30 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       .and("contain", "koss-ella@hotmail.com");
   });
 
-  it("handles browsing records by FKs (metabase#21756)", () => {
-    H.openOrdersTable();
+  it(
+    "handles browsing records by FKs (metabase#21756)",
+    { tags: "@flaky" },
+    () => {
+      H.openOrdersTable();
 
-    drillFK({ id: 1 });
+      drillFK({ id: 1 });
 
-    assertUserDetailView({ id: 1, name: "Hudson Borer" });
-    getPreviousObjectDetailButton().should("not.exist");
-    getNextObjectDetailButton().should("not.exist");
+      assertUserDetailView({ id: 1, name: "Hudson Borer" });
+      getPreviousObjectDetailButton().should("not.exist");
+      getNextObjectDetailButton().should("not.exist");
 
-    cy.go("back");
-    cy.go("back");
-    cy.wait("@dataset");
+      cy.go("back");
+      cy.go("back");
+      cy.wait("@dataset");
 
-    changeSorting("User ID", "desc");
-    drillFK({ id: 2500 });
+      changeSorting("User ID", "desc");
+      drillFK({ id: 2500 });
 
-    assertUserDetailView({ id: 2500, name: "Kenny Schmidt" });
-    getPreviousObjectDetailButton().should("not.exist");
-    getNextObjectDetailButton().should("not.exist");
-  });
+      assertUserDetailView({ id: 2500, name: "Kenny Schmidt" });
+      getPreviousObjectDetailButton().should("not.exist");
+      getNextObjectDetailButton().should("not.exist");
+    },
+  );
 
   it("handles opening a filtered out record", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");

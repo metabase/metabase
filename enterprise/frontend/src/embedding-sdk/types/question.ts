@@ -17,7 +17,6 @@ export interface LoadSdkQuestionParams {
   options?: QueryParams;
   deserializedCard?: Card;
   cardId?: CardId | null;
-  cancelDeferred?: Deferred;
   initialSqlParameters?: ParameterValues;
 }
 

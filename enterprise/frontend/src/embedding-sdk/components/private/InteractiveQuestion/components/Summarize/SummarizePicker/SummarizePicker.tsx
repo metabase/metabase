@@ -6,13 +6,12 @@ import {
 } from "metabase/common/components/AggregationPicker";
 import * as Lib from "metabase-lib";
 
-import { useInteractiveQuestionContext } from "../../context";
-import { BadgeList, type BadgeListProps } from "../util/BadgeList";
-
+import { useInteractiveQuestionContext } from "../../../context";
+import { BadgeList, type BadgeListProps } from "../../util/BadgeList";
 import {
   type SDKAggregationItem,
   useSummarizeData,
-} from "./use-summarize-data";
+} from "../use-summarize-data";
 
 export const SummarizePicker = ({
   className,

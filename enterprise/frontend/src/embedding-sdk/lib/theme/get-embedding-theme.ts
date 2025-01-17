@@ -1,22 +1,21 @@
 import { merge } from "icepick";
 
 import { DEFAULT_FONT } from "embedding-sdk/config";
-import type { MantineThemeOverride } from "metabase/ui";
-
 import type {
   MetabaseColor,
   MetabaseComponentTheme,
   MetabaseTheme,
-} from "../../types/theme";
-
-import { colorTuple } from "./color-tuple";
+} from "metabase/embedding-sdk/theme";
 import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
   DEFAULT_SDK_FONT_SIZE,
   getEmbeddingComponentOverrides,
-} from "./default-component-theme";
-import type { MappableSdkColor } from "./embedding-color-palette";
-import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
+} from "metabase/embedding-sdk/theme";
+import type { MappableSdkColor } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import type { MantineThemeOverride } from "metabase/ui";
+
+import { colorTuple } from "./color-tuple";
 
 const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE}px`;
 

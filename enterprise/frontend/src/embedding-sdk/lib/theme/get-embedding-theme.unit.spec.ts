@@ -1,7 +1,7 @@
 import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
   getEmbeddingComponentOverrides,
-} from "embedding-sdk/lib/theme/default-component-theme";
+} from "metabase/embedding-sdk/theme";
 
 import { getEmbeddingThemeOverride } from "./get-embedding-theme";
 

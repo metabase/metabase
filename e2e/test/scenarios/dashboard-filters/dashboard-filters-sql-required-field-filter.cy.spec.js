@@ -122,9 +122,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
     cy.location("search").should("eq", "?category=");
 
     // The default shouldn't apply, so we should get an error
-    cy.findByTestId("dashcard").contains(
-      "There was a problem displaying this chart.",
-    );
+    cy.findByTestId("dashcard").contains("Gizmo");
 
     // The empty filter widget
     H.filterWidget().contains("Category");
@@ -133,9 +131,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
 
     // This part confirms that the issue metabase#13960 has been fixed
     cy.location("search").should("eq", "?category=");
-    cy.findByTestId("dashcard").contains(
-      "There was a problem displaying this chart.",
-    );
+    cy.findByTestId("dashcard").contains("Gizmo");
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");

@@ -7,16 +7,18 @@ import {
   MultiStepPopover,
   type MultiStepState,
 } from "embedding-sdk/components/private/util/MultiStepPopover";
+import type { PopoverProps } from "metabase/ui";
 
-import { ToolbarButton } from "../util/ToolbarButton";
-
-import { SummarizeBadgeList } from "./SummarizeBadgeList";
+import { ToolbarButton } from "../../util/ToolbarButton";
+import { SummarizeBadgeList } from "../SummarizeBadgeList";
 import {
   type SDKAggregationItem,
   useSummarizeData,
-} from "./use-summarize-data";
+} from "../use-summarize-data";
 
-export const SummarizeDropdown = () => {
+export const SummarizeDropdown = (
+  popoverProps: Omit<PopoverProps, "children" | "onClose" | "opened">,
+) => {
   const aggregationItems = useSummarizeData();
 
   const label = match(aggregationItems.length)
@@ -43,7 +45,11 @@ export const SummarizeDropdown = () => {
   };
 
   return (
-    <MultiStepPopover currentStep={step} onClose={() => setStep(null)}>
+    <MultiStepPopover
+      currentStep={step}
+      onClose={() => setStep(null)}
+      {...popoverProps}
+    >
       <MultiStepPopover.Target>
         <ToolbarButton
           label={label}

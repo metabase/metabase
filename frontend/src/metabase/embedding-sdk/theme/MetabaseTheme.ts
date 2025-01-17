@@ -2,8 +2,9 @@ import type { CSSProperties } from "react";
 
 import type { ColorName } from "metabase/lib/colors/types";
 
-import type { MetabaseFontFamily } from "../fonts";
-import type { DeepPartial } from "../utils";
+import type { DeepPartial } from "../types/utils";
+
+import type { MetabaseFontFamily } from "./fonts";
 
 /**
  * Theme configuration for embedded Metabase components.

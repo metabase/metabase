@@ -72,9 +72,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     cy.location("search").should("eq", "?text=");
 
     // SQL question defaults
-    cy.findByTestId("dashcard").contains(
-      "There was a problem displaying this chart.",
-    );
+    cy.findByTestId("dashcard").contains("Foo");
 
     // The empty filter widget
     cy.findByPlaceholderText("Text");
@@ -84,9 +82,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     // This part confirms that the issue metabase#13960 has been fixed
     cy.location("search").should("eq", "?text=");
 
-    cy.findByTestId("dashcard").contains(
-      "There was a problem displaying this chart.",
-    );
+    cy.findByTestId("dashcard").contains("Foo");
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");

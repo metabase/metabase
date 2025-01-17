@@ -43,7 +43,7 @@ const mapEntityTypeFilterToDataPickerModels = (
 };
 
 export const InteractiveQuestionProvider = ({
-  cardId: initId,
+  cardId: initialQuestionId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -56,9 +56,13 @@ export const InteractiveQuestionProvider = ({
   saveToCollectionId,
   initialSqlParameters,
 }: InteractiveQuestionProviderProps) => {
-  const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
+  const {
+    id: cardId,
+    isLoading: isLoadingValidatedId,
+    isError: isCardIdError,
+  } = useValidatedEntityId({
     type: "card",
-    id: initId,
+    id: initialQuestionId,
   });
 
   const handleCreateQuestion = useCreateQuestion();
@@ -72,7 +76,7 @@ export const InteractiveQuestionProvider = ({
       await onBeforeSave?.(sdkQuestion, saveContext);
       await handleSaveQuestion(question);
       onSave?.(sdkQuestion, saveContext);
-      await loadQuestion();
+      await loadAndQueryQuestion();
     }
   };
 
@@ -100,9 +104,9 @@ export const InteractiveQuestionProvider = ({
     isQuestionLoading,
     isQueryRunning,
 
-    runQuestion,
+    queryQuestion,
     replaceQuestion,
-    loadQuestion,
+    loadAndQueryQuestion,
     updateQuestion,
     navigateToNewCard,
   } = useLoadQuestion({
@@ -123,12 +127,13 @@ export const InteractiveQuestionProvider = ({
   }, [question, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
+    originalId: initialQuestionId,
     isQuestionLoading: isQuestionLoading || isLoadingValidatedId,
     isQueryRunning,
-    resetQuestion: loadQuestion,
-    onReset: loadQuestion,
+    resetQuestion: loadAndQueryQuestion,
+    onReset: loadAndQueryQuestion,
     onNavigateBack,
-    runQuestion,
+    queryQuestion,
     replaceQuestion,
     updateQuestion,
     navigateToNewCard,
@@ -142,11 +147,12 @@ export const InteractiveQuestionProvider = ({
     modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
     isSaveEnabled,
     saveToCollectionId,
+    isCardIdError,
   };
 
   useEffect(() => {
-    loadQuestion();
-  }, [loadQuestion]);
+    loadAndQueryQuestion();
+  }, [loadAndQueryQuestion]);
 
   return (
     <InteractiveQuestionContext.Provider value={questionContext}>

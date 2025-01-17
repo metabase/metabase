@@ -83,7 +83,7 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              (lib.underlying/has-aggregation-or-breakout? query)
              ;; Either we clicked the aggregation, or there are dimensions.
-             (or (lib.drill-thru.common/aggregation-sourced? query column)
+             (or (lib.underlying/aggregation-sourced? query column)
                  (not-empty dimensions))
              ;; Either we need both column and value (cell/map/data point click) or neither (chart legend click).
              (or (and column (some? value))
@@ -105,7 +105,7 @@
      ;; If the underlying column comes from an aggregation, then the column-ref needs to be updated as well to the
      ;; corresponding aggregation ref so that [[drill-underlying-records]] knows to extract the filter implied by
      ;; aggregations like sum-where.
-     :column-ref (if (lib.drill-thru.common/strictly-underlying-aggregation? query column)
+     :column-ref (if (lib.underlying/strictly-underlying-aggregation? query column)
                    (lib.aggregation/column-metadata->aggregation-ref (lib.underlying/top-level-column query column))
                    column-ref)}))
 

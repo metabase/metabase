@@ -22,7 +22,12 @@ const Alert = ({
   className,
 }: AlertProps) => {
   return (
-    <AlertRoot hasBorder={hasBorder} className={className} variant={variant}>
+    <AlertRoot
+      hasBorder={hasBorder}
+      className={className}
+      variant={variant}
+      role="alert"
+    >
       {icon && <AlertIcon variant={variant} name={icon} size={24} />}
       <div>{children}</div>
     </AlertRoot>

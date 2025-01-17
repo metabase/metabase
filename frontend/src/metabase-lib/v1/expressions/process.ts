@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
@@ -19,6 +19,18 @@ export function processSource(options: {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
+        const dimension = parseDimension(name, options);
+        const isNameKnown = Boolean(dimension);
+
+        if (isNameKnown) {
+          const error = c(
+            "{0} is an identifier of the field provided by user in a custom expression",
+          )
+            .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`;
+
+          throw new Error(error);
+        }
+
         throw new Error(t`Unknown Metric: ${name}`);
       }
 

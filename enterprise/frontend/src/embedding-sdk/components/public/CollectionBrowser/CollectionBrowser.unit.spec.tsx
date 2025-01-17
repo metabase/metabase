@@ -4,13 +4,9 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForLoaderToBeRemoved,
-  within,
-} from "__support__/ui";
+import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
 import { CollectionBrowserInner } from "embedding-sdk/components/public/CollectionBrowser/CollectionBrowser";
+import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -88,8 +84,7 @@ async function setup({
 
   const state = setupSdkState();
 
-  renderWithProviders(<CollectionBrowserInner {...props} />, {
-    mode: "sdk",
+  renderWithSDKProviders(<CollectionBrowserInner {...props} />, {
     sdkProviderProps: {
       authConfig: createMockAuthProviderUriConfig({
         authProviderUri: "http://TEST_URI/sso/metabase",
