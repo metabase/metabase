@@ -106,11 +106,21 @@
                                                         :group_id  group-id
                                                         :table_id  table-id
                                                         :perm_type :perms/view-data))]
-        (testing "New table gets `blocked` view-data perms if any tables in the DB are `blocked`"
+        (testing "A new table gets `:blocked` view-data perms if any tables in the DB are `:blocked`"
           (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :blocked)
           (data-perms/set-table-permission! group-id table-id-2 :perms/view-data :unrestricted)
           (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
+            ;; Check that no DB-level perm is set
             (is (nil? (perm-value nil)))
+            (is (= :blocked (perm-value table-id-3)))))
+
+        (testing "A new table defaults to `:blocked` if the group has a sandbox for any existing table"
+          (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
+          (mt/with-temp [:model/GroupTableAccessPolicy _ {:group_id group-id
+                                                          :table_id table-id-1}
+                         :model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
+            (is (nil? (perm-value nil)))
+            (is (= :unrestricted (perm-value table-id-1)))
             (is (= :blocked (perm-value table-id-3)))))))))
 
 (deftest new-group-view-data-permission-level
@@ -584,7 +594,7 @@
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
         (t2/delete! :model/FieldValues :field_id (mt/id :venues :price))
         (is (= nil (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))
-        (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
+        (with-redefs [sync.concurrent/submit-task! (fn [task] (task))]
           (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
                                                          :create-queries :no
                                                          :data-model     {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}

@@ -9,7 +9,7 @@ export type ChartTypeSettingsProps = {
   nonSensibleVisualizations: ChartTypeListProps["visualizationList"];
 } & Pick<
   ChartTypeListProps,
-  "selectedVisualization" | "onSelectVisualization"
+  "selectedVisualization" | "onSelectVisualization" | "onOpenSettings"
 > &
   StackProps;
 
@@ -18,6 +18,7 @@ export const ChartTypeSettings = ({
   onSelectVisualization,
   sensibleVisualizations,
   nonSensibleVisualizations,
+  onOpenSettings,
   ...stackProps
 }: ChartTypeSettingsProps) => (
   <Stack data-testid="chart-type-settings" {...stackProps}>
@@ -26,6 +27,7 @@ export const ChartTypeSettings = ({
       visualizationList={sensibleVisualizations}
       onSelectVisualization={onSelectVisualization}
       selectedVisualization={selectedVisualization}
+      onOpenSettings={onOpenSettings}
     />
 
     <Space h="xl" />
@@ -44,6 +46,7 @@ export const ChartTypeSettings = ({
       visualizationList={nonSensibleVisualizations}
       onSelectVisualization={onSelectVisualization}
       selectedVisualization={selectedVisualization}
+      onOpenSettings={onOpenSettings}
     />
   </Stack>
 );

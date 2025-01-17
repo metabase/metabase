@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.task-test
+(ns metabase.task-test
   (:require
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.jobs :as jobs]

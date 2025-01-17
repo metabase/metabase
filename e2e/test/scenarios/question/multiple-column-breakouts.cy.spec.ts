@@ -608,7 +608,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
           cy.log("change display and assert the default settings");
           H.openVizTypeSidebar();
-          cy.findByTestId("chartsettings-sidebar")
+          cy.findByTestId("chart-type-sidebar")
             .findByTestId("Pivot Table-button")
             .click();
           cy.wait("@pivotDataset");
@@ -617,7 +617,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 3);
 
           cy.log("move a column from rows to columns");
-          H.openVizSettingsSidebar({ isSidebarOpen: true });
+          H.openVizSettingsSidebar();
           H.dragField(2, 3);
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")
