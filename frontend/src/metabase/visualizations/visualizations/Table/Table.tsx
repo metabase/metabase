@@ -44,17 +44,24 @@ interface TableProps extends VisualizationProps {
   onZoomRow?: (objectId: number | string) => void;
   rowIndexToPkMap?: Record<number, string>;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  isPivoted?: boolean;
 }
 
 interface DraggableHeaderProps {
   header: Header<RowValues, unknown>;
   onResize: (width: number) => void;
+  isPivoted?: boolean;
 }
 
-const DraggableHeader = ({ header, onResize }: DraggableHeaderProps) => {
+const DraggableHeader = ({
+  header,
+  onResize,
+  isPivoted,
+}: DraggableHeaderProps) => {
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useSortable({
       id: header.id,
+      disabled: isPivoted,
     });
 
   const style: CSSProperties = {
@@ -65,7 +72,7 @@ const DraggableHeader = ({ header, onResize }: DraggableHeaderProps) => {
     whiteSpace: "nowrap",
     width: header.column.getSize(),
     zIndex: isDragging ? 2 : 0,
-    cursor: "grab",
+    cursor: isPivoted ? "default" : "grab",
     outline: "none",
   };
 
@@ -125,6 +132,7 @@ export const _Table = ({
   width,
   onVisualizationClick,
   onUpdateVisualizationSettings,
+  isPivoted = false,
 }: TableProps) => {
   const { rows, cols } = data;
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -144,6 +152,7 @@ export const _Table = ({
     data,
     measureBodyCellDimensions,
     measureHeaderCellDimensions,
+    isPivoted,
   });
 
   const table = useReactTable({
@@ -175,6 +184,10 @@ export const _Table = ({
         bodyRef.current.style.overflow = "auto";
       }
 
+      if (isPivoted) {
+        return;
+      }
+
       const { active, over } = event;
       if (active && over && active.id !== over.id) {
         const oldIndex = parseInt(active.id as string, 10);
@@ -183,15 +196,15 @@ export const _Table = ({
         const columns = settings["table.columns"]?.slice() || [];
         columns.splice(newIndex, 0, columns.splice(oldIndex, 1)[0]);
 
-        const settingsUpdate = {
+        const settingsUpdate: Partial<VisualizationSettings> = {
           "table.columns": columns,
         };
 
         const widths = settings["table.column_widths"];
         if (Array.isArray(widths) && widths.length > 0) {
-          // TODO: what if this setting is outdated?
           const newWidths = widths.slice();
           newWidths.splice(newIndex, 0, newWidths.splice(oldIndex, 1)[0]);
+          settingsUpdate["table.column_widths"] = newWidths;
         }
         onUpdateVisualizationSettings(settingsUpdate);
 
@@ -202,7 +215,7 @@ export const _Table = ({
         });
       }
     },
-    [settings, onUpdateVisualizationSettings],
+    [settings, onUpdateVisualizationSettings, isPivoted],
   );
 
   const handleColumnResize = useCallback(
@@ -277,6 +290,7 @@ export const _Table = ({
                           onResize={width =>
                             handleColumnResize(header.id, width)
                           }
+                          isPivoted={isPivoted}
                         />
                       );
                     })}
