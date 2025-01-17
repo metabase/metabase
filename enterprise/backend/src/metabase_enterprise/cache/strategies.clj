@@ -2,7 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.models.cache-config :as cache-config]
-   [metabase.public-settings.premium-features :refer [defenterprise defenterprise-schema]]
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
@@ -33,11 +33,13 @@
                 [:type [:= :duration]]
                 [:duration ms/PositiveInt]
                 [:unit [:enum "hours" "minutes" "seconds" "days"]]
+                [:refresh_automatically {:optional true} [:maybe :boolean]]
                 ^:internal
                 [:invalidated-at {:optional true} some?]]]
     [:schedule [:map {:closed true}
                 [:type [:= :schedule]]
                 [:schedule u.cron/CronScheduleString]
+                [:refresh_automatically {:optional true} [:maybe :boolean]]
                 ^:internal
                 [:invalidated-at {:optional true} some?]]]]])
 

@@ -5,7 +5,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -13,11 +13,6 @@
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
-
-(def PersistedInfo
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the Card symbol in our codebase."
-  :model/PersistedInfo)
 
 (methodical/defmethod t2/table-name :model/PersistedInfo [_model] :persisted_info)
 
@@ -99,7 +94,7 @@
   "Hydrate a card :is_persisted for the frontend."
   [cards]
   (when (seq cards)
-    (let [existing-ids (t2/select-fn-set :card_id PersistedInfo
+    (let [existing-ids (t2/select-fn-set :card_id :model/PersistedInfo
                                          :card_id [:in (map :id cards)]
                                          :state [:in (refreshable-states)])]
       (map (fn [{id :id :as card}]
@@ -115,21 +110,28 @@
   ([conditions-map]
    (mark-for-pruning! conditions-map "deletable"))
   ([conditions-map state]
-   (t2/update! PersistedInfo conditions-map {:active false, :state state, :state_change_at :%now})))
+   (t2/update! :model/PersistedInfo conditions-map {:active false, :state state, :state_change_at :%now})))
 
 (defn invalidate!
   "Invalidates any caches corresponding to the `conditions-map`. Equivalent to toggling the caching off and on again."
   [conditions-map]
   ;; We do not immediately delete the cached table, it will get clobbered during the next refresh cycle.
-  (t2/update! PersistedInfo
+  (t2/update! :model/PersistedInfo
               (merge {:active true} conditions-map)
               ;; TODO perhaps we should immediately kick off a recalculation of these caches
               {:active false, :state "creating", :state_change_at :%now}))
 
+(defenterprise default-persistent-info-state
+  "The default state for a new PersistedInfo record. Defaults to 'creating' for OSS"
+  metabase-enterprise.cache.config
+  []
+  "creating")
+
 (defn- create-row
-  "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
+  "Creates a mew PersistedInfo with the default state. If `creating`, these will at some point be persisted by the PersistRefresh task."
   [user-id card]
   (let [slug (-> card :name slug-name)
+        default-state (default-persistent-info-state)
         {:keys [database_id]} card
         card-id (u/the-id card)]
     {:card_id         card-id
@@ -139,7 +141,7 @@
      :active          false
      :refresh_begin   :%now
      :refresh_end     nil
-     :state           "creating"
+     :state           default-state
      :state_change_at :%now
      :creator_id      user-id}))
 
@@ -153,26 +155,26 @@
                                   [:not [:exists {:select [1]
                                                   :from [:persisted_info]
                                                   :where [:= :persisted_info.card_id :report_card.id]}]]]})]
-    (t2/insert! PersistedInfo (map #(create-row nil %) cards))))
+    (t2/insert! :model/PersistedInfo (map #(create-row nil %) cards))))
 
 (defn turn-on-model!
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
   [user-id card]
   (let [card-id (u/the-id card)
-        existing-persisted-info (t2/select-one PersistedInfo :card_id card-id)
+        existing-persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)
         persisted-info (cond
                          (not existing-persisted-info)
-                         (first (t2/insert-returning-instances! PersistedInfo (create-row user-id card)))
+                         (first (t2/insert-returning-instances! :model/PersistedInfo (create-row user-id card)))
 
                          (contains? #{"deletable" "off"} (:state existing-persisted-info))
                          (do
-                           (t2/update! PersistedInfo (u/the-id existing-persisted-info)
+                           (t2/update! :model/PersistedInfo (u/the-id existing-persisted-info)
                                        {:active false, :state "creating", :state_change_at :%now})
-                           (t2/select-one PersistedInfo :card_id card-id)))]
+                           (t2/select-one :model/PersistedInfo :card_id card-id)))]
     persisted-info))
 
 (defn ready-database!
-  "Sets PersistedInfo state to `creating` for models without a PeristedInfo or those in a `deletable` state.
+  "Sets PersistedInfo state to the default state for models without a PeristedInfo or those in a `deletable` state.
    Will ignore explicitly set `off` models."
   [database-id]
   (t2/query-one
@@ -181,6 +183,6 @@
             [:= :database_id database-id]
             [:= :state "deletable"]]
     :set {:active false,
-          :state "creating",
+          :state (default-persistent-info-state),
           :state_change_at :%now}})
   (ready-unpersisted-models! database-id))

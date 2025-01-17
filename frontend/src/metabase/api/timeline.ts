@@ -85,6 +85,7 @@ export const timelineApi = Api.injectEndpoints({
 });
 
 export const {
+  useListCollectionTimelinesQuery,
   useListTimelinesQuery,
   useGetTimelineQuery,
   useCreateTimelineMutation,

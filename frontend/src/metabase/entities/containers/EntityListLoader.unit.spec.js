@@ -1,6 +1,7 @@
-import { renderWithProviders } from "__support__/ui";
 import "mutationobserver-shim";
-import EntityListLoader from "metabase/entities/containers/EntityListLoader";
+
+import { renderWithProviders } from "__support__/ui";
+import { EntityListLoader } from "metabase/entities/containers/rtk-query";
 import { Api } from "metabase/lib/api";
 
 describe("EntityListLoader", () => {

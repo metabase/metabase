@@ -1,17 +1,15 @@
 (ns metabase-enterprise.enhancements.api.collection-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [NativeQuerySnippet]]
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (deftest ee-disabled-snippets-graph-test
   (testing "GET /api/collection/root/items?namespace=snippets"
     (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
-      (t2.with-temp/with-temp [NativeQuerySnippet snippet]
+      (mt/with-temp [:model/NativeQuerySnippet snippet]
         (letfn [(can-see-snippet? []
                   (let [response (:data (mt/user-http-request :rasta :get "collection/root/items?namespace=snippets"))]
                     (boolean (some (fn [a-snippet]

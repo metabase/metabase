@@ -116,6 +116,10 @@ Reset the password for a user with `email-address`.
 
 Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars.
 
+## `remove-encryption`
+
+Decrypts data in the metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to the current key.
+
 ## `seed-entity-ids`
 
 Add entity IDs for instances of serializable models that don't already have them.

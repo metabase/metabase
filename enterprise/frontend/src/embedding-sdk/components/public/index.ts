@@ -1,7 +1,25 @@
 import type { MetabaseAuthConfig } from "embedding-sdk/types";
-import type { MetabaseTheme } from "embedding-sdk/types/theme";
+import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 
-export { StaticQuestion, type StaticQuestionProps } from "./StaticQuestion";
+export {
+  CollectionBrowser,
+  type CollectionBrowserProps,
+} from "./CollectionBrowser";
+export {
+  CreateDashboardModal,
+  useCreateDashboardApi,
+  type CreateDashboardModalProps,
+  type CreateDashboardValues,
+} from "./CreateDashboardModal";
+export { CreateQuestion, type CreateQuestionProps } from "./CreateQuestion";
+export { FlexibleSizeComponent } from "./FlexibleSizeComponent";
+export type { FlexibleSizeProps } from "./FlexibleSizeComponent";
+export {
+  EditableDashboard,
+  InteractiveDashboard,
+  type EditableDashboardProps,
+  type InteractiveDashboardProps,
+} from "./InteractiveDashboard";
 export {
   InteractiveQuestion,
   type InteractiveQuestionProps,
@@ -10,27 +28,9 @@ export {
   MetabaseProvider,
   type MetabaseProviderProps,
 } from "./MetabaseProvider";
-export { StaticDashboard, type StaticDashboardProps } from "./StaticDashboard";
-export {
-  CollectionBrowser,
-  type CollectionBrowserProps,
-} from "./CollectionBrowser";
-export {
-  InteractiveDashboard,
-  EditableDashboard,
-  type InteractiveDashboardProps,
-  type EditableDashboardProps,
-} from "./InteractiveDashboard";
 export { ModifyQuestion } from "./ModifyQuestion";
-export { CreateQuestion, type CreateQuestionProps } from "./CreateQuestion";
-export {
-  CreateDashboardModal,
-  useCreateDashboardApi,
-  type CreateDashboardModalProps,
-  type CreateDashboardValues,
-} from "./CreateDashboardModal";
-export { FlexibleSizeComponent } from "./FlexibleSizeComponent";
-export type { FlexibleSizeProps } from "./FlexibleSizeComponent";
+export { StaticDashboard, type StaticDashboardProps } from "./StaticDashboard";
+export { StaticQuestion, type StaticQuestionProps } from "./StaticQuestion";
 
 // These functions looks useless but it's a trick to have a way to type the config
 // while having code snippets the same across js and ts. This works because the
@@ -43,5 +43,4 @@ export const defineMetabaseAuthConfig = (
   config: MetabaseAuthConfig,
 ): MetabaseAuthConfig => config;
 
-export const defineMetabaseTheme = (theme: MetabaseTheme): MetabaseTheme =>
-  theme;
+export { defineMetabaseTheme };

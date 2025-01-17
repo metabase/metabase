@@ -5,8 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.table :refer [Table]]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -28,7 +27,7 @@
 (mu/defn only-sandboxed-perms? :- :boolean
   "Returns true if the user has sandboxed permissions for the given table. If a sandbox policy exists, it overrides existing permission on
   the table."
-  [table :- (ms/InstanceOf Table)]
+  [table :- (ms/InstanceOf :model/Table)]
   (boolean (seq (sandbox.api.util/enforced-sandboxes-for-tables #{(:id table)}))))
 
 (defn- filter-fields-by-name [names fields]
@@ -58,7 +57,7 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   :feature :sandboxes
   [id opts]
-  (let [table (api/check-404 (t2/select-one Table :id id))
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))
         thunk (fn [] (api.table/fetch-query-metadata* table opts))]
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing
@@ -87,6 +86,7 @@
       ;; Not sandboxed, so user can fetch full metadata
       table)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/query_metadata"
   "This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has sandboxed permissions
   that only gives them access to a subset of columns for a given table, those inaccessable columns should also be

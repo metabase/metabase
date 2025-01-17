@@ -1,7 +1,7 @@
 (ns metabase.models.notification-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.channel-test :as api.channel-test]
+   [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.models.notification :as models.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.task :as task]

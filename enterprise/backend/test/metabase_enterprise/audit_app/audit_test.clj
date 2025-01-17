@@ -8,14 +8,13 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase.audit :as audit]
-   [metabase.core :as mbc]
+   [metabase.core.core :as mbc]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :refer [Database]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task :as task]
-   [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -78,10 +77,10 @@
     (testing "Audit DB doesn't get re-installed unless the engine changes"
       (with-redefs [ee-audit/load-analytics-content (constantly nil)]
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        (t2/update! Database :is_audit true {:engine "datomic"})
+        (t2/update! :model/Database :is_audit true {:engine "datomic"})
         (is (= ::ee-audit/updated (ee-audit/ensure-audit-db-installed!)))
         (is (= ::ee-audit/no-op (ee-audit/ensure-audit-db-installed!)))
-        (t2/update! Database :is_audit true {:engine "h2"})))))
+        (t2/update! :model/Database :is_audit true {:engine "h2"})))))
 
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
   (mt/with-temp-env-var-value! [mb-plugins-dir "card_catalogue_dir"]

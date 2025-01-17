@@ -1,4 +1,4 @@
-import type { MetabaseQuestion } from "embedding-sdk/types/public/question";
+import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type Question from "metabase-lib/v1/Question";
 
 export function transformSdkQuestion(question: Question): MetabaseQuestion {

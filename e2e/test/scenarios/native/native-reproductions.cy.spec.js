@@ -53,7 +53,7 @@ describe("issue 12439", () => {
     });
 
     // Make sure buttons are clickable
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.sidebar().contains("X-axis");
     H.sidebar().contains("Y-axis");
@@ -85,20 +85,24 @@ describe("issue 16886", () => {
     cy.signInAsAdmin();
   });
 
-  it("shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)", () => {
-    H.openNativeEditor();
-    H.NativeEditor.type(ORIGINAL_QUERY);
-    cy.realPress("Home");
-    Cypress._.range(SELECTED_TEXT.length).forEach(() =>
-      cy.realPress(["Shift", "ArrowRight"]),
-    );
+  it(
+    "shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)",
+    { tags: "@flaky" },
+    () => {
+      H.openNativeEditor();
+      H.NativeEditor.type(ORIGINAL_QUERY);
+      cy.realPress("Home");
+      Cypress._.range(SELECTED_TEXT.length).forEach(() =>
+        cy.realPress(["Shift", "ArrowRight"]),
+      );
 
-    cy.findByTestId("native-query-editor-container").icon("play").click();
+      cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
 
-    cy.get("@editor").contains(ORIGINAL_QUERY);
-  });
+      cy.get("@editor").contains(ORIGINAL_QUERY);
+    },
+  );
 });
 
 describe("issue 16914", () => {
@@ -123,7 +127,7 @@ describe("issue 16914", () => {
       visualization_settings: {},
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left")
       .as("sidebar")
       .within(() => {
@@ -184,7 +188,7 @@ describe("issue 17060", () => {
       visualization_settings: {},
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       rearrangeColumns();
     });
