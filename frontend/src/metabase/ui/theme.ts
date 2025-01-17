@@ -24,7 +24,7 @@ import {
   listOverrides,
   menuOverrides,
   modalOverrides,
-  //TODO: monthPickerOverrides
+  monthPickerOverrides,
   multiSelectOverrides,
   navLinkOverrides,
   paperOverrides,
@@ -132,6 +132,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...inputOverrides,
     ...menuOverrides,
     ...modalOverrides,
+    ...monthPickerOverrides,
     ...multiSelectOverrides,
     ...navLinkOverrides,
     ...radioOverrides,
