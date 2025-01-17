@@ -17,21 +17,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  type Cell,
   type Header,
-  type Table as ReactTable,
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import {
-  type CSSProperties,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type CSSProperties, useCallback, useRef, useState } from "react";
 
 import { connect } from "metabase/lib/redux";
 import {
@@ -41,19 +32,13 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import type {
-  DatasetData,
-  RowValue,
-  RowValues,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { RowValues, VisualizationSettings } from "metabase-types/api";
 
 import styles from "./Table.module.css";
+import { MIN_COLUMN_WIDTH } from "./constants";
 import { useTableCellsMeasure } from "./hooks/use-cell-measure";
 import { useColumns } from "./hooks/use-columns";
-
-const ROW_HEIGHT = 36;
-const MIN_COLUMN_WIDTH = 60;
+import { useVirtualGrid } from "./hooks/use-virtual-grid";
 
 interface TableProps extends VisualizationProps {
   onZoomRow?: (objectId: number | string) => void;
@@ -64,18 +49,6 @@ interface TableProps extends VisualizationProps {
 interface DraggableHeaderProps {
   header: Header<RowValues, unknown>;
   onResize: (width: number) => void;
-}
-
-interface DraggableCellProps {
-  cell: Cell<RowValues, unknown>;
-}
-
-interface UseVirtualGridProps {
-  bodyRef: React.RefObject<HTMLDivElement>;
-  table: ReactTable<RowValues>;
-  data: DatasetData;
-  columnFormatters: ((value: RowValue) => any)[];
-  measureBodyCellDimensions: (value: any, width: number) => { height: number };
 }
 
 const DraggableHeader = ({ header, onResize }: DraggableHeaderProps) => {
@@ -92,7 +65,8 @@ const DraggableHeader = ({ header, onResize }: DraggableHeaderProps) => {
     whiteSpace: "nowrap",
     width: header.column.getSize(),
     zIndex: isDragging ? 2 : 0,
-    cursor: "move",
+    cursor: "grab",
+    outline: "none",
   };
 
   const [isResizing, setIsResizing] = useState(false);
@@ -118,104 +92,30 @@ const DraggableHeader = ({ header, onResize }: DraggableHeaderProps) => {
     document.addEventListener("mouseup", handleMouseUp);
   };
 
+  const dndProps = !isResizing
+    ? {
+        ...attributes,
+        ...listeners,
+        onMouseDown: (e: React.MouseEvent) => {
+          if (e.button === 0 && e.target === e.currentTarget) {
+            listeners?.onMouseDown?.(e);
+          }
+        },
+      }
+    : {};
+
   return (
     <div
       ref={setNodeRef}
       className={styles.th}
       style={style}
-      {...(!isResizing ? { ...attributes, ...listeners } : {})}
+      {...dndProps}
+      tabIndex={-1}
     >
       {flexRender(header.column.columnDef.header, header.getContext())}
       <div className={styles.resizer} onMouseDown={handleResizeStart} />
     </div>
   );
-};
-
-const DraggableCell = ({ cell }: DraggableCellProps) => {
-  const { setNodeRef } = useSortable({
-    id: cell.column.id,
-  });
-
-  const style: CSSProperties = {
-    position: "relative",
-    width: cell.column.getSize(),
-  };
-
-  return (
-    <div ref={setNodeRef} className={styles.td} style={style}>
-      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-    </div>
-  );
-};
-
-const useVirtualGrid = ({
-  bodyRef,
-  table,
-  data,
-  columns,
-  columnFormatters,
-  measureBodyCellDimensions,
-}: UseVirtualGridProps) => {
-  const wrappedColumns = useMemo(() => {
-    return columns.filter(col => col.wrap);
-  }, [columns]);
-
-  const { rows: tableRows } = table.getRowModel();
-  const visibleColumns = table.getVisibleLeafColumns();
-
-  const columnVirtualizer = useVirtualizer({
-    count: visibleColumns.length,
-    getScrollElement: () => bodyRef.current,
-    estimateSize: index => visibleColumns[index].getSize(),
-    horizontal: true,
-    overscan: 5,
-  });
-
-  const rowVirtualizer = useVirtualizer({
-    count: tableRows.length,
-    getScrollElement: () => bodyRef.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: 5,
-    getItemKey: index => tableRows[index].id,
-    measureElement: element => {
-      const rowIndex = element?.getAttribute("data-index");
-
-      if (!rowIndex || wrappedColumns.length === 0) {
-        return ROW_HEIGHT;
-      }
-
-      const height = Math.max(
-        ...wrappedColumns.map(column => {
-          const value = data.rows[parseInt(rowIndex, 10)][column.datasetIndex];
-          const formattedValue = columnFormatters[column.datasetIndex](value);
-          return measureBodyCellDimensions(formattedValue, column.size).height;
-        }, ROW_HEIGHT),
-      );
-
-      return height;
-    },
-  });
-
-  const virtualColumns = columnVirtualizer.getVirtualItems();
-  const virtualRows = rowVirtualizer.getVirtualItems();
-
-  let virtualPaddingLeft: number | undefined;
-  let virtualPaddingRight: number | undefined;
-
-  if (columnVirtualizer && virtualColumns?.length) {
-    virtualPaddingLeft = virtualColumns[0]?.start ?? 0;
-    virtualPaddingRight =
-      columnVirtualizer.getTotalSize() -
-      (virtualColumns[virtualColumns.length - 1]?.end ?? 0);
-  }
-
-  return {
-    virtualColumns,
-    virtualRows,
-    virtualPaddingLeft,
-    virtualPaddingRight,
-    rowVirtualizer,
-  };
 };
 
 export const _Table = ({
@@ -417,15 +317,25 @@ export const _Table = ({
                         style={{ width: virtualPaddingLeft }}
                       />
                     ) : null}
-                    <SortableContext
-                      items={columnOrder}
-                      strategy={horizontalListSortingStrategy}
-                    >
-                      {virtualColumns.map(virtualColumn => {
-                        const cell = row.getVisibleCells()[virtualColumn.index];
-                        return <DraggableCell key={cell.id} cell={cell} />;
-                      })}
-                    </SortableContext>
+
+                    {virtualColumns.map(virtualColumn => {
+                      const cell = row.getVisibleCells()[virtualColumn.index];
+                      return (
+                        <div
+                          key={cell.id}
+                          className={styles.td}
+                          style={{
+                            position: "relative",
+                            width: cell.column.getSize(),
+                          }}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </div>
+                      );
+                    })}
                     {virtualPaddingRight ? (
                       <div
                         className={styles.td}
