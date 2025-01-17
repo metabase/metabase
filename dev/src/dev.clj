@@ -64,6 +64,7 @@
    [java-time.api :as t]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
+   [metabase.channel.email :as email]
    [metabase.config :as config]
    [metabase.core.core :as mbc]
    [metabase.db :as mdb]
@@ -71,13 +72,12 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.email :as email]
    [metabase.models.setting :as setting]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.handler :as handler]
    [metabase.server.instance :as server]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test-runner]
    [metabase.test.data.impl :as data.impl]
@@ -436,3 +436,12 @@
                                      :sender-name :email-from-name,
                                      :sender      :email-from-address,
                                      :reply-to    :email-reply-to}))))
+
+(defn seed-instance!
+  "Seed an empty instance with test users and test db.
+  This is useful for bootstrapping an instance in the REPL."
+  []
+  ;; seed test users
+  (mt/initialize-if-needed! :test-users)
+  ;; seed test db
+  (mt/id))

@@ -9,7 +9,7 @@
    [clojure.test :refer :all]
    [hickory.core :as hik]
    [hickory.select :as hik.s]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]

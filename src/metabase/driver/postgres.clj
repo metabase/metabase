@@ -10,6 +10,7 @@
    [honey.sql.helpers :as sql.helpers]
    [honey.sql.pg-ops :as sql.pg-ops]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -19,7 +20,8 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [with-quoting quote-columns quote-identifier]]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
+                                             with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -42,7 +44,11 @@
    [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
-   (java.sql Connection ResultSet ResultSetMetaData Types)
+   (java.sql
+    Connection
+    ResultSet
+    ResultSetMetaData
+    Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.postgresql.copy CopyManager)
    (org.postgresql.jdbc PgConnection)))
@@ -858,39 +864,19 @@
 (defn- ssl-params
   "Builds the params to include in the JDBC connection spec for an SSL connection."
   [{:keys [ssl-key-value] :as db-details}]
-  (let [ssl-root-cert   (when (contains? #{"verify-ca" "verify-full"} (:ssl-mode db-details))
-                          (secret/db-details-prop->secret-map db-details "ssl-root-cert"))
-        ssl-client-key  (when (:ssl-use-client-auth db-details)
-                          (secret/db-details-prop->secret-map db-details "ssl-key"))
-        ssl-client-cert (when (:ssl-use-client-auth db-details)
-                          (secret/db-details-prop->secret-map db-details "ssl-client-cert"))
-        ssl-key-pw      (when (:ssl-use-client-auth db-details)
-                          (secret/db-details-prop->secret-map db-details "ssl-key-password"))
-        all-subprops    (apply concat (map :subprops [ssl-root-cert ssl-client-key ssl-client-cert ssl-key-pw]))
-        has-value?      (comp some? :value)]
-    (cond-> (set/rename-keys db-details {:ssl-mode :sslmode})
+  (-> (set/rename-keys db-details {:ssl-mode :sslmode})
       ;; if somehow there was no ssl-mode set, just make it required (preserves existing behavior)
-      (nil? (:ssl-mode db-details))
-      (assoc :sslmode "require")
-
-      (has-value? ssl-root-cert)
-      (assoc :sslrootcert (secret/value->file! ssl-root-cert :postgres))
-
-      (has-value? ssl-client-key)
-      (assoc :sslkey (secret/value->file! ssl-client-key :postgres (when (pkcs-12-key-value? ssl-key-value) ".p12")))
-
-      (has-value? ssl-client-cert)
-      (assoc :sslcert (secret/value->file! ssl-client-cert :postgres))
-
+      (cond-> (nil? (:ssl-mode db-details)) (assoc :sslmode "require"))
+      (m/assoc-some :sslrootcert (secret/value-as-file! :postgres db-details "ssl-root-cert"))
+      (m/assoc-some :sslkey (secret/value-as-file! :postgres db-details "ssl-key" (when (pkcs-12-key-value? ssl-key-value) ".p12")))
+      (m/assoc-some :sslcert (secret/value-as-file! :postgres db-details "ssl-client-cert"))
       ;; Pass an empty string as password if none is provided; otherwise the driver will prompt for one
-      true
-      (assoc :sslpassword (or (secret/value->string ssl-key-pw) ""))
+      (assoc :sslpassword (or (secret/value-as-string :postgres db-details "ssl-key-password") ""))
 
-      true
       (as-> params ;; from outer cond->
             (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
                     :ssl-use-client-auth)
-        (apply dissoc params all-subprops)))))
+        (secret/clean-secret-properties-from-details params :postgres))))
 
 (def ^:private disable-ssl-params
   "Params to include in the JDBC connection spec to disable SSL."

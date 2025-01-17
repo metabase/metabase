@@ -712,7 +712,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
 
     H.getNotebookStep("filter").findByText("Discount is greater than Quantity");
 
-    cy.findByRole("button", { name: "Summarize" }).click();
+    cy.findByRole("button", { name: /Summarize/ }).click();
     H.popover().findByText("Count of rows").click();
 
     H.visualize();
@@ -808,11 +808,15 @@ describe("issue 18207", () => {
     H.visualize();
 
     // Why is it not a table?
-    H.openVizTypeSidebar();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("Visualization").click();
     H.leftSidebar().within(() => {
       cy.icon("table2").click();
+      cy.findByTestId("Table-button").realHover();
+      cy.icon("gear").click();
     });
-    H.closeVizSettingsSidebar();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.contains("Done").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Zemlak-Wiegand");
