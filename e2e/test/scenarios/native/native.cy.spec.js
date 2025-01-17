@@ -88,16 +88,14 @@ describe("scenarios > question > native", () => {
   });
 
   it("displays an error", { tags: "@flaky" }, () => {
-    H.openNativeEditor();
-    cy.realType("select * from not_a_table");
+    H.startNewNativeQuestion({ query: "SELECT * FROM not_a_table" });
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
   it("displays an error when running selected text", { tags: "@flaky" }, () => {
-    H.openNativeEditor();
-    cy.realType("select * from orders");
+    H.startNewNativeQuestion({ query: "SELECT * FROM ORDERS" });
     // move left three
     Cypress._.range(3).forEach(() => cy.realPress("ArrowLeft"));
     // highlight back to the front

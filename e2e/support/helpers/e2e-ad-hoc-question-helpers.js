@@ -1,7 +1,7 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 
 import { runNativeQuery } from "./e2e-misc-helpers";
-import { nativeEditor } from "./e2e-native-editor-helpers";
+import { focusNativeEditor, nativeEditor } from "./e2e-native-editor-helpers";
 
 const {
   STATIC_ORDERS_ID,
@@ -94,9 +94,12 @@ function newNativeCardHash(
 export function startNewNativeQuestion(config) {
   const hash = newNativeCardHash("question", config);
 
+  cy.intercept("/api/dataset/query_metadata").as("queryMetaData");
   cy.visit("/question#" + hash);
 
-  return nativeEditor();
+  cy.wait("@queryMetaData");
+
+  return focusNativeEditor();
 }
 
 /**
