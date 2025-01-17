@@ -435,7 +435,7 @@
                 (ingest-then-fetch! "segment" segment-name)))))))
 
 (deftest indexed-entity-ingestion-test
-  (let [model-id (fn [miv] (str (:model_index_id miv) ":" (:model_pk miv)))]
+  (let [model-id (fn [miv] (str (:model_pk miv) ":" (:model_index_id miv)))]
     (search.tu/with-temp-index-table
       (mt/with-temp [:model/Collection      {coll-id :id} {}
                      :model/Card            model         (assoc (mt/card-with-source-metadata-for-query

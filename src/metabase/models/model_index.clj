@@ -131,7 +131,7 @@
             (when (seq deletions)
               (doseq [deletions-part (partition-all 10000 deletions)
                       :let [search-model-ids (map (fn [[pk]]
-                                                    (str (:id model-index) ":" pk))
+                                                    (str pk ":" (:id model-index)))
                                                   deletions-part)]]
                 (t2/delete! :model/ModelIndexValue
                             :model_index_id (:id model-index)
