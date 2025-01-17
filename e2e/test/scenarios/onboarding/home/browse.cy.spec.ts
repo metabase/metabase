@@ -55,7 +55,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
     H.browseDatabases().click();
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
-    cy.findByRole("button", { name: "Summarize" });
+    cy.findByRole("button", { name: /Summarize/ });
     cy.findByRole("link", { name: /Sample Database/ }).click();
     H.expectNoBadSnowplowEvents();
     H.expectGoodSnowplowEvent({

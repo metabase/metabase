@@ -21,6 +21,7 @@
 
 (defmulti ^:private find-stale-query
   "Find stale content of a given model type."
+  {:arglists '([model args])}
   (fn [model _args] model))
 
 (defmethod find-stale-query :model/Card
