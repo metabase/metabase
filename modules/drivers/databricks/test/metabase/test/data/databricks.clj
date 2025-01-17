@@ -165,6 +165,10 @@
 
 ;; 2.6.40 jdbc driver version statement param limit 256. Following implementation ensures test dataset loading won't
 ;; exceed that. Orders table takes ~20 minutes to load.
+;; Example:
+;; orders table has 12 columns in field def, id and a buffer is added
+;; 256 / (12 + 2) = 18
+;; so we can insert 18 rows at a time while staying under the param limit.
 (defmethod load-data/chunk-size :databricks
   [_driver _dbdef tabledef]
   (let [databricks-jdbc-param-limit-per-statement 256
