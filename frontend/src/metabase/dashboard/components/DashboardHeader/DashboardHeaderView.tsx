@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import EditBar from "metabase/components/EditBar";

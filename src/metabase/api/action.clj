@@ -6,7 +6,6 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.models :refer [Action Card Database]]
    [metabase.models.action :as action]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
@@ -48,6 +47,7 @@
    [:parameters         {:optional true} [:maybe [:sequential map?]]]
    [:parameter_mappings {:optional true} [:maybe map?]]])
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
@@ -62,22 +62,24 @@
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id
-                   [(api/read-check Card model-id)]
-                   (t2/select Card {:where
-                                    [:and
-                                     [:= :type "model"]
-                                     [:= :archived false]
-                                     ;; action permission keyed off of model permission
-                                     (collection/visible-collection-filter-clause)]}))]
+                   [(api/read-check :model/Card model-id)]
+                   (t2/select :model/Card {:where
+                                           [:and
+                                            [:= :type "model"]
+                                            [:= :archived false]
+                                             ;; action permission keyed off of model permission
+                                            (collection/visible-collection-filter-clause)]}))]
       (actions-for models))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/public"
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
   []
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (t2/select [Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:action-id"
   "Fetch an Action."
   [action-id]
@@ -86,18 +88,20 @@
       (t2/hydrate :creator)
       api/read-check))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:action-id"
   "Delete an Action."
   [action-id]
   {action-id ms/PositiveInt}
-  (let [action (api/write-check Action action-id)]
+  (let [action (api/write-check :model/Action action-id)]
     (snowplow/track-event! ::snowplow/action
                            {:event     :action-deleted
                             :type      (:type action)
                             :action_id action-id}))
-  (t2/delete! Action :id action-id)
+  (t2/delete! :model/Action :id action-id)
   api/generic-204-no-content)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new action."
   [:as {{:keys [type name description model_id parameters parameter_mappings visualization_settings
@@ -122,14 +126,14 @@
     (throw (ex-info (tru "Must provide a database_id for query actions")
                     {:type        type
                      :status-code 400})))
-  (let [model (api/write-check Card model_id)]
+  (let [model (api/write-check :model/Card model_id)]
     (when (and (= "implicit" type)
                (not (card/model-supports-implicit-actions? model)))
       (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                       {:status-code 400})))
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
-       (t2/select-one Database :id db-id))))
+       (t2/select-one :model/Database :id db-id))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
     (snowplow/track-event! ::snowplow/action
                            {:event          :action-created
@@ -142,6 +146,7 @@
       ;; so we return the most recently updated http action.
       (last (action/select-actions nil :type type)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update an Action."
   [id :as {action :body}]
@@ -162,7 +167,7 @@
            [:type                   {:optional true} [:maybe supported-action-type]]
            [:visualization_settings {:optional true} [:maybe :map]]]}
   (actions/check-actions-enabled! id)
-  (let [existing-action (api/write-check Action id)]
+  (let [existing-action (api/write-check :model/Action id)]
     (action/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (action/select-action :id id)]
     (snowplow/track-event! ::snowplow/action
@@ -172,6 +177,7 @@
                             :num_parameters (count parameters)})
     action))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/public_link"
   "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this
   Action has already been shared, it will return the existing public link rather than creating a new one.) Public
@@ -180,14 +186,15 @@
   {id ms/PositiveInt}
   (api/check-superuser)
   (validation/check-public-sharing-enabled)
-  (let [action (api/read-check Action id :archived false)]
+  (let [action (api/read-check :model/Action id :archived false)]
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
                (u/prog1 (str (random-uuid))
-                 (t2/update! Action id
+                 (t2/update! :model/Action id
                              {:public_uuid <>
                               :made_public_by_id api/*current-user-id*})))}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [id]
@@ -195,11 +202,12 @@
   ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (api/check-exists? Action :id id, :public_uuid [:not= nil], :archived false)
+  (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
   (actions/check-actions-enabled! id)
-  (t2/update! Action id {:public_uuid nil, :made_public_by_id nil})
+  (t2/update! :model/Action id {:public_uuid nil, :made_public_by_id nil})
   {:status 204, :body nil})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:action-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [action-id parameters]
@@ -210,6 +218,7 @@
       api/read-check
       (actions/fetch-values (json/decode parameters))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/execute"
   "Execute the Action.
 

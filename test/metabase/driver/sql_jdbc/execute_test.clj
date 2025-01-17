@@ -1,13 +1,13 @@
 (ns metabase.driver.sql-jdbc.execute-test
   (:require
    [clojure.test :refer :all]
-   [malli.core :as mc]
    [malli.error :as me]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]))
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel ConnectionOptions-test
   (are [options error] (= error
-                          (me/humanize (mc/explain sql-jdbc.execute/ConnectionOptions options)))
+                          (me/humanize (mr/explain sql-jdbc.execute/ConnectionOptions options)))
     nil                              nil
     {}                               nil
     {:session-timezone nil}          nil

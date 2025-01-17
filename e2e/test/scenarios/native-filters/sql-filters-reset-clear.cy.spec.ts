@@ -211,11 +211,11 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
       setValue: value => {
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+        H.popover().findByRole("textbox").clear().type(value).blur();
         H.popover().button("Add filter").click();
       },
       updateValue: value => {
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+        H.popover().findByRole("textbox").clear().type(value).blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -225,11 +225,11 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
       setValue: value => {
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+        H.popover().findByRole("textbox").clear().type(value).blur();
         H.popover().button("Add filter").click();
       },
       updateValue: value => {
-        H.popover().findByRole("searchbox").clear().type(value).blur();
+        H.popover().findByRole("textbox").clear().type(value).blur();
         H.popover().button("Update filter").click();
       },
     });
@@ -578,7 +578,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     });
 
     H.popover().findByRole("textbox").clear().type(otherValue).blur();
-    H.popover().button("Update filter").click();
+    H.popover().button("Add filter").click();
 
     filterSection("no_default_required").within(() => {
       filter("Default filter widget value").should(
@@ -639,7 +639,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     });
 
     H.popover().findByRole("textbox").clear().type(otherValue).blur();
-    H.popover().button("Update filter").click();
+    H.popover().button("Add filter").click();
 
     filterSection("default_required").within(() => {
       filter("Default filter widget value").should(
@@ -818,6 +818,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
 
   function updateDateFilter(value: string) {
     H.popover().findByRole("textbox").clear().type(value).blur();
-    H.popover().button("Update filter").click();
+    H.popover()
+      .button(/(Add|Update) filter/)
+      .click();
   }
 });

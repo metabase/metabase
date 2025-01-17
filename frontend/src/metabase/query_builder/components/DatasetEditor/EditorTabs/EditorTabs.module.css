@@ -33,10 +33,6 @@
   opacity: 1;
   cursor: pointer;
 
-  :global(.Icon) {
-    margin-right: 10px;
-  }
-
   &.active {
     background-color: var(--active-tab-color);
     border-color: var(--active-tab-color);

@@ -79,6 +79,14 @@ Get `Card` with ID.
 
 -  **`context`** nullable enum of :collection.
 
+## `GET /api/card/:id/dashboards`
+
+Get a list of `{:name ... :id ...}` pairs for all the dashboards this card appears in.
+
+### PARAMS:
+
+-  **`id`** value must be an integer greater than zero.
+
 ## `GET /api/card/:id/query_metadata`
 
 Get all of the required query metadata for a card.
@@ -134,9 +142,13 @@ Create a new `Card`. Card `type` can be `question`, `metric`, or `model`.
 
 ### PARAMS:
 
+-  **`entity_id`** nullable value must be a non-blank string.
+
 -  **`visualization_settings`** Value must be a map.
 
 -  **`parameters`** nullable sequence of parameter must be a map with :id and :type keys.
+
+-  **`dashboard_id`** nullable value must be an integer greater than zero.
 
 -  **`description`** nullable value must be a non-blank string.
 
@@ -274,39 +286,11 @@ Update a `Card`.
 
 ### PARAMS:
 
--  **`collection_preview`** nullable boolean.
-
--  **`visualization_settings`** nullable Value must be a map.
-
--  **`parameters`** nullable sequence of parameter must be a map with :id and :type keys.
-
--  **`description`** nullable string.
-
--  **`archived`** nullable boolean.
-
--  **`collection_position`** nullable value must be an integer greater than zero.
-
--  **`result_metadata`** nullable value must be an array of valid results column metadata maps.
-
--  **`enable_embedding`** nullable boolean.
-
--  **`collection_id`** nullable value must be an integer greater than zero.
-
--  **`card-updates`** 
-
--  **`name`** nullable value must be a non-blank string.
-
--  **`type`** nullable enum of :question, :metric, :model.
-
--  **`embedding_params`** nullable value must be a valid embedding params map.
-
--  **`cache_ttl`** nullable value must be an integer greater than zero.
-
--  **`dataset_query`** nullable Value must be a map.
-
 -  **`id`** value must be an integer greater than zero.
 
--  **`display`** nullable value must be a non-blank string.
+-  **`delete_old_dashcards`** nullable boolean.
+
+-  **`body`** map where {:name (optional) -> <nullable value must be a non-blank string.>, :parameters (optional) -> <nullable sequence of parameter must be a map with :id and :type keys>, :dataset_query (optional) -> <nullable Value must be a map.>, :type (optional) -> <nullable enum of :question, :metric, :model>, :display (optional) -> <nullable value must be a non-blank string.>, :description (optional) -> <nullable string>, :visualization_settings (optional) -> <nullable Value must be a map.>, :archived (optional) -> <nullable boolean>, :enable_embedding (optional) -> <nullable boolean>, :embedding_params (optional) -> <nullable value must be a valid embedding params map.>, :collection_id (optional) -> <nullable value must be an integer greater than zero.>, :collection_position (optional) -> <nullable value must be an integer greater than zero.>, :result_metadata (optional) -> <nullable value must be an array of valid results column metadata maps.>, :cache_ttl (optional) -> <nullable value must be an integer greater than zero.>, :collection_preview (optional) -> <nullable boolean>, :dashboard_id (optional) -> <nullable value must be an integer greater than zero.>}.
 
 ---
 

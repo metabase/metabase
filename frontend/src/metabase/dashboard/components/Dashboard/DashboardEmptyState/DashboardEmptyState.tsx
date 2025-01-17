@@ -48,6 +48,7 @@ export function DashboardEmptyState({
                     creationType: "custom_question",
                     collectionId: dashboard.collection_id ?? undefined,
                     cardType: "question",
+                    dashboardId: dashboard.id,
                   })}
                   className={cx(CS.textBold, CS.textBrand)}
                   onClick={closeNavbar}

@@ -4,6 +4,7 @@ import { hiddenLabels, nonUserFacingLabels } from "./constants";
 import { getMilestoneIssues, hasBeenReleased } from "./github";
 import type { Issue, ReleaseProps } from "./types";
 import {
+  getDotXVersion,
   getEnterpriseVersion,
   getGenericVersion,
   getOSSVersion,
@@ -30,10 +31,7 @@ JAR download: {{oss-download-url}}
 Docker image: {{ee-docker-tag}}
 JAR download: {{ee-download-url}}
 
-## Notes
-
-<details>
-<summary><h2>Changelog</h2></summary>
+## Changelog
 
 ### Enhancements
 
@@ -52,8 +50,6 @@ Issues confirmed to have been fixed in a previous release.
 ### Under the Hood
 
 {{under-the-hood}}
-
-</details>
 
 `;
 
@@ -84,17 +80,21 @@ const formatIssue = (issue: Issue) =>
   `- ${issue.title.trim()} (#${issue.number})`;
 
 export const getDockerTag = (version: string) => {
+  const dotXVersion = getDotXVersion(version);
+
   const imagePath = `${process.env.DOCKERHUB_OWNER}/${
     process.env.DOCKERHUB_REPO
   }${isEnterpriseVersion(version) ? "-enterprise" : ""}`;
 
-  return `[\`${imagePath}:${version}\`](https://hub.docker.com/r/${imagePath}/tags)`;
+  return `[\`${imagePath}:${dotXVersion}\`](https://hub.docker.com/r/${imagePath}/tags)`;
 };
 
 export const getDownloadUrl = (version: string) => {
+  const dotXVersion = getDotXVersion(version);
+
   return `https://${process.env.AWS_S3_DOWNLOADS_BUCKET}/${
     isEnterpriseVersion(version) ? "enterprise/" : ""
-  }${version}/metabase.jar`;
+  }${dotXVersion}/metabase.jar`;
 };
 
 export const getReleaseTitle = (version: string) => {

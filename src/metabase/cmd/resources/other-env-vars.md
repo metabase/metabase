@@ -170,6 +170,15 @@ Default: `null`
 
 Used during development of third-party drivers. Set the value to have that plugin manifest get loaded during startup. Specify multiple plugin manifests by comma-separating them.
 
+### `MB_DISABLE_SCHEDULER`
+
+Type: boolean<br>
+Default: `false`
+
+When `true`, Metabase will turn off Metabase’s scheduled jobs, which include syncs, fingerprinting, and scanning, as well as dashboard subscriptions, alerts, and model caching.
+
+Can be useful for testing, or when setting up a [git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/git-based-workflow).
+
 ### `MB_DISABLE_SESSION_THROTTLE`
 
 Type: boolean<br>

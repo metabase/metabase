@@ -4,12 +4,26 @@ export function openSeriesSettings(field, isBreakout = false) {
       .contains(field)
       .closest("[data-testid^=draggable-item]")
       .find(".Icon-ellipsis")
-      .click();
+      .click({ force: true });
   } else {
-    cy.findAllByTestId("chartsettings-field-picker")
-      .contains(field)
+    cy.findAllByTestId("chart-setting-select")
+      .then($elements => {
+        for (const element of $elements) {
+          if (element.value === field) {
+            return cy.wrap(element);
+          }
+        }
+      })
       .closest("[data-testid=chartsettings-field-picker]")
-      .find(".Icon-ellipsis")
-      .click();
+      .icon("ellipsis")
+      .click({ force: true });
   }
+}
+
+export function openVizTypeSidebar() {
+  cy.findByTestId("viz-type-button").click();
+}
+
+export function openVizSettingsSidebar() {
+  cy.findByTestId("viz-settings-button").click();
 }

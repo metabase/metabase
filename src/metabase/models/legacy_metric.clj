@@ -15,11 +15,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(def LegacyMetric
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all these symbols in our codebase."
-  :model/LegacyMetric)
-
 (methodical/defmethod t2/table-name :model/LegacyMetric [_model] :metric)
 
 (doto :model/LegacyMetric
@@ -48,14 +43,14 @@
   (u/prog1 (t2/changes metric)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? <> :creator_id)
-      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id LegacyMetric :id id))
+      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id :model/LegacyMetric :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Metric.")))))))
 
 (t2/define-before-delete :model/LegacyMetric
   [{:keys [id] :as _metric}]
   (t2/delete! :model/Revision :model "Metric" :model_id id))
 
-(defmethod mi/perms-objects-set LegacyMetric
+(defmethod mi/perms-objects-set :model/LegacyMetric
   [metric read-or-write]
   (let [table (or (:table metric)
                   (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id metric))))]
@@ -63,11 +58,11 @@
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
 
-(defmethod revision/serialize-instance LegacyMetric
+(defmethod revision/serialize-instance :model/LegacyMetric
   [_model _id instance]
   (dissoc instance :created_at :updated_at))
 
-(defmethod revision/diff-map LegacyMetric
+(defmethod revision/diff-map :model/LegacyMetric
   [model metric1 metric2]
   (if-not metric1
     ;; model is the first version of the metric

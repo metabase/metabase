@@ -5,6 +5,7 @@ import slugg from "slugg";
 import _ from "underscore";
 
 import { utf8_to_b64url } from "metabase/lib/encoding";
+import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -16,14 +17,6 @@ import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import {
-  applyFilterParameter,
-  applyTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/mbql";
-import {
-  isFilterParameter,
-  isTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/parameter-type";
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
 import type AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
@@ -42,6 +35,7 @@ import type {
   CardType,
   CollectionId,
   DashCardId,
+  Dashboard,
   DashboardId,
   DatabaseId,
   DatasetData,
@@ -778,22 +772,17 @@ class Question {
     }
 
     const newQuery = this.parameters().reduce((query, parameter) => {
-      if (isFilterParameter(parameter)) {
-        const stageIndex =
-          isDimensionTarget(parameter.target) && !isComposed
-            ? getParameterDimensionTargetStageIndex(parameter.target)
-            : -1;
-        return applyFilterParameter(query, stageIndex, parameter);
-      } else if (isTemporalUnitParameter(parameter)) {
-        const stageIndex =
-          isDimensionTarget(parameter.target) && !isComposed
-            ? getParameterDimensionTargetStageIndex(parameter.target)
-            : -1;
-
-        return applyTemporalUnitParameter(query, stageIndex, parameter);
-      } else {
-        return query;
-      }
+      const stageIndex =
+        isDimensionTarget(parameter.target) && !isComposed
+          ? getParameterDimensionTargetStageIndex(parameter.target)
+          : -1;
+      return applyParameter(
+        query,
+        stageIndex,
+        parameter.type,
+        parameter.target,
+        parameter.value,
+      );
     }, query);
     const newQuestion = this.setQuery(newQuery)
       .setParameters(undefined)

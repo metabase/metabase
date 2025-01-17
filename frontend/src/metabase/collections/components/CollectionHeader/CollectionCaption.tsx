@@ -21,7 +21,7 @@ import {
   CaptionTitleContainer,
 } from "./CollectionCaption.styled";
 
-export interface CollectionCaptionProps {
+interface CollectionCaptionProps {
   collection: Collection;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }

@@ -24,8 +24,9 @@
                                                                       :port     5432
                                                                       :user     "cam"
                                                                       :password "1234"
-                                                                      :db       "metabase"}))))
+                                                                      :db       "metabase"})))))
 
+(deftest ^:parallel broken-out-details-test-2
   (testing :azure-managed-identity
     (is (= (->DataSource
             "jdbc:postgresql://localhost:5432/metabase"
@@ -37,7 +38,10 @@
                                                                       :port                             5432
                                                                       :user                             "cam"
                                                                       :azure-managed-identity-client-id "client ID"
-                                                                      :db                               "metabase"})))
+                                                                      :db                               "metabase"})))))
+
+(deftest ^:parallel broken-out-details-test-2b
+  (testing :azure-managed-identity
     (testing "password takes precedence"
       (is (= (->DataSource
               "jdbc:postgresql://localhost:5432/metabase"
@@ -50,14 +54,16 @@
                                                                         :user                             "cam"
                                                                         :password                         "1234"
                                                                         :azure-managed-identity-client-id "client ID"
-                                                                        :db                               "metabase"})))))
+                                                                        :db                               "metabase"}))))))
 
+(deftest ^:parallel broken-out-details-test-3
   (testing :h2
     (is (= (->DataSource
             "jdbc:h2:file:/metabase/metabase.db"
             nil)
-           (mdb.data-source/broken-out-details->DataSource :h2 {:db "file:/metabase/metabase.db"}))))
+           (mdb.data-source/broken-out-details->DataSource :h2 {:db "file:/metabase/metabase.db"})))))
 
+(deftest ^:parallel broken-out-details-test-4
   (testing :mysql
     (is (= (->DataSource
             "jdbc:mysql://localhost:3306/metabase"
@@ -65,8 +71,9 @@
            (mdb.data-source/broken-out-details->DataSource :mysql {:host "localhost"
                                                                    :port 3306
                                                                    :user "root"
-                                                                   :db   "metabase"}))))
+                                                                   :db   "metabase"})))))
 
+(deftest ^:parallel broken-out-details-test-5
   (testing "end-to-end"
     (let [data-source (mdb.data-source/broken-out-details->DataSource
                        :h2
@@ -82,8 +89,9 @@
                      (format "jdbc:h2:mem:%s" (mt/random-name)))]
     (with-open [conn (.getConnection data-source)]
       (is (= [{:one 1}]
-             (jdbc/query {:connection conn} "SELECT 1 AS one;")))))
+             (jdbc/query {:connection conn} "SELECT 1 AS one;"))))))
 
+(deftest ^:parallel connection-string-test-2
   (testing "Without jdbc: at the beginning"
     (let [db-name     (mt/random-name)
           data-source (mdb.data-source/raw-connection-string->DataSource
@@ -92,8 +100,9 @@
              data-source))
       (with-open [conn (.getConnection data-source)]
         (is (= [{:one 1}]
-               (jdbc/query {:connection conn} "SELECT 1 AS one;"))))))
+               (jdbc/query {:connection conn} "SELECT 1 AS one;")))))))
 
+(deftest ^:parallel connection-string-test-3
   (testing "Accept `postgres` as a subprotocol (I think Heroku or whatever does this to screw with us)"
     (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:postgresql://localhost:5432/metabase")
            (mdb.data-source/raw-connection-string->DataSource "postgres://localhost:5432/metabase")))))
@@ -129,20 +138,29 @@
               "jdbc:postgresql://metabase"
               {"user" "cam", "password" "1234"})
              (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "1234" nil)
-             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "1234" "client ID"))))
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "1234" "client ID"))))))
+
+(deftest ^:parallel raw-connection-string-with-separate-username-and-password-test-2
+  (testing "Raw connection string should support separate username and/or password (#20122)"
     (testing "username only"
       (is (= (->DataSource
               "jdbc:postgresql://metabase"
               {"user" "cam"})
              (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" nil nil)
-             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "" nil))))
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "" nil))))))
+
+(deftest ^:parallel raw-connection-string-with-separate-username-and-password-test-3
+  (testing "Raw connection string should support separate username and/or password (#20122)"
     (testing "username and azure-managed-identity-client-id"
       (is (= (->DataSource
               "jdbc:postgresql://metabase"
               {"user" "cam"
                "azure-managed-identity-client-id" "client ID"})
              (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" nil "client ID")
-             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "" "client ID"))))
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "" "client ID"))))))
+
+(deftest ^:parallel raw-connection-string-with-separate-username-and-password-test-4
+  (testing "Raw connection string should support separate username and/or password (#20122)"
     (testing "password only"
       (is (= (->DataSource
               "jdbc:postgresql://metabase"
@@ -154,8 +172,9 @@
 (deftest ^:parallel equality-test
   (testing "Two DataSources with the same URL should be equal"
     (is (= (mdb.data-source/raw-connection-string->DataSource "ABCD")
-           (mdb.data-source/raw-connection-string->DataSource "ABCD"))))
+           (mdb.data-source/raw-connection-string->DataSource "ABCD")))))
 
+(deftest ^:parallel equality-test-2
   (testing "Two DataSources with the same URL and properties should be equal"
     (is (= (mdb.data-source/broken-out-details->DataSource :h2 {:db "wow", :x 1})
            (mdb.data-source/broken-out-details->DataSource :h2 {:db "wow", :x 1})))))

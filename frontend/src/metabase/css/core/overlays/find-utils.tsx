@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import { within } from "@storybook/testing-library";
 
-import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 
 import { hidden } from "./constants";
 

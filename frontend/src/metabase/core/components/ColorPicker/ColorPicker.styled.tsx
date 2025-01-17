@@ -1,11 +1,5 @@
 import styled from "@emotion/styled";
 
-export const TriggerContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-`;
-
 export const ContentContainer = styled.div`
   display: flex;
   flex-direction: column;
