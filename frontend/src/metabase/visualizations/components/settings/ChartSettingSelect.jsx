@@ -61,5 +61,3 @@ export const ChartSettingSelect = ({
     />
   );
 };
-
-export default ChartSettingSelect;

@@ -32,7 +32,8 @@
   search-context]
 
  [search.ingestion
-  process-next-batch!]
+  bulk-ingest!
+  get-next-batch!]
 
  [search.spec
   define-spec])
@@ -75,3 +76,12 @@
                             seq)]
       ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
       (search.ingestion/ingest-maybe-async! updates))))
+
+(defn delete!
+  "Given a model and a list of model's ids, remove corresponding search entries."
+  [model ids]
+  (doseq [e            (search.engine/active-engines)
+          search-model (->> (vals (search.spec/specifications))
+                            (filter (comp #{model} :model))
+                            (map :name))]
+    (search.engine/delete! e search-model ids)))

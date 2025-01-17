@@ -560,7 +560,7 @@ describe("issue 17514", () => {
     beforeEach(() => {
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       moveColumnToTop("Subtotal");
 
@@ -616,7 +616,9 @@ function openVisualizationOptions() {
 
 function hideColumn(columnName) {
   cy.findByTestId("chartsettings-sidebar").within(() => {
-    cy.findByText(columnName).siblings("[data-testid$=hide-button]").click();
+    cy.findByTestId(`draggable-item-${columnName}`)
+      .icon("eye_outline")
+      .click({ force: true });
   });
 }
 
@@ -902,7 +904,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
     assertIsNotAdHoc();
 
     cy.log("Make sure user can change visualization but not save the question");
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Number-button").click();
     cy.findByTestId("scalar-value").should("exist");
     assertSaveIsDisabled();

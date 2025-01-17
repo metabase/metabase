@@ -18,7 +18,7 @@ describe("scenarios > question > settings", () => {
       cy.viewport(1600, 800);
 
       H.openOrdersTable();
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       // wait for settings sidebar to open
       cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
@@ -85,7 +85,7 @@ describe("scenarios > question > settings", () => {
           type: "query",
         },
       });
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       cy.findByTestId("Subtotal-hide-button").click();
       cy.findByTestId("Tax-hide-button").click();
@@ -153,7 +153,7 @@ describe("scenarios > question > settings", () => {
         display: "table",
       });
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       getSidebarColumns()
         .eq("12")
@@ -183,9 +183,7 @@ describe("scenarios > question > settings", () => {
       cy.findByRole("button", { name: "Add or remove columns" }).click();
       cy.findByLabelText("Address").should("not.be.checked").click();
 
-      // The result automatically load when adding new fields but two requests are fired.
-      // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
-      cy.wait(["@dataset", "@dataset"]);
+      cy.wait("@dataset");
 
       cy.findByRole("button", { name: "Done picking columns" }).click();
 
@@ -223,7 +221,7 @@ describe("scenarios > question > settings", () => {
         display: "table",
       });
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       cy.findByRole("button", { name: "Add or remove columns" }).click();
       cy.findByLabelText("Name").should("not.be.checked").click();
@@ -251,7 +249,7 @@ describe("scenarios > question > settings", () => {
         },
       });
 
-      cy.findByTestId("viz-settings-button").click(); // open settings sidebar
+      H.openVizSettingsSidebar(); // open settings sidebar
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
 
@@ -299,19 +297,19 @@ describe("scenarios > question > settings", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(newColumnTitle);
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       H.sidebar().findByText(newColumnTitle);
     });
 
     it("should respect symbol settings for all currencies", () => {
       H.openOrdersTable();
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       getSidebarColumns()
         .eq("4")
         .within(() => {
-          cy.icon("ellipsis").click();
+          cy.icon("ellipsis").click({ force: true });
         });
 
       cy.findByDisplayValue("Normal").click();
@@ -404,7 +402,7 @@ describe("scenarios > question > settings", () => {
         columnNames.forEach(text => cy.findByText(text).should("be.visible"));
       });
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       cy.findByTestId("chartsettings-sidebar").within(() => {
         columnNames.forEach(text => cy.findByText(text).should("be.visible"));
@@ -478,6 +476,7 @@ describe("scenarios > question > settings", () => {
 
 function refreshResultsInHeader() {
   cy.findByTestId("qb-header").button("Refresh").click();
+  cy.wait("@dataset");
 }
 
 function getSidebarColumns() {
@@ -493,9 +492,8 @@ function getVisibleSidebarColumns() {
 }
 
 function hideColumn(name) {
-  getSidebarColumns()
-    .contains(name)
-    .parentsUntil("[role=listitem]")
+  H.sidebar()
+    .findByTestId(`draggable-item-${name}`)
     .icon("eye_outline")
-    .click();
+    .click({ force: true });
 }

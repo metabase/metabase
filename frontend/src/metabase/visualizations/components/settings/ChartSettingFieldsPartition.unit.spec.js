@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 
 import { createMockColumn } from "metabase-types/api/mocks";
 
-import ChartSettingFieldsPartition from "./ChartSettingFieldsPartition";
+import { ChartSettingFieldsPartition } from "./ChartSettingFieldsPartition";
 
 describe("ChartSettingFieldsPartition", () => {
   it("should render empty state when value is undefined", () => {

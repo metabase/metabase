@@ -51,11 +51,9 @@ const externalDatabaseId = 2;
 
 describe("issue 16170", { tags: "@mongo" }, () => {
   function replaceMissingValuesWith(value) {
-    cy.findByText("Replace missing values with")
-      .parent()
-      .within(() => {
-        cy.findByTestId("chart-setting-select").click();
-      });
+    cy.get('[data-field-title="Replace missing values with"]').within(() => {
+      cy.findByTestId("chart-setting-select").click();
+    });
 
     H.popover().contains(value).click();
   }
@@ -88,7 +86,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
   ["Zero", "Nothing"].forEach(replacementValue => {
     it(`replace missing values with "${replacementValue}" should work on Mongo (metabase#16170)`, () => {
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       H.openSeriesSettings("Count");
 
@@ -358,13 +356,14 @@ describe("issue 18063", () => {
     display: "map",
   };
 
-  function selectFieldValue(field, value) {
-    cy.findByText(field)
-      .parent()
-      .within(() => {
-        cy.findByPlaceholderText("Select a field").click();
-      });
+  function toggleFieldSelectElement(field) {
+    return cy.get(`[data-field-title="${field}"]`).within(() => {
+      cy.findByPlaceholderText("Select a field").click();
+    });
+  }
 
+  function selectFieldValue(field, value) {
+    toggleFieldSelectElement(field);
     H.popover().findByText(value).click();
   }
 
@@ -375,7 +374,7 @@ describe("issue 18063", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     // Select a Pin map
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chart-settings-widget-map.type")
       .findByDisplayValue("Region map")
       .click();
@@ -384,12 +383,9 @@ describe("issue 18063", () => {
     // Click on the popovers to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
     ["Latitude field", "Longitude field"].forEach(field =>
-      H.leftSidebar()
-        .findByText(field)
-        .parent()
-        .within(() => {
-          cy.findByPlaceholderText("Select a field").click();
-        }),
+      H.leftSidebar().within(() => {
+        toggleFieldSelectElement(field);
+      }),
     );
   });
 
@@ -507,7 +503,7 @@ describe("issue 20548", () => {
     assertOnLegendItemFrequency("Count", 1);
     assertOnLegendItemFrequency("Sum of Price", 1);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.sidebar().findByDisplayValue("Count").should("be.visible");
   });
 });
@@ -532,7 +528,7 @@ describe("issue 21452", () => {
 
     H.visitQuestionAdhoc(questionDetails);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
   });
 
   it("should not fire POST request after every character during display name change (metabase#21452)", () => {
@@ -586,7 +582,7 @@ describe("issue 21504", () => {
       display: "pie",
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
       cy.findByText("January 2025").should("be.visible");
@@ -699,7 +695,7 @@ describe.skip("issue 22527", () => {
   it("should render negative values in a scatter visualziation (metabase#22527)", () => {
     assertion();
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTextEnsureVisible("Data").click();
     });
@@ -1233,7 +1229,7 @@ H.describeEE("issue 49160", () => {
 
     H.echartsContainer().findByText("200").should("be.visible");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().findByText("Gizmo");
   });
