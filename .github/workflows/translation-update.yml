@@ -1,5 +1,4 @@
-name: Update Translations
-run-name: Update Translations - ${{ inputs.step }}
+name: Synchronize Translations
 on:
   schedule:
     - cron: 30 5 * * 1-5 # every weekday morning (utc)
