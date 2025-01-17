@@ -11,7 +11,8 @@
   [_tool-name {:keys [dashboard-id email schedule] :as _arguments} _env]
   (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
                       (t2/hydrate [:dashcards :card]))
-        cards (for [{:keys [id card]} (:dashcards dashboard)]
+        cards (for [{:keys [id card]} (sort-by (juxt :tab :row :col) (:dashcards dashboard))
+                    :when (-> card :id int?)]
                 (-> card
                     (select-keys [:id :name :collection_id :description :display :parameter_mappings])
                     (assoc :dashboard_card_id id :dashboard_id dashboard-id)))
