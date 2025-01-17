@@ -7,6 +7,11 @@ import { renderRoot } from "metabase/lib/react-compat";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 import { cachedFormatter } from "metabase/visualizations/echarts/cartesian/utils/formatter";
+import {
+  getTableCellClickedObject,
+  getTableClickedObjectRowData,
+  getTableHeaderClickedObject,
+} from "metabase/visualizations/lib/table";
 import type {
   ComputedVisualizationSettings,
   VisualizationProps,
@@ -61,6 +66,7 @@ interface UseColumnsProps {
   onVisualizationClick?: VisualizationProps["onVisualizationClick"];
   measureBodyCellDimensions: CellMeasurer;
   measureHeaderCellDimensions: CellMeasurer;
+  isPivoted?: boolean;
 }
 
 export const useColumns = ({
@@ -69,6 +75,7 @@ export const useColumns = ({
   data,
   measureBodyCellDimensions,
   measureHeaderCellDimensions,
+  isPivoted = false,
 }: UseColumnsProps) => {
   const { cols, rows } = data;
   const columnFormatters = useMemo(() => {
@@ -123,6 +130,93 @@ export const useColumns = ({
       setColumnWidths(settings["table.column_widths"]);
     }
   }, [settings["table.column_widths"]]);
+
+  const columns = useMemo(() => {
+    return cols.map((col, index) => {
+      const align = isNumber(col) ? "right" : "left";
+      const columnWidth = columnWidths[index] ?? 0;
+      const columnSettings = settings.column?.(col) ?? {};
+      const bodyCellOptions = getBodyCellOptions(col, columnSettings);
+
+      return {
+        id: index.toString(),
+        accessorFn: (row: RowValues) => row[index],
+        header: () => {
+          const headerClicked = getTableHeaderClickedObject(
+            data,
+            index,
+            isPivoted,
+          );
+          return (
+            <HeaderCell
+              name={col.display_name}
+              align={align}
+              onClick={event => {
+                onVisualizationClick?.({
+                  ...headerClicked,
+                  element: event.currentTarget,
+                });
+              }}
+            />
+          );
+        },
+        cell: (props: { getValue: () => RowValue; row: { index: number } }) => {
+          const value = props.getValue();
+          const backgroundColor = settings["table._cell_background_getter"]?.(
+            value,
+            props.row.index,
+            col.name,
+          );
+
+          const clickedRowData = getTableClickedObjectRowData(
+            [{ data }],
+            props.row.index,
+            index,
+            isPivoted,
+            data,
+          );
+
+          const clicked = getTableCellClickedObject(
+            data,
+            settings,
+            props.row.index,
+            index,
+            isPivoted,
+            clickedRowData,
+          );
+
+          return (
+            <BodyCell
+              value={value}
+              align={align}
+              formatter={columnFormatters[index]}
+              backgroundColor={backgroundColor}
+              onClick={event => {
+                onVisualizationClick?.({
+                  ...clicked,
+                  element: event.currentTarget,
+                });
+              }}
+              {...bodyCellOptions}
+            />
+          );
+        },
+        column: col,
+        datasetIndex: index,
+        size: columnWidth,
+        wrap: bodyCellOptions.wrap,
+        isPivoted,
+      };
+    });
+  }, [
+    cols,
+    settings,
+    columnWidths,
+    columnFormatters,
+    onVisualizationClick,
+    isPivoted,
+    data,
+  ]);
 
   const measureRootRef = useRef<HTMLDivElement>();
   const measureRootTree = useRef<Root>();
@@ -192,61 +286,6 @@ export const useColumns = ({
 
     measureColumnWidths();
   }, []);
-
-  const columns = useMemo(() => {
-    return cols.map((col, index) => {
-      const align = isNumber(col) ? "right" : "left";
-      const columnWidth = columnWidths[index] ?? 0;
-      const columnSettings = settings.column?.(col) ?? {};
-      const bodyCellOptions = getBodyCellOptions(col, columnSettings);
-
-      return {
-        id: index.toString(),
-        accessorFn: (row: RowValues) => row[index],
-        header: () => (
-          <HeaderCell
-            name={col.display_name}
-            align={align}
-            onClick={event => {
-              onVisualizationClick?.({
-                column: col,
-                element: event.currentTarget,
-              });
-            }}
-          />
-        ),
-        cell: (props: { getValue: () => RowValue; row: { index: number } }) => {
-          const value = props.getValue();
-          const backgroundColor = settings["table._cell_background_getter"]?.(
-            value,
-            props.row.index,
-            col.name,
-          );
-
-          return (
-            <BodyCell
-              value={value}
-              align={align}
-              formatter={columnFormatters[index]}
-              backgroundColor={backgroundColor}
-              onClick={event => {
-                onVisualizationClick?.({
-                  value,
-                  column: col,
-                  element: event.currentTarget,
-                });
-              }}
-              {...bodyCellOptions}
-            />
-          );
-        },
-        column: col,
-        datasetIndex: index,
-        size: columnWidth,
-        wrap: bodyCellOptions.wrap,
-      };
-    });
-  }, [cols, settings, columnWidths, columnFormatters, onVisualizationClick]);
 
   return {
     columns,
