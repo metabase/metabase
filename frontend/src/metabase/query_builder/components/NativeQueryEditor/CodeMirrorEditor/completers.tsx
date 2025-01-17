@@ -64,9 +64,19 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
         return null;
       }
 
+      const seen = new Set();
+
+      const deduped = data.filter(([value]) => {
+        if (seen.has(value)) {
+          return false;
+        }
+        seen.add(value);
+        return true;
+      });
+
       return {
         from: word.from,
-        options: data.map(([value, meta]) => ({
+        options: deduped.map(([value, meta]) => ({
           label: value,
           detail: meta,
           boost: 50,
