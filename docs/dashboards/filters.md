@@ -240,22 +240,7 @@ A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [S
 
 ## Linking filters
 
-You can also **link filters** so that a child filter knows to limit its choices based on the activation of a parent filter.
-
-Say you have two filters, one to filter by state, the other to filter by city. You can link the city filter to the state filter so that when someone filters by California, the city filter will "know" to only show cities in California. In this case, state is the parent filter, and city is the child filter.
-
-To link filters, you'll need to set up this parent-child relationship. And you set up this relationship through the child filter. In the above scenario, with a state and city filter, we'd edit the child filter, city, by clicking on the **gears** icon on the city filter. From the filter sidebar on the right, select the **Linked filters** tab.
-
-![Linked filters](./images/linked-filter.png)
-
-Here you can limit the current filter's choices. If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for this filter. In this case, we toggle on the state filter (the parent), to limit the choices for the city filter. When states are selected, the city filter will limit its choices to cities in those states. Click **Done**, then **Save** to save the dashboard.
-
-### Limitations of linking filters
-
-- Native/SQL questions must have a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Regular SQL variables won't work.
-- You can't link filters that use "Custom List" or "From another model or question" as their value's source.
-
-To learn more about linked filters, check out [Linking filters in dashboards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/linking-filters).
+See [Linked filters](linked-filters.md).
 
 ## Auto-apply filters
 
