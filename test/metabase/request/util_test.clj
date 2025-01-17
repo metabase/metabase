@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.request.util-test
+(ns metabase.request.util-test
   (:require
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]

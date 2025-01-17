@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.sync.util-test
+(ns metabase.sync.util-test
   "Tests for the utility functions shared by all parts of sync, such as the duplicate ops guard."
   (:require
    [clojure.core.async :as a]
@@ -8,7 +8,7 @@
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.models.task-history :as task-history]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.util :as sync-util]

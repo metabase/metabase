@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.server.streaming-response-test
+(ns metabase.server.streaming-response-test
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]

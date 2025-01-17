@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.search.spec-test
+(ns metabase.search.spec-test
   (:require
    [clojure.test :refer :all]
    [metabase.search.spec :as search.spec]

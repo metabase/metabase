@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.setup.core-test
+(ns metabase.setup.core-test
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
