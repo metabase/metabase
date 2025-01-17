@@ -64,22 +64,20 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
     });
 
-    // H.getDashboardCard(0).within(() => {
-    //   H.chartPathWithFillColor("#509EE3").eq(0).realHover().wait(200);
-    // });
+    H.getDashboardCard(0).within(() => {
+      H.chartPathWithFillColor("#509EE3").eq(0).realHover().wait(200);
+    });
 
-    cy.wait(2000);
+    cy.findAllByTestId("echarts-tooltip")
+      .eq(0)
+      .should("exist")
+      .should($el => {
+        const computedStyle = window.getComputedStyle($el[0]);
 
-    // cy.findAllByTestId("echarts-tooltip")
-    //   .eq(0)
-    //   .should("exist")
-    //   .should($el => {
-    //     const computedStyle = window.getComputedStyle($el[0]);
-
-    //     expect(computedStyle.display).not.to.equal("none");
-    //     expect(computedStyle.visibility).not.to.equal("hidden");
-    //     expect(computedStyle.opacity).not.to.equal("0");
-    //   });
+        expect(computedStyle.display).not.to.equal("none");
+        expect(computedStyle.visibility).not.to.equal("hidden");
+        expect(computedStyle.opacity).not.to.equal("0");
+      });
 
     cy.findAllByTestId("echarts-tooltip")
       .eq(0)
@@ -109,7 +107,7 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
         // The tooltip is indeed visible if we clicked on child of the tooltip :)
         const isTopmostElementChildOfTooltip = checkIfElementIsChildOf(
           topmostElement,
-          element => element.getAttribute("data-testid") === "echarts-tooltip",
+          element => element === tooltipElement,
         );
 
         expect(isTopmostElementChildOfTooltip).to.equal(true);
