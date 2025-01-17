@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useListChannelsQuery, useListUsersQuery } from "metabase/api";
+import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import { EmailChannelEdit } from "metabase/notifications/channels/EmailChannelEdit";
@@ -42,7 +42,7 @@ export const NotificationChannelsPicker = ({
   getInvalidRecipientText,
 }: NotificationChannelsPickerProps) => {
   const { data: notificationChannels = [] } = useListChannelsQuery();
-  const { data: users } = useListUsersQuery({});
+  const { data: users } = useListUserRecipientsQuery();
   const user = useSelector(getUser);
 
   const usersListOptions: User[] = users?.data || (user ? [user] : []);
