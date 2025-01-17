@@ -203,8 +203,7 @@
                 existing-user-recipient (m/find-first #(= "notification-recipient/user" (:type %))
                                                       (:recipients existing-email-handler))
                 new-recipients          [(assoc existing-user-recipient :user_id (mt/user->id :rasta))
-                                         {:id                      -1
-                                          :type                    :notification-recipient/group
+                                         {:type                    :notification-recipient/group
                                           :notification_handler_id (:id existing-email-handler)
                                           :permissions_group_id    (:id (perms-group/admin))}]
                 new-handlers            [(assoc existing-email-handler :recipients new-recipients)]]
@@ -220,11 +219,9 @@
                           :handlers (m/find-first #(= "channel/email" (:channel_type %))) :recipients))))))
 
         (testing "can add new handler"
-          (let [new-handler {:id              -1
-                             :notification_id notification-id
+          (let [new-handler {:notification_id notification-id
                              :channel_type    :channel/slack
-                             :recipients      [{:id      -1
-                                                :type    :notification-recipient/user
+                             :recipients      [{:type    :notification-recipient/user
                                                 :user_id (mt/user->id :rasta)}]}
                 new-handlers (conj (:handlers @notification) new-handler)]
             (is (=? {:channel_type "channel/slack"
@@ -845,12 +842,10 @@
             (notification.tu/with-card-notification
               [{noti-id :id :as notification} base-notification]
               (let [handler-id (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :id)
-                    updated-recipients [{:id                      -1
-                                         :notification_handler_id handler-id
+                    updated-recipients [{:notification_handler_id handler-id
                                          :type                    :notification-recipient/user
                                          :user_id                 (mt/user->id :lucky)}
-                                        {:id                      -2
-                                         :notification_handler_id handler-id
+                                        {:notification_handler_id handler-id
                                          :type                    :notification-recipient/raw-value
                                          :details                 {:value "new@metabase.com"}}]
                     [removed-email added-email] (update-notification! noti-id notification
