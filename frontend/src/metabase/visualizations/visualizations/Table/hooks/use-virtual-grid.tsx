@@ -7,12 +7,15 @@ import type { DatasetData, RowValue, RowValues } from "metabase-types/api";
 
 import { ROW_HEIGHT } from "../constants";
 
+import type { CellMeasurer } from "./use-cell-measure";
+
 interface UseVirtualGridProps {
   bodyRef: React.RefObject<HTMLDivElement>;
   table: ReactTable<RowValues>;
+  columns: any[];
   data: DatasetData;
   columnFormatters: ((value: RowValue) => React.ReactNode)[];
-  measureBodyCellDimensions: (value: any, width: number) => { height: number };
+  measureBodyCellDimensions: CellMeasurer;
 }
 
 export const useVirtualGrid = ({

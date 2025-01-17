@@ -43,7 +43,7 @@ export const useObjectDetail = ({ rows, cols }: DatasetData) => {
 
       dispatch(zoomInRow({ objectId }));
     },
-    [primaryKeyColumn, rowIndexToPkMap, rows],
+    [dispatch, primaryKeyColumn, rowIndexToPkMap, rows],
   );
 
   return onOpenObjectDetail;

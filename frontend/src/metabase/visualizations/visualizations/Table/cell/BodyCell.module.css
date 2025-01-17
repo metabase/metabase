@@ -33,6 +33,8 @@
   width: auto;
   min-width: 35px;
   justify-content: center;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
 .minibar {

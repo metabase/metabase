@@ -1,7 +1,11 @@
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { Root } from "react-dom/client";
 import { useUpdateEffect } from "react-use";
 
 import { formatValue } from "metabase/lib/formatting";
+import { renderRoot } from "metabase/lib/react-compat";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { ThemeProvider } from "metabase/ui";
 import { cachedFormatter } from "metabase/visualizations/echarts/cartesian/utils/formatter";
 import type {
   ComputedVisualizationSettings,
@@ -26,6 +30,8 @@ import { MIN_COLUMN_WIDTH } from "../constants";
 import { pickRowsToMeasure } from "../utils";
 
 import type { CellMeasurer } from "./use-cell-measure";
+
+const CELL_BORDERS_WIDTH = 2;
 
 const getBodyCellOptions = (
   column: DatasetColumn,
@@ -86,9 +92,11 @@ export const useColumns = ({
   );
   const [columnWidths, setColumnWidths] = useState(savedColumnWidths);
 
-  const measureColumnWidths = useCallback(() => {
+  const _measureColumnWidths = useCallback(() => {
     const widths = cols.map((col, index) => {
-      const headerWidth = measureHeaderCellDimensions(col.display_name).width;
+      const headerWidth =
+        measureHeaderCellDimensions(col.display_name).width +
+        CELL_BORDERS_WIDTH;
 
       const sampleRows = pickRowsToMeasure(rows, index);
 
@@ -116,15 +124,80 @@ export const useColumns = ({
     }
   }, [settings["table.column_widths"]]);
 
+  const measureRootRef = useRef<HTMLDivElement>();
+  const measureRootTree = useRef<Root>();
+
+  const measureColumnWidths = useCallback(() => {
+    const { cols, rows } = data;
+
+    const onMeasureHeaderRender = (div: HTMLDivElement) => {
+      if (div === null) {
+        return;
+      }
+
+      const contentWidths = Array.from(
+        div.getElementsByClassName("fake-column"),
+      ).map(
+        columnElement =>
+          (columnElement as HTMLElement).offsetWidth + CELL_BORDERS_WIDTH,
+      );
+      setColumnWidths(contentWidths);
+    };
+
+    const content = (
+      <EmotionCacheProvider>
+        <ThemeProvider>
+          <div style={{ display: "flex" }} ref={onMeasureHeaderRender}>
+            {cols.map((column, columnIndex) => {
+              const columnSettings = settings.column?.(column) ?? {};
+              const bodyCellOptions = getBodyCellOptions(
+                column,
+                columnSettings,
+              );
+              return (
+                <div className="fake-column" key={"column-" + columnIndex}>
+                  <HeaderCell name={column.display_name} />
+                  {pickRowsToMeasure(rows, columnIndex).map(rowIndex => (
+                    <BodyCell
+                      key={rowIndex}
+                      value={rows[rowIndex][columnIndex]}
+                      formatter={columnFormatters[columnIndex]}
+                      {...bodyCellOptions}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </ThemeProvider>
+      </EmotionCacheProvider>
+    );
+
+    measureRootTree.current = renderRoot(content, measureRootRef.current!);
+  }, [columnFormatters, data, settings]);
+
   useLayoutEffect(() => {
+    if (!measureRootRef.current) {
+      const measureRoot = document.createElement("div");
+      measureRoot.style.position = "absolute";
+      measureRoot.style.top = "-9999px";
+      measureRoot.style.left = "-9999px";
+      measureRoot.style.visibility = "hidden";
+      measureRoot.style.pointerEvents = "none";
+      measureRoot.style.zIndex = "-999";
+
+      document.body.appendChild(measureRoot);
+      measureRootRef.current = measureRoot;
+    }
+
     measureColumnWidths();
   }, []);
 
   const columns = useMemo(() => {
     return cols.map((col, index) => {
       const align = isNumber(col) ? "right" : "left";
-      const columnSettings = settings.column?.(col) ?? {};
       const columnWidth = columnWidths[index] ?? 0;
+      const columnSettings = settings.column?.(col) ?? {};
       const bodyCellOptions = getBodyCellOptions(col, columnSettings);
 
       return {
@@ -134,12 +207,12 @@ export const useColumns = ({
           <HeaderCell
             name={col.display_name}
             align={align}
-            onClick={event =>
+            onClick={event => {
               onVisualizationClick?.({
                 column: col,
                 element: event.currentTarget,
-              })
-            }
+              });
+            }}
           />
         ),
         cell: (props: { getValue: () => RowValue; row: { index: number } }) => {
