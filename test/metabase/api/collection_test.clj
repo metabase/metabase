@@ -1494,7 +1494,7 @@
                           remove-non-personal-collections
                           mt/boolean-ids-and-timestamps)))))))
 
-(deftest ^:parallel dashboard-question-candidates-simple-test
+(deftest dashboard-question-candidates-simple-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card is in single dashboard"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1520,7 +1520,7 @@
                     keys
                     (into #{}))))))))
 
-(deftest ^:parallel dashboard-question-candidates-card-is-in-two-dashboards-test
+(deftest dashboard-question-candidates-card-is-in-two-dashboards-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card is in two dashboards"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1535,7 +1535,7 @@
                     (map :id)
                     (into #{}))))))))
 
-(deftest ^:parallel dashboard-question-candidates-card-not-in-any-dashboards-test
+(deftest dashboard-question-candidates-card-not-in-any-dashboards-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card is not in any dashboards"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1546,7 +1546,7 @@
                     (map :id)
                     (into #{}))))))))
 
-(deftest ^:parallel get-dashboard-question-candidates-only-works-for-admins-test
+(deftest get-dashboard-question-candidates-only-works-for-admins-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Non-admin request (using `:rasta` instead of `:crowberto`)"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1556,7 +1556,7 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "collection/" coll-id "/dashboard-question-candidates"))))))))
 
-(deftest ^:parallel dashboard-question-candidates-excludes-archived-cards-test
+(deftest dashboard-question-candidates-excludes-archived-cards-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card in archived dashboard"
       ;; Note that this should never happen - the card should be archived with the dashboard it's in. But just in case:
@@ -1570,7 +1570,7 @@
                     (map :id)
                     (into #{}))))))))
 
-(deftest ^:parallel get-dashboard-question-candidates-excludes-cards-in-different-collections-from-dashboard
+(deftest get-dashboard-question-candidates-excludes-cards-in-different-collections-from-dashboard
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card in different collection from dashboard"
       (mt/with-temp [:model/Collection {coll1-id :id} {}
@@ -1584,7 +1584,7 @@
                     (map :id)
                     (into #{}))))))))
 
-(deftest ^:parallel get-dashboard-question-candidates-filters-by-collection
+(deftest get-dashboard-question-candidates-filters-by-collection
   (testing "Multiple cards in collection"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -1598,13 +1598,13 @@
                   (map :id)
                   (into #{})))))))
 
-(deftest ^:parallel get-dashboard-question-candidates-nonexistent-collection
+(deftest get-dashboard-question-candidates-nonexistent-collection
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Returns 404 for non-existent collection"
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 "collection/99999999/dashboard-question-candidates"))))))
 
-(deftest ^:parallel get-dashboard-question-candidates-excludes-archived-cards
+(deftest get-dashboard-question-candidates-excludes-archived-cards
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Archived cards are not included in candidates"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1617,7 +1617,7 @@
                     (map :id)
                     (into #{}))))))))
 
-(deftest ^:parallel get-dashboard-question-candidates-name-sorting
+(deftest get-dashboard-question-candidates-name-sorting
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Results are sorted by name"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1640,7 +1640,7 @@
                       :data
                       (map :name)))))))))
 
-(deftest ^:parallel get-root-dashboard-question-candidates-single-dashboard-card
+(deftest get-root-dashboard-question-candidates-single-dashboard-card
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Card is in single dashboard"
       (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
@@ -1665,7 +1665,7 @@
                       keys
                       set))))))))
 
-(deftest ^:parallel get-root-dashboard-question-candidates-multi-dashboard-card
+(deftest get-root-dashboard-question-candidates-multi-dashboard-card
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Card is in two dashboards"
       (mt/with-temp [:model/Dashboard {dash1-id :id} {:collection_id nil}
@@ -1680,7 +1680,7 @@
                                  set)
                             card-id)))))))
 
-(deftest ^:parallel get-root-dashboard-question-candidates-no-dashboard-card
+(deftest get-root-dashboard-question-candidates-no-dashboard-card
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Card is not in any dashboards"
       (mt/with-temp [:model/Card {card-id :id} {:collection_id nil :name "No Dashboard Card"}]
@@ -1691,13 +1691,13 @@
                                  set)
                             card-id)))))))
 
-(deftest ^:parallel get-root-dashboard-question-candidates-non-admin
+(deftest get-root-dashboard-question-candidates-non-admin
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Non-admin request (using `:rasta` instead of `:crowberto`)"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "collection/root/dashboard-question-candidates"))))))
 
-(deftest ^:parallel get-root-dashboard-question-candidates-archived-dashboard
+(deftest get-root-dashboard-question-candidates-archived-dashboard
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Card in archived dashboard"
       (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil :archived true}
@@ -1710,7 +1710,7 @@
                                  set)
                             card-id)))))))
 
-(deftest ^:parallel get-root-dashboard-question-candidates-different-collection
+(deftest get-root-dashboard-question-candidates-different-collection
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Card in different collection from dashboard"
       (mt/with-temp [:model/Collection {other-coll-id :id} {}
@@ -1724,7 +1724,7 @@
                                  set)
                             card-id)))))))
 
-(deftest ^:parallel get-root-dashboard-question-candidates-multiple-cards
+(deftest get-root-dashboard-question-candidates-multiple-cards
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Multiple cards in collection"
       (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
@@ -1741,13 +1741,13 @@
           (is (not (contains? response-ids card2-id)))
           (is (not (contains? response-ids card3-id))))))))
 
-(deftest ^:parallel get-root-dashboard-question-candidates-nonexistent
+(deftest get-root-dashboard-question-candidates-nonexistent
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Non-existent collection"
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 "collection/99999999/dashboard-question-candidates"))))))
 
-(deftest ^:parallel get-root-dashboard-question-candidates-archived-card
+(deftest get-root-dashboard-question-candidates-archived-card
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Archived card"
       (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
@@ -1760,7 +1760,7 @@
                                  set)
                             card-id)))))))
 
-(deftest ^:parallel get-root-dashboard-question-candidates-name-sorting
+(deftest get-root-dashboard-question-candidates-name-sorting
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Results are sorted by name"
       (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
