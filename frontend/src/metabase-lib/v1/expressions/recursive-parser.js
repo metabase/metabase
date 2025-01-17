@@ -25,20 +25,16 @@ function recursiveParse(source) {
   // Get the next token and remove it from the token list
   const next = () => tokens.shift();
 
-  // Throw an error if the next token isn't one of the expected operators
-  const expectOp = (...expectedOps) => {
+  // Throw an error if the next token isn't the expected operator
+  const expectOp = nextOp => {
     const token = next();
     if (!token) {
-      throw new Error(
-        t`Unexpected end of input, expecting ${expectedOps.join(t` or `)}`,
-      );
+      throw new Error(t`Unexpected end of input, expecting ${nextOp}`);
     }
     const { type, op, start, end } = token;
-    if (type !== TOKEN.Operator || !expectedOps.includes(op)) {
+    if (type !== TOKEN.Operator || op !== nextOp) {
       const text = source.substring(start, end);
-      throw new Error(
-        t`Expecting ${expectedOps.join(t` or `)} but got ${text} instead`,
-      );
+      throw new Error(t`Expecting ${nextOp} but got ${text} instead`);
     }
   };
 
@@ -72,7 +68,7 @@ function recursiveParse(source) {
       }
       expectOp(OP.Comma);
     }
-    expectOp(OP.CloseParenthesis, OP.Comma);
+    expectOp(OP.CloseParenthesis);
     return params;
   };
 
