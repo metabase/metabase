@@ -30,7 +30,7 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
             {
               id: 1,
               size_x: 10,
-              size_y: 20,
+              size_y: 50,
               row: 0,
               col: 0,
               card_id: ordersQuestionId,
@@ -38,7 +38,7 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
             {
               id: 2,
               size_x: 10,
-              size_y: 5,
+              size_y: 10,
               row: 0,
               col: 0,
               card_id: ordersQuestionId,
@@ -59,11 +59,19 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
     );
   });
 
-  it("should render tooltips below the screen's height", () => {
+  it("should render tooltips below the screen's height ()", () => {
     cy.get("@dashboardId").then(dashboardId => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
 
-      H;
+      cy.scrollTo("bottom");
+
+      H.getDashboardCard(1).within(() => {
+        H.echartsTriggerBlur();
+        cy.wait(50);
+        H.chartPathWithFillColor("#509EE3").eq(0).realHover();
+      });
+
+      H.echartsTooltip().findByText("Count").should("be.visible");
     });
   });
 });

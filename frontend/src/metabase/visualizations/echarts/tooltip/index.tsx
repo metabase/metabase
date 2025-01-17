@@ -3,6 +3,7 @@ import type React from "react";
 import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
+import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
 import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
@@ -70,13 +71,17 @@ export const getTooltipBaseOption = (
       let container = document.querySelector(
         ".echarts-tooltip-container",
       ) as HTMLDivElement;
+
       if (!container) {
         container = document.createElement("div");
         container.classList.add("echarts-tooltip-container");
         container.style.setProperty("overflow", "hidden");
-        container.style.setProperty("position", "absolute");
+        container.style.setProperty("position", "fixed");
         container.style.setProperty("inset", "0");
         container.style.setProperty("pointer-events", "none");
+
+        const tooltipContainerZIndex = `var(--mb-overlay-z-index, ${OVERLAY_Z_INDEX})`;
+        container.style.setProperty("z-index", tooltipContainerZIndex);
 
         document.body.append(container);
       }
