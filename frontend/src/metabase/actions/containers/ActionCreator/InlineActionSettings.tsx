@@ -123,7 +123,7 @@ const InlineActionSettings = ({
   return (
     <SidebarContent title={t`Action settings`} onClose={onClose}>
       <ActionSettingsContent>
-        {action && hasSharingPermission && (
+        {isSavedAction(action) && hasSharingPermission && (
           <FormField
             title={t`Make public`}
             description={t`Creates a publicly shareable link to this action form.`}
