@@ -29,17 +29,11 @@
   [_driver _feature _database]
   true)
 
-;;; FIXME -- not working for Athena -- test is returning dates including time (#46849)
-(defmethod driver/database-supports? [:athena ::date-columns-should-be-emitted-without-time]
-  [_driver _feature _database]
-  false)
-
-;;; FIXME -- not working for MongoDB -- test is returning dates including time (#46856)
+;; The following drivers are excluded from this test because their date types are acutally date times
 (defmethod driver/database-supports? [:mongo ::date-columns-should-be-emitted-without-time]
   [_driver _feature _database]
   false)
 
-;; Oracle's DATE has a time part. It is mapped to `:type/DateTime`.
 (defmethod driver/database-supports? [:oracle ::date-columns-should-be-emitted-without-time]
   [_driver _feature _database]
   false)
@@ -87,15 +81,16 @@
                (parse-and-sort-csv result)))))))
 
 (deftest datetime-fields-are-untouched-when-exported
-  (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
-                                     (json/encode (mt/mbql-query users {:order-by [[:asc $id]], :limit 5}))
-                                     :format_rows true)]
-    (is (= [["1" "Plato Yeshua" "April 1, 2014, 8:30 AM"]
-            ["2" "Felipinho Asklepios" "December 5, 2014, 3:15 PM"]
-            ["3" "Kaneonuskatew Eiran" "November 6, 2014, 4:15 PM"]
-            ["4" "Simcha Yan" "January 1, 2014, 8:30 AM"]
-            ["5" "Quentin Sören" "October 3, 2014, 5:30 PM"]]
-           (parse-and-sort-csv result)))))
+  (mt/test-drivers (mt/normal-drivers)
+    (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
+                                       (json/encode (mt/mbql-query users {:order-by [[:asc $id]], :limit 5}))
+                                       :format_rows true)]
+      (is (= [["1" "Plato Yeshua" "April 1, 2014, 8:30 AM"]
+              ["2" "Felipinho Asklepios" "December 5, 2014, 3:15 PM"]
+              ["3" "Kaneonuskatew Eiran" "November 6, 2014, 4:15 PM"]
+              ["4" "Simcha Yan" "January 1, 2014, 8:30 AM"]
+              ["5" "Quentin Sören" "October 3, 2014, 5:30 PM"]]
+             (parse-and-sort-csv result))))))
 
 (deftest geographic-coordinates-test
   (testing "Ensure CSV longitude and latitude values are correctly exported"

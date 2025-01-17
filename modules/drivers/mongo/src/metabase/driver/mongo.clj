@@ -321,6 +321,8 @@
         "binData"    :type/*
         "objectId"   :type/MongoBSONID
         "bool"       :type/Boolean
+        ;; Mongo's date type is actually a date time so we can't map it to :type/Date
+        ;; See documentation: https://www.mongodb.com/docs/manual/reference/bson-types/#std-label-document-bson-type-date
         "date"       :type/Instant
         "null"       :type/*
         "regex"      :type/*

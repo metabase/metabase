@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.upload-test
+(ns ^:mb/driver-tests ^:mb/upload-tests metabase.upload-test
   (:require
    [clj-bom.core :as bom]
    [clojure.data.csv :as csv]
