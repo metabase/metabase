@@ -15,6 +15,7 @@ import {
 import {
   HighlightStyle,
   foldService,
+  indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
 import {
@@ -80,6 +81,7 @@ export function useExtensions({
       highlighting(),
       tagDecorator(),
       folds(),
+      indentUnit.of("\t"),
     ]
       .flat()
       .filter(isNotNull);
