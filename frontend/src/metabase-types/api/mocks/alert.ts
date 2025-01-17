@@ -4,11 +4,12 @@ import type { Channel } from "../notifications";
 import { createMockEntityId } from "./entity-id";
 import { createMockUserInfo } from "./user";
 
+// TODO: remove this function
 export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
   id: 1,
   name: "Alert",
-  alert_above_goal: false,
-  alert_condition: "rows",
+  alert_above_goal: true,
+  alert_condition: "goal",
   alert_first_only: false,
   skip_if_empty: false,
 

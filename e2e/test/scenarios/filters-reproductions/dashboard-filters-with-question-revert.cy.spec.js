@@ -209,6 +209,7 @@ describe("issue 35954", () => {
 
         H.visitDashboard(id);
         H.openSharingMenu("Embed");
+
         H.modal().findByText("Static embedding").click();
 
         cy.findByTestId("embedding-preview").within(() => {

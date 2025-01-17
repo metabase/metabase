@@ -1,24 +1,10 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-
-const channels = {
-  slack: {
-    setup: H.mockSlackConfigured,
-    createAlert: () => {
-      H.toggleAlertChannel("Email");
-      H.toggleAlertChannel("Slack");
-      cy.findByPlaceholderText(/Pick a user or channel/).click();
-      H.popover().findByText("#work").click();
-    },
-  },
-  email: { setup: H.setupSMTP, createAlert: () => {} },
-};
 
 describe("scenarios > alert", () => {
   beforeEach(() => {
@@ -64,55 +50,6 @@ describe("scenarios > alert", () => {
       cy.findByText(
         "To send alerts, an admin needs to set up email integration.",
       );
-    });
-  });
-
-  Object.entries(channels).forEach(([channel, config]) => {
-    describe(`with ${channel} set up`, { tags: "@external" }, () => {
-      beforeEach(config.setup);
-
-      it("educational screen should show for the first alert, but not for the second", () => {
-        cy.intercept("POST", "/api/alert").as("savedAlert");
-        cy.intercept("POST", `/api/card/${ORDERS_COUNT_QUESTION_ID}/query`).as(
-          "questionLoaded",
-        );
-
-        // Open the first alert screen and create an alert
-        H.visitQuestion(ORDERS_QUESTION_ID);
-        H.openSharingMenu("Create alert");
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("The wide world of alerts");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("There are a few different kinds of alerts you can get");
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("When a raw data question returns any results");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("When a line or bar crosses a goal line");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("When a progress bar reaches its goal");
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Set up an alert").click();
-
-        config.createAlert();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Done").click();
-
-        cy.wait("@savedAlert");
-
-        // Open the second alert screen
-        H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-        cy.wait("@questionLoaded");
-
-        H.openSharingMenu("Create alert");
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Let's set up your alert");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("The wide world of alerts").should("not.exist");
-      });
     });
   });
 
@@ -200,3 +137,63 @@ describe("scenarios > alert", () => {
     H.popover().findByText("You set up an alert").should("be.visible");
   });
 });
+
+H.describeEE(
+  "scenarios > sharing > approved domains (EE)",
+  { tags: "@external" },
+  () => {
+    const allowedDomain = "metabase.test";
+    const deniedDomain = "metabase.example";
+    const deniedEmail = `mailer@${deniedDomain}`;
+    const subscriptionError = `You're only allowed to email subscriptions to addresses ending in ${allowedDomain}`;
+    const alertError = `You're only allowed to email alerts to addresses ending in ${allowedDomain}`;
+
+    function addEmailRecipient(email) {
+      cy.findByRole("textbox").click().type(`${email}`).blur();
+    }
+
+    function setAllowedDomains() {
+      H.updateSetting("subscription-allowed-domains", allowedDomain);
+    }
+
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.setTokenFeatures("all");
+      H.setupSMTP();
+      setAllowedDomains();
+    });
+
+    it("should validate approved email domains for a question alert", () => {
+      H.visitQuestion(ORDERS_QUESTION_ID);
+
+      H.openSharingMenu("Create alert");
+      H.modal().findByText("Set up an alert").click();
+
+      H.modal()
+        .findByRole("heading", { name: "Email" })
+        .closest("li")
+        .within(() => {
+          addEmailRecipient(deniedEmail);
+          cy.findByText(alertError);
+        });
+      cy.button("Done").should("be.disabled");
+    });
+
+    it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.openSharingMenu("Subscriptions");
+
+      cy.findByRole("heading", { name: "Email it" }).click();
+
+      H.sidebar().within(() => {
+        addEmailRecipient(deniedEmail);
+
+        // Reproduces metabase#17977
+        cy.button("Send email now").should("be.disabled");
+        cy.button("Done").should("be.disabled");
+        cy.findByText(subscriptionError);
+      });
+    });
+  },
+);

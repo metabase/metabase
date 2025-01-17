@@ -10,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker";
-import { RecipientPicker } from "metabase/notifications/pulse/components/RecipientPicker";
+import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { Icon } from "metabase/ui";
 

@@ -113,11 +113,13 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     it("should not let you embed the question", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
+
       ensureEmbeddingIsDisabled();
     });
 
     it("should not let you embed the dashboard", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
+
       ensureEmbeddingIsDisabled();
     });
   });
@@ -384,8 +386,6 @@ function visitAndEnableSharing(object, acceptTerms = true) {
   if (object === "dashboard") {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
   }
-
-  H.openStaticEmbeddingModal({ acceptTerms });
 }
 
 function sidebar() {

@@ -5,10 +5,19 @@ import { c, t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
-import type { HeaderButtonProps } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
+import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
+import type { Dashboard } from "metabase-types/api";
+
+type DashboardActionMenuProps = {
+  canResetFilters: boolean;
+  onResetFilters: () => void;
+  canEdit: boolean;
+  dashboard: Dashboard;
+  openSettingsSidebar: () => void;
+};
 
 const DashboardActionMenuInner = ({
   canResetFilters,
@@ -19,7 +28,9 @@ const DashboardActionMenuInner = ({
   canEdit,
   location,
   openSettingsSidebar,
-}: HeaderButtonProps & WithRouterProps): JSX.Element => {
+}: DashboardActionMenuProps &
+  DashboardFullscreenControls &
+  WithRouterProps): JSX.Element => {
   const [opened, setOpened] = useState(false);
 
   const { refreshDashboard } = useRefreshDashboard({

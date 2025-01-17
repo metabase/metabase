@@ -1,9 +1,5 @@
 import styled from "@emotion/styled";
 
-export const PickerRoot = styled.div`
-  margin-top: 1.5rem;
-`;
-
 export const PickerRow = styled.div`
   display: flex;
   align-items: center;
