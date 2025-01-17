@@ -92,6 +92,7 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
  **/
 function getVisibleTopmostElement(targetElement: HTMLElement) {
   const targetElementRect = targetElement.getBoundingClientRect();
+  const originalPointerEvents = targetElement.style.pointerEvents;
 
   // Temporarily enable pointer events for tooltip so elementsFromPoint can see it.
   targetElement.style.pointerEvents = "auto";
@@ -103,7 +104,7 @@ function getVisibleTopmostElement(targetElement: HTMLElement) {
   );
 
   // Restore original pointer-events
-  targetElement.style.pointerEvents = "none";
+  targetElement.style.pointerEvents = originalPointerEvents;
 
   // Find the topmost element we clicked on.
   return elementsAtPoint[0];
