@@ -1066,7 +1066,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :default    nil
   :getter     (fn []
                 (let [limit (setting/get-value-of-type :integer :download-row-limit)]
-                  (max limit 10000))))
+                  (max limit 1048576))))
 
 ;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
 ;;; should live in this namespace.
