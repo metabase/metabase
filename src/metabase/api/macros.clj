@@ -20,6 +20,7 @@
    [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -240,6 +241,20 @@
    params-type :- ::param-type]
   (get-in args [:params params-type :binding] '_))
 
+(defn- invalid-params-specific-errors [explanation]
+  (-> explanation
+      me/with-spell-checking
+      (me/humanize {:wrap mu/humanize-include-value})))
+
+(defn- invalid-params-errors [schema explanation specific-errors]
+  (or (when (= (mc/type schema) :map)
+        (into {}
+              (keep (fn [child]
+                      (when (contains? (set (keys specific-errors)) (first child))
+                        [(first child) (umd/describe (last child))])))
+              (mc/children schema)))
+      (me/humanize explanation {:wrap #(umd/describe (:schema %))})))
+
 (mu/defn decode-and-validate-params
   "Impl for [[defendpoint]]."
   [params-type :- ::param-type
@@ -251,15 +266,16 @@
                                              :route "route parameters"
                                              :query "query parameters"
                                              :body  "body"))
-                      {:status-code 400
-                       :api/debug   {:params-type params-type
-                                     :schema      (mc/form schema)
-                                     :params      params
-                                     :decoded     decoded}
-                       :error       (-> schema
-                                        (mr/explain decoded)
-                                        me/with-spell-checking
-                                        (me/humanize {:wrap mu/humanize-include-value}))})))
+                      (let [explanation     (mr/explain schema decoded)
+                            specific-errors (invalid-params-specific-errors explanation)
+                            errors          (invalid-params-errors schema explanation specific-errors)]
+                        {:status-code     400
+                         #_:api/debug     #_{:params-type params-type
+                                             :schema      (mc/form schema)
+                                             :params      params
+                                             :decoded     decoded}
+                         :specific-errors specific-errors
+                         :errors          errors}))))
     decoded))
 
 (mu/defn- decode-and-validate-params-form
