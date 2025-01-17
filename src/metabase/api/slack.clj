@@ -14,44 +14,43 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- truncate-url
+  "Cut length of long URLs to avoid spamming the Slack channel"
+  [url]
+  (if (<= (count url) 45)
+    url
+    (str (subs url 0 38) "..." (subs url (- (count url) 5)))))
+
 (defn- create-slack-message-blocks
   "Create blocks for the Slack message with diagnostic information"
   [diagnostic-info file-info]
-  (let [metabase-info (get-in diagnostic-info [:bugReportDetails :metabase-info])
-        system-info (get-in diagnostic-info [:bugReportDetails :system-info])
-        version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
+  (let [version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
         description (get diagnostic-info :description)
         file-url (if (string? file-info)
                    file-info
                    (:url file-info))]
-    [{:type "section"
-      :text {:type "mrkdwn"
-             :text "A new bug report has been submitted. Please check it out!"}}
-     {:type "section"
-      :text {:type "mrkdwn"
-             :text (str "*Description:*\n" (or description "N/A"))}}
-     {:type "section"
-      :fields [{:type "mrkdwn"
-                :text (str "*URL:*\n" (get diagnostic-info :url "N/A"))}
-               {:type "mrkdwn"
-                :text (str "*App database:*\n"
-                           (get metabase-info :application-database "N/A"))}
-               {:type "mrkdwn"
-                :text (str "*Java Runtime:*\n"
-                           (get system-info :java.runtime.name "N/A"))}
-               {:type "mrkdwn"
-                :text (str "*Java Version:*\n"
-                           (get system-info :java.runtime.version "N/A"))}
-               {:type "mrkdwn"
-                :text (str "*OS Name:*\n"
-                           (get system-info :os.name "N/A"))}
-               {:type "mrkdwn"
-                :text (str "*OS Version:*\n"
-                           (get system-info :os.version "N/A"))}
-               {:type "mrkdwn"
-                :text (str "*Version info:*\n```"
-                           (json/encode version-info {:pretty true})
-                           "```")}]}
+    [{:type "rich_text"
+      :elements [{:type "rich_text_section"
+                  :elements [{:type "text"
+                              :text "New bug report"}
+                             {:type "text"
+                              :text "\n\nDescription:\n"
+                              :style {:bold true}}
+                             {:type "text"
+                              :text (or description "N/A")}
+                             {:type "text"
+                              :text "\n\nURL:\n"
+                              :style {:bold true}}
+                             {:type "link"
+                              :text (truncate-url (get diagnostic-info :url))
+                              :url (get diagnostic-info :url)}
+                             {:type "text"
+                              :text "\n\nVersion info:\n"
+                              :style {:bold true}}]}
+                 {:type "rich_text_preformatted"
+                  :border 0
+                  :elements [{:type "text"
+                              :text (json/encode version-info {:pretty true})}]}]}
      {:type "divider"}
      {:type "actions"
       :elements [{:type "button"
