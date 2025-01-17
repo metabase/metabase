@@ -32,7 +32,7 @@
   The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users."
   [_route-params
    {:keys [archived user_id]} :- [:map
-                                  [:archived {:optional true} [:maybe ms/BooleanValue]]
+                                  [:archived {:default false} [:maybe ms/BooleanValue]]
                                   [:user_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (let [user-id (if api/*is-superuser?*
                   user_id
@@ -52,9 +52,9 @@
 (api.macros/defendpoint :get "/question/:id"
   "Fetch all alerts for the given question (`Card`) id"
   [{:keys [id]} :- [:map
-                    [:id {:optional true} [:maybe ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
    {:keys [archived]} :- [:map
-                          [:archived {:optional true} [:maybe ms/BooleanValue]]]]
+                          [:archived {:default false} [:maybe ms/BooleanValue]]]]
   (-> (if api/*is-superuser?*
         (models.pulse/retrieve-alerts-for-cards {:card-ids [id], :archived? archived})
         (models.pulse/retrieve-user-alerts-for-card {:card-id id, :user-id api/*current-user-id*, :archived?  archived}))

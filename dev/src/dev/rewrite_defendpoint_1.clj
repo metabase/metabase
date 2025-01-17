@@ -6,6 +6,7 @@
    [metabase.util.files :as u.files]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
    [rewrite-clj.zip :as z]))
@@ -92,10 +93,15 @@
                            (n/whitespace-node (str/join (repeat (- (+ max-key-length 2)
                                                                    (count (str (keyword k))))
                                                                 \space)))]
+                          ;; optional
                           (when (and (= (n/tag schema) :vector)
                                      (= (n/sexpr (first (n/children schema))) :maybe))
                             [(n/map-node
-                              [(n/keyword-node :optional) (n/whitespace-node " ") (n/token-node true)])
+                              ;; apparently the old behavior for booleans coerced `nil`, to `false`, so let's replicate
+                              ;; that.
+                              (if (= (n/sexpr schema) [:maybe 'ms/BooleanValue])
+                                [(n/keyword-node :default) (n/whitespace-node " ") (n/token-node 'false)]
+                                [(n/keyword-node :optional) (n/whitespace-node " ") (n/token-node 'true)]))
                              (n/whitespace-node " ")])
                           [schema]))])))
            schema-map))))
@@ -153,6 +159,12 @@
   [{:keys [schema-map], :as parsed} :- ::parsed]
   (some-> schema-map
           (select-keys* (route-args-symbols parsed))
+          ;; route args cannot be optional so fix incorrect schemas if we see them.
+          (update-vals (fn [schema]
+                         (if (and (= (n/tag schema) :vector)
+                                  (= (first (n/sexpr schema)) :maybe))
+                           (z/node (-> (z/of-node schema) z/next z/next))
+                           schema)))
           schema-map->malli))
 
 (mu/defn- route-args-binding :- ::node
