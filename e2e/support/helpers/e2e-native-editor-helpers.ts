@@ -75,6 +75,12 @@ function nativeEditorType(
       case "{rightarrow}":
         return cy.realPress(["ArrowRight"]);
 
+      case "{downarrow}":
+        return cy.realPress(["ArrowDown"]);
+
+      case "{uparrow}":
+        return cy.realPress(["ArrowUp"]);
+
       case "{enter}":
         return cy.realPress(["Enter"]);
 
