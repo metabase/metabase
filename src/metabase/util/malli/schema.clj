@@ -15,6 +15,7 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]))
 
 (set! *warn-on-reflection* true)
@@ -175,7 +176,7 @@
   REST API at all? MBQL clauses are not things we should ask for as API parameters."
   (mu/with-api-error-message
    [:fn (fn [k]
-          ((comp (mc/validator mbql.s/Field)
+          ((comp (mr/validator mbql.s/Field)
                  mbql.normalize/normalize-tokens) k))]
    (deferred-tru "value must an array with :field id-or-name and an options map")))
 
@@ -396,7 +397,7 @@
   [item-schema]
   [:fn
    {:error/message (format "Collection of %s" item-schema)}
-   #(and (coll? %) (every? (partial mc/validate item-schema) %))])
+   #(and (coll? %) (every? (partial mr/validate item-schema) %))])
 
 (defn QueryVectorOf
   "Helper for creating a schema that coerces single-value to a vector. Useful for coercing query parameters."

@@ -46,7 +46,11 @@ import type {
 
 import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 import { TableSimple } from "../components/TableSimple";
-import type { ColumnSettingDefinition, VisualizationProps } from "../types";
+import type {
+  ColumnSettingDefinition,
+  ComputedVisualizationSettings,
+  VisualizationProps,
+} from "../types";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
@@ -87,7 +91,10 @@ class Table extends Component<TableProps, TableState> {
       title: t`Pivot table`,
       widget: "toggle",
       inline: true,
-      getHidden: ([{ data }]: Series) => data && data.cols.length !== 3,
+      getHidden: (
+        [{ data }]: Series,
+        settings: ComputedVisualizationSettings,
+      ) => data && data.cols.length !== 3 && !settings["table.pivot"],
       getDefault: ([{ card, data }]: Series) => {
         if (
           !data ||

@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.native :as lib-native]
    [metabase.query-analysis.native-query-analyzer.replacement :refer [replace-names]]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (defn- q
   "Make a native query from the concatenation of the args"
@@ -61,7 +60,7 @@
 
 (deftest referenced-card-test
   (testing "With a reference to a card"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Card {card-id :id} {:type          :model
                                   :dataset_query (mt/native-query {:query "SELECT total, tax FROM orders"})}]
       (is (= (format "SELECT subtotal FROM {{#%s}} LIMIT 3" card-id)
@@ -71,7 +70,7 @@
 
 (deftest snippet-test
   (testing "With a snippet"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/NativeQuerySnippet {snippet-id :id} {:name    "a lovely snippet"
                                                    :content "where subtotal > 10"}]
       (is (= "SELECT amount FROM purchases {{snippet: a lovely snippet}}"

@@ -23,6 +23,7 @@ const cards = [
 
 describe("dashboard card fetching", () => {
   beforeEach(() => {
+    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",

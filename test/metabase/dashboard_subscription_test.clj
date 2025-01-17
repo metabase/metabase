@@ -2,19 +2,20 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
-   [metabase.email.result-attachment :as email.result-attachment]
+   [metabase.channel.shared :as channel.shared]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -155,7 +156,7 @@
                                                          :model model}}})
         rasta-id              (mt/user->id :rasta)
         rasta-pc-id           (t2/select-one-fn :id :model/Collection :personal_owner_id rasta-id)]
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Collection    {coll-id :id}      {:name        "Linked collection name"
                                                 :description "Linked collection desc"
                                                 :location    (format "/%d/" rasta-pc-id)}
@@ -220,7 +221,10 @@
 ;;; |                                                     Tests                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def execute-dashboard (requiring-resolve 'metabase.notification.payload.execute/execute-dashboard))
+(defn execute-dashboard
+  [& args]
+  (let [dashboard-result (apply notification.payload.execute/execute-dashboard args)]
+    (map channel.shared/realize-data-rows dashboard-result)))
 
 (deftest ^:parallel execute-dashboard-test
   (testing "it runs for each non-virtual card"
@@ -359,10 +363,10 @@
 
     :fixture
     (fn [{dashboard-id :dashboard-id} thunk]
-      (t2.with-temp/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id
-                                                       :row 1
-                                                       :col 1
-                                                       :visualization_settings {:text "# header"}}]
+      (mt/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id
+                                             :row 1
+                                             :col 1
+                                             :visualization_settings {:text "# header"}}]
         (mt/with-temporary-setting-values [site-name "Metabase Test"]
           (thunk))))
 
@@ -403,10 +407,10 @@
 
     :fixture
     (fn [{dashboard-id :dashboard-id} thunk]
-      (t2.with-temp/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id
-                                                       :row 1
-                                                       :col 1
-                                                       :visualization_settings {:text "# header, quote isn't escaped" :virtual_card {:display "heading"}}}]
+      (mt/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id
+                                             :row 1
+                                             :col 1
+                                             :visualization_settings {:text "# header, quote isn't escaped" :virtual_card {:display "heading"}}}]
         (mt/with-temporary-setting-values [site-name "Metabase Test"]
           (thunk))))
 
@@ -594,10 +598,10 @@
 
       :fixture
       (fn [{dashboard-id :dashboard-id} thunk]
-        (t2.with-temp/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id
-                                                         :row 1
-                                                         :col 1
-                                                         :visualization_settings {:text "abcdefghijklmnopqrstuvwxyz"}}]
+        (mt/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id
+                                               :row 1
+                                               :col 1
+                                               :visualization_settings {:text "abcdefghijklmnopqrstuvwxyz"}}]
           (thunk)))
 
       :assert
@@ -624,17 +628,17 @@
 (deftest use-default-values-test
   (testing "Dashboard Subscriptions SHOULD use default values for Dashboard parameters when running (#20516)"
     (mt/dataset test-data
-      (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard} {:name       "20516 Dashboard"
-                                                                                   :parameters [{:name    "Category"
-                                                                                                 :slug    "category"
-                                                                                                 :id      "_MBQL_CATEGORY_"
-                                                                                                 :type    "category"
-                                                                                                 :default ["Doohickey"]}
-                                                                                                {:name    "SQL Category"
-                                                                                                 :slug    "sql_category"
-                                                                                                 :id      "_SQL_CATEGORY_"
-                                                                                                 :type    "category"
-                                                                                                 :default ["Gizmo"]}]}]
+      (mt/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard} {:name       "20516 Dashboard"
+                                                                         :parameters [{:name    "Category"
+                                                                                       :slug    "category"
+                                                                                       :id      "_MBQL_CATEGORY_"
+                                                                                       :type    "category"
+                                                                                       :default ["Doohickey"]}
+                                                                                      {:name    "SQL Category"
+                                                                                       :slug    "sql_category"
+                                                                                       :id      "_SQL_CATEGORY_"
+                                                                                       :type    "category"
+                                                                                       :default ["Gizmo"]}]}]
         (testing "MBQL query"
           (mt/with-temp [:model/Card {mbql-card-id :id} {:name          "Orders"
                                                          :dataset_query (mt/mbql-query products
@@ -710,7 +714,7 @@
 
 (deftest actions-are-skipped-test
   (testing "Actions should be filtered out"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Dashboard     {dashboard-id :id
                              :as dashboard}   {:name "Dashboard"}
        :model/DashboardCard _                 {:dashboard_id           dashboard-id
@@ -728,7 +732,7 @@
               (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))
 
   (testing "Link cards are returned and info should be newly fetched"
-    (t2.with-temp/with-temp [:model/Dashboard dashboard {:name "Test Dashboard"}]
+    (mt/with-temp [:model/Dashboard dashboard {:name "Test Dashboard"}]
       (with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
                                                                collection-id
                                                                database-id
@@ -761,7 +765,7 @@
 
 (deftest iframe-cards-are-skipped-test
   (testing "iframe cards should be filtered out"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Dashboard     {dashboard-id :id
                              :as dashboard}   {:name "Dashboard"}
        :model/DashboardCard _                 {:dashboard_id           dashboard-id
@@ -779,7 +783,7 @@
               (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))
 
   (testing "Link cards are returned and info should be newly fetched"
-    (t2.with-temp/with-temp [:model/Dashboard dashboard {:name "Test Dashboard"}]
+    (mt/with-temp [:model/Dashboard dashboard {:name "Test Dashboard"}]
       (with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
                                                                collection-id
                                                                database-id
@@ -812,7 +816,7 @@
                     (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil)))))))))
 
 (deftest execute-dashboard-with-tabs-test
-  (t2.with-temp/with-temp
+  (mt/with-temp
     [:model/Dashboard           {dashboard-id :id
                                  :as dashboard}   {:name "Dashboard"}
      :model/DashboardTab {tab-id-2 :id}    {:name         "The second tab"
@@ -848,7 +852,7 @@
 
 (deftest execute-dashboard-with-empty-tabs-test
   (testing "Dashboard with one tab."
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Dashboard           {dashboard-id :id
                                    :as          dashboard}   {:name "Dashboard"}
        :model/DashboardTab {}                {:name         "The second tab"
@@ -870,7 +874,7 @@
                 {:text "Card 2 tab-1", :type :text}]
                (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil))))))
   (testing "Dashboard with multiple tabs"
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Dashboard           {dashboard-id :id
                                    :as          dashboard}   {:name "Dashboard"}
        :model/DashboardTab {}                {:name         "The second tab"
@@ -902,7 +906,7 @@
     :fixture
     (fn [{dashboard-id :dashboard-id} thunk]
       (mt/with-temporary-setting-values [site-name "Metabase Test"]
-        (t2.with-temp/with-temp
+        (mt/with-temp
           [:model/DashboardTab {tab-id-2 :id}    {:name         "The second tab"
                                                   :position     1
                                                   :dashboard_id dashboard-id}
@@ -974,15 +978,16 @@
                (pulse.test-util/thunk->boolean pulse-results))))}}))
 
 (defn- result-attachment
-  [{{{:keys [rows]} :data, :as result} :result}]
-  (when (seq rows)
-    [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
-       (with-open [os baos]
-         (#'email.result-attachment/stream-api-results-to-export-format os {:export-format :csv :format-rows? true} result)
-         (let [output-string (.toString baos "UTF-8")]
-           {:type         :attachment
-            :content-type :csv
-            :content      output-string})))]))
+  [part]
+  (let [{{{:keys [rows]} :data, :as result} :result} (channel.shared/realize-data-rows part)]
+    (when (seq rows)
+      [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
+         (with-open [os baos]
+           (#'email.result-attachment/stream-api-results-to-export-format os {:export-format :csv :format-rows? true} result)
+           (let [output-string (.toString baos "UTF-8")]
+             {:type         :attachment
+              :content-type :csv
+              :content      output-string})))])))
 
 (defn- metadata->field-ref
   [{:keys [name field_ref]} enabled?]

@@ -13,8 +13,8 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.query-metadata :as api.query-metadata]
+   [metabase.channel.email.messages :as messages]
    [metabase.db.query :as mdb.query]
-   [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -44,7 +44,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
-   [metabase.related :as related]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -53,7 +52,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.xrays :as xrays]
+   [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
@@ -68,6 +67,7 @@
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint ^:deprecated GET "/"
   "This endpoint is currently unused by the Metabase frontend and may be out of date with the rest of the application.
   It only exists for backwards compatibility and may be removed in the future.
@@ -114,6 +114,7 @@
                   [:moderation_reviews :moderator_details]
                   [:collection :is_personal :effective_location]))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Create a new Dashboard."
   [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
@@ -443,6 +444,7 @@
                                                series)))))))
           dashcards)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
   [from-dashboard-id :as {{:keys [name description collection_id collection_position
@@ -497,6 +499,7 @@
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Get Dashboard with ID."
   [id :as {{dashboard-load-id "dashboard_load_id"} :query-params}]
@@ -506,6 +509,7 @@
       (u/prog1 (first (last-edit/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/items"
   "Get Dashboard with ID."
   [id]
@@ -558,6 +562,7 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:id"
   "Hard delete a Dashboard. To soft delete, use `PUT /api/dashboard/:id`
 
@@ -945,6 +950,7 @@
    [:dashcards               {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]]
    [:tabs                    {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]]])
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
   structure as the response from `GET /api/dashboard/:id`."
@@ -953,6 +959,7 @@
    dash-updates DashUpdates}
   (update-dashboard id dash-updates))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id/cards"
   "(DEPRECATED -- Use the `PUT /api/dashboard/:id` endpoint instead.)
    Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
@@ -980,6 +987,7 @@
     {:cards (:dashcards dashboard)
      :tabs  (:tabs dashboard)}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."
   [id]
@@ -987,6 +995,7 @@
   (api/read-check :model/Dashboard id)
   (revision/revisions+details :model/Dashboard id))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:id/revert"
   "Revert a Dashboard to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
@@ -999,6 +1008,7 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
   [id :as {{dashboard-load-id "dashboard_load_id"} :query-params}]
@@ -1010,6 +1020,7 @@
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:dashboard-id/public_link"
   "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
@@ -1025,6 +1036,7 @@
                            {:public_uuid       <>
                             :made_public_by_id api/*current-user-id*})))})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [dashboard-id]
@@ -1037,6 +1049,7 @@
                :made_public_by_id nil})
   {:status 204, :body nil})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/public"
   "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
   enabled."
@@ -1045,6 +1058,7 @@
   (validation/check-public-sharing-enabled)
   (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/embeddable"
   "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
   endpoints and a signed JWT."
@@ -1053,14 +1067,16 @@
   (validation/check-embedding-enabled)
   (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
   {id ms/PositiveInt}
-  (-> (t2/select-one :model/Dashboard :id id) api/read-check related/related))
+  (-> (t2/select-one :model/Dashboard :id id) api/read-check xrays/related))
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/save/collection/:parent-collection-id"
   "Save a denormalized description of dashboard into collection with ID `:parent-collection-id`."
   [parent-collection-id :as {dashboard :body}]
@@ -1070,6 +1086,7 @@
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/save"
   "Save a denormalized description of dashboard."
   [:as {dashboard :body}]
@@ -1229,6 +1246,7 @@
       query
       (fn [] (chain-filter dashboard param-key constraint-param-key->value query))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
   restrict these values by passing query parameters like `other-parameter=value` e.g.
@@ -1242,6 +1260,7 @@
     (binding [qp.perms/*param-values-query* true]
       (param-values dashboard param-key constraint-param-key->value))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
   these values by passing query parameters like `other-parameter=value` e.g.
@@ -1259,6 +1278,7 @@
     (binding [qp.perms/*param-values-query* true]
       (param-values dashboard param-key constraint-param-key->value query))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
   parameters) and a set of `filtering` Field IDs that will be used to restrict values of `filtered` Fields, for each
@@ -1301,6 +1321,7 @@
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [dashboard-id dashcard-id parameters]
@@ -1312,6 +1333,7 @@
    (api/check-404 (action/dashcard->action dashcard-id))
    (json/decode parameters)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
@@ -1327,6 +1349,7 @@
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
   [dashboard-id dashcard-id card-id :as {{:keys [dashboard_load_id parameters], :as body} :body}]
@@ -1344,6 +1367,7 @@
                          :dashcard-id  dashcard-id}))
       (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
   its results as a file in the specified format.
@@ -1378,6 +1402,7 @@
                               :pivot?                 (or pivot_results false)
                               :js-int-to-string?      false}})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]

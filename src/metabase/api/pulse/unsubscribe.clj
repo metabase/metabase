@@ -4,8 +4,8 @@
   (:require
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
+   [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
-   [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.models.pulse :as models.pulse]
    [metabase.request.core :as request]
@@ -26,6 +26,7 @@
                     {:type        type
                      :status-code 400}))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/"
   "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
   [:as {{:keys [email hash pulse-id]} :body, :as request}]
@@ -44,6 +45,7 @@
       (events/publish-event! :event/subscription-unsubscribe {:object {:email email}})
       {:status :success :title (:name (models.pulse/retrieve-notification pulse-id :archived false))})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
   [:as {{:keys [email hash pulse-id]} :body, :as request}]

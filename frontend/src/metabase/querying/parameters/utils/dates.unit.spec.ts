@@ -1,13 +1,16 @@
 import type { DateFilterValue } from "metabase/querying/filters/types";
 
-import { deserializeDateFilter, serializeDateFilter } from "./dates";
+import {
+  deserializeDateParameterValue,
+  serializeDateParameterValue,
+} from "./dates";
 
 type TestCase = {
   text: string;
   value: DateFilterValue;
 };
 
-describe("serializeDateFilter", () => {
+describe("serializeDateParameterValue", () => {
   it.each<TestCase>([
     {
       text: "2020-01-02",
@@ -264,9 +267,25 @@ describe("serializeDateFilter", () => {
         month: 12,
       },
     },
+    {
+      text: "Q1-2020",
+      value: {
+        type: "quarter",
+        year: 2020,
+        quarter: 1,
+      },
+    },
+    {
+      text: "Q4-2020",
+      value: {
+        type: "quarter",
+        year: 2020,
+        quarter: 4,
+      },
+    },
   ])("should serialize and deserialize $text", ({ text, value }) => {
-    expect(serializeDateFilter(value)).toEqual(text);
-    expect(deserializeDateFilter(text)).toEqual(value);
+    expect(serializeDateParameterValue(value)).toEqual(text);
+    expect(deserializeDateParameterValue(text)).toEqual(value);
   });
 
   it.each<string>([
@@ -289,7 +308,8 @@ describe("serializeDateFilter", () => {
     "exclude-quarters-5",
     "exclude-quarters-abc",
     "2024-ab",
+    "Q5-2020",
   ])("should ignore invalid input %s", text => {
-    expect(deserializeDateFilter(text)).toBeUndefined();
+    expect(deserializeDateParameterValue(text)).toBeUndefined();
   });
 });

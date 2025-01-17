@@ -12,12 +12,12 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    cy.createDashboard(
-      {
-        name: "Embedding SDK Test Dashboard",
-      },
-      { wrapId: true },
-    );
+    cy.createDashboard({
+      name: "Embedding SDK Test Dashboard",
+    }).then(({ body: dashboard }) => {
+      cy.wrap(dashboard.id).as("dashboardId");
+      cy.wrap(dashboard.entity_id).as("dashboardEntityId");
+    });
 
     cy.signOut();
 
@@ -44,5 +44,66 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
     cy.findByRole("heading", { name: "Info" }).should("not.exist");
     cy.findByRole("tab", { name: "Overview" }).should("not.exist");
     cy.findByRole("tab", { name: "History" }).should("not.exist");
+  });
+
+  describe("loading behavior for both entity IDs and number IDs (metabase#49581)", () => {
+    const successTestCases = [
+      {
+        name: "correct entity ID",
+        dashboardIdAlias: "@dashboardEntityId",
+      },
+      {
+        name: "correct number ID",
+        dashboardIdAlias: "@dashboardId",
+      },
+    ];
+
+    const failureTestCases = [
+      {
+        name: "wrong entity ID",
+        dashboardId: "VFCGVYPVtLzCtt4teeoW4",
+      },
+      {
+        name: "one too many entity ID character",
+        dashboardId: "VFCGVYPVtLzCtt4teeoW49",
+      },
+      {
+        name: "wrong number ID",
+        dashboardId: 9999,
+      },
+    ];
+
+    successTestCases.forEach(({ name, dashboardIdAlias }) => {
+      it(`should load dashboard content for ${name}`, () => {
+        cy.get(dashboardIdAlias).then(dashboardId => {
+          mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+        });
+
+        getSdkRoot().within(() => {
+          cy.findByDisplayValue("Embedding SDK Test Dashboard").should(
+            "be.visible",
+          );
+          cy.findByText("This dashboard is looking empty.").should(
+            "be.visible",
+          );
+        });
+      });
+    });
+
+    failureTestCases.forEach(({ name, dashboardId }) => {
+      it(`should show an error message for ${name}`, () => {
+        mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+
+        getSdkRoot().within(() => {
+          const expectedErrorMessage = `Dashboard ${dashboardId} not found. Make sure you pass the correct ID.`;
+          cy.findByRole("alert").should("have.text", expectedErrorMessage);
+
+          cy.findByDisplayValue("Embedding SDK Test Dashboard").should(
+            "not.exist",
+          );
+          cy.findByText("This dashboard is looking empty.").should("not.exist");
+        });
+      });
+    });
   });
 });

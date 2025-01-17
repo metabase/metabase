@@ -6,11 +6,10 @@
    [metabase.models.timeline-event :as timeline-event]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (deftest timelines-for-collection-test
-  (t2.with-temp/with-temp [:model/Collection collection {:name "Rasta's Collection"}]
+  (mt/with-temp [:model/Collection collection {:name "Rasta's Collection"}]
     (let [coll-id  (u/the-id collection)
           event-names (fn [timelines]
                         (into #{} (comp (mapcat :events) (map :name)) timelines))]

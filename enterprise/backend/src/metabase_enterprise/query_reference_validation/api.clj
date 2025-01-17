@@ -98,6 +98,7 @@
            {:limit (request/limit)
             :offset (request/offset)})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/invalid-cards"
   "List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an
   `errors` key. Supports pagination (`offset` and `limit`), so it returns something in the shape:
