@@ -65,6 +65,10 @@
                                :model/LoginHistory _ {:user_id   user-id
                                                       :device_id device
                                                       :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]
+                  (session/maybe-send-login-from-new-device-email {:user_id user-id,
+                                                                   :device_id device,
+                                                                   :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]",
+                                                                   :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"})
 
                   (is (malli= [:map-of [:= email]
                                [:sequential
