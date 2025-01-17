@@ -147,10 +147,10 @@
               last-gdrive-conn-sync :last-sync-at
               :as _gdrive-conn} (get-gdrive-connection)]
       (let [last-dwh-sync (t2/select-one-fn :ended_at :model/TaskHistory
-                                                :db_id (:id (t2/select-one :model/Database :is_attached_dwh true))
-                                                :task "sync"
-                                                :status :success
-                                                {:order-by [[:ended_at :desc]]})]
+                                            :db_id (:id (t2/select-one :model/Database :is_attached_dwh true))
+                                            :task "sync"
+                                            :status :success
+                                            {:order-by [[:ended_at :desc]]})]
         (-> (if (and (= status "active") ;; HM says the connection is active
                      last-dwh-sync ;; make sure it's not nil
                      last-gdrive-conn-sync ;; make sure it's not nil
@@ -255,6 +255,4 @@
                                 (str "/api/v2/mb/connections/" id)))
       (gsheets! gsheets-not-connected)
       [(:body (second (hm.client/make-request (->config) :get "/api/v2/mb/connections")))
-       (gsheets)]))
-
-  )
+       (gsheets)])))

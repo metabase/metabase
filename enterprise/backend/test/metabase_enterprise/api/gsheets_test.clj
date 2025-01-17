@@ -3,10 +3,8 @@
             [metabase-enterprise.gsheets :as gsheets.api]
             [metabase.test.util :as tu]))
 
-(deftest validate-link-format-test)
-
 (deftest ->config-good-test
-  (testing "Both are there"
+  (testing "Both needed values are present and pulled from settings"
     (tu/with-temporary-setting-values
       [api-key "mb_api_key_123"
        store-api-url "http://store-api-url.com"]
@@ -30,23 +28,3 @@
          Exception
          #"Missing api-key."
          (#'gsheets.api/->config)))))
-
-(deftest service-account-not-setup?-test
-  (let [*hm-call-count (atom 0)]
-    (with-redefs [gsheets.api/hm-service-account-setup? (fn [] (swap! *hm-call-count inc) false)]
-      (tu/with-temporary-setting-values
-        [store-api-url "http://store-api-url"
-         api-key "mb_api_key_123"]
-        (is (false? (#'gsheets.api/hm-service-account-setup?)))
-        (is (= 1 @*hm-call-count))))))
-
-(deftest service-account-is-setup?-test
-  (let [*hm-call-count (atom 0)]
-    (with-redefs [gsheets.api/hm-service-account-setup? (fn [] (swap! *hm-call-count inc) true)]
-      (tu/with-temporary-setting-values
-        [store-api-url "http://store-api-url"
-         api-key "mb_api_key_123"]
-        (is (true? (#'gsheets.api/hm-service-account-setup?)))
-        (is (= 1 @*hm-call-count))
-        (is (true? (#'gsheets.api/hm-service-account-setup?)))
-        (is (= 2 @*hm-call-count))))))
