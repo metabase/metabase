@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { SidesheetCard } from "metabase/common/components/Sidesheet";
-import { Box, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { ModelUsageDetails } from "./ModelUsageDetails";
-import { QuestionSourceTables } from "./QuestionSourceTables";
+import { TablesLinkedToQuestion } from "./TablesLinkedToQuestion";
 
 export const QuestionRelationshipsTab = ({
   question,
@@ -17,12 +17,12 @@ export const QuestionRelationshipsTab = ({
   return (
     <Stack spacing="lg">
       {isModel && (
-        <SidesheetCard title={<Box pb="sm">{t`Used by`}</Box>}>
+        <SidesheetCard title={t`Used by`}>
           <ModelUsageDetails model={question} />
         </SidesheetCard>
       )}
-      <SidesheetCard title={t`Parent tables`}>
-        <QuestionSourceTables />
+      <SidesheetCard title={t`Linked tables`}>
+        <TablesLinkedToQuestion question={question} />
       </SidesheetCard>
     </Stack>
   );
