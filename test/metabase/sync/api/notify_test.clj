@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.api.notify-test
+(ns ^:mb/driver-tests metabase.sync.api.notify-test
   (:require
    [clj-http.client :as http]
    [clojure.java.jdbc :as jdbc]
@@ -9,7 +9,7 @@
    [metabase.models.database :as database]
    [metabase.request.core :as request]
    [metabase.server.middleware.auth :as mw.auth]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

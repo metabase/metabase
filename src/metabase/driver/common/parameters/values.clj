@@ -167,9 +167,13 @@
       ;; so that this filter can be substituted with "1 = 1" regardless of whether or not this tag has default value
       (and (not (:required tag)) nil-value?)
       params/no-value
-      ;; When a FieldFilter has value=nil and is required, throw an exception
+      ;; When a FieldFilter has value=nil and is required, use the default value or throw an exception
       (and (:required tag) nil-value?)
-      (throw (missing-required-param-exception (:display-name tag)))
+      (if-let [tag-default (:default tag)]
+        (cond-> {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
+                 :value   tag-default}
+          tag-opts (assoc :options tag-opts))
+        (throw (missing-required-param-exception (:display-name tag))))
       ;; otherwise, attempt to fall back to the default value specified as part of the template tag.
       (some? (:default tag))
       (cond-> {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
@@ -264,8 +268,6 @@
     ;; If the param is not present in `params` use a default from either the tag or the Dashboard parameter.
     ;; If both the tag and Dashboard parameter specify a default value, prefer the default value from the tag.
     (or (:value matching-param)
-        (when (and nil-value? (:required tag))
-          (throw (missing-required-param-exception (:display-name tag))))
         (when (and nil-value? (not (:required tag)))
           params/no-value)
         (:default tag)

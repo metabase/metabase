@@ -45,12 +45,16 @@
   ;;
   ;;    {[:field 1 nil] [:field 1 {:temporal-unit :day}]}
   ;;
-  ;; In causes where a Field is broken out more than once, prefer the bucketing used by the first breakout; accomplish
+  ;; In cases where a Field is broken out more than once, prefer the bucketing used by the first breakout; accomplish
   ;; this by reversing the sequence of matches below, meaning the first match will get merged into the map last,
   ;; overwriting later matches
   (let [unbucketed-ref->bucketed-ref (into {} (reverse (lib.util.match/match breakouts
                                                          [:field id-or-name opts]
-                                                         [[:field id-or-name (not-empty (dissoc opts :temporal-unit :binning))]
+                                                         [[:field id-or-name (not-empty (dissoc opts :temporal-unit :binning :original-temporal-unit))]
+                                                          &match]
+
+                                                         [:expression id-or-name opts]
+                                                         [[:expression id-or-name (not-empty (dissoc opts :temporal-unit :binning :original-temporal-unit))]
                                                           &match])))]
     ;; rewrite order-by clauses as needed...
     (-> (lib.util.match/replace-in query [:query :order-by]
@@ -65,13 +69,26 @@
             ;; if there is, replace it with the bucketed reference
             bucketed-reference
             ;; if there's not, again nothing to do.
+            &match)
+
+          ;; if order by is already bucketed, nothing to do
+          [:expression id-or-name (_ :guard (some-fn :temporal-unit :binning))]
+          &match
+
+          ;; if we run into an expression that wasn't matched by the last pattern, see if there's an unbucketed reference
+          ;; -> bucketed reference from earlier
+          :expression
+          (if-let [bucketed-reference (unbucketed-ref->bucketed-ref &match)]
+            ;; if there is, replace it with the bucketed reference
+            bucketed-reference
+            ;; if there's not, again nothing to do.
             &match))
         ;; now remove any duplicate order-by clauses we may have introduced, as those are illegal in MBQL 2000
         (update-in [:query :order-by] (comp vec distinct)))))
 
 (defn reconcile-breakout-and-order-by-bucketing
-  "Replace any unbucketed `:field` clauses (anything without `:temporal-unit` or `:bucketing` options) in the `order-by`
-  clause with corresponding bucketed clauses used for the same Field in the `breakout` clause.
+  "Replace any unbucketed `:field` or `:expression` clauses (anything without `:temporal-unit` or `:bucketing` options) in the `order-by`
+  clause with corresponding bucketed clauses used for the same Field/Expression in the `breakout` clause.
 
    {:query {:breakout [[:field 1 {:temporal-unit :day}]]
             :order-by [[:asc [:field 1 nil]]]}}
@@ -81,13 +98,24 @@
   [{{breakouts :breakout, order-bys :order-by} :query, :as query}]
   (if (or
        ;; if there's no breakouts bucketed by a datetime-field or binning-strategy...
-       (empty? (lib.util.match/match breakouts [:field _ (_ :guard (some-fn :temporal-unit :binning))]))
+       (empty? (lib.util.match/match breakouts
+                 [:field _ (_ :guard (some-fn :temporal-unit :binning))]
+                 &match
+
+                 [:expression _ (_ :guard (some-fn :temporal-unit :binning))]
+                 &match))
        ;; or if there's no order-bys that are *not* bucketed...
        (empty? (lib.util.match/match order-bys
                  [:field _ (_ :guard (some-fn :temporal-unit :binning))]
                  nil
 
+                 [:expression _ (_ :guard (some-fn :temporal-unit :binning))]
+                 nil
+
                  :field
+                 &match
+
+                 :expression
                  &match)))
     ;; return query as is
     query

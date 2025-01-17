@@ -176,7 +176,7 @@
 
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
   {:level      :warning
-   :max-length 180}
+   :max-length 150}
 
   ;; this is not enabled here, it is enabled below only for specific namespaces.
   :metabase/disallow-hardcoded-driver-names-in-tests
@@ -415,15 +415,12 @@
                                      metabase.server.streaming-response}
     metabase.setup                 #{metabase.setup.api
                                      metabase.setup.core}
-    metabase.sync                  #{metabase.sync
-                                     metabase.sync.analyze
-                                     metabase.sync.concurrent
-                                     metabase.sync.field-values
+    metabase.sync                  #{metabase.sync.api
+                                     metabase.sync.core
+                                     metabase.sync.init
+                                     ;; TODO -- see if we can expose the important parts in `metabase.sync.core`
                                      metabase.sync.schedules
-                                     metabase.sync.sync-metadata
-                                     metabase.sync.sync-metadata.fields
-                                     metabase.sync.sync-metadata.tables
-                                     metabase.sync.util}                                            ; TODO -- consolidate these into a real API namespace.
+                                     metabase.sync.util}
     metabase.task                  #{metabase.task
                                      metabase.task.bootstrap
                                      metabase.task.index-values
@@ -587,7 +584,6 @@
     metabase.api.logic-history                                    api.login-history
     metabase.api.metric                                           api.metric
     metabase.api.native-query-snippet                             api.native-query-snippet
-    metabase.api.notify                                           api.notify
     metabase.api.permission-graph                                 api.permission-graph
     metabase.api.permissions                                      api.permissions
     metabase.api.permissions-test-util                            perm-test-util
@@ -736,7 +732,6 @@
     metabase.sync.sync-metadata.fields.our-metadata               fields.our-metadata
     metabase.sync.util                                            sync-util
     metabase.sync.util-test                                       sync.util-test
-    metabase.task.sync-databases                                  task.sync-databases
     metabase.test                                                 mt
     metabase.test.data.dataset-definitions                        defs
     metabase.test.data.env.impl                                   tx.env.impl
