@@ -2,13 +2,15 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
+import { getUrl } from "metabase/querying/notebook/components/NotebookDataPicker/utils";
 import { Flex, Icon, Stack, Text } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { ToggleFullList } from "./ToggleFullList";
 import { useExpandableList } from "./hooks";
 import type { QuestionSource } from "./types";
-import { getJoinedTablesWithIcons } from "./utils";
+import { getIconPropsForSource } from "./utils";
 
 /** Displays tables linked to the question via a foreign-key relationship */
 export const TablesLinkedToQuestion = ({
@@ -16,10 +18,31 @@ export const TablesLinkedToQuestion = ({
 }: {
   question: Question;
 }) => {
-  const joinedTablesWithIcons: QuestionSource[] = useMemo(
-    () => getJoinedTablesWithIcons(question),
-    [question],
-  );
+  const joinedTablesWithIcons: QuestionSource[] = useMemo(() => {
+    const query = question?.query();
+
+    if (!query) {
+      return [];
+    }
+    const stageIndexes = Lib.stageIndexes(query);
+
+    const joinedTables = stageIndexes.flatMap(stageIndex => {
+      const joins = Lib.joins(query, stageIndex);
+
+      const joinedThings = joins.map(join => {
+        const thing = Lib.joinedThing(query, join);
+        const url = getUrl({ query, table: thing, stageIndex }) as string;
+        const { displayName } = Lib.displayInfo(query, stageIndex, thing);
+        return { name: displayName, href: url };
+      });
+      return joinedThings;
+    });
+
+    return joinedTables.map(source => ({
+      ...source,
+      iconProps: getIconPropsForSource(source),
+    }));
+  }, [question]);
 
   const { filtered, isExpanded, toggle } = useExpandableList(
     joinedTablesWithIcons,
