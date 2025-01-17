@@ -65,7 +65,6 @@ export function GSheetManagement() {
             serviceAccountEmail={serviceAccountEmail}
             folderUrl={folder_url}
           />
-
         ) : (
           <GoogleSheetsDisconnectModal
             onClose={() => setShowModal(false)}
@@ -108,18 +107,17 @@ function GoogleSheetsConnectModal({
 
   const onSave = async () => {
     setErrorMessage("");
-    const response = await saveFolderLink({
+    await saveFolderLink({
       url: folderLink.trim(),
     })
       .unwrap()
-      .catch(response => response);
-
-    if (response?.success) {
-      dispatch(reloadSettings());
-      onClose();
-    } else {
-      setErrorMessage(response?.data?.message ?? "Something went wrong");
-    }
+      .then(() => {
+        dispatch(reloadSettings());
+        onClose();
+      })
+      .catch(response => {
+        setErrorMessage(response?.data?.message ?? "Something went wrong");
+      });
   };
 
   return (
@@ -199,19 +197,17 @@ function GoogleSheetsDisconnectModal({
 
   const onDelete = async () => {
     setErrorMessage("");
-    const response = await deleteFolderLink()
+    await deleteFolderLink()
       .unwrap()
-      .catch(response => response);
-
-    if (response.success) {
-      dispatch(reloadSettings());
-      // if we're reconnecting, leave the modal open
-      if (!reconnect) {
-        onClose();
-      }
-    } else {
-      setErrorMessage(response?.data?.message ?? "Something went wrong");
-    }
+      .then(() => {
+        dispatch(reloadSettings());
+        if (!reconnect) {
+          onClose();
+        }
+      })
+      .catch(response => {
+        setErrorMessage(response?.data?.message ?? "Something went wrong");
+      });
   };
 
   return (
