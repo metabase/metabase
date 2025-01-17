@@ -529,6 +529,7 @@
                      dimensions)}
                    (select-keys candidate-bindings [(mt/id :people :latitude)]))))))))))
 
+;; TODO: Should this still be present?
 (deftest ^:parallel grounded-metrics-test
   (mt/dataset test-data
     (let [test-metrics [{:metric ["count"], :score 100, :metric-name "Count"}

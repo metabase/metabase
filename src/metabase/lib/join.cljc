@@ -315,7 +315,8 @@
 (defmethod join-clause-method :mbql/query
   [another-query]
   (-> {:lib/type :mbql/join
-       :stages   (:stages (lib.util/pipeline another-query))}
+       ;; TODO: Cleanup when done.
+       :stages   (:stages (lib.util/pipeline another-query) #_(lib/append-stage (lib.util/pipeline another-query)))}
       lib.options/ensure-uuid))
 
 ;;; TODO -- this probably ought to live in [[metabase.lib.stage]]
