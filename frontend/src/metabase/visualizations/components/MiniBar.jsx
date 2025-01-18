@@ -11,11 +11,20 @@ const BORDER_RADIUS = 3;
 
 const LABEL_MIN_WIDTH = 30;
 
+const resolveMax = (min, max, number_style) => {
+  // For pure percent columns with values within [0, 1] use 1 as top range of minibar
+  if (number_style === "percent" && min >= 0 && max <= 1) {
+    return 1;
+  }
+  return max;
+};
+
 const MiniBar = ({ value, extent: [min, max], options }) => {
   const hasNegative = min < 0;
   const isNegative = value < 0;
+  const resolvedMax = resolveMax(min, max, options["number_style"]);
   const barPercent =
-    (Math.abs(value) / Math.max(Math.abs(min), Math.abs(max))) * 100;
+    (Math.abs(value) / Math.max(Math.abs(min), Math.abs(resolvedMax))) * 100;
   const barColor = isNegative ? color("error") : color("brand");
 
   const barStyle = !hasNegative
