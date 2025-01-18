@@ -9,6 +9,8 @@ import {
   USER_GROUPS,
 } from "e2e/support/cypress_data";
 import {
+  createQuestion,
+  createQuestionAndDashboard,
   restore,
   snapshot,
   updateSetting,
@@ -246,7 +248,7 @@ describe("snapshots", () => {
     // dashboard 1: Orders in a dashboard
     const dashboardDetails = { name: "Orders in a dashboard" };
 
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
       cardDetails: { size_x: 16, size_y: 8 },
@@ -255,13 +257,13 @@ describe("snapshots", () => {
     });
 
     // question 2: Orders, Count
-    cy.createQuestion({
+    createQuestion({
       name: "Orders, Count",
       query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
     });
 
     // question 3: Orders, Count, Grouped by Created At (year)
-    cy.createQuestion({
+    createQuestion({
       name: "Orders, Count, Grouped by Created At (year)",
       query: {
         "source-table": ORDERS_ID,
@@ -274,7 +276,7 @@ describe("snapshots", () => {
 
   function createModels({ ORDERS_ID }) {
     // Model 1
-    cy.createQuestion({
+    createQuestion({
       name: "Orders Model",
       query: { "source-table": ORDERS_ID },
       type: "model",

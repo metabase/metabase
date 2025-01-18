@@ -5,6 +5,7 @@ import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createDashboard } from "e2e/support/helpers";
 
 const { admin } = USERS;
 
@@ -347,7 +348,7 @@ describe("scenarios > home > custom homepage", () => {
           description: "nested 2 levels",
           parent_id: body.id,
         }).then(({ body }) => {
-          cy.createDashboard({
+          createDashboard({
             name: "nested dash",
             collection_id: body.id,
           });

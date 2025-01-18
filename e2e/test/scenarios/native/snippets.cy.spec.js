@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { USER_GROUPS } from "e2e/support/cypress_data";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
@@ -98,7 +99,7 @@ describe("scenarios > question > snippets", () => {
       });
 
       // Create native question using snippet 1
-      cy.createNativeQuestion(
+      createNativeQuestion(
         {
           name: "15387",
           native: {

@@ -3,6 +3,7 @@ import { onlyOn } from "@cypress/skip-test";
 import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data.js";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
@@ -116,7 +117,7 @@ describe("collection permissions", () => {
 
                 it("should be able to archive/unarchive model", () => {
                   cy.skipOn(user === "nodata");
-                  cy.createNativeQuestion({
+                  createNativeQuestion({
                     name: "Model",
                     type: "model",
                     native: {

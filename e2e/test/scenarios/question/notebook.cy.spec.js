@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createNativeQuestion, createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -197,7 +198,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
     };
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 98 rows");
@@ -439,7 +440,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       display: "table",
     };
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
 
     H.filter();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -461,7 +462,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       display: "table",
     };
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
 
     H.filter();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -474,14 +475,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("should prompt to join with a model if the question is based on a model", () => {
     cy.intercept("GET", "/api/table/*/query_metadata").as("loadMetadata");
 
-    cy.createQuestion({
+    createQuestion({
       name: "Products model",
       query: { "source-table": PRODUCTS_ID },
       type: "model",
       display: "table",
     });
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Orders model",
         query: { "source-table": ORDERS_ID },
@@ -521,7 +522,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   // flaky test
   it.skip("should show an info popover when hovering over a field picker option for a saved question", () => {
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "question a",
       native: { query: "select 'foo' as a_column" },
     });
@@ -543,7 +544,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should allow to pick a saved question when there are models", () => {
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "Orders, Model",
       type: "model",
       native: { query: "SELECT * FROM ORDERS" },
@@ -760,7 +761,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         ],
       },
     };
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
     H.getNotebookStep("expression").within(() => {
       moveElement({ name: "E1", horizontal: 100, index: 1 });
@@ -788,7 +789,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should not crash notebook when metric is used as an aggregation and breakout is applied (metabase#40553)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -827,7 +828,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it.skip("should be possible to sort by metric (metabase#8283,metabase#42392)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "Revenue",
         description: "Sum of orders subtotal",
@@ -851,7 +852,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         },
       };
 
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      createQuestion(questionDetails, { visitQuestion: true });
 
       H.openNotebook();
 

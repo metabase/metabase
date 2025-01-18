@@ -1,4 +1,5 @@
 import { H } from "e2e/support";
+import { createNativeQuestionAndDashboard } from "e2e/support/helpers";
 
 describe("scenarios > dashboard > filters > SQL > management", () => {
   beforeEach(() => {
@@ -25,7 +26,7 @@ describe("scenarios > dashboard > filters > SQL > management", () => {
     };
 
     beforeEach(() => {
-      cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      createNativeQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id } }) => {
           H.visitDashboard(dashboard_id);
         },

@@ -1,4 +1,5 @@
 import { H } from "e2e/support";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 describe("scenarios > admin > troubleshooting > help", () => {
   beforeEach(() => {
@@ -264,7 +265,7 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
 
     describe("with the existing broken questions", () => {
       beforeEach(() => {
-        cy.createNativeQuestion(brokenQuestionDetails, {
+        createNativeQuestion(brokenQuestionDetails, {
           loadMetadata: true,
         });
 

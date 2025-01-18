@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
@@ -43,7 +44,7 @@ describe("scenarios > question > filter", () => {
   });
 
   it("'Between Dates' filter should behave consistently (metabase#12872)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "12872",
         query: {
@@ -119,7 +120,7 @@ describe("scenarios > question > filter", () => {
   it("should filter using Custom Expression from aggregated results (metabase#12839)", () => {
     const CE_NAME = "Simple Math";
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "12839",
         query: {
@@ -148,7 +149,7 @@ describe("scenarios > question > filter", () => {
   it("should not drop aggregated filters (metabase#11957)", () => {
     const AGGREGATED_FILTER = "Count is less than or equal to 20";
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "11957",
         query: {
@@ -221,7 +222,7 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should handle post-aggregation filter on questions with joined table (metabase#14811)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "14811",
         query: {
@@ -331,7 +332,7 @@ describe("scenarios > question > filter", () => {
 
   it("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
     cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
-    cy.createQuestion({
+    createQuestion({
       name: "14776",
       query: {
         "source-table": ORDERS_ID,

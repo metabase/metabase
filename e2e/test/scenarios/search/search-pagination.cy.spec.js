@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -59,7 +60,7 @@ describe("scenarios > search", () => {
 
 const generateQuestions = count => {
   _.range(count).map(i =>
-    cy.createQuestion({
+    createQuestion({
       name: `generated_question ${i}`,
       query: {
         "source-table": ORDERS_ID,

@@ -5,6 +5,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createDashboard, createQuestion } from "e2e/support/helpers";
 import {
   createMockActionParameter,
   createMockParameter,
@@ -148,11 +149,9 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   };
 
   function setupDashboard() {
-    cy.createDashboard(DASHBOARD_DETAILS).then(
-      ({ body: { id: dashboardId } }) => {
-        cy.wrap(dashboardId).as("dashboardId");
-      },
-    );
+    createDashboard(DASHBOARD_DETAILS).then(({ body: { id: dashboardId } }) => {
+      cy.wrap(dashboardId).as("dashboardId");
+    });
 
     cy.then(function () {
       H.updateDashboardCards({
@@ -192,7 +191,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion(MODEL_DETAILS, {
+    createQuestion(MODEL_DETAILS, {
       wrapId: true,
       idAlias: "modelId",
     });

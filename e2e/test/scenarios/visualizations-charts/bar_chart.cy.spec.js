@@ -1,6 +1,11 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createDashboardWithQuestions,
+  createQuestion,
+  createQuestionAndAddToDashboard,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -491,14 +496,14 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     };
 
-    cy.createDashboardWithQuestions({
+    createDashboardWithQuestions({
       dashboardName: "Split Test Dashboard",
       questions: [multiMetric],
     }).then(({ dashboard }) => {
-      cy.createQuestion(sumTotalByMonth, { wrapId: true }).then(() => {
+      createQuestion(sumTotalByMonth, { wrapId: true }).then(() => {
         cy.get("@questionId").then(questionId => {
           H.cypressWaitAll([
-            cy.createQuestionAndAddToDashboard(avgTotalByMonth, dashboard.id, {
+            createQuestionAndAddToDashboard(avgTotalByMonth, dashboard.id, {
               series: [
                 {
                   id: questionId,
@@ -510,7 +515,7 @@ describe("scenarios > visualizations > bar chart", () => {
                 "card.title": "Multi Series",
               },
             }),
-            cy.createQuestionAndAddToDashboard(breakoutQuestion, dashboard.id, {
+            createQuestionAndAddToDashboard(breakoutQuestion, dashboard.id, {
               col: 0,
               row: 9,
               size_x: 20,

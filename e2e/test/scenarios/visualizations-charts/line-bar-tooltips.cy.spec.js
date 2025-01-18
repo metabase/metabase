@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createDashboard, createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -1041,13 +1042,11 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 });
 
 function setup({ question, addedSeriesQuestion, cardSize }) {
-  return cy.createQuestion(question).then(({ body: { id: card1Id } }) => {
+  return createQuestion(question).then(({ body: { id: card1Id } }) => {
     if (addedSeriesQuestion) {
-      cy.createQuestion(addedSeriesQuestion).then(
-        ({ body: { id: card2Id } }) => {
-          return setupDashboard(card1Id, card2Id, cardSize);
-        },
-      );
+      createQuestion(addedSeriesQuestion).then(({ body: { id: card2Id } }) => {
+        return setupDashboard(card1Id, card2Id, cardSize);
+      });
     } else {
       return setupDashboard(card1Id, null, cardSize);
     }
@@ -1059,7 +1058,7 @@ function setupDashboard(
   addedSeriesCardId,
   cardSize = { x: 24, y: 12 },
 ) {
-  return cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+  return createDashboard().then(({ body: { id: dashboardId } }) => {
     return H.addOrUpdateDashboardCard({
       dashboard_id: dashboardId,
       card_id: cardId,

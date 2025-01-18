@@ -1,5 +1,13 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createDashboard,
+  createDashboardWithQuestions,
+  createNativeQuestionAndDashboard,
+  createQuestion,
+  createQuestionAndDashboard,
+  editDashboardCard,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -20,7 +28,7 @@ describe("scenarios > dashboard > title drill", () => {
         },
       };
 
-      cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      createNativeQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id }, questionId }) => {
           cy.wrap(questionId).as("questionId");
           H.visitDashboard(dashboard_id);
@@ -118,7 +126,7 @@ describe("scenarios > dashboard > title drill", () => {
 
       const dashboardDetails = { parameters: [filter] };
 
-      cy.createNativeQuestionAndDashboard({
+      createNativeQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -225,7 +233,7 @@ describe("scenarios > dashboard > title drill", () => {
       H.restore();
       cy.signInAsAdmin();
 
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: dashboardCard, questionId }) => {
           const { card_id, dashboard_id } = dashboardCard;
 
@@ -246,7 +254,7 @@ describe("scenarios > dashboard > title drill", () => {
             ],
           };
 
-          cy.editDashboardCard(dashboardCard, mapFiltersToCard);
+          editDashboardCard(dashboardCard, mapFiltersToCard);
 
           cy.intercept(
             "POST",
@@ -373,7 +381,7 @@ describe("scenarios > dashboard > title drill", () => {
       H.restore();
       cy.signInAsAdmin();
 
-      cy.createQuestion(questionDetails, {
+      createQuestion(questionDetails, {
         wrapId: true,
         idAlias: "questionId",
       });
@@ -385,13 +393,13 @@ describe("scenarios > dashboard > title drill", () => {
             "source-table": `card__${questionId}`,
           },
         };
-        cy.createQuestion(nestedQuestionDetails, {
+        createQuestion(nestedQuestionDetails, {
           wrapId: true,
           idAlias: "nestedQuestionId",
         });
       });
 
-      cy.createDashboard(dashboardDetails).then(
+      createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
           cy.wrap(dashboardId).as("dashboardId");
         },
@@ -444,7 +452,7 @@ describe("scenarios > dashboard > title drill", () => {
     });
 
     it("titles become actual HTML anchors on focus and on hover", () => {
-      cy.createDashboardWithQuestions({
+      createDashboardWithQuestions({
         dashboardName: "Dashboard with aggregated Q2",
         questions: [
           {

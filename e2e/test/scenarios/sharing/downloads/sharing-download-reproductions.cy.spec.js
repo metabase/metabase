@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createNativeQuestion, createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -14,7 +15,7 @@ describe("issue 10803", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "10803",
         native: {
@@ -84,17 +85,15 @@ describe.skip("issue 18219", () => {
 
   testCases.forEach(fileType => {
     it("should format temporal units on export (metabase#18219)", () => {
-      cy.createQuestion(questionDetails).then(
-        ({ body: { id: questionId } }) => {
-          H.visitQuestion(questionId);
+      createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+        H.visitQuestion(questionId);
 
-          cy.findByText("Created At: Year");
-          cy.findByText("2022");
-          cy.findByText("744");
+        cy.findByText("Created At: Year");
+        cy.findByText("2022");
+        cy.findByText("744");
 
-          H.downloadAndAssert({ fileType, questionId, raw: true }, assertion);
-        },
-      );
+        H.downloadAndAssert({ fileType, questionId, raw: true }, assertion);
+      });
     });
 
     function assertion(sheet) {
@@ -266,7 +265,7 @@ describe("issue 18440", () => {
     });
 
     it(`export should include a column with remapped values for ${fileType} for a saved question (metabase#18440-2)`, () => {
-      cy.createQuestion({ query }).then(({ body: { id } }) => {
+      createQuestion({ query }).then(({ body: { id } }) => {
         H.visitQuestion(id);
 
         cy.findByText("Product ID");
@@ -392,7 +391,7 @@ describe("issue 19889", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    createNativeQuestion(questionDetails, {
       loadMetadata: true,
       wrapId: true,
     });
@@ -477,7 +476,7 @@ describe("metabase#28834", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    createNativeQuestion(questionDetails, {
       loadMetadata: true,
       wrapId: true,
     });

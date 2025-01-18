@@ -103,8 +103,8 @@ export function interceptPromise(method, path) {
  * @param {Array.<Cypress.Chainable<any>>} commands - Cypress commands
  * @example
  * cypressWaitAll([
- *   cy.createQuestionAndAddToDashboard(firstQuery, 1),
- *   cy.createQuestionAndAddToDashboard(secondQuery, 1),
+ *   createQuestionAndAddToDashboard(firstQuery, 1),
+ *   createQuestionAndAddToDashboard(secondQuery, 1),
  * ]).then(() => {
  *   cy.visit(`/dashboard/1`);
  * });

@@ -5,6 +5,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
 
@@ -164,7 +165,7 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
-      cy.createNativeQuestion(
+      createNativeQuestion(
         {
           name: "Native Orders",
           native: {

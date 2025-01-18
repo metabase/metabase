@@ -2,6 +2,7 @@ import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { createNativeQuestion, createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -36,7 +37,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
   it("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
 
-    cy.createQuestion(
+    createQuestion(
       {
         name: "13112",
         query: {
@@ -94,11 +95,11 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       }
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
 
-      cy.createNativeQuestion({
+      createNativeQuestion({
         name: "15655",
         native: { query: "select * from people" },
       }).then(({ body: { id } }) => {
-        cy.createQuestion(
+        createQuestion(
           {
             name: "Count of 15655 by SOURCE",
             display: "bar",

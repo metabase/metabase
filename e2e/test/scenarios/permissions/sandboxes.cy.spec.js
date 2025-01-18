@@ -6,6 +6,7 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createNativeQuestion, createQuestion } from "e2e/support/helpers";
 
 const {
   ORDERS,
@@ -88,7 +89,7 @@ H.describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.createNativeQuestion({
+      createNativeQuestion({
         name: "sql param",
         native: {
           query: `select id,name,address,email from people where {{${TTAG_NAME}}}`,
@@ -292,7 +293,7 @@ H.describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.createNativeQuestion({
+      createNativeQuestion({
         name: "sql param in a dashboard",
         dashboard_id: ORDERS_DASHBOARD_ID,
         native: {
@@ -407,7 +408,7 @@ H.describeEE("formatting > sandboxes", () => {
         },
       });
 
-      cy.createQuestion({
+      createQuestion({
         name: QUESTION_NAME,
         query: {
           expressions: {
@@ -484,7 +485,7 @@ H.describeEE("formatting > sandboxes", () => {
         cy.log(
           "Create question based on steps in [#13641](https://github.com/metabase/metabase/issues/13641)",
         );
-        cy.createQuestion({
+        createQuestion({
           name: QUESTION_NAME,
           query: {
             aggregation: [["count"]],
@@ -563,7 +564,7 @@ H.describeEE("formatting > sandboxes", () => {
       cy.log(
         "Create question based on steps in https://github.com/metabase/metabase-enterprise/issues/535",
       );
-      cy.createQuestion({
+      createQuestion({
         name: QUESTION_NAME,
         query: {
           aggregation: [["count"]],
@@ -637,7 +638,7 @@ H.describeEE("formatting > sandboxes", () => {
        */
       it("should be able to sandbox using query builder saved questions", () => {
         cy.log("Create 'Orders'-based question using QB");
-        cy.createQuestion({
+        createQuestion({
           name: "520_Orders",
           query: {
             "source-table": ORDERS_ID,
@@ -654,7 +655,7 @@ H.describeEE("formatting > sandboxes", () => {
         });
 
         cy.log("Create 'Products'-based question using QB");
-        cy.createQuestion({
+        createQuestion({
           name: "520_Products",
           query: {
             "source-table": PRODUCTS_ID,
@@ -704,7 +705,7 @@ H.describeEE("formatting > sandboxes", () => {
         cy.intercept("POST", "/api/card/*/query").as("cardQuery");
         cy.intercept("PUT", "/api/card/*").as("questionUpdate");
 
-        cy.createNativeQuestion({
+        createNativeQuestion({
           name: "EE_520_Q1",
           native: {
             query:
@@ -730,7 +731,7 @@ H.describeEE("formatting > sandboxes", () => {
           });
         });
 
-        cy.createNativeQuestion({
+        createNativeQuestion({
           name: "EE_520_Q2",
           native: {
             query:
@@ -859,7 +860,7 @@ H.describeEE("formatting > sandboxes", () => {
           },
         });
 
-        cy.createQuestion({
+        createQuestion({
           name: QUESTION_NAME,
           query: {
             aggregation: [["count"]],
@@ -924,7 +925,7 @@ H.describeEE("formatting > sandboxes", () => {
       cy.intercept("GET", "/api/permissions/group").as("tablePermissions");
 
       // Question with differently-typed columns than the sandboxed table
-      cy.createNativeQuestion({
+      createNativeQuestion({
         name: QUESTION_NAME,
         native: { query: "SELECT CAST(ID AS VARCHAR) AS ID FROM ORDERS;" },
       });
@@ -1243,7 +1244,7 @@ H.describeEE("formatting > sandboxes", () => {
 });
 
 function createJoinedQuestion(name, { visitQuestion = false } = {}) {
-  return cy.createQuestion(
+  return createQuestion(
     {
       name,
 

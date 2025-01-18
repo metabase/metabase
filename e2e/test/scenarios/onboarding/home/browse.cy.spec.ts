@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
+import { createQuestion } from "e2e/support/helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -181,7 +182,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
       "Create several models - enough that we can see recently viewed models",
     );
     Array.from({ length: 10 }).forEach((_, i) => {
-      cy.createQuestion({
+      createQuestion({
         name: `Model ${i}`,
         query: {
           "source-table": PRODUCTS_ID,

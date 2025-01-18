@@ -5,6 +5,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createCollection } from "e2e/support/helpers";
 
 describe("issue 20911", () => {
   const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
@@ -121,7 +122,7 @@ H.describeEE("issue 30235", () => {
   it("should allow to turn to official collection after moving it from personal to root parent collection (metabase#30235)", () => {
     const COLLECTION_NAME = "C30235";
 
-    cy.createCollection({
+    createCollection({
       name: COLLECTION_NAME,
       parent_id: ADMIN_PERSONAL_COLLECTION_ID,
     }).then(({ body: { id } }) => {

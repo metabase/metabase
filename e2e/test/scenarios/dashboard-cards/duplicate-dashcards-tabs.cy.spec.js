@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createDashboard, createQuestion } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
   createMockParameter,
@@ -55,9 +56,9 @@ H.describeWithSnowplow("scenarios > dashboard cards > duplicate", () => {
     cy.signInAsAdmin();
     H.enableTracking();
 
-    cy.createQuestion(MAPPED_QUESTION_CREATE_INFO).then(
+    createQuestion(MAPPED_QUESTION_CREATE_INFO).then(
       ({ body: { id: mappedQuestionId } }) => {
-        cy.createDashboard(DASHBOARD_CREATE_INFO).then(
+        createDashboard(DASHBOARD_CREATE_INFO).then(
           ({ body: { id: dashboardId } }) => {
             cy.request("PUT", `/api/dashboard/${dashboardId}`, {
               dashcards: [createMappedDashcard(mappedQuestionId)],

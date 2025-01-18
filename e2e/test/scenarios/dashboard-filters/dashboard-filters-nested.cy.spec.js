@@ -1,5 +1,10 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createNativeQuestion,
+  createQuestion,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -22,7 +27,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
       sectionId: "string",
     };
 
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "18113 Source",
       native: {
         query: "select * from products limit 5",
@@ -41,7 +46,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
         parameters: [filter],
       };
 
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: nestedQuestion,
         dashboardDetails,
       }).then(({ body: { dashboard_id } }) => {
@@ -112,12 +117,12 @@ describe("scenarios > dashboard > filters > nested questions", () => {
       query: { "source-table": PRODUCTS_ID },
     };
 
-    cy.createQuestion(baseQuestion).then(({ body: { id: baseQuestionId } }) => {
+    createQuestion(baseQuestion).then(({ body: { id: baseQuestionId } }) => {
       const questionDetails = {
         query: { "source-table": `card__${baseQuestionId}` },
       };
 
-      cy.createQuestionAndDashboard({ questionDetails }).then(
+      createQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id } }) => {
           H.visitDashboard(dashboard_id);
         },

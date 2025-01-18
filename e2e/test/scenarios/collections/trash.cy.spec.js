@@ -7,6 +7,12 @@ import {
   ORDERS_QUESTION_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  archiveCollection,
+  archiveDashboard,
+  createCollection as createCollectionFn,
+  createDashboard as createDashboardFn,
+} from "e2e/support/helpers";
 
 describe("scenarios > collections > trash", () => {
   beforeEach(() => {
@@ -291,7 +297,7 @@ describe("scenarios > collections > trash", () => {
       .then(a => createCollection({ name: "Collection B", parent_id: a.id }));
 
     cy.get("@collectionA").then(collectionA => {
-      cy.archiveCollection(collectionA.id);
+      archiveCollection(collectionA.id);
     });
 
     cy.log("only shows restore in root trash collection");
@@ -664,7 +670,7 @@ describe("scenarios > collections > trash", () => {
         cy.button("Yes").click();
       });
 
-      cy.archiveCollection(collection.id);
+      archiveCollection(collection.id);
     });
 
     cy.signInAsNormalUser();
@@ -869,12 +875,11 @@ function toggleEllipsisMenuFor(item) {
 }
 
 function createCollection(collectionInfo, archive) {
-  return cy
-    .createCollection(collectionInfo)
+  return createCollectionFn(collectionInfo)
     .then(({ body: collection }) => {
       return Promise.all([
         collection,
-        archive && cy.archiveCollection(collection.id),
+        archive && archiveCollection(collection.id),
       ]);
     })
     .then(([collection]) => collection);
@@ -897,10 +902,9 @@ function createNativeQuestion(questionInfo, archive) {
 }
 
 function createDashboard(dashboardInfo, archive) {
-  return cy
-    .createDashboard(dashboardInfo)
+  return createDashboardFn(dashboardInfo)
     .then(({ body: dashboard }) =>
-      Promise.all([dashboard, archive && cy.archiveDashboard(dashboard.id)]),
+      Promise.all([dashboard, archive && archiveDashboard(dashboard.id)]),
     )
     .then(([dashboard]) => dashboard);
 }

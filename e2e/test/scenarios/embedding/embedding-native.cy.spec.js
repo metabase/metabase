@@ -1,4 +1,5 @@
 import { H } from "e2e/support";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 
@@ -23,7 +24,7 @@ describe("scenarios > embedding > native questions", () => {
         details.native["template-tags"][requiredTagName].required = true;
       }
 
-      cy.createNativeQuestion(details, {
+      createNativeQuestion(details, {
         wrapId: true,
         visitQuestion: true,
       });
@@ -196,7 +197,7 @@ describe("scenarios > embedding > native questions", () => {
 
   context("API", () => {
     beforeEach(() => {
-      cy.createNativeQuestion(questionDetails, {
+      createNativeQuestion(questionDetails, {
         wrapId: true,
       });
     });
@@ -374,7 +375,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetailsWithDefaults, {
+    createNativeQuestion(questionDetailsWithDefaults, {
       visitQuestion: true,
       wrapId: true,
     });

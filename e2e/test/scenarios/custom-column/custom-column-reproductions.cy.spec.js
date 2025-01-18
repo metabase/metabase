@@ -1,6 +1,10 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createQuestion,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
@@ -16,7 +20,7 @@ describe.skip("issue 12445", { tags: "@external" }, () => {
   it("should correctly apply substring for a custom column (metabase#12445)", () => {
     H.withDatabase(2, ({ PEOPLE, PEOPLE_ID }) => {
       cy.log("Create a question with `Source` column and abbreviated CC");
-      cy.createQuestion(
+      createQuestion(
         {
           name: "12445",
           query: {
@@ -193,7 +197,7 @@ describe("issue 14843", () => {
   });
 
   it("should correctly filter custom column by 'Not equal to' (metabase#14843)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
 
     H.filter({ mode: "notebook" });
@@ -232,7 +236,7 @@ describe("issue 18069", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails).then(({ body: { id: QUESTION_ID } }) => {
+    createQuestion(questionDetails).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
     });
   });
@@ -297,7 +301,7 @@ describe("issue 18747", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({ questionDetails }).then(
+    createQuestionAndDashboard({ questionDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           cards: [
@@ -360,7 +364,7 @@ describe("issue 18814", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should be able to use a custom column in aggregation for a nested query (metabase#18814)", () => {
@@ -458,7 +462,7 @@ describe("issue 19745", () => {
   };
 
   function updateQuestionAndSelectFilter(updateExpressions) {
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
         H.visitQuestion(card_id);
 
@@ -549,7 +553,7 @@ describe("issue 20229", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should display custom column regardless of how many columns are selected (metabase#20229)", () => {
@@ -590,7 +594,7 @@ describe("issue 21135", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
   });
 
@@ -663,7 +667,7 @@ describe("issue 23862", () => {
   });
 
   it("should group by a custom column and work in a nested question (metabase#23862)", () => {
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    createQuestion(questionDetails).then(({ body: { id } }) => {
       H.visitQuestionAdhoc(
         {
           dataset_query: {
@@ -753,9 +757,9 @@ describe.skip("issue 25189", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails).then(
+    createQuestion(questionDetails).then(
       ({ body: { id: baseQuestionId } }) => {
-        cy.createQuestion(
+        createQuestion(
           {
             name: "Nested 25189",
             query: { "source-table": `card__${baseQuestionId}` },
@@ -867,7 +871,7 @@ describe("issue 32032", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion({ query: QUERY }, { visitQuestion: true });
+    createQuestion({ query: QUERY }, { visitQuestion: true });
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 

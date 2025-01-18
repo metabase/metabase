@@ -7,6 +7,13 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  createNativeQuestion,
+  createNativeQuestionAndDashboard,
+  createQuestion,
+  createQuestionAndDashboard,
+  editDashboardCard,
+} from "e2e/support/helpers";
 
 const { admin } = USERS;
 const {
@@ -124,7 +131,7 @@ describe("issue 18352", { tags: "@external" }, () => {
 
     H.setupSMTP();
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+    createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
         H.visitQuestion(card_id);
 
@@ -196,9 +203,9 @@ H.describeEE("issue 18669", { tags: "@external" }, () => {
     H.setTokenFeatures("all");
     H.setupSMTP();
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: card }) => {
-        cy.editDashboardCard(card, getFilterMapping(card));
+        editDashboardCard(card, getFilterMapping(card));
         H.visitDashboard(card.dashboard_id);
       },
     );
@@ -229,7 +236,7 @@ H.describeEE("issue 18669", { tags: "@external" }, () => {
 
 describe("issue 20393", () => {
   function createDashboardWithNestedCard() {
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "Q1",
       native: { query: 'SELECT * FROM "ORDERS"', "template-tags": {} },
     }).then(({ body }) =>
@@ -381,7 +388,7 @@ describe("issue 22524", () => {
   });
 
   it("update dashboard cards when changing parameters on publicly shared dashboards (metabase#22524)", () => {
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+    createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { dashboard_id } }) => {
         cy.intercept("POST", `/api/dashboard/${dashboard_id}/public_link`).as(
           "publicLink",
@@ -492,11 +499,11 @@ H.describeEE("issue 24223", () => {
   });
 
   it("should clear default filter (metabase#24223)", () => {
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: dashboardCard }) => {
         const { card_id, dashboard_id } = dashboardCard;
 
-        cy.editDashboardCard(dashboardCard, mapFiltersToCard(card_id));
+        editDashboardCard(dashboardCard, mapFiltersToCard(card_id));
 
         H.visitDashboard(dashboard_id);
         cy.location("search").should("eq", "?category=Doohickey&title=Awesome");
@@ -579,7 +586,7 @@ describe("issue 25473", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           dashcards: [
@@ -649,7 +656,7 @@ H.describeEE("issue 26988", () => {
   });
 
   it("should apply embedding settings passed in URL on load", () => {
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails: {
         name: "Q1",
         query: {
@@ -936,7 +943,7 @@ describe("issue 17547", () => {
     cy.signInAsAdmin();
     H.mockSlackConfigured();
 
-    cy.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+    createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
       setUpAlert(questionId);
 
       H.visitQuestion(questionId);

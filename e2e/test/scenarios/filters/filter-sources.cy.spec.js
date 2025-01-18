@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createNativeQuestion, createQuestion } from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PRODUCTS, ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -346,7 +347,7 @@ describe("scenarios > filters > filter sources", () => {
 
   describe("nested structured questions", () => {
     it("column from a question", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestion(card), { mode: "notebook" });
       });
       H.filter({ mode: "notebook" });
@@ -362,7 +363,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an expression based on a question column", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithExpression(card), {
           mode: "notebook",
         });
@@ -380,7 +381,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an explicit join", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithJoin(card), {
           mode: "notebook",
         });
@@ -398,7 +399,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an explicit join with fields", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithJoinAndFields(card), {
           mode: "notebook",
         });
@@ -419,7 +420,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an implicit join with fields", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithJoinAndFields(card), {
           mode: "notebook",
         });
@@ -440,7 +441,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from a nested aggregation without column", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
         });
@@ -458,7 +459,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from a nested aggregation with column", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
         });
@@ -476,7 +477,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from a nested breakout", () => {
-      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+      createQuestion(structuredQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
         });
@@ -495,7 +496,7 @@ describe("scenarios > filters > filter sources", () => {
 
   describe("nested native questions", () => {
     it("column from a question", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestion(card), { mode: "notebook" });
       });
       H.filter({ mode: "notebook" });
@@ -511,7 +512,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an expression based on a question column", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithExpression(card), {
           mode: "notebook",
         });
@@ -529,7 +530,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an explicit join", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithJoin(card), {
           mode: "notebook",
         });
@@ -547,7 +548,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an explicit join with fields", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithJoinAndFields(card), {
           mode: "notebook",
         });
@@ -568,7 +569,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from an implicit join with fields", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithJoinAndFields(card), {
           mode: "notebook",
         });
@@ -589,7 +590,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from a nested aggregation without column", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
         });
@@ -607,7 +608,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from a nested aggregation with column", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
         });
@@ -625,7 +626,7 @@ describe("scenarios > filters > filter sources", () => {
     });
 
     it("column from a nested breakout", () => {
-      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+      createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         H.visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
         });

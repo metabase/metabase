@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
@@ -519,7 +520,7 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
   });
 
   it("should work with time columns", { tags: ["@external"] }, () => {
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: "11398",
         native: {

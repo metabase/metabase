@@ -5,6 +5,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createNativeQuestion, createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -104,7 +105,7 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to pin a pivot table", () => {
-    cy.createQuestion(PIVOT_QUESTION_DETAILS).then(({ body: { id } }) => {
+    createQuestion(PIVOT_QUESTION_DETAILS).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
     });
 
@@ -227,7 +228,7 @@ describe("scenarios > collection pinned items overview", () => {
 
   describe("native questions", () => {
     it("should automatically hide the visualization for pinned native questions with missing required parameters", () => {
-      cy.createNativeQuestion(SQL_QUESTION_DETAILS_REQUIRED_PARAMETER).then(
+      createNativeQuestion(SQL_QUESTION_DETAILS_REQUIRED_PARAMETER).then(
         ({ body: { id } }) => {
           cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
         },
@@ -243,7 +244,7 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     it("should apply default value of variable for pinned native questions (metabase#37831)", () => {
-      cy.createNativeQuestion(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE).then(
+      createNativeQuestion(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE).then(
         ({ body: { id } }) => {
           cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
         },

@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createQuestion } from "e2e/support/helpers";
 
 import { TIME_OPTIONS } from "./shared/constants";
 
@@ -25,7 +26,7 @@ describe("scenarios > binning > correctness > time series", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
 
     H.summarize();
 

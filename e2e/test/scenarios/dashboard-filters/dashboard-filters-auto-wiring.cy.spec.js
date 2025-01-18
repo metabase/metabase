@@ -4,6 +4,10 @@ import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  createDashboardWithQuestions,
+  createQuestion,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID, ORDERS, PEOPLE, PRODUCTS } =
   SAMPLE_DATABASE;
@@ -120,7 +124,7 @@ describe("dashboard filters auto-wiring", () => {
     });
 
     it("should not suggest to wire parameters to cards that don't have a matching field", () => {
-      cy.createQuestion({
+      createQuestion({
         name: "Products Table",
         query: { "source-table": PRODUCTS_ID, limit: 1 },
       }).then(({ body: { id: questionId } }) => {
@@ -454,7 +458,7 @@ describe("dashboard filters auto-wiring", () => {
         cy.spy().as("cardQueryRequest"),
       ).as("cardQuery");
 
-      cy.createQuestion({
+      createQuestion({
         name: "Products Question",
         query: { "source-table": PRODUCTS_ID, limit: 1 },
       }).then(({ body: { id } }) => {
@@ -471,14 +475,14 @@ describe("dashboard filters auto-wiring", () => {
         cy.wrap(id).as("productsQuestionId");
       });
 
-      cy.createQuestion({
+      createQuestion({
         name: "Orders Question",
         query: { "source-table": ORDERS_ID, limit: 1 },
       }).then(({ body: { id } }) => {
         cy.wrap(id).as("ordersQuestionId");
       });
 
-      cy.createQuestion({
+      createQuestion({
         name: "Reviews Question",
         query: { "source-table": REVIEWS_ID, limit: 1 },
       }).then(({ body: { id } }) => {
@@ -714,7 +718,7 @@ describe("dashboard filters auto-wiring", () => {
         ],
       },
     ];
-    cy.createDashboardWithQuestions({
+    createDashboardWithQuestions({
       dashboardDetails,
       questions: [questionDetails],
     }).then(({ dashboard, questions: [card] }) => {

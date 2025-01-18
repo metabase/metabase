@@ -1,5 +1,9 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createQuestionAndDashboard,
+  editDashboardCard,
+} from "e2e/support/helpers";
 
 const { ACCOUNTS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -28,7 +32,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
   describe("static list source (dropdown)", () => {
     it("should be able to use a static list source", () => {
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
@@ -48,11 +52,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        editDashboardCard(card, getParameterMapping(card));
         H.visitEmbeddedPage(getDashboardResource(card));
       });
 
@@ -61,11 +65,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        editDashboardCard(card, getParameterMapping(card));
         H.visitEmbeddedPage(getDashboardResource(card));
       });
 
@@ -74,11 +78,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        editDashboardCard(card, getParameterMapping(card));
         H.visitPublicDashboard(card.dashboard_id);
       });
 
@@ -89,7 +93,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
 
   describe("static list source (search)", () => {
     it("should be able to use a static list source (search)", () => {
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
@@ -109,11 +113,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard("search"),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        editDashboardCard(card, getParameterMapping(card));
         H.visitEmbeddedPage(getDashboardResource(card));
       });
 
@@ -122,11 +126,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails: targetQuestion,
         dashboardDetails: getListDashboard("search"),
       }).then(({ body: card }) => {
-        cy.editDashboardCard(card, getParameterMapping(card));
+        editDashboardCard(card, getParameterMapping(card));
         H.visitPublicDashboard(card.dashboard_id);
       });
 

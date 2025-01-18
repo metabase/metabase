@@ -1,6 +1,7 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createNativeQuestion, createQuestion } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -106,7 +107,7 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should handle duplicate column names in nested queries (metabase#10511)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         name: "10511",
         query: {
@@ -147,7 +148,7 @@ describe("scenarios > question > nested", () => {
     };
 
     cy.log("Create a metric with a filter");
-    cy.createQuestion(metric, {
+    createQuestion(metric, {
       wrapId: true,
       idAlias: "metricId",
     });
@@ -283,7 +284,7 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should be able to use aggregation functions on saved native question (metabase#15397)", () => {
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "15397",
       native: {
         query:
@@ -347,7 +348,7 @@ describe("scenarios > question > nested", () => {
     });
 
     function assertOnFilter({ name, filter, value } = {}) {
-      cy.createQuestion({
+      createQuestion({
         name,
         query: {
           "source-table": ORDERS_ID,
@@ -369,7 +370,7 @@ describe("scenarios > question > nested", () => {
   describe("should not remove user defined metric when summarizing based on saved question (metabase#15725)", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.createNativeQuestion({
+      createNativeQuestion({
         name: "15725",
         native: { query: "select 'A' as cat, 5 as val" },
       });
@@ -568,7 +569,7 @@ function createNestedQuestion(
       ...details,
     };
 
-    return cy.createQuestion(composite, {
+    return createQuestion(composite, {
       visitQuestion: visitNestedQuestion,
       wrapId: true,
       idAlias: "nestedQuestionId",
@@ -576,9 +577,7 @@ function createNestedQuestion(
   });
 
   function createBaseQuestion(query) {
-    return query.native
-      ? cy.createNativeQuestion(query)
-      : cy.createQuestion(query);
+    return query.native ? createNativeQuestion(query) : createQuestion(query);
   }
 }
 

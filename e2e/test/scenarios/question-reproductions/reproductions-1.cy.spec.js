@@ -2,6 +2,12 @@ import { H } from "e2e/support";
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  createNativeQuestion,
+  createQuestion,
+  createQuestionAndDashboard,
+  editDashboardCard,
+} from "e2e/support/helpers";
 
 import { setAdHocFilter } from "../native-filters/helpers/e2e-date-filter-helpers";
 
@@ -377,7 +383,7 @@ describe("issue 15876", { tags: "@external" }, () => {
   });
 
   it("should correctly cast to `TIME` (metabase#15876)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    createNativeQuestion(questionDetails, { visitQuestion: true });
 
     cy.findByTestId("query-visualization-root").within(() => {
       correctValues.forEach(({ value, rows }) => {
@@ -485,7 +491,7 @@ describe("issue 17514", () => {
 
   describe("scenario 1", () => {
     beforeEach(() => {
-      cy.createQuestionAndDashboard({
+      createQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: card }) => {
@@ -506,7 +512,7 @@ describe("issue 17514", () => {
           ],
         };
 
-        cy.editDashboardCard(card, mapFilterToCard);
+        editDashboardCard(card, mapFilterToCard);
 
         H.visitDashboard(dashboard_id);
 
@@ -554,7 +560,7 @@ describe("issue 17514", () => {
 
   describe("scenario 2", () => {
     beforeEach(() => {
-      cy.createQuestion(questionDetails, { visitQuestion: true });
+      createQuestion(questionDetails, { visitQuestion: true });
 
       H.openVizSettingsSidebar();
 
@@ -942,7 +948,7 @@ describe("issue 19341", () => {
     H.restore();
     H.mockSessionProperty("enable-nested-queries", false);
     cy.signInAsAdmin();
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: TEST_NATIVE_QUESTION_NAME,
       native: {
         query: "SELECT * FROM products",
@@ -1072,12 +1078,12 @@ describe("issue 19893", () => {
   });
 
   it.skip("should display correct join source table when joining visited questions (metabase#19893)", () => {
-    cy.createQuestion(QUESTION_1, {
+    createQuestion(QUESTION_1, {
       wrapId: true,
       idAlias: "questionId1",
       visitQuestion: true,
     });
-    cy.createQuestion(QUESTION_2, {
+    createQuestion(QUESTION_2, {
       wrapId: true,
       idAlias: "questionId2",
       visitQuestion: true,
@@ -1097,8 +1103,8 @@ describe("issue 19893", () => {
   });
 
   it.skip("should display correct join source table when joining non-visited questions (metabase#19893)", () => {
-    cy.createQuestion(QUESTION_1, { wrapId: true, idAlias: "questionId1" });
-    cy.createQuestion(QUESTION_2, { wrapId: true, idAlias: "questionId2" });
+    createQuestion(QUESTION_1, { wrapId: true, idAlias: "questionId1" });
+    createQuestion(QUESTION_2, { wrapId: true, idAlias: "questionId2" });
 
     cy.then(function () {
       const { questionId1, questionId2 } = this;
@@ -1115,7 +1121,7 @@ describe("issue 19893", () => {
 });
 
 const createQ1PlusQ2Question = (questionId1, questionId2) => {
-  return cy.createQuestion({
+  return createQuestion({
     name: "Q1 + Q2",
     query: {
       "source-table": `card__${questionId1}`,
@@ -1236,7 +1242,7 @@ describe("issue 20809", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    createQuestion(questionDetails).then(({ body: { id } }) => {
       const nestedQuestion = {
         dataset_query: {
           database: SAMPLE_DB_ID,

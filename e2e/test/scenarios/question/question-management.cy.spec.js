@@ -8,6 +8,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createCollection, createDashboard } from "e2e/support/helpers";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -194,8 +195,8 @@ describe(
                   const dashboardInRoot = {
                     name: "Dashboard in root collection",
                   };
-                  cy.createCollection(collectionInRoot);
-                  cy.createDashboard(dashboardInRoot);
+                  createCollection(collectionInRoot);
+                  createDashboard(dashboardInRoot);
                   cy.log(
                     "reload the page so the new collection is in the state",
                   );

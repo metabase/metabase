@@ -8,6 +8,8 @@ import {
   FIRST_COLLECTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createQuestion } from "e2e/support/helpers";
+
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("scenarios > collections > clean up", () => {
@@ -343,7 +345,7 @@ describe("scenarios > collections > clean up", () => {
         H.visitCollection(FIRST_COLLECTION_ID);
 
         // seed slightly stale content
-        cy.createQuestion({
+        createQuestion({
           name: "Not stale enough",
           collection_id: FIRST_COLLECTION_ID,
           query: { "source-table": STATIC_ORDERS_ID },
@@ -360,7 +362,7 @@ describe("scenarios > collections > clean up", () => {
         });
 
         // seed stale enough content
-        cy.createQuestion({
+        createQuestion({
           name: "Stale enough",
           collection_id: FIRST_COLLECTION_ID,
           query: { "source-table": STATIC_ORDERS_ID },

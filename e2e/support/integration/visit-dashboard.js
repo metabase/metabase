@@ -1,5 +1,12 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { addOrUpdateDashboardCard } from "e2e/support/helpers";
+import {
+  addOrUpdateDashboardCard,
+  createDashboard,
+  createNativeQuestion,
+  createNativeQuestionAndDashboard,
+  createQuestion,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 
 const { PEOPLE_ID, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -68,13 +75,13 @@ export function setup() {
 }
 
 function addEmptyDashboard(name, alias) {
-  return cy.createDashboard(name).then(({ body: { id } }) => {
+  return createDashboard(name).then(({ body: { id } }) => {
     cy.wrap(id).as(alias);
   });
 }
 
 function addMarkdownDashboard(name, alias) {
-  return cy.createDashboard(name).then(({ body: { id: dashboard_id } }) => {
+  return createDashboard(name).then(({ body: { id: dashboard_id } }) => {
     addOrUpdateDashboardCard({
       card_id: null,
       dashboard_id,
@@ -104,18 +111,16 @@ function addModelDashboard(name, alias) {
 }
 
 function addGuiDashboard(name, alias) {
-  return cy
-    .createQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails: { name },
-    })
-    .then(({ body: { dashboard_id } }) => {
-      cy.wrap(dashboard_id).as(alias);
-    });
+  return createQuestionAndDashboard({
+    questionDetails,
+    dashboardDetails: { name },
+  }).then(({ body: { dashboard_id } }) => {
+    cy.wrap(dashboard_id).as(alias);
+  });
 }
 
 function addNativeDashboard(name, alias) {
-  cy.createNativeQuestionAndDashboard({
+  createNativeQuestionAndDashboard({
     questionDetails: nativeQuestionDetails,
     dashboardDetails: { name },
   }).then(({ body: { dashboard_id } }) => {
@@ -124,7 +129,7 @@ function addNativeDashboard(name, alias) {
 }
 
 function addMultiDashboard(name, alias) {
-  return cy.createDashboard(name).then(({ body: { id: dashboard_id } }) => {
+  return createDashboard(name).then(({ body: { id: dashboard_id } }) => {
     addOrUpdateDashboardCard({
       card_id: null,
       dashboard_id,
@@ -138,7 +143,7 @@ function addMultiDashboard(name, alias) {
       },
     });
 
-    cy.createNativeQuestion(nativeQuestionDetails).then(
+    createNativeQuestion(nativeQuestionDetails).then(
       ({ body: { id: card_id } }) => {
         addOrUpdateDashboardCard({
           card_id,
@@ -148,7 +153,7 @@ function addMultiDashboard(name, alias) {
       },
     );
 
-    cy.createQuestion(modelDetails).then(({ body: { id: card_id } }) => {
+    createQuestion(modelDetails).then(({ body: { id: card_id } }) => {
       addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
@@ -156,7 +161,7 @@ function addMultiDashboard(name, alias) {
       });
     });
 
-    cy.createQuestion(questionDetails).then(({ body: { id: card_id } }) => {
+    createQuestion(questionDetails).then(({ body: { id: card_id } }) => {
       addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
@@ -164,7 +169,7 @@ function addMultiDashboard(name, alias) {
       });
     });
 
-    cy.createQuestion(pivotTable).then(({ body: { id: card_id } }) => {
+    createQuestion(pivotTable).then(({ body: { id: card_id } }) => {
       addOrUpdateDashboardCard({
         card_id,
         dashboard_id,

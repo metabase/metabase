@@ -7,7 +7,7 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { describeEE, getTextCardDetails } from "e2e/support/helpers";
+import { createDashboard, describeEE, getTextCardDetails } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -30,7 +30,7 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
       size_y: 8,
     };
 
-    cy.createDashboard({
+    createDashboard({
       name: "Orders in a dashboard",
       dashcards: [questionCard, textCard],
     }).then(({ body: dashboard }) => {

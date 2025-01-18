@@ -1,6 +1,10 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createQuestion,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 
 const {
   ORDERS,
@@ -61,7 +65,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       },
     };
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
 
     drillPK({ id: 1 });
 
@@ -150,7 +154,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   });
 
   it("handles browsing records by PKs", () => {
-    cy.createQuestion(TEST_QUESTION, { visitQuestion: true });
+    createQuestion(TEST_QUESTION, { visitQuestion: true });
     drillPK({ id: FIRST_ORDER_ID });
 
     assertOrderDetailView({ id: FIRST_ORDER_ID });
@@ -219,7 +223,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     const FILTERED_OUT_ID = 1;
 
-    cy.createQuestion(TEST_QUESTION).then(({ body: { id } }) => {
+    createQuestion(TEST_QUESTION).then(({ body: { id } }) => {
       cy.visit(`/question/${id}/${FILTERED_OUT_ID}`);
       cy.wait("@cardQuery");
       cy.findByRole("dialog").within(() => {
@@ -234,7 +238,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     // and has to be fetched separately
     const OUT_OF_RANGE_ID = 2150;
 
-    cy.createQuestion(TEST_PEOPLE_QUESTION).then(({ body: { id } }) => {
+    createQuestion(TEST_PEOPLE_QUESTION).then(({ body: { id } }) => {
       cy.visit(`/question/${id}/${OUT_OF_RANGE_ID}`);
       cy.wait("@cardQuery");
       cy.findByTestId("object-detail").within(() => {
@@ -511,7 +515,7 @@ describe("Object Detail > public", () => {
   });
 
   it("can view a public object detail question", () => {
-    cy.createQuestion({ ...TEST_QUESTION, display: "object" }).then(
+    createQuestion({ ...TEST_QUESTION, display: "object" }).then(
       ({ body: { id: questionId } }) => {
         H.visitPublicQuestion(questionId);
       },
@@ -529,7 +533,7 @@ describe("Object Detail > public", () => {
   });
 
   it("can view an object detail question on a public dashboard", () => {
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails: { ...TEST_QUESTION, display: "object" },
     }).then(({ body: { dashboard_id } }) => {
       H.visitPublicDashboard(dashboard_id);

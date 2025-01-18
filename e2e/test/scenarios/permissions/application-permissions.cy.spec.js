@@ -4,6 +4,10 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import {
+  createNativeQuestion,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -109,7 +113,7 @@ H.describeEE("scenarios > admin > permissions > application", () => {
           cy.button("Yes").click();
         });
 
-        cy.createNativeQuestion(
+        createNativeQuestion(
           {
             name: "broken_question",
             native: { query: "select * from broken_question" },
@@ -208,7 +212,7 @@ H.describeEE("scenarios > admin > permissions > application", () => {
 });
 
 function createSubscription(user_id) {
-  cy.createQuestionAndDashboard({
+  createQuestionAndDashboard({
     questionDetails: {
       name: "Test Question",
       query: {

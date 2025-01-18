@@ -1,6 +1,11 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createNativeQuestion,
+  createQuestion,
+  createQuestionAndDashboard,
+} from "e2e/support/helpers";
 
 const {
   ORDERS,
@@ -78,8 +83,8 @@ describe("issue 12928", () => {
   });
 
   it("should join saved questions that themselves contain joins (metabase#12928)", () => {
-    cy.createQuestion(SOURCE_QUESTION_DETAILS);
-    cy.createQuestion(JOINED_QUESTION_DETAILS, {
+    createQuestion(SOURCE_QUESTION_DETAILS);
+    createQuestion(JOINED_QUESTION_DETAILS, {
       wrapId: true,
       idAlias: "joinedQuestionId",
     });
@@ -222,7 +227,7 @@ describe("issue 15578", () => {
       human_readable_field_id: PRODUCTS.TITLE,
     });
 
-    cy.createQuestion({
+    createQuestion({
       name: JOINED_QUESTION_NAME,
       query: { "source-table": ORDERS_ID },
     });
@@ -306,7 +311,7 @@ describe("issue 17767", () => {
   });
 
   it("should be able to do subsequent joins on question with the aggregation that uses implicit joins (metabase#17767)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
 
     H.openNotebook();
 
@@ -384,8 +389,8 @@ describe("issue 18502", () => {
   it("should be able to join two saved questions based on the same table (metabase#18502)", () => {
     cy.intercept("GET", "/api/collection/*/items?*").as("getCollectionContent");
 
-    cy.createQuestion(question1);
-    cy.createQuestion(question2);
+    createQuestion(question1);
+    createQuestion(question2);
 
     H.startNewQuestion();
     H.selectSavedQuestionsToJoin("18502#1", "18502#2");
@@ -452,8 +457,8 @@ describe("issue 18512", () => {
   });
 
   it("should join two saved questions with the same implicit/explicit grouped field (metabase#18512)", () => {
-    cy.createQuestion(question1);
-    cy.createQuestion(question2);
+    createQuestion(question1);
+    createQuestion(question2);
 
     H.startNewQuestion();
     H.selectSavedQuestionsToJoin("18512#1", "18512#2");
@@ -558,7 +563,7 @@ describe("issue 18630", () => {
   };
 
   it("should normally open queries with field literals in joins (metabase#18630)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
 
     // The query runs and we assert the page is not blank,
     // which was caused by an infinite loop and a stack overflow.
@@ -576,7 +581,7 @@ describe("issue 18818", () => {
   });
 
   it("should normally open notebook editor for queries joining on custom columns (metabase#18818)", () => {
-    cy.createQuestion(
+    createQuestion(
       {
         query: {
           "source-table": REVIEWS_ID,
@@ -635,7 +640,7 @@ describe("issue 20519", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
   });
 
@@ -695,7 +700,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { wrapId: true, idAlias: "q1Id" });
+    createQuestion(questionDetails, { wrapId: true, idAlias: "q1Id" });
 
     // Join Orders table with the previously saved question and save it again
     cy.get("@q1Id").then(id => {
@@ -726,7 +731,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
         },
       };
 
-      cy.createQuestion(nestedQuestionDetails, {
+      createQuestion(nestedQuestionDetails, {
         wrapId: true,
         idAlias: "q2Id",
       });
@@ -824,7 +829,7 @@ describe("issue 23293", () => {
         display: "bar",
       };
 
-      cy.createQuestionAndDashboard({ questionDetails }).then(
+      createQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id } }) => {
           H.visitDashboard(dashboard_id);
         },
@@ -876,7 +881,7 @@ describe("issue 27380", () => {
       },
       display: "line",
     };
-    cy.createQuestionAndDashboard({ questionDetails }).then(
+    createQuestionAndDashboard({ questionDetails }).then(
       ({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
       },
@@ -954,7 +959,7 @@ describe("issue 29795", () => {
   it("should allow join based on native query (metabase#29795)", () => {
     const NATIVE_QUESTION = "native question";
     const LIMIT = 5;
-    cy.createNativeQuestion(
+    createNativeQuestion(
       {
         name: NATIVE_QUESTION,
         native: { query: `SELECT * FROM "PUBLIC"."ORDERS" LIMIT ${LIMIT}` },
@@ -1072,8 +1077,8 @@ describe("issue 31769", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion({ name: "Q1", query: Q1 }).then(() => {
-      cy.createQuestion({ name: "Q2", query: Q2 }).then(response => {
+    createQuestion({ name: "Q1", query: Q1 }).then(() => {
+      createQuestion({ name: "Q2", query: Q2 }).then(response => {
         cy.wrap(response.body.id).as("card_id_q2");
         H.startNewQuestion();
       });

@@ -1,5 +1,6 @@
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 const questionDetails = {
   name: "SQL Binning",
@@ -16,7 +17,7 @@ describe("scenarios > binning > from a saved sql question", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    createNativeQuestion(questionDetails, {
       loadMetadata: true,
       wrapId: true,
     });

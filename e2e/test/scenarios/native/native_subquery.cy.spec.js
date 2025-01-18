@@ -3,6 +3,7 @@ import {
   ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createNativeQuestion } from "e2e/support/helpers";
 
 describe("scenarios > question > native subquery", () => {
   beforeEach(() => {
@@ -11,11 +12,11 @@ describe("scenarios > question > native subquery", () => {
   });
 
   it("typing a card tag should open the data reference", () => {
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "A People Question",
       native: { query: "SELECT id AS a_unique_column_name FROM PEOPLE" },
     }).then(({ body: { id: questionId1 } }) => {
-      cy.createNativeQuestion({
+      createNativeQuestion({
         name: "A People Model",
         native: {
           query: "SELECT id AS another_unique_column_name FROM PEOPLE",
@@ -25,7 +26,7 @@ describe("scenarios > question > native subquery", () => {
         const tagName1 = `#${questionId1}-a-people-question`;
         const queryText = `{{${tagName1}}}`;
         // create a question with a template tag
-        cy.createNativeQuestion({
+        createNativeQuestion({
           name: "Count of People",
           native: { query: queryText },
         }).then(({ body: { id: questionId3 } }) => {
@@ -56,13 +57,13 @@ describe("scenarios > question > native subquery", () => {
     { tags: "@flaky" },
     () => {
       // Create a question and a model.
-      cy.createNativeQuestion({
+      createNativeQuestion({
         name: "A People Question",
         native: {
           query: "SELECT id FROM PEOPLE",
         },
       }).then(({ body: { id: questionId1 } }) => {
-        cy.createNativeQuestion({
+        createNativeQuestion({
           name: "A People Model",
           native: {
             query: "SELECT id FROM PEOPLE",
@@ -106,13 +107,13 @@ describe("scenarios > question > native subquery", () => {
 
   it("autocomplete should work for columns from referenced questions", () => {
     // Create two saved questions, the first will be referenced in the query when it is opened, and the second will be added to the query after it is opened.
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "A People Question 1",
       native: {
         query: "SELECT id AS a_unique_column_name FROM PEOPLE",
       },
     }).then(({ body: { id: questionId1 } }) => {
-      cy.createNativeQuestion({
+      createNativeQuestion({
         name: "A People Question 2",
         native: {
           query: "SELECT id AS another_unique_column_name FROM PEOPLE",
@@ -121,7 +122,7 @@ describe("scenarios > question > native subquery", () => {
         const tagID = `#${questionId1}`;
 
         // create a question with a template tag
-        cy.createNativeQuestion({
+        createNativeQuestion({
           name: "Count of People",
           native: {
             query: `select COUNT(*) from {{#${questionId1}}}`,
@@ -171,7 +172,7 @@ describe("scenarios > question > native subquery", () => {
   });
 
   it("card reference tags should update when the name of the card changes", () => {
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "A People Question 1",
       native: {
         query: "SELECT id AS a_unique_column_name FROM PEOPLE",
@@ -179,7 +180,7 @@ describe("scenarios > question > native subquery", () => {
     }).then(({ body: { id: questionId1 } }) => {
       cy.wrap(questionId1).as("questionId");
       const tagID = `#${questionId1}`;
-      cy.createNativeQuestion({
+      createNativeQuestion({
         name: "Count of People",
         native: {
           query: `select COUNT(*) from {{#${questionId1}}}`,
@@ -223,7 +224,7 @@ describe("scenarios > question > native subquery", () => {
 
   it("should allow a user with no data access to execute a native subquery", () => {
     // Create the initial SQL question and followup nested question
-    cy.createNativeQuestion({
+    createNativeQuestion({
       name: "People in WA",
       native: {
         query: "select * from PEOPLE where STATE = 'WA'",
@@ -233,7 +234,7 @@ describe("scenarios > question > native subquery", () => {
         cy.wrap(response.body.id).as("nestedQuestionId");
         const tagID = `#${response.body.id}`;
 
-        cy.createNativeQuestion({
+        createNativeQuestion({
           name: "Count of People in WA",
           native: {
             query: `select COUNT(*) from {{#${response.body.id}}}`,

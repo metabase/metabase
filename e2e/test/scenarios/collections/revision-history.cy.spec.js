@@ -5,6 +5,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { createDashboard } from "e2e/support/helpers";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -25,7 +26,7 @@ describe("revision history", () => {
     });
 
     it("shouldn't render revision history steps when there was no diff (metabase#1926)", () => {
-      cy.createDashboard().then(({ body }) => {
+      createDashboard().then(({ body }) => {
         H.visitDashboard(body.id);
         H.editDashboard();
       });
@@ -67,7 +68,7 @@ describe("revision history", () => {
               cy.intercept("GET", "/api/dashboard/*").as("fetchDashboard");
               cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-              cy.createDashboard().then(({ body }) => {
+              createDashboard().then(({ body }) => {
                 H.visitDashboard(body.id);
                 H.editDashboard();
               });
