@@ -1,6 +1,13 @@
 import cx from "classnames";
-import { type HTMLAttributes, memo } from "react";
+import {
+  type HTMLAttributes,
+  type MouseEventHandler,
+  memo,
+  useCallback,
+} from "react";
 
+import CS from "metabase/css/core/index.css";
+import { ExpandButton } from "metabase/visualizations/components/TableInteractive/TableInteractive.styled";
 import type { TableCellFormatter } from "metabase/visualizations/types";
 import type { RowValue } from "metabase-types/api";
 
@@ -15,7 +22,9 @@ export type BodyCellProps = {
   align?: "left" | "right";
   variant?: BodyCellVariant;
   wrap?: boolean;
+  canExpand?: boolean;
   onClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onExpand?: () => void;
   contentAttributes?: HTMLAttributes<HTMLDivElement>;
 };
 
@@ -26,14 +35,24 @@ export const BodyCell = memo(function BodyCell({
   align = "left",
   variant = "text",
   wrap = false,
+  canExpand = false,
   contentAttributes,
   onClick,
+  onExpand,
 }: BodyCellProps) {
   const formattedValue = formatter ? formatter(value) : value;
 
+  const handleExpandClick: MouseEventHandler<HTMLButtonElement> = useCallback(
+    e => {
+      e.stopPropagation();
+      onExpand?.();
+    },
+    [onExpand],
+  );
+
   return (
     <div
-      className={cx(S.root, {
+      className={cx(S.root, CS.hoverParent, CS.hoverVisibility, {
         [S.clickable]: !!onClick,
         [S.alignLeft]: align === "left",
         [S.alignRight]: align === "right",
@@ -54,6 +73,19 @@ export const BodyCell = memo(function BodyCell({
       >
         {formattedValue}
       </div>
+
+      {canExpand && (
+        <ExpandButton
+          className={CS.hoverChild}
+          data-testid="expand-column"
+          small
+          borderless
+          iconSize={10}
+          icon="ellipsis"
+          onlyIcon
+          onClick={handleExpandClick}
+        />
+      )}
     </div>
   );
 });

@@ -12,6 +12,7 @@ import {
   getTableClickedObjectRowData,
   getTableHeaderClickedObject,
 } from "metabase/visualizations/lib/table";
+import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
   VisualizationProps,
@@ -31,10 +32,13 @@ import {
   type BodyCellVariant,
 } from "../cell/BodyCell";
 import { HeaderCell } from "../cell/HeaderCell";
-import { MIN_COLUMN_WIDTH } from "../constants";
+import { MiniBar } from "../cell/MiniBar";
 import { pickRowsToMeasure } from "../utils";
 
 import type { CellMeasurer } from "./use-cell-measure";
+
+// approximately 120 chars
+const TRUNCATE_WIDTH = 780;
 
 const CELL_BORDERS_WIDTH = 2;
 
@@ -73,10 +77,11 @@ export const useColumns = ({
   settings,
   onVisualizationClick,
   data,
-  measureBodyCellDimensions,
-  measureHeaderCellDimensions,
   isPivoted = false,
+  getColumnSortDirection,
 }: UseColumnsProps) => {
+  const [columnIsExpanded, setColumnIsExpanded] = useState<boolean[]>([]);
+
   const { cols, rows } = data;
   const columnFormatters = useMemo(() => {
     return cols.map(col => {
@@ -99,32 +104,6 @@ export const useColumns = ({
   );
   const [columnWidths, setColumnWidths] = useState(savedColumnWidths);
 
-  const _measureColumnWidths = useCallback(() => {
-    const widths = cols.map((col, index) => {
-      const headerWidth =
-        measureHeaderCellDimensions(col.display_name).width +
-        CELL_BORDERS_WIDTH;
-
-      const sampleRows = pickRowsToMeasure(rows, index);
-
-      const cellWidths = sampleRows.map(rowIndex => {
-        const value = rows[rowIndex][index];
-        const formattedValue = columnFormatters[index](value);
-        return measureBodyCellDimensions(formattedValue).width;
-      });
-
-      return Math.max(headerWidth, ...cellWidths, MIN_COLUMN_WIDTH);
-    });
-
-    setColumnWidths(widths);
-  }, [
-    cols,
-    columnFormatters,
-    measureBodyCellDimensions,
-    measureHeaderCellDimensions,
-    rows,
-  ]);
-
   useUpdateEffect(() => {
     if (Array.isArray(settings["table.column_widths"])) {
       setColumnWidths(settings["table.column_widths"]);
@@ -137,11 +116,14 @@ export const useColumns = ({
       const columnWidth = columnWidths[index] ?? 0;
       const columnSettings = settings.column?.(col) ?? {};
       const bodyCellOptions = getBodyCellOptions(col, columnSettings);
+      const isTruncated =
+        !columnIsExpanded[index] && columnWidth > TRUNCATE_WIDTH;
 
       return {
         id: index.toString(),
         accessorFn: (row: RowValues) => row[index],
         header: () => {
+          const sortDirection = getColumnSortDirection(index);
           const headerClicked = getTableHeaderClickedObject(
             data,
             index,
@@ -151,6 +133,7 @@ export const useColumns = ({
             <HeaderCell
               name={col.display_name}
               align={align}
+              sort={sortDirection}
               onClick={event => {
                 onVisualizationClick?.({
                   ...headerClicked,
@@ -185,10 +168,21 @@ export const useColumns = ({
             clickedRowData,
           );
 
+          if (bodyCellOptions.variant === "minibar") {
+            return (
+              <MiniBar
+                value={value}
+                formatter={columnFormatters[index]}
+                extent={getColumnExtent(data.cols, data.rows, index)}
+              />
+            );
+          }
+
           return (
             <BodyCell
               value={value}
               align={align}
+              canExpand={!bodyCellOptions.wrap && isTruncated}
               formatter={columnFormatters[index]}
               backgroundColor={backgroundColor}
               onClick={event => {
@@ -197,33 +191,40 @@ export const useColumns = ({
                   element: event.currentTarget,
                 });
               }}
+              onExpand={() => {
+                setColumnIsExpanded(prev => {
+                  const updated = prev.slice();
+                  updated[index] = true;
+                  return updated;
+                });
+              }}
               {...bodyCellOptions}
             />
           );
         },
         column: col,
         datasetIndex: index,
-        size: columnWidth,
+        size: isTruncated ? TRUNCATE_WIDTH : columnWidth,
         wrap: bodyCellOptions.wrap,
         isPivoted,
       };
     });
   }, [
     cols,
-    settings,
     columnWidths,
-    columnFormatters,
-    onVisualizationClick,
+    settings,
+    columnIsExpanded,
     isPivoted,
+    getColumnSortDirection,
     data,
+    onVisualizationClick,
+    columnFormatters,
   ]);
 
   const measureRootRef = useRef<HTMLDivElement>();
   const measureRootTree = useRef<Root>();
 
   const measureColumnWidths = useCallback(() => {
-    const { cols, rows } = data;
-
     const onMeasureHeaderRender = (div: HTMLDivElement) => {
       if (div === null) {
         return;
@@ -268,7 +269,7 @@ export const useColumns = ({
     );
 
     measureRootTree.current = renderRoot(content, measureRootRef.current!);
-  }, [columnFormatters, data, settings]);
+  }, [cols, columnFormatters, rows, settings]);
 
   useLayoutEffect(() => {
     if (!measureRootRef.current) {
@@ -285,6 +286,7 @@ export const useColumns = ({
     }
 
     measureColumnWidths();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {
