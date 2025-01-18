@@ -14,7 +14,7 @@ export const ChartSettingSegmentedControl = ({
   onChange,
   value,
 }: ChartSettingSegmentedControlProps) => (
-  <Button.Group style={{ width: "100%", display: "flex" }}>
+  <Button.Group w="100%">
     {options.map(elem => (
       <Button
         className={cx(CS.borderBrand, CS.flexGrow1)}
