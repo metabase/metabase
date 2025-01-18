@@ -35,6 +35,7 @@ import {
   isImageURL,
   isMetric,
   isNumber,
+  isString,
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -44,13 +45,14 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import TableInteractive from "../components/TableInteractive/TableInteractive.jsx";
 import { TableSimple } from "../components/TableSimple";
 import type {
   ColumnSettingDefinition,
   ComputedVisualizationSettings,
   VisualizationProps,
 } from "../types";
+
+import { Table as TableInteractive } from "./Table";
 
 interface TableProps extends VisualizationProps {
   isShowingDetailsOnlyColumns?: boolean;
@@ -63,7 +65,7 @@ interface TableState {
 
 class Table extends Component<TableProps, TableState> {
   static uiName = t`Table`;
-  static identifier = "table";
+  static identifier = "table-old";
   static iconName = "table2";
   static canSavePng = false;
 
@@ -208,11 +210,33 @@ class Table extends Component<TableProps, TableState> {
         getDefault: column => displayNameForColumn(column),
       },
       click_behavior: {},
+      text_align: {
+        title: t`Align`,
+        widget: "radio",
+        getDefault: column => {
+          return isNumber(column) ? "right" : "left";
+        },
+        props: {
+          options: [
+            { name: t`Left`, value: "left" },
+            { name: t`Right`, value: "right" },
+          ],
+        },
+      },
     };
 
     if (isNumber(column)) {
       settings["show_mini_bar"] = {
         title: t`Show a mini bar chart`,
+        widget: "toggle",
+        inline: true,
+      };
+    }
+
+    if (isString(column)) {
+      settings["text_wrapping"] = {
+        title: t`Wrap text`,
+        default: false,
         widget: "toggle",
         inline: true,
       };
