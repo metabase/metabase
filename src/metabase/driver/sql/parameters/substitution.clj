@@ -301,6 +301,17 @@
         params/map->DateTimeRange
         ->datetime-replacement-snippet-info)))
 
+(defn- field-filter->replacement-snippet-for-datetime-with-timezone-field
+  "Generate replacement snippet for field filter on datetime field. For details on how range is generated see
+  the docstring of [[params.dates/date-str->datetime-with-timezone-range]]."
+  [driver {:keys [field] {:keys [value type]} :value :as _field-filter}]
+  (letfn [(->datetime-replacement-snippet-info
+            [range]
+            (->replacement-snippet-info driver range (field->identifier driver field type value)))]
+    (-> (params.dates/date-str->datetime-with-timezone-range value)
+        params/map->DateTimeRange
+        ->datetime-replacement-snippet-info)))
+
 (mu/defn- field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
   [driver {{param-type :type, value :value, :as params} :value, field :field, :as field-filter}]
@@ -326,6 +337,13 @@
              qp.wrap-value-literals/wrap-value-literals-in-mbql
              ->honeysql
              (honeysql->replacement-snippet-info driver)))
+
+      ;; Special handling for `FieldFilter`s on `:type/DateTimeWithTZ` fields. DateTime range is always generated.
+      ;; This method must be placed before (and (params.dates/date-type? param-type) (isa? ((some-fn :effective-type :base-type) field) :type/DateTime)),
+      ;; because :type/DateTime is the parent of :type/DateTimeWithTZ`.
+      (and (params.dates/date-type? param-type)
+           (isa? ((some-fn :effective-type :base-type) field) :type/DateTimeWithTZ))
+      (field-filter->replacement-snippet-for-datetime-with-timezone-field driver field-filter)
 
       ;; Special handling for `FieldFilter`s on `:type/DateTime` fields. DateTime range is always generated.
       (and (params.dates/date-type? param-type)
