@@ -17,10 +17,12 @@ import { Button } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
+import { QUESTION_TITLE_MAX_LENGTH } from "../constants";
+
 const QUESTION_SCHEMA = Yup.object({
   name: Yup.string()
     .required(Errors.required)
-    .max(100, Errors.maxLength)
+    .max(QUESTION_TITLE_MAX_LENGTH, Errors.maxLength)
     .default(""),
   description: Yup.string().nullable().default(null),
   collection_id: Yup.number().nullable().default(null),
