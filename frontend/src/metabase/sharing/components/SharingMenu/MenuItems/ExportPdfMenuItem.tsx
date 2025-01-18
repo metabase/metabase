@@ -5,12 +5,13 @@ import { Icon, Menu } from "metabase/ui";
 import {
   getExportTabAsPdfButtonText,
   saveDashboardPdf,
+  saveDashboardPdfChunked,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { Dashboard } from "metabase-types/api";
 
 const handleClick = async (dashboard: Dashboard) => {
   const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-  await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
+  await saveDashboardPdfChunked(cardNodeSelector, dashboard.name).then(() => {
     trackExportDashboardToPDF({
       dashboardId: dashboard.id,
       dashboardAccessedVia: isWithinIframe()

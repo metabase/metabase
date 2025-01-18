@@ -5,6 +5,7 @@ import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/cons
 import type { Dashboard } from "metabase-types/api";
 
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
+import { options } from "embedding-sdk/conventional-changelog-config";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
 
@@ -150,6 +151,9 @@ export const saveDashboardPdf = async (
   selector: string,
   dashboardName: string,
 ) => {
+
+  console.log("TSP in saveDashBoardPdf")
+
   const fileName = `${dashboardName}.pdf`;
   const dashboardRoot = document.querySelector(selector);
   const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
@@ -189,6 +193,7 @@ export const saveDashboardPdf = async (
     .trim();
 
   const { default: html2canvas } = await import("html2canvas-pro");
+
   const image = await html2canvas(gridNode, {
     height: contentHeight,
     width: contentWidth,
@@ -261,6 +266,205 @@ export const saveDashboardPdf = async (
     if (ctx) {
       ctx.drawImage(
         image,
+        0,
+        sourceY * scale,
+        contentWidth * scale,
+        sourceHeight * scale,
+        0,
+        0,
+        contentWidth * scale,
+        sourceHeight * scale,
+      );
+
+      pdf.addImage(
+        pageCanvas,
+        "JPEG",
+        PAGE_PADDING,
+        PAGE_PADDING,
+        contentWidth,
+        sourceHeight,
+      );
+    }
+
+    prevBreak = pageBreak;
+  });
+
+  pdf.save(fileName);
+};
+
+//const MAX_CANVAS_HEIGHT = 16384;
+//const MAX_CANVAS_HEIGHT = 8192;
+const MAX_CANVAS_HEIGHT = 1380;
+
+export const saveDashboardPdfChunked = async (
+  selector: string,
+  dashboardName: string,
+) => {
+
+  console.log("TSP in saveDashBoardPdfChunked")
+
+  const fileName = `${dashboardName}.pdf`;
+  const dashboardRoot = document.querySelector(selector);
+  const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
+
+  if (!gridNode || !(gridNode instanceof HTMLElement)) {
+    console.warn("No dashboard content found", selector);
+    return;
+  }
+  const cardsBounds = getSortedDashCardBounds(gridNode);
+
+  const pdfHeader = createHeaderElement(dashboardName, HEADER_MARGIN_BOTTOM);
+  const parametersNode = dashboardRoot
+    ?.querySelector(`#${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}`)
+    ?.cloneNode(true);
+
+  let parametersHeight = 0;
+  if (parametersNode instanceof HTMLElement) {
+    gridNode.append(parametersNode);
+    parametersNode.style.cssText = `margin-bottom: ${PARAMETERS_MARGIN_BOTTOM}px`;
+    parametersHeight =
+      parametersNode.getBoundingClientRect().height + PARAMETERS_MARGIN_BOTTOM;
+    gridNode.removeChild(parametersNode);
+  }
+
+  gridNode.appendChild(pdfHeader);
+  const headerHeight =
+    pdfHeader.getBoundingClientRect().height + HEADER_MARGIN_BOTTOM;
+  gridNode.removeChild(pdfHeader);
+
+  const verticalOffset = headerHeight + parametersHeight;
+  const contentWidth = gridNode.offsetWidth;
+  const contentHeight = gridNode.offsetHeight + verticalOffset;
+  const width = contentWidth + PAGE_PADDING * 2;
+
+  console.log("TSP contentHeight: ", contentHeight)
+
+  const backgroundColor = getComputedStyle(document.documentElement)
+    .getPropertyValue("--mb-color-bg-dashboard")
+    .trim();
+
+  const { default: html2canvas } = await import("html2canvas-pro");
+
+  // Split capturing into chunks if content height exceeds canvas maximum
+  const chunks: HTMLCanvasElement[] = [];
+  const baseOptions = {
+    width: contentWidth,
+    useCORS: true,
+    onclone: (_doc: Document, node: HTMLElement) => {
+      node.classList.add(SAVING_DOM_IMAGE_CLASS);
+      node.style.height = `${contentHeight}px`;
+      node.style.backgroundColor = backgroundColor;
+      if (parametersNode instanceof HTMLElement) {
+        node.insertBefore(parametersNode, node.firstChild);
+      }
+      node.insertBefore(pdfHeader, node.firstChild);
+    },
+  };
+
+  // If content height exceeds canvas maximum, capture in chunks
+  if (contentHeight > MAX_CANVAS_HEIGHT) {
+    for (let y = 0; y < contentHeight; y += MAX_CANVAS_HEIGHT) {
+      console.log("TSP adding chunk y: ", y)
+
+      const actualHeight = Math.min(MAX_CANVAS_HEIGHT, contentHeight - y)
+
+      const chunk = await html2canvas(gridNode, {
+        width: contentWidth,
+        height: actualHeight,
+        y: y,
+        windowHeight: actualHeight,
+        scrollY: -y,
+        useCORS: true,
+        onclone: (_doc: Document, node: HTMLElement) => {
+          node.classList.add(SAVING_DOM_IMAGE_CLASS);
+          node.style.height = `${actualHeight}px`;
+          node.style.backgroundColor = backgroundColor;
+          //node.style.top = `-${y}px`;
+          //node.style.position = 'relative';
+          if (parametersNode instanceof HTMLElement) {
+            node.insertBefore(parametersNode, node.firstChild);
+          }
+          node.insertBefore(pdfHeader, node.firstChild);
+        },
+      })
+
+      chunks.push(chunk);
+    }
+  } else {
+    // Original single capture if height is within limits
+    const fullCanvas = await html2canvas(gridNode, {
+      ...baseOptions,
+      height: contentHeight,
+    });
+    chunks.push(fullCanvas);
+  }
+
+  const { default: jspdf } = await import("jspdf");
+
+  // Page page height cannot be smaller than page width otherwise the content will be cut off
+  // or the page should have a landscape orientation.
+  const minPageHeight = contentWidth;
+  const optimalPageHeight = Math.round(width * TARGET_ASPECT_RATIO);
+  const pageBreaks = getPageBreaks(
+    cardsBounds,
+    optimalPageHeight - PAGE_PADDING * 2,
+    contentHeight,
+    minPageHeight,
+    verticalOffset,
+  );
+
+  const pdf = new jspdf({
+    unit: "px",
+    hotfixes: ["px_scaling"],
+  });
+
+  // Remove initial empty page
+  pdf.deletePage(1);
+
+  const scale = window.devicePixelRatio || 1;
+
+  const pageEnds = [...pageBreaks, contentHeight];
+  let prevBreak = 0;
+
+  pageEnds.forEach((pageBreak, index) => {
+    const isLastPage = index === pageEnds.length - 1;
+    const pageBreaksDiff = pageBreak - prevBreak;
+
+    // Special case for the last page: if it is too short expand its height
+    // to optimalPageHeight to avoid its being trimmed horizontally
+    const pageHeight = !isLastPage
+      ? pageBreaksDiff + PAGE_PADDING * 2
+      : Math.max(pageBreaksDiff + PAGE_PADDING * 2, optimalPageHeight);
+
+    pdf.addPage([width, pageHeight]);
+
+    // Add background color to the page
+    pdf.setFillColor(backgroundColor);
+    pdf.rect(0, 0, width, pageHeight, "F");
+
+    // Calculate the source and destination dimensions for this page slice
+    const sourceY = prevBreak;
+    const sourceHeight = pageBreaksDiff;
+
+    // Find which chunk contains this section
+    let remainingY = sourceY;
+    let chunkIndex = 0;
+    while (remainingY >= MAX_CANVAS_HEIGHT && chunkIndex < chunks.length - 1) {
+      remainingY -= MAX_CANVAS_HEIGHT;
+      chunkIndex++;
+    }
+    console.log("TSP pageBreak: ", pageBreak, " index: ", index, " chunkIndex: ", chunkIndex)
+    const chunk = chunks[chunkIndex];
+
+    // Single page canvas
+    const pageCanvas = document.createElement("canvas");
+    pageCanvas.width = contentWidth * scale;
+    pageCanvas.height = sourceHeight * scale;
+    const ctx = pageCanvas.getContext("2d");
+
+    if (ctx) {
+      ctx.drawImage(
+        chunk,
         0,
         sourceY * scale,
         contentWidth * scale,
