@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useRef } from "react";
 
-import { BodyCell } from "../cell/BodyCell";
-import { HeaderCell } from "../cell/HeaderCell";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
+
+import { BodyCell } from "../cell/BodyCell";
+import { HeaderCell } from "../cell/HeaderCell";
 
 export type CellMeasurer = (content: string, width?: number) => CellSize;
 

@@ -133,6 +133,7 @@ export const _Table = ({
   onVisualizationClick,
   onUpdateVisualizationSettings,
   isPivoted = false,
+  getColumnSortDirection,
 }: TableProps) => {
   const { rows, cols } = data;
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -153,6 +154,7 @@ export const _Table = ({
     measureBodyCellDimensions,
     measureHeaderCellDimensions,
     isPivoted,
+    getColumnSortDirection,
   });
 
   const table = useReactTable({
@@ -218,23 +220,6 @@ export const _Table = ({
     [settings, onUpdateVisualizationSettings, isPivoted],
   );
 
-  const handleColumnResize = useCallback(
-    (columnId: string, width: number) => {
-      const dataIndex = parseInt(columnId, 10);
-      if (isNaN(dataIndex)) {
-        return;
-      }
-
-      const newColumnWidths = [...columnWidths];
-      newColumnWidths[dataIndex] = Math.max(MIN_COLUMN_WIDTH, width);
-
-      onUpdateVisualizationSettings({
-        "table.column_widths": newColumnWidths,
-      });
-    },
-    [columnWidths, onUpdateVisualizationSettings],
-  );
-
   const {
     virtualColumns,
     virtualRows,
@@ -249,6 +234,28 @@ export const _Table = ({
     columnFormatters,
     measureBodyCellDimensions,
   });
+
+  const handleColumnResize = useCallback(
+    (columnId: string, width: number) => {
+      const dataIndex = parseInt(columnId, 10);
+      if (isNaN(dataIndex)) {
+        return;
+      }
+
+      const newColumnWidths = [...columnWidths];
+      newColumnWidths[dataIndex] = Math.max(MIN_COLUMN_WIDTH, width);
+
+      onUpdateVisualizationSettings({
+        "table.column_widths": newColumnWidths,
+      });
+
+      const column = columns.find(column => column.id === columnId);
+      if (column?.wrap) {
+        rowVirtualizer.measure();
+      }
+    },
+    [columnWidths, onUpdateVisualizationSettings, rowVirtualizer, columns],
+  );
 
   const measureRef = useCallback(
     (element: HTMLElement | null) => {
