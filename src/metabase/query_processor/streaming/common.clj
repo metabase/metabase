@@ -133,6 +133,7 @@
 (defmulti global-type-settings
   "Look up the global viz settings based on the type of the column. A multimethod is used because they match well
   against type hierarchies."
+  {:arglists '([col viz-settings])}
   (fn [col _viz-settings] (col-type col)))
 
 (defmethod global-type-settings :type/Temporal [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]

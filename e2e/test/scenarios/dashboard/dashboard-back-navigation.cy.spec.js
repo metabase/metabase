@@ -166,7 +166,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     H.queryBuilderHeader().within(() => {
       cy.findByDisplayValue("Orders").clear().type("Orders question").blur();
       cy.wait("@updateCard");
-      cy.button("Summarize").click();
+      cy.button(/Summarize/).click();
     });
 
     H.rightSidebar().within(() => {

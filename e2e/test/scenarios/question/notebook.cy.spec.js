@@ -618,7 +618,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       });
       cy.button("Done").click();
 
-      cy.findByRole("button", { name: "Summarize" }).click();
+      cy.findByRole("button", { name: /Summarize/ }).click();
 
       H.addSummaryField({ metric: "Median of ...", field: "Mega price" });
       H.addSummaryField({ metric: "Count of rows" });
