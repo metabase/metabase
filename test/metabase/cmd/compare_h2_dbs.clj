@@ -54,20 +54,13 @@
                                (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"])))]
        (sort (remove ignored-table-names (map :table_name result)))))))
 
-(defmulti ^:private normalize-value
-  class)
-
-(defmethod normalize-value :default
-  [v]
-  v)
-
 (def ^:private ignored-keys
   #{:created_at :updated_at :timestamp :last_login :date_joined :last_analyzed})
 
 (defn- normalize-values [row]
   (into {} (for [[k v] row
                  :when (not (ignored-keys (keyword (u/lower-case-en (name k)))))]
-             [k (normalize-value v)])))
+             [k v])))
 
 (defn- sort-rows [rows]
   (vec (sort-by (fn [row]
