@@ -17,6 +17,7 @@ import { useFavicon } from "metabase/hooks/use-favicon";
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
+import { ContentTranslationProvider } from "metabase/i18n/components/ContentTranslationContext";
 import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -410,26 +411,28 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   return (
     <>
-      <View
-        {...props}
-        modal={uiControls.modal}
-        recentlySaved={uiControls.recentlySaved}
-        onOpenModal={openModal}
-        onCloseModal={closeModal}
-        onSave={handleSave}
-        onCreate={handleCreate}
-        handleResize={forceUpdateDebounced}
-        toggleBookmark={onClickBookmark}
-        onDismissToast={onDismissToast}
-        onConfirmToast={onConfirmToast}
-        isShowingToaster={isShowingToaster}
-      />
+      <ContentTranslationProvider>
+        <View
+          {...props}
+          modal={uiControls.modal}
+          recentlySaved={uiControls.recentlySaved}
+          onOpenModal={openModal}
+          onCloseModal={closeModal}
+          onSave={handleSave}
+          onCreate={handleCreate}
+          handleResize={forceUpdateDebounced}
+          toggleBookmark={onClickBookmark}
+          onDismissToast={onDismissToast}
+          onConfirmToast={onConfirmToast}
+          isShowingToaster={isShowingToaster}
+        />
 
-      <LeaveConfirmationModal
-        isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
-        isLocationAllowed={isLocationAllowed}
-        route={route}
-      />
+        <LeaveConfirmationModal
+          isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
+          isLocationAllowed={isLocationAllowed}
+          route={route}
+        />
+      </ContentTranslationProvider>
     </>
   );
 }

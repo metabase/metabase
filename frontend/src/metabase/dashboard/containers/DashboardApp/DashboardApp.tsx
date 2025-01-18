@@ -22,6 +22,7 @@ import { useFavicon } from "metabase/hooks/use-favicon";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
+import { ContentTranslationProvider } from "metabase/i18n/components/ContentTranslationContext";
 import { parseHashOptions } from "metabase/lib/browser";
 import { connect, useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -223,23 +224,25 @@ const DashboardApp = (props: DashboardAppProps) => {
         isDirty={isDirty}
         isEditing={isEditing}
       />
-      <Dashboard
-        dashboardId={dashboardId}
-        editingOnLoad={editingOnLoad}
-        addCardOnLoad={addCardOnLoad}
-        autoScrollToDashcardId={autoScrollToDashcardId}
-        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
-        isFullscreen={isFullscreen}
-        refreshPeriod={refreshPeriod}
-        isNightMode={isNightMode}
-        hasNightModeToggle={hasNightModeToggle}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        onNightModeChange={onNightModeChange}
-        onFullscreenChange={onFullscreenChange}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        parameterQueryParams={parameterQueryParams}
-        {...dashboardProps}
-      />
+      <ContentTranslationProvider>
+        <Dashboard
+          dashboardId={dashboardId}
+          editingOnLoad={editingOnLoad}
+          addCardOnLoad={addCardOnLoad}
+          autoScrollToDashcardId={autoScrollToDashcardId}
+          reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
+          isFullscreen={isFullscreen}
+          refreshPeriod={refreshPeriod}
+          isNightMode={isNightMode}
+          hasNightModeToggle={hasNightModeToggle}
+          setRefreshElapsedHook={setRefreshElapsedHook}
+          onNightModeChange={onNightModeChange}
+          onFullscreenChange={onFullscreenChange}
+          onRefreshPeriodChange={onRefreshPeriodChange}
+          parameterQueryParams={parameterQueryParams}
+          {...dashboardProps}
+        />
+      </ContentTranslationProvider>
       {/* For rendering modal urls */}
       {props.children}
     </div>

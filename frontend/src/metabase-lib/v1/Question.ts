@@ -498,6 +498,7 @@ class Question {
   }
 
   dashboardName(): string | undefined {
+    // NOTE: We could localize the name later
     return this._card?.dashboard?.name ?? undefined;
   }
 

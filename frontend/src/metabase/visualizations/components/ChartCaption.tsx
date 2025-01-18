@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useCallback } from "react";
 
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import type { IconProps } from "metabase/ui";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import type {
@@ -30,7 +31,10 @@ const ChartCaption = ({
   getHref,
   width,
 }: ChartCaptionProps) => {
-  const title = settings["card.title"] ?? series[0].card.name;
+  const tc = useTranslateContent();
+
+  const localizedTitle =
+    tc(settings, "card.title") ?? tc(series[0].card, "name");
   const description = settings["card.description"];
   const data = (series as TransformedSeries)._raw || series;
   const card = data[0].card;
@@ -45,7 +49,7 @@ const ChartCaption = ({
 
   return (
     <ChartCaptionRoot
-      title={title}
+      title={localizedTitle}
       description={description}
       getHref={getHref}
       icon={icon}

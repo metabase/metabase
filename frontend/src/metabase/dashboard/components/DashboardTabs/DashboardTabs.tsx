@@ -4,6 +4,8 @@ import { Sortable } from "metabase/core/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
 import { TabButton } from "metabase/core/components/TabButton";
 import { TabRow } from "metabase/core/components/TabRow";
+import { MaybeTranslationCannotBeEditedHoverCard } from "metabase/i18n/MaybeTranslationCannotBeEditedHoverCard";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import type { DashboardId } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
@@ -34,6 +36,8 @@ export function DashboardTabs({
   const hasMultipleTabs = tabs.length > 1;
   const showTabs = hasMultipleTabs || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
+
+  const tc = useTranslateContent();
 
   if (!showTabs) {
     return null;
@@ -68,18 +72,26 @@ export function DashboardTabs({
             menuItems={menuItems}
           />
         ) : (
-          tabs.map(tab => (
-            <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
-              <TabButton.Renameable
-                value={tab.id}
-                label={tab.name}
-                onRename={name => renameTab(tab.id, name)}
-                canRename={isEditing && hasMultipleTabs}
-                showMenu={isEditing}
-                menuItems={menuItems}
-              />
-            </Sortable>
-          ))
+          tabs.map(tab => {
+            const localizedName = tc(tab, "name");
+            const isNameLocalized = localizedName !== tab.name;
+            return (
+              <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
+                <MaybeTranslationCannotBeEditedHoverCard
+                  isLocalized={isNameLocalized}
+                >
+                  <TabButton.Renameable
+                    value={tab.id}
+                    label={localizedName}
+                    onRename={name => renameTab(tab.id, name)}
+                    canRename={isEditing && hasMultipleTabs && !isNameLocalized}
+                    showMenu={isEditing}
+                    menuItems={menuItems}
+                  />
+                </MaybeTranslationCannotBeEditedHoverCard>
+              </Sortable>
+            );
+          })
         )}
         {isEditing && (
           <CreateTabButton

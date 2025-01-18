@@ -76,6 +76,9 @@ export const HeaderCaption = styled(EditableText)`
   font-weight: 700;
   line-height: 1.5rem;
 `;
+HeaderCaption.translatableProps = {
+  initialValue: "Dashboard name",
+};
 
 export const HeaderBadges = styled.div`
   display: flex;

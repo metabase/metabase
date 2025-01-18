@@ -7,6 +7,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { isPositiveInteger } from "metabase/lib/number";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
@@ -183,6 +184,7 @@ function TableSimpleInner({
     [sortColumn, sortDirection, getColumnTitle, setSort],
   );
 
+  const tc = useTranslateContent();
   const renderRow = useCallback(
     (rowIndex: number, index: number) => {
       const ref = index === 0 ? firstRowRef : null;
@@ -193,22 +195,26 @@ function TableSimpleInner({
           data-testid="table-row"
           data-allow-page-break-after
         >
-          {data.rows[rowIndex].map((value, columnIndex) => (
-            <TableCell
-              key={`${rowIndex}-${columnIndex}`}
-              value={value}
-              data={data}
-              series={series}
-              settings={settings}
-              rowIndex={rowIndex}
-              columnIndex={columnIndex}
-              isPivoted={isPivoted}
-              getCellBackgroundColor={getCellBackgroundColor}
-              getExtraDataForClick={getExtraDataForClick}
-              checkIsVisualizationClickable={checkIsVisualizationClickable}
-              onVisualizationClick={onVisualizationClick}
-            />
-          ))}
+          {data.rows[rowIndex].map((value, columnIndex) => {
+            const obj = { value };
+            const translatedValue = tc(obj, "value");
+            return (
+              <TableCell
+                key={`${rowIndex}-${columnIndex}`}
+                value={translatedValue}
+                data={data}
+                series={series}
+                settings={settings}
+                rowIndex={rowIndex}
+                columnIndex={columnIndex}
+                isPivoted={isPivoted}
+                getCellBackgroundColor={getCellBackgroundColor}
+                getExtraDataForClick={getExtraDataForClick}
+                checkIsVisualizationClickable={checkIsVisualizationClickable}
+                onVisualizationClick={onVisualizationClick}
+              />
+            );
+          })}
         </tr>
       );
     },
@@ -221,6 +227,7 @@ function TableSimpleInner({
       getCellBackgroundColor,
       getExtraDataForClick,
       onVisualizationClick,
+      tc,
     ],
   );
 

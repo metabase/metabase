@@ -28,6 +28,7 @@ import type {
   DashboardNightModeControls,
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
+import { useTranslateContent } from "metabase/i18n/components/ContentTranslationContext";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -162,6 +163,9 @@ export function DashboardHeaderView({
     return () => clearTimeout(timerId);
   }, [isLastEditInfoVisible]);
 
+  const tc = useTranslateContent();
+  const translatedName = tc(dashboard, "name");
+
   return (
     <div>
       {isEditing && <EditBar title={editingTitle} buttons={editingButtons} />}
@@ -195,7 +199,8 @@ export function DashboardHeaderView({
                 <HeaderCaptionContainer>
                   <HeaderCaption
                     key={dashboard.name}
-                    initialValue={dashboard.name}
+                    initialValue={translatedName}
+                    isLocalized={translatedName !== dashboard.name}
                     placeholder={t`Add title`}
                     isDisabled={!dashboard.can_write}
                     data-testid="dashboard-name-heading"
