@@ -480,6 +480,110 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
   });
 
+  describe("multiple stages", () => {
+    const multiStageFilterQuestionDetails = {
+      name: "Multi-stage filter",
+      query: {
+        "source-query": {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        filter: [
+          "between",
+          ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+          "2024-01-01",
+          "2024-12-31",
+        ],
+      },
+    };
+
+    const multiStageBreakoutQuestionDetails = {
+      name: "Multi-stage breakout",
+      query: {
+        "source-query": {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        breakout: [
+          [
+            "field",
+            "CREATED_AT",
+            { "base-type": "type/DateTime", "temporal-unit": "year" },
+          ],
+        ],
+      },
+    };
+
+    function createDashboardWithMapping(questionDetails, columnNames) {
+      H.createQuestion(questionDetails);
+      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+        H.visitDashboard(dashboard.id),
+      );
+      H.editDashboard();
+      addQuestion(questionDetails.name);
+      columnNames.forEach(columnName => {
+        addTemporalUnitParameter();
+        H.selectDashboardFilter(H.getDashboardCard(), columnName);
+      });
+      H.saveDashboard();
+    }
+
+    it("should apply the parameter with a dependent filter in another stage", () => {
+      cy.log("dashboard mapping");
+      createDashboardWithMapping(multiStageFilterQuestionDetails, [
+        "Created At",
+      ]);
+      H.filterWidget().eq(0).click();
+      H.popover().findByText("Quarter").click();
+      H.getDashboardCard().within(() => {
+        cy.findByText("Q1 2024").should("be.visible");
+        cy.findByText("Q1 2025").should("not.exist");
+      });
+
+      cy.log("question drill-thru");
+      H.getDashboardCard()
+        .findByText(multiStageFilterQuestionDetails.name)
+        .click();
+      H.assertQueryBuilderRowCount(4);
+    });
+
+    it("should apply the parameter with a dependent breakout in another stage", () => {
+      createDashboardWithMapping(multiStageBreakoutQuestionDetails, [
+        "Created At",
+      ]);
+      H.filterWidget().eq(0).click();
+      H.popover().findByText("Quarter").click();
+      H.getDashboardCard().findByText("2022").should("be.visible");
+    });
+
+    it("should apply parameters to multiple breakouts at different stages", () => {
+      cy.log("dashboard mapping");
+      createDashboardWithMapping(multiStageBreakoutQuestionDetails, [
+        "Created At",
+        "Created At: Month",
+      ]);
+      H.filterWidget().eq(0).click();
+      H.popover().findByText("Quarter").click();
+      H.filterWidget().eq(1).click();
+      H.popover().findByText("Year").click();
+      H.getDashboardCard().within(() => {
+        cy.findByText("Created At: Quarter: Year").should("be.visible");
+        cy.findByText("2022").should("be.visible");
+      });
+
+      cy.log("question drill-thru");
+      H.getDashboardCard()
+        .findByText(multiStageBreakoutQuestionDetails.name)
+        .click();
+    });
+  });
+
   describe("click behaviors", () => {
     it("should pass a temporal unit with 'update dashboard filter' click behavior", () => {
       createDashboardWithMappedQuestion({
