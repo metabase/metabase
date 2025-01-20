@@ -404,3 +404,37 @@ describe("issue 51020", () => {
     });
   });
 });
+
+describe("issue 51282", { tags: ["@external", "@actions"] }, () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(WRITABLE_DB_ID);
+    H.createModelFromTableName({
+      tableName: "orders",
+      modelName: "Order",
+      idAlias: "modelId",
+    });
+    cy.get("@modelId").then(modelId => {
+      H.visitModel(modelId);
+    });
+  });
+
+  it("should disable 'make public' switch and show an explanatory tooltip (metabase#51282)", () => {
+    H.questionInfoButton().click();
+    H.modal().findByText("See more about this model").click();
+    cy.findByRole("tab", { name: "Actions" }).click();
+    cy.findByRole("link", { name: "New action" }).click();
+    cy.button("Action settings").click();
+    cy.realPress("Tab"); // move focus away from "Action settings" button to hide its tooltip
+
+    cy.findByLabelText("Make public")
+      .should("not.be.checked")
+      .and("be.disabled");
+    cy.findByLabelText("Make public").realHover();
+    H.tooltip().should(
+      "have.text",
+      "To enable creating a shareable link you first need to save your action",
+    );
+  });
+});
