@@ -1,6 +1,7 @@
 import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import {
   getIcon,
@@ -22,7 +23,6 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { QuestionActions } from "./QuestionActions";
-import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 
 const ICON_CASES_CARDS = [
   createMockCard({ name: "GUI" }),

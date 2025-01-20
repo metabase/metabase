@@ -1,9 +1,10 @@
-import { type JSX, useState, Fragment } from "react";
+import { Fragment, type JSX, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
+import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -26,7 +27,6 @@ import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import QuestionActionsS from "./QuestionActions.module.css";
-import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 const MOVE_TESTID = "move-button";

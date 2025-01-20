@@ -2,12 +2,12 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
+import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
 import { turnQuestionIntoModel } from "metabase/query_builder/actions";
 import { Box, Button, Text } from "metabase/ui";
 
 import NewDatasetModalS from "./NewDatasetModal.module.css";
-import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 
 export function NewDatasetModal({ onClose }: { onClose: () => void }) {
   const dispatch = useDispatch();
