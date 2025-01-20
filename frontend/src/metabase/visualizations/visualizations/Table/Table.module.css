@@ -1,14 +1,6 @@
 .table {
-  block-size: 100%;
-  border: none;
   color: var(--mb-color-text-dark);
   background-color: var(--mb-color-bg-white);
-}
-
-.tableContainer {
-  position: relative;
-  overflow: auto;
-  height: 100%;
 }
 
 .tableGrid {
