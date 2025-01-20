@@ -1,10 +1,10 @@
 ---
-title: Interactive dashboards
+title: Dashboard interactivity
 redirect_from:
   - /docs/latest/users-guide/interactive-dashboards
 ---
 
-# Interactive dashboards
+# Dashboard interactivity
 
 You can customize what happens when people click on questions in your dashboard.
 

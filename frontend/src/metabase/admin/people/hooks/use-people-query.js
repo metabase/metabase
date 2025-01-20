@@ -7,7 +7,7 @@ import { USER_STATUS } from "../constants";
 
 const MIN_SEARCH_LENGTH = 2;
 
-// NOTE: EntityLoader is wrapped with PaginationState hoc, however,
+// NOTE: EntityListLoader uses usePaginatedQuery hook, however,
 // it is not the best place to store pagination state since we might want to
 // change it from the ancestors, for instance, when we change list filter props.
 // If users change any filters, we should reset the page state.

@@ -141,9 +141,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                     .click();
                 }
 
-                H.entityPickerModal()
-                  .findByText("Create a new collection")
-                  .click();
+                H.entityPickerModal().findByText("New collection").click();
                 const NEW_COLLECTION = "Foo Collection";
                 H.collectionOnTheGoModal().within(() => {
                   cy.findByPlaceholderText("My new collection").type(

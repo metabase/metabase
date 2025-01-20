@@ -1,8 +1,8 @@
 (ns metabase.analyze.classify-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analyze :as analyze]
    [metabase.analyze.classifiers.core :as classifiers]
+   [metabase.analyze.core :as analyze]
    [metabase.models.interface :as mi]))
 
 (defn- ->field [field]

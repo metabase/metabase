@@ -5,12 +5,11 @@ import type { CollectionPickerModel } from "metabase/common/components/Collectio
 import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormFooter from "metabase/core/components/FormFooter";
+import { FormFooter } from "metabase/core/components/FormFooter";
 import FormInput from "metabase/core/components/FormInput";
 import FormRadio from "metabase/core/components/FormRadio";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormTextArea from "metabase/core/components/FormTextArea";
-import CoreStyles from "metabase/css/core/index.css";
 import { Form, FormSubmitButton } from "metabase/forms";
 import { isNullOrUndefined } from "metabase/lib/types";
 import type { Dashboard } from "metabase-types/api";
@@ -75,7 +74,7 @@ export const SaveQuestionForm = ({
         />
       )}
       {values.saveType === "create" && (
-        <div className={CoreStyles.overflowHidden}>
+        <div>
           <FormInput
             name="name"
             title={t`Name`}

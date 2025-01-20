@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.advanced-permissions.api.group-manager-test
+(ns metabase-enterprise.advanced-permissions.api.group-manager-test
   "Permisisons tests for API that needs to be enforced by Group Manager permisisons."
   (:require
    [clojure.set :refer [subset?]]

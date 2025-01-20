@@ -20,6 +20,7 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
+  GetUserKeyValueRequest,
   Group,
   GroupListQuery,
   ModelCacheRefreshStatus,
@@ -562,4 +563,11 @@ export function provideUserListTags(
 
 export function provideUserTags(user: UserInfo): TagDescription<TagType>[] {
   return [idTag("user", user.id)];
+}
+
+export function provideUserKeyValueTags({
+  namespace,
+  key,
+}: GetUserKeyValueRequest) {
+  return [{ type: "user-key-value" as const, id: `${namespace}#${key}` }];
 }

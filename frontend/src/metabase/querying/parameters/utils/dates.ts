@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 
 import type { DateFilterValue } from "metabase/querying/filters/types";
-import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils";
+import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils/dates";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -49,7 +49,7 @@ const SERIALIZERS: Serializer[] = [
     deserialize: match => {
       const year = parseInt(match[1]);
       const month = parseInt(match[2]);
-      if (isFinite(year) && isFinite(month)) {
+      if (isFinite(year) && month >= 1 && month <= 12) {
         return {
           type: "month",
           year,
@@ -70,7 +70,7 @@ const SERIALIZERS: Serializer[] = [
     deserialize: match => {
       const year = parseInt(match[2]);
       const quarter = parseInt(match[1]);
-      if (isFinite(year) && isFinite(quarter)) {
+      if (isFinite(year) && quarter >= 1 && quarter <= 4) {
         return {
           type: "quarter",
           year,
@@ -443,7 +443,7 @@ const SERIALIZERS: Serializer[] = [
   },
 ];
 
-export function serializeDateFilter(value: DateFilterValue): string {
+export function serializeDateParameterValue(value: DateFilterValue): string {
   for (const serializer of SERIALIZERS) {
     const text = serializer.serialize(value);
     if (text != null) {
@@ -454,7 +454,7 @@ export function serializeDateFilter(value: DateFilterValue): string {
   throw new TypeError("Date filter cannot be serialized");
 }
 
-export function deserializeDateFilter(
+export function deserializeDateParameterValue(
   text: string,
 ): DateFilterValue | undefined {
   for (const serializer of SERIALIZERS) {

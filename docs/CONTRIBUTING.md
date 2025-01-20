@@ -61,7 +61,7 @@ Once one or more people have started to work on a feature, it should be marked [
 
 ### E) Verification and merging
 
-All PRs that involve more than an insignificant change should be reviewed. See our [Code Review Process](code-reviews.md).
+All PRs that involve more than an insignificant change should be reviewed. See our [Code Review Process](./developers-guide/code-reviews.md).
 
 If all goes well, the feature gets coded up, verified and then the pull request gets merged! High-fives all around.
 
@@ -95,7 +95,7 @@ By our definition, "Bugs" are situations where the program doesn't do what it wa
 
 There are a lot of docs, which means keeping them up to date is hard. If you notice inconsistencies, errors, or outdated information, please help us keep them current!
 
-Note that **we cannot accept translations for documentation at this time**. We support [in-app translations](../configuring-metabase/localization.md), and only support languages that have 100% coverage. But 1) the in-app text is orders of magnitude shorter than our docs, 2) it changes at a slower pace, and 3) we have a lot of people help out. We may consider supporting docs in multiple languages in the future, but for now we need to focus our resources on improving our existing documentation (and expanding it to include all of the new features we're adding).
+Note that **we cannot accept translations for documentation at this time**. We support [in-app translations](./configuring-metabase/localization.md), and only support languages that have 100% coverage. But 1) the in-app text is orders of magnitude shorter than our docs, 2) it changes at a slower pace, and 3) we have a lot of people help out. We may consider supporting docs in multiple languages in the future, but for now we need to focus our resources on improving our existing documentation (and expanding it to include all of the new features we're adding).
 
 ### Working on features
 

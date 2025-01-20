@@ -32,7 +32,11 @@ export function getEncodedUrlSearchParams(query: Record<string, unknown>) {
 }
 
 export function getSubpathSafeUrl(url: string) {
-  return api.basename + url;
+  const basename = api.basename;
+  const normalizedUrl =
+    !basename || !url || url.startsWith("/") ? url : `/${url}`;
+
+  return `${api.basename}${normalizedUrl}`;
 }
 
 /**

@@ -400,7 +400,7 @@ describe("scenarios > models", () => {
         cy.findByText("Save").click();
       });
 
-      cy.url().should("match", /\/dashboard\/\d+#edit/);
+      cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*#edit$/);
     });
 
     it("should not display models if nested queries are disabled", () => {
@@ -653,7 +653,7 @@ describe("scenarios > models", () => {
     it("should allow using models in native queries", () => {
       cy.intercept("POST", "/api/dataset").as("query");
       cy.get("@modelId").then(id => {
-        H.openNativeEditor().type(`select * from {{#${id}}}`, {
+        H.startNewNativeQuestion().type(`select * from {{#${id}}}`, {
           parseSpecialCharSequences: false,
         });
       });

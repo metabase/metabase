@@ -217,6 +217,7 @@
 
   Sometimes we get an invalid or inconsistent recent view record. (E.g. the parent collection for an item no longer
   exists). In these cases we simply do not include the value in the recent views response."
+  {:arglists '([recent-view])}
   (fn [{:keys [model #_model_id #_timestamp card_type]}]
     (or (get {"model" :dataset "question" :card "metric" :metric} card_type)
         (keyword model))))

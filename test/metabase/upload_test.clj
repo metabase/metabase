@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.upload-test
+(ns ^:mb/driver-tests ^:mb/upload-tests metabase.upload-test
   (:require
    [clj-bom.core :as bom]
    [clojure.data.csv :as csv]
@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -105,8 +106,8 @@
 
 (defn sync-upload-test-table!
   "Creates a table in the app db and syncs it synchronously, setting is_upload=true. Returns the table instance.
-  The result is identical to if the table was synced with [[metabase.sync/sync-database!]], but faster because it skips
-  syncing every table in the test database."
+  The result is identical to if the table was synced with [[metabase.sync.core/sync-database!]], but faster because it
+  skips syncing every table in the test database."
   [& {:keys [database table-name schema-name]}]
   (let [table-name  (ddl.i/format-name driver/*driver* table-name)
         schema-name (or (some->> schema-name (ddl.i/format-name driver/*driver*))
@@ -1182,7 +1183,7 @@
                     (:name new-field)
                     (:display_name new-field))))))))))
 
-(deftest ^:mb/once csv-upload-snowplow-test
+(deftest csv-upload-snowplow-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (snowplow-test/with-fake-snowplow-collector
       (do-with-uploaded-example-csv!
@@ -1201,7 +1202,7 @@
                      (last (snowplow-test/pop-event-data-and-user-id!)))))
 
            (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
-             (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+             (mt/with-dynamic-fn-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
                (try (do-with-uploaded-example-csv! {} identity)
                     (catch Throwable _
                       nil))
@@ -1213,7 +1214,7 @@
                        :user-id (str (mt/user->id :rasta))}
                       (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
 
-(deftest ^:mb/once csv-upload-audit-log-test
+(deftest csv-upload-audit-log-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-premium-features #{:audit-app}
       (do-with-uploaded-example-csv!
@@ -1257,14 +1258,13 @@
   [_driver _feature _database]
   true)
 
-;;; TODO -- The test below is currently broken for Redshift. This test was incorrectly marked `^:mb/once` prior to
-;;; #47681; I fixed that, but then Redshift tests started failing. We should fix the test so it can run against
-;;; Redshift.
+;;; TODO -- The test below is currently broken for Redshift. This test was incorrectly disabled #47681; I fixed that,
+;;; but then Redshift tests started failing. We should fix the test so it can run against Redshift.
 (defmethod driver/database-supports? [:redshift ::create-csv-upload!-failure-test]
   [_driver _feature _database]
   false)
 
-(deftest ^:mb/once create-csv-upload!-failure-test
+(deftest create-csv-upload!-failure-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads ::create-csv-upload!-failure-test)
     (mt/with-empty-db
       (testing "Uploads must be enabled"
@@ -1282,7 +1282,7 @@
               {:db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"}
               identity))))
       (testing "Uploads must be supported"
-        (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
+        (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
           (is (thrown-with-msg?
                java.lang.Exception
                #"^Uploads are not supported on \w+ databases\."
@@ -1309,14 +1309,26 @@
              #"Unsupported File Type"
              (do-with-uploaded-example-csv!
               {:file (write-empty-gzip (tmp-file "sneaky" ".csv"))}
-              identity)))))))
+              identity))))
+      (testing "Driver error"
+        (let [metrics (atom {})]
+          (with-redefs [driver/create-table! (fn [& _args] (throw (Exception. "Boom")))
+                        prometheus/inc! #(swap! metrics update % (fnil inc 0))]
+            (is (thrown-with-msg?
+                 Exception
+                 #"Boom"
+                 (do-with-uploaded-example-csv!
+                  {:file (tmp-file "file" ".csv")}
+                  identity)))
+            (testing "Prometheus alerted"
+              (is (= 1 (:metabase-csv-upload/failed @metrics))))))))))
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
-(deftest ^:mb/once create-csv-upload!-schema-does-not-sync-test
+(deftest create-csv-upload!-schema-does-not-sync-test
   ;; We only need to test this for a single driver, and the way this test has been written is coupled to Postgres
   (mt/test-driver :postgres
     (mt/with-empty-db
@@ -1478,7 +1490,7 @@
                       :data    {:status-code 422}}
                      (catch-ex-info (update-csv-with-defaults! action :file (csv-file-with []))))))
             (testing "Uploads must be supported"
-              (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
+              (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
                 (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
                         :data    {:status-code 422}}
                        (catch-ex-info (update-csv-with-defaults! action))))))))))))
@@ -1582,8 +1594,8 @@
         (with-mysql-local-infile-on-and-off
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for all possible CSV column types"
-              (mt/with-dynamic-redefs [driver/db-default-timezone (constantly "Z")
-                                       upload/current-database    (constantly (mt/db))]
+              (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
+                                          upload/current-database    (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -1775,7 +1787,7 @@
                        (rows-for-table table)))))
             (io/delete-file file)))))))
 
-(deftest ^:mb/once update-snowplow-test
+(deftest update-snowplow-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
@@ -1799,7 +1811,7 @@
                 (io/delete-file file)))
 
             (testing "Failures when appending to CSV Uploads will publish statistics to Snowplow"
-              (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+              (mt/with-dynamic-fn-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
                 (let [csv-rows ["mispelled_name, unexpected_column" "Duke Cakewalker, r2dj"]
                       file     (csv-file-with csv-rows (mt/random-name))]
                   (try
@@ -1816,7 +1828,7 @@
                         :user-id (str (mt/user->id :crowberto))}
                        (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
 
-(deftest ^:mb/once update-audit-log-test
+(deftest update-audit-log-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
@@ -2460,7 +2472,7 @@
         expected [:%ce%b1bcd%  :%_b59bccce :%ce%b1bc_2 :%ce%b1bc_3]
         displays ["αbcdεf" "αbcdεfg" "αbc 2 etc" "αbc 3 xyz"]]
     (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))
-    (mt/with-dynamic-redefs [upload/max-bytes (constantly 10)]
+    (mt/with-dynamic-fn-redefs [upload/max-bytes (constantly 10)]
       (is (= displays
              ;; The whitespace linter rejects capital greek characters that look like their roman equivalents.
              ;; This is the easiest way to work around the capitalization of alpha.

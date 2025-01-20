@@ -395,7 +395,8 @@
              {:field-name "as_bytes"
               :base-type {:natives {:postgres "BYTEA"
                                     :h2       "BYTEA"
-                                    :mysql    "VARBINARY(100)"}}
+                                    :mysql    "VARBINARY(100)"
+                                    :redshift "VARBYTE"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
     [["foo" (.getBytes "20190421164300")]
@@ -415,11 +416,6 @@
 
 ;;; Currently broken for Presto. See #46848
 (defmethod driver/database-supports? [:presto-jdbc ::yyyymmddhhss-binary-timestamps]
-  [_driver _feature _database]
-  false)
-
-;;; Not working for Redshift either. See #46850
-(defmethod driver/database-supports? [:redshift ::yyyymmddhhss-binary-timestamps]
   [_driver _feature _database]
   false)
 

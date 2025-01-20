@@ -18,6 +18,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
+   (org.h2.jdbc JdbcSQLSyntaxErrorException)
    (org.postgresql.util PSQLException)))
 
 (comment
@@ -224,22 +225,15 @@
        :model_updated_at (:updated_at entity))
       (merge (specialization/extra-entry-fields entity))))
 
-(defn delete!
-  "Remove any entries corresponding directly to a given model instance."
-  [id search-models]
-  ;; In practice, we expect this to be 1-1, but the data model does not preclude it.
-  (when (seq search-models)
-    (doseq [table-name [(active-table) (pending-table)] :when table-name]
-      (t2/delete! table-name :model_id id :model [:in search-models]))))
-
 (defn- safe-batch-upsert! [table-name entries]
   ;; For convenience, no-op if we are not tracking any table.
   (when table-name
     (try
       (specialization/batch-upsert! table-name entries)
       (catch Exception e
-        ;; TODO we should handle the H2, MySQL, and MariaDB flavors here too
-        (if (instance? PSQLException (ex-cause e))
+        ;; TODO we should handle the MySQL and MariaDB flavors here too
+        (if (or (instance? PSQLException (ex-cause e))
+                (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
           ;; Suppress database errors, which are likely due to stale tracking data.
           (sync-tracking-atoms!)
           (throw e))))))
@@ -265,13 +259,18 @@
         active-updated?  (safe-batch-upsert! (active-table) entries)
         pending-updated? (safe-batch-upsert! (pending-table) entries)]
     (when (or active-updated? pending-updated?)
-      (->> entries (map :model) frequencies))))
+      (u/prog1 (->> entries (map :model) frequencies)
+        (log/trace "indexed documents" <>)))))
 
 (defmethod search.engine/consume! :search.engine/appdb [_engine document-reducible]
   (transduce (comp (partition-all insert-batch-size)
                    (map batch-update!))
              (partial merge-with +)
              document-reducible))
+
+(defmethod search.engine/delete! :search.engine/appdb [_engine search-model ids]
+  (doseq [table-name [(active-table) (pending-table)] :when table-name]
+    (t2/delete! table-name :model search-model :model_id [:in ids])))
 
 (defn search-query
   "Query fragment for all models corresponding to a query parameter `:search-term`."

@@ -6,9 +6,9 @@ redirect_from:
 
 # Configuring the Metabase application database
 
-The application database is where Metabase stores information about user accounts, questions, dashboards, and any other data needed to run the Metabase application.
+The application database is where Metabase stores information about user accounts, questions, dashboards, and any other data needed to run the Metabase application. This app DB is distinct from the database where you store your data, also known as your data warehouse. For connecting to your data warehouse, see [Connecting to a supported database](../databases/connecting.md).
 
-For production, we recommend using PostgreSQL as your application database.
+For production, we recommend using PostgreSQL as your Metabase application database.
 
 - [PostgreSQL](#postgresql) (recommended for production)
 - [MySQL](#mysql-or-mariadb) (also works for production)
@@ -18,7 +18,7 @@ Metabase will read the connection configuration information when the application
 
 ## PostgreSQL
 
-We recommend that you use [PostgreSQL](https://www.postgresql.org/) for your Metabase application database.
+We recommend that you use [PostgreSQL](https://www.postgresql.org/) for your Metabase application database. The minimum Postgres version Metabase supports is 12, but we always recommend that you use the latest Postgres version that you can.
 
 You can use [environment variables](../configuring-metabase/environment-variables.md) to set a Postgres database as Metabase's application database. For example, the following commands tell Metabase to use a Postgres database as its application database:
 
