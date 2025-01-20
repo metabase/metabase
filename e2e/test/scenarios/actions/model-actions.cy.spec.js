@@ -94,10 +94,6 @@ describe(
         cy.wait("@getModel");
       });
 
-      cy.findByRole("tablist").within(() => {
-        cy.findByText("Actions").click();
-      });
-
       createBasicActions();
       cy.findByLabelText("Action list").within(() => {
         cy.get("li").eq(0).findByText("Create").should("be.visible");
@@ -189,13 +185,6 @@ describe(
       cy.get("@modelId").then(modelId => {
         cy.url().should("include", `/model/${modelId}/detail/actions`);
       });
-
-      cy.findAllByRole("tabpanel")
-        .filter(":visible")
-        .within(() => {
-          cy.findByText("Discount order").should("be.visible");
-          cy.findByText(QUERY).should("be.visible");
-        });
     });
 
     it("should respect permissions", () => {
@@ -304,8 +293,6 @@ describe(
         cy.visit(`/model/${modelId}/detail`);
         cy.wait("@getModel");
       });
-
-      cy.findByRole("tablist").findByText("Actions").click();
 
       runActionFor(actionName);
 
@@ -595,10 +582,6 @@ describe(
       cy.get("@writableModelId").then(id => {
         cy.visit(`/model/${id}/detail`);
         cy.wait("@getModel");
-      });
-
-      cy.findByRole("tablist").within(() => {
-        cy.findByText("Actions").click();
       });
 
       createBasicActions();
