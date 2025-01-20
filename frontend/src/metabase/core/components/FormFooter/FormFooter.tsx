@@ -6,7 +6,7 @@ interface FormFooterProps {
   hasTopBorder?: boolean;
 }
 
-const FormFooter = ({
+export const FormFooter = ({
   hasTopBorder,
   children,
 }: PropsWithChildren<FormFooterProps>) => {
@@ -23,6 +23,3 @@ const FormFooter = ({
     </Group>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormFooter;
