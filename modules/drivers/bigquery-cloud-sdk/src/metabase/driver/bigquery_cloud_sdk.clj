@@ -15,6 +15,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.table :as table]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.store :as qp.store]
@@ -22,9 +23,11 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentList)
@@ -641,6 +644,21 @@
           (if (:retryable? ex-data)
             (thunk)
             (throw e)))))))
+
+(defmethod qp.util/query->remark :bigquery-cloud-sdk
+  [_ {{:keys [context executed-by card-id pulse-id dashboard-id query-hash]} :info,
+      query-type :type,
+      database-id :database}]
+  (json/encode {:client      "Metabase"
+                :context     context
+                :queryType   query-type
+                :userId      executed-by
+                :pulseId     pulse-id
+                :cardId      card-id
+                :dashboardId dashboard-id
+                :databaseId  database-id
+                :queryHash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
+                :serverId    (public-settings/site-uuid)}))
 
 (defmethod driver/execute-reducible-query :bigquery-cloud-sdk
   [_driver {{sql :query, :keys [params]} :native, :as outer-query} _context respond]
