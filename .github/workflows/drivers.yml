@@ -767,6 +767,18 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - name: Redshift Upload Tests
+            test-args: >-
+              :only-tags [:mb/upload-tests]
+          - name: Redshift (Excluding Upload Tests)
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/upload-tests]
+
     env:
       CI: 'true'
       DRIVERS: redshift
@@ -774,15 +786,15 @@ jobs:
       MB_REDSHIFT_TEST_DB: testdb
       MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
-    name: Redshift
+    name: ${{ matrix.job.name }}
     steps:
     - uses: actions/checkout@v4
-    - name: Test Redshift driver
+    - name: Test ${{ matrix.job.name }}
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-redshift-ee'
         test-args: >-
-          :only-tags [:mb/driver-tests]
+          ${{ matrix.job.test-args }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()

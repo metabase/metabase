@@ -29,3 +29,6 @@ test/metabase/query_analysis @metabase/core-backend-querying
 
 src/metabase/setup @metabase/core-backend-admin-webapp
 test/metabase/setup @metabase/core-backend-admin-webapp
+
+src/metabase/sync @metabase/drivers
+test/metabase/sync @metabase/drivers

@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormFooter from "metabase/core/components/FormFooter";
+import { FormFooter } from "metabase/core/components/FormFooter";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
