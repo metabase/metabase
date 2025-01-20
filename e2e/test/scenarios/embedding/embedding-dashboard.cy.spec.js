@@ -1034,9 +1034,7 @@ H.describeEE.only("scenarios > embedding > dashboard appearance", () => {
       },
     );
 
-    cy.findByTestId("embed-frame-header")
-      .findByText("Orders in a dashboard")
-      .should("have.css", "font-family", "Roboto, sans-serif");
+    H.main().should("have.css", "font-family", "Roboto, sans-serif");
   });
 });
 
