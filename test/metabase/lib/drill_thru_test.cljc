@@ -838,5 +838,27 @@
 (deftest ^:parallel drill-value->js-test
   (testing "should convert :null to nil"
     (doseq [[input expected] [[:null nil]
-                              [nil nil]]]
+                              [nil nil]
+                              [0 0]
+                              ["" ""]
+                              ["a" "a"]
+                              [{} {}]
+                              [[] []]]]
       (is (= expected (lib.drill-thru.common/drill-value->js input))))))
+
+(deftest ^:parallel js->drill-value-test
+  (testing "should convert nil to :null"
+    (doseq [[input expected] [[nil :null]
+                              [0 0]
+                              ["" ""]
+                              ["a" "a"]
+                              [{} {}]
+                              [[] []]]]
+      (is (= expected (lib.drill-thru.common/js->drill-value input))))))
+
+(deftest ^:parallel js->drill-value->js-test
+  (testing "should round trip js->drill-value -> drill-value->js"
+    (doseq [input [nil 0 1 "" "a" {} [] {"a" "b"} [nil "a" "b"]]]
+      (is (= input (-> input
+                       lib.drill-thru.common/js->drill-value
+                       lib.drill-thru.common/drill-value->js))))))
