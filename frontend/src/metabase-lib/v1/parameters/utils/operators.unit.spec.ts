@@ -14,9 +14,9 @@ const option = {
 describe("parameters/utils/operators", () => {
   describe("deriveFieldOperatorFromParameter", () => {
     describe("getOperatorDisplayName", () => {
-      it("should return an option's name when the operator is a date or a number", () => {
-        expect(getOperatorDisplayName(option, "date")).toEqual("foo");
-        expect(getOperatorDisplayName(option, "number")).toEqual("foo");
+      it("should return an option's section name when the operator is a date or a number", () => {
+        expect(getOperatorDisplayName(option, "date", "bar")).toEqual("bar");
+        expect(getOperatorDisplayName(option, "number", "bar")).toEqual("bar");
       });
 
       it("should return an option's section name for the string/= option", () => {
