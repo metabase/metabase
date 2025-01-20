@@ -2,6 +2,7 @@ import {
   type CompletionContext,
   type CompletionResult,
   type CompletionSource,
+  acceptCompletion,
   autocompletion,
   moveCompletionSelection,
 } from "@codemirror/autocomplete";
@@ -107,6 +108,10 @@ function disableCmdEnter() {
       {
         key: "Mod-Enter",
         run: () => true,
+      },
+      {
+        key: "Tab",
+        run: acceptCompletion,
       },
       {
         key: "Mod-j",
