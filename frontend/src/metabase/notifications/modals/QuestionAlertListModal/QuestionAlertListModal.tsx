@@ -8,8 +8,9 @@ import {
   useUpdateNotificationMutation,
 } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
+import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
+import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
 import { addUndo } from "metabase/redux/undo";
-import { Button, Flex, Modal, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Notification } from "metabase-types/api";
 
@@ -150,43 +151,17 @@ export const QuestionAlertListModal = ({
       )}
 
       {activeModal === "delete-confirm-modal" && editingItem && (
-        <Modal
-          opened
-          data-testid="alert-delete"
-          title={t`Delete this alert?`}
-          size="lg"
+        <DeleteAlertConfirmModal
+          onConfirm={() => handleDelete(editingItem)}
           onClose={handleInternalModalClose}
-        >
-          <Text py="1rem">{t`This can't be undone.`}</Text>
-          <Flex justify="flex-end" gap="0.75rem">
-            <Button onClick={handleInternalModalClose}>{t`Cancel`}</Button>
-            <Button
-              variant="filled"
-              color="error"
-              onClick={() => handleDelete(editingItem)}
-            >{t`Delete it`}</Button>
-          </Flex>
-        </Modal>
+        />
       )}
 
       {activeModal === "unsubscribe-confirm-modal" && editingItem && (
-        <Modal
-          opened
-          data-testid="alert-unsubscribe"
-          title={t`Confirm you want to unsubscribe`}
-          size="lg"
+        <UnsubscribeConfirmModal
+          onConfirm={() => handleUnsubscribe(editingItem)}
           onClose={handleInternalModalClose}
-        >
-          <Text py="1rem">{t`You’ll stop receiving this alert from now on. Depending on your organization’s permissions you might need to ask a moderator to be re-added in the future.`}</Text>
-          <Flex justify="flex-end" gap="0.75rem">
-            <Button onClick={handleInternalModalClose}>{t`Cancel`}</Button>
-            <Button
-              variant="filled"
-              color="error"
-              onClick={() => handleUnsubscribe(editingItem)}
-            >{t`Unsubscribe`}</Button>
-          </Flex>
-        </Modal>
+        />
       )}
     </>
   );

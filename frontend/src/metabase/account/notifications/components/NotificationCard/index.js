@@ -1,1 +1,2 @@
-export { default } from "./NotificationCard";
+export { DashboardNotificationCard } from "./DashboardNotificationCard";
+export { NotificationCard } from "./NotificationCard";

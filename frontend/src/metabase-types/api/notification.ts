@@ -101,7 +101,7 @@ export type NotificationHandler =
 //#endregion
 
 //#region Subscription type
-type NotificationCronSubscription = {
+export type NotificationCronSubscription = {
   type: "notification-subscription/cron";
   event_name: null;
   cron_schedule: string;

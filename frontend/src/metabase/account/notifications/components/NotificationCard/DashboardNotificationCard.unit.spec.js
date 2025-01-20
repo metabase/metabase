@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import NotificationCard from "./NotificationCard";
+import { DashboardNotificationCard } from "./DashboardNotificationCard";
 
 const getAlert = ({ creator = getUser(), channels = [getChannel()] } = {}) => ({
   creator,
@@ -39,12 +39,12 @@ const getChannel = ({
   },
 });
 
-describe("NotificationCard", () => {
+describe("DashboardNotificationCard", () => {
   it("should render an alert", () => {
     const alert = getAlert();
     const user = getUser();
 
-    render(<NotificationCard item={alert} type="alert" user={user} />);
+    render(<DashboardNotificationCard item={alert} type="alert" user={user} />);
 
     expect(screen.getByText("Alert")).toBeInTheDocument();
     expect(screen.getByText("Emailed hourly")).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe("NotificationCard", () => {
     const pulse = getPulse();
     const user = getUser();
 
-    render(<NotificationCard item={pulse} type="pulse" user={user} />);
+    render(<DashboardNotificationCard item={pulse} type="pulse" user={user} />);
 
     expect(screen.getByText("Pulse")).toBeInTheDocument();
     expect(screen.getByText("Emailed hourly")).toBeInTheDocument();
@@ -72,7 +72,7 @@ describe("NotificationCard", () => {
     });
     const user = getUser();
 
-    render(<NotificationCard item={alert} type="alert" user={user} />);
+    render(<DashboardNotificationCard item={alert} type="alert" user={user} />);
 
     expect(screen.getByText("Slack’d hourly to @channel")).toBeInTheDocument();
   });
@@ -83,7 +83,7 @@ describe("NotificationCard", () => {
     });
     const user = getUser();
 
-    render(<NotificationCard item={alert} type="alert" user={user} />);
+    render(<DashboardNotificationCard item={alert} type="alert" user={user} />);
 
     expect(screen.getByText("Emailed daily at 8:00 AM")).toBeInTheDocument();
   });
@@ -94,7 +94,7 @@ describe("NotificationCard", () => {
     });
     const user = getUser();
 
-    render(<NotificationCard item={alert} type="alert" user={user} />);
+    render(<DashboardNotificationCard item={alert} type="alert" user={user} />);
 
     expect(screen.getByText("Emailed Monday at 8:00 AM")).toBeInTheDocument();
   });
@@ -105,7 +105,7 @@ describe("NotificationCard", () => {
     });
     const user = getUser();
 
-    render(<NotificationCard item={alert} type="alert" user={user} />);
+    render(<DashboardNotificationCard item={alert} type="alert" user={user} />);
 
     expect(
       screen.getByText("Emailed monthly on the first Monday at 8:00 AM"),
@@ -116,7 +116,7 @@ describe("NotificationCard", () => {
     const alert = getAlert();
     const user = getUser({ id: 2 });
 
-    render(<NotificationCard item={alert} type="alert" user={user} />);
+    render(<DashboardNotificationCard item={alert} type="alert" user={user} />);
 
     expect(
       screen.getByText("Created by John Doe on May 8, 2021"),
@@ -134,7 +134,7 @@ describe("NotificationCard", () => {
     const onArchive = jest.fn();
 
     render(
-      <NotificationCard
+      <DashboardNotificationCard
         item={alert}
         type="alert"
         user={user}
@@ -160,7 +160,7 @@ describe("NotificationCard", () => {
     const onArchive = jest.fn();
 
     render(
-      <NotificationCard
+      <DashboardNotificationCard
         item={alert}
         type="alert"
         user={creator}
@@ -182,7 +182,7 @@ describe("NotificationCard", () => {
     const onArchive = jest.fn();
 
     render(
-      <NotificationCard
+      <DashboardNotificationCard
         item={alert}
         type="alert"
         user={creator}
@@ -201,7 +201,7 @@ describe("NotificationCard", () => {
     const onArchive = jest.fn();
 
     render(
-      <NotificationCard
+      <DashboardNotificationCard
         item={alert}
         type="alert"
         user={creator}
@@ -226,7 +226,7 @@ describe("NotificationCard", () => {
     const onArchive = jest.fn();
 
     render(
-      <NotificationCard
+      <DashboardNotificationCard
         item={alert}
         type="alert"
         user={creator}

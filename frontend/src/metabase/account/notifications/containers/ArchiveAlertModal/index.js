@@ -1,1 +1,1 @@
-export { default } from "./ArchiveAlertModal";
+export { DeleteAlertModal } from "./DeleteAlertModal";

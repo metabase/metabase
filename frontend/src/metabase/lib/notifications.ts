@@ -1,13 +1,9 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
+import type { NotificationListItem } from "metabase/account/notifications/types";
 import { getEmailDomain, isEmail } from "metabase/lib/email";
-import {
-  formatDateTimeWithUnit,
-  formatTimeWithUnit,
-} from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
-import { formatFrame } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -25,120 +21,40 @@ import type {
   NotificationRecipient,
   NotificationRecipientRawValue,
   UpdateAlertNotificationRequest,
+  User,
   VisualizationSettings,
 } from "metabase-types/api";
 
-export const formatTitle = (item, type) => {
+export const formatTitle = ({ item, type }: NotificationListItem) => {
   switch (type) {
     case "pulse":
       return item.name;
-    case "alert":
-      return item.card.name;
+    case "question-notification":
+      return t`Alert`; // item.card.name;
   }
 };
 
-export const formatLink = (item, type) => {
+export const formatLink = ({
+  item,
+  type,
+}: NotificationListItem): string | null => {
   switch (type) {
-    case "pulse":
-      return Urls.dashboard({ id: item.dashboard_id });
-    case "alert":
-      return Urls.question(item.card);
-  }
-};
-
-export const formatChannel = channel => {
-  const parts = [
-    formatChannelType(channel),
-    formatChannelSchedule(channel),
-    formatChannelDetails(channel),
-  ];
-
-  return parts.filter(p => p).join(" ");
-};
-
-export const formatChannels = channels => {
-  return channels.map(channel => formatChannel(channel)).join(", ");
-};
-
-export const formatChannelType = ({ channel_type }) => {
-  switch (channel_type) {
-    case "email":
-      return t`emailed`;
-    case "slack":
-      return t`slack’d`;
-    default:
-      return t`sent`;
-  }
-};
-
-export const formatChannelSchedule = ({
-  schedule_type,
-  schedule_hour,
-  schedule_day,
-  schedule_frame,
-}) => {
-  const options = MetabaseSettings.formattingOptions();
-
-  switch (schedule_type) {
-    case "hourly":
-      return t`hourly`;
-    case "daily": {
-      const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
-      return t`daily at ${ampm}`;
+    case "pulse": {
+      if (item.dashboard_id) {
+        return Urls.dashboard({ id: item.dashboard_id });
+      }
+      break;
     }
-    case "weekly": {
-      const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
-      const day = formatDateTimeWithUnit(schedule_day, "day-of-week", options);
-      return t`${day} at ${ampm}`;
-    }
-    case "monthly": {
-      const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
-      const day = formatDateTimeWithUnit(schedule_day, "day-of-week", options);
-      const frame = formatFrame(schedule_frame);
-      return t`monthly on the ${frame} ${day} at ${ampm}`;
-    }
+
+    case "question-notification":
+      return Urls.question({ card_id: item.payload.card_id });
   }
+
+  return null;
 };
 
-export const formatChannelDetails = ({ channel_type, details }) => {
-  if (channel_type === "slack" && details) {
-    return `to ${details.channel}`;
-  }
-};
-
-export const formatChannelRecipients = item => {
-  const emailCount = getRecipientsCount(item, "email");
-  const slackCount = getRecipientsCount(item, "slack");
-
-  const emailMessage = ngettext(
-    msgid`${emailCount} email`,
-    `${emailCount} emails`,
-    emailCount,
-  );
-
-  const slackMessage = ngettext(
-    msgid`${slackCount} Slack channel`,
-    `${slackCount} Slack channels`,
-    slackCount,
-  );
-
-  if (emailCount && slackCount) {
-    return t`${emailMessage} and ${slackMessage}.`;
-  } else if (emailCount) {
-    return emailMessage;
-  } else if (slackCount) {
-    return slackMessage;
-  }
-};
-
-export const getRecipientsCount = (item, channelType) => {
-  return item.channels
-    .filter(channel => channel.channel_type === channelType)
-    .reduce((total, channel) => total + channel.recipients.length, 0);
-};
-
-export const canArchive = (item, user) => {
-  const recipients = item.channels.flatMap(channel => {
+export const canArchive = (item: Notification, user: User) => {
+  const recipients = item.handlers.flatMap(channel => {
     if (channel.recipients) {
       return channel.recipients.map(recipient => recipient.id);
     } else {
