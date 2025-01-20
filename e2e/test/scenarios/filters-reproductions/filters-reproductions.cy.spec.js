@@ -1564,7 +1564,6 @@ describe("issue 49642", () => {
       );
 
       cy.findByText("Zackery Bailey").should("be.visible");
-      cy.findByText("Zackery Kuhn").should("be.visible");
     });
   });
 

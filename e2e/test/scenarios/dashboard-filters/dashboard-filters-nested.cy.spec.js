@@ -69,7 +69,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     // Add multiple values (metabase#18113)
     H.filterWidget().click();
     H.popover().within(() => {
-      H.multiAutocompleteInput().type("Gizmo,Gadget").blur();
+      H.fieldValuesInput().type("Gizmo,Gadget").blur();
     });
 
     cy.button("Add filter").click();
