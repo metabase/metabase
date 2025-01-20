@@ -1,8 +1,7 @@
 import _ from "underscore";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import Modal from "metabase/components/Modal";
-import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
+import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections from "metabase/entities/collections";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -19,17 +18,14 @@ const CreateDashboardModalInner = ({
   isOpen = true,
   onCreate,
   onClose,
-}: CreateDashboardModalProps) => {
-  return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <CreateDashboardModalConnected
-        onCreate={onCreate}
-        onClose={onClose}
-        collectionId={initialCollectionId}
-      />
-    </Modal>
-  );
-};
+}: CreateDashboardModalProps) => (
+  <CreateDashboardModalCore
+    opened={isOpen}
+    onCreate={onCreate}
+    onClose={onClose}
+    collectionId={initialCollectionId}
+  />
+);
 
 export const CreateDashboardModal = _.compose(
   withPublicComponentWrapper,
