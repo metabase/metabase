@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { Component, createRef } from "react";
+import { Component, createRef, forwardRef } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import _ from "underscore";
 
@@ -348,6 +348,7 @@ export class NativeQueryEditor extends Component<
       <div
         className={S.queryEditor}
         data-testid="native-query-editor-container"
+        ref={this.props.forwardedRef}
       >
         {hasTopBar && (
           <Flex align="center" data-testid="native-query-top-bar">
@@ -450,10 +451,16 @@ export class NativeQueryEditor extends Component<
   }
 }
 
+const NativeQueryEditorWithRef = forwardRef((props, ref) => {
+  return <NativeQueryEditor {...props} forwardedRef={ref}></NativeQueryEditor>;
+});
+
+NativeQueryEditorWithRef.displayName = "NativeQueryEditor";
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  ExplicitSize(),
   Databases.loadList({ loadingAndErrorWrapper: false }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
-)(NativeQueryEditor);
+  ExplicitSize(),
+)(NativeQueryEditorWithRef);

@@ -126,6 +126,7 @@ class ChartWithLegend extends Component {
           paddingLeft: PADDING,
           paddingRight: PADDING,
         }}
+        ref={this.props.forwardedRef}
       >
         {legend && (
           <div className={cx(styles.LegendWrapper)} data-testid="chart-legend">
@@ -154,7 +155,11 @@ class ChartWithLegend extends Component {
   }
 }
 
+const ChartWithLegendWithRef = (props, ref) => {
+  return <ChartWithLegend {...props} forwardedRef={ref} />;
+};
+
 export default ExplicitSize({
   wrapped: true,
   refreshMode: "debounceLeading",
-})(ChartWithLegend);
+})(ChartWithLegendWithRef);

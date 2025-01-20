@@ -100,6 +100,13 @@ function ExplicitSize<T>({
             element = element.querySelector(selector) || element;
           }
 
+          if (displayName === "Connect(Visualization)") {
+            console.log(
+              displayName,
+              { selector },
+              !selector && element !== this.elementRef?.current,
+            );
+          }
           if (!selector && element !== this.elementRef?.current) {
             console.log(
               !selector && element !== this.elementRef?.current

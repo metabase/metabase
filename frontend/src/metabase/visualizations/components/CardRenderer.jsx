@@ -74,12 +74,22 @@ class CardRenderer extends Component {
   }
 
   render() {
-    return <div className={this.props.className} style={this.props.style} />;
+    return (
+      <div
+        className={this.props.className}
+        style={this.props.style}
+        ref={this.props.forwardedRef}
+      />
+    );
   }
 }
+
+const CardRendererWithRef = (props, ref) => {
+  return <CardRenderer {...props} forwardedRef={ref} />;
+};
 
 export default ExplicitSize({
   wrapped: true,
   // Avoid using debounce when isDashboard=true because there should not be any initial delay when rendering cards
   refreshMode: props => (props.isDashboard ? "debounceLeading" : "throttle"),
-})(CardRenderer);
+})(CardRendererWithRef);
