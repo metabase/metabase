@@ -1021,6 +1021,56 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByLabelText("close icon").invoke("outerHeight").should("eq", 16);
     }
   });
+
+  it("shows all available columns and groups in the breakout picker (metabase#46832)", () => {
+    cy.visit("/");
+    H.newButton("Question").click();
+    H.entityPickerModal().findByText("Tables").click();
+    H.entityPickerModal().findByText("Orders").click();
+    H.join();
+    H.joinTable("Reviews", "Product ID", "Product ID");
+    H.addSummaryField({ metric: "Count of rows" });
+    H.addSummaryGroupingField({ field: "Created At" });
+    cy.findAllByRole("button", { name: "Join data" }).last().click();
+    H.joinTable("Reviews", "Created At: Month", "Created At");
+    cy.button("Summarize").click();
+    H.addSummaryField({ metric: "Count of rows", stage: 1 });
+
+    cy.log("adding a new breakout");
+    H.getNotebookStep("summarize", { stage: 1 })
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Summaries").should("be.visible");
+      cy.findByText("Created At: Month").should("be.visible");
+      cy.findByText("Count").should("be.visible");
+
+      cy.findByText("Reviews").click();
+      cy.findByText("Created At: Month").should("not.exist");
+      cy.findByText("Count").should("not.exist");
+
+      cy.findByText("Summaries").click();
+      cy.findByText("Created At: Month").should("be.visible");
+      cy.findByText("Count").should("be.visible");
+
+      cy.findByText("Reviews").click();
+      cy.findByText("Rating").click();
+    });
+
+    cy.log("editing an existing breakout");
+    H.getNotebookStep("summarize", { stage: 1 })
+      .findByText("Reviews - Created At: Month → Rating: Auto binned")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Summaries").should("be.visible");
+      cy.findByText("Created At: Month").should("not.exist");
+      cy.findByText("Count").should("not.exist");
+
+      cy.findByText("Summaries").click();
+      cy.findByText("Created At: Month").should("be.visible");
+      cy.findByText("Count").should("be.visible");
+    });
+  });
 });
 
 function assertTableRowCount(expectedCount) {
