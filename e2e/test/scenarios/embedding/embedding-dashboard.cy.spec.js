@@ -1016,7 +1016,7 @@ H.describeEE.only("scenarios > embedding > dashboard appearance", () => {
     cy.url().should("include", "locale=de");
   });
 
-  it("should allow to set font from the `font` hash parameter (metabase#52365)", () => {
+  it("should allow to set font from the `font` hash parameter", () => {
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       enable_embedding: true,
     });

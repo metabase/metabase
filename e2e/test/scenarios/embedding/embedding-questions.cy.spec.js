@@ -262,7 +262,7 @@ H.describeEE("scenarios [EE] > embedding > questions", () => {
     cy.url().should("include", "locale=de");
   });
 
-  it("should display according to `#font` hash parameter (metabase#52365)", () => {
+  it("should display according to `#font` hash parameter", () => {
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       enable_embedding: true,
     });
