@@ -653,7 +653,7 @@ describe("scenarios > models", () => {
     it("should allow using models in native queries", () => {
       cy.intercept("POST", "/api/dataset").as("query");
       cy.get("@modelId").then(id => {
-        H.openNativeEditor().type(`select * from {{#${id}}}`, {
+        H.startNewNativeQuestion().type(`select * from {{#${id}}}`, {
           parseSpecialCharSequences: false,
         });
       });
