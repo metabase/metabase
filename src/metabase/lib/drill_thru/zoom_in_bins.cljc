@@ -92,7 +92,7 @@
   [query                                 :- ::lib.schema/query
    _stage-number                         :- :int
    {:keys [column value], :as _context}  :- ::lib.schema.drill-thru/context]
-  (when (and column value)
+  (when (and column value (not= value :null))
     (when-let [existing-breakout (first (lib.breakout/existing-breakouts query
                                                                          (lib.underlying/top-level-stage-number query)
                                                                          column))]
