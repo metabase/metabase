@@ -1602,3 +1602,13 @@
                               :target [:variable [:template-tag "date"]]
                               :value  "2024-07-02"}]
                 :middleware {:format-rows? false}})))))))
+
+(deftest ^:parallel xml-column-is-readable-test
+  (mt/with-driver :postgres
+    (let [xml-str "<abc>abc</abc>"]
+      (is (= [[xml-str]]
+             (mt/rows
+              (qp/process-query
+               {:database (mt/id)
+                :type :native
+                :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))
