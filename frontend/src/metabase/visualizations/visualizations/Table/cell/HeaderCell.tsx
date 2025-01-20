@@ -1,6 +1,6 @@
 import cx from "classnames";
-import type { MouseEvent } from "react";
 import type React from "react";
+import { type MouseEvent, memo } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/ui";
@@ -14,12 +14,12 @@ export type HeaderCellProps = {
   onClick?: (event: MouseEvent<HTMLDivElement>) => void;
 };
 
-export const HeaderCell = ({
+export const HeaderCell = memo(function HeaderCell({
   name,
   align = "left",
   sort,
   onClick,
-}: HeaderCellProps) => {
+}: HeaderCellProps) {
   return (
     <div
       className={cx(styles.root, {
@@ -43,4 +43,4 @@ export const HeaderCell = ({
       </div>
     </div>
   );
-};
+});

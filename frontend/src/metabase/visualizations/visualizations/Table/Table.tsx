@@ -32,6 +32,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import type { OrderByDirection } from "metabase-lib/types";
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 
 import styles from "./Table.module.css";
@@ -43,6 +44,7 @@ import { useVirtualGrid } from "./hooks/use-virtual-grid";
 interface TableProps extends VisualizationProps {
   onZoomRow?: (objectId: number | string) => void;
   rowIndexToPkMap?: Record<number, string>;
+  getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   isPivoted?: boolean;
 }
@@ -250,7 +252,7 @@ export const _Table = ({
       });
 
       const column = columns.find(column => column.id === columnId);
-      if (column?.wrap) {
+      if (column?.meta?.wrap) {
         rowVirtualizer.measure();
       }
     },
@@ -264,6 +266,9 @@ export const _Table = ({
     [rowVirtualizer],
   );
 
+  if (width == null || height == null) {
+    return null;
+  }
   return (
     <DndContext
       sensors={sensors}
@@ -272,105 +277,117 @@ export const _Table = ({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div style={{ height, width }} className={styles.table}>
-        <div ref={bodyRef} className={styles.tableContainer}>
-          <div className={styles.tableGrid}>
-            <div className={styles.thead}>
-              {table.getHeaderGroups().map(headerGroup => (
-                <div key={headerGroup.id} className={styles.tr}>
-                  {virtualPaddingLeft ? (
-                    <div
-                      className={styles.th}
-                      style={{ width: virtualPaddingLeft }}
-                    />
-                  ) : null}
-                  <SortableContext
-                    items={columnOrder}
-                    strategy={horizontalListSortingStrategy}
-                  >
-                    {virtualColumns.map(virtualColumn => {
-                      const header = headerGroup.headers[virtualColumn.index];
-                      return (
-                        <DraggableHeader
-                          key={header.id}
-                          header={header}
-                          onResize={width =>
-                            handleColumnResize(header.id, width)
-                          }
-                          isPivoted={isPivoted}
-                        />
-                      );
-                    })}
-                  </SortableContext>
-                  {virtualPaddingRight ? (
-                    <div
-                      className={styles.th}
-                      style={{ width: virtualPaddingRight }}
-                    />
-                  ) : null}
-                </div>
-              ))}
-            </div>
-            <div
-              className={styles.tbody}
-              style={{
-                height: `${rowVirtualizer.getTotalSize()}px`,
-              }}
-            >
-              {virtualRows.map(virtualRow => {
-                const row = table.getRowModel().rows[virtualRow.index];
-                return (
-                  <div
-                    key={row.id}
-                    ref={measureRef}
-                    data-index={virtualRow.index}
-                    className={styles.tr}
-                    style={{
-                      height: `${virtualRow.size}px`,
-                      position: "absolute",
-                      transform: `translateY(${virtualRow.start}px)`,
-                      width: "100%",
-                    }}
-                  >
+      <>
+        <div style={{ height, width }} className={styles.table}>
+          <div
+            ref={bodyRef}
+            style={{
+              height: `${height}px`,
+              width: `${width}px`,
+              overflow: "auto",
+              position: "relative",
+            }}
+          >
+            <div className={styles.tableGrid}>
+              <div className={styles.thead}>
+                {table.getHeaderGroups().map(headerGroup => (
+                  <div key={headerGroup.id} className={styles.tr}>
                     {virtualPaddingLeft ? (
                       <div
-                        className={styles.td}
+                        className={styles.th}
                         style={{ width: virtualPaddingLeft }}
                       />
                     ) : null}
-
-                    {virtualColumns.map(virtualColumn => {
-                      const cell = row.getVisibleCells()[virtualColumn.index];
-                      return (
-                        <div
-                          key={cell.id}
-                          className={styles.td}
-                          style={{
-                            position: "relative",
-                            width: cell.column.getSize(),
-                          }}
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </div>
-                      );
-                    })}
+                    <SortableContext
+                      items={columnOrder}
+                      strategy={horizontalListSortingStrategy}
+                    >
+                      {virtualColumns.map(virtualColumn => {
+                        const header = headerGroup.headers[virtualColumn.index];
+                        return (
+                          <DraggableHeader
+                            key={header.id}
+                            header={header}
+                            onResize={width =>
+                              handleColumnResize(header.id, width)
+                            }
+                            isPivoted={isPivoted}
+                          />
+                        );
+                      })}
+                    </SortableContext>
                     {virtualPaddingRight ? (
                       <div
-                        className={styles.td}
+                        className={styles.th}
                         style={{ width: virtualPaddingRight }}
                       />
                     ) : null}
                   </div>
-                );
-              })}
+                ))}
+              </div>
+              <div
+                className={styles.tbody}
+                style={{
+                  display: "grid",
+                  position: "relative",
+                  height: `${rowVirtualizer.getTotalSize()}px`,
+                }}
+              >
+                {virtualRows.map(virtualRow => {
+                  const row = table.getRowModel().rows[virtualRow.index];
+                  return (
+                    <div
+                      key={row.id}
+                      ref={measureRef}
+                      data-index={virtualRow.index}
+                      className={styles.tr}
+                      style={{
+                        height: `${virtualRow.size}px`,
+                        position: "absolute",
+                        transform: `translateY(${virtualRow.start}px)`,
+                        width: "100%",
+                      }}
+                    >
+                      {virtualPaddingLeft ? (
+                        <div
+                          className={styles.td}
+                          style={{ width: virtualPaddingLeft }}
+                        />
+                      ) : null}
+
+                      {virtualColumns.map(virtualColumn => {
+                        const cell = row.getVisibleCells()[virtualColumn.index];
+                        return (
+                          <div
+                            key={cell.id}
+                            className={styles.td}
+                            style={{
+                              position: "relative",
+                              width: cell.column.getSize(),
+                            }}
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
+                          </div>
+                        );
+                      })}
+                      {virtualPaddingRight ? (
+                        <div
+                          className={styles.td}
+                          style={{ width: virtualPaddingRight }}
+                        />
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      {measureRoot}
+        {measureRoot}
+      </>
     </DndContext>
   );
 };

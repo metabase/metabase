@@ -1,4 +1,11 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Root } from "react-dom/client";
 import { useUpdateEffect } from "react-use";
 
@@ -17,6 +24,7 @@ import type {
   ComputedVisualizationSettings,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import type { OrderByDirection } from "metabase-lib/types";
 import { isFK, isNumber, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
@@ -26,42 +34,45 @@ import type {
   RowValues,
 } from "metabase-types/api";
 
-import {
-  BodyCell,
-  type BodyCellProps,
-  type BodyCellVariant,
-} from "../cell/BodyCell";
+import { BodyCell, type BodyCellVariant } from "../cell/BodyCell";
 import { HeaderCell } from "../cell/HeaderCell";
 import { MiniBar } from "../cell/MiniBar";
 import { pickRowsToMeasure } from "../utils";
 
+import "@tanstack/react-table";
+
+declare module "@tanstack/react-table" {
+  interface ColumnMeta<TData extends RowData, TValue> {
+    column: DatasetColumn;
+    datasetIndex: number;
+    wrap: boolean;
+    isPivoted: boolean;
+  }
+}
+
 import type { CellMeasurer } from "./use-cell-measure";
+import { ColumnDef, RowData } from "@tanstack/react-table";
+import { isNotNull } from "metabase/lib/types";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
 
 const CELL_BORDERS_WIDTH = 2;
 
-const getBodyCellOptions = (
+const getBodyCellVariant = (
   column: DatasetColumn,
   settings: ColumnSettings,
-): Pick<BodyCellProps, "variant" | "wrap"> => {
-  let variant: BodyCellVariant;
-  const isPill = isPK(column) || isFK(column);
-  if (isPill) {
-    variant = "pill";
-  } else if (settings["show_mini_bar"]) {
-    variant = "minibar";
-  } else {
-    variant = "text";
+): BodyCellVariant => {
+  if (settings["show_mini_bar"]) {
+    return "minibar";
   }
 
-  const wrap = !!settings["text_wrapping"];
+  const isPill = isPK(column) || isFK(column);
+  if (isPill) {
+    return "pill";
+  }
 
-  return {
-    variant,
-    wrap,
-  };
+  return "text";
 };
 
 interface UseColumnsProps {
@@ -71,6 +82,7 @@ interface UseColumnsProps {
   measureBodyCellDimensions: CellMeasurer;
   measureHeaderCellDimensions: CellMeasurer;
   isPivoted?: boolean;
+  getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
 }
 
 export const useColumns = ({
@@ -110,19 +122,20 @@ export const useColumns = ({
     }
   }, [settings["table.column_widths"]]);
 
-  const columns = useMemo(() => {
+  const columns: ColumnDef<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((col, index) => {
       const align = isNumber(col) ? "right" : "left";
       const columnWidth = columnWidths[index] ?? 0;
       const columnSettings = settings.column?.(col) ?? {};
-      const bodyCellOptions = getBodyCellOptions(col, columnSettings);
+      const wrap = Boolean(settings["text_wrapping"]);
+      const variant = getBodyCellVariant(col, columnSettings);
       const isTruncated =
         !columnIsExpanded[index] && columnWidth > TRUNCATE_WIDTH;
 
       return {
         id: index.toString(),
         accessorFn: (row: RowValues) => row[index],
-        header: () => {
+        header: memo(props => {
           const sortDirection = getColumnSortDirection(index);
           const headerClicked = getTableHeaderClickedObject(
             data,
@@ -142,71 +155,76 @@ export const useColumns = ({
               }}
             />
           );
-        },
-        cell: (props: { getValue: () => RowValue; row: { index: number } }) => {
-          const value = props.getValue();
-          const backgroundColor = settings["table._cell_background_getter"]?.(
-            value,
-            props.row.index,
-            col.name,
-          );
+        }),
+        cell: memo(
+          (props: { getValue: () => RowValue; row: { index: number } }) => {
+            const value = props.getValue();
+            const backgroundColor = settings["table._cell_background_getter"]?.(
+              value,
+              props.row.index,
+              col.name,
+            );
 
-          const clickedRowData = getTableClickedObjectRowData(
-            [{ data }],
-            props.row.index,
-            index,
-            isPivoted,
-            data,
-          );
+            const clickedRowData = getTableClickedObjectRowData(
+              [{ data }],
+              props.row.index,
+              index,
+              isPivoted,
+              data,
+            );
 
-          const clicked = getTableCellClickedObject(
-            data,
-            settings,
-            props.row.index,
-            index,
-            isPivoted,
-            clickedRowData,
-          );
+            const clicked = getTableCellClickedObject(
+              data,
+              settings,
+              props.row.index,
+              index,
+              isPivoted,
+              clickedRowData,
+            );
 
-          if (bodyCellOptions.variant === "minibar") {
+            if (variant === "minibar") {
+              return (
+                <MiniBar
+                  value={value}
+                  formatter={columnFormatters[index]}
+                  extent={getColumnExtent(data.cols, data.rows, index)}
+                />
+              );
+            }
+
             return (
-              <MiniBar
+              <BodyCell
                 value={value}
+                align={align}
+                canExpand={!wrap && isTruncated}
                 formatter={columnFormatters[index]}
-                extent={getColumnExtent(data.cols, data.rows, index)}
+                backgroundColor={backgroundColor}
+                onClick={event => {
+                  onVisualizationClick?.({
+                    ...clicked,
+                    element: event.currentTarget,
+                  });
+                }}
+                onExpand={() => {
+                  setColumnIsExpanded(prev => {
+                    const updated = prev.slice();
+                    updated[index] = true;
+                    return updated;
+                  });
+                }}
+                variant={variant}
+                wrap={wrap}
               />
             );
-          }
-
-          return (
-            <BodyCell
-              value={value}
-              align={align}
-              canExpand={!bodyCellOptions.wrap && isTruncated}
-              formatter={columnFormatters[index]}
-              backgroundColor={backgroundColor}
-              onClick={event => {
-                onVisualizationClick?.({
-                  ...clicked,
-                  element: event.currentTarget,
-                });
-              }}
-              onExpand={() => {
-                setColumnIsExpanded(prev => {
-                  const updated = prev.slice();
-                  updated[index] = true;
-                  return updated;
-                });
-              }}
-              {...bodyCellOptions}
-            />
-          );
-        },
-        column: col,
-        datasetIndex: index,
+          },
+        ),
         size: isTruncated ? TRUNCATE_WIDTH : columnWidth,
-        wrap: bodyCellOptions.wrap,
-        isPivoted,
+        meta: {
+          isPivoted,
+          column: col,
+          datasetIndex: index,
+          wrap,
+        },
       };
     });
   }, [
@@ -245,10 +263,8 @@ export const useColumns = ({
           <div style={{ display: "flex" }} ref={onMeasureHeaderRender}>
             {cols.map((column, columnIndex) => {
               const columnSettings = settings.column?.(column) ?? {};
-              const bodyCellOptions = getBodyCellOptions(
-                column,
-                columnSettings,
-              );
+              const variant = getBodyCellVariant(column, columnSettings);
+
               return (
                 <div className="fake-column" key={"column-" + columnIndex}>
                   <HeaderCell name={column.display_name} />
@@ -257,7 +273,7 @@ export const useColumns = ({
                       key={rowIndex}
                       value={rows[rowIndex][columnIndex]}
                       formatter={columnFormatters[columnIndex]}
-                      {...bodyCellOptions}
+                      variant={variant}
                     />
                   ))}
                 </div>
@@ -285,7 +301,9 @@ export const useColumns = ({
       measureRootRef.current = measureRoot;
     }
 
-    measureColumnWidths();
+    if (!savedColumnWidths?.some(isNotNull)) {
+      measureColumnWidths();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
