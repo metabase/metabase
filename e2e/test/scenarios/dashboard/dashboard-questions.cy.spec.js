@@ -327,7 +327,9 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.appBar().findByText("Orders in a dashboard");
 
-      H.queryBuilderHeader().button("Summarize").click();
+      H.queryBuilderHeader()
+        .button(/Summarize/)
+        .click();
       H.rightSidebar().findByText("Count").click();
       H.popover()
         .findByText(/Average of/)

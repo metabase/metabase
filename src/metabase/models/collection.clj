@@ -1680,6 +1680,7 @@
 
 (defmulti hydrate-can-restore
   "Can these items be restored?"
+  {:arglists '([model items])}
   (fn [model _] model))
 
 (defmethod hydrate-can-restore :model/Collection [_model colls]

@@ -5,6 +5,7 @@ export const getDateInputOverrides =
     DateInput: {
       defaultProps: {
         size: "md",
+        inputWrapperOrder: ["label", "description", "input", "error"],
       },
       styles: theme => ({
         calendar: {
@@ -13,6 +14,9 @@ export const getDateInputOverrides =
         input: {
           color: "var(--mb-color-text-primary)",
           backgroundColor: "var(--mb-color-background)",
+        },
+        error: {
+          "&::first-letter": { textTransform: "capitalize" },
         },
       }),
     },

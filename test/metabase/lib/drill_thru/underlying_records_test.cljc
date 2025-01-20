@@ -410,7 +410,7 @@
                  :table-name "Orders"}
                 (lib/display-info query -1 drill)))))))
 
-(deftest ^:parallel nil-aggregation-value-test
+(deftest ^:parallel nil-aggregation-value-binned-test
   (testing "nil dimension value for binned column should return a valid query (#11345 #36581)"
     (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/aggregate (lib/count))
@@ -440,6 +440,35 @@
       (is (=? {:stages [{:filters [[:is-null
                                     {}
                                     [:field {:binning (symbol "nil #_\"key is not present.\"")} (meta/id :orders :discount)]]]}]}
+              (lib/drill-thru query drill))))))
+
+(deftest ^:parallel nil-aggregation-value-unbinned-test
+  (testing "nil dimension value for unbinned column should return an is-null filter (#51751)"
+    (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (meta/field-metadata :products :category)))
+          count-col    (m/find-first #(= (:name %) "count")
+                                     (lib/returned-columns query))
+          _            (is (some? count-col))
+          category-col (m/find-first #(= (:name %) "CATEGORY")
+                                     (lib/returned-columns query))
+          _            (is (some? category-col))
+          context      {:column     count-col
+                        :column-ref (lib/ref count-col)
+                        :value      16845
+                        :row        [{:column     category-col
+                                      :column-ref (lib/ref category-col)
+                                      :value      nil}
+                                     {:column     count-col
+                                      :column-ref (lib/ref count-col)
+                                      :value      16845}]
+                        :dimensions [{:column     category-col
+                                      :column-ref (lib/ref category-col)
+                                      :value      nil}]}
+          drill (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                              (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (is (=? {:stages [{:filters [[:is-null {} [:field {} (meta/id :products :category)]]]}]}
               (lib/drill-thru query drill))))))
 
 (deftest ^:parallel multi-stage-query-test

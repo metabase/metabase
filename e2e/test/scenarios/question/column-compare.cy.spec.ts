@@ -203,7 +203,7 @@ describe.skip("scenarios > question", () => {
         );
 
         cy.log("chill mode - summarize sidebar");
-        cy.button("Summarize").click();
+        cy.button(/Summarize/).click();
         H.rightSidebar().button("Count").icon("close").click();
         H.rightSidebar().button("Add aggregation").click();
         verifyNoColumnCompareShortcut();
@@ -218,7 +218,7 @@ describe.skip("scenarios > question", () => {
 
         cy.log("notebook editor");
         H.openNotebook();
-        cy.button("Summarize").click();
+        cy.button(/Summarize/).click();
         verifyNoColumnCompareShortcut();
       });
     });
@@ -237,7 +237,7 @@ describe.skip("scenarios > question", () => {
         );
 
         cy.log("chill mode - summarize sidebar");
-        cy.button("Summarize").click();
+        cy.button(/Summarize/).click();
         H.rightSidebar().button("Count").icon("close").click();
         H.rightSidebar().button("Add aggregation").click();
         verifyNoColumnCompareShortcut();
@@ -263,7 +263,7 @@ describe.skip("scenarios > question", () => {
         );
 
         cy.log("chill mode - summarize sidebar");
-        cy.button("Summarize").click();
+        cy.button(/Summarize/).click();
         H.rightSidebar().button("Count").icon("close").click();
         H.rightSidebar().button("Add aggregation").click();
         verifyNoColumnCompareShortcut();
@@ -563,7 +563,7 @@ describe.skip("scenarios > question", () => {
           verifyNoColumnCompareShortcut();
           cy.realPress("Escape");
 
-          cy.button("Show Visualization").click();
+          cy.button(/Visualization/).click();
           H.queryBuilderMain().findByText("42").should("be.visible");
 
           verifyNotebookText(info);
@@ -1327,11 +1327,11 @@ describe.skip("scenarios > question", () => {
 
           H.openNotebook();
 
-          cy.button("Summarize").click();
+          cy.button(/Summarize/).click();
           verifyNoColumnCompareShortcut();
           cy.realPress("Escape");
 
-          cy.button("Show Visualization").click();
+          cy.button(/Visualization/).click();
           H.queryBuilderMain().findByText("42").should("be.visible");
 
           verifyNotebookText(info);
@@ -1836,7 +1836,7 @@ function selectCustomOffset() {
 }
 
 function verifySummarizeText(options: CheckTextOpts) {
-  cy.button("Summarize").click();
+  cy.button(/Summarize/).click();
   H.rightSidebar().button("Add aggregation").click();
 
   H.popover().within(() => {
