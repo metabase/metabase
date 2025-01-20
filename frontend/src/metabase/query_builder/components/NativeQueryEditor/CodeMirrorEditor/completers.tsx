@@ -200,6 +200,7 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
       return {
         // -1 because we want to include the # in the autocomplete
         from: tag.content.from - 1,
+        to: tag.content.to,
         options: data.map(({ id, name, type, collection_name }) => ({
           label: `#${id}-${slugg(name)}`,
           detail: getCardAutocompleteResultMeta(type, collection_name),

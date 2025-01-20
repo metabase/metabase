@@ -10,12 +10,17 @@ import { act, renderWithProviders, waitFor } from "__support__/ui";
 import type {
   AutocompleteMatchStyle,
   AutocompleteSuggestion,
+  CardAutocompleteSuggestion,
   NativeQuerySnippet,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { useSchemaCompletion, useSnippetCompletion } from "./completers";
+import {
+  useCardTagCompletion,
+  useSchemaCompletion,
+  useSnippetCompletion,
+} from "./completers";
 
 function completer(
   useCompletion: () => CompletionSource,
@@ -367,5 +372,153 @@ describe("useSnippetCompletion", () => {
         ],
       });
     });
+  });
+});
+
+describe("useCardTagCompletion", () => {
+  const DATABASE_ID = 1;
+  const MOCK_RESULTS: Partial<CardAutocompleteSuggestion>[] = [
+    {
+      id: 51,
+      name: "Foo Bar",
+      type: "question",
+      collection_name: "Custom collection",
+    },
+    {
+      id: 42,
+      name: "Bar Baz",
+      type: "metric",
+      collection_name: "Custom collection",
+    },
+  ];
+
+  function setup({
+    databaseId = DATABASE_ID,
+    results = MOCK_RESULTS,
+  }: {
+    databaseId?: number;
+    results?: Partial<CardAutocompleteSuggestion>[];
+  } = {}) {
+    const url = `path:/api/database/${databaseId}/card_autocomplete_suggestions`;
+    fetchMock.get(url, results);
+
+    const complete = completer(() => useCardTagCompletion({ databaseId }));
+
+    return { complete, url };
+  }
+
+  it("should not call card completion endpoint when not in a card tag", async () => {
+    const queries = [
+      // none of these should trigger a call
+      "SELECT Fo|",
+      "SELECT {{ snippet: Fo|",
+      "SELECT {{ snippet: Fo| }}",
+      "SELECT {{ Fo|",
+      "SELECT {{ Fo| }}",
+    ];
+    const { complete, url } = setup();
+
+    for (const query of queries) {
+      const result = await complete(query);
+      expect(result).toBe(null);
+    }
+
+    expect(fetchMock.calls(url)).toHaveLength(0);
+  });
+
+  it("should autocomplete cards when inside an open card tag", async () => {
+    const { complete, url } = setup();
+    const results = await complete("SELECT {{ #bar|");
+
+    expect(results).toEqual({
+      from: 10,
+      to: 14,
+      validFor: expect.any(Function),
+      options: [
+        {
+          label: "#51-foo-bar",
+          apply: "#51-foo-bar }}",
+          detail: "Question in Custom collection",
+        },
+        {
+          label: "#42-bar-baz",
+          apply: "#42-bar-baz }}",
+          detail: "Metric in Custom collection",
+        },
+      ],
+    });
+    expect(fetchMock.calls(url)).toHaveLength(1);
+  });
+
+  it("should autocomplete cards when inside an open card tag, inside a word", async () => {
+    const { complete, url } = setup();
+    const results = await complete("SELECT {{ #ba|r");
+
+    expect(results).toEqual({
+      from: 10,
+      to: 14,
+      validFor: expect.any(Function),
+      options: [
+        {
+          label: "#51-foo-bar",
+          apply: "#51-foo-bar }}",
+          detail: "Question in Custom collection",
+        },
+        {
+          label: "#42-bar-baz",
+          apply: "#42-bar-baz }}",
+          detail: "Metric in Custom collection",
+        },
+      ],
+    });
+    expect(fetchMock.calls(url)).toHaveLength(1);
+  });
+
+  it("should autocomplete cards when inside a closed card tag", async () => {
+    const { complete, url } = setup();
+    const results = await complete("SELECT {{ #bar| }}");
+
+    expect(results).toEqual({
+      from: 10,
+      to: 14,
+      validFor: expect.any(Function),
+      options: [
+        {
+          label: "#51-foo-bar",
+          apply: "#51-foo-bar",
+          detail: "Question in Custom collection",
+        },
+        {
+          label: "#42-bar-baz",
+          apply: "#42-bar-baz",
+          detail: "Metric in Custom collection",
+        },
+      ],
+    });
+    expect(fetchMock.calls(url)).toHaveLength(1);
+  });
+
+  it("should autocomplete cards when inside a closed card tag, inside a word", async () => {
+    const { complete, url } = setup();
+    const results = await complete("SELECT {{ #ba|r }}");
+
+    expect(results).toEqual({
+      from: 10,
+      to: 14,
+      validFor: expect.any(Function),
+      options: [
+        {
+          label: "#51-foo-bar",
+          apply: "#51-foo-bar",
+          detail: "Question in Custom collection",
+        },
+        {
+          label: "#42-bar-baz",
+          apply: "#42-bar-baz",
+          detail: "Metric in Custom collection",
+        },
+      ],
+    });
+    expect(fetchMock.calls(url)).toHaveLength(1);
   });
 });
