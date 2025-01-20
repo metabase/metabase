@@ -15,6 +15,8 @@
     (let [query-hash (-> {:dataset_query query}
                          json/encode
                          (.getBytes "UTF-8")
-                         codecs/bytes->b64-str)]
-      {:output (str "Results can be seen at: " (public-settings/site-url) "/question#" query-hash)})
+                         codecs/bytes->b64-str)
+          results-url (str "/question#" query-hash)]
+      {:output (str "Results can be seen at: " (public-settings/site-url) results-url)
+       :reactions [{:type :metabot.reaction/redirect :url results-url}]})
     {:output (str "No query found with query_id " query-id)}))
