@@ -30,8 +30,12 @@ describe("parameters/utils/template-tag-options", () => {
       expect(optionsByType["string/!="][0].combinedName).toEqual(
         "String is not",
       );
-      expect(optionsByType["number/!="][0].combinedName).toEqual("Number");
-      expect(optionsByType["date/single"][0].combinedName).toEqual("Date");
+      expect(optionsByType["number/!="][0].combinedName).toEqual(
+        "Not equal to",
+      );
+      expect(optionsByType["date/single"][0].combinedName).toEqual(
+        "Single Date",
+      );
     });
   });
 
