@@ -204,6 +204,22 @@ describe("ExpressionWidget", () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe("startRule = 'expression'", () => {
+    it("should show a detailed error when comma is missing (metabase#15892)", async () => {
+      setup({ startRule: "expression" });
+
+      await userEvent.paste('concat([Tax] "test")');
+      await userEvent.tab();
+
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      expect(doneButton).toBeDisabled();
+
+      expect(
+        screen.getByText('Expecting comma but got "test" instead'),
+      ).toBeInTheDocument();
+    });
+  });
 });
 
 function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
