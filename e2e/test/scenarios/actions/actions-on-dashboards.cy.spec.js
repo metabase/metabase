@@ -18,9 +18,6 @@ const MODEL_NAME = "Test Action Model";
     () => {
       beforeEach(() => {
         cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
-        cy.intercept("GET", "/api/card?f=using_model&model_id=**").as(
-          "getCardAssociations",
-        );
         cy.intercept("GET", "/api/action").as("getActions");
         cy.intercept("PUT", "/api/action/*").as("updateAction");
         cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
@@ -66,7 +63,7 @@ const MODEL_NAME = "Test Action Model";
 
           cy.get("@modelId").then(id => {
             cy.visit(`/model/${id}/detail`);
-            cy.wait(["@getModel", "@getModelActions", "@getCardAssociations"]);
+            cy.wait(["@getModel", "@getModelActions"]);
           });
 
           cy.findByTestId("model-actions-header")
@@ -408,11 +405,7 @@ const MODEL_NAME = "Test Action Model";
 
             cy.get("@modelId").then(id => {
               cy.visit(`/model/${id}/detail`);
-              cy.wait([
-                "@getModel",
-                "@getModelActions",
-                "@getCardAssociations",
-              ]);
+              cy.wait(["@getModel", "@getModelActions"]);
             });
 
             cy.findByTestId("model-actions-header")
@@ -481,11 +474,7 @@ const MODEL_NAME = "Test Action Model";
 
             cy.get("@modelId").then(id => {
               cy.visit(`/model/${id}/detail`);
-              cy.wait([
-                "@getModel",
-                "@getModelActions",
-                "@getCardAssociations",
-              ]);
+              cy.wait(["@getModel", "@getModelActions"]);
             });
 
             cy.get("[aria-label='Update Score']").within(() => {
@@ -1095,9 +1084,6 @@ describe(
   () => {
     beforeEach(() => {
       cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
-      cy.intercept("GET", "/api/card?f=using_model&model_id=**").as(
-        "getCardAssociations",
-      );
       cy.intercept("GET", "/api/action").as("getActions");
       cy.intercept("PUT", "/api/action/*").as("updateAction");
       cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
@@ -1176,7 +1162,7 @@ describe(
 
         cy.get("@modelId").then(id => {
           cy.visit(`/model/${id}/detail`);
-          cy.wait(["@getModel", "@getModelActions", "@getCardAssociations"]);
+          cy.wait(["@getModel", "@getModelActions"]);
         });
 
         cy.findByTestId("model-actions-header")

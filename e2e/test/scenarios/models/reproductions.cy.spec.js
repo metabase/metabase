@@ -1038,7 +1038,6 @@ describe("issue 29378", () => {
       "be.visible",
     );
 
-    cy.findByRole("tab", { name: "Used by" }).click();
     H.commandPaletteSearch(ACTION_DETAILS.name, false);
     H.commandPalette()
       .findByRole("option", { name: ACTION_DETAILS.name })

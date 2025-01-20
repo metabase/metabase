@@ -56,24 +56,26 @@ describe("QuestionInfoSidebar", () => {
 
   describe("tabs", () => {
     describe("for non-admins", () => {
-      it("should show tabs for Overview and History", async () => {
+      it("should show tabs for Overview, Relationships, and History", async () => {
         setup({});
         const tabs = await screen.findAllByRole("tab");
-        expect(tabs).toHaveLength(2);
+        expect(tabs).toHaveLength(3);
         expect(tabs.map(tab => tab.textContent)).toEqual([
           "Overview",
+          "Relationships",
           "History",
         ]);
       });
     });
 
     describe("for admins", () => {
-      it("should show tabs for Overview, History, and Insights", async () => {
+      it("should show tabs for Overview, Relationships, History, and Insights", async () => {
         setup({ user: { is_superuser: true } });
         const tabs = await screen.findAllByRole("tab");
-        expect(tabs).toHaveLength(3);
+        expect(tabs).toHaveLength(4);
         expect(tabs.map(tab => tab.textContent)).toEqual([
           "Overview",
+          "Relationships",
           "History",
           "Insights",
         ]);
