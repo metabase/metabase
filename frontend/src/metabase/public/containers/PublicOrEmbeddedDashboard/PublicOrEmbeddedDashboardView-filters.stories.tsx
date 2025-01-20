@@ -1,7 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/testing-library";
+import { userEvent, within } from "@storybook/test";
 import { type ComponentProps, useEffect } from "react";
 
 import { getStore } from "__support__/entities-store";
@@ -11,7 +11,10 @@ import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { publicReducers } from "metabase/reducers-public";
+import { registerVisualization } from "metabase/visualizations";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import Table from "metabase/visualizations/visualizations/Table";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   createMockCard,
@@ -37,6 +40,11 @@ import {
   type PublicOrEmbeddedDashboardViewProps,
 } from "./PublicOrEmbeddedDashboardView";
 
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(Table);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(BarChart);
+
 export default {
   title: "embed/PublicOrEmbeddedDashboardView/filters",
   component: PublicOrEmbeddedDashboardView,
@@ -57,7 +65,7 @@ export default {
 };
 
 function ReduxDecorator(Story: StoryFn, context: StoryContext) {
-  const parameterType: ParameterType = context.args.parameterType;
+  const parameterType = context.args.parameterType as ParameterType;
   const initialState = createMockState({
     settings: createMockSettingsState({
       "hide-embed-branding?": false,
@@ -91,10 +99,10 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
           has_more_values: parameterType === "search" ? true : false,
         },
         [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID},"query":"g"}`]:
-          {
-            values: [["Gadget"], ["Gizmo"], ["Widget"]],
-            has_more_values: parameterType === "search" ? true : false,
-          },
+        {
+          values: [["Gadget"], ["Gizmo"], ["Widget"]],
+          has_more_values: parameterType === "search" ? true : false,
+        },
       },
     },
   });

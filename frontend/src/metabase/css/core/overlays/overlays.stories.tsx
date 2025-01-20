@@ -1,6 +1,6 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/testing-library";
+import { userEvent, within } from "@storybook/test";
 import { Provider } from "react-redux";
 import _ from "underscore";
 
