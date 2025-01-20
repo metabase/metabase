@@ -999,6 +999,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("shows all available columns and groups in the breakout picker (metabase#46832)", () => {
     cy.visit("/");
     H.newButton("Question").click();
+    H.entityPickerModal().findByText("Tables").click();
     H.entityPickerModal().findByText("Orders").click();
     H.join();
     H.joinTable("Reviews", "Product ID", "Product ID");
