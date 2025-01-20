@@ -1314,12 +1314,13 @@
 (def ^:private base-search-spec
   {:model        :model/Card
    :attrs        {:archived            true
-                  :collection-id       :collection_id
+                  :collection-id       true
                   :creator-id          true
+                  :dashboard-id        true
                   :dashboardcard-count {:select [:%count.*]
                                         :from   [:report_dashboardcard]
                                         :where  [:= :report_dashboardcard.card_id :this.id]}
-                  :database-id         :database_id
+                  :database-id         true
                   :last-viewed-at      :last_used_at
                   :native-query        [:case [:= "native" :query_type] :dataset_query]
                   :official-collection [:= "official" :collection.authority_level]

@@ -8,6 +8,7 @@ module.exports = {
     "^design system",
     "^Inputs/DatePicker Dates range",
     "^Parameters/DatePicker",
+    "^Buttons/Button Compact size, custom color",
   ].join("|"),
   configurations: {
     "chrome.laptop": {
