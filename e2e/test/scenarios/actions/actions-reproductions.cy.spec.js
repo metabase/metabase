@@ -420,7 +420,7 @@ describe("issue 51282", { tags: ["@external", "@actions"] }, () => {
     });
   });
 
-  it("should disable 'make public' switch and show an explanatory tooltip (metabase#51282)", () => {
+  it("should disable 'make public' switch in new action modal and show an explanatory tooltip (metabase#51282)", () => {
     H.questionInfoButton().click();
     H.modal().findByText("See more about this model").click();
     cy.findByRole("tab", { name: "Actions" }).click();
