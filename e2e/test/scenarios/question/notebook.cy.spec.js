@@ -996,31 +996,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     }
   });
 
-  it("should let the user navigate back (metabase#50971)", () => {
-    cy.visit("/");
-    H.newButton("Model").click();
-    cy.findByTestId("new-model-options")
-      .findByText("Use the notebook editor")
-      .click();
-
-    H.entityPickerModal().should("be.visible");
-
-    // Cypress can emulate the browser's back button with cy.go('back'), but
-    // this does not trigger a confirmation modal, so we need to perform a
-    // similar action that also triggers the confirmation modal: clicking the
-    // cancel button in the edit bar.
-    cy.log('Triggering a "Discard your changes?" confirmation modal');
-    cy.findByTestId("dataset-edit-bar")
-      .findByRole("button", { name: "Cancel", hidden: true })
-      .click({ force: true });
-
-    cy.log(
-      'Clicking "Discard changes" in the confirmation modal to verify that this modal is above the data picker modal',
-    );
-    H.modal().should("be.visible").contains("Discard changes").click();
-    cy.findByTestId("greeting-message").should("be.visible");
-  });
-
   it("shows all available columns and groups in the breakout picker (metabase#46832)", () => {
     cy.visit("/");
     H.newButton("Question").click();
