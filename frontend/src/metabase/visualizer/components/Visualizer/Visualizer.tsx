@@ -6,7 +6,7 @@ import {
   PointerSensor,
   useSensor,
 } from "@dnd-kit/core";
-import { useCallback, useEffect } from "react";
+import { type CSSProperties, useCallback, useEffect } from "react";
 import { useKeyPressEvent, usePrevious, useUnmount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -41,10 +41,12 @@ import { VisualizationPicker } from "../VisualizationPicker";
 import { VizSettingsSidebar } from "../VizSettingsSidebar/VizSettingsSidebar";
 
 interface VisualizerProps {
+  className?: string;
   onSave?: (visualization: VisualizerHistoryItem) => void;
+  style?: CSSProperties;
 }
 
-export const Visualizer = ({ onSave }: VisualizerProps) => {
+export const Visualizer = ({ className, onSave, style }: VisualizerProps) => {
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
 
   const display = useSelector(getVisualizationType);
@@ -124,7 +126,13 @@ export const Visualizer = ({ onSave }: VisualizerProps) => {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <Flex direction="column" w="100%" h="100%">
+      <Flex
+        className={className}
+        direction="column"
+        w="100%"
+        h="100%"
+        style={style}
+      >
         <Header onSave={onSave} />
         <Flex style={{ overflow: "hidden", flexGrow: 1 }}>
           {!isFullscreen && (

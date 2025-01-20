@@ -45,7 +45,7 @@ export function VisualizerModal({
       transitionProps={{ transition: "fade", duration: 200 }}
       onClose={onClose}
     >
-      <Visualizer onSave={onSave} />
+      <Visualizer onSave={onSave} style={{ height: "80vh" }} />
     </Modal>
   );
 }
