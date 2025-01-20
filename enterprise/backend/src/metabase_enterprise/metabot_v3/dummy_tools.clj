@@ -135,7 +135,9 @@
   (let [details (if-let [[_ card-id] (when (string? metric-id)
                                        (re-matches #"card__(\d+)" metric-id))]
                   (metric-details (parse-long card-id))
-                  "invalid metric_id")]
+                  (if (int? metric-id)
+                    (metric-details metric-id)
+                    "invalid metric_id"))]
     (if (map? details)
       {:structured-output details}
       {:output (or details "metric not found")})))
@@ -147,7 +149,7 @@
                   (let [details (card-details (parse-long card-id))]
                     (some-> details
                             (select-keys [:id :description :name])
-                            (assoc :result-columns (:fields details))))
+                            (assoc :result_columns (:fields details))))
                   "invalid report_id")]
     (if (map? details)
       {:structured-output details}
@@ -179,21 +181,21 @@
     (reduce envelope/add-dummy-message env (dummy-tool-messages :get-current-user {} content))))
 
 (def ^:private detail-getters
-  {:dashboard {:id :get-dashboard-details
-               :fn get-dashboard-details
+  {:dashboard {:id     :get-dashboard-details
+               :fn     get-dashboard-details
                :arg-fn (fn [id] {:dashboard-id id})}
-   :table {:id :get-table-details
-           :fn get-table-details
-           :arg-fn (fn [id] {:table-id (str id)})}
-   :model {:id :get-table-details
-           :fn get-table-details
-           :arg-fn (fn [id] {:table-id (str "card__" id)})}
-   :metric {:id :get-metric-details
-            :fn get-metric-details
-            :arg-fn (fn [id] {:metric-id id})}
-   :report {:id :get-report-details
-            :fn get-report-details
-            :arg-fn (fn [id] {:report-id (str "card__" id)})}})
+   :table     {:id     :get-table-details
+               :fn     get-table-details
+               :arg-fn (fn [id] {:table-id (str id)})}
+   :model     {:id     :get-table-details
+               :fn     get-table-details
+               :arg-fn (fn [id] {:table-id (str "card__" id)})}
+   :metric    {:id     :get-metric-details
+               :fn     get-metric-details
+               :arg-fn (fn [id] {:metric-id id})}
+   :question  {:id     :get-report-details
+               :fn     get-report-details
+               :arg-fn (fn [id] {:report-id (str "card__" id)})}})
 
 (defn- dummy-get-item-details
   [{:keys [context] :as env}]
@@ -215,7 +217,7 @@
     {:type :query
      :query-id query-id
      :query legacy-query
-     :result-columns (into []
+     :result_columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix))
                            returned-cols)}))
 
