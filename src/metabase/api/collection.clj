@@ -1063,33 +1063,74 @@
 
 (mu/defn- dashboard-question-candidates
   "Implementation for the `dashboard-question-candidates` endpoints."
-  [collection-id :- [:maybe ms/PositiveInt]
-   sort-direction :- [:enum :asc :desc]]
+  [collection-id :- [:maybe ms/PositiveInt]]
   (api/check-403 api/*is-superuser?*)
-  (let [cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:= :collection_id collection-id]
-                                                                :order-by [[:%lower.name sort-direction]]}) :in_dashboards)
-        dashboard-question-candidates (filter card/sole-dashboard-id cards-in-collection)
-        present-card (fn [{:keys [in_dashboards] :as card}]
-                       (-> card
-                           (select-keys [:id :name :description])
-                           (assoc :sole_dashboard_info (-> in_dashboards first (select-keys [:id :name :description])))))]
-    {:data (map present-card dashboard-question-candidates)
-     :count (count dashboard-question-candidates)}))
+  (let [cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:= :collection_id collection-id]}) :in_dashboards)]
+    (filter card/sole-dashboard-id cards-in-collection)))
+
+(mu/defn- present-dashboard-question-candidate
+  [{:keys [in_dashboards] :as card}]
+  (-> card
+      (select-keys [:id :name :description])
+      (assoc :sole_dashboard_info (-> in_dashboards first (select-keys [:id :name :description])))))
+
+(mu/defn- present-dashboard-question-candidates
+  [cards]
+  {:data (map present-dashboard-question-candidate cards)
+   :count (count cards)})
 
 (api.macros/defendpoint :get "/:id/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
   "Find cards in this collection that can be moved into dashboards in this collection.
 
   To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a dashboard question."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [sort_direction]} :- [:map [:sort_direction {:default :asc} [:enum :asc :desc]]]]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check :model/Collection id)
-  (dashboard-question-candidates id sort_direction))
+  (present-dashboard-question-candidates
+   (dashboard-question-candidates id)))
 
 (api.macros/defendpoint :get "/root/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
   "Find cards in the root collection that can be moved into dashboards in the root collection. (Same as the above endpoint, but for the root collection)"
+  []
+  (present-dashboard-question-candidates
+   (dashboard-question-candidates nil)))
+
+(mr/def ::MoveDashboardQuestionCandidatesResponse
+  [:map
+   [:moved [:sequential ms/PositiveInt]]])
+
+(defn- move-dashboard-question-candidates
+  "Move dash"
+  [id card-ids]
+  (let [cards (cond->> (dashboard-question-candidates id)
+                (some? card-ids) (filter #(contains? card-ids (:id %))))]
+    (t2/with-transaction [_conn]
+      (doall
+       (for [{:as card :keys [in_dashboards]} cards]
+         (do
+           (card/update-card! {:card-before-update card
+                               :card-updates {:dashboard_id (-> in_dashboards first :id)}
+                               :actor @api/*current-user*
+                               :delete-old-dashcards? false})
+           (:id card)))))))
+
+(api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
+  "Move candidate cards to the dashboards they appear in."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [card_ids]} :- [:maybe
+                          [:map [:card_ids {:optional true}
+                                 [:set ms/PositiveInt]]]]]
+  (api/read-check :model/Collection id)
+  {:moved (move-dashboard-question-candidates id card_ids)})
+
+(api.macros/defendpoint :post "/root/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
+  "Move candidate cards to the dashboards they appear in (for the root collection)"
   [_route-params
-   {:keys [sort_direction]} :- [:map [:sort_direction {:default :asc} [:enum :asc :desc]]]]
-  (dashboard-question-candidates nil sort_direction))
+   _query-params
+   {:keys [card_ids]} :- [:maybe
+                          [:map [:card_ids {:optional true}
+                                 [:set ms/PositiveInt]]]]]
+  {:moved (move-dashboard-question-candidates nil card_ids)})
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
