@@ -162,7 +162,9 @@
   [:as {body :body}]
   {body ::models.notification/FullyHydratedNotification}
   (api/create-check :model/Notification body)
-  (notification/send-notification! body :notification/sync? true))
+  (-> body
+      (assoc :creator_id api/*current-user-id*)
+      (notification/send-notification!  :notification/sync? true)))
 
 (api/defendpoint POST "/:id/unsubscribe"
   "Unsubscribe current user from a notification."
