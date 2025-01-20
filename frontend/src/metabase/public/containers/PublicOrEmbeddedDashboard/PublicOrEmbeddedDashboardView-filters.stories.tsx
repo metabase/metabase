@@ -99,10 +99,10 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
           has_more_values: parameterType === "search" ? true : false,
         },
         [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID},"query":"g"}`]:
-        {
-          values: [["Gadget"], ["Gizmo"], ["Widget"]],
-          has_more_values: parameterType === "search" ? true : false,
-        },
+          {
+            values: [["Gadget"], ["Gizmo"], ["Widget"]],
+            has_more_values: parameterType === "search" ? true : false,
+          },
       },
     },
   });
@@ -163,6 +163,7 @@ const UNIT_OF_TIME_FILTER_ID = "unit-of-time-hex";
 interface CreateDashboardOpts {
   hasScroll?: boolean;
 }
+
 function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   return createMockDashboard({
     id: DASHBOARD_ID,
