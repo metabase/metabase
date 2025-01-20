@@ -1093,7 +1093,7 @@ describe("issue 49882", () => {
       .should("not.exist");
   });
 
-  it("does not clear expression input when expression is invalid (metabase#49882-2)", () => {
+  it("does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)", () => {
     const selectTax = `{leftarrow}${"{shift+leftarrow}".repeat(5)}`;
     const moveCursorBefore2ndCase = "{leftarrow}".repeat(41);
     H.enterCustomColumnDetails({
@@ -1115,7 +1115,9 @@ describe("issue 49882", () => {
         'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )\n\n',
       );
 
-    H.popover().findByText("Invalid expression").should("be.visible");
+    H.popover()
+      .findByText("Expecting comma but got case instead")
+      .should("be.visible");
   });
 
   it("should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)", () => {
