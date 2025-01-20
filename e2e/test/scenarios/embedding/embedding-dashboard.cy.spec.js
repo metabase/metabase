@@ -661,7 +661,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 });
 
-H.describeEE("scenarios > embedding > dashboard appearance", () => {
+H.describeEE.only("scenarios > embedding > dashboard appearance", () => {
   const originalBaseUrl = Cypress.config("baseUrl");
 
   beforeEach(() => {
@@ -1014,6 +1014,29 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
     cy.findByText("exportieren", { exact: false });
 
     cy.url().should("include", "locale=de");
+  });
+
+  it("should allow to set font from the `font` hash parameter (metabase#52365)", () => {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      enable_embedding: true,
+    });
+    cy.signOut();
+
+    H.visitEmbeddedPage(
+      {
+        resource: { dashboard: ORDERS_DASHBOARD_ID },
+        params: {},
+      },
+      {
+        additionalHashOptions: {
+          font: "Roboto",
+        },
+      },
+    );
+
+    cy.findByTestId("embed-frame-header")
+      .findByText("Orders in a dashboard")
+      .should("have.css", "font-family", "Roboto, sans-serif");
   });
 });
 

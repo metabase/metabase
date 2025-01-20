@@ -261,6 +261,29 @@ H.describeEE("scenarios [EE] > embedding > questions", () => {
 
     cy.url().should("include", "locale=de");
   });
+
+  it("should display according to `#font` hash parameter (metabase#52365)", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      enable_embedding: true,
+    });
+
+    H.visitQuestion(ORDERS_QUESTION_ID);
+
+    H.openStaticEmbeddingModal({ activeTab: "parameters", acceptTerms: false });
+
+    H.visitIframe();
+
+    cy.url().then(url => {
+      cy.visit({
+        // there is already a `#` in the URL from other static embed display options e.g. `#bordered=true&titled=true&downloads=true`
+        url: url + "&font=Roboto",
+      });
+    });
+
+    cy.findByTestId("embed-frame-header")
+      .findByText("Orders")
+      .should("have.css", "font-family", "Roboto, sans-serif");
+  });
 });
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
