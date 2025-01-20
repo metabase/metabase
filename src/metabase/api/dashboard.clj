@@ -463,7 +463,8 @@
                         :parameters          (or (:parameters existing-dashboard) [])
                         :creator_id          api/*current-user-id*
                         :collection_id       collection_id
-                        :collection_position collection_position}
+                        :collection_position collection_position
+                        :width               (:width existing-dashboard)}
         new-cards      (atom nil)
         dashboard      (t2/with-transaction [_conn]
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this

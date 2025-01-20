@@ -260,6 +260,7 @@
 
 (defmulti column->string
   "Turn a complex column into a string"
+  {:arglists '([column-value model column-name])}
   (fn [_column-value model column-name]
     [(keyword model) column-name]))
 
