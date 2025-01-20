@@ -18,7 +18,7 @@ jobs:
       - uses: actions/stale@v9
         with:
           stale-pr-message: 'This pull request has had no activity for 90 days, it will be closed in 2 weeks if no further activity occurs.'
-          close-pr-message: 'This pull request was closed because it had no activity for more than one year.'
+          close-pr-message: 'This pull request was closed because it had no activity for more than 90 days.'
           days-before-issue-stale: -1 # never auto-close issues
           days-before-pr-stale: 90
           days-before-pr-close: 14
