@@ -6,19 +6,20 @@ import { EditorState } from "@codemirror/state";
 import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
-import { act, renderWithProviders } from "__support__/ui";
+import { act, renderWithProviders, waitFor } from "__support__/ui";
 import type {
   AutocompleteMatchStyle,
   AutocompleteSuggestion,
+  NativeQuerySnippet,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { useSchemaCompletion } from "./completers";
+import { useSchemaCompletion, useSnippetCompletion } from "./completers";
 
 function completer(
   useCompletion: () => CompletionSource,
-  state: Partial<State>,
+  state?: Partial<State>,
 ) {
   let completer: CompletionSource | null = null;
 
@@ -242,6 +243,126 @@ describe("useSchemaCompletion", () => {
           {
             label: "SOURCE",
             detail: "PEOPLE :type/Text :type/State",
+          },
+        ],
+      });
+    });
+  });
+});
+
+describe("useSnippetCompletion", () => {
+  const MOCK_RESULTS: Partial<NativeQuerySnippet>[] = [
+    { name: "Foobar" },
+    {
+      name: "Barbaz",
+    },
+  ];
+
+  const url = "path:/api/native-query-snippet";
+
+  function setup({
+    results = MOCK_RESULTS,
+  }: {
+    results?: Partial<NativeQuerySnippet>[];
+  } = {}) {
+    fetchMock.get(url, results);
+
+    const complete = completer(() => useSnippetCompletion());
+
+    // the call gets made once before completing so it's always made
+    expect(fetchMock.calls(url)).toHaveLength(1);
+
+    return { complete };
+  }
+
+  it("should not return snippet completions when not in a tag", async () => {
+    const { complete } = setup();
+    const results = await complete("SELECT S|");
+    expect(results).toBe(null);
+  });
+
+  it("should not return snippet completions when in a parameter tag", async () => {
+    const { complete } = setup();
+    const results = await complete("SELECT {{ foo| }}");
+    expect(results).toBe(null);
+  });
+
+  it("should not return snippet completions when in a card tag", async () => {
+    const { complete } = setup();
+    const results = await complete("SELECT {{ #foo| }}");
+    expect(results).toBe(null);
+  });
+
+  it("should return snippet completions when in an open snippet tag", async () => {
+    const { complete } = setup();
+
+    await waitFor(async () => {
+      const results = await complete("{{ snippet: fo| ");
+      expect(results).toEqual({
+        from: 12,
+        to: 14,
+        options: [
+          {
+            label: "Foobar",
+            apply: "Foobar }}",
+            detail: "Snippet",
+          },
+        ],
+      });
+    });
+  });
+
+  it("should return snippet completions when in an open snippet tag, inside a word", async () => {
+    const { complete } = setup();
+
+    await waitFor(async () => {
+      const results = await complete("{{ snippet: fo|o ");
+      expect(results).toEqual({
+        from: 12,
+        to: 15,
+        options: [
+          {
+            label: "Foobar",
+            apply: "Foobar }}",
+            detail: "Snippet",
+          },
+        ],
+      });
+    });
+  });
+
+  it("should return snippet completions when in a closed snippet tag", async () => {
+    const { complete } = setup();
+
+    await waitFor(async () => {
+      const results = await complete("{{ snippet: fo| }}");
+      expect(results).toEqual({
+        from: 12,
+        to: 14,
+        options: [
+          {
+            label: "Foobar",
+            apply: "Foobar",
+            detail: "Snippet",
+          },
+        ],
+      });
+    });
+  });
+
+  it("should return snippet completions when in a closed snippet tag, inside a word", async () => {
+    const { complete } = setup();
+
+    await waitFor(async () => {
+      const results = await complete("{{ snippet: fo|o }}");
+      expect(results).toEqual({
+        from: 12,
+        to: 15,
+        options: [
+          {
+            label: "Foobar",
+            apply: "Foobar",
+            detail: "Snippet",
           },
         ],
       });

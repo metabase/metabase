@@ -138,9 +138,7 @@ export function useSnippetCompletion() {
 
       return {
         from: tag.content.from,
-        validFor(text: string) {
-          return text.startsWith(query);
-        },
+        to: tag.content.to,
         options: results.map(snippet => ({
           label: snippet.name,
           apply: tag.hasClosingTag ? snippet.name : `${snippet.name} }}`,
