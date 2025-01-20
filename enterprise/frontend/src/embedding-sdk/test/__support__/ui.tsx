@@ -41,10 +41,11 @@ export function renderWithSDKProviders(
     ...sdkReducerNames,
   ) as SdkStoreState;
 
-  // Enable the embedding_sdk premium feature by default in SDK tests, unless explicitly disabled.
-  // Without this, SDK components will not render due to missing token features.
+  // Enable the embedding_sdk premium feature and settings by default in SDK tests, unless explicitly disabled.
+  // Without this, SDK components will not render due to missing token features and settings.
   if (!storeInitialState.settings && initialState.settings) {
     initialState.settings.values["token-features"].embedding_sdk = true;
+    initialState.settings.values["enable-embedding-sdk"] = true;
   }
 
   const storeMiddleware = _.compact([Api.middleware]);

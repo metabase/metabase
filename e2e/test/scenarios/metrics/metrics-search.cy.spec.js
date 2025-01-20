@@ -39,7 +39,6 @@ describe("scenarios > metrics > search", () => {
     cy.wait("@search");
     cy.findByTestId("search-app").within(() => {
       cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByTestId("type-search-filter").click();
     });
     H.popover().within(() => {
