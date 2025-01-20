@@ -116,7 +116,7 @@ function checkIfElementIsChildOf(
   let currentElement = childElement;
 
   while (currentElement && currentElement !== document.body) {
-    if (childElement === expectedParentElement) {
+    if (currentElement === expectedParentElement) {
       return true;
     }
 
