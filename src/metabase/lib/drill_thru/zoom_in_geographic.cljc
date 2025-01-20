@@ -194,7 +194,7 @@
   [query                        :- ::lib.schema/query
    _stage-number                :- :int
    {:keys [value], :as context} :- ::lib.schema.drill-thru/context]
-  (when value
+  (when (and value (not= value :null))
     (when-let [context (context-with-lat-lon query (lib.underlying/top-level-stage-number query) context)]
       (some (fn [f]
               (f context))
