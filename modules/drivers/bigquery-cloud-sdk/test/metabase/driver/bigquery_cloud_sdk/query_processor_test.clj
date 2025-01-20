@@ -236,7 +236,7 @@
 (deftest ^:parallel remark-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= (with-test-db-name
-             (str "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
+             (str "{\"pulseId\":null,\"serverId\":\"864c3a1f-3e9c-44fc-893b-139c99958977\",\"client\":\"Metabase\",\"queryHash\":\"01020304\",\"queryType\":\"query\",\"cardId\":null,\"dashboardId\":null,\"context\":null,\"userId\":1000,\"databaseId\":1}\n"
                   "SELECT"
                   " `v4_test_data.venues`.`id` AS `id`,"
                   " `v4_test_data.venues`.`name` AS `name`,"
