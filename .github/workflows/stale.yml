@@ -1,8 +1,7 @@
-name: 'Close Stale PRs'
+name: Close Stale PRs
 on:
   schedule:
     - cron: '00 1 * * *'
-  pull_request: # for testing
 
 permissions:
   contents: write
@@ -24,4 +23,3 @@ jobs:
           days-before-pr-stale: 90
           days-before-pr-close: 14
           operations-per-run: 999
-          debug-only: true # FIXME
