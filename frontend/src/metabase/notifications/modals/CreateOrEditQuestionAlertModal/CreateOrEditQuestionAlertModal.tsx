@@ -35,7 +35,7 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { addUndo } from "metabase/redux/undo";
-import { getUser } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Flex, Modal, Select, Stack, Switch, rem } from "metabase/ui";
 import type {
   CreateAlertNotificationRequest,
@@ -100,6 +100,7 @@ export const CreateOrEditQuestionAlertModal = ({
   const question = useSelector(getQuestion);
   const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const [notification, setNotification] = useState<
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
@@ -148,6 +149,7 @@ export const CreateOrEditQuestionAlertModal = ({
               channelSpec,
               hookChannels,
               availableTriggerOptions: triggerOptions,
+              isAdmin,
             }),
       );
     }
@@ -160,6 +162,7 @@ export const CreateOrEditQuestionAlertModal = ({
     editingNotification,
     isEditMode,
     hookChannels,
+    isAdmin,
   ]);
 
   const onCreateOrEditAlert = async () => {

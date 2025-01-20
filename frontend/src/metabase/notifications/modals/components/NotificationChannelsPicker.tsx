@@ -10,7 +10,7 @@ import {
   type ChannelToAddOption,
   NotificationChannelsAddMenu,
 } from "metabase/notifications/modals/components/NotificationChannelsAddMenu";
-import { getUser } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
 import type {
   ChannelApiResponse,
@@ -44,6 +44,7 @@ export const NotificationChannelsPicker = ({
   const { data: notificationChannels = [] } = useListChannelsQuery();
   const { data: users } = useListUserRecipientsQuery();
   const user = useSelector(getUser);
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const usersListOptions: User[] = users?.data || (user ? [user] : []);
 
@@ -134,7 +135,7 @@ export const NotificationChannelsPicker = ({
           name: t`Slack`,
         }
       : null,
-    ...(channels.http.configured
+    ...(channels.http.configured && isAdmin
       ? notificationChannels
           .filter(
             ({ id }) =>
@@ -169,15 +170,16 @@ export const NotificationChannelsPicker = ({
         />
       )}
 
-      {hookChannels.map(channel => (
-        <WebhookChannelEdit
-          key={`webhook-${channel.channel_id}`}
-          notificationChannel={
-            notificationChannels.find(({ id }) => id === channel.channel_id)!
-          }
-          onRemoveChannel={() => onRemoveChannel(channel)}
-        />
-      ))}
+      {isAdmin &&
+        hookChannels.map(channel => (
+          <WebhookChannelEdit
+            key={`webhook-${channel.channel_id}`}
+            notificationChannel={
+              notificationChannels.find(({ id }) => id === channel.channel_id)!
+            }
+            onRemoveChannel={() => onRemoveChannel(channel)}
+          />
+        ))}
 
       {!!channelsToAdd.length && (
         <NotificationChannelsAddMenu

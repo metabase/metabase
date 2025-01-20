@@ -23,10 +23,12 @@ const getDefaultChannelConfig = ({
   channelSpec,
   hookChannels,
   currentUserId,
+  isAdmin,
 }: {
   channelSpec: ChannelApiResponse;
   hookChannels: NotificationChannel[];
   currentUserId: UserId;
+  isAdmin: boolean;
 }): NotificationHandler[] => {
   if (channelSpec.channels.email.configured) {
     const handlers: NotificationHandler[] = [
@@ -56,7 +58,11 @@ const getDefaultChannelConfig = ({
     return handlers;
   }
 
-  if (channelSpec.channels.http.configured && hookChannels.length > 0) {
+  if (
+    channelSpec.channels.http.configured &&
+    hookChannels.length > 0 &&
+    isAdmin
+  ) {
     const channel = hookChannels[0];
     const handlers: NotificationHandler[] = [
       {
@@ -78,12 +84,14 @@ export const getDefaultQuestionAlertRequest = ({
   channelSpec,
   hookChannels,
   availableTriggerOptions,
+  isAdmin,
 }: {
   cardId: CardId;
   currentUserId: UserId;
   channelSpec: ChannelApiResponse;
   hookChannels: NotificationChannel[];
   availableTriggerOptions: NotificationTriggerOption[];
+  isAdmin: boolean;
 }): CreateAlertNotificationRequest => {
   const sendCondition = availableTriggerOptions[0].value;
 
@@ -98,6 +106,7 @@ export const getDefaultQuestionAlertRequest = ({
       channelSpec,
       hookChannels,
       currentUserId,
+      isAdmin,
     }),
     subscriptions: [
       {
