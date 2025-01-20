@@ -7,9 +7,11 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.notification.core :as notification]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures
@@ -325,6 +327,18 @@
                   email
                   card-name-regex
                   #"This question has gone below its goal of 1\.1\."))))}))))
+
+(deftest send-once-archive-on-first-successful-send
+  (notification.tu/with-card-notification
+    [notification {:notification-card {:send_once true}}]
+    (testing "do not archive if the send fail for any reason"
+      (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
+        (u/ignore-exceptions (notification/send-notification! notification))
+        (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
+
+    (testing "archive if the send is successful"
+      (notification/send-notification! notification)
+      (is (false? (t2/select-one-fn :active :model/Notification (:id notification)))))))
 
 (deftest non-user-email-test
   (notification.tu/with-card-notification
