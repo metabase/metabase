@@ -1,0 +1,75 @@
+.MultiSelectWrapper {
+  &[data-size="md"] {
+    --value-height: rem(28px);
+  }
+
+  &[data-size="xs"] {
+    --value-height: rem(20px);
+  }
+
+  & [data-position="right"] {
+    color: var(--mb-color-text-light);
+    right: var(--right-section-end);
+  }
+}
+
+.MultiSelectPillsList {
+  gap: var(--mantine-spacing-xs);
+  align-items: center;
+  box-sizing: "border-box";
+  margin-left: 0;
+  padding-right: var(--mantine-spacing-lg);
+}
+
+.MultiSelectPill {
+  height: var(--value-height);
+  padding: rem(1px) var(--mantine-spacing-sm);
+  font-weight: bold;
+  font-size: var(--multiselect-pill-font-size);
+  border-radius: var(--mantine-radius-xs);
+  color: var(--mb-color-text-selected);
+  background-color: var(--mb-color-background-selected);
+}
+
+.MultiSelectPillRemove {
+  --remove-button-size: rem(12px);
+
+  padding: 0;
+  border-width: 0;
+
+  svg {
+    width: var(--remove-button-size) !important;
+    height: var(--remove-button-size) !important;
+  }
+}
+
+/* this is the actual input element */
+.MultiSelectInputField {
+  height: var(--value-height);
+  padding-inline-start: rem(8px);
+
+  /* hide placeholder if there are pills */
+  &:not(:first-child) {
+    &::placeholder {
+      color: transparent;
+    }
+  }
+
+  &::placeholder {
+    color: var(--mb-color-text-light);
+  }
+}
+
+/* this is the wrapper element that looks like an input */
+.MultiSelectInput {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background);
+  padding-top: rem(5px);
+  padding-bottom: rem(5px);
+  padding-inline-start: rem(5px);
+  padding-inline-end: rem(40px);
+
+  &[data-disabled] {
+    opacity: 1;
+  }
+}

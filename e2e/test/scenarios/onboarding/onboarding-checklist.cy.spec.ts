@@ -23,7 +23,7 @@ describe("Onboarding checklist page", () => {
       ).should("be.visible");
       cy.contains(
         "Hover over a table and click the yellow lightning bolt",
-      ).should("not.exist");
+      ).should("not.be.visible");
     });
   });
 

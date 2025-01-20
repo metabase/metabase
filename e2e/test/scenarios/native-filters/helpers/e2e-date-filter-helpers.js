@@ -58,7 +58,9 @@ export function setAdHocFilter(
   }
 
   if (timeBucket) {
-    cy.findByLabelText("Unit").should("have.value", "days").click();
+    cy.findByRole("textbox", { name: "Unit" })
+      .should("have.value", "days")
+      .click();
 
     selectDropdown().contains(timeBucket).click();
   }

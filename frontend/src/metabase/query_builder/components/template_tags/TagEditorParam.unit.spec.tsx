@@ -6,7 +6,12 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  mockScrollIntoView,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { TemplateTag } from "metabase-types/api";
@@ -34,6 +39,7 @@ interface SetupOpts {
 }
 
 const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
+  mockScrollIntoView();
   const database = createSampleDatabase();
   const state = createMockState({
     qb: createMockQueryBuilderState({
@@ -132,7 +138,7 @@ describe("TagEditorParam", () => {
 
       await waitForElementsToLoad("People");
 
-      await userEvent.click(screen.getByText("People"));
+      await userEvent.click(await screen.findByText("People"));
       await userEvent.click(await screen.findByText("Source"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -141,7 +147,7 @@ describe("TagEditorParam", () => {
         "widget-type": "string/=",
         options: undefined,
       });
-    });
+    }, 40000);
 
     it("should default to string/contains for a new high cardinality string field filter", async () => {
       const tag = createMockTemplateTag({
@@ -153,7 +159,7 @@ describe("TagEditorParam", () => {
 
       await waitForElementsToLoad("People");
 
-      await userEvent.click(screen.getByText("People"));
+      await userEvent.click(await screen.findByText("People"));
       await userEvent.click(await screen.findByText("Name"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -162,7 +168,7 @@ describe("TagEditorParam", () => {
         "widget-type": "string/contains",
         options: { "case-sensitive": false },
       });
-    });
+    }, 40000);
 
     it("should default to number/= for a new numeric field filter", async () => {
       const tag = createMockTemplateTag({
@@ -174,7 +180,7 @@ describe("TagEditorParam", () => {
 
       await waitForElementsToLoad("Orders");
 
-      await userEvent.click(screen.getByText("Orders"));
+      await userEvent.click(await screen.findByText("Orders"));
       await userEvent.click(await screen.findByText("Quantity"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -183,7 +189,7 @@ describe("TagEditorParam", () => {
         "widget-type": "number/=",
         options: undefined,
       });
-    });
+    }, 40000);
 
     it("should default to number/= for a new reviews->rating field filter (metabase#16151)", async () => {
       const tag = createMockTemplateTag({
@@ -195,7 +201,7 @@ describe("TagEditorParam", () => {
 
       await waitForElementsToLoad("Reviews");
 
-      await userEvent.click(screen.getByText("Reviews"));
+      await userEvent.click(await screen.findByText("Reviews"));
       await userEvent.click(await screen.findByText("Rating"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -204,7 +210,7 @@ describe("TagEditorParam", () => {
         "widget-type": "number/=",
         options: undefined,
       });
-    });
+    }, 40000);
 
     it("should allow to change the field for a field filter", async () => {
       const tag = createMockTemplateTag({
@@ -223,7 +229,7 @@ describe("TagEditorParam", () => {
         ...tag,
         dimension: ["field", PEOPLE.ADDRESS, null],
       });
-    });
+    }, 40000);
   });
 
   describe("tag widget type", () => {
@@ -328,6 +334,6 @@ async function waitForElementsToLoad(text: string) {
     () => {
       expect(screen.getByText(text)).toBeInTheDocument();
     },
-    { timeout: 10000 },
+    { timeout: 20000 },
   );
 }

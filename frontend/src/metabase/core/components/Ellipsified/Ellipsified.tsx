@@ -1,4 +1,4 @@
-import type { FloatingPosition } from "@mantine/core/lib/Floating";
+import type { FloatingPosition } from "@mantine/core/lib";
 import type { CSSProperties, ReactNode } from "react";
 
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";
@@ -49,7 +49,7 @@ export const Ellipsified = ({
       disabled={!isEnabled}
       label={canSkipTooltipRendering ? undefined : tooltip || children || " "}
       position={placement}
-      width={tooltipMaxWidth}
+      w={tooltipMaxWidth}
       multiline={multiline}
     >
       <Text

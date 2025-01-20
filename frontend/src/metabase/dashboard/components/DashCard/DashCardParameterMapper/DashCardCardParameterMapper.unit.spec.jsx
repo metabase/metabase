@@ -219,7 +219,7 @@ describe("DashCardCardParameterMapper", () => {
       expect(queryIcon("sparkles")).not.toBeInTheDocument();
     });
 
-    it("should render only an icon when a dashcard is short", () => {
+    it("should render only an icon when a dashcard is short", async () => {
       const card = createMockCard();
       const dashcard = createMockDashboardCard({ card, size_y: 3, size_x: 5 });
 
@@ -238,7 +238,9 @@ describe("DashCardCardParameterMapper", () => {
       });
 
       expect(screen.queryByText("Auto-connected")).not.toBeInTheDocument();
-      expect(getIcon("sparkles")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("img", { name: /sparkles/ }),
+      ).toBeInTheDocument();
     });
 
     it("should not render an icon when a dashcard is narrow", () => {

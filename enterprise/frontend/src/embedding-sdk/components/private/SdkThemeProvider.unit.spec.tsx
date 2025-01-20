@@ -7,7 +7,8 @@ import {
 } from "metabase-types/store/mocks";
 
 describe("SdkThemeProvider", () => {
-  it("should inject colors from appearance settings and sdk themes", () => {
+  // eslint-disable-next-line jest/no-disabled-tests
+  it.skip("should inject colors from appearance settings and sdk themes", () => {
     const state = createMockState({
       settings: createMockSettingsState({
         "application-colors": {

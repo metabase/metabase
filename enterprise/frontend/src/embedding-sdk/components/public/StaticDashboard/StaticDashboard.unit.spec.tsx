@@ -1,5 +1,4 @@
 import { Box } from "@mantine/core";
-import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 import { indexBy } from "underscore";
 
@@ -8,7 +7,7 @@ import {
   setupDashboardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";

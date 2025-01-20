@@ -178,7 +178,7 @@ describe("SettingsJWTForm", () => {
       ATTRS["jwt-attribute-lastname"],
     );
     const groupSchema = await screen.findByTestId("jwt-group-schema");
-    await userEvent.click(within(groupSchema).getByRole("checkbox")); // checkbox for "jwt-group-sync"
+    await userEvent.click(within(groupSchema).getByRole("switch")); // checkbox for "jwt-group-sync"
 
     await userEvent.click(await screen.findByRole("button", { name: /Save/ }));
 

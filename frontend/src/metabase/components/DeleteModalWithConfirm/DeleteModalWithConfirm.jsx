@@ -43,7 +43,11 @@ export default class DeleteModalWithConfirm extends Component {
       true,
     );
     return (
-      <ModalContent title={title} onClose={this.props.onClose}>
+      <ModalContent
+        title={title}
+        onClose={this.props.onClose}
+        data-testid={`delete-confirmation-modal-${objectType}`}
+      >
         <div>
           <ul>
             {confirmItems.map((item, index) => (

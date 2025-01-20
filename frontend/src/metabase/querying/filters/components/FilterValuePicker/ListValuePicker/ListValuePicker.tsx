@@ -87,7 +87,7 @@ function CheckboxListPicker({
         value={searchValue}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        icon={<Icon name="search" c="text-light" />}
+        leftSection={<Icon name="search" c="text-light" />}
         onChange={handleInputChange}
       />
       {filteredOptions.length > 0 ? (
@@ -184,7 +184,6 @@ export function AutocompletePicker({
       placeholder={placeholder}
       shouldCreate={shouldCreate}
       autoFocus={autoFocus}
-      searchable
       aria-label={t`Filter value`}
       onChange={onChange}
       onFocus={onFocus}

@@ -1,0 +1,8 @@
+h3.root {
+  font-weight: normal;
+  text-transform: uppercase;
+
+  &:lang(en) {
+    letter-spacing: 0.7px;
+  }
+}

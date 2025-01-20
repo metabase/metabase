@@ -1,7 +1,6 @@
-import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, renderWithProviders } from "__support__/ui";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 
 import { TabRow } from "../TabRow";
 
@@ -44,7 +43,9 @@ describe("TabButton", () => {
     const { action, value } = setup();
 
     await userEvent.click(getIcon("chevrondown"));
-    (await screen.findByRole("option", { name: "first item" })).click();
+    await userEvent.click(
+      await screen.findByRole("option", { name: "first item" }),
+    );
 
     expect(action).toHaveBeenCalledWith(value);
   });
@@ -63,7 +64,7 @@ describe("TabButton", () => {
     const { onRename } = setup();
 
     await userEvent.click(getIcon("chevrondown"));
-    (await renameOption()).click();
+    await userEvent.click(await renameOption());
 
     const newLabel = "A new label";
     const inputEl = await screen.findByRole("textbox");
@@ -92,14 +93,16 @@ describe("TabButton", () => {
     const { onRename } = setup();
 
     await userEvent.click(getIcon("chevrondown"));
-    (await renameOption()).click();
+
+    await userEvent.click(await renameOption());
 
     const newLabel = "a".repeat(100);
     const expectedLabel = newLabel.slice(0, 75);
 
     const inputEl = await screen.findByRole("textbox");
     await userEvent.clear(inputEl);
-    await userEvent.type(inputEl, `${newLabel}{enter}`);
+    await userEvent.paste(newLabel);
+    await userEvent.type(inputEl, `{enter}`, { delay: 0 });
 
     expect(onRename).toHaveBeenCalledWith(expectedLabel);
     expect(await screen.findByDisplayValue(expectedLabel)).toBeInTheDocument();

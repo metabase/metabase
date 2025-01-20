@@ -193,7 +193,7 @@ export const ParameterSidebar = ({
       onRemove={handleRemove}
       data-testid="dashboard-parameter-sidebar"
     >
-      <Tabs radius={0} value={tab} onTabChange={handleTabChange}>
+      <Tabs radius={0} value={tab} onChange={handleTabChange}>
         <Tabs.List grow>
           {tabs.length > 1 &&
             tabs.map(tab => {

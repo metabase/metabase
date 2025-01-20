@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { NumberValue } from "d3-scale";
 
+import { render, screen } from "__support__/ui";
 import { measureTextWidth } from "metabase/lib/measure-text";
 
 import type { ChartFont } from "../../types/style";

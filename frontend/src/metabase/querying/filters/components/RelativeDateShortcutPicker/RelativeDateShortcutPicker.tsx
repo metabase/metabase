@@ -18,7 +18,7 @@ export function RelativeDateShortcutPicker({
   const groups = getShortcutGroups();
 
   return (
-    <Stack p="md" spacing="md">
+    <Stack p="md" gap="md">
       {groups.map((group, groupIndex) => (
         <section key={groupIndex}>
           {group.label && (

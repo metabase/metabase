@@ -523,7 +523,7 @@ const LoadingState = () => (
     className={cx(CS.flex, CS.layoutCentered, CS.alignCenter)}
     style={{ minHeight: 82 }}
   >
-    <LoadingSpinner size={32} />
+    <LoadingSpinner size={16} />
   </div>
 );
 

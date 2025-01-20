@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock, { type MockResponse } from "fetch-mock";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -91,7 +91,9 @@ describe("CloudPanel", () => {
     await expectCancelConfirmationModal();
     expect((store.getState() as any).undo).toHaveLength(0);
     await userEvent.click(
-      screen.getByRole("button", { name: /Cancel migration/ }),
+      within(
+        screen.getByRole("dialog", { name: "Cancel migration?" }),
+      ).getByRole("button", { name: /Cancel migration/ }),
     );
 
     await waitFor(() => {

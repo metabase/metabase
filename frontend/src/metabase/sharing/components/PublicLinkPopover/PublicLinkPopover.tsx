@@ -58,7 +58,7 @@ export const PublicLinkPopover = ({
   return (
     <Popover
       opened={isOpen}
-      onClose={isOpen ? onClose : undefined}
+      onChange={isOpen ? onClose : undefined}
       position="bottom-end"
     >
       <Popover.Target>
@@ -71,7 +71,7 @@ export const PublicLinkPopover = ({
           data-testid="public-link-popover-content"
           mih={getMinDropdownHeight()}
         >
-          <Title color="text-medium" order={4}>{t`Public link`}</Title>
+          <Title c="text-medium" order={4}>{t`Public link`}</Title>
           <Text
             color="text-medium"
             size="sm"
