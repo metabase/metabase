@@ -711,10 +711,6 @@ describe(
         cy.wait("@getModel");
       });
 
-      cy.findByRole("tablist").within(() => {
-        cy.findByText("Actions").click();
-      });
-
       createBasicActions();
 
       enableSharingFor("Update", { publicUrlAlias: "updatePublicURL" });
