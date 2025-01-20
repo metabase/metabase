@@ -672,7 +672,7 @@ export async function entityCompatibleQuery(
   entityQuery,
   dispatch,
   endpoint,
-  { forceRefetch = true } = {},
+  { forceRefetch = false } = {},
 ) {
   const request = entityQuery === EMPTY_ENTITY_QUERY ? undefined : entityQuery;
   const action = dispatch(endpoint.initiate(request, { forceRefetch }));

@@ -53,7 +53,7 @@ interface Props<Entity, EntityWrapper> {
   fetchType?: FetchType;
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
-  reload?: boolean;
+  reload?: boolean | (() => void); // reload can be passed as a callback from the outer loader
   requestType?: RequestType;
   selectorName?: "getObject" | "getObjectUnfiltered";
   wrapped?: boolean;
@@ -135,7 +135,7 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
     isFetching,
     refetch,
   } = useGetQuery(entityId != null ? finalQuery : skipToken, {
-    refetchOnMountOrArgChange: reload,
+    refetchOnMountOrArgChange: reload === true,
   });
 
   const queryKey = useMemo(
