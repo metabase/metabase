@@ -835,6 +835,29 @@
                       {:type            :drill-thru/sort
                        :sort-directions [:asc :desc]}]})))
 
+(deftest ^:parallel available-drill-thrus-no-column-drills-for-nil-dimension-values-test
+  (testing (str "column header drills should not be returned when dimensions have nil values (#49740, #51741)")
+    (lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type  :cell
+      :query-type  :aggregated
+      :column-name "count"
+      :custom-row  #(assoc % "CREATED_AT" nil)
+      ;; Expect the same set of drills as [[available-drill-thrus-test-9]] above, but without zoom-in.timeseries
+      ;; since "CREATED_AT" is nil.
+      :expected    [{:type :drill-thru/automatic-insights
+                     :dimensions [{:column {:name "PRODUCT_ID"}}
+                                  {:column {:name "CREATED_AT"}}]}
+                    {:type      :drill-thru/quick-filter
+                     :operators [{:name "<"}
+                                 {:name ">"}
+                                 {:name "="}
+                                 {:name "≠"}]}
+                    {:type       :drill-thru/underlying-records
+                     :row-count  77
+                     :table-name "Orders"}]
+      ;; Underlying records and automatic insights are not supported for native.
+      :native-drills #{:drill-thru/quick-filter}})))
+
 (deftest ^:parallel drill-value->js-test
   (testing "should convert :null to nil"
     (doseq [[input expected] [[:null nil]
