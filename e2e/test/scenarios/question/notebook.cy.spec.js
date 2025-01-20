@@ -947,6 +947,32 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       });
   });
 
+  it("should not leave the UI in broken state after adding an aggregation (metabase#48358)", () => {
+    cy.visit("/");
+    H.newButton("Question").click();
+    H.entityPickerModal().findByText("Tables").click();
+    H.entityPickerModal().findByText("Products").click();
+    H.addSummaryField({ metric: "Sum of ...", field: "Price" });
+    H.addSummaryGroupingField({ field: "Created At" });
+    H.addSummaryGroupingField({ field: "Category" });
+    H.visualize();
+    H.saveQuestionToCollection();
+    H.notebookButton().click();
+    H.addSummaryField({ metric: "Sum of ...", field: "Rating" });
+    H.visualize();
+    H.saveSavedQuestion();
+    H.notebookButton().click();
+    cy.findByLabelText("View the SQL").click();
+    H.addSummaryField({ metric: "Sum of ...", field: "Price" });
+
+    cy.findByTestId("loading-indicator").should("not.exist");
+    cy.findByTestId("native-query-preview-sidebar")
+      .get(".ace_line")
+      .should("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum"')
+      .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."RATING") AS "sum_2"')
+      .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum_3"');
+  });
+
   it("should not shrink the remove clause button (metabase#50128)", () => {
     const CUSTOM_COLUMN_LONG_NAME = "very-very-very-long-name";
 
