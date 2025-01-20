@@ -1,5 +1,6 @@
 (ns metabase.driver.bigquery-cloud-sdk
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
