@@ -6,7 +6,7 @@ export * from "./DateInput";
 export * from "./DatePicker";
 export * from "./FileInput";
 export * from "./Input";
-export * from "./MetabaseTagsInput";
+export * from "./SpecialTagsInput";
 export * from "./MonthPicker";
 export * from "./MultiAutocomplete";
 export * from "./MultiSelect";

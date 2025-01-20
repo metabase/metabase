@@ -6,7 +6,7 @@ import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Icon, MetabaseTagsInput } from "metabase/ui";
+import { Icon, SpecialTagsInput } from "metabase/ui";
 
 import { parseValues, unique } from "./utils";
 
@@ -135,7 +135,7 @@ export function MultiAutocomplete({
   };
 
   return (
-    <MetabaseTagsInput
+    <SpecialTagsInput
       {...props}
       data={items}
       value={lastSelectedValues}

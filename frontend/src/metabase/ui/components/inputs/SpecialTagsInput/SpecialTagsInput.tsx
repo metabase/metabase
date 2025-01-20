@@ -19,12 +19,12 @@ import { Icon } from "metabase/ui";
 import { filterPickedTags } from "./filter-picked-tags";
 import { getSplittedTags } from "./get-splitted-tags";
 
-type MetabaseTagsInputProps = TagsInputProps & {
+type SpecialTagsInputProps = TagsInputProps & {
   nothingFoundMessage?: React.ReactNode;
 };
 
-export const MetabaseTagsInput = forwardRef(function _MetabaseTagsInput(
-  props: MetabaseTagsInputProps,
+export const SpecialTagsInput = forwardRef(function _SpecialTagsInput(
+  props: SpecialTagsInputProps,
   ref,
 ) {
   const {
