@@ -2241,7 +2241,9 @@ describe("issue 48829", () => {
       cy.findByText("Add filter").click();
     });
 
-    H.queryBuilderHeader().button("Show Editor").click();
+    H.queryBuilderHeader()
+      .button(/Editor/)
+      .click();
     H.getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .icon("close")
@@ -2256,13 +2258,17 @@ describe("issue 48829", () => {
   it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter via the filter modal (metabase#48829)", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
-    H.queryBuilderHeader().button("Filter").click();
+    H.queryBuilderHeader()
+      .button(/Filter/)
+      .click();
     H.modal().within(() => {
       cy.findByText("Doohickey").click();
       cy.button("Apply filters").click();
     });
 
-    H.queryBuilderHeader().button("Show Editor").click();
+    H.queryBuilderHeader()
+      .button(/Editor/)
+      .click();
     H.getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .icon("close")
@@ -2300,7 +2306,9 @@ describe("issue 48829", () => {
     // Navigate to question using click action in dashboard
     H.main().findByText("Rustic Paper Wallet").click();
 
-    H.queryBuilderHeader().button("Show Editor").click();
+    H.queryBuilderHeader()
+      .button(/Editor/)
+      .click();
     H.getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .icon("close")

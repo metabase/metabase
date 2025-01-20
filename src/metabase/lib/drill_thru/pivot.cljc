@@ -129,6 +129,8 @@
                column
                (some? value)
                (lib.underlying/aggregation-sourced? query column)
+               ;; TODO fix this drill thru and remove this check (metabase#52236)
+               (not (lib.underlying/strictly-underlying-aggregation? query column))
                (-> (lib.aggregation/aggregations query stage-number) count pos?))
       (let [breakout-pivot-types (permitted-pivot-types query stage-number)
             pivots               (into {} (for [pivot-type breakout-pivot-types

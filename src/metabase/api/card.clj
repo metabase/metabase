@@ -34,6 +34,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
+   [metabase.search.core :as search]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -302,6 +303,7 @@
 
 (defmulti series-are-compatible?
   "Check if the `second-card` is compatible to be used as series of `card`."
+  {:arglists '([card second-card database-id->metadata-provider])}
   (fn [card _second-card _database-id->metadata-provider]
     (:display card)))
 
@@ -617,6 +619,17 @@
                                                                      :delete-old-dashcards? delete-old-dashcards?})
                                                  hydrate-card-details
                                                  (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))]
+      ;; We expose the search results for models and metrics directly in FE grids, from which items can be archived.
+      ;; The grid is then refreshed synchronously with the latest search results, so we need this change to be
+      ;; reflected synchronously.
+      ;; An alternate solution would be to have first class APIs for these views, that don't rely on an
+      ;; eventually consistent search index.
+      (when (:archived_directly card-updates)
+        ;; For now, we hard-code all the possible search-model types, and queue them all as this has no extra overhead.
+        ;; Ideally this would be DRY with the actual specification some way, but since this is a stop-gap solution, we
+        ;; decided not to complicate the solution further to accomplish this.
+        (search/bulk-ingest! (for [search-model ["card" "dataset" "metric"]]
+                               [search-model [:= :this.id id]])))
       (when metadata-future
         (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
         (card.metadata/save-metadata-async! metadata-future card))
