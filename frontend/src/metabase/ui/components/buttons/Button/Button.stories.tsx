@@ -1,3 +1,4 @@
+import { within } from "@storybook/testing-library";
 import { Fragment } from "react";
 
 import { Group, Icon, Stack } from "metabase/ui";
@@ -200,6 +201,15 @@ export const CompactSizeCustomColor = {
   args: {
     color: "error",
     compact: true,
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = (
+      await canvas.findAllByRole("button", {
+        name: "Save",
+      })
+    )[0];
+    button.classList.add("pseudo-hover");
   },
 };
 
