@@ -950,6 +950,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("should not leave the UI in broken state after adding an aggregation (metabase#48358)", () => {
     cy.visit("/");
     H.newButton("Question").click();
+    H.entityPickerModal().findByText("Tables").click();
     H.entityPickerModal().findByText("Products").click();
     H.addSummaryField({ metric: "Sum of ...", field: "Price" });
     H.addSummaryGroupingField({ field: "Created At" });
@@ -961,11 +962,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.visualize();
     H.saveSavedQuestion();
     H.notebookButton().click();
-    cy.findByLabelText("View SQL").click();
+    cy.findByLabelText("View the SQL").click();
     H.addSummaryField({ metric: "Sum of ...", field: "Price" });
 
     cy.findByTestId("loading-indicator").should("not.exist");
-    H.nativeEditor()
+    cy.findByTestId("native-query-preview-sidebar")
       .get(".ace_line")
       .should("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum"')
       .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."RATING") AS "sum_2"')
