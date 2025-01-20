@@ -27,7 +27,7 @@ export function getOperatorDisplayName(
   sectionName?: string,
 ) {
   if (operatorType === "date" || operatorType === "number") {
-    return option.name;
+    return sectionName;
   } else if (operatorType === "string" && option.operator === "=") {
     return sectionName;
   } else {
