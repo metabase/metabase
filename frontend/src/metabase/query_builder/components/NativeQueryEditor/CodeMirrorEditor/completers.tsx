@@ -23,6 +23,22 @@ type SchemaCompletionOptions = {
   databaseId?: DatabaseId | null;
 };
 
+function matchAfter(context: CompletionContext, expr: RegExp) {
+  const line = context.state.doc.lineAt(context.pos);
+  const str = line.text.slice(context.pos - line.from);
+  const found = str.search(expr);
+  if (found < 0) {
+    return null;
+  }
+
+  const text = str.slice(found);
+  return {
+    from: context.pos,
+    to: context.pos + text.length,
+    text,
+  };
+}
+
 // Completes column and table names from the database schema
 export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
   const matchStyle = useSetting("native-query-autocomplete-match-style");
@@ -51,6 +67,8 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
         return null;
       }
 
+      const suffix = matchAfter(context, /\w+/);
+
       // Do not cache this in the rtk-query's cache, since there is no
       // way to invalidate it. The autocomplete endpoint set caching headers
       // so the request should be cached in the browser.
@@ -76,6 +94,7 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
 
       return {
         from: word.from,
+        to: suffix?.to,
         options: deduped.map(([value, meta]) => ({
           label: value,
           detail: meta,
