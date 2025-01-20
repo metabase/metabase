@@ -75,7 +75,9 @@
   [{:keys [dimensions], :as context} :- ::lib.schema.drill-thru/context]
   (not-empty
    (for [dimension dimensions]
-     (merge context dimension))))
+     (-> (merge context dimension)
+         ;; Drills expect nil :values to be converted to :null. See docstring in [[lib.js.available-drill-thrus]].
+         (update :value lib.drill-thru.common/js->drill-value)))))
 
 (mu/defn- context-with-dimensions-or-row-dimensions :- ::lib.schema.drill-thru/context
   "Return an updated `context` with either the existing `dimensions` or dimensions constructed from the `row`."
