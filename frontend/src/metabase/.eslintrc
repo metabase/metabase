@@ -12,11 +12,7 @@
         "paths": [
           {
             "name": "react-redux",
-            "importNames": [
-              "useSelector",
-              "useDispatch",
-              "connect"
-            ],
+            "importNames": ["useSelector", "useDispatch", "connect"],
             "message": "Please import from `metabase/lib/redux` instead."
           },
           {
@@ -41,34 +37,26 @@
   },
   "overrides": [
     {
-      "files": [
-        "**/*.unit.spec.{js,jsx,ts,tsx}"
-      ],
+      "files": ["**/*.unit.spec.{js,jsx,ts,tsx}"],
       "rules": {
         "no-console": 0
       }
     },
     {
-      "files": [
-        "**/*.stories.tsx"
-      ],
+      "files": ["**/*.stories.tsx"],
       "rules": {
         "import/no-default-export": 0,
         "no-restricted-imports": 0
       }
     },
     {
-      "files": [
-        "lib/redux/hooks.ts"
-      ],
+      "files": ["lib/redux/hooks.ts"],
       "rules": {
         "no-restricted-imports": 0
       }
     },
     {
-      "files": [
-        "ui/**/*.{js,jsx,ts,tsx}"
-      ],
+      "files": ["ui/**/*.{js,jsx,ts,tsx}"],
       "rules": {
         "no-restricted-imports": [
           "error",
