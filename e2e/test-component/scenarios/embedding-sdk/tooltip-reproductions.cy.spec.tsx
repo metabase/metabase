@@ -77,9 +77,8 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
         // The tooltip is indeed visible if we clicked on a child of the tooltip.
         // Using `.should("be.visible")` does not work here as Cypress incorrectly
         // reports the tooltip is obscured by the bar chart even though it has a higher z-index.
-        const isTopmostElementChildOfTooltip = checkIfElementIsChildOf(
+        const isTopmostElementChildOfTooltip = tooltipElement.contains(
           getVisibleTopmostElement(tooltipElement),
-          tooltipElement,
         );
 
         expect(isTopmostElementChildOfTooltip).to.equal(true);
@@ -107,23 +106,4 @@ function getVisibleTopmostElement(targetElement: HTMLElement) {
 
   // The topmost element is the first element of elementsAtPoint.
   return elementsAtPoint[0];
-}
-
-function checkIfElementIsChildOf(
-  childElement: Element,
-  expectedParentElement: Element,
-): boolean {
-  let currentElement = childElement;
-
-  while (currentElement && currentElement !== document.body) {
-    if (currentElement === expectedParentElement) {
-      return true;
-    }
-
-    if (currentElement.parentElement) {
-      currentElement = currentElement.parentElement;
-    }
-  }
-
-  return false;
 }
