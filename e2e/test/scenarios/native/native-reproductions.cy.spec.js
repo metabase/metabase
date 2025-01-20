@@ -433,9 +433,6 @@ describe("issue 21597", { tags: "@external" }, () => {
     // Create a native query and run it
     H.startNewNativeQuestion().as("editor");
 
-    cy.findByTestId("gui-builder-data").click();
-    cy.findByLabelText(databaseName).click();
-
     cy.get("@editor").type(
       `SELECT COUNT(*) FROM PRODUCTS WHERE ${DOUBLE_LEFT_BRACKET}FILTER}}`,
     );

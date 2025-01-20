@@ -974,23 +974,27 @@ describe("issue 29786", { tags: "@external" }, () => {
       H.startNewNativeQuestion({
         display: "table",
         collection_id: COLLECTION_GROUP,
-        database: 2,
         query: SQL_QUERY,
       });
 
       // type a space to trigger fields
       cy.focused().type(" ");
 
-      cy.findAllByTestId("variable-type-select").first().click();
+      cy.findByTestId("tag-editor-variable-f1")
+        .findByTestId("variable-type-select")
+        .click();
       SQLFilter.chooseType("Field Filter");
       FieldFilter.mapTo({ table: "Products", field: "Category" });
-      cy.findAllByTestId("variable-type-select").last().click();
+
+      cy.findByTestId("tag-editor-variable-f2")
+        .findByTestId("variable-type-select")
+        .click();
       SQLFilter.chooseType("Field Filter");
       FieldFilter.mapTo({ table: "Products", field: "Vendor" });
 
-      H.filterWidget().first().click();
+      H.filterWidget().should("have.length", 2).first().click();
       FieldFilter.selectFilterValueFromList("Widget");
-      H.filterWidget().last().click();
+      H.filterWidget().should("have.length", 2).last().click();
       FieldFilter.addWidgetStringFilter("Von-Gulgowski");
 
       SQLFilter.runQuery();
