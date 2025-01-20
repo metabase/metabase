@@ -59,15 +59,20 @@
          :type (convert-field-type column)}
         (m/assoc-some :description (get column :description)))))
 
+(defn resolve-column-index
+  "Resolve the reference `field_id` to the index of the result columns in the entity with `field-id-prefix`."
+  [field_id field-id-prefix]
+  (when-not (str/starts-with? field_id field-id-prefix)
+    (throw (ex-info (str "field " field_id " not found") {:agent-error? true
+                                                          :expected-prefix field-id-prefix})))
+  (-> field_id (subs (count field-id-prefix)) parse-long))
+
 (defn resolve-column
   "Resolve the reference `field_id` in filter `item` by finding the column in `columns` specified by `field_id`.
   `field-id-prefix` is used to check if the filter refers to a column from the right entity."
   [{:keys [field_id] :as item} field-id-prefix columns]
-  (when-not (str/starts-with? field_id field-id-prefix)
-    (throw (ex-info (str "field " field_id " not found") {:expected-prefix field-id-prefix})))
-  (let [index (-> field_id (subs (count field-id-prefix)) parse-long)
-        column (nth columns index)]
-    (assoc item :column column)))
+  (let [index (resolve-column-index field_id field-id-prefix)]
+    (assoc item :column (nth columns index))))
 
 (defn get-table
   "Get the `fields` of the table with ID `id`."
