@@ -6,6 +6,7 @@ import {
   autocompletion,
   moveCompletionSelection,
 } from "@codemirror/autocomplete";
+import { insertTab } from "@codemirror/commands";
 import { json } from "@codemirror/lang-json";
 import {
   MySQL,
@@ -112,6 +113,10 @@ function disableCmdEnter() {
       {
         key: "Tab",
         run: acceptCompletion,
+      },
+      {
+        key: "Tab",
+        run: insertTab,
       },
       {
         key: "Mod-j",
