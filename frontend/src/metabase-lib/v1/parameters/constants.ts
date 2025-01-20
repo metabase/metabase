@@ -5,8 +5,7 @@ export const PARAMETER_OPERATOR_TYPES = {
     {
       type: "number/=",
       operator: "=",
-      name: t`Number`,
-      menuName: t`Equal to`,
+      name: t`Equal to`,
     },
     {
       type: "number/!=",
@@ -101,7 +100,7 @@ export const PARAMETER_OPERATOR_TYPES = {
     {
       type: "date/all-options",
       operator: "all-options",
-      name: t`Date`,
+      name: t`All Options`,
       menuName: t`All Options`,
       description: t`Contains all of the above`,
     },
