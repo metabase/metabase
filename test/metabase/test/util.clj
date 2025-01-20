@@ -11,6 +11,7 @@
    [colorize.core :as colorize]
    [environ.core :as env]
    [java-time.api :as t]
+   [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
    [metabase.audit :as audit]
    [metabase.config :as config]
@@ -58,7 +59,12 @@
    (java.net ServerSocket)
    (java.util Locale)
    (java.util.concurrent CountDownLatch TimeoutException)
-   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
+   (org.quartz
+    CronTrigger
+    JobDetail
+    JobKey
+    Scheduler
+    Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -1444,13 +1450,23 @@
         actual))
 
 (defn file->bytes
-  "Reads a file at `file-path` completely into a byte array, returning that array."
-  [^String file-path]
-  (let [f   (File. file-path)
-        ary (byte-array (.length f))]
-    (with-open [is (FileInputStream. f)]
+  "Reads a file completely into a byte array, returning that array."
+  [^File file]
+  (let [ary (byte-array (.length file))]
+    (with-open [is (FileInputStream. file)]
       (.read is ary)
       ary)))
+
+(defn file-path->bytes
+  "Reads a file at `file-path` completely into a byte array, returning that array."
+  [^String file-path]
+  (let [f (File. file-path)]
+    (file->bytes f)))
+
+(defn bytes->base64-data-uri
+  "Encodes bytes in base64 and wraps with data-uri similar to mimic browser uploads."
+  [^bytes bs]
+  (str "data:application/octet-stream;base64," (u/encode-base64-bytes bs)))
 
 (defn works-after
   "Returns a function which works as `f` except that on the first `n` calls an
@@ -1541,3 +1557,7 @@
   `(do-poll-until
     ~timeout-ms
     (fn ~'poll-body [] ~@body)))
+
+(methodical/defmethod =?/=?-diff [(Class/forName "[B") (Class/forName "[B")]
+  [expected actual]
+  (=?/=?-diff (seq expected) (seq actual)))

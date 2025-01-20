@@ -444,12 +444,10 @@
                 (spit pk-path pk-key)
                 (doseq [to-merge [{:private-key-value pk-key                      ;; uploaded string
                                    :private-key-options "uploaded"}
-                                  {:private-key-value (.getBytes pk-key "UTF-8")
+                                  {:private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))
                                    :private-key-options "uploaded"}               ;; uploaded byte array
-                                  {:private-key-value (.getBytes pk-key "UTF-8")} ;; uploaded byte array without private-key-options
-                                  {:private-key-options "local"
-                                   :private-key-source "file-path"
-                                   :private-key-id secret-id}]]              ;; local file path
+                                  {:private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))}   ;; uploaded byte array without private-key-options
+                                  {:private-key-id secret-id}]]              ;; local file path
                   (let [details (-> (:details (mt/db))
                                     (dissoc :password)
                                     (merge {:db pk-db :user pk-user} to-merge))]
@@ -475,8 +473,7 @@
                                        :advanced-options    false
                                        :schema-filters-type "all"
                                        :account             account
-                                       :private-key-value   (str "data:application/octet-stream;base64,"
-                                                                 (u/encode-base64 private-key-value))
+                                       :private-key-value   (mt/bytes->base64-data-uri (u/string-to-bytes private-key-value))
                                        :tunnel-enabled      false
                                        :user                user}}]
      ;; TODO: We should make those message returned when role is incorrect more descriptive!
@@ -535,8 +532,7 @@
                                        :advanced-options    false
                                        :schema-filters-type "all"
                                        :account             account
-                                       :private-key-value   (str "data:application/octet-stream;base64,"
-                                                                 (u/encode-base64 private-key-value))
+                                       :private-key-value   (mt/bytes->base64-data-uri (u/string-to-bytes private-key-value))
                                        :tunnel-enabled      false
                                        :user                user}}]
       (testing "Database can be created using _default_ `nil` role"
