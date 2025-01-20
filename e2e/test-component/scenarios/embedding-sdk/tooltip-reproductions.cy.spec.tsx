@@ -79,7 +79,7 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
         // reports the tooltip is obscured by the bar chart even though it has a higher z-index.
         const isTopmostElementChildOfTooltip = checkIfElementIsChildOf(
           getVisibleTopmostElement(tooltipElement),
-          element => element === tooltipElement,
+          tooltipElement,
         );
 
         expect(isTopmostElementChildOfTooltip).to.equal(true);
@@ -110,13 +110,13 @@ function getVisibleTopmostElement(targetElement: HTMLElement) {
 }
 
 function checkIfElementIsChildOf(
-  element: Element,
-  parentPredicate: (element: Element) => boolean,
+  childElement: Element,
+  expectedParentElement: Element,
 ): boolean {
-  let currentElement = element;
+  let currentElement = childElement;
 
   while (currentElement && currentElement !== document.body) {
-    if (parentPredicate(currentElement)) {
+    if (childElement === expectedParentElement) {
       return true;
     }
 
