@@ -946,6 +946,10 @@
     (fn []
       (.getObject rs i))))
 
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/SQLXML]
+  [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
+  (fn [] (.getString (.getObject rs i))))
+
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :postgres
   [_ ^ResultSet rs _ ^Integer i]
