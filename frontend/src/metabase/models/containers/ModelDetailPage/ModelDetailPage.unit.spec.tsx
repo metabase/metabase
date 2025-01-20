@@ -51,7 +51,6 @@ import {
 import {
   createNativeModelCard as _createNativeModelCard,
   createStructuredModelCard as _createStructuredModelCard,
-  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockSettingsState,
@@ -179,7 +178,6 @@ type SetupOpts = {
 
 async function setup({
   model: card,
-  tab = "usage",
   actions = [],
   databases = [TEST_DATABASE],
   collections = [],
@@ -233,7 +231,6 @@ async function setup({
   const name = model.displayName()?.toLowerCase();
   const slug = `${model.id()}-${name}`;
   const baseUrl = `/model/${slug}/detail`;
-  const initialRoute = `${baseUrl}/${tab}`;
 
   const { history } = renderWithProviders(
     <>
@@ -257,7 +254,7 @@ async function setup({
       </Route>
       <Route path="/question/:slug" component={() => null} />
     </>,
-    { withRouter: true, initialRoute, storeInitialState },
+    { withRouter: true, initialRoute: baseUrl, storeInitialState },
   );
 
   await waitForLoaderToBeRemoved();
@@ -266,12 +263,10 @@ async function setup({
 }
 
 async function setupActions({
-  tab = "actions",
   databases = [TEST_DATABASE_WITH_ACTIONS],
   ...opts
 }: SetupOpts) {
   return setup({
-    tab,
     databases,
     ...opts,
   });
@@ -392,18 +387,6 @@ describe("ModelDetailPage", () => {
 
         expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
         expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
-          "aria-selected",
-          "true",
-        );
-      });
-
-      it("does not redirect to another tab if actions are disabled for the model's database but there are existing actions", async () => {
-        const model = getModel();
-        const action = createMockQueryAction({ model_id: model.id });
-
-        await setup({ model, actions: [action], tab: "actions" });
-
-        expect(screen.getByRole("tab", { name: "Actions" })).toHaveAttribute(
           "aria-selected",
           "true",
         );
@@ -863,65 +846,6 @@ describe("ModelDetailPage", () => {
   });
 
   describe("navigation", () => {
-    const modelCard = createStructuredModelCard();
-
-    it("navigates between tabs", async () => {
-      const { baseUrl, history } = await setup({
-        model: modelCard,
-        databases: [TEST_DATABASE_WITH_ACTIONS],
-      });
-
-      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
-      expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-
-      await userEvent.click(screen.getByText("Schema"));
-      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/schema`);
-      expect(screen.getByRole("tab", { name: "Schema" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-
-      await userEvent.click(screen.getByText("Actions"));
-      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/actions`);
-      expect(screen.getByRole("tab", { name: "Actions" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-
-      await userEvent.click(screen.getByText("Used by"));
-      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
-      expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-    });
-
-    it("redirects to 'Used by' when opening an unknown tab", async () => {
-      const { baseUrl, history } = await setup({
-        model: modelCard,
-        tab: "foo-bar",
-      });
-
-      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
-      expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-    });
-
-    it("redirects to query builder when trying to open a question", async () => {
-      const { model: question, history } = await setup({
-        model: createSavedStructuredCard(),
-      });
-
-      expect(history?.getCurrentLocation().pathname).toBe(
-        ML_Urls.getUrl(question),
-      );
-    });
-
     it("shows 404 when opening an archived model", async () => {
       const { model } = await setup({
         model: createStructuredModelCard({ archived: true }),

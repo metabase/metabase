@@ -69,8 +69,6 @@ const MODEL_NAME = "Test Action Model";
             cy.wait(["@getModel", "@getModelActions", "@getCardAssociations"]);
           });
 
-          cy.findByRole("tab", { name: "Actions" }).click();
-
           cy.findByTestId("model-actions-header")
             .findByText("New action")
             .click();
@@ -417,8 +415,6 @@ const MODEL_NAME = "Test Action Model";
               ]);
             });
 
-            cy.findByRole("tab", { name: "Actions" }).click();
-
             cy.findByTestId("model-actions-header")
               .findByText("New action")
               .click();
@@ -491,8 +487,6 @@ const MODEL_NAME = "Test Action Model";
                 "@getCardAssociations",
               ]);
             });
-
-            cy.findByRole("tab", { name: "Actions" }).click();
 
             cy.get("[aria-label='Update Score']").within(() => {
               cy.icon("ellipsis").click();
@@ -1184,8 +1178,6 @@ describe(
           cy.visit(`/model/${id}/detail`);
           cy.wait(["@getModel", "@getModelActions", "@getCardAssociations"]);
         });
-
-        cy.findByRole("tab", { name: "Actions" }).click();
 
         cy.findByTestId("model-actions-header")
           .findByText("New action")

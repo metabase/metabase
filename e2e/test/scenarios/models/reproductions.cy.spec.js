@@ -1031,7 +1031,6 @@ describe("issue 29378", () => {
     H.createAction(ACTION_DETAILS);
 
     cy.visit(`/model/${ORDERS_QUESTION_ID}/detail`);
-    cy.findByRole("tab", { name: "Actions" }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1046,7 +1045,6 @@ describe("issue 29378", () => {
       .should("exist");
     H.closeCommandPalette();
 
-    cy.findByRole("tab", { name: "Actions" }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
