@@ -995,6 +995,80 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByLabelText("close icon").invoke("outerHeight").should("eq", 16);
     }
   });
+
+  it("should let the user navigate back (metabase#50971)", () => {
+    cy.visit("/");
+    H.newButton("Model").click();
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+
+    H.entityPickerModal().should("be.visible");
+
+    // Cypress can emulate the browser's back button with cy.go('back'), but
+    // this does not trigger a confirmation modal, so we need to perform a
+    // similar action that also triggers the confirmation modal: clicking the
+    // cancel button in the edit bar.
+    cy.log('Triggering a "Discard your changes?" confirmation modal');
+    cy.findByTestId("dataset-edit-bar")
+      .findByRole("button", { name: "Cancel", hidden: true })
+      .click({ force: true });
+
+    cy.log(
+      'Clicking "Discard changes" in the confirmation modal to verify that this modal is above the data picker modal',
+    );
+    H.modal().should("be.visible").contains("Discard changes").click();
+    cy.findByTestId("greeting-message").should("be.visible");
+  });
+
+  it("shows all available columns and groups in the breakout picker (metabase#46832)", () => {
+    cy.visit("/");
+    H.newButton("Question").click();
+    H.entityPickerModal().findByText("Orders").click();
+    H.join();
+    H.joinTable("Reviews", "Product ID", "Product ID");
+    H.addSummaryField({ metric: "Count of rows" });
+    H.addSummaryGroupingField({ field: "Created At" });
+    cy.findAllByRole("button", { name: "Join data" }).last().click();
+    H.joinTable("Reviews", "Created At: Month", "Created At");
+    cy.button("Summarize").click();
+    H.addSummaryField({ metric: "Count of rows", stage: 1 });
+
+    cy.log("adding a new breakout");
+    H.getNotebookStep("summarize", { stage: 1 })
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Summaries").should("be.visible");
+      cy.findByText("Created At: Month").should("be.visible");
+      cy.findByText("Count").should("be.visible");
+
+      cy.findByText("Reviews").click();
+      cy.findByText("Created At: Month").should("not.exist");
+      cy.findByText("Count").should("not.exist");
+
+      cy.findByText("Summaries").click();
+      cy.findByText("Created At: Month").should("be.visible");
+      cy.findByText("Count").should("be.visible");
+
+      cy.findByText("Reviews").click();
+      cy.findByText("Rating").click();
+    });
+
+    cy.log("editing an existing breakout");
+    H.getNotebookStep("summarize", { stage: 1 })
+      .findByText("Reviews - Created At: Month → Rating: Auto binned")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Summaries").should("be.visible");
+      cy.findByText("Created At: Month").should("not.exist");
+      cy.findByText("Count").should("not.exist");
+
+      cy.findByText("Summaries").click();
+      cy.findByText("Created At: Month").should("be.visible");
+      cy.findByText("Count").should("be.visible");
+    });
+  });
 });
 
 function assertTableRowCount(expectedCount) {
