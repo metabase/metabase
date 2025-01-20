@@ -241,6 +241,7 @@ export function useReferencedCardCompletion({
     const data = await Promise.all(
       referencedQuestionIds.map(id => getCard({ id }, shouldCache)),
     );
+
     return data
       .map(item => item.data)
       .filter(isNotNull)
@@ -272,10 +273,16 @@ export function useReferencedCardCompletion({
         return null;
       }
 
+      const suffix = matchAfter(context, /\w+/);
+
       const results = await getCardColumns();
+      if (results.length === 0) {
+        return null;
+      }
 
       return {
         from: word.from,
+        to: suffix?.to,
         validFor(text: string) {
           return text.startsWith(word.text);
         },

@@ -7,17 +7,21 @@ import fetchMock from "fetch-mock";
 
 import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, waitFor } from "__support__/ui";
+import { isNotNull } from "metabase/lib/types";
 import type {
   AutocompleteMatchStyle,
   AutocompleteSuggestion,
+  Card,
   CardAutocompleteSuggestion,
   NativeQuerySnippet,
 } from "metabase-types/api";
+import { createMockCard, createMockField } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
 import {
   useCardTagCompletion,
+  useReferencedCardCompletion,
   useSchemaCompletion,
   useSnippetCompletion,
 } from "./completers";
@@ -517,6 +521,98 @@ describe("useCardTagCompletion", () => {
           apply: "#42-bar-baz",
           detail: "Metric in Custom collection",
         },
+      ],
+    });
+    expect(fetchMock.calls(url)).toHaveLength(1);
+  });
+});
+
+describe("useReferencedCardCompletion", () => {
+  const MOCK_RESULTS = [
+    createMockCard({
+      id: 42,
+      name: "Referenced Question",
+      result_metadata: [
+        createMockField({
+          name: "Foobar",
+        }),
+        createMockField({
+          name: "Bar",
+        }),
+      ],
+    }),
+  ];
+
+  const url = /\/api\/card\/\d+$/;
+
+  function setup({
+    results = MOCK_RESULTS,
+    cardIds = results.map(card => card.id).filter(isNotNull),
+  }: {
+    results?: Partial<Card>[];
+    cardIds?: number[];
+  } = {}) {
+    for (const id of cardIds) {
+      const url = `path:/api/card/${id}`;
+      const card = results.find(card => card.id === id);
+      fetchMock.get(url, {
+        status: 200,
+        body: card,
+      });
+    }
+
+    const complete = completer(() =>
+      useReferencedCardCompletion({ referencedQuestionIds: cardIds }),
+    );
+
+    return { complete, url };
+  }
+
+  it("should not be triggered inside of tags or snippets", async () => {
+    const queries = [
+      // none of these should trigger a call
+      "SELECT {{ #foo|",
+      "SELECT {{ #foo| }}",
+      "SELECT {{ snippet: Fo|",
+      "SELECT {{ snippet: Fo| }}",
+      "SELECT {{ Fo|",
+      "SELECT {{ Fo| }}",
+    ];
+    const { complete } = setup();
+
+    for (const query of queries) {
+      const result = await complete(query);
+      expect(result).toBe(null);
+    }
+
+    expect(fetchMock.calls("/api/card/*")).toHaveLength(0);
+  });
+
+  it("should return columns from referenced cards", async () => {
+    const { complete } = setup();
+    const results = await complete("SELECT Ba|");
+    expect(results).toEqual({
+      from: 7,
+      validFor: expect.any(Function),
+      options: [
+        { label: "Foobar", detail: "Referenced Question :type/Text" },
+        { label: "Bar", detail: "Referenced Question :type/Text" },
+      ],
+    });
+
+    expect(fetchMock.calls(url)).toHaveLength(1);
+  });
+
+  it("should return columns from referenced cards, inside word", async () => {
+    const { complete } = setup();
+    const results = await complete("SELECT Ba|r");
+    expect(results).toEqual({
+      from: 7,
+      to: 10,
+      validFor: expect.any(Function),
+      options: [
+        { label: "Foobar", detail: "Referenced Question :type/Text" },
+        { label: "Bar", detail: "Referenced Question :type/Text" },
       ],
     });
     expect(fetchMock.calls(url)).toHaveLength(1);
