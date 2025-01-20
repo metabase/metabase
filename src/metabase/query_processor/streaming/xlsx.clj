@@ -346,7 +346,7 @@
 
 (defmethod set-cell! String
   [^Cell cell value _styles _typed-styles]
-  (.setCellValue cell ^String value))
+  (.setCellValue cell ^String (if (> (count value) 32767) (subs value 0 32767) value)))
 
 (defmethod set-cell! Number
   [^Cell cell value styles typed-styles]
