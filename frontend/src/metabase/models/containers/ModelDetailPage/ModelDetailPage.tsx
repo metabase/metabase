@@ -11,12 +11,11 @@ import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import title from "metabase/hoc/Title";
-import { connect, useSelector } from "metabase/lib/redux";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
-import { getSetting } from "metabase/selectors/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -75,9 +74,6 @@ function ModelDetailPage({
   onChangeLocation,
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
-  const hasNestedQueriesEnabled = useSelector(state =>
-    getSetting(state, "enable-nested-queries"),
-  );
 
   const database = model.database();
   const { isEditable } = Lib.queryDisplayInfo(model.query());
@@ -85,9 +81,6 @@ function ModelDetailPage({
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const shouldShowActionsUI = hasActions || hasActionsEnabled;
-
-  const supportsNestedQueries =
-    database != null && database.hasFeature("nested-queries");
 
   const mainTable = useMemo(() => {
     const query = model.query();
@@ -163,11 +156,8 @@ function ModelDetailPage({
     <>
       <ModelDetailPageView
         model={model}
-        mainTable={mainTable}
         hasDataPermissions={hasDataPermissions}
         shouldShowActionsUI={shouldShowActionsUI}
-        hasNestedQueriesEnabled={hasNestedQueriesEnabled}
-        supportsNestedQueries={supportsNestedQueries}
         onChangeName={handleNameChange}
         onChangeCollection={handleCollectionChange}
       />
