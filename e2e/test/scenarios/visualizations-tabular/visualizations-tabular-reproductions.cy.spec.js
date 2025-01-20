@@ -232,7 +232,9 @@ describe("issue 18976, 18817", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("qb-header").button("Summarize").click();
+    cy.findByTestId("qb-header")
+      .button(/Summarize/)
+      .click();
     H.rightSidebar()
       .findByLabelText("Source")
       .findByRole("button", { name: "Remove dimension" })
@@ -652,7 +654,7 @@ describe("issue 37726", { tags: "@flaky" }, () => {
     cy.createQuestion(PIVOT_QUESTION, { visitQuestion: true });
 
     // Now, add in another column to the pivot table
-    cy.button("Summarize").click();
+    cy.button(/Summarize/).click();
 
     cy.findByRole("listitem", { name: "Category" })
       .realHover()

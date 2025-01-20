@@ -296,6 +296,10 @@ export function tableInteractiveBody() {
   return cy.get("#main-data-grid");
 }
 
+export function tableAllFieldsHiddenImage() {
+  return cy.findByTestId("Table-all-fields-hidden-image");
+}
+
 export function tableHeaderClick(headerString) {
   tableInteractive().within(() => {
     cy.findByTextEnsureVisible(headerString).trigger("mousedown");
@@ -383,4 +387,8 @@ export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
 
   cy.wait(interval);
   repeatAssertion(assertFn, timeout - interval, interval);
+}
+
+export function mapPinIcon() {
+  return cy.get(".leaflet-marker-icon");
 }

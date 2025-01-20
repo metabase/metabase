@@ -26,6 +26,7 @@
 (defmulti present-model-items
   "Given a model and a list of items, return the items in the format the API client expects. Note that order does not
   matter! The calling function, `present-items`, is responsible for ensuring the order is maintained."
+  {:arglists '([model items])}
   (fn [model _items] model))
 
 (defn- present-collections [rows]

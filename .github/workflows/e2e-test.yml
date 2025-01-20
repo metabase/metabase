@@ -22,6 +22,12 @@ on:
         required: false
         type: string
         default: ubuntu-22.04
+      total_chunks: # number of chunks
+        required: false
+        type: number
+      split_index: # index of the chunk
+        required: false
+        type: number
 
 jobs:
   e2e-tests:
@@ -32,6 +38,10 @@ jobs:
       MB_EDITION: ${{ inputs.edition }}
       DISPLAY: ""
       QA_DB_ENABLED: true
+      PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+      JOB_NAME: ${{ inputs.name }}
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
@@ -47,7 +57,7 @@ jobs:
       mongo: ${{ inputs.name == 'mongo' }}
       postgres: ${{ inputs.name != 'mongo' }}
       mysql: ${{ inputs.name != 'mongo' }}
-      openldap: ${{ contains(inputs.specs, 'ldap') }}
+      openldap: true
       maildev: true
       webhook: true
     steps:
@@ -90,20 +100,31 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
-      - name: Run EE Cypress tests on ${{ inputs.name }}
-        if: ${{ !inputs.tags }}
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Generate database snapshots
+        run: node e2e/runner/run_cypress_ci.js snapshot
+
+      - name: Run auto-split Cypress tests on ${{ inputs.name }}
+        if: ${{ !inputs.specs }}
+        env:
+          SPLIT: ${{ inputs.total_chunks }}
+          SPLIT_INDEX: ${{ inputs.split_index }}
+          SPLIT_FILE: "./e2e/support/timings.json"
+          SPLIT_OUTPUT_FILE: "newTimes.json"
+          SPLIT_TIME_THRESHOLD: 5.0
         shell: bash
         run: |
-          yarn run test-cypress-run \
-          --env grepTags="-@slow+-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
-          --spec '${{ inputs.specs }}' \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          node e2e/runner/run_cypress_ci.js test \
+            --env grepTags="-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
+            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
-        if: ${{ inputs.tags }}
+        if: ${{ inputs.specs }}
         shell: bash
         run: |
-          yarn run test-cypress-run \
+          node e2e/runner/run_cypress_ci.js test \
           --env grepTags="${{inputs.tags}} --@quarantine",grepOmitFiltered=true \
           --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
