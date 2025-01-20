@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import CS from "metabase/css/core/index.css";
-import { Box, Space, Tabs } from "metabase/ui";
+import { Box, DEFAULT_POPOVER_Z_INDEX, Space, Tabs } from "metabase/ui";
 
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
@@ -50,6 +50,7 @@ export const ChartSettingsWidgetPopover = ({
   return (
     <TippyPopover
       reference={anchor}
+      zIndex={DEFAULT_POPOVER_Z_INDEX}
       content={
         widgets.length > 0 ? (
           <Box

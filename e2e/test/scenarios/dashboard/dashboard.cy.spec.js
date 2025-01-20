@@ -9,6 +9,7 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { mapPinIcon } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
   createMockVirtualCard,
@@ -857,9 +858,7 @@ describe("scenarios > dashboard", () => {
         });
 
         H.visitDashboard(dashboardId);
-        cy.get(".leaflet-marker-icon") // pin icon
-          .eq(0)
-          .click({ force: true });
+        mapPinIcon().eq(0).click({ force: true });
         cy.url().should("include", `/dashboard/${dashboardId}?id=1`);
         cy.contains("Hudson Borer - 1");
       });

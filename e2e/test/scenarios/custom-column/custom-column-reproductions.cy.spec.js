@@ -288,7 +288,7 @@ describe("issue 18747", () => {
   function addValueToParameterFilter() {
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByRole("searchbox").type("14");
+      H.fieldValuesInput().type("14");
       cy.button("Add filter").click();
     });
   }
@@ -1093,7 +1093,7 @@ describe("issue 49882", () => {
       .should("not.exist");
   });
 
-  it("does not clear expression input when expression is invalid (metabase#49882-2)", () => {
+  it("does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)", () => {
     const selectTax = `{leftarrow}${"{shift+leftarrow}".repeat(5)}`;
     const moveCursorBefore2ndCase = "{leftarrow}".repeat(41);
     H.enterCustomColumnDetails({
@@ -1115,7 +1115,9 @@ describe("issue 49882", () => {
         'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )\n\n',
       );
 
-    H.popover().findByText("Invalid expression").should("be.visible");
+    H.popover()
+      .findByText("Expecting comma but got case instead")
+      .should("be.visible");
   });
 
   it("should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)", () => {
@@ -1241,5 +1243,76 @@ describe("issue 49304", () => {
       cy.findByText("gizmo").should("be.visible");
       cy.findByLabelText("Case sensitive").should("be.checked");
     });
+  });
+});
+
+describe("issue 50925", () => {
+  const questionDetails = {
+    query: {
+      "source-table": PRODUCTS_ID,
+      expressions: {
+        Custom: [
+          "case",
+          [
+            [
+              [
+                "=",
+                ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
+                1,
+              ],
+              [
+                "*",
+                ["field", PRODUCTS.PRICE, { "base-type": "type/Float" }],
+                1.21,
+              ],
+            ],
+          ],
+          {
+            default: ["field", PRODUCTS.PRICE, { "base-type": "type/Float" }],
+          },
+        ],
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not remove existing characters when applying autocomplete suggestion (metabase#50925)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.openNotebook();
+
+    cy.log("incomplete bracket identifier is followed by whitespace");
+    H.getNotebookStep("expression").findByText("Custom").click();
+    cy.get(".ace_text-input")
+      .first()
+      .focus()
+      .type("{leftarrow}".repeat(9))
+      .type(" [Pr{enter}");
+
+    cy.get(".ace_text-input")
+      .first()
+      .should(
+        "have.value",
+        "case([ID] = 1, [Price] * 1.21, [Price]  [Price])\n\n",
+      );
+
+    cy.log("incomplete bracket identifier is followed by bracket identifier");
+    H.popover().button("Cancel").click();
+    H.getNotebookStep("expression").findByText("Custom").click();
+    cy.get(".ace_text-input")
+      .first()
+      .focus()
+      .type("{leftarrow}".repeat(8))
+      .type("[Pr{enter}");
+
+    cy.get(".ace_text-input")
+      .first()
+      .should(
+        "have.value",
+        "case([ID] = 1, [Price] * 1.21, [Price] [Price])\n\n",
+      );
   });
 });

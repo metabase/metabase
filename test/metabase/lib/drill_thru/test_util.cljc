@@ -159,6 +159,17 @@
      (assert (some? column-to-filter) (str "Failed to find " column-name " in " query))
      (lib/filter query' (column-filter-fn column-to-filter)))))
 
+(def ^:private FieldMatcherOrFilterExpr
+  [:or :string fn? vector?])
+
+(mu/defn- field-matcher-or-filter-expr->filter-expr :- vector?
+  [field-matcher-or-filter-expr :- FieldMatcherOrFilterExpr]
+  (let [default-filter-fn (fn [field-matcher]
+                            [:> {} [:field {} field-matcher] -1])]
+    (cond-> field-matcher-or-filter-expr
+      (not (vector? field-matcher-or-filter-expr))
+      default-filter-fn)))
+
 (mu/defn append-filter-stage-to-test-expectation :- :map
   "Like [[append-filter-stage]] but for test expectations rather than full queries.
 
@@ -179,26 +190,35 @@
 
   are matching pairs."
   ([expected-query               :- :map
-    field-matcher-or-filter-expr :- [:or :string fn? vector?]]
+    field-matcher-or-filter-expr :- FieldMatcherOrFilterExpr]
    (assert (vector? (:stages expected-query))
            "expected-query should have a :stages key mapped to a vector")
-   (let [default-filter (fn [field-matcher] [:> {} [:field {} field-matcher] -1])
-         filter-expr    (cond-> field-matcher-or-filter-expr
-                          (not (vector? field-matcher-or-filter-expr))
-                          default-filter)]
+   (let [filter-expr (field-matcher-or-filter-expr->filter-expr field-matcher-or-filter-expr)]
      (update expected-query :stages conj {:filters [filter-expr]}))))
 
-(mu/defn prepend-filter-to-stage :- :map
+(mu/defn prepend-filter-to-test-expectation-stage :- :map
   "Prepend `filter-expr` to the filters in `expected-query`.
 
   Useful for updating the `:expected-query` for [[test-drill-application]] when the `:custom-query` was modified
   by [[append-filter-stage]]."
-  [expected-query :- :map
-   stage-number   :- :int
-   filter-expr    :- vector?]
-  (update-in expected-query
-             [:stages (lib.util/canonical-stage-index expected-query stage-number) :filters]
-             #(into [filter-expr] %)))
+  ([expected-query :- :map
+    field-matcher-or-filter-expr :- FieldMatcherOrFilterExpr]
+   (prepend-filter-to-test-expectation-stage expected-query -1 field-matcher-or-filter-expr))
+  ([expected-query :- :map
+    stage-number   :- :int
+    field-matcher-or-filter-expr :- FieldMatcherOrFilterExpr]
+   (assert (vector? (:stages expected-query))
+           "expected-query should have a :stages key mapped to a vector")
+   (let [filter-expr (field-matcher-or-filter-expr->filter-expr field-matcher-or-filter-expr)]
+     (update-in expected-query
+                [:stages (lib.util/canonical-stage-index expected-query stage-number) :filters]
+                #(into [filter-expr] %)))))
+
+(mu/defn prepend-stage-to-test-expectation
+  [expected-query :- :map]
+  (assert (vector? (:stages expected-query))
+          "expected-query should have a :stages key mapped to a vector")
+  (update expected-query :stages #(into [{}] %)))
 
 (def ^:private unsupported-on-native
   #{:drill-thru/automatic-insights

@@ -51,6 +51,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.util.malli :as mu]))
 
 (defn- operator [op & args]
@@ -113,7 +114,7 @@
              column
              (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
              ;; If this is an aggregation, there must be breakouts (dimensions).
-             (or (not (lib.drill-thru.common/aggregation-sourced? query column))
+             (or (not (lib.underlying/aggregation-sourced? query column))
                  (seq dimensions))
              (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/primary-key? column))

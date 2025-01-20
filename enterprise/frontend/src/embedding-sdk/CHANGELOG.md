@@ -1,3 +1,23 @@
+## [0.52.7](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.6...embedding-sdk-0.52.7) (2025-01-18)
+
+
+### Bug Fixes
+
+* **sdk:** Add segmented button for chart settings ([#52076](https://github.com/metabase/metabase/issues/52076)) ([#52233](https://github.com/metabase/metabase/issues/52233)) ([70f581e](https://github.com/metabase/metabase/commit/70f581e84c7dfe258af01bd6b0d75dce5fd12100))
+* **sdk:** add supports for xx-YY locales in embed/public-links and sdk ([#51002](https://github.com/metabase/metabase/issues/51002)) ([#51571](https://github.com/metabase/metabase/issues/51571)) ([e3f81d8](https://github.com/metabase/metabase/commit/e3f81d8275a1f56a9674377c9046560f24e8adb9))
+* **sdk:** Ensure that styles within the custom expression editor still work ([#51878](https://github.com/metabase/metabase/issues/51878)) ([#51982](https://github.com/metabase/metabase/issues/51982)) ([e8ebe5e](https://github.com/metabase/metabase/commit/e8ebe5eb96f71cb2f136ef65fc3f2c790a3bc210))
+* **sdk:** Fix alignment of ColorSelector in SDK Chart Settings ([#51000](https://github.com/metabase/metabase/issues/51000)) ([#51325](https://github.com/metabase/metabase/issues/51325)) ([db5213e](https://github.com/metabase/metabase/commit/db5213ebf21bf09a7a393befc347254bce96aea3))
+* **sdk:** Standardize SDK components errors with different ID formats ([#49714](https://github.com/metabase/metabase/issues/49714)) ([#52187](https://github.com/metabase/metabase/issues/52187)) ([b561470](https://github.com/metabase/metabase/commit/b561470e2424cc947b8d8432653c531e66db6231)), closes [metabase#51969](https://github.com/metabase/issues/51969)
+
+
+### Features
+
+* **sdk:** Interactive Question Chart Settings Dropdown ([#51971](https://github.com/metabase/metabase/issues/51971)) ([3376ced](https://github.com/metabase/metabase/commit/3376cedf29f5af540a63a85468444b4fa5a0032a))
+* **sdk:** make editable dashboard grid border color themeable ([#51060](https://github.com/metabase/metabase/issues/51060)) ([#51635](https://github.com/metabase/metabase/issues/51635)) ([b5e537b](https://github.com/metabase/metabase/commit/b5e537b56bd847dc16607382e508983618f249ff))
+* **sdk:** Modify Interactive Question Layout ([#51103](https://github.com/metabase/metabase/issues/51103)) ([e774193](https://github.com/metabase/metabase/commit/e7741933adaa3aedd8595c1e8082085f8e647d36))
+
+
+
 ## [0.52.6](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.5-nightly...embedding-sdk-0.52.6) (2024-12-20)
 
 
