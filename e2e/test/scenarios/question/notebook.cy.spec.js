@@ -947,6 +947,32 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       });
   });
 
+  it("should not leave the UI in broken state after adding an aggregation (metabase#48358)", () => {
+    cy.visit("/");
+    H.newButton("Question").click();
+    H.entityPickerModal().findByText("Tables").click();
+    H.entityPickerModal().findByText("Products").click();
+    H.addSummaryField({ metric: "Sum of ...", field: "Price" });
+    H.addSummaryGroupingField({ field: "Created At" });
+    H.addSummaryGroupingField({ field: "Category" });
+    H.visualize();
+    H.saveQuestionToCollection();
+    H.notebookButton().click();
+    H.addSummaryField({ metric: "Sum of ...", field: "Rating" });
+    H.visualize();
+    H.saveSavedQuestion();
+    H.notebookButton().click();
+    cy.findByLabelText("View the SQL").click();
+    H.addSummaryField({ metric: "Sum of ...", field: "Price" });
+
+    cy.findByTestId("loading-indicator").should("not.exist");
+    cy.findByTestId("native-query-preview-sidebar")
+      .get(".ace_line")
+      .should("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum"')
+      .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."RATING") AS "sum_2"')
+      .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum_3"');
+  });
+
   it("should not shrink the remove clause button (metabase#50128)", () => {
     const CUSTOM_COLUMN_LONG_NAME = "very-very-very-long-name";
 
@@ -994,6 +1020,56 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByLabelText("close icon").invoke("outerWidth").should("eq", 16);
       cy.findByLabelText("close icon").invoke("outerHeight").should("eq", 16);
     }
+  });
+
+  it("shows all available columns and groups in the breakout picker (metabase#46832)", () => {
+    cy.visit("/");
+    H.newButton("Question").click();
+    H.entityPickerModal().findByText("Tables").click();
+    H.entityPickerModal().findByText("Orders").click();
+    H.join();
+    H.joinTable("Reviews", "Product ID", "Product ID");
+    H.addSummaryField({ metric: "Count of rows" });
+    H.addSummaryGroupingField({ field: "Created At" });
+    cy.findAllByRole("button", { name: "Join data" }).last().click();
+    H.joinTable("Reviews", "Created At: Month", "Created At");
+    cy.button("Summarize").click();
+    H.addSummaryField({ metric: "Count of rows", stage: 1 });
+
+    cy.log("adding a new breakout");
+    H.getNotebookStep("summarize", { stage: 1 })
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Summaries").should("be.visible");
+      cy.findByText("Created At: Month").should("be.visible");
+      cy.findByText("Count").should("be.visible");
+
+      cy.findByText("Reviews").click();
+      cy.findByText("Created At: Month").should("not.exist");
+      cy.findByText("Count").should("not.exist");
+
+      cy.findByText("Summaries").click();
+      cy.findByText("Created At: Month").should("be.visible");
+      cy.findByText("Count").should("be.visible");
+
+      cy.findByText("Reviews").click();
+      cy.findByText("Rating").click();
+    });
+
+    cy.log("editing an existing breakout");
+    H.getNotebookStep("summarize", { stage: 1 })
+      .findByText("Reviews - Created At: Month → Rating: Auto binned")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Summaries").should("be.visible");
+      cy.findByText("Created At: Month").should("not.exist");
+      cy.findByText("Count").should("not.exist");
+
+      cy.findByText("Summaries").click();
+      cy.findByText("Created At: Month").should("be.visible");
+      cy.findByText("Count").should("be.visible");
+    });
   });
 });
 
