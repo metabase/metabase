@@ -3,7 +3,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import FormFooter from "metabase/core/components/FormFooter";
+import { FormFooter } from "metabase/core/components/FormFooter";
 import {
   Form,
   FormErrorMessage,
