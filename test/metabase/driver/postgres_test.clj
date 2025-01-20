@@ -1603,7 +1603,7 @@
                               :value  "2024-07-02"}]
                 :middleware {:format-rows? false}})))))))
 
-(deftest ^:parallel xml-column-is-readable-test
+(deftest xml-column-is-readable-test
   (mt/with-driver :postgres
     (let [xml-str "<abc>abc</abc>"]
       (is (= [[xml-str]]
