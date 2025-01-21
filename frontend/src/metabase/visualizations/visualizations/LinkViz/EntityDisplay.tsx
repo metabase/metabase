@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import { isEmpty } from "metabase/lib/validate";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 
 import {
   EllipsifiedEntityContainer,
@@ -21,15 +21,13 @@ export const EntityDisplay = ({
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <Icon color={color("brand")} name={getSearchIconName(entity)} />
+        <Icon color="var(--mb-color-brand)" name={getSearchIconName(entity)} />
         <EllipsifiedEntityContainer>{entity?.name}</EllipsifiedEntityContainer>
       </LeftContainer>
       {showDescription && entity?.description && (
-        <Icon
-          name="info"
-          color={color("text-light")}
-          tooltip={entity.description}
-        />
+        <Tooltip multiline label={entity.description} opened>
+          <Icon name="info" color="var(--mb-color-text-light)" />
+        </Tooltip>
       )}
     </EntityDisplayContainer>
   );
@@ -38,7 +36,7 @@ export const EntityDisplay = ({
 export const RestrictedEntityDisplay = () => (
   <EntityDisplayContainer>
     <LeftContainer>
-      <Icon name="key" color={color("text-light")} />
+      <Icon name="key" color="var(--mb-color-text-light)" />
       <EllipsifiedEntityContainer>{t`Sorry, you don't have permission to see this link.`}</EllipsifiedEntityContainer>
     </LeftContainer>
   </EntityDisplayContainer>
