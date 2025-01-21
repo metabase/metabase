@@ -10,28 +10,29 @@ export function useIsParameterPanelSticky({
 
   useEffect(() => {
     if (
-      parameterPanelRef.current &&
-      // Allow this hook in tests, since Node don't have access to some Browser APIs
-      typeof IntersectionObserver !== "undefined"
+      !parameterPanelRef.current ||
+      typeof IntersectionObserver === "undefined"
     ) {
-      const settings: IntersectionObserverInit = {
-        threshold: 1,
-      };
-      const observer = new IntersectionObserver(([entry]) => {
-        setIsStickyStateChanging(true);
-
-        setIsSticky(entry.intersectionRatio < 1);
-
-        requestAnimationFrame(() => {
-          setIsStickyStateChanging(false);
-        });
-      }, settings);
-      observer.observe(parameterPanelRef.current);
-
-      return () => {
-        observer.disconnect();
-      };
+      return;
     }
+
+    const settings: IntersectionObserverInit = {
+      threshold: 1,
+    };
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsStickyStateChanging(true);
+
+      setIsSticky(entry.intersectionRatio < 1);
+
+      requestAnimationFrame(() => {
+        setIsStickyStateChanging(false);
+      });
+    }, settings);
+    observer.observe(parameterPanelRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
   }, [parameterPanelRef]);
 
   return {
