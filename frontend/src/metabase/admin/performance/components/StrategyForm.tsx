@@ -25,7 +25,6 @@ import {
   Icon,
   Radio,
   Stack,
-  Switch,
   Text,
   Title,
   Tooltip,
@@ -277,7 +276,7 @@ const StrategyFormBody = ({
                 </Field>
                 <input type="hidden" name="unit" />
                 {["question", "dashboard"].includes(targetModel) && (
-                  <PreemptiveCachingSwitch
+                  <PLUGIN_CACHING.PreemptiveCachingSwitch
                     handleSwitchToggle={handleSwitchToggle}
                   />
                 )}
@@ -287,7 +286,7 @@ const StrategyFormBody = ({
               <>
                 <ScheduleStrategyFormFields />
                 {["question", "dashboard"].includes(targetModel) && (
-                  <PreemptiveCachingSwitch
+                  <PLUGIN_CACHING.PreemptiveCachingSwitch
                     handleSwitchToggle={handleSwitchToggle}
                   />
                 )}
@@ -306,33 +305,6 @@ const StrategyFormBody = ({
         />
       </StyledForm>
     </FormWrapper>
-  );
-};
-
-const PreemptiveCachingSwitch = ({
-  handleSwitchToggle,
-}: {
-  handleSwitchToggle: () => void;
-}) => {
-  const { values } = useFormikContext<DurationStrategy | ScheduleStrategy>();
-  const currentRefreshValue = values.refresh_automatically ?? false;
-  return (
-    <Switch
-      checked={currentRefreshValue}
-      onChange={handleSwitchToggle}
-      role="switch"
-      size="sm"
-      label={t`Refresh cache automatically`}
-      description={t`As soon as cached results expire, run and cache the query again to update the results and refresh
-        the cache.`}
-      styles={{
-        labelWrapper: { paddingLeft: "16px" },
-        label: { fontWeight: "bold" },
-      }}
-      wrapperProps={{
-        "data-testid": "preemptive-caching-switch",
-      }}
-    />
   );
 };
 

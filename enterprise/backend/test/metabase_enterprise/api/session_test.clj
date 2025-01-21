@@ -11,6 +11,7 @@
                               :attached-dwh
                               :audit-app
                               :cache-granular-controls
+                              :cache-preemptive
                               :config-text-file
                               :content-verification
                               :dashboard-subscription-filters
@@ -41,6 +42,7 @@
             :attached_dwh                   true
             :audit_app                      true
             :cache_granular_controls        true
+            :cache_preemptive               true
             :config_text_file               true
             :content_verification           true
             :dashboard_subscription_filters true

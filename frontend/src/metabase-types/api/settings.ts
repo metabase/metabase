@@ -214,6 +214,7 @@ export const tokenFeatures = [
   "upload_management",
   "collection_cleanup",
   "query_reference_validation",
+  "cache_preemptive",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
