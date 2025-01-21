@@ -15,7 +15,7 @@ const getSourceFolder = folder => {
   return `./e2e/test/scenarios/${folder}/**/*.cy.spec.{js,ts}`;
 };
 
-const runCypress = async (baseUrl, exitFunction) => {
+const runCypress = async (baseUrl, exitFunction = console.log) => {
   await executeYarnCommand({
     command: "yarn run clean-cypress-artifacts",
     message: "Removing the existing Cypress artifacts\n",

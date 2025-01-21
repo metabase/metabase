@@ -10,6 +10,8 @@ on:
     outputs:
       matrix:
         value: ${{ jobs.build-matrix.outputs.matrix }}
+      regularChunks:
+        value: ${{ jobs.build-matrix.outputs.regularChunks }}
 
 jobs:
   build-matrix:
@@ -17,74 +19,44 @@ jobs:
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.matrix.outputs.config }}
+      regularChunks: ${{ steps.matrix.outputs.regularChunks }}
     steps:
       - uses: actions/setup-node@v3
         with:
           node-version: '20.x'
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: e2e
-      - name: get test file names
-        id: test-files
-        shell: bash
-        run: |
-          echo "::set-output name=filenames::$(find e2e/test/scenarios -name '*.cy.spec.*' | tr '\n' ',')"
       - uses: actions/github-script@v7
         id: matrix
+        env:
+          chunks: ${{ inputs.chunks }}
         with:
           script: | # js
-            const chunk = (arr, size) => {
-              const chunks = [];
-              const n = Math.ceil(arr.length / size);
-              for (let i = 0; i < n; i++) {
-                chunks.push(arr.slice(i * size, (i + 1) * size));
-              }
-              return chunks;
-            };
-
             const java = 21;
             const defaultRunner = "ubuntu-22.04";
-
-            // these are special and shouldn't be chunked out arbitrarily
-            const blacklist = [
-              "/embedding-sdk/",
-              "/cross-version/"
-            ];
 
             const defaultOptions = {
               "java-version": java,
               runner: defaultRunner,
-              specs: "./e2e/test/scenarios/**/*.cy.spec.*",
               edition: "ee",
             };
 
+            const allSpecs = "./e2e/test/scenarios/**/*.cy.spec.*";
+
+            // see config.js function getSplittableSpecs for logic that excludes some tests from auto splitting
             const specialTests = [
               { name: "embedding-sdk", specs: "./e2e/test/scenarios/embedding-sdk/**.cy.spec.*" },
-              { name: "oss-subset", edition: 'oss', tags: "@OSS" },
-              { name: "slow", tags: "@slow+-@flaky" },
-              { name: "mongo", tags: "@mongo" },
+              { name: "oss-subset", edition: 'oss', tags: "@OSS", specs: allSpecs },
+              { name: "mongo", tags: "@mongo", specs: allSpecs },
             ];
 
-            const fileNames = "${{ steps.test-files.outputs.filenames }}"
-              .split(",")
-              .filter(Boolean)
-              .filter(testPath => !blacklist.some(blacklisted => testPath.includes(blacklisted)));
+            const inputChunks = Number(process.env.chunks);
+            const regularChunks = inputChunks - specialTests.length;
 
-            const fileCount = fileNames.length;
+            const regularTests = new Array(regularChunks).fill(1)
+              .map((files, index) => ({
+                name: `e2e-group-${index + 1}`,
+              }));
 
-            // subtract the special tests since they all get their own runners
-            const chunkSize = fileCount / (Number('${{ inputs.chunks }}') - specialTests.length);
-
-
-
-            const chunkedFiles = chunk(fileNames, chunkSize);
-
-            const regularTests = chunkedFiles.map((files, index) => ({
-              name: `e2e-group-${index + 1}`,
-              specs: files.join(","),
-              tags: '',
-            }));
-
+            // regular chunks need to come before special chunks
             const testSets = [...regularTests, ...specialTests];
 
             const config = testSets.map((options) => ({
@@ -92,6 +64,9 @@ jobs:
               ...options,
             }));
 
-            console.log("matrix config", config);
 
+            core.setOutput("regularChunks", JSON.stringify(regularChunks));
             core.setOutput("config", JSON.stringify({ include: config }));
+
+            console.log({ regularChunks });
+            console.log("matrix config", config);

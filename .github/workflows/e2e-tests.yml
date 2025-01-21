@@ -64,7 +64,6 @@ jobs:
               node_version: requirements.node,
             };
 
-
   build:
     needs: [files-changed, get-build-requirements]
     if: |
@@ -135,7 +134,9 @@ jobs:
   e2e-tests:
     name: ${{ matrix.name }}-${{ matrix.edition }}
     uses: ./.github/workflows/e2e-test.yml
-    needs: [build, e2e-matrix-builder]
+    needs:
+      - e2e-matrix-builder
+      - build
     if: |
       !cancelled() && needs.build.result == 'success'
     strategy:
@@ -146,6 +147,8 @@ jobs:
       name: ${{ matrix.name }}
       edition: ${{ matrix.edition }}
       specs: ${{ matrix.specs }}
+      total_chunks: ${{ fromJson(needs.e2e-matrix-builder.outputs.regularChunks) }}
+      split_index: ${{ strategy.job-index }}
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
 
@@ -160,9 +163,12 @@ jobs:
     with:
       name: Flaky
       tags: "@flaky"
+      specs: "./e2e/test/scenarios/**/*.cy.spec.*"
 
   e2e-tests-result:
-    needs: [e2e-tests, flaky-e2e-tests]
+    needs:
+     - e2e-tests
+     - flaky-e2e-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: e2e-tests-result

@@ -80,6 +80,7 @@ const CypressBackend = {
             process.env["DISABLE_LOGGING_BACKEND"]
               ? "ignore"
               : "inherit",
+          detached: true,
         },
       );
     }
@@ -99,6 +100,10 @@ const CypressBackend = {
     }
 
     console.log(`Backend ready host=${server.host}, dbFile=${server.dbFile}`);
+
+    if (process.env.CI) {
+      server.process.unref(); // detach console
+    }
 
     // Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
     function delay(duration) {
