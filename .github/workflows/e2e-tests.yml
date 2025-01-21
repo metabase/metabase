@@ -165,6 +165,19 @@ jobs:
       tags: "@flaky"
       specs: "./e2e/test/scenarios/**/*.cy.spec.*"
 
+  # run this separately to make it non-blocking
+  visual-e2e-tests:
+    name: Visual e2e Tests
+    uses: ./.github/workflows/e2e-test.yml
+    needs: build
+    if: |
+      !cancelled() && needs.build.result == 'success'
+    secrets: inherit
+    with:
+      name: Visual
+      tags: "@visual"
+      specs: "./e2e/test/scenarios/**/*.cy.spec.*"
+
   e2e-tests-result:
     needs:
      - e2e-tests

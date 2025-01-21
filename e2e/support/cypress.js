@@ -5,8 +5,12 @@ import "@cypress/skip-test/support";
 import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
+import compareSnapshotCommand from "cypress-image-diff-js";
 import addContext from "mochawesome/addContext";
+
 import "./commands";
+
+compareSnapshotCommand();
 
 const isCI = Cypress.env("CI");
 

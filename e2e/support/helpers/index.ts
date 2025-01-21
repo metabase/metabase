@@ -32,6 +32,7 @@ export * from "./e2e-search-helpers";
 export * from "./e2e-setup-helpers";
 export * from "./e2e-sharing-helpers";
 export * from "./e2e-slack-helpers";
+export * from "./e2e-snapshot-tests-helpers";
 export * from "./e2e-snowplow-helpers";
 export * from "./e2e-table-metadata-helpers";
 export * from "./e2e-ui-elements-helpers";

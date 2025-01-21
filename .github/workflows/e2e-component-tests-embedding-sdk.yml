@@ -155,7 +155,11 @@ jobs:
         run: yarn build-embedding-sdk
 
       - name: Run E2E tests for Embedding SDK
-        run: yarn run test-cypress-run-component-sdk --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: yarn run test-cypress-run-component-sdk --browser ${{ steps.cypress-prep.outputs.chrome-path }} --env grepTags="-@visual",grepOmitFiltered=true
+
+      - name: Run E2E visual tests for Embedding SDK
+        continue-on-error: true
+        run: yarn run test-cypress-run-component-sdk --browser ${{ steps.cypress-prep.outputs.chrome-path }} --env grepTags="@visual",grepOmitFiltered=true
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
