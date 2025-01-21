@@ -94,10 +94,6 @@ describe(
         cy.wait("@getModel");
       });
 
-      cy.findByRole("tablist").within(() => {
-        cy.findByText("Actions").click();
-      });
-
       createBasicActions();
       cy.findByLabelText("Action list").within(() => {
         cy.get("li").eq(0).findByText("Create").should("be.visible");
@@ -151,14 +147,12 @@ describe(
         cy.button("Disable").click();
       });
 
-      cy.findAllByRole("tabpanel")
-        .filter(":visible")
-        .within(() => {
-          cy.findByLabelText("Action list").should("not.exist");
-          cy.findByText("Create").should("not.exist");
-          cy.findByText("Update").should("not.exist");
-          cy.findByText("Delete").should("not.exist");
-        });
+      cy.findByRole("main").within(() => {
+        cy.findByLabelText("Action list").should("not.exist");
+        cy.findByText("Create").should("not.exist");
+        cy.findByText("Update").should("not.exist");
+        cy.findByText("Delete").should("not.exist");
+      });
     });
 
     it("should allow to create an action with the New button", () => {
@@ -189,13 +183,6 @@ describe(
       cy.get("@modelId").then(modelId => {
         cy.url().should("include", `/model/${modelId}/detail/actions`);
       });
-
-      cy.findAllByRole("tabpanel")
-        .filter(":visible")
-        .within(() => {
-          cy.findByText("Discount order").should("be.visible");
-          cy.findByText(QUERY).should("be.visible");
-        });
     });
 
     it("should respect permissions", () => {
@@ -304,8 +291,6 @@ describe(
         cy.visit(`/model/${modelId}/detail`);
         cy.wait("@getModel");
       });
-
-      cy.findByRole("tablist").findByText("Actions").click();
 
       runActionFor(actionName);
 
@@ -597,10 +582,6 @@ describe(
         cy.wait("@getModel");
       });
 
-      cy.findByRole("tablist").within(() => {
-        cy.findByText("Actions").click();
-      });
-
       createBasicActions();
 
       openActionEditorFor("Create");
@@ -709,10 +690,6 @@ describe(
       cy.get("@writableModelId").then(id => {
         cy.visit(`/model/${id}/detail`);
         cy.wait("@getModel");
-      });
-
-      cy.findByRole("tablist").within(() => {
-        cy.findByText("Actions").click();
       });
 
       createBasicActions();

@@ -1,4 +1,4 @@
-import type { Location, LocationDescriptor } from "history";
+import type { LocationDescriptor } from "history";
 import type * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { replace } from "react-router-redux";
@@ -11,12 +11,11 @@ import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import title from "metabase/hoc/Title";
-import { connect, useSelector } from "metabase/lib/redux";
+import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
-import { getSetting } from "metabase/selectors/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -24,10 +23,8 @@ import type { Card, CollectionId, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 type OwnProps = {
-  location: Location;
   params: {
     slug: string;
-    tab?: string;
   };
   children: React.ReactNode;
 };
@@ -66,12 +63,9 @@ const mapDispatchToProps = {
   onChangeLocation: replace,
 };
 
-const FALLBACK_TAB = "usage";
-
 function ModelDetailPage({
   model,
   actions,
-  location,
   children,
   loadMetadataForCard,
   fetchTableForeignKeys,
@@ -80,18 +74,13 @@ function ModelDetailPage({
   onChangeLocation,
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
-  const hasNestedQueriesEnabled = useSelector(state =>
-    getSetting(state, "enable-nested-queries"),
-  );
 
   const database = model.database();
   const { isEditable } = Lib.queryDisplayInfo(model.query());
   const hasDataPermissions = isEditable;
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
-  const hasActionsTab = hasActions || hasActionsEnabled;
-  const supportsNestedQueries =
-    database != null && database.hasFeature("nested-queries");
+  const shouldShowActionsUI = hasActions || hasActionsEnabled;
 
   const mainTable = useMemo(() => {
     const query = model.query();
@@ -105,17 +94,6 @@ function ModelDetailPage({
     const table = model.metadata().table(sourceTableId);
     return table;
   }, [model]);
-
-  const tab = useMemo(() => {
-    const pathname = location.pathname;
-
-    if (pathname.endsWith("/actions/new")) {
-      return "actions";
-    }
-
-    const [tab] = pathname.split("/").reverse();
-    return tab ?? FALLBACK_TAB;
-  }, [location.pathname]);
 
   useMount(() => {
     const card = model.card();
@@ -137,26 +115,16 @@ function ModelDetailPage({
   }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
 
   useEffect(() => {
-    if (tab === "actions" && !hasActionsTab) {
-      const nextUrl = Urls.modelDetail(model.card(), FALLBACK_TAB);
+    if (!shouldShowActionsUI) {
+      const nextUrl = Urls.model(model.card());
       onChangeLocation(nextUrl);
     }
-  }, [model, tab, hasActionsTab, onChangeLocation]);
+  }, [model, shouldShowActionsUI, onChangeLocation]);
 
   const handleNameChange = useCallback(
     (name: string | undefined) => {
       if (name && name !== model.displayName()) {
         const nextCard = model.setDisplayName(name).card();
-        onChangeModel(nextCard as Card);
-      }
-    },
-    [model, onChangeModel],
-  );
-
-  const handleDescriptionChange = useCallback(
-    (description?: string | null) => {
-      if (model.description() !== description) {
-        const nextCard = model.setDescription(description).card();
         onChangeModel(nextCard as Card);
       }
     },
@@ -188,14 +156,9 @@ function ModelDetailPage({
     <>
       <ModelDetailPageView
         model={model}
-        mainTable={mainTable}
-        tab={tab}
         hasDataPermissions={hasDataPermissions}
-        hasActionsTab={hasActionsTab}
-        hasNestedQueriesEnabled={hasNestedQueriesEnabled}
-        supportsNestedQueries={supportsNestedQueries}
+        shouldShowActionsUI={shouldShowActionsUI}
         onChangeName={handleNameChange}
-        onChangeDescription={handleDescriptionChange}
         onChangeCollection={handleCollectionChange}
       />
       {/* Required for rendering child `ModalRoute` elements */}

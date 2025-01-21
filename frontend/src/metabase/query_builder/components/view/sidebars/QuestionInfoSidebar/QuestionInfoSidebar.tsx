@@ -23,6 +23,7 @@ import { Box, Stack, Tabs, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionDetails } from "./QuestionDetails";
+import { QuestionRelationshipsTab } from "./components/QuestionRelationshipsTab";
 
 interface QuestionInfoSidebarProps {
   question: Question;
@@ -75,6 +76,7 @@ export const QuestionInfoSidebar = ({
         <Tabs.List mx="xl">
           <Tabs.Tab value="overview">{t`Overview`}</Tabs.Tab>
           {!isIAQuestion && <Tabs.Tab value="history">{t`History`}</Tabs.Tab>}
+          <Tabs.Tab value="relationships">{t`Relationships`}</Tabs.Tab>
           <InsightsTabOrLink question={question} />
         </Tabs.List>
 
@@ -110,6 +112,9 @@ export const QuestionInfoSidebar = ({
               </SidesheetCard>
               <EntityIdCard entityId={question._card.entity_id} />
             </Stack>
+          </Tabs.Panel>
+          <Tabs.Panel value="relationships">
+            <QuestionRelationshipsTab question={question} />
           </Tabs.Panel>
           <Tabs.Panel value="history">
             <SidesheetCard>

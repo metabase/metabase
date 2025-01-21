@@ -44,25 +44,27 @@ describe("QuestionInfoSidebar > enterprise", () => {
 
   describe("tabs", () => {
     describe("for non-admins", () => {
-      it("should show tabs for Overview and History", async () => {
+      it("should show tabs for Overview, History, and Relationships", async () => {
         await setup();
-        const tabs = await screen.findAllByRole("tab");
-        expect(tabs).toHaveLength(2);
-        expect(tabs.map(tab => tab.textContent)).toEqual([
-          "Overview",
-          "History",
-        ]);
-      });
-    });
-
-    describe("for admins", () => {
-      it("should show tabs for Overview, History, and Insights", async () => {
-        setup({ user: { is_superuser: true } });
         const tabs = await screen.findAllByRole("tab");
         expect(tabs).toHaveLength(3);
         expect(tabs.map(tab => tab.textContent)).toEqual([
           "Overview",
           "History",
+          "Relationships",
+        ]);
+      });
+    });
+
+    describe("for admins", () => {
+      it("should show tabs for Overview, History, Relationships, and Insights", async () => {
+        setup({ user: { is_superuser: true } });
+        const tabs = await screen.findAllByRole("tab");
+        expect(tabs).toHaveLength(4);
+        expect(tabs.map(tab => tab.textContent)).toEqual([
+          "Overview",
+          "History",
+          "Relationships",
           "Insights",
         ]);
         const insightsTab = await screen.findByRole("tab", {
