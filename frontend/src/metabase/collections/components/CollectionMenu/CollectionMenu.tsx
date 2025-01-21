@@ -79,6 +79,15 @@ export const CollectionMenu = ({
     ),
   );
 
+  const hasDqCandidates = true;
+  if (hasDqCandidates) {
+    items.push({
+      title: t`Move saved questions into dashboards`,
+      icon: "add_to_dash",
+      link: `${url}/cleanup-questions`,
+    });
+  }
+
   if (canMove) {
     items.push({
       title: t`Move to trash`,
