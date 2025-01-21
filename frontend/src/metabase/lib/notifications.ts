@@ -4,7 +4,6 @@ import _ from "underscore";
 import type { NotificationListItem } from "metabase/account/notifications/types";
 import { getEmailDomain, isEmail } from "metabase/lib/email";
 import MetabaseSettings from "metabase/lib/settings";
-import * as Urls from "metabase/lib/urls";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_TIMESERIES_GOAL,
@@ -30,27 +29,8 @@ export const formatTitle = ({ item, type }: NotificationListItem) => {
     case "pulse":
       return item.name;
     case "question-notification":
-      return t`Alert`; // item.card.name;
+      return item.payload.card?.name || t`Alert`;
   }
-};
-
-export const formatLink = ({
-  item,
-  type,
-}: NotificationListItem): string | null => {
-  switch (type) {
-    case "pulse": {
-      if (item.dashboard_id) {
-        return Urls.dashboard({ id: item.dashboard_id });
-      }
-      break;
-    }
-
-    case "question-notification":
-      return Urls.question({ card_id: item.payload.card_id });
-  }
-
-  return null;
 };
 
 export const canArchive = (item: Notification, user: User) => {
@@ -91,11 +71,7 @@ export function emailHandlerRecipientIsValid(recipient: NotificationRecipient) {
 export function slackHandlerRecipientIsValid(
   recipient: NotificationRecipientRawValue,
 ) {
-  if (recipient.details.value) {
-    return true;
-  }
-
-  return false;
+  return !!recipient.details.value;
 }
 
 export function channelIsValid(handlers: NotificationHandler) {

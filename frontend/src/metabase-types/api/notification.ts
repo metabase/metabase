@@ -1,4 +1,4 @@
-import type { CardId } from "metabase-types/api/card";
+import type { Card, CardId } from "metabase-types/api/card";
 import type { Channel } from "metabase-types/api/notifications";
 import type { PaginationRequest } from "metabase-types/api/pagination";
 import type { UserId, UserInfo } from "metabase-types/api/user";
@@ -15,6 +15,7 @@ type NotificationCardPayload = {
   payload_type: "notification/card";
   payload: {
     card_id: CardId;
+    card?: Card; // hydrated on the BE
     send_once: boolean;
     send_condition: NotificationCardSendCondition;
 
