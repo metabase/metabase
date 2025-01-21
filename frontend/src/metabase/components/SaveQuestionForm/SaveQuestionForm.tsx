@@ -90,7 +90,17 @@ export const SaveQuestionForm = ({
               collectionIdFieldName="collection_id"
               dashboardIdFieldName="dashboard_id"
               title={t`Where do you want to save this?`}
-              collectionPickerModalProps={{ models }}
+              collectionPickerModalProps={{
+                models,
+                recentFilter: items =>
+                  items.filter(
+                    item =>
+                      !(
+                        item.model === "collection" ||
+                        item.model === "dashboard"
+                      ) || item.can_write,
+                  ),
+              }}
             />
           )}
           {showTabSelect && (
