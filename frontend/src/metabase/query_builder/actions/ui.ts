@@ -60,6 +60,7 @@ export const onOpenChartSettings = createAction(
 export const onCloseChartSettings = createAction(
   "metabase/qb/CLOSE_CHART_SETTINGS",
 );
+export const onOpenChartType = createAction("metabase/qb/OPEN_CHART_TYPE");
 
 export const onOpenQuestionInfo = createAction(
   "metabase/qb/OPEN_QUESTION_INFO",

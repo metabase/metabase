@@ -33,7 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.xrays :as xrays]
+   [metabase.xrays.core :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -717,7 +717,8 @@
                   :collection-name            :collection.name
                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
                   :collection-position        true
-                  :collection-type            :collection.type}
+                  :collection-type            :collection.type
+                  :moderated-status           :mr.status}
    :where        []
    :bookmark     [:model/DashboardBookmark [:and
                                             [:= :bookmark.dashboard_id :this.id]
@@ -729,4 +730,8 @@
                                                 ;; Interesting for inversion, another condition on whether to update.
                                                 ;; For now, let's just swallow the extra update (2x amplification)
                                                 [:= :r.most_recent true]
-                                                [:= :r.model "Dashboard"]]]}})
+                                                [:= :r.model "Dashboard"]]]
+                  :mr         [:model/ModerationReview [:and
+                                                        [:= :mr.moderated_item_type "dashboard"]
+                                                        [:= :mr.moderated_item_id :this.id]
+                                                        [:= :mr.most_recent true]]]}})

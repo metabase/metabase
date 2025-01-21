@@ -213,10 +213,8 @@
        "multi-stage query"
        (fn [base-case]
          {:custom-query #(lib.drill-thru.tu/append-filter-stage % "sum")
-          :expected-query (lib.drill-thru.tu/prepend-filter-to-stage
-                           (:expected-query base-case)
-                           -1
-                           [:> {} [:field {} "sum"] -1])})))))
+          :expected-query (-> (:expected-query base-case)
+                              (lib.drill-thru.tu/prepend-filter-to-test-expectation-stage "sum"))})))))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test-2
   (testing "quick-filter on a breakout should not introduce a new stage"
@@ -247,10 +245,9 @@
         :custom-query   #(lib.drill-thru.tu/append-filter-stage % "sum")
         ;; the extra stage is added by append-filter-stage, not by the quick-filter
         :expected       (update-in (:expected base-case) [:query :stages] conj {})
-        :expected-query (lib.drill-thru.tu/prepend-filter-to-stage
-                         (update (:expected-query base-case) :stages #(into [{}] %))
-                         -1
-                         [:> {} [:field {} "sum"] -1])}))))
+        :expected-query (-> (:expected-query base-case)
+                            lib.drill-thru.tu/prepend-stage-to-test-expectation
+                            (lib.drill-thru.tu/prepend-filter-to-test-expectation-stage "sum"))}))))
 
 (deftest ^:parallel apply-quick-filter-on-correct-level-test-3
   (testing "quick-filter on an aggregation should introduce an new stage (#34346)"
@@ -275,10 +272,8 @@
      "multi-stage query: no new stage added"
      (fn [base-case]
        {:custom-query   #(lib.drill-thru.tu/append-filter-stage % "max")
-        :expected-query (lib.drill-thru.tu/prepend-filter-to-stage
-                         (:expected-query base-case)
-                         -1
-                         [:> {} [:field {} "max"] -1])}))))
+        :expected-query (-> (:expected-query base-case)
+                            (lib.drill-thru.tu/prepend-filter-to-test-expectation-stage "max"))}))))
 
 (deftest ^:parallel contains-does-not-contain-test
   (testing "Should return :contains/:does-not-contain for text columns (#33560)"

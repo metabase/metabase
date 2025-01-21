@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.core :as channel]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.events.notification :as events.notification]
    [metabase.integrations.slack :as slack]
    [metabase.models.notification :as models.notification]
@@ -170,7 +170,7 @@
 (def channel-type->fixture
   {:channel/email (fn [thunk] (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                                                  email-smtp-port 587
-                                                                 site-url        "https://metabase.com/testmb"]
+                                                                 site-url        "https://testmb.com/"]
                                 (thunk)))
    :channel/slack (fn [thunk] (with-redefs [slack/files-channel (constantly "FOO")]
                                 (thunk)))})

@@ -206,6 +206,8 @@ export function PublicOrEmbeddedDashboardView({
                 clickBehaviorSidebarDashcard={null}
                 navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
                 downloadsEnabled={downloadsEnabled}
+                autoScrollToDashcardId={undefined}
+                reportAutoScrolledToDashcard={_.noop}
               />
             </DashboardContainer>
           );

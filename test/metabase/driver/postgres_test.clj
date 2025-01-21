@@ -29,7 +29,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
@@ -1390,9 +1390,9 @@
 
 (deftest can-set-ssl-key-via-gui
   (testing "ssl key can be set via the gui (#20319)"
-    (with-redefs [secret/value->file!
-                  (fn [{:keys [connection-property-name value] :as _secret} & [_driver? _ext?]]
-                    (str "file:" connection-property-name "=" value))]
+    (with-redefs [secret/value-as-file!
+                  (fn [driver details secret-property & [_ext]]
+                    (str "file:" secret-property "="  (u/bytes-to-string (:value (#'secret/resolve-secret-map driver details secret-property)))))]
       (is (= "file:ssl-key=/clientkey.pkcs12"
              (:sslkey
               (#'postgres/ssl-params
@@ -1602,3 +1602,13 @@
                               :target [:variable [:template-tag "date"]]
                               :value  "2024-07-02"}]
                 :middleware {:format-rows? false}})))))))
+
+(deftest ^:parallel xml-column-is-readable-test
+  (mt/test-driver :postgres
+    (let [xml-str "<abc>abc</abc>"]
+      (is (= [[xml-str]]
+             (mt/rows
+              (qp/process-query
+               {:database (mt/id)
+                :type :native
+                :native {:query (format "SELECT '%s'::xml" xml-str)}})))))))

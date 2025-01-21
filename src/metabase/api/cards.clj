@@ -19,7 +19,7 @@
         (not (mi/can-read? dashboard)) {:error :unreadable-dashboard}
         (not (mi/can-write? dashboard)) (merge dashboard {:error :unwritable-dashboard})
         :else dashboard)
-      (dissoc :collection_id)))
+      (select-keys [:id :name :error])))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/dashboards"

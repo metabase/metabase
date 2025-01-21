@@ -8,7 +8,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

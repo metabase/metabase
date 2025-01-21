@@ -7,6 +7,8 @@ redirect_from:
 
 # Running the Metabase OSS JAR file
 
+> We recommend running Metabase on [Metabase Cloud](https://www.metabase.com/cloud). If you need to self-host, you _can_ run Metabase as a standalone JAR, but [we recommend running Metabase in a Docker container](./running-metabase-on-docker.md).
+
 To run the free, Open Source version of Metabase via a JAR file, you will need to have a Java Runtime Environment (JRE) installed on your system.
 
 If you have a token for the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../paid-features/activating-the-enterprise-edition.md).

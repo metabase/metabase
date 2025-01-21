@@ -4,8 +4,8 @@
   (:require
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
+   [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
-   [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.models.pulse :as models.pulse]
    [metabase.request.core :as request]

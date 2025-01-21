@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.channel.email-test :as et]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.http-client :as client]
    [metabase.models.permissions :as perms]
@@ -67,7 +68,7 @@
       (m/dissoc-in [:card :collection])))
 
 (defmacro ^:private with-test-email! [& body]
-  `(mt/with-temporary-setting-values [~'site-url "https://metabase.com/testmb"]
+  `(mt/with-temporary-setting-values [~'site-url "https://testmb.com"]
      (mt/with-fake-inbox
        ~@body)))
 

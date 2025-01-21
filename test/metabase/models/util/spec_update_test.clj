@@ -35,10 +35,8 @@
 
 (deftest basic-create-test
   (testing "Creating a new record with no existing data"
-    (let [new-data {:id   -1
-                    :name "Test"
-                    :foo  {:id -1
-                           :name "Foo 1"}}]
+    (let [new-data {:name "Test"
+                    :foo  {:name "Foo 1"}}]
       (is (= [[:insert-returning-pk! :root {:name "Test"}]
               [:insert-returning-pk! :foo {:name "Foo 1" :root_id 2}]]
              (with-tracked-operations!

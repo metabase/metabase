@@ -57,13 +57,6 @@
       [:inline 0]]
      ceiling]))
 
-(defn idx-rank
-  "Prefer items whose value is earlier in some list."
-  [idx-col len]
-  (if (pos? len)
-    [:/ [:- [:inline (dec len)] idx-col] [:inline (double len)]]
-    [:inline 1]))
-
 (defn- sum-columns [column-names]
   (if (seq column-names)
     (reduce (fn [expr col] [:+ expr col])
@@ -84,9 +77,13 @@
 ;; TODO move these to the spec definitions
 (def ^:private bookmarked-models [:card :collection :dashboard])
 
+(def ^:private sub-models {:card [:card :metric :dataset]})
+
 (def ^:private bookmark-score-expr
   (let [match-clause (fn [m] [[:and
-                               [:= :search_index.model [:inline m]]
+                               (if-let [sms (sub-models (keyword m))]
+                                 [:in :search_index.model (mapv (fn [k] [:inline (name k)]) sms)]
+                                 [:= :search_index.model [:inline m]])
                                [:!= nil (keyword (str m "_bookmark." m "_id"))]]
                               [:inline 1]])]
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
@@ -96,7 +93,7 @@
    :from   [:recent_views]
    :where  [:and
             [:= :recent_views.user_id current-user-id]
-            [:= :recent_views.model_id :search_index.model_id]
+            [:= [:cast :recent_views.model_id :text] :search_index.model_id]
             [:= :recent_views.model
              [:case
               [:= :search_index.model [:inline "dataset"]] [:inline "card"]
@@ -176,9 +173,11 @@
         table-name (str model-name "_bookmark")]
     [(keyword table-name)
      [:and
-      [:= :search_index.model [:inline model-name]]
+      (if-let [sms (sub-models model)]
+        [:in :search_index.model (mapv (fn [m] [:inline (name m)]) sms)]
+        [:= :search_index.model [:inline model-name]])
       [:= (keyword (str table-name ".user_id")) user-id]
-      [:= :search_index.model_id (keyword (str table-name "." model-name "_id"))]]]))
+      [:= :search_index.model_id [:cast (keyword (str table-name "." model-name "_id")) :text]]]]))
 
 (defn- join-bookmarks [qry user-id]
   (apply sql.helpers/left-join qry (mapcat #(bookmark-join % user-id) bookmarked-models)))

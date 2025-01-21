@@ -11,7 +11,6 @@ import type { EmbedShareEvent } from "./embed-share";
 import type { EmbeddingHomepageEvent } from "./embedding-homepage";
 import type { SimpleEvent } from "./event";
 import type { InviteEvent } from "./invite";
-import type { MetabotEvent } from "./metabot";
 import type { ModelEvent } from "./model";
 import type { QuestionEvent } from "./question";
 import type { SearchEvent } from "./search";
@@ -35,7 +34,6 @@ export type SchemaEventMap = {
   embedding_homepage: EmbeddingHomepageEvent;
   simple_event: SimpleEvent;
   invite: InviteEvent;
-  metabot: MetabotEvent;
   model: ModelEvent;
   question: QuestionEvent;
   search: SearchEvent;

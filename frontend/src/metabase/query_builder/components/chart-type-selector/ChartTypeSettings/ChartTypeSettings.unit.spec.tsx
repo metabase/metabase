@@ -14,6 +14,7 @@ const setup = ({
   selectedVisualization = "bar",
 }: Partial<ChartTypeSettingsProps> = {}) => {
   const onSelectVisualization = jest.fn();
+  const onOpenSettings = jest.fn();
   const sensibleVisualizations: ChartTypeSettingsProps["sensibleVisualizations"] =
     ["bar", "line"];
   const nonSensibleVisualizations: ChartTypeSettingsProps["nonSensibleVisualizations"] =
@@ -25,11 +26,13 @@ const setup = ({
       nonSensibleVisualizations={nonSensibleVisualizations}
       selectedVisualization={selectedVisualization}
       onSelectVisualization={onSelectVisualization}
+      onOpenSettings={onOpenSettings}
     />,
   );
 
   return {
     onSelectVisualization,
+    onOpenSettings,
   };
 };
 
@@ -62,6 +65,12 @@ describe("ChartTypeSettings", () => {
     const { onSelectVisualization } = setup({ selectedVisualization: "line" });
     await userEvent.click(getIcon("bar"));
     expect(onSelectVisualization).toHaveBeenCalledWith("bar");
+  });
+
+  it("calls onOpenSettings when a sensible visualization is clicked and was not already selected", async () => {
+    const { onOpenSettings } = setup({ selectedVisualization: "line" });
+    await userEvent.click(getIcon("line"));
+    expect(onOpenSettings).toHaveBeenCalled();
   });
 
   it("calls onSelectVisualization when a non-sensible visualization is selected", async () => {

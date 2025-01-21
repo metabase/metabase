@@ -1,4 +1,4 @@
-(ns ^:mb/once hooks.common-test
+(ns hooks.common-test
   (:require
    [clj-kondo.hooks-api :as api]
    [clj-kondo.impl.utils]

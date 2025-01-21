@@ -4,13 +4,12 @@
    [clojure.java.io :as io]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
-   [metabase.analyze :as analyze]
+   [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
    [metabase.api.query-metadata :as api.query-metadata]
-   [metabase.compatibility :as compatibility]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.convert :as lib.convert]
@@ -35,6 +34,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
+   [metabase.search.core :as search]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -243,12 +243,12 @@
         dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
     (doseq [dashboard dashboards]
       (api/write-check dashboard))
-    (map #(dissoc % :collection_id) dashboards)))
+    (map #(dissoc % :collection_id :description :archived) dashboards)))
 
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
   [metadata-provider dataset-query]
-  (let [pMBQL-query (-> dataset-query compatibility/normalize-dataset-query lib.convert/->pMBQL)]
+  (let [pMBQL-query (-> dataset-query card.metadata/normalize-dataset-query lib.convert/->pMBQL)]
     (lib/query metadata-provider pMBQL-query)))
 
 (defn- card-columns-from-names
@@ -303,6 +303,7 @@
 
 (defmulti series-are-compatible?
   "Check if the `second-card` is compatible to be used as series of `card`."
+  {:arglists '([card second-card database-id->metadata-provider])}
   (fn [card _second-card _database-id->metadata-provider]
     (:display card)))
 
@@ -534,7 +535,7 @@
 (defn- check-allowed-to-modify-query
   "If the query is being modified, check that we have data permissions to run the query."
   [card-before-updates card-updates]
-  (let [card-updates (m/update-existing card-updates :dataset_query compatibility/normalize-dataset-query)]
+  (let [card-updates (m/update-existing card-updates :dataset_query card.metadata/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
       (check-permissions-for-query (:dataset_query card-updates)))))
 
@@ -618,6 +619,17 @@
                                                                      :delete-old-dashcards? delete-old-dashcards?})
                                                  hydrate-card-details
                                                  (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))]
+      ;; We expose the search results for models and metrics directly in FE grids, from which items can be archived.
+      ;; The grid is then refreshed synchronously with the latest search results, so we need this change to be
+      ;; reflected synchronously.
+      ;; An alternate solution would be to have first class APIs for these views, that don't rely on an
+      ;; eventually consistent search index.
+      (when (:archived_directly card-updates)
+        ;; For now, we hard-code all the possible search-model types, and queue them all as this has no extra overhead.
+        ;; Ideally this would be DRY with the actual specification some way, but since this is a stop-gap solution, we
+        ;; decided not to complicate the solution further to accomplish this.
+        (search/bulk-ingest! (for [search-model ["card" "dataset" "metric"]]
+                               [search-model [:= :this.id id]])))
       (when metadata-future
         (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
         (card.metadata/save-metadata-async! metadata-future card))

@@ -64,6 +64,8 @@ export const ChartTypeDropdown = () => {
           icon={selectedElem.iconName}
           isHighlighted={false}
           variant="default"
+          px={undefined}
+          pr="md"
           rightIcon={<Icon ml="xs" size={10} name="chevrondown" />}
         />
       </Menu.Target>
