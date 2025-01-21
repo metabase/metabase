@@ -14,28 +14,26 @@ interface Props {
 
 function ModelActions({ model, shouldShowActionsUI }: Props) {
   return (
-    <Stack p="3rem 4rem" mih="90vh">
-      {shouldShowActionsUI ? (
-        <Stack spacing="lg">
-          <Title>
-            <Group spacing="sm">
-              {jt`Actions for ${(
-                <Group spacing="xs">
-                  <Icon name="model" size={24} />
-                  <Link variant="brand" to={Urls.model({ id: model.id() })}>
-                    {model.displayName()}
-                  </Link>
-                </Group>
-              )}`}
+    <Stack p="3rem 4rem" mih="90vh" spacing="lg">
+      <Title>
+        <Group spacing="sm">
+          {jt`Actions for ${(
+            <Group spacing="xs">
+              <Icon name="model" size={24} />
+              <Link variant="brand" to={Urls.model({ id: model.id() })}>
+                {model.displayName()}
+              </Link>
             </Group>
-          </Title>
-          <Paper p="lg">
-            <ModelActionDetails model={model} />
-          </Paper>
-        </Stack>
-      ) : (
-        <>{t`Actions are not enabled for this model.`}</>
-      )}
+          )}`}
+        </Group>
+      </Title>
+      <Paper p="lg">
+        {shouldShowActionsUI ? (
+          <ModelActionDetails model={model} />
+        ) : (
+          <>{t`Actions are not enabled for this model.`}</>
+        )}
+      </Paper>
     </Stack>
   );
 }

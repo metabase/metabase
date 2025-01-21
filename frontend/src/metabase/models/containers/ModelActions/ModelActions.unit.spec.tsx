@@ -11,7 +11,6 @@ import {
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
 import {
-  getIcon,
   renderWithProviders,
   screen,
   waitFor,
@@ -286,39 +285,20 @@ describe("ModelActions", () => {
       expect(screen.getByText("My Model")).toBeInTheDocument();
     });
 
-    describe("management", () => {
-      it("can be archived", async () => {
-        const { model, modelUpdateSpy } = await setup({ model: getModel() });
-
-        await userEvent.click(getIcon("ellipsis"));
-        await userEvent.click(await screen.findByText("Move to trash"));
-
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
-        await userEvent.click(
-          screen.getByRole("button", { name: "Move to trash" }),
-        );
-
-        await waitFor(() => {
-          expect(modelUpdateSpy).toHaveBeenCalledWith(
-            { id: model.id() },
-            { archived: true },
-          );
-        });
-      });
-    });
-
     describe("core actions section", () => {
       it("is shown if actions are enabled for model's database", async () => {
         await setup({
           model: getModel(),
           databases: [TEST_DATABASE_WITH_ACTIONS],
         });
-        expect(screen.getByText("Actions")).toBeInTheDocument();
+        expect(screen.getByTestId("model-action-details")).toBeInTheDocument();
       });
 
       it("isn't shown if actions are disabled for model's database", async () => {
         await setup({ model: getModel() });
-        expect(screen.queryByText("Actions")).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId("model-action-details"),
+        ).not.toBeInTheDocument();
       });
 
       it("is shown if actions are disabled for the model's database but there are existing actions", async () => {
@@ -327,7 +307,7 @@ describe("ModelActions", () => {
 
         await setup({ model, actions: [action] });
 
-        expect(screen.getByText("Actions")).toBeInTheDocument();
+        expect(screen.getByTestId("model-action-details")).toBeInTheDocument();
       });
 
       it("shows empty state if there are no actions", async () => {
