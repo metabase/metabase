@@ -381,7 +381,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
-      cy.findByPlaceholderText("Enter metric names").click();
+      cy.findByPlaceholderText("Enter column names").click();
     });
     cy.findByRole("option", { name: "Sum of Total" }).click();
 
