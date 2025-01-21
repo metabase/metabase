@@ -211,12 +211,16 @@ jobs:
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
+          # TODO: Remove this step once github includes the new gh CLI version 2.65.0
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew install gh
+
           git checkout -b update-sdk-version-${{ env.sdk_version }}
           git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
           git push origin HEAD
           gh pr create --base ${{ inputs.branch }}\
                        --assignee "${GITHUB_ACTOR}"\
-                       --title "Update SDK version to ${{ env.sdk_version }}"\
+                       --title "docs(sdk): Update SDK version to ${{ env.sdk_version }}"\
                        --body "Update Readme version references and published npm package version to ${{ env.sdk_version }}"
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}

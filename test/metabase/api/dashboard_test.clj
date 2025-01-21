@@ -10,7 +10,6 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard :as api.dashboard]
-   [metabase.api.pivots :as api.pivots]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
@@ -36,6 +35,7 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -1134,10 +1134,12 @@
       (testing "A plain copy with nothing special"
         (mt/with-temp [:model/Dashboard dashboard {:name        "Test Dashboard"
                                                    :description "A description"
+                                                   :width       "full"
                                                    :creator_id  (mt/user->id :rasta)}]
           (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard)))]
             (is (=? {:name          "Test Dashboard"
                      :description   "A description"
+                     :width         "full"
                      :creator_id    (mt/user->id :rasta)
                      :collection    false
                      :collection_id false}
@@ -4770,18 +4772,18 @@
     (let [uncached-calls-count (atom 0)
           cached-calls-count   (atom 0)]
       ;; Get _uncached_ call count of t2/select count for :metadata/table
-      (mt/with-dynamic-redefs [t2/select (fn [& args]
-                                           (when (= :metadata/table (first args))
-                                             (swap! uncached-calls-count inc))
-                                           (apply (mt/dynamic-value t2/select) args))]
+      (mt/with-dynamic-fn-redefs [t2/select (fn [& args]
+                                              (when (= :metadata/table (first args))
+                                                (swap! uncached-calls-count inc))
+                                              (apply (mt/dynamic-value t2/select) args))]
         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id d)))
         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id d))))
       ;; Get _cached_ call count of t2/select count for :metadata/table
       (let [load-id (str (random-uuid))]
-        (mt/with-dynamic-redefs [t2/select (fn [& args]
-                                             (when (= :metadata/table (first args))
-                                               (swap! cached-calls-count inc))
-                                             (apply (mt/dynamic-value t2/select) args))]
+        (mt/with-dynamic-fn-redefs [t2/select (fn [& args]
+                                                (when (= :metadata/table (first args))
+                                                  (swap! cached-calls-count inc))
+                                                (apply (mt/dynamic-value t2/select) args))]
           (mt/user-http-request :crowberto :get 200
                                 (format "dashboard/%d?dashboard_load_id=%s" (:id d) load-id))
           (mt/user-http-request :crowberto :get 200
@@ -4797,9 +4799,9 @@
       (testing "dashboard card /query calls reuse metadata providers"
         (let [providers               (atom [])
               load-id                 (str (random-uuid))]
-          (mt/with-dynamic-redefs [lib.metadata.protocols/table (fn [mp table-id]
-                                                                  (swap! providers conj mp)
-                                                                  ((mt/dynamic-value lib.metadata.protocols/table) mp table-id))]
+          (mt/with-dynamic-fn-redefs [lib.metadata.protocols/table (fn [mp table-id]
+                                                                     (swap! providers conj mp)
+                                                                     ((mt/dynamic-value lib.metadata.protocols/table) mp table-id))]
             (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query"
                                                        (:id d) (:id dc1) (:id c1))
                                   {"dashboard_load_id" load-id})

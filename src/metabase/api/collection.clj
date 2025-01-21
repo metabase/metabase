@@ -11,12 +11,14 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection.graph :as graph]
@@ -34,6 +36,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -114,7 +117,8 @@
                              [:= :type collection/trash-collection-type] 1
                              :else 2]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+    exclude-other-user-collections
+    (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
@@ -425,12 +429,7 @@
                                              [:= :mr.moderated_item_type (h2x/literal "card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :collection_id
-                                                                {:include-archived-items :all
-                                                                 :permission-level (if archived?
-                                                                                     :write
-                                                                                     :read)
-                                                                 :archive-operation-id nil})
+                   (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
@@ -562,12 +561,7 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-filter-clause :collection_id
-                                                                {:include-archived-items :all
-                                                                 :archive-operation-id nil
-                                                                 :permission-level (if archived?
-                                                                                     :write
-                                                                                     :read)})
+                   (collection/visible-collection-filter-clause :collection_id {:cte-name :visible_collection_ids})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
@@ -753,7 +747,7 @@
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
 (defn- remove-unwanted-keys [row]
-  (dissoc row :collection_type :model_ranking :archived_directly))
+  (dissoc row :collection_type :model_ranking :archived_directly :total_count))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
@@ -898,7 +892,7 @@
        (into [])))
 
 (defn- collection-children*
-  [collection models {:keys [sort-info] :as options}]
+  [collection models {:keys [sort-info archived?] :as options}]
   (let [sql-order   (children-sort-clause sort-info (mdb/db-type))
         models      (sort (map keyword models))
         queries     (for [model models
@@ -911,23 +905,32 @@
                       (-> query
                           (update select-clause-type add-missing-columns all-select-columns)
                           (update select-clause-type add-model-ranking model)))
-        total-query {:select [[:%count.* :count]]
-                     :from   [[{:union-all queries} :dummy_alias]]}
-        rows-query  {:select   [:*]
+        viz-config  {:include-archived-items :all
+                     :archive-operation-id nil
+                     :permission-level (if archived? :write :read)}
+        rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
+                     :select   [:* [[:over [[:count :*] {} :total_count]]]]
                      :from     [[{:union-all queries} :dummy_alias]]
                      :order-by sql-order}
+        limit       (request/limit)
+        offset      (request/offset)
         ;; We didn't implement collection pagination for snippets namespace for root/items
         ;; Rip out the limit for now and put it back in when we want it
         limit-query (if (or
-                         (nil? (request/limit))
-                         (nil? (request/offset))
+                         (nil? limit)
+                         (nil? offset)
                          (= (:collection-namespace options) "snippets"))
                       rows-query
                       (assoc rows-query
-                             :limit  (request/limit)
-                             :offset (request/offset)))
-        res         {:total  (->> (mdb.query/query total-query) first :count)
-                     :data   (->> (mdb.query/query limit-query) (post-process-rows options collection))
+                             ;; If limit is 0, we still execute the query with a limit of 1 so that we fetch a
+                             ;; :total_count
+                             :limit  (if (zero? limit) 1 limit)
+                             :offset offset))
+        rows        (mdb.query/query limit-query)
+        res         {:total  (->> rows first :total_count)
+                     :data   (if (= limit 0)
+                               []
+                               (post-process-rows options collection rows))
                      :models models}
         limit-res   (assoc res
                            :limit  (request/limit)
@@ -1041,6 +1044,93 @@
                                                                                               true
                                                                                               (boolean official_collections_first))}})
       (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
+
+(mr/def ::DashboardQuestionCandidate
+  [:map
+   [:id pos-int?]
+   [:name string?]
+   [:description [:maybe string?]]
+   [:sole_dashboard_info
+    [:map
+     [:id pos-int?]
+     [:name string?]
+     [:description [:maybe string?]]]]])
+
+(mr/def ::DashboardQuestionCandidatesResponse
+  [:map
+   [:data [:sequential ::DashboardQuestionCandidate]]
+   [:count integer?]])
+
+(mu/defn- dashboard-question-candidates
+  "Implementation for the `dashboard-question-candidates` endpoints."
+  [collection-id :- [:maybe ms/PositiveInt]]
+  (api/check-403 api/*is-superuser?*)
+  (let [cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:= :collection_id collection-id]}) :in_dashboards)]
+    (filter card/sole-dashboard-id cards-in-collection)))
+
+(mu/defn- present-dashboard-question-candidate
+  [{:keys [in_dashboards] :as card}]
+  (-> card
+      (select-keys [:id :name :description])
+      (assoc :sole_dashboard_info (-> in_dashboards first (select-keys [:id :name :description])))))
+
+(mu/defn- present-dashboard-question-candidates
+  [cards]
+  {:data (map present-dashboard-question-candidate cards)
+   :count (count cards)})
+
+(api.macros/defendpoint :get "/:id/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
+  "Find cards in this collection that can be moved into dashboards in this collection.
+
+  To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a dashboard question."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/read-check :model/Collection id)
+  (present-dashboard-question-candidates
+   (dashboard-question-candidates id)))
+
+(api.macros/defendpoint :get "/root/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
+  "Find cards in the root collection that can be moved into dashboards in the root collection. (Same as the above endpoint, but for the root collection)"
+  []
+  (present-dashboard-question-candidates
+   (dashboard-question-candidates nil)))
+
+(mr/def ::MoveDashboardQuestionCandidatesResponse
+  [:map
+   [:moved [:sequential ms/PositiveInt]]])
+
+(defn- move-dashboard-question-candidates
+  "Move dash"
+  [id card-ids]
+  (let [cards (cond->> (dashboard-question-candidates id)
+                (some? card-ids) (filter #(contains? card-ids (:id %))))]
+    (t2/with-transaction [_conn]
+      (doall
+       (for [{:as card :keys [in_dashboards]} cards]
+         (do
+           (card/update-card! {:card-before-update card
+                               :card-updates {:dashboard_id (-> in_dashboards first :id)}
+                               :actor @api/*current-user*
+                               :delete-old-dashcards? false})
+           (:id card)))))))
+
+(api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
+  "Move candidate cards to the dashboards they appear in."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [card_ids]} :- [:maybe
+                          [:map [:card_ids {:optional true}
+                                 [:set ms/PositiveInt]]]]]
+  (api/read-check :model/Collection id)
+  {:moved (move-dashboard-question-candidates id card_ids)})
+
+(api.macros/defendpoint :post "/root/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
+  "Move candidate cards to the dashboards they appear in (for the root collection)"
+  [_route-params
+   _query-params
+   {:keys [card_ids]} :- [:maybe
+                          [:map [:card_ids {:optional true}
+                                 [:set ms/PositiveInt]]]]]
+  {:moved (move-dashboard-question-candidates nil card_ids)})
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 

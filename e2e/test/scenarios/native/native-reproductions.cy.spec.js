@@ -71,7 +71,7 @@ describe("issue 15029", () => {
   });
 
   it("should allow dots in the variable reference (metabase#15029)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.realType(
       `select * from products where RATING = ${DOUBLE_LEFT_BRACKET}number.of.stars}}`,
       {
@@ -96,7 +96,7 @@ describe("issue 16886", () => {
     "shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)",
     { tags: "@flaky" },
     () => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion().as("editor");
       cy.realType(ORIGINAL_QUERY);
       cy.realPress("Home");
       Cypress._.range(SELECTED_TEXT.length).forEach(() =>
@@ -252,38 +252,6 @@ describe("issue 18148", () => {
   });
 });
 
-describe("issue 18418", () => {
-  const questionDetails = {
-    name: "REVIEWS SQL",
-    native: { query: "select REVIEWER from REVIEWS LIMIT 1" },
-  };
-
-  beforeEach(() => {
-    cy.intercept("POST", "/api/card").as("cardCreated");
-
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not show saved questions DB in native question's DB picker (metabase#18418)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Explore results").click();
-
-    H.saveQuestion(undefined, undefined, {
-      tab: "Browse",
-      path: ["Our analytics"],
-    });
-
-    H.openNativeEditor({ fromCurrentPage: true });
-
-    // Clicking native question's database picker usually opens a popover with a list of databases
-    // As default Cypress environment has only the sample database available, we expect no popup to appear
-    cy.get(H.POPOVER_ELEMENT).should("not.exist");
-  });
-});
-
 describe("issue 19451", () => {
   const question = {
     name: "19451",
@@ -368,7 +336,7 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
 
   // realpress messes with cypress 13
   it("should continue to request more prefix matches (metabase#20625)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.realType("s");
 
     // autocomplete_suggestions?prefix=s
@@ -386,7 +354,7 @@ describe("issue 21034", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.intercept(
       "GET",
       "/api/database/**/autocomplete_suggestions?**",
@@ -417,7 +385,7 @@ describe("issue 21550", () => {
   });
 
   it("should not show scrollbars for very short snippet (metabase#21550)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
 
     cy.icon("snippet").click();
     cy.wait("@rootCollection");
@@ -463,10 +431,9 @@ describe("issue 21597", { tags: "@external" }, () => {
     H.addPostgresDatabase(databaseCopyName);
 
     // Create a native query and run it
-    H.openNativeEditor({
-      databaseName,
-    });
-    cy.realType(
+    H.startNewNativeQuestion().as("editor");
+
+    cy.get("@editor").type(
       `SELECT COUNT(*) FROM PRODUCTS WHERE ${DOUBLE_LEFT_BRACKET}FILTER}}`,
     );
 
@@ -584,7 +551,7 @@ describe("issue 34330", { tags: "@flaky" }, () => {
   });
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.realType("USER");
 
     cy.wait("@autocomplete").then(({ request }) => {
@@ -597,7 +564,7 @@ describe("issue 34330", { tags: "@flaky" }, () => {
   });
 
   it("should call the autocompleter eventually, even when only 1 character was typed (metabase#34330)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.realType("U");
 
     cy.wait("@autocomplete").then(({ request }) => {
@@ -610,7 +577,7 @@ describe("issue 34330", { tags: "@flaky" }, () => {
   });
 
   it("should call the autocompleter when backspacing to a 1-character prefix(metabase#34330)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.realType("SE{backspace}");
 
     cy.wait("@autocomplete").then(({ request }) => {
@@ -747,7 +714,7 @@ describe("issue 22991", () => {
     cy.signOut();
     cy.signInAsNormalUser();
 
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.get("@questionId").then(questionId => {
       // can't use cy.type because it does not simulate the bug
       cy.realType(`select * from ${DOUBLE_LEFT_BRACKET}#${questionId}`);

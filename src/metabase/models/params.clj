@@ -175,6 +175,7 @@
 (defmulti ^:private ^{:hydrate :param_values} param-values
   "Add a `:param_values` map (Field ID -> FieldValues) containing FieldValues for the Fields referenced by the
   parameters of a Card or a Dashboard. Implementations are in respective sections below."
+  {:arglists '([instance])}
   t2/model)
 
 #_{:clj-kondo/ignore [:unused-private-var]}
@@ -187,6 +188,7 @@
 (defmulti ^:private ^{:hydrate :param_fields} param-fields
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
   Dashboard. Implementations are below in respective sections."
+  {:arglists '([instance])}
   t2/model)
 
 #_{:clj-kondo/ignore [:unused-private-var]}

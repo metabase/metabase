@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util.date-2-test
+(ns metabase.util.date-2-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

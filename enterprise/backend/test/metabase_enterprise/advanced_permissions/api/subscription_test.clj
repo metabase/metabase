@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.advanced-permissions.api.subscription-test
+(ns metabase-enterprise.advanced-permissions.api.subscription-test
   "Permisisons tests for API that needs to be enforced by Application Permissions to create and edit alerts/subscriptions."
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require

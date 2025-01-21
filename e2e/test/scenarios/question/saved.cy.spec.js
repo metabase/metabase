@@ -28,11 +28,19 @@ describe("scenarios > question > saved", () => {
     H.queryBuilderHeader().button("Save").click();
     cy.findByTestId("save-question-modal").within(() => {
       cy.findByTestId("dashboard-and-collection-picker-button").click();
+      // wait for focus to be removed from clicked element to avoid test flakes
+      // cypress executes faster than ui updates causing the focus position to lag behind on save modal
+      cy.findByTestId("dashboard-and-collection-picker-button").should(
+        "not.be.focused",
+      );
     });
     H.entityPickerModal().should("exist");
     cy.realPress("{esc}");
     H.entityPickerModal().should("not.exist");
     cy.findByTestId("save-question-modal").should("exist");
+    cy.findByTestId("dashboard-and-collection-picker-button").should(
+      "be.focused",
+    );
     cy.realPress("{esc}");
     cy.findByTestId("save-question-modal").should("not.exist");
 
@@ -151,7 +159,7 @@ describe("scenarios > question > saved", () => {
       cy.findByTestId("dashboard-and-collection-picker-button").click();
     });
 
-    H.entityPickerModal().findByText("Create a new collection").click();
+    H.entityPickerModal().findByText("New collection").click();
 
     const NEW_COLLECTION = "My New collection";
     H.collectionOnTheGoModal().then(() => {
