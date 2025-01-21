@@ -78,12 +78,12 @@
   "Return cache configuration."
   [_route-params
    {:keys [model collection id]} :- [:map
-          [:model      (mu/with (ms/QueryVectorOf cache-config/CachingModel)
-                       {:default "root", :description "Type of model"})]
-          [:collection (mu/with [:maybe ms/PositiveInt]
-                       {:description "Collection id to filter results. Returns everything if not supplied."})]
-          [:id         (mu/with [:maybe ms/PositiveInt]
-                       {:description "Model id to get configuration for."})]]]
+                                     [:model      (mu/with (ms/QueryVectorOf cache-config/CachingModel)
+                                                           {:default "root", :description "Type of model"})]
+                                     [:collection (mu/with [:maybe ms/PositiveInt]
+                                                           {:description "Collection id to filter results. Returns everything if not supplied."})]
+                                     [:id         (mu/with [:maybe ms/PositiveInt]
+                                                           {:description "Model id to get configuration for."})]]]
   (when (and (not (premium-features/enable-cache-granular-controls?))
              (not= model ["root"]))
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
@@ -95,9 +95,9 @@
   [_route-params
    _query-params
    {:keys [model model_id] :as config} :- [:map
-          [:model    cache-config/CachingModel]
-          [:model_id ms/IntGreaterThanOrEqualToZero]
-          [:strategy (CacheStrategyAPI)]]]
+                                           [:model    cache-config/CachingModel]
+                                           [:model_id ms/IntGreaterThanOrEqualToZero]
+                                           [:strategy (CacheStrategyAPI)]]]
   (assert-valid-models model [model_id] (premium-features/enable-cache-granular-controls?))
   (check-cache-access model model_id)
   {:id (cache-config/store! api/*current-user-id* config)})
@@ -107,8 +107,8 @@
   [_route-params
    _query-params
    {:keys [model model_id]} :- [:map
-          [:model    cache-config/CachingModel]
-          [:model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]
+                                [:model    cache-config/CachingModel]
+                                [:model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
   (doseq [id model_id] (check-cache-access model id))
   (cache-config/delete! api/*current-user-id* model model_id)
@@ -124,10 +124,10 @@
   touching all nested configurations, or you want your invalidation to trickle down to every card."
   [_route-params
    {:keys [include database dashboard question]} :- [:map
-          [:include   {:optional true} [:maybe {:description "All cache configuration overrides should invalidate cache too"} [:= :overrides]]]
-          [:database  {:optional true} [:maybe {:description "A list of database ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-          [:dashboard {:optional true} [:maybe {:description "A list of dashboard ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
-          [:question  {:optional true} [:maybe {:description "A list of question ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+                                                     [:include   {:optional true} [:maybe {:description "All cache configuration overrides should invalidate cache too"} [:= :overrides]]]
+                                                     [:database  {:optional true} [:maybe {:description "A list of database ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+                                                     [:dashboard {:optional true} [:maybe {:description "A list of dashboard ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+                                                     [:question  {:optional true} [:maybe {:description "A list of question ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (when-not (premium-features/enable-cache-granular-controls?)
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
 
