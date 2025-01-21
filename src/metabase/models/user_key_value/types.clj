@@ -1,22 +1,26 @@
 (ns metabase.models.user-key-value.types
   (:require
    [clojure.edn :as edn]
-   [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.config :as config]
+   [metabase.util :as u]
+   [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
    (java.io File)
-   (java.nio.file FileSystems
-                  Path
-                  StandardWatchEventKinds
-                  WatchKey
-                  WatchService
-                  WatchEvent)))
+   (java.nio.file
+    FileSystems
+    Files
+    OpenOption
+    Path
+    StandardWatchEventKinds
+    WatchEvent
+    WatchKey
+    WatchService)))
 
 (set! *warn-on-reflection* true)
 
@@ -76,38 +80,23 @@
 
 (update-user-key-value-schema!)
 
-;; Types live in `resources/user_key_value_types`
-
-(defn- types-dirs
-  "Types live in `user_key_value_types`, in both `test_resources` and `resources`."
-  []
-  (->> (classpath/classpath-directories)
-       (map #(io/file % "user_key_value_types"))
-       (filter #(.exists ^File %))))
-
-(defn- types-files []
-  (->> (types-dirs)
-       (mapcat #(file-seq (io/file %)))
-       (filter #(.isFile ^File %))
-       distinct))
+(def ^:private types-dir "user_key_value_types")
 
 (defn- load-schema
-  "Load a schema from an EDN file, using its name as the namespace."
+  "Loads a schema with the provided namespace"
+  [schema namespace]
+  (defnamespace namespace schema)
+  (update-user-key-value-schema!))
+
+(defn- load-schema-from-file
+  "Load a schema from an EDN file, using its filename as the namespace."
   [^File file]
   (let [namespace (file->namespace file)
         schema  (-> file slurp edn/read-string)]
-    (defnamespace namespace schema)
-    (update-user-key-value-schema!)))
-
-(defn load-all-schemas
-  "Load all schemas from the types directory."
-  []
-  (doseq [^File file (types-files)]
-    (when (str/ends-with? (.getName file) ".edn")
-      (load-schema file))))
+    (load-schema schema namespace)))
 
 (defn watch-directory
-  "Watch a directory for changes and call the callback with the affected file."
+  "Only used in dev. Watch a directory for changes and call the callback with the affected file."
   [dir callback]
   (let [^WatchService watcher (.newWatchService (FileSystems/getDefault))
         ^Path path    (.toPath (io/file dir))]
@@ -130,24 +119,50 @@
           (recur))))))
 
 (defn handle-file-change
-  "Handle a file change in the types directory."
+  "Only used in dev. Handle a file change in the types directory."
   [^File file action]
   (case action
-    :create (load-schema file)
-    :modify (load-schema file)
+    :create (load-schema-from-file file)
+    :modify (load-schema-from-file file)
     :delete (let [namespace (file->namespace file)]
               ;; this is kind of silly. we don't have a way to delete something from the registry, so just hackily
               ;; make a schema that can't ever be valid. In production, we're not going to be watching files, so
               ;; this is solely for dev.
               (defnamespace namespace [:and true? false?]))))
 
+(defn load-all-schemas-prod
+  "Loads all type schemas from the a given resource path. This is the production code path which doesn't implement
+  file-watching, and works when running in a JAR."
+  [dir]
+  (u.files/with-open-path-to-resource [dir dir]
+    (with-open [ds (Files/newDirectoryStream dir)]
+      (let [schemas (reduce
+                     (fn [acc ^Path file]
+                       (let [schema (try
+                                      (-> file
+                                          (Files/newInputStream (u/varargs OpenOption))
+                                          slurp
+                                          edn/read-string)
+                                      (catch Throwable e
+                                        (throw
+                                         (ex-info (format "Error loading schema %s: %s" (str file) (ex-message e))
+                                                  {}
+                                                  e))))
+                             namespace (keyword "namespace"
+                                                (-> file
+                                                    .getFileName
+                                                    (str/replace #"\.edn$" "")))]
+                         (conj acc [schema namespace])))
+                     []
+                     ds)]
+        (doseq [[schema namespace] schemas]
+          (load-schema schema namespace))
+        (update-user-key-value-schema!)))))
+
 (defn load-and-watch-schemas
   "In production, just load the schemas. In development, watch for changes as well."
   []
-  (load-all-schemas)
+  (load-all-schemas-prod types-dir)
+  ;; in dev, watch both types directories for changes
   (when config/is-dev?
-    (doseq [types-dir (types-dirs)]
-      (watch-directory types-dir handle-file-change))))
-
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defonce ^:private watcher (load-and-watch-schemas))
+    (watch-directory (io/file (io/resource types-dir)) handle-file-change)))

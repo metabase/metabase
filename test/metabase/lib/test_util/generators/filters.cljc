@@ -85,6 +85,7 @@
 (def ^:private ^:dynamic *filterable-columns* nil)
 
 (defmulti ^:private gen-filter-clause
+  {:arglists '([column operator])}
   (fn [_column operator]
     (:short operator)))
 
@@ -169,7 +170,9 @@
       (< r 0.4) (gen-filter:relative-date-offset column)     ;; "Next 3 months starting from 2 years ago"
       :else     (gen-filter:relative-date-nearby column))))  ;; ""
 
-(defmulti ^:private gen-filter:exclude-date-options identity)
+(defmulti ^:private gen-filter:exclude-date-options
+  {:arglists '([unit])}
+  identity)
 
 (defmethod gen-filter:exclude-date-options :hour-of-day [_unit]
   (range 0 24))

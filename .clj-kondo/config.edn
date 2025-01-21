@@ -56,6 +56,7 @@
   ;;
   ;; globally-enabled custom linters
   ;;
+  :metabase/check-defmulti-arglists                    {:level :warning}
   :metabase/check-me-humanize                          {:level :warning}
   :metabase/defsetting-must-specify-export             {:level :warning}
   :metabase/mbql-query-first-arg                       {:level :warning}
@@ -176,7 +177,7 @@
 
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
   {:level      :warning
-   :max-length 180}
+   :max-length 150}
 
   ;; this is not enabled here, it is enabled below only for specific namespaces.
   :metabase/disallow-hardcoded-driver-names-in-tests
@@ -865,6 +866,7 @@
   {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
+   clojure.core/defmulti                                                                                                     hooks.clojure.core/lint-defmulti
    clojure.core/ns                                                                                                           hooks.clojure.core/lint-ns
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
