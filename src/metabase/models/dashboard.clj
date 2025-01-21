@@ -33,7 +33,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.xrays.core :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -517,46 +516,32 @@
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
       (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
 
-(defn- ensure-unique-collection-name
-  [collection-name parent-collection-id]
-  (let [c (t2/count :model/Collection
-                    :name     [:like (format "%s%%" collection-name)]
-                    :location (collection/children-location (t2/select-one [:model/Collection :location :id]
-                                                                           :id parent-collection-id)))]
-    (if (zero? c)
-      collection-name
-      (format "%s %s" collection-name (inc c)))))
-
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
   (let [{dashcards      :dashcards
          tabs           :tabs
-         dashboard-name :name
          :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
-        collection (xrays/create-collection!
-                    (ensure-unique-collection-name dashboard-name parent-collection-id)
-                    "Automatically generated cards."
-                    parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!
                            :model/Dashboard
                            (-> dashboard
                                (dissoc :dashcards :tabs :rule :related
                                        :transient_name :transient_filters :param_fields :more)
                                (assoc :description description
-                                      :collection_id (:id collection)
-                                      :collection_position 1))))
+                                      :collection_id parent-collection-id))))
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
     (add-dashcards! dashboard
                     (for [dashcard dashcards]
                       (let [card     (some-> dashcard :card
-                                             (assoc :collection_id (:id collection)
-                                                    :dashboard_id (:id dashboard))
+                                             (assoc :dashboard_id (:id dashboard)
+                                                    :collection_id parent-collection-id)
                                              save-card!)
-                            series   (some->> dashcard :series (map (fn [card]
-                                                                      (-> card
-                                                                          (assoc :collection_id (:id collection))
-                                                                          save-card!))))
+                            series   (some->> dashcard
+                                              :series
+                                              (mapv (fn [card]
+                                                      (-> card
+                                                          (assoc :collection_id parent-collection-id)
+                                                          save-card!))))
                             dashcard (-> dashcard
                                          (dissoc :card :id :creator_id)
                                          (update :parameter_mappings
