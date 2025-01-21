@@ -4532,11 +4532,11 @@
                          (format "/dashboard/%s/dashcard/%s/card/%s/query/%s" dashboard-id dashcard-id card-id (name export-format))
                          :format_rows apply-formatting?)
                         ((get output-helper export-format)))))))))))
+
 (deftest can-restore
   (let [can-restore? (fn [dash-id user]
                        (:can_restore (mt/user-http-request user :get 200 (str "dashboard/" dash-id))))]
     (testing "I can restore a simply trashed dashboard"
-
       (mt/with-temp [:model/Collection {coll-id :id} {:name "A"}
                      :model/Dashboard {dash-id :id} {:name          "My Dashboard"
                                                      :collection_id coll-id}]

@@ -5,10 +5,10 @@
   (:require
    [clojure.data :as data]
    [clojure.set :refer [difference]]
-   [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
@@ -27,13 +27,13 @@
 (when config/ee-available?
   (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.
   The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users."
-  [archived user_id]
-  {archived [:maybe ms/BooleanValue]
-   user_id  [:maybe ms/PositiveInt]}
+  [_route-params
+   {:keys [archived user_id]} :- [:map
+                                  [:archived {:default false} [:maybe ms/BooleanValue]]
+                                  [:user_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (let [user-id (if api/*is-superuser?*
                   user_id
                   api/*current-user-id*)]
@@ -42,20 +42,19 @@
       (filter mi/can-read? <>)
       (t2/hydrate <> :can_write))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id"
+(api.macros/defendpoint :get "/:id"
   "Fetch an alert by ID"
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (-> (api/read-check (models.pulse/retrieve-alert id))
       (t2/hydrate :can_write)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/question/:id"
+(api.macros/defendpoint :get "/question/:id"
   "Fetch all alerts for the given question (`Card`) id"
-  [id archived]
-  {id       [:maybe ms/PositiveInt]
-   archived [:maybe ms/BooleanValue]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [archived]} :- [:map
+                          [:archived {:default false} [:maybe ms/BooleanValue]]]]
   (-> (if api/*is-superuser?*
         (models.pulse/retrieve-alerts-for-cards {:card-ids [id], :archived? archived})
         (models.pulse/retrieve-user-alerts-for-card {:card-id id, :user-id api/*current-user-id*, :archived?  archived}))
@@ -134,16 +133,17 @@
     (assoc card :include_csv true)
     card))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Create a new Alert."
-  [:as {{:keys [alert_condition card channels alert_first_only alert_above_goal]
-         :as new-alert-request-body} :body}]
-  {alert_condition  models.pulse/AlertConditions
-   alert_first_only :boolean
-   alert_above_goal [:maybe :boolean]
-   card             models.pulse/CardRef
-   channels         [:+ :map]}
+  [_route-params
+   _query-params
+   {:keys [alert_condition card channels]
+    :as new-alert-request-body} :- [:map
+                                    [:alert_condition  models.pulse/AlertConditions]
+                                    [:alert_first_only :boolean]
+                                    [:alert_above_goal {:optional true} [:maybe :boolean]]
+                                    [:card             models.pulse/CardRef]
+                                    [:channels         [:+ :map]]]]
   (validation/check-has-application-permission :subscription false)
   ;; To create an Alert you need read perms for its Card
   (api/read-check :model/Card (u/the-id card))
@@ -165,18 +165,19 @@
     (doseq [recipient (collect-alert-recipients alert)]
       (messages/send-admin-unsubscribed-alert-email! alert recipient @api/*current-user*))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id"
+(api.macros/defendpoint :put "/:id"
   "Update a `Alert` with ID."
-  [id :as {{:keys [alert_condition alert_first_only alert_above_goal card channels archived]
-            :as alert-updates} :body}]
-  {id               ms/PositiveInt
-   alert_condition  [:maybe models.pulse/AlertConditions]
-   alert_first_only [:maybe :boolean]
-   alert_above_goal [:maybe :boolean]
-   card             [:maybe models.pulse/CardRef]
-   channels         [:maybe [:+ [:map]]]
-   archived         [:maybe :boolean]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [card channels archived]
+    :as alert-updates} :- [:map
+                           [:alert_condition  {:optional true} [:maybe models.pulse/AlertConditions]]
+                           [:alert_first_only {:optional true} [:maybe :boolean]]
+                           [:alert_above_goal {:optional true} [:maybe :boolean]]
+                           [:card             {:optional true} [:maybe models.pulse/CardRef]]
+                           [:channels         {:optional true} [:maybe [:+ [:map]]]]
+                           [:archived         {:optional true} [:maybe :boolean]]]]
   (try
     (validation/check-has-application-permission :monitoring)
     (catch clojure.lang.ExceptionInfo _e
@@ -245,11 +246,10 @@
       ;; Finally, return the updated Alert
       updated-alert)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/:id/subscription"
+(api.macros/defendpoint :delete "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (validation/check-has-application-permission :subscription false)
   (let [alert (models.pulse/retrieve-alert id)]
     (api/read-check alert)
