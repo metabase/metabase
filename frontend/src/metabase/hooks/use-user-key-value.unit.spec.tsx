@@ -42,12 +42,12 @@ describe("useUserKeyValue", () => {
   describe("value", () => {
     it("should return undefined until value has loaded", async () => {
       setupGetUserKeyValueEndpoint({
-        namespace: "meow",
-        key: "meow",
+        namespace: "test",
+        key: "test",
         value: "server-value",
       });
       const result = setup({
-        hookArgs: { namespace: "meow", key: "meow" },
+        hookArgs: { namespace: "test", key: "test" },
       });
       expect(result.current.value).toBe(undefined);
       expect(result.current?.isLoading).toBe(true);
@@ -55,12 +55,12 @@ describe("useUserKeyValue", () => {
 
     it("should return server value once loaded", async () => {
       setupGetUserKeyValueEndpoint({
-        namespace: "meow",
-        key: "meow",
+        namespace: "test",
+        key: "test",
         value: "server-value",
       });
       const result = setup({
-        hookArgs: { namespace: "meow", key: "meow" },
+        hookArgs: { namespace: "test", key: "test" },
       });
       expect(result.current?.isLoading).toBe(true);
       await waitFor(() => {
@@ -71,14 +71,14 @@ describe("useUserKeyValue", () => {
 
     it("should be able to set a default value", async () => {
       setupGetUserKeyValueEndpoint({
-        namespace: "meow",
-        key: "meow",
+        namespace: "test",
+        key: "test",
         value: "server-value",
       });
       const result = setup({
         hookArgs: {
-          namespace: "meow",
-          key: "meow",
+          namespace: "test",
+          key: "test",
           defaultValue: "default-value",
         },
       });
@@ -94,18 +94,18 @@ describe("useUserKeyValue", () => {
   describe("setValue", () => {
     it("should optimistically update the value and skip refetching", async () => {
       const mockedFetch = setupGetUserKeyValueEndpoint({
-        namespace: "meow",
-        key: "meow",
+        namespace: "test",
+        key: "test",
         value: "before-value",
       });
       setupUpdateUserKeyValueEndpoint({
-        namespace: "meow",
-        key: "meow",
+        namespace: "test",
+        key: "test",
         value: "after-value",
       });
 
       const result = setup({
-        hookArgs: { namespace: "meow", key: "meow" },
+        hookArgs: { namespace: "test", key: "test" },
       });
 
       // assert initial value
@@ -128,7 +128,7 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/meow/key/meow`, {
+        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
           method: "GET",
         }),
       ).toHaveLength(1);
@@ -137,14 +137,14 @@ describe("useUserKeyValue", () => {
 
     it("should revert optimisitic update if update fails", async () => {
       const mockedFetch = setupGetUserKeyValueEndpoint({
-        namespace: "meow",
-        key: "meow",
+        namespace: "test",
+        key: "test",
         value: "before-value",
       });
-      fetchMock.put(`path:/api/user-key-value/namespace/meow/key/meow`, 400);
+      fetchMock.put(`path:/api/user-key-value/namespace/test/key/test`, 400);
 
       const result = setup({
-        hookArgs: { namespace: "meow", key: "meow" },
+        hookArgs: { namespace: "test", key: "test" },
       });
 
       // assert initial value is correct
@@ -167,7 +167,7 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/meow/key/meow`, {
+        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
           method: "GET",
         }),
       ).toHaveLength(1);
@@ -178,14 +178,14 @@ describe("useUserKeyValue", () => {
   describe("clearValue", () => {
     it("should optimistically delete a key and skip refetching its value", async () => {
       const mockedFetch = setupGetUserKeyValueEndpoint({
-        namespace: "meow",
-        key: "meow",
+        namespace: "test",
+        key: "test",
         value: "value",
       });
-      setupDeleteUserKeyValueEndpoint({ namespace: "meow", key: "meow" });
+      setupDeleteUserKeyValueEndpoint({ namespace: "test", key: "test" });
 
       const result = setup({
-        hookArgs: { namespace: "meow", key: "meow" },
+        hookArgs: { namespace: "test", key: "test" },
       });
 
       // assert initial value
@@ -208,7 +208,7 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/meow/key/meow`, {
+        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
           method: "GET",
         }),
       ).toHaveLength(1);
@@ -217,14 +217,14 @@ describe("useUserKeyValue", () => {
 
     it("should revert optimisitic delete if deletion fails", async () => {
       const mockedFetch = setupGetUserKeyValueEndpoint({
-        namespace: "meow",
-        key: "meow",
+        namespace: "test",
+        key: "test",
         value: "before-value",
       });
-      fetchMock.delete(`path:/api/user-key-value/namespace/meow/key/meow`, 400);
+      fetchMock.delete(`path:/api/user-key-value/namespace/test/key/test`, 400);
 
       const result = setup({
-        hookArgs: { namespace: "meow", key: "meow" },
+        hookArgs: { namespace: "test", key: "test" },
       });
 
       // assert initial value is correct
@@ -247,7 +247,7 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/meow/key/meow`, {
+        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
           method: "GET",
         }),
       ).toHaveLength(1);
