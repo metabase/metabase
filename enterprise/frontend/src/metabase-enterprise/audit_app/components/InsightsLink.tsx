@@ -59,13 +59,7 @@ export const InsightsLink = ({
     Urls.dashboard({ id: entityId, name: "" }) + `?${linkQueryParams}`;
 
   return (
-    <Flex
-      className={SidesheetS.InsightsTab}
-      p="11px 8px"
-      c="var(--mb-color-text-dark)"
-      fw="bold"
-      lh="1rem"
-    >
+    <Flex className={SidesheetS.TabSibling}>
       <Link
         to={instanceAnalyticsUrl}
         className={S.InsightsLink}
