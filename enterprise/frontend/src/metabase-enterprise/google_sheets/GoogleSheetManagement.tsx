@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { reloadSettings } from "metabase/admin/settings/settings";
@@ -12,6 +13,7 @@ import {
   Center,
   Flex,
   Icon,
+  Menu,
   Modal,
   Stack,
   Text,
@@ -25,9 +27,73 @@ import {
 
 import disconnectIllustration from "./disconnect.svg?component";
 
-export function GSheetManagement() {
+export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
   const gSheetsSetting = useSetting("gsheets");
-  const [showModal, setShowModal] = useState(false);
+  const gSheetsEnabled = useSetting("show-google-sheets-integration");
+
+  const { status } = gSheetsSetting;
+  const userIsAdmin = useSelector(getUserIsAdmin);
+  const { data: { email: serviceAccountEmail } = {} } =
+    useGetServiceAccountQuery();
+
+  if (
+    !gSheetsEnabled ||
+    !gSheetsSetting ||
+    !userIsAdmin ||
+    !serviceAccountEmail
+  ) {
+    return null;
+  }
+
+  const buttonText = match(status)
+    .with("not-connected", () => t`Connect Google Sheets`)
+    .with("loading", () => t`Google Sheets`)
+    .with("complete", () => t`Google Sheets`)
+    .otherwise(() => t`Google Sheets`);
+
+  const helperText = match(status)
+    .with("not-connected", () => null)
+    .with("loading", () => t`Importing files...`)
+    .with("complete", () => t`Connected`)
+    .otherwise(() => null);
+
+  return (
+    <Menu.Item onClick={onClick} disabled={status === "loading"}>
+      <Flex gap="sm" align="flex-start" justify="space-between" w="100%">
+        <Flex>
+          <Icon name="google_sheet" mt="xs" mr="sm" />
+          <div>
+            <Text
+              fw="bold"
+              c={status === "loading" ? "text-light" : "text-dark"}
+            >
+              {buttonText}
+            </Text>
+            {helperText && (
+              <Text size="sm" c="text-medium">
+                {helperText}
+              </Text>
+            )}
+          </div>
+        </Flex>
+        {status === "complete" && (
+          <Button variant="subtle" onClick={onClick}>
+            {t`Add New`}
+          </Button>
+        )}
+      </Flex>
+    </Menu.Item>
+  );
+}
+
+export function GsheetConnectionModal({
+  isModalOpen,
+  onClose,
+}: {
+  isModalOpen: boolean;
+  onClose: () => void;
+}) {
+  const gSheetsSetting = useSetting("gsheets");
   const userIsAdmin = useSelector(getUserIsAdmin);
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery();
@@ -40,38 +106,23 @@ export function GSheetManagement() {
     !userIsAdmin ||
     !serviceAccountEmail
   ) {
+    console.error("Google Sheets integration is not enabled");
     return null;
   }
 
   const { status, folder_url } = gSheetsSetting;
 
   return (
-    <>
-      <Box py="lg" mx="md">
-        <Button
-          variant="subtle"
-          leftIcon={<Icon name="google_sheet" />}
-          onClick={() => setShowModal(true)}
-        >
-          {status === "not-connected"
-            ? t`Connect Google Sheets`
-            : t`Google Sheets connected`}
-        </Button>
-      </Box>
-      {showModal &&
-        (status === "not-connected" ? (
-          <GoogleSheetsConnectModal
-            onClose={() => setShowModal(false)}
-            serviceAccountEmail={serviceAccountEmail}
-            folderUrl={folder_url}
-          />
-        ) : (
-          <GoogleSheetsDisconnectModal
-            onClose={() => setShowModal(false)}
-            reconnect={true}
-          />
-        ))}
-    </>
+    isModalOpen &&
+    (status === "not-connected" ? (
+      <GoogleSheetsConnectModal
+        onClose={onClose}
+        serviceAccountEmail={serviceAccountEmail}
+        folderUrl={folder_url}
+      />
+    ) : (
+      <GoogleSheetsDisconnectModal onClose={onClose} reconnect={true} />
+    ))
   );
 }
 

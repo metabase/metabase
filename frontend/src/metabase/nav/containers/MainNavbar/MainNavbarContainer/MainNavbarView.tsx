@@ -43,7 +43,7 @@ import {
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import { AddDatabase } from "../SidebarItems/AddDatabase";
-import { DwhUploadCSV } from "../SidebarItems/DwhUploadCSV/DwhUploadCSV";
+import { DwhUploadMenu } from "../SidebarItems/DwhUpload";
 import { trackOnboardingChecklistOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
@@ -210,7 +210,7 @@ export function MainNavbarView({
                 {t`How to use Metabase`}
               </PaddedSidebarLinkDismissible>
             )}
-            {showUploadCSVButton && <DwhUploadCSV />}
+            {showUploadCSVButton && <DwhUploadMenu />}
           </SidebarSection>
 
           {bookmarks.length > 0 && (
