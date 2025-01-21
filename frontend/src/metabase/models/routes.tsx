@@ -7,9 +7,6 @@ import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
 
 export const getRoutes = () => (
   <Route path="/model/:slug/detail">
-    <IndexRedirect to="usage" />
-    <Route path="usage" component={ModelActions} />
-    <Route path="schema" component={ModelActions} />
     <Route path="actions" component={ModelActions}>
       <ModalRoute
         path="new"
@@ -30,6 +27,9 @@ export const getRoutes = () => (
         }}
       />
     </Route>
-    <Redirect from="*" to="usage" />
+    <IndexRedirect to="actions" />
+    <Redirect from="usage" to="actions" />
+    <Redirect from="schema" to="actions" />
+    <Redirect from="*" to="actions" />
   </Route>
 );
