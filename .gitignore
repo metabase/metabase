@@ -117,3 +117,5 @@ modules/drivers/*/.lsp/*
 
 # swc
 .swc/
+
+*storybook.log

@@ -1,4 +1,4 @@
-import type { ComponentMeta } from "@storybook/react";
+import type { Meta } from "@storybook/react";
 
 import { Code, type CodeProps } from "metabase/ui";
 
@@ -36,7 +36,7 @@ export default {
       ],
     },
   },
-} as ComponentMeta<typeof Code>;
+} as Meta<typeof Code>;
 
 export const Inline = {
   render: InlineTemplate,
