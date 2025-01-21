@@ -134,11 +134,7 @@ export function pieSliceWithColor(color) {
 
 export function echartsTooltip() {
   // ECharts may keep two dom instances of the tooltip
-  return cy
-    .findAllByTestId("echarts-tooltip")
-    .filter(":visible")
-    .should("have.length", 1)
-    .eq(0);
+  return cy.findAllByTestId("echarts-tooltip").should("have.length", 1).eq(0);
 }
 
 export function tooltipHeader() {
