@@ -26,6 +26,7 @@ import { ScatterPlot } from "./visualizations/ScatterPlot";
 import { SmartScalar } from "./visualizations/SmartScalar";
 import Table from "./visualizations/Table";
 import { Text } from "./visualizations/Text";
+import { TreeMap } from "./visualizations/TreeMap";
 import { WaterfallChart } from "./visualizations/WaterfallChart";
 
 export default function () {
@@ -45,6 +46,7 @@ export default function () {
   registerVisualization(Map);
   registerVisualization(Funnel);
   registerVisualization(ObjectDetail);
+  registerVisualization(TreeMap);
   registerVisualization(PivotTable);
   registerVisualization(SankeyChart);
 
