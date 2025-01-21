@@ -104,7 +104,7 @@
                             [(n/map-node
                               ;; apparently the old behavior for booleans coerced `nil`, to `false`, so let's replicate
                               ;; that.
-                              (if (= (n/sexpr schema) [:maybe 'ms/BooleanValue])
+                              (if ('#{[:maybe :boolean] [:maybe ms/BooleanValue]} (n/sexpr schema))
                                 [(n/keyword-node :default) (n/whitespace-node " ") (n/token-node 'false)]
                                 [(n/keyword-node :optional) (n/whitespace-node " ") (n/token-node 'true)]))
                              (n/whitespace-node " ")])
