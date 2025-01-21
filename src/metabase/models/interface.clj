@@ -332,6 +332,19 @@
           (log/error e "Error parsing JSON"))  ; same message as in `json-out`
         v))))
 
+(defn encrypted-json-out-without-keywordization
+  "Deserialize encrypted json."
+  [v]
+  (let [decrypted (encryption/maybe-decrypt v)]
+    (try
+      (json-out decrypted false)
+      (catch Throwable e
+        (if (or (encryption/possibly-encrypted-string? decrypted)
+                (encryption/possibly-encrypted-bytes? decrypted))
+          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
+          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+        v))))
+
 (def ^:dynamic *enable-json-caching*
   "Disable when changing the encryption key, so the wrong encrypted version is not used."
   true)
@@ -351,7 +364,7 @@
 (def transform-encrypted-json-no-keywordization
   "Transform for json-no-keywordization"
   {:in  encrypted-json-in
-   :out json-out-without-keywordization})
+   :out encrypted-json-out-without-keywordization})
 
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them

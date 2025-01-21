@@ -48,7 +48,6 @@
   By default it is the default-secret-key, but it can be redefined when changing the encryption scheme"
   default-secret-key)
 
-
 (defn default-encryption-enabled?
   "Is the `MB_ENCRYPTION_SECRET_KEY` set, enabling encryption?"
   []
