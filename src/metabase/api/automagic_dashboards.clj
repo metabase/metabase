@@ -316,10 +316,11 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`"
-  [{:keys [entity entity-id-or-query comparison-entity comparison-entity-id-or-query]} :- [:map
-                                                                                           [:entity-id-or-query ms/NonBlankString]
-                                                                                           [:entity             Entity]
-                                                                                           [:comparison-entity  ComparisonEntity]]
+  [{:keys [entity entity-id-or-query comparison-entity
+           comparison-entity-id-or-query]} :- [:map
+                                               [:entity-id-or-query ms/NonBlankString]
+                                               [:entity             Entity]
+                                               [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
                       [:show Show]]]
   (let [left      (->entity entity entity-id-or-query)
@@ -332,12 +333,13 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;
    compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
-  [{:keys [entity entity-id-or-query prefix dashboard-template comparison-entity comparison-entity-id-or-query]} :- [:map
-                                                                                                                     [:entity             Entity]
-                                                                                                                     [:entity-id-or-query ms/NonBlankString]
-                                                                                                                     [:prefix             Prefix]
-                                                                                                                     [:dashboard-template DashboardTemplate]
-                                                                                                                     [:comparison-entity  ComparisonEntity]]
+  [{:keys [entity entity-id-or-query prefix dashboard-template
+           comparison-entity comparison-entity-id-or-query]} :- [:map
+                                                                 [:entity             Entity]
+                                                                 [:entity-id-or-query ms/NonBlankString]
+                                                                 [:prefix             Prefix]
+                                                                 [:dashboard-template DashboardTemplate]
+                                                                 [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
                       [:show Show]]]
   (let [left      (->entity entity entity-id-or-query)
@@ -352,11 +354,12 @@
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `id` defined by query `cell-query`; compared with entity `comparison-entity` with id
    `comparison-entity-id-or-query.`."
-  [{:keys [entity entity-id-or-query cell-query comparison-entity comparison-entity-id-or-query]} :- [:map
-                                                                                                      [:entity             Entity]
-                                                                                                      [:entity-id-or-query ms/NonBlankString]
-                                                                                                      [:cell-query         Base64EncodedJSON]
-                                                                                                      [:comparison-entity  ComparisonEntity]]
+  [{:keys [entity entity-id-or-query cell-query
+           comparison-entity comparison-entity-id-or-query]} :- [:map
+                                                                 [:entity             Entity]
+                                                                 [:entity-id-or-query ms/NonBlankString]
+                                                                 [:cell-query         Base64EncodedJSON]
+                                                                 [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
                       [:show Show]]]
   (let [left      (->entity entity entity-id-or-query)
@@ -370,13 +373,14 @@
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `id` defined by query `cell-query` using dashboard-template `dashboard-template`; compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`."
-  [{:keys [entity entity-id-or-query cell-query prefix dashboard-template comparison-entity comparison-entity-id-or-query]} :- [:map
-                                                                                                                                [:entity             Entity]
-                                                                                                                                [:entity-id-or-query ms/NonBlankString]
-                                                                                                                                [:prefix             Prefix]
-                                                                                                                                [:dashboard-template DashboardTemplate]
-                                                                                                                                [:cell-query         Base64EncodedJSON]
-                                                                                                                                [:comparison-entity  ComparisonEntity]]
+  [{:keys [entity entity-id-or-query cell-query prefix dashboard-template
+           comparison-entity comparison-entity-id-or-query]} :- [:map
+                                                                 [:entity             Entity]
+                                                                 [:entity-id-or-query ms/NonBlankString]
+                                                                 [:prefix             Prefix]
+                                                                 [:dashboard-template DashboardTemplate]
+                                                                 [:cell-query         Base64EncodedJSON]
+                                                                 [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
                       [:show Show]]]
   (let [left      (->entity entity entity-id-or-query)
