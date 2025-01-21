@@ -1,6 +1,7 @@
 (ns metabase.db.custom-migrations.pulse-to-notification
   (:require
    [clojure.string :as str]
+   [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.db.custom-migrations.util :as custom-migrations.util]
@@ -162,6 +163,7 @@
   "Remove the init-send-pulse-triggers.trigger from the scheduler so that it can run again."
   []
   (custom-migrations.util/with-temp-schedule! [scheduler]
+    (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
     (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.init-send-pulse-triggers.trigger"))))
 
 (comment
