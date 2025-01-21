@@ -3,6 +3,7 @@ import { isValidElement, useCallback, useMemo } from "react";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { isEmbeddingSdk } from "metabase/env";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -153,7 +154,7 @@ export function TableCell({
 
   const onClick = useCallback(
     (e: React.MouseEvent) => {
-      if (checkIsVisualizationClickable(clicked)) {
+      if (checkIsVisualizationClickable(clicked) || isEmbeddingSdk) {
         onVisualizationClick?.({
           ...clicked,
           element: e.currentTarget,

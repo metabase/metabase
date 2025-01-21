@@ -2,6 +2,7 @@ import type { PropsWithChildren } from "react";
 
 import type { MetabasePluginsConfig } from "embedding-sdk";
 import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-load-question";
+import type { MetabaseVisualizationClickEvent } from "embedding-sdk/types/custom-click-actions";
 import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
@@ -25,6 +26,7 @@ type InteractiveQuestionConfig = {
     question: MetabaseQuestion | undefined,
     context: { isNewQuestion: boolean },
   ) => void;
+
   entityTypeFilter?: EntityTypeFilterKeys[];
 
   /** Is the save question button visible? */
@@ -32,6 +34,9 @@ type InteractiveQuestionConfig = {
 
   /** Initial values for the SQL parameters */
   initialSqlParameters?: ParameterValues;
+
+  /** Callback for when a visualization is clicked on */
+  onVisualizationClick?: (event: MetabaseVisualizationClickEvent) => void;
 } & Pick<SaveQuestionProps, "saveToCollectionId">;
 
 export type QuestionMockLocationParameters = {
@@ -54,7 +59,10 @@ export type InteractiveQuestionContextType = Omit<
 > &
   Pick<
     InteractiveQuestionConfig,
-    "onNavigateBack" | "isSaveEnabled" | "saveToCollectionId"
+    | "onNavigateBack"
+    | "isSaveEnabled"
+    | "saveToCollectionId"
+    | "onVisualizationClick"
   > &
   Pick<QBNotebookProps, "modelsFilterList"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;

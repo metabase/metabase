@@ -15,6 +15,7 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import type { MetabaseVisualizationClickEvent } from "embedding-sdk/types/custom-click-actions";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
@@ -40,6 +41,9 @@ export type InteractiveDashboardProps = {
    */
   renderDrillThroughQuestion?: () => ReactNode;
   drillThroughQuestionHeight?: number;
+
+  /** Callback for when a visualization is clicked on. Can be used to implement custom click actions. */
+  onVisualizationClick?: (event: MetabaseVisualizationClickEvent) => void;
 } & SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
 

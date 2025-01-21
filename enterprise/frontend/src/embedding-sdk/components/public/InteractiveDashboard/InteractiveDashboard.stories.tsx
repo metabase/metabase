@@ -28,7 +28,15 @@ export default {
 };
 
 const Template: StoryFn<InteractiveDashboardProps> = args => {
-  return <InteractiveDashboard {...args} />;
+  return (
+    <InteractiveDashboard
+      onVisualizationClick={event => {
+        // eslint-disable-next-line no-console -- for proof of concept
+        console.log("InteractiveDashboard::onVisualizationClick:", event);
+      }}
+      {...args}
+    />
+  );
 };
 
 export const Default = {
