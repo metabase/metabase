@@ -333,10 +333,74 @@
                 [:insert! :bar_qux [{:name "qux4" :bar_id 2}]]
                 [:delete! :bar :id [:in [11]]]
                 [:update! :bar 10 {:name "Updated Bar 1" :foo_id "abc-123"}]
-                [:insert! :bar_qux [{:name "new qux"}]]
+                [:insert! :bar_qux [{:name "new qux" :bar_id 10}]]
                 [:delete! :bar_qux :id [:in [101]]]
                 [:update! :bar_qux 100 {:name "updated qux1" :bar_id 10}]
                 [:update! :qux 20 {:name "Updated Qux" :foo_id "abc-123"}]
                 [:update! :qux_bar 200 {:name "updated bar" :qux_id 20}]]
                (with-tracked-operations!
                  (spec-update/do-update! existing-data new-data complex-model-spec))))))))
+
+(spec-update/define-spec nested-multi-row-spec
+  "A spec with nested multi-row models"
+  {:model :foo
+   :compare-cols [:name]
+   :nested-specs {:bars {:model        :bar
+                         :compare-cols [:name]
+                         :multi-row?   true
+                         :fk-column    :foo_id
+                         :nested-specs {:quxes {:model        :bar_qux
+                                                :compare-cols [:name]
+                                                :multi-row?   true
+                                                :fk-column    :bar_id}}}}})
+
+(deftest nested-sequential-test
+  (testing "adding 2 layers of nested sequential updates"
+    (let [existing-data {:id   1
+                         :name "foo"}]
+      (is (= [[:update! :foo 1 {:name "FOO"}]
+              [:insert-returning-pk! :bar {:name "Bar 1" :foo_id 1}]
+              [:insert! :bar_qux [{:name "qux1" :bar_id 2} {:name "qux2" :bar_id 2}]]
+              [:insert-returning-pk! :bar {:name "Bar 2" :foo_id 1}]]
+             (with-tracked-operations!
+               (spec-update/do-update!
+                existing-data
+                (-> (assoc existing-data :name "FOO")
+                    (assoc :bars [{:name  "Bar 1"
+                                   :quxes [{:name "qux1"}
+                                           {:name "qux2"}]}
+                                  {:name "Bar 2"}]))
+                nested-multi-row-spec))))))
+
+  (testing "adding entity of the 2nd nested layer"
+    (let [existing-data {:id   1
+                         :name "foo"
+                         :bars [{:id 10
+                                 :name "Bar 1"
+                                 :foo_id "abc-123"
+                                 :quxes []}]}]
+      (is (= [[:insert! :bar_qux [{:bar_id 10
+                                   :name "qux1"}]]]
+             (with-tracked-operations!
+               (spec-update/do-update!
+                existing-data
+                (update-in existing-data [:bars 0 :quxes] conj {:name "qux1"})
+                nested-multi-row-spec))))))
+
+  (testing "updating then adding entity of the 2nd nested layer"
+    (let [existing-data {:id   1
+                         :name "foo"
+                         :bars [{:id 10
+                                 :name "Bar 1"
+                                 :foo_id "abc-123"
+                                 :quxes []}]}]
+      (is (= [[:update! :bar 10 {:name "Updated Bar 1", :foo_id 1}]
+              [:insert! :bar_qux [{:bar_id 10
+                                   :name "qux1"}]]]
+             (with-tracked-operations!
+               (spec-update/do-update!
+                existing-data
+                (-> existing-data
+                    (assoc-in [:bars 0 :name] "Updated Bar 1")
+                    (update-in [:bars 0 :quxes] conj {:name "qux1"}))
+                nested-multi-row-spec)))))))
