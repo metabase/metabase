@@ -66,7 +66,7 @@ interface Props<Entity, EntityWrapper> {
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
   pageSize?: number;
-  reload?: boolean | (() => void); // reload can be passed as a callback from the outer loader
+  reload?: boolean | ChildrenProps<Entity, EntityWrapper>["reload"]; // reload can be passed as a callback from the outer loader
   reloadInterval?: ReloadInterval | ReloadIntervalSelector<Entity>;
   selectorName?: "getList" | "getListUnfiltered";
   wrapped?: boolean;
