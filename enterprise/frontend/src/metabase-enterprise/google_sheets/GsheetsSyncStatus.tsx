@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import Link from "metabase/core/components/Link";
+import { useDispatch } from "metabase/lib/redux";
 import StatusLarge from "metabase/status/components/StatusLarge";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api/gsheets";
 
@@ -11,23 +13,25 @@ export const GsheetsSyncStatus = () => {
   const gsheetsSetting = useSetting("gsheets");
   const { status } = gsheetsSetting;
   const [showStatus, setShowStatus] = useState(status === "loading");
+  const dispatch = useDispatch();
 
   const { data: folderSync } = useGetGsheetsFolderQuery(
-    status !== "loading" || !showStatus ? skipToken : undefined,
+    status === "loading" ? undefined : skipToken,
     { pollingInterval: 3000 },
   );
 
-  useEffect(() => {
-    if (folderSync && folderSync.status === "complete") {
-      setShowStatus(false);
-    }
-  }, [folderSync]);
+  const isComplete = folderSync?.status === "complete";
 
-  if (!showStatus) {
+  useEffect(() => {
+    // sync up the settings status with the folder sync status
+    if (status === "loading" && isComplete) {
+      dispatch(reloadSettings());
+    }
+  }, [isComplete, status, dispatch]);
+
+  if (status !== "loading" && !showStatus) {
     return null;
   }
-
-  const isComplete = folderSync?.status === "complete";
 
   return (
     <StatusLarge
