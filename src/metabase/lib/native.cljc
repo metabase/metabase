@@ -254,7 +254,7 @@
                 (set (keys (native-extras query))))
    (not (str/blank? (raw-native-query query)))))
 
-(mu/defn engine :- :keyword
+(mu/defn engine :- [:maybe :keyword]
   "Returns the database engine.
    Must be a native query"
   [query :- ::lib.schema/query]
