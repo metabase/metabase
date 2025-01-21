@@ -2,8 +2,6 @@
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [metabase.util :as u]
-   [metabase.util.files :as u.files]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [rewrite-clj.node :as n]
@@ -84,7 +82,7 @@
    (keys m)))
 
 (mu/defn- schema-map->malli :- [:maybe ::node]
-  [schema-map :- ::schema-map]
+  [schema-map :- ::schema-map & {:keys [always-optional?], :or {always-optional? false}}]
   (when (seq schema-map)
     (n/vector-node
      (into [(n/keyword-node :map)]
@@ -99,9 +97,10 @@
                            (n/whitespace-node (str/join (repeat (- (+ max-key-length 2)
                                                                    (count (str (keyword k))))
                                                                 \space)))]
-                          ;; optional
-                          (when (and (= (n/tag schema) :vector)
-                                     (= (n/sexpr (first (n/children schema))) :maybe))
+                          ;; add `:optional` or `:default` values to the map as needed
+                          (when (or always-optional?
+                                    (and (= (n/tag schema) :vector)
+                                         (= (n/sexpr (first (n/children schema))) :maybe)))
                             [(n/map-node
                               ;; apparently the old behavior for booleans coerced `nil`, to `false`, so let's replicate
                               ;; that.
@@ -207,7 +206,7 @@
   [{:keys [schema-map], :as parsed} :- ::parsed]
   (some-> schema-map
           (select-keys* (query-args-symbols parsed))
-          schema-map->malli))
+          (schema-map->malli :always-optional? true)))
 
 (mu/defn- new-query-param-arg-nodes :- [:maybe [:sequential ::node]]
   [parsed :- ::parsed]
@@ -274,7 +273,7 @@
 (mu/defn- rewrite-method :- ::zloc
   [_parsed defendpoint :- ::defendpoint-loc]
   (let [method (-> defendpoint z/down z/right)]
-    (z/replace method (n/keyword-node (keyword (u/lower-case-en (name (z/sexpr method))))))))
+    (z/replace method (n/keyword-node (keyword (str/lower-case (name (z/sexpr method))))))))
 
 ;;;
 ;;; rewrite argslist
@@ -505,8 +504,10 @@
           (print-root w))
         (print-root *out*)))))
 
-(defn- files []
-  (->> (u.files/files-seq (u.files/get-path "src/metabase/api/"))
-       (map str)
-       (filter #(str/ends-with? % ".clj"))
-       sort))
+(comment
+  #_{:clj-kondo/ignore [:unresolved-namespace]})
+  (defn- files []
+    (->> (metabase.util.files/files-seq (metabase.util.files/get-path "src/metabase/api/"))
+         (map str)
+         (filter #(str/ends-with? % ".clj"))
+         sort))
