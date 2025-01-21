@@ -200,7 +200,7 @@ describe("QuestionInfoSidebar", () => {
       });
       await setup({ card });
 
-      const link = screen.getByText("Actions");
+      const link = await screen.findByRole("link", { name: /Actions/ });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", Urls.modelDetail(card));
     });
