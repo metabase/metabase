@@ -587,13 +587,6 @@ export class UnconnectedDataSelector extends Component {
       index -= 1;
     }
 
-    if (
-      steps[index] === DATABASE_STEP &&
-      this.props.combineDatabaseSchemaSteps
-    ) {
-      index -= 1;
-    }
-
     // data bucket step doesn't make a lot of sense when there're no models or metrics
     if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableModelsOrMetrics()) {
       return null;
@@ -874,6 +867,8 @@ export class UnconnectedDataSelector extends Component {
 
   renderActiveStep() {
     const { combineDatabaseSchemaSteps, hasNestedQueriesEnabled } = this.props;
+    const previousStep = this.getPreviousStep();
+    const nextStep = this.getNextStep();
 
     const props = {
       ...this.state,
@@ -887,11 +882,13 @@ export class UnconnectedDataSelector extends Component {
 
       // misc
       isLoading: this.state.isLoading,
-      hasNextStep: !!this.getNextStep(),
-      onBack: this.getPreviousStep() ? this.previousStep : null,
+      hasNextStep: !!nextStep,
+      onBack: previousStep ? this.previousStep : null,
       hasFiltering: true,
       hasInitialFocus: !this.showTableSearch(),
     };
+    const hasBackButton =
+      previousStep === DATA_BUCKET_STEP && this.hasUsableModelsOrMetrics();
 
     switch (this.state.activeStep) {
       case DATA_BUCKET_STEP:
@@ -910,19 +907,13 @@ export class UnconnectedDataSelector extends Component {
         );
       case DATABASE_STEP:
         return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker
-            {...props}
-            hasBackButton={this.hasUsableModelsOrMetrics() && props.onBack}
-          />
+          <DatabaseSchemaPicker {...props} hasBackButton={hasBackButton} />
         ) : (
           <DatabasePicker {...props} />
         );
       case SCHEMA_STEP:
         return combineDatabaseSchemaSteps ? (
-          <DatabaseSchemaPicker
-            {...props}
-            hasBackButton={this.hasUsableModelsOrMetrics() && props.onBack}
-          />
+          <DatabaseSchemaPicker {...props} hasBackButton={hasBackButton} />
         ) : (
           <SchemaPicker {...props} />
         );
