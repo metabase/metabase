@@ -1,6 +1,6 @@
 import type { LocationDescriptor } from "history";
 import type * as React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 import _ from "underscore";
@@ -13,13 +13,12 @@ import Tables from "metabase/entities/tables";
 import title from "metabase/hoc/Title";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
+import ModelActionsView from "metabase/models/components/ModelActions";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { Card, CollectionId, WritebackAction } from "metabase-types/api";
+import type { Card, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 type OwnProps = {
@@ -34,22 +33,9 @@ type EntityLoadersProps = {
   model: Question;
 };
 
-type ToastOpts = {
-  notify: {
-    message: JSX.Element;
-    undo: boolean;
-  };
-};
-
 type DispatchProps = {
   loadMetadataForCard: (card: Card) => void;
   fetchTableForeignKeys: (params: { id: Table["id"] }) => void;
-  onChangeModel: (card: Card) => void;
-  onChangeCollection: (
-    card: Card,
-    collection: { id: CollectionId },
-    opts: ToastOpts,
-  ) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 };
 
@@ -58,26 +44,20 @@ type Props = OwnProps & EntityLoadersProps & DispatchProps;
 const mapDispatchToProps = {
   loadMetadataForCard,
   fetchTableForeignKeys: Tables.actions.fetchForeignKeys,
-  onChangeModel: (card: Card) => Questions.actions.update(card),
-  onChangeCollection: Questions.objectActions.setCollection,
   onChangeLocation: replace,
 };
 
-function ModelDetailPage({
+function ModelActions({
   model,
   actions,
   children,
   loadMetadataForCard,
   fetchTableForeignKeys,
-  onChangeModel,
-  onChangeCollection,
   onChangeLocation,
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
   const database = model.database();
-  const { isEditable } = Lib.queryDisplayInfo(model.query());
-  const hasDataPermissions = isEditable;
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const shouldShowActionsUI = hasActions || hasActionsEnabled;
@@ -121,45 +101,15 @@ function ModelDetailPage({
     }
   }, [model, shouldShowActionsUI, onChangeLocation]);
 
-  const handleNameChange = useCallback(
-    (name: string | undefined) => {
-      if (name && name !== model.displayName()) {
-        const nextCard = model.setDisplayName(name).card();
-        onChangeModel(nextCard as Card);
-      }
-    },
-    [model, onChangeModel],
-  );
-
-  const handleCollectionChange = useCallback(
-    (collection: { id: CollectionId }) => {
-      onChangeCollection(model.card() as Card, collection, {
-        notify: {
-          message: (
-            <QuestionMoveToast
-              destination={{ id: collection.id, model: "collection" }}
-              question={model}
-            />
-          ),
-          undo: false,
-        },
-      });
-    },
-    [model, onChangeCollection],
-  );
-
   if (model.isArchived()) {
     return <NotFound />;
   }
 
   return (
     <>
-      <ModelDetailPageView
+      <ModelActionsView
         model={model}
-        hasDataPermissions={hasDataPermissions}
         shouldShowActionsUI={shouldShowActionsUI}
-        onChangeName={handleNameChange}
-        onChangeCollection={handleCollectionChange}
       />
       {/* Required for rendering child `ModalRoute` elements */}
       {children}
@@ -189,4 +139,4 @@ export default _.compose(
     mapDispatchToProps,
   ),
   title(getPageTitle),
-)(ModelDetailPage);
+)(ModelActions);
