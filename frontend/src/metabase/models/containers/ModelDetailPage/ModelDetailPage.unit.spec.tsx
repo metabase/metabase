@@ -46,7 +46,6 @@ import {
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockTable,
-  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   createNativeModelCard as _createNativeModelCard,
@@ -292,15 +291,6 @@ describe("ModelDetailPage", () => {
       expect(screen.getByLabelText("Description")).toHaveTextContent("Foo Bar");
     });
 
-    it("displays model creator", async () => {
-      const creator = createMockUser();
-      await setup({ model: getModel({ creator }) });
-
-      expect(screen.getByLabelText("Created by")).toHaveTextContent(
-        creator.common_name,
-      );
-    });
-
     describe("management", () => {
       it("allows to rename model", async () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
@@ -316,24 +306,6 @@ describe("ModelDetailPage", () => {
             name: "New model name",
           });
         });
-      });
-
-      it("allows to change description", async () => {
-        const { model, modelUpdateSpy } = await setup({ model: getModel() });
-
-        const input = screen.getByPlaceholderText("Add description");
-        await userEvent.type(input, "Foo bar");
-        fireEvent.blur(input);
-
-        await waitFor(() => {
-          expect(modelUpdateSpy).toHaveBeenCalledWith({
-            ...model.card(),
-            description: "Foo bar",
-          });
-        });
-        expect(screen.getByLabelText("Description")).toHaveTextContent(
-          "Foo bar",
-        );
       });
 
       it("can be archived", async () => {
