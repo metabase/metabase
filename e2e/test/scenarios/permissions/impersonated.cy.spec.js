@@ -72,9 +72,11 @@ H.describeEE("impersonated permission", () => {
         cy.findAllByTestId("header-cell").contains("Subtotal");
 
         // No access through the native query builder
-        H.openNativeEditor({ databaseName: "QA Postgres12" }).type(
-          "select * from reviews",
-        );
+        H.startNewNativeQuestion().as("editor");
+
+        cy.findByTestId("gui-builder-data").click();
+        cy.findByLabelText("QA Postgres12").click();
+        cy.get("@editor").type("select * from reviews");
         H.runNativeQuery();
 
         cy.findByTestId("query-builder-main").within(() => {
