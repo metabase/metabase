@@ -55,7 +55,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import ModelDetailPage from "./ModelDetailPage";
+import ModelActions from "./ModelActions";
 
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
@@ -234,7 +234,7 @@ async function setup({
     <>
       <Route path="/model/:slug/detail">
         <IndexRedirect to="actions" />
-        <Route path="actions" component={ModelDetailPage}>
+        <Route path="actions" component={ModelActions}>
           <ModalRoute
             path="new"
             modal={ActionCreator}
@@ -273,7 +273,7 @@ async function openActionMenu(action: WritebackAction) {
   await userEvent.click(menuButton);
 }
 
-describe("ModelDetailPage", () => {
+describe("ModelActions", () => {
   describe.each([
     { type: "structured", getModel: createStructuredModelCard },
     { type: "native", getModel: createNativeModelCard },
