@@ -866,9 +866,14 @@ export class UnconnectedDataSelector extends Component {
   };
 
   renderActiveStep() {
-    const { combineDatabaseSchemaSteps, hasNestedQueriesEnabled } = this.props;
-    const previousStep = this.getPreviousStep();
+    const { steps, combineDatabaseSchemaSteps, hasNestedQueriesEnabled } =
+      this.props;
     const nextStep = this.getNextStep();
+    const previousStep = this.getPreviousStep();
+    const hasBackButton =
+      previousStep != null &&
+      steps.includes(DATA_BUCKET_STEP) &&
+      this.hasUsableModelsOrMetrics();
 
     const props = {
       ...this.state,
@@ -887,8 +892,6 @@ export class UnconnectedDataSelector extends Component {
       hasFiltering: true,
       hasInitialFocus: !this.showTableSearch(),
     };
-    const hasBackButton =
-      previousStep === DATA_BUCKET_STEP && this.hasUsableModelsOrMetrics();
 
     switch (this.state.activeStep) {
       case DATA_BUCKET_STEP:
