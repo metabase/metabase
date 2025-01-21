@@ -54,7 +54,7 @@
         ;; Use seconds for granularity in the fraction.
         (case (mdb/db-type)
           :mysql
-          [[:timestampdiff :second from-column to-column]]
+          [[:timestampdiff [:raw "second"] from-column to-column]]
           [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]])
         [:inline (double seconds-in-a-day)]]]
       [:inline 0]]
@@ -96,7 +96,8 @@
    :from   [:recent_views]
    :where  [:and
             [:= :recent_views.user_id current-user-id]
-            [:= [:cast :recent_views.model_id :text] :search_index.model_id]
+            ;; mysql only supports `char` to cast to a string
+            [:= [:cast :recent_views.model_id :char] :search_index.model_id]
             [:= :recent_views.model
              [:case
               [:= :search_index.model [:inline "dataset"]] [:inline "card"]
@@ -180,7 +181,8 @@
         [:in :search_index.model (mapv (fn [m] [:inline (name m)]) sms)]
         [:= :search_index.model [:inline model-name]])
       [:= (keyword (str table-name ".user_id")) user-id]
-      [:= :search_index.model_id [:cast (keyword (str table-name "." model-name "_id")) :text]]]]))
+      ;; mysql only supports `char` to cast to a string
+      [:= :search_index.model_id [:cast (keyword (str table-name "." model-name "_id")) :char]]]]))
 
 (defn- join-bookmarks [qry user-id]
   (apply sql.helpers/left-join qry (mapcat #(bookmark-join % user-id) bookmarked-models)))
