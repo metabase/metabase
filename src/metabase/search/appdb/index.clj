@@ -1,16 +1,19 @@
 (ns metabase.search.appdb.index
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.models.search-index-metadata :as search-index-metadata]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]
+   [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -19,6 +22,7 @@
    (org.postgresql.util PSQLException)))
 
 (comment
+  h2/keep-me
   postgres/keep-me)
 
 (set! *warn-on-reflection* true)
@@ -77,14 +81,18 @@
   []
   (keyword (str/replace (str "search_index__" (random-uuid)) #"-" "_")))
 
-(defn- exists? [table-name]
-  (when table-name
-    (t2/exists? :information_schema.tables :table_name (name table-name))))
+(defn- table-name [kw]
+  (cond-> (name kw)
+    (= :h2 (mdb/db-type)) u/upper-case-en))
 
-(defn- drop-table! [table-name]
+(defn- exists? [table]
+  (when table
+    (t2/exists? :information_schema.tables :table_name (table-name table))))
+
+(defn- drop-table! [table]
   (boolean
-   (when (and table-name (exists? table-name))
-     (t2/query (sql.helpers/drop-table table-name)))))
+   (when (and table (exists? table))
+     (t2/query (sql.helpers/drop-table (keyword (table-name table)))))))
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
@@ -118,11 +126,49 @@
         (catch ExceptionInfo _)))
     (log/infof "Dropped %d stale indexes" @dropped)))
 
+(defn- ->db-type [t]
+  (get {:pk :int, :timestamp :timestamp-with-time-zone} t t))
+
+(defn- ->db-column [c]
+  (or (get {:id         :model_id
+            :created-at :model_created_at
+            :updated-at :model_updated_at}
+           c)
+      (keyword (u/->snake_case_en (name c)))))
+
+(def ^:private not-null
+  #{:archived :name})
+
+(def ^:private default
+  {:archived false})
+
+;; If this fails, we'll need to increase the size of :model below
+(assert (>= 32 (transduce (map (comp count name)) max 0 search.config/all-models)))
+
+(def ^:private base-schema
+  (into [[:model [:varchar 32] :not-null]
+         [:display_data :text :not-null]
+         [:legacy_input :text :not-null]
+         ;; useful for tracking the speed and age of the index
+         [:created_at :timestamp-with-time-zone
+          [:default [:raw "CURRENT_TIMESTAMP"]]
+          :not-null]
+         [:updated_at :timestamp-with-time-zone :not-null]]
+        (keep (fn [[k t]]
+                (when t
+                  (into [(->db-column k) (->db-type t)]
+                        (concat
+                         (when (not-null k)
+                           [:not-null])
+                         (when-some [d (default k)]
+                           [[:default d]]))))))
+        search.spec/attr-types))
+
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
   [table-name]
   (-> (sql.helpers/create-table table-name)
-      (sql.helpers/with-columns (specialization/table-schema))
+      (sql.helpers/with-columns (specialization/table-schema base-schema))
       t2/query)
   (let [table-name (name table-name)]
     (doseq [stmt (specialization/post-create-statements table-name table-name)]

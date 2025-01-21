@@ -28,10 +28,14 @@
 ;; Make sure the legacy cookies still work.
 (derive :search.engine/fulltext :search.engine/appdb)
 
+(def supported-db?
+  "All the databases which we have implemented fulltext search for."
+  #{:postgres :h2})
+
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (and (or (not config/is-prod?)
            (= "appdb" (some-> (public-settings/search-engine) name)))
-       (= (mdb/db-type) :postgres)))
+       (supported-db? (mdb/db-type))))
 
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
