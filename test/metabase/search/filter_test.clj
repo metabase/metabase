@@ -67,15 +67,11 @@
   (testing "In the general case, we simply filter by models, and exclude dashboard cards"
     (is (= {:select [:some :stuff]
             :from   :somewhere
-            :where  [:and
-                     [:= 1 2]
-                     [:or [:= nil :search_index.dashboard_id] nil]]}
+            :where  [:= 1 2]}
            (search.filter/with-filters {:models []} {:select [:some :stuff], :from :somewhere})))
     (is (= {:select [:some :stuff]
             :from   :somewhere
-            :where  [:and
-                     [:in :search_index.model ["a"]]
-                     [:or [:= nil :search_index.dashboard_id] nil]]}
+            :where  [:in :search_index.model ["a"]]}
            (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
 
   (testing "We can insert appropriate constraints for all the filters"
@@ -92,9 +88,6 @@
                       ;; depends on whether :content-verification is enabled
                       #_[:= :search_index.verified true]
                       [:in :search_index.creator_id [123]]
-                      [:or
-                       [:= nil :search_index.dashboard_id]
-                       [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]]]
                       [:= :search_index.database_id 231]
                       [:>= [:cast :search_index.last_edited_at :date] #t"2024-10-02"]
                       [:< [:cast :search_index.last_edited_at :date] #t"2024-10-03"]
