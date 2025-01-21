@@ -192,7 +192,7 @@ describe("QuestionInfoSidebar", () => {
     });
   });
 
-  describe("model detail link", () => {
+  describe("actions link", () => {
     it("is shown for models", async () => {
       const card = createMockCard({
         name: "abc",
@@ -200,8 +200,7 @@ describe("QuestionInfoSidebar", () => {
       });
       await setup({ card });
 
-      const link = screen.getByText("See more about this model");
-
+      const link = screen.getByText("Actions");
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", Urls.modelDetail(card));
     });
@@ -213,9 +212,7 @@ describe("QuestionInfoSidebar", () => {
       });
       await setup({ card });
       expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();
-      expect(
-        screen.queryByText("See more about this model"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Actions")).not.toBeInTheDocument();
     });
   });
 
