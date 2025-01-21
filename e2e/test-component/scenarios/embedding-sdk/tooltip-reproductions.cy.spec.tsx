@@ -65,7 +65,7 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
     });
 
     H.getDashboardCard(0).within(() => {
-      H.chartPathWithFillColor("#509EE3").eq(0).realHover().wait(200);
+      H.chartPathWithFillColor("#509EE3").eq(0).realHover();
     });
 
     cy.findAllByTestId("echarts-tooltip")
@@ -73,12 +73,13 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
       .should("exist")
       .then($tooltip => {
         const tooltipElement = $tooltip[0];
+        const visibleTopmostElement = getVisibleTopmostElement(tooltipElement);
 
         // The tooltip is indeed visible if we clicked on a child of the tooltip.
         // Using `.should("be.visible")` does not work here as Cypress incorrectly
         // reports the tooltip is obscured by the bar chart even though it has a higher z-index.
         const isTopmostElementChildOfTooltip = tooltipElement.contains(
-          getVisibleTopmostElement(tooltipElement),
+          visibleTopmostElement,
         );
 
         expect(isTopmostElementChildOfTooltip).to.equal(true);
