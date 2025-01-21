@@ -6,9 +6,13 @@ redirect_from:
 
 # MySQL
 
-> We recommend using MySQL version 8.0.33 or higher.
+> This page covers connecting to MySQL as a _data warehouse_. For using MySQL as Metabase's _application database_, see [Configuring the Metabase application database](../../installation-and-operation/configuring-application-database.md).
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+
+## Supported versions
+
+Metabase supports the oldest supported version through the latest stable version. See [MySQL end-of-life dates](https://endoflife.software/applications/databases/mysql).
 
 ## Settings
 
