@@ -1,8 +1,7 @@
 (ns metabase.api.cache
   (:require
    [clojure.walk :as walk]
-   [compojure.core :refer [GET]]
-   [metabase.api.common :as api] 
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.cache-config :as cache-config]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -75,18 +74,16 @@
                        "question" :model/Card)
                      id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Return cache configuration."
-  [:as {{:strs [model collection id]
-         :or   {model "root"}}
-        :query-params}]
-  {model      (mu/with (ms/QueryVectorOf cache-config/CachingModel)
-                       {:description "Type of model"})
-   collection (mu/with [:maybe ms/PositiveInt]
-                       {:description "Collection id to filter results. Returns everything if not supplied."})
-   id         (mu/with [:maybe ms/PositiveInt]
-                       {:description "Model id to get configuration for."})}
+  [_route-params
+   {:keys [model collection id]} :- [:map
+          [:model      (mu/with (ms/QueryVectorOf cache-config/CachingModel)
+                       {:default "root", :description "Type of model"})]
+          [:collection (mu/with [:maybe ms/PositiveInt]
+                       {:description "Collection id to filter results. Returns everything if not supplied."})]
+          [:id         (mu/with [:maybe ms/PositiveInt]
+                       {:description "Model id to get configuration for."})]]]
   (when (and (not (premium-features/enable-cache-granular-controls?))
              (not= model ["root"]))
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
@@ -97,7 +94,7 @@
   "Store cache configuration."
   [_route-params
    _query-params
-   {:keys [model model_id strategy] :as config} :- [:map
+   {:keys [model model_id] :as config} :- [:map
           [:model    cache-config/CachingModel]
           [:model_id ms/IntGreaterThanOrEqualToZero]
           [:strategy (CacheStrategyAPI)]]]
