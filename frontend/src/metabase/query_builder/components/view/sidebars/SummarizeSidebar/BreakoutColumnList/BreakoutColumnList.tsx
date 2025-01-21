@@ -1,4 +1,22 @@
-import { type ChangeEvent, useCallback, useMemo, useState } from "react";
+import {
+  DndContext,
+  type DndContextProps,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+} from "@dnd-kit/core";
+import { restrictToParentElement } from "@dnd-kit/modifiers";
+import { SortableContext, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useMergedRef } from "@mantine/hooks";
+import {
+  type ChangeEvent,
+  type Ref,
+  forwardRef,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import Input from "metabase/core/components/Input";
@@ -37,6 +55,7 @@ export function BreakoutColumnList({
   const isSearching = searchQuery.trim().length > 0;
 
   const breakouts = Lib.breakouts(query, stageIndex);
+
   const [pinnedItemCount, setPinnedItemCount] = useState(breakouts.length);
 
   const pinnedItems = useMemo(
@@ -102,6 +121,19 @@ export function BreakoutColumnList({
   );
 
   const handleResetSearch = useCallback(() => setSearchQuery(""), []);
+  const handleReorderBreakout = (
+    sourceClause: Lib.BreakoutClause,
+    targetClause: Lib.BreakoutClause,
+  ) => {
+    const nextQuery = Lib.swapClauses(
+      query,
+      stageIndex,
+      sourceClause,
+      targetClause,
+    );
+
+    onQueryChange(nextQuery);
+  };
 
   return (
     <>
@@ -118,19 +150,26 @@ export function BreakoutColumnList({
       {!isSearching && (
         <DelayGroup>
           <ul data-testid="pinned-dimensions">
-            {pinnedItems.map((item, itemIndex) => (
-              <BreakoutColumnListItem
-                key={itemIndex}
-                query={query}
-                stageIndex={stageIndex}
-                item={item}
-                breakout={item.breakout}
-                isPinned
-                onAddBreakout={onAddBreakout}
-                onUpdateBreakout={onUpdateBreakout}
-                onRemoveBreakout={handleRemovePinnedBreakout}
-              />
-            ))}
+            <BreakoutDnDContext
+              items={pinnedItems}
+              onReorder={handleReorderBreakout}
+            >
+              {pinnedItems.map((item, itemIndex) => (
+                <BreakoutDnDItem index={itemIndex} key={itemIndex}>
+                  <BreakoutColumnListItem
+                    key={itemIndex}
+                    query={query}
+                    stageIndex={stageIndex}
+                    item={item}
+                    breakout={item.breakout}
+                    isPinned
+                    onAddBreakout={onAddBreakout}
+                    onUpdateBreakout={onUpdateBreakout}
+                    onRemoveBreakout={handleRemovePinnedBreakout}
+                  />
+                </BreakoutDnDItem>
+              ))}
+            </BreakoutDnDContext>
           </ul>
         </DelayGroup>
       )}
@@ -142,19 +181,26 @@ export function BreakoutColumnList({
                 {section.name}
               </Box>
               <ul>
-                {section.items.map((item, itemIndex) => (
-                  <BreakoutColumnListItem
-                    key={itemIndex}
-                    query={query}
-                    stageIndex={stageIndex}
-                    item={item}
-                    breakout={item.breakout}
-                    onAddBreakout={onAddBreakout}
-                    onUpdateBreakout={onUpdateBreakout}
-                    onRemoveBreakout={onRemoveBreakout}
-                    onReplaceBreakouts={handleReplaceBreakouts}
-                  />
-                ))}
+                <BreakoutDnDContext
+                  items={section.items}
+                  onReorder={handleReorderBreakout}
+                >
+                  {section.items.map((item, itemIndex) => (
+                    <BreakoutDnDItem index={itemIndex} key={itemIndex}>
+                      <BreakoutColumnListItem
+                        key={itemIndex}
+                        query={query}
+                        stageIndex={stageIndex}
+                        item={item}
+                        breakout={item.breakout}
+                        onAddBreakout={onAddBreakout}
+                        onUpdateBreakout={onUpdateBreakout}
+                        onRemoveBreakout={onRemoveBreakout}
+                        onReplaceBreakouts={handleReplaceBreakouts}
+                      />
+                    </BreakoutDnDItem>
+                  ))}
+                </BreakoutDnDContext>
               </ul>
             </li>
           ))}
@@ -163,3 +209,73 @@ export function BreakoutColumnList({
     </>
   );
 }
+
+function BreakoutDnDContext({ items, children, onReorder }: any) {
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: { distance: 15 },
+  });
+
+  const handleSortEnd: DndContextProps["onDragEnd"] = useCallback(
+    (input: DragEndEvent) => {
+      if (input.over) {
+        const sourceIndex = getItemIndexFromId(input.active.id);
+        const targetIndex = getItemIndexFromId(input.over.id);
+
+        onReorder(items[sourceIndex].breakout, items[targetIndex].breakout);
+      }
+    },
+    [items, onReorder],
+  );
+
+  return (
+    <DndContext
+      sensors={[pointerSensor]}
+      modifiers={[restrictToParentElement]}
+      onDragEnd={handleSortEnd}
+    >
+      <SortableContext
+        items={items.map((_, index) => getItemIdFromIndex(index))}
+      >
+        {children}
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+// dnd-kit ignores `0` item, so we convert indexes to string `"0"`
+function getItemIdFromIndex(index: number) {
+  return String(index);
+}
+
+function getItemIndexFromId(id: string | number) {
+  return Number(id);
+}
+
+const BreakoutDnDItem = forwardRef(function BreakoutDnDItem(
+  { index, readOnly, children }: any,
+  ref: Ref<HTMLDivElement>,
+) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({
+      id: getItemIdFromIndex(index),
+      disabled: readOnly,
+      // disable animation after reordering because we don't have stable item ids
+      animateLayoutChanges: () => false,
+    });
+
+  const mergedRef = useMergedRef(ref, setNodeRef);
+
+  return (
+    <div
+      ref={mergedRef}
+      {...attributes}
+      {...listeners}
+      style={{
+        transition,
+        transform: CSS.Translate.toString(transform),
+      }}
+    >
+      {children}
+    </div>
+  );
+});
