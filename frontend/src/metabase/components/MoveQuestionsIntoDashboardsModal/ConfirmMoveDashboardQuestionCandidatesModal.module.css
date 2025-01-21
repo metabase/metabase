@@ -31,7 +31,7 @@
   /* magic numbers:
    * 90dvh as modal has 5dvh padding on top/bottom
    * 189 is sum height of other elements in modal */
-  min-height: min(10rem, calc(90dvh - 189px));
+  min-height: min(25rem, calc(90dvh - 189px));
   max-height: min(40rem, calc(90dvh - 189px));
 }
 
