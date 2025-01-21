@@ -16,7 +16,7 @@ Questions are the basic building blocks of Metabase.
 
 An introduction to Metabase's graphical query builder.
 
-### [Custom expressions](./query-builder/expressions.md)
+### [Custom expressions](./query-builder/expressions-list.md)
 
 Custom expressions, like spreadsheet formulas, are tools you can use in the graphical query builder to ask more complicated questions.
 
