@@ -887,8 +887,8 @@ export class UnconnectedDataSelector extends Component {
 
       // misc
       isLoading: this.state.isLoading,
-      hasNextStep: !!nextStep,
-      onBack: previousStep ? this.previousStep : null,
+      hasNextStep: nextStep != null,
+      onBack: previousStep != null ? this.previousStep : null,
       hasFiltering: true,
       hasInitialFocus: !this.showTableSearch(),
     };
