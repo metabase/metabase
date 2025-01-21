@@ -155,9 +155,10 @@
   "Clojure entrypoint to render javascript visualizations."
   [cards-with-data dashcard-viz-settings]
   (let [response (.asString (js.engine/execute-fn-name (context) "javascript_visualization"
-                                                       (json/generate-string cards-with-data)
-                                                       (json/generate-string dashcard-viz-settings)
-                                                       (json/generate-string (public-settings/application-colors))))]
+                                                       (json/encode cards-with-data)
+                                                       (json/encode dashcard-viz-settings)
+                                                       (json/encode {:applicationColors (public-settings/application-colors)
+                                                                     :startOfWeek (public-settings/start-of-week)})))]
     (-> response
         (json/parse-string true)
         (update :type (fnil keyword "unknown")))))
