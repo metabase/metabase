@@ -27,10 +27,10 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
+   [metabase.models.notification :as models.notification]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as models.pulse]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
@@ -1009,29 +1009,28 @@
            (progress? display))
        (< 1 (count (get-in new-card [:dataset_query :query :breakout])))))
 
-(defn- delete-alert-and-notify!
+(defn delete-alert-and-notify!
   "Removes all of the alerts and notifies all of the email recipients of the alerts change."
-  [topic actor alerts]
-  (t2/delete! :model/Pulse :id [:in (mapv u/the-id alerts)])
-  (events/publish-event! topic {:alerts alerts, :actor actor}))
+  [topic actor card]
+  (when-let [card-notifications (seq (models.notification/notifications-for-card (:id card)))]
+    (t2/delete! :model/Notification :id [:in (map :id card-notifications)])
+    (events/publish-event! topic {:card          card
+                                  :actor         actor
+                                  :notifications card-notifications})))
 
 (defn- delete-alerts-if-needed! [& {:keys [old-card new-card actor]}]
-  ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (binding [models.pulse/*allow-hydrate-archived-cards* true]
-                      (not-empty (models.pulse/retrieve-alerts-for-cards {:card-ids [(u/the-id new-card)]})))]
-    (cond
+  (cond
+    (card-archived? old-card new-card)
+    (delete-alert-and-notify! :event/card-update.notification-deleted.card-archived actor new-card)
 
-      (card-archived? old-card new-card)
-      (delete-alert-and-notify! :event/card-update.alerts-deleted.card-archived actor alerts)
+    (or (display-change-broke-alert? old-card new-card)
+        (goal-missing? old-card new-card)
+        (multiple-breakouts? new-card))
+    (delete-alert-and-notify! :event/card-update.notification-deleted.card-changed actor new-card)
 
-      (or (display-change-broke-alert? old-card new-card)
-          (goal-missing? old-card new-card)
-          (multiple-breakouts? new-card))
-      (delete-alert-and-notify! :event/card-update.alerts-deleted.card-became-invalid actor alerts)
-
-      ;; The change doesn't invalidate the alert, do nothing
-      :else
-      nil)))
+    ;; The change doesn't invalidate the alert, do nothing
+    :else
+    nil))
 
 (defn- card-is-verified?
   "Return true if card is verified, false otherwise. Assumes that moderation reviews are ordered so that the most recent
@@ -1194,7 +1193,7 @@
                    "`card-before-update`:" (pr-str card-before-update)
                    "`card-updates`:" (pr-str card-updates)))))
   ;; Fetch the updated Card from the DB
-  (let [card (t2/select-one :model/Card :id (:id card-before-update))]
+  (let [card (t2/select-one :model/Card (:id card-before-update))]
     (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
     ;; skip publishing the event if it's just a change in its collection position
     (when-not (= #{:collection_position}

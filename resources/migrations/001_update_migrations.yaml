@@ -10410,6 +10410,137 @@ databaseChangeLog:
       rollback: # will be deleted with table
 
   - changeSet:
+      id: v53.2024-12-12T08:00:00
+      author: qnkhuat
+      comment: add notification.payload_id
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification
+              columnName: payload_id
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: payload_id
+                  type: int
+                  remarks: the internal id of the notification
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v53.2024-12-12T08:01:00
+      author: qnkhuat
+      comment: create the notification_card table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_card
+      changes:
+        - createTable:
+            tableName: notification_card
+            remarks: Card related notifications
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: the card that the alert is connected to
+                  constraints:
+                    nullable: true
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_alert_card_id
+                    deleteCascade: true
+              - column:
+                  name: send_once
+                  type: ${boolean.type}
+                  remarks: whether the alert should only run once
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: send_condition
+                  type: varchar(32)
+                  remarks: the condition of the alert
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v53.2024-12-12T08:03:00
+      author: qnkhuat
+      comment: add notification.creator_id
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification
+              columnName: creator_id
+      changes:
+        - addColumn:
+            tableName: notification
+            columns:
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: the id of the creator
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v53.2024-12-12T08:04:00
+      author: qnkhuat
+      comment: add fk constraint to notification.creator_id
+      preConditions:
+        - not:
+          - foreignKeyConstraintExists:
+              foreignKeyName: fk_notification_creator_id
+              foreignKeyTableName: notification
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: notification
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_notification_creator_id
+            onDelete: CASCADE
+            nullable: true
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v53.2024-12-12T08:05:00
+      author: qnkhuat
+      comment: Migrate alert to notification
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateAlertToNotification"
+      rollback:
+        # delete all migrated notification on rollback so we can re-run the migration
+        - sql:
+            sql: >-
+              DELETE FROM notification WHERE internal_id IS NOT NULL;
+
+  - changeSet:
       id: v53.2024-12-27T17:33:54
       author: nvoxland
       comment: Adds encryption-check setting to encryption management

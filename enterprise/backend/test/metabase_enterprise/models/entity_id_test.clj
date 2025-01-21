@@ -56,6 +56,7 @@
     :model/ModelIndexValue
     :model/ModerationReview
     :model/Notification
+    :model/NotificationCard
     :model/NotificationSubscription
     :model/NotificationHandler
     :model/NotificationRecipient

@@ -67,6 +67,13 @@
   (assert (every? keyword? keywords))
   (vec (concat [:enum] keywords (map u/qualified-name keywords))))
 
+(defn enum-decode-keyword
+  "Returns an enum schema that decodes strings to keywords.
+    (enum-decode-keyword :foo :bar)
+    ;; => [:enum {:decode/json keyword} :foo :bar]"
+  [keywords]
+  (into [:enum {:decode/json keyword}] keywords))
+
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
 (def NonBlankString

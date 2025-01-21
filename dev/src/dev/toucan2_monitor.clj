@@ -57,7 +57,7 @@
                      (stacktrace/print-stack-trace (Exception. "tracker")))
                    str/split-lines)]
     (some-> (u/seek #(and (re-find #"^\s*metabase\." %)
-                      (not (re-find #"^\s*metabase\.db" %))) trace)
+                          (not (re-find #"^\s*metabase\.db" %))) trace)
             str/trim)))
 
 (defn- track-query-execution-fn
@@ -66,7 +66,7 @@
         result (next-method rf conn query-type model query)
         end    (System/nanoTime)]
     (swap! queries* (fnil conj []) [query (/ (- end start) 1e6) (call-site)])
-   result))
+    result))
 
 (def ^:private log-thread-ref (volatile! nil))
 
@@ -143,12 +143,12 @@
   `(do-with-queries (^:once fn* [~queries-binding] ~@body)))
 
 (comment
- (start!)
- (queries)
- (stop!)
- (reset-queries!)
- (summary)
- (to-csv!)
- (doseq [q (querles)]
-   #_:clj-kondo/ignore
-   (println q)))
+  (start!)
+  (queries)
+  (stop!)
+  (reset-queries!)
+  (summary)
+  (to-csv!)
+  (doseq [q (querles)]
+    #_:clj-kondo/ignore
+    (println q)))
