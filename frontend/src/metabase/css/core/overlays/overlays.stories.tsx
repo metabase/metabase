@@ -1,3 +1,5 @@
+// @ts-expect-error There is no type definition
+import createAsyncCallback from "@loki/create-async-callback";
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
@@ -201,11 +203,16 @@ const launchAThenB = async (
   bType: OverlayType,
   { canvasElement }: { canvasElement: HTMLElement },
 ) => {
+  const asyncCallback = createAsyncCallback();
+
   const body = canvasElement.parentElement as HTMLElement;
   const launchers = getLaunchers({ portalRoot: body });
   const [launchA, launchB] = [launchers[aType], launchers[bType]];
   const a = await launchA({ launchFrom: body, portalRoot: body });
   await launchB({ launchFrom: a, portalRoot: body });
+
+  // tell loki to make a screenshot
+  asyncCallback();
 };
 
 export const MantineModalCanLaunchLegacyModal: Scenario = {
