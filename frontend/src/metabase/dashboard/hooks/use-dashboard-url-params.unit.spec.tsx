@@ -3,15 +3,15 @@ import type { Location } from "history";
 import type { PropsWithChildren } from "react";
 
 import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { useSetEmbedFont } from "metabase/public/hooks";
+import { useEmbedFont } from "metabase/public/hooks";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { useDashboardUrlParams } from "./use-dashboard-url-params";
 
-jest.mock("../../public/hooks/use-set-embed-font", () => ({
-  useSetEmbedFont: jest.fn(),
+jest.mock("metabase/public/hooks/use-embed-font", () => ({
+  useEmbedFont: jest.fn(),
 }));
 
 const setup = ({ location }: { location: Location }) => {
@@ -21,23 +21,39 @@ const setup = ({ location }: { location: Location }) => {
     <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>
   );
 
-  const useSetEmbedFontMock = useSetEmbedFont as jest.Mock;
+  const setFontMock = jest.fn();
+  const onRefreshMock = jest.fn();
 
-  const { result } = renderHook(
-    () => useDashboardUrlParams({ location, onRefresh: jest.fn() }),
+  (useEmbedFont as jest.Mock).mockReturnValue({
+    font: null,
+    setFont: setFontMock,
+  });
+
+  const { result, rerender } = renderHook(
+    props => useDashboardUrlParams(props),
     {
       wrapper: Wrapper,
+      initialProps: { location, onRefresh: onRefreshMock },
     },
   );
 
-  return { result, useSetEmbedFontMock };
+  return { result, rerender, setFontMock, onRefreshMock };
 };
 
 describe("useDashboardUrlParams", () => {
-  it("sets embed font", () => {
-    const location = { hash: "#font=Roboto" } as Location;
-    const { useSetEmbedFontMock } = setup({ location });
+  it("sets and updates font", () => {
+    const { setFontMock, onRefreshMock, rerender } = setup({
+      location: { hash: "#font=Roboto" } as Location,
+    });
 
-    expect(useSetEmbedFontMock).toHaveBeenCalledWith({ location });
+    expect(setFontMock).toHaveBeenCalledWith("Roboto");
+
+    rerender({
+      location: { hash: "" } as Location,
+      onRefresh: onRefreshMock,
+    });
+
+    expect(setFontMock).toHaveBeenCalledWith(null);
+    expect(setFontMock).toHaveBeenCalledTimes(2);
   });
 });
