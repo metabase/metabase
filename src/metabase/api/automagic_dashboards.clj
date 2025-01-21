@@ -278,7 +278,7 @@
                                                                      [:prefix             Prefix]
                                                                      [:dashboard-template DashboardTemplate]]
    {:keys [show]} :- [:map
-                      [:show Show]]]
+                      [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (xrays/automagic-analysis {:show               (coerce-show show)
                                  :dashboard-template ["table" prefix dashboard-template]})))
@@ -292,7 +292,7 @@
                                                       [:entity-id-or-query ms/NonBlankString]
                                                       [:cell-query         Base64EncodedJSON]]
    {:keys [show]} :- [:map
-                      [:show Show]]]
+                      [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (xrays/automagic-analysis {:show       (coerce-show show)
                                  :cell-query (decode-base64-json cell-query)})))
@@ -307,7 +307,7 @@
                                                                                 [:dashboard-template DashboardTemplate]
                                                                                 [:cell-query         Base64EncodedJSON]]
    {:keys [show]} :- [:map
-                      [:show Show]]]
+                      [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
       (xrays/automagic-analysis {:show               (coerce-show show)
                                  :dashboard-template ["table" prefix dashboard-template]
@@ -322,7 +322,7 @@
                                                [:entity             Entity]
                                                [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
-                      [:show Show]]]
+                      [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (xrays/automagic-analysis left {:show         (coerce-show show)
@@ -341,7 +341,7 @@
                                                                  [:dashboard-template DashboardTemplate]
                                                                  [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
-                      [:show Show]]]
+                      [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (xrays/automagic-analysis left {:show               (coerce-show show)
@@ -361,7 +361,7 @@
                                                                  [:cell-query         Base64EncodedJSON]
                                                                  [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
-                      [:show Show]]]
+                      [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (xrays/automagic-analysis left {:show         (coerce-show show)
@@ -382,7 +382,7 @@
                                                                  [:cell-query         Base64EncodedJSON]
                                                                  [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
-                      [:show Show]]]
+                      [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (xrays/automagic-analysis left {:show               (coerce-show show)
