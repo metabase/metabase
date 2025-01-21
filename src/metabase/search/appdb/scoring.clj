@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -16,7 +17,7 @@
 (defn truthy
   "Prefer it when a (potentially nullable) boolean is true."
   [column]
-  [:coalesce [:cast column :integer] [:inline 0]])
+  [:coalesce [:cast column (case (mdb/db-type) :mysql :signed :integer)] [:inline 0]])
 
 (defn equal
   "Prefer it when it matches a specific (non-null) value"
@@ -51,8 +52,10 @@
       [:- ceiling
        [:/
         ;; Use seconds for granularity in the fraction.
-        ;; TODO will probably need to specialize this based on (mdb/db-type)
-        [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]]
+        (case (mdb/db-type)
+          :mysql
+          [[:timestampdiff [:raw "second"] from-column to-column]]
+          [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]])
         [:inline (double seconds-in-a-day)]]]
       [:inline 0]]
      ceiling]))
@@ -93,7 +96,8 @@
    :from   [:recent_views]
    :where  [:and
             [:= :recent_views.user_id current-user-id]
-            [:= [:cast :recent_views.model_id :text] :search_index.model_id]
+            ;; mysql only supports `char` to cast to a string
+            [:= [:cast :recent_views.model_id :char] :search_index.model_id]
             [:= :recent_views.model
              [:case
               [:= :search_index.model [:inline "dataset"]] [:inline "card"]
@@ -142,7 +146,7 @@
     {:model       [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
-    {:text         (specialization/text-score)
+    {:text         (specialization/text-score search-ctx)
      :view-count   (view-count-expr search.config/view-count-scaling-percentile)
      :pinned       (truthy :pinned)
      :bookmarked   bookmark-score-expr
@@ -177,7 +181,8 @@
         [:in :search_index.model (mapv (fn [m] [:inline (name m)]) sms)]
         [:= :search_index.model [:inline model-name]])
       [:= (keyword (str table-name ".user_id")) user-id]
-      [:= :search_index.model_id [:cast (keyword (str table-name "." model-name "_id")) :text]]]]))
+      ;; mysql only supports `char` to cast to a string
+      [:= :search_index.model_id [:cast (keyword (str table-name "." model-name "_id")) :char]]]]))
 
 (defn- join-bookmarks [qry user-id]
   (apply sql.helpers/left-join qry (mapcat #(bookmark-join % user-id) bookmarked-models)))

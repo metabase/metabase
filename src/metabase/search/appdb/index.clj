@@ -8,6 +8,7 @@
    [metabase.models.search-index-metadata :as search-index-metadata]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
+   [metabase.search.appdb.specialization.mysql :as mysql]
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
@@ -23,7 +24,8 @@
 
 (comment
   h2/keep-me
-  postgres/keep-me)
+  postgres/keep-me
+  mysql/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -34,7 +36,7 @@
 (defonce ^:dynamic ^:private *index-version-id*
   (if config/is-prod?
     (:hash config/mb-version-info)
-    (str (random-uuid))))
+    (u/generate-nano-id)))
 
 (defonce ^:private next-sync-at (atom nil))
 
@@ -79,7 +81,7 @@
 (defn gen-table-name
   "Generate a unique table name to use as a search index table."
   []
-  (keyword (str/replace (str "search_index__" (random-uuid)) #"-" "_")))
+  (keyword (str/replace (str "search_index__" (u/generate-nano-id)) #"-" "_")))
 
 (defn- table-name [kw]
   (cond-> (name kw)
@@ -99,7 +101,7 @@
        (t2/query {:select [:table_name]
                   :from   :information_schema.tables
                   :where  [:and
-                           [:= :table_schema :%current_schema]
+                           [:= :table_schema (if (= (mdb/db-type) :mysql) :%schema :%current_schema)]
                            [:or
                             [:like [:lower :table_name] [:inline "search\\_index\\_\\_%"]]
                             ;; legacy table names
@@ -126,9 +128,6 @@
         (catch ExceptionInfo _)))
     (log/infof "Dropped %d stale indexes" @dropped)))
 
-(defn- ->db-type [t]
-  (get {:pk :int, :timestamp :timestamp-with-time-zone} t t))
-
 (defn- ->db-column [c]
   (or (get {:id         :model_id
             :created-at :model_created_at
@@ -145,18 +144,18 @@
 ;; If this fails, we'll need to increase the size of :model below
 (assert (>= 32 (transduce (map (comp count name)) max 0 search.config/all-models)))
 
-(def ^:private base-schema
+(defn- base-schema []
   (into [[:model [:varchar 32] :not-null]
          [:display_data :text :not-null]
          [:legacy_input :text :not-null]
          ;; useful for tracking the speed and age of the index
-         [:created_at :timestamp-with-time-zone
-          [:default [:raw "CURRENT_TIMESTAMP"]]
+         [:created_at (specialization/->db-type :timestamp)
+          [:default [:raw "CURRENT_TIMESTAMP(6)"]]
           :not-null]
-         [:updated_at :timestamp-with-time-zone :not-null]]
+         [:updated_at (specialization/->db-type :timestamp) :not-null]]
         (keep (fn [[k t]]
                 (when t
-                  (into [(->db-column k) (->db-type t)]
+                  (into [(->db-column k) (specialization/->db-type t)]
                         (concat
                          (when (not-null k)
                            [:not-null])
@@ -168,7 +167,7 @@
   "Create an index table with the given name. Should fail if it already exists."
   [table-name]
   (-> (sql.helpers/create-table table-name)
-      (sql.helpers/with-columns (specialization/table-schema base-schema))
+      (sql.helpers/with-columns (specialization/table-schema (base-schema)))
       t2/query)
   (let [table-name (name table-name)]
     (doseq [stmt (specialization/post-create-statements table-name table-name)]

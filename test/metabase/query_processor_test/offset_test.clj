@@ -316,5 +316,6 @@
                         :data count)
         result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
                          :data count)]
+    (is (pos? total-count))
     (is (>= total-count result-count))
     (is (= 1 result-count))))

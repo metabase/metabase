@@ -44,7 +44,8 @@
    :dashboard-id        :int
    :dashboardcard-count :int
    :database-id         :pk
-   :id                  :text
+   ;; MySQL cannot have `:text` column in an index
+   :id                  (keyword "varchar(100)")
    :last-edited-at      :timestamp
    :last-editor-id      :pk
    :last-viewed-at      :timestamp
