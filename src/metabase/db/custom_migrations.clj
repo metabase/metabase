@@ -1331,7 +1331,7 @@
 ;; So we need to delete this on migrate down, so when they migrate up, the triggers will be recreated.
 (define-reversible-migration DeleteSendPulseTaskOnDowngrade
   (log/info "No forward migration for DeleteSendPulseTaskOnDowngrade")
-  (custom-migrations.util/with-temp-schedule! {scheduler}
+  (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.send-pulse.job"))))
 
 ;; The InitSendPulseTriggers is a migration in disguise, it runs once per instance
@@ -1339,7 +1339,7 @@
 ;; on the second migrate up.
 (define-reversible-migration DeleteInitSendPulseTriggersOnDowngrade
   (log/info "No forward migration for DeleteInitSendPulseTriggersOnDowngrade")
-  (custom-migrations.util/with-temp-schedule! {scheduler}
+  (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))))
 
 ;; when card display is area or bar,
@@ -1764,4 +1764,4 @@
 
 (define-reversible-migration MigrateAlertToNotification
   (pulse-to-notification/migrate-alerts!)
-  (pulse-to-notification/remove-init-send-pulse-trigger))
+  (pulse-to-notification/remove-init-send-pulse-trigger!))

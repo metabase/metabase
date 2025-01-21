@@ -158,7 +158,7 @@
                                :from   [:pulse]
                                :where  [:and [:in :alert_condition ["rows" "goal"]] [:not :archived]]}))))
 
-(defn remove-init-send-pulse-trigger
+(defn remove-init-send-pulse-trigger!
   "Remove the init-send-pulse-triggers.trigger from the scheduler so that it can run again."
   []
   (custom-migrations.util/with-temp-schedule! [scheduler]
