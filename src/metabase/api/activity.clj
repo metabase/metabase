@@ -109,11 +109,11 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint ^:deprecated GET "/recent_views"
+(api.macros/defendpoint :get "/recent_views"
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
-  []
+  {:deprecated true} 
+ []
   {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
 
 (api.macros/defendpoint :get "/recents"
