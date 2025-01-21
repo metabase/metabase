@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { Stack, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
@@ -25,17 +26,22 @@ function ModelDetailPage({
   return (
     <RootLayout>
       <ModelMain>
-        <ModelDetailHeader
-          model={model}
-          hasEditDefinitionLink={hasDataPermissions}
-          onChangeName={onChangeName}
-          onChangeCollection={onChangeCollection}
-        />
-        {shouldShowActionsUI ? (
-          <ModelActionDetails model={model} />
-        ) : (
-          <>{t`Actions are not enabled for this model.`}</>
-        )}
+        <Stack spacing="xl">
+          <ModelDetailHeader
+            model={model}
+            hasEditDefinitionLink={hasDataPermissions}
+            onChangeName={onChangeName}
+            onChangeCollection={onChangeCollection}
+          />
+          {shouldShowActionsUI ? (
+            <Stack spacing="sm">
+              <Title order={3}>Actions</Title>
+              <ModelActionDetails model={model} />
+            </Stack>
+          ) : (
+            <>{t`Actions are not enabled for this model.`}</>
+          )}
+        </Stack>
       </ModelMain>
     </RootLayout>
   );

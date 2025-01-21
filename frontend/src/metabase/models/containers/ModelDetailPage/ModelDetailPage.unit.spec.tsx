@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Redirect, Route } from "react-router";
+import { IndexRedirect, Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -25,7 +25,6 @@ import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { checkNotNull } from "metabase/lib/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,
   Collection,
@@ -234,9 +233,7 @@ async function setup({
   const { history } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
-        <IndexRedirect to="usage" />
-        <Route path="usage" component={ModelDetailPage} />
-        <Route path="schema" component={ModelDetailPage} />
+        <IndexRedirect to="actions" />
         <Route path="actions" component={ModelDetailPage}>
           <ModalRoute
             path="new"
@@ -249,7 +246,6 @@ async function setup({
             modalProps={{ enableTransition: false }}
           />
         </Route>
-        <Redirect from="*" to="usage" />
       </Route>
       <Route path="/question/:slug" component={() => null} />
     </>,
@@ -282,13 +278,12 @@ describe("ModelDetailPage", () => {
     { type: "structured", getModel: createStructuredModelCard },
     { type: "native", getModel: createNativeModelCard },
   ])(`$type model`, ({ getModel }) => {
-    it("renders and shows general info", async () => {
+    it("renders and shows name", async () => {
       await setup({
-        model: getModel({ name: "My Model", description: "Foo Bar" }),
+        model: getModel({ name: "My Model" }),
       });
 
       expect(screen.getByText("My Model")).toBeInTheDocument();
-      expect(screen.getByLabelText("Description")).toHaveTextContent("Foo Bar");
     });
 
     describe("management", () => {
@@ -349,19 +344,6 @@ describe("ModelDetailPage", () => {
         await setup({ model, actions: [action] });
 
         expect(screen.getByText("Actions")).toBeInTheDocument();
-      });
-
-      it("redirects to 'Used by' when trying to access actions tab without them enabled", async () => {
-        const { baseUrl, history } = await setup({
-          model: getModel(),
-          tab: "actions",
-        });
-
-        expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
-        expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
-          "aria-selected",
-          "true",
-        );
       });
 
       it("shows empty state if there are no actions", async () => {
@@ -544,11 +526,6 @@ describe("ModelDetailPage", () => {
         ).toBeDisabled();
       });
 
-      it("doesn't allow to change description", async () => {
-        await setup({ model: modelCard });
-        expect(screen.getByPlaceholderText("No description")).toBeDisabled();
-      });
-
       it("doesn't show model management actions", async () => {
         await setup({ model: modelCard });
         expect(queryIcon("ellipsis")).not.toBeInTheDocument();
@@ -559,12 +536,6 @@ describe("ModelDetailPage", () => {
       it("doesn't show a link to the query editor", async () => {
         await setup({ model: modelCard });
         expect(screen.queryByText("Edit definition")).not.toBeInTheDocument();
-      });
-
-      it("doesn't show a link to the metadata editor", async () => {
-        await setup({ model: modelCard });
-        await userEvent.click(screen.getByText("Schema"));
-        expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
       });
 
       it("doesn't allow to create actions", async () => {
@@ -596,16 +567,6 @@ describe("ModelDetailPage", () => {
     });
 
     describe("no data permissions", () => {
-      it("doesn't show model editor links", async () => {
-        await setup({
-          model: getModel(),
-          databases: [],
-          tab: "schema",
-        });
-        expect(screen.queryByText("Edit definition")).not.toBeInTheDocument();
-        expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
-      });
-
       it("doesn't show a new question link", async () => {
         await setup({ model: getModel(), databases: [], tab: "usage" });
         expect(
@@ -670,25 +631,6 @@ describe("ModelDetailPage", () => {
 
   describe("structured model", () => {
     const modelCard = createStructuredModelCard();
-
-    it("displays backing table", async () => {
-      await setup({ model: modelCard });
-      expect(screen.getByLabelText("Backing table")).toHaveTextContent(
-        TEST_TABLE.display_name,
-      );
-    });
-
-    it("displays related tables", async () => {
-      const { metadata } = await setup({ model: modelCard });
-      const TABLE_1 = checkNotNull(metadata.table(TEST_FK_TABLE_1_ID));
-
-      const list = within(screen.getByTestId("model-relationships"));
-
-      expect(
-        list.getByRole("link", { name: TABLE_1.displayName() }),
-      ).toHaveAttribute("href", ML_Urls.getUrl(TABLE_1.newQuestion()));
-      expect(list.queryByText("Reviews")).not.toBeInTheDocument();
-    });
 
     it("allows to create implicit actions", async () => {
       const action = createMockQueryAction({ model_id: modelCard.id });
@@ -794,18 +736,6 @@ describe("ModelDetailPage", () => {
 
   describe("native model", () => {
     const modelCard = createNativeModelCard();
-
-    it("doesn't show backing table", async () => {
-      await setup({ model: modelCard });
-      expect(screen.queryByLabelText("Backing table")).not.toBeInTheDocument();
-    });
-
-    it("doesn't show related tables", async () => {
-      await setup({ model: modelCard });
-      expect(
-        screen.queryByTestId("model-relationships"),
-      ).not.toBeInTheDocument();
-    });
 
     it("doesn't allow to create basic actions", async () => {
       await setup({ model: modelCard });
