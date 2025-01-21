@@ -330,32 +330,28 @@ describe("scenarios > models", () => {
           .and("contain.text", "Orders");
 
         cy.findByText("Everywhere").click();
-        getResults().should("have.length", 6);
-        cy.findByText("6 results").should("be.visible");
+        getResults().should("have.length", 5);
+        cy.findByText("5 results").should("be.visible");
         getResults()
           .eq(0)
           .should("have.attr", "data-model-type", "dataset")
-          .and("contain.text", "Orders Model");
+          .and("contain.text", "Orders");
         getResults()
           .eq(1)
-          .should("have.attr", "data-model-type", "dataset")
+          .should("have.attr", "data-model-type", "table")
           .and("contain.text", "Orders");
         getResults()
           .eq(2)
           .should("have.attr", "data-model-type", "card")
-          .and("contain.text", "Orders, Count, Grouped by Created At (year)");
+          .and("contain.text", "Orders, Count");
         getResults()
           .eq(3)
-          .should("have.attr", "data-model-type", "card")
-          .and("contain.text", "Orders, Count");
+          .should("have.attr", "data-model-type", "dataset")
+          .and("contain.text", "Orders Model");
         getResults()
           .eq(4)
           .should("have.attr", "data-model-type", "card")
-          .and("contain.text", "Orders");
-        getResults()
-          .eq(5)
-          .should("have.attr", "data-model-type", "table")
-          .and("contain.text", "Orders");
+          .and("contain.text", "Orders, Count, Grouped by Created At (year)");
       });
     });
 

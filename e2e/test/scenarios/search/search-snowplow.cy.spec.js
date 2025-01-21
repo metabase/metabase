@@ -40,7 +40,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         {
           event: SEARCH_CLICK,
           context: "command-palette",
-          position: 3,
+          position: 2,
         },
         1,
       );
@@ -122,7 +122,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       });
 
       cy.findByTestId("search-bar-results-container")
-        .findByRole("heading", { name: "People" })
+        .findByRole("heading", { name: "PEOPLE" })
         .click();
 
       H.expectGoodSnowplowEvent({
@@ -147,7 +147,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         H.expectGoodSnowplowEvent({
           event: SEARCH_CLICK,
           context: "search-app",
-          position: 0,
+          position: 3,
         });
       });
     });

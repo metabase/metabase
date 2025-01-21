@@ -304,7 +304,7 @@ H.describeEE("scenarios > premium > content verification", () => {
         H.commandPaletteSearch("orders");
         cy.log("Verified content should show up higher in search results");
         cy.findAllByTestId("search-result-item")
-          .eq(0)
+          .eq(1)
           .within(() => {
             cy.findByText("Orders, Count");
             cy.icon("verified_filled");
@@ -407,12 +407,10 @@ H.describeEE("scenarios > premium > content verification", () => {
       cy.log(
         "The question lost the verification status and does not appear high in search results anymore",
       );
-      cy.findAllByTestId("search-result-item").as("searchResults");
-      // NOTE: It still appears first, probably due to the recency ranker...
-      //       I have confirmed that the ranker is no longer active at least.
-      // We could probably fix this by opening another dashboard before searching.
-      //   .first()
-      //   .should("not.contain", "Orders, Count");
+      cy.findAllByTestId("search-result-item")
+        .as("searchResults")
+        .first()
+        .should("not.contain", "Orders, Count");
       cy.log("Verified icon should not appear at all in search results");
       cy.get("@searchResults").icon("verified").should("not.exist");
     });
@@ -437,12 +435,10 @@ H.describeEE("scenarios > premium > content verification", () => {
       cy.log(
         "The question lost the verification status and does not appear high in search results anymore",
       );
-      cy.findAllByTestId("search-result-item").as("searchResults");
-      // NOTE: It still appears first, probably due to the recency ranker...
-      //       I have confirmed that the ranker is no longer active at least.
-      // We could probably fix this by opening another question before searching.
-      //   .first()
-      //   .should("not.contain", "Orders in a dashboard");
+      cy.findAllByTestId("search-result-item")
+        .as("searchResults")
+        .first()
+        .should("not.contain", "Orders in a dashboard");
       cy.log("Verified icon should not appear at all in search results");
       cy.get("@searchResults").icon("verified").should("not.exist");
     });
