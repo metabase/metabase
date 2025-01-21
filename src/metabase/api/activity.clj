@@ -1,7 +1,6 @@
 (ns metabase.api.activity
   (:require
    [clojure.string :as str]
-   [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.api.macros :as api.macros]
@@ -112,8 +111,8 @@
 (api.macros/defendpoint :get "/recent_views"
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
-  {:deprecated true} 
- []
+  {:deprecated true}
+  []
   {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
 
 (api.macros/defendpoint :get "/recents"
