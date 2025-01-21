@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import PropTypes from "prop-types";
-import { Component } from "react";
+import { Component, forwardRef } from "react";
 import ReactDOM from "react-dom";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -84,9 +84,11 @@ class CardRenderer extends Component {
   }
 }
 
-const CardRendererWithRef = (props, ref) => {
+const CardRendererWithRef = forwardRef((props, ref) => {
   return <CardRenderer {...props} forwardedRef={ref} />;
-};
+});
+
+CardRendererWithRef.displayName = "CardRenderer";
 
 export default ExplicitSize({
   wrapped: true,

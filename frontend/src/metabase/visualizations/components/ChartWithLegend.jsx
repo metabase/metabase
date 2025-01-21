@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import { Component, forwardRef } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -155,9 +155,11 @@ class ChartWithLegend extends Component {
   }
 }
 
-const ChartWithLegendWithRef = (props, ref) => {
+const ChartWithLegendWithRef = forwardRef((props, ref) => {
   return <ChartWithLegend {...props} forwardedRef={ref} />;
-};
+});
+
+ChartWithLegendWithRef.displayName = "ChartWithLegendWithRef";
 
 export default ExplicitSize({
   wrapped: true,

@@ -1,6 +1,14 @@
 import cx from "classnames";
 import { getIn } from "icepick";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  type Ref,
+  forwardRef,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -66,6 +74,7 @@ interface TableSimpleProps {
   getExtraDataForClick: (clickObject: ClickObject) => Record<string, unknown>;
   onVisualizationClick?: (clickObject: ClickObject) => void;
   visualizationIsClickable?: (clickObject: ClickObject) => boolean;
+  forwardedRef?: Ref<HTMLDivElement>;
 }
 
 function TableSimpleInner({
@@ -80,6 +89,7 @@ function TableSimpleInner({
   visualizationIsClickable,
   getColumnTitle,
   getExtraDataForClick,
+  forwardedRef,
 }: TableSimpleProps) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(1);
@@ -225,7 +235,7 @@ function TableSimpleInner({
   );
 
   return (
-    <Root className={className}>
+    <Root className={className} ref={el => forwardedRef(el)}>
       <ContentContainer>
         <TableContainer className={cx(CS.scrollShow, CS.scrollShowHover)}>
           <Table
@@ -257,7 +267,13 @@ function TableSimpleInner({
   );
 }
 
+const TableSimpleWithRef = forwardRef((props, ref) => (
+  <TableSimpleInner {...props} forwardedRef={ref} />
+));
+
+TableSimpleWithRef.displayName = "TableSimple";
+
 export const TableSimple = ExplicitSize<TableSimpleProps>({
   refreshMode: props =>
     props.isDashboard && !props.isEditing ? "debounceLeading" : "throttle",
-})(TableSimpleInner);
+})(TableSimpleWithRef);

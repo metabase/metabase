@@ -1,6 +1,13 @@
 import cx from "classnames";
 import type * as React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { findDOMNode } from "react-dom";
 import { useMount, usePrevious } from "react-use";
 import type { OnScrollParams } from "react-virtualized";
@@ -77,6 +84,7 @@ function _PivotTable({
   fontFamily,
   isEditing,
   onVisualizationClick,
+  forwardedRef,
 }: VisualizationProps) {
   const [viewPortWidth, setViewPortWidth] = useState(width);
   const [shouldOverflow, setShouldOverflow] = useState(false);
@@ -349,6 +357,7 @@ function _PivotTable({
 
   return (
     <PivotTableRoot
+      ref={el => forwardedRef(el)}
       shouldOverflow={shouldOverflow}
       shouldHideScrollbars={isEditing && isDashboard}
       isDashboard={isDashboard}
@@ -542,6 +551,12 @@ function _PivotTable({
   );
 }
 
+const PivotTableWithRef = forwardRef((props, ref) => (
+  <_PivotTable {...props} forwardedRef={ref}></_PivotTable>
+));
+
+PivotTableWithRef.displayName = "PivotTable";
+
 const PivotTable = ExplicitSize<
   VisualizationProps & {
     className?: string;
@@ -549,7 +564,7 @@ const PivotTable = ExplicitSize<
 >({
   wrapped: false,
   refreshMode: "debounceLeading",
-})(_PivotTable);
+})(PivotTableWithRef);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(connect(mapStateToProps)(PivotTable), {

@@ -8,7 +8,6 @@ import type {
   Ref,
 } from "react";
 import React, { Component, createRef } from "react";
-import ReactDOM from "react-dom";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
@@ -95,34 +94,9 @@ function ExplicitSize<T>({
 
       _getElement() {
         try {
-          let element = ReactDOM.findDOMNode(this);
+          let element = this.elementRef?.current;
           if (selector && element instanceof Element) {
             element = element.querySelector(selector) || element;
-          }
-
-          if (displayName === "Connect(Visualization)") {
-            console.log(
-              displayName,
-              { selector },
-              !selector && element !== this.elementRef?.current,
-            );
-          }
-          if (!selector && element !== this.elementRef?.current) {
-            console.log(
-              !selector && element !== this.elementRef?.current
-                ? "DIFFERENT"
-                : "SAME",
-              displayName,
-              wrapped,
-              element,
-              !selector ? this.elementRef?.current : element,
-            );
-            console.error(
-              `${displayName}: *********  element and elementRef DO NOT MATCH. ************`,
-            );
-            throw new Error(
-              `${displayName}: *********  element and elementRef DO NOT MATCH. ************`,
-            );
           }
 
           return element instanceof Element ? element : null;
