@@ -1,6 +1,7 @@
 import type { EditorState } from "@codemirror/state";
 import { t } from "ttag";
 
+import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type { CardId, CardType } from "metabase-types/api";
 
@@ -228,5 +229,5 @@ export function referencedQuestionIds(query: Lib.Query): CardId[] {
   return Object.values(Lib.templateTags(query) ?? {})
     .filter(tag => tag.type === "card")
     .map(tag => tag["card-id"])
-    .filter(cardId => cardId != null);
+    .filter(isNotNull);
 }
