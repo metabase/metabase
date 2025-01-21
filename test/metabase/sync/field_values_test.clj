@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.sync.field-values-test
+(ns metabase.sync.field-values-test
   "Tests around the way Metabase syncs FieldValues, and sets the values of `field.has_field_values`."
   (:require
    [clojure.string :as str]
@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
    [metabase.models.field-values :as field-values]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data :as data]

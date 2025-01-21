@@ -32,7 +32,7 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
   const handleButtonClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     if (onClick && !disabled) {
-      onClick?.(e);
+      onClick(e);
     }
   };
 

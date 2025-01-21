@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.plugins :as plugins]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]

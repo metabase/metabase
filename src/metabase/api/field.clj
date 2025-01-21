@@ -13,8 +13,7 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.query-processor :as qp]
    [metabase.request.core :as request]
-   [metabase.sync :as sync]
-   [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.sync.core :as sync]
    [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -120,7 +119,7 @@
           ;; been synced when JSON unfolding was enabled. This assumes the JSON field is already updated to have
           ;; JSON unfolding enabled.
           (let [table (field/table old-field)]
-            (sync.concurrent/submit-task (fn [] (sync/sync-table! table))))))
+            (sync/submit-task! (fn [] (sync/sync-table! table))))))
       (t2/update! :model/Field
                   :table_id (:table_id old-field)
                   :nfc_path [:like (str "[\"" (:name old-field) "\",%]")]
@@ -189,7 +188,7 @@
                  (t2/hydrate :dimensions :has_field_values)
                  (field/hydrate-target-with-write-perms))
       (when (not= effective-type (:effective_type field))
-        (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>)))))))
+        (sync/submit-task! (fn [] (sync/refingerprint-field! <>)))))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 

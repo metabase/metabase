@@ -4,14 +4,14 @@
    [hiccup.core :refer [html]]
    [medley.core :as m]
    [metabase.channel.core :as channel]
+   [metabase.channel.email :as email]
+   [metabase.channel.email.messages :as messages]
+   [metabase.channel.email.result-attachment :as email.result-attachment]
+   [metabase.channel.models.channel :as models.channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.handlebars :as handlebars]
-   [metabase.email :as email]
-   [metabase.email.messages :as messages]
-   [metabase.email.result-attachment :as email.result-attachment]
-   [metabase.models.channel :as models.channel]
    [metabase.models.notification :as models.notification]
    [metabase.models.params.shared :as shared.params]
    [metabase.public-settings :as public-settings]
@@ -165,11 +165,11 @@
   {:notification/dashboard {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
                                            :subject "{{payload.dashboard.name}}"
-                                           :path    "metabase/email/dashboard_subscription.hbs"}}
+                                           :path    "metabase/channel/email/dashboard_subscription.hbs"}}
    :notification/card      {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
                                            :subject "{{computed.subject}}"
-                                           :path    "metabase/email/notification_card.hbs"}}})
+                                           :path    "metabase/channel/email/notification_card.hbs"}}})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Notification Card                                          ;;

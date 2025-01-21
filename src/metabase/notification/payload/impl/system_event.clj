@@ -1,6 +1,6 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.models.user :as user]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.public-settings :as public-settings]

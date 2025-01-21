@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.channel.core :as channel]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.events.notification :as events.notification]
    [metabase.integrations.slack :as slack]
    [metabase.models.notification :as models.notification]

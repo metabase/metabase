@@ -11,12 +11,14 @@ export type ChartTypeOptionProps = {
   onSelectVisualization: (display: CardDisplayType) => void;
   visualizationType: CardDisplayType;
   selectedVisualization: CardDisplayType;
+  onOpenSettings?: () => void;
 };
 
 export const ChartTypeOption = ({
   visualizationType,
   selectedVisualization,
   onSelectVisualization,
+  onOpenSettings,
 }: ChartTypeOptionProps) => {
   const visualization = checkNotNull(visualizations.get(visualizationType));
   const isSelected = selectedVisualization === visualizationType;
@@ -35,7 +37,9 @@ export const ChartTypeOption = ({
           h="3.125rem"
           radius="xl"
           onClick={() => {
-            if (!isSelected) {
+            if (isSelected) {
+              onOpenSettings?.();
+            } else {
               onSelectVisualization(visualizationType);
             }
           }}
@@ -54,6 +58,25 @@ export const ChartTypeOption = ({
             size={20}
           />
         </ActionIcon>
+
+        {isSelected && onOpenSettings && (
+          <ActionIcon
+            pos="absolute"
+            top="-0.5rem"
+            right="-0.6rem"
+            radius="xl"
+            color="text-light"
+            variant="viewHeader"
+            bg="white"
+            className={cx(
+              ChartTypeOptionS.BorderedButton,
+              ChartTypeOptionS.SettingsButton,
+            )}
+            onClick={() => onOpenSettings?.()}
+          >
+            <Icon name="gear" size={16} />
+          </ActionIcon>
+        )}
 
         <Text
           lh="unset"

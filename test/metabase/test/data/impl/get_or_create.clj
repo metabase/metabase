@@ -9,7 +9,7 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.humanization :as humanization]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
