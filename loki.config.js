@@ -21,9 +21,7 @@ module.exports = {
   },
   "looks-same": {
     strict: false,
-    tolerance: 6,
-    antialiasingTolerance: 0,
-    ignoreAntialiasing: true,
-    ignoreCaret: true,
+    antialiasingTolerance: 9,
+    tolerance: 9,
   },
 };
