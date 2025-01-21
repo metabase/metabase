@@ -623,7 +623,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.editDashboard();
 
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("All Options")
+        .findByText("Date")
         .click();
 
       H.selectDashboardFilter(H.getDashboardCard(0), "Created At");
@@ -639,7 +639,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.editDashboard();
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("All Options")
+        .findByText("Date")
         .click();
       H.selectDashboardFilter(H.getDashboardCard(0), "Created At");
 
@@ -652,7 +652,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.editDashboard();
 
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("All Options")
+        .findByText("Date")
         .click();
 
       H.disconnectDashboardFilter(H.getDashboardCard(0));
