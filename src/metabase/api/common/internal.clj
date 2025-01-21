@@ -7,8 +7,8 @@
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
-   [metabase.async.streaming-response :as streaming-response]
    [metabase.config :as config]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -18,7 +18,7 @@
    [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types])
   (:import
-   (metabase.async.streaming_response StreamingResponse)))
+   (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 

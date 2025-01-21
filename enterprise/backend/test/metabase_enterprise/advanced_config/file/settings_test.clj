@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase-enterprise.advanced-config.file.settings-test
+(ns metabase-enterprise.advanced-config.file.settings-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]

@@ -1018,16 +1018,14 @@ describe("issue 37374", () => {
 
     cy.log("changing the viz type to pivot table and running the query works");
     H.openVizTypeSidebar();
-    cy.findByTestId("chartsettings-sidebar")
+    cy.findByTestId("chart-type-sidebar")
       .findByTestId("Pivot Table-button")
       .click();
     cy.wait("@cardPivotQuery");
     cy.findByTestId("pivot-table").should("be.visible");
 
     cy.log("changing the viz type back to table and running the query works");
-    cy.findByTestId("chartsettings-sidebar")
-      .findByTestId("Table-button")
-      .click();
+    cy.findByTestId("chart-type-sidebar").findByTestId("Table-button").click();
     cy.wait("@cardQuery");
     H.tableInteractive().should("be.visible");
   });
@@ -1450,7 +1448,7 @@ describe("issue 44637", () => {
 
     H.assertQueryBuilderRowCount(0);
     H.queryBuilderMain().findByText("No results!").should("exist");
-    H.openVizTypeSidebar();
+    H.queryBuilderFooter().button("Visualization").click();
     H.leftSidebar().icon("bar").click();
     H.queryBuilderMain().within(() => {
       cy.findByText("No results!").should("exist");
@@ -2080,7 +2078,7 @@ describe("issue 41612", () => {
       { visitQuestion: true },
     );
 
-    H.queryBuilderFooter().findByLabelText("Switch to data").click();
+    H.queryBuilderMain().findByLabelText("Switch to data").click();
     H.queryBuilderHeader().button("Save").click();
     H.modal().button("Save").click();
 
@@ -2243,7 +2241,9 @@ describe("issue 48829", () => {
       cy.findByText("Add filter").click();
     });
 
-    H.queryBuilderHeader().button("Show Editor").click();
+    H.queryBuilderHeader()
+      .button(/Editor/)
+      .click();
     H.getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .icon("close")
@@ -2258,13 +2258,17 @@ describe("issue 48829", () => {
   it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter via the filter modal (metabase#48829)", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
-    H.queryBuilderHeader().button("Filter").click();
+    H.queryBuilderHeader()
+      .button(/Filter/)
+      .click();
     H.modal().within(() => {
       cy.findByText("Doohickey").click();
       cy.button("Apply filters").click();
     });
 
-    H.queryBuilderHeader().button("Show Editor").click();
+    H.queryBuilderHeader()
+      .button(/Editor/)
+      .click();
     H.getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .icon("close")
@@ -2302,7 +2306,9 @@ describe("issue 48829", () => {
     // Navigate to question using click action in dashboard
     H.main().findByText("Rustic Paper Wallet").click();
 
-    H.queryBuilderHeader().button("Show Editor").click();
+    H.queryBuilderHeader()
+      .button(/Editor/)
+      .click();
     H.getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .icon("close")

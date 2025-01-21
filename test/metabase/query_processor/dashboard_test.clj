@@ -252,14 +252,12 @@
                            dashboard-id card-id dashcard-id
                            :parameters [{:id    "5791ff38"
                                          :value ["Something Else"]}])))))
-        (testing "Providing a nil value should override both defaults and produce an error"
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"You'll need to pick a value for 'Filter' before this query can run."
-               (run-query-for-dashcard
-                dashboard-id card-id dashcard-id
-                :parameters [{:id    "5791ff38"
-                              :value nil}]))))))))
+        (testing "Providing a nil value should use the default value"
+          (is (= [["Foo"]]
+                 (mt/rows (run-query-for-dashcard
+                           dashboard-id card-id dashcard-id
+                           :parameters [{:id    "5791ff38"
+                                         :value nil}])))))))))
 
 (deftest do-not-apply-unconnected-filters-for-same-card-test
   (testing (str "If the same Card is added to a Dashboard multiple times but with different filters, only apply the "

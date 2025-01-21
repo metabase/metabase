@@ -9,7 +9,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]

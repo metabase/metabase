@@ -14,11 +14,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.related :as related]
    [metabase.request.core :as request]
-   [metabase.sync :as sync]
-   [metabase.sync.concurrent :as sync.concurrent]
-   [metabase.sync.field-values :as sync.field-values]
+   [metabase.sync.core :as sync]
    [metabase.types :as types]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -26,6 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -81,11 +79,12 @@
         (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
+;; TODO -- this seems like it belongs in the `sync` module... right?
 (defn- sync-unhidden-tables
   "Function to call on newly unhidden tables. Starts a thread to sync all tables."
   [newly-unhidden]
   (when (seq newly-unhidden)
-    (sync.concurrent/submit-task
+    (sync/submit-task!
      (fn []
        (let [database (table/database (first newly-unhidden))]
          ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
@@ -584,9 +583,9 @@
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
       ;; async so as not to block the UI
-      (sync.concurrent/submit-task
+      (sync/submit-task!
        (fn []
-         (sync.field-values/update-field-values-for-table! table))))
+         (sync/update-field-values-for-table! table))))
     {:status :success}))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -605,7 +604,7 @@
   "Return related entities."
   [id]
   {id ms/PositiveInt}
-  (-> (t2/select-one :model/Table :id id) api/read-check related/related))
+  (-> (t2/select-one :model/Table :id id) api/read-check xrays/related))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint PUT "/:id/fields/order"

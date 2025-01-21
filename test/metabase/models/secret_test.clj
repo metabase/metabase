@@ -1,9 +1,11 @@
 (ns metabase.models.secret-test
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.models.secret :as secret]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2])
@@ -12,6 +14,8 @@
    (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
 (defn- value-matches?
   "Returns true iff `expected` value matches the `actual` (bytes) value. If `expected` is a String, then `actual` is
@@ -52,7 +56,7 @@
 (deftest get-secret-string-test
   (testing "get-secret-string from value only"
     (is (= "titok"
-           (secret/get-secret-string {:secret-prop-value "titok"} "secret-prop"))))
+           (secret/value-as-string :secret-test-driver {:keystore-value "titok"} "keystore"))))
 
   (testing "get-secret-string from value only from the database"
     (mt/with-temp [:model/Secret {id :id} {:name       "private-key"
@@ -60,34 +64,28 @@
                                            :value      "titok"
                                            :creator_id (mt/user->id :crowberto)}]
       (is (= "titok"
-             (secret/get-secret-string {:secret-prop-id id} "secret-prop")))))
+             (secret/value-as-string :secret-test-driver {:keystore-id id} "keystore")))))
 
   (testing "get-secret-string from uploaded value"
     (mt/with-temp [:model/Secret {id :id} {:name       "private-key"
                                            :kind       ::secret/pem-cert
-                                           :value      (let [encoder (java.util.Base64/getEncoder)]
-                                                         (str "data:application/octet-stream;base64,"
-                                                              (.encodeToString encoder
-                                                                               (.getBytes "titok" "UTF-8"))))
+                                           :value      (.getBytes "titok" "UTF-8")
                                            :creator_id (mt/user->id :crowberto)}]
       (is (= "titok"
-             (secret/get-secret-string
-              {:secret-prop-id      id
-               :secret-prop-options "uploaded"}
-              "secret-prop")))
+             (secret/value-as-string :secret-test-driver
+                                     {:keystore-id      id
+                                      :keystore-options "uploaded"}
+                                     "keystore")))
       (testing "but prefer value if both value and id are given (#33452)"
         (are [value] (= "psszt!"
-                        (secret/get-secret-string
-                         {:secret-prop-id      id
-                          :secret-prop-value   value
-                          :secret-prop-options "uploaded"}
-                         "secret-prop"))
+                        (secret/value-as-string
+                         :secret-test-driver
+                         {:keystore-id      id
+                          :keystore-value   value
+                          :keystore-options "uploaded"}
+                         "keystore"))
           "psszt!"
-          (.getBytes "psszt!" "UTF-8")
-          (let [encoder (java.util.Base64/getEncoder)]
-            (str "data:application/octet-stream;base64,"
-                 (.encodeToString encoder
-                                  (.getBytes "psszt!" "UTF-8"))))))))
+          (mt/bytes->base64-data-uri (.getBytes "psszt!" "UTF-8"))))))
 
   (testing "get-secret-string from local file"
     (mt/with-temp-file [file-db "-1-key.pem"
@@ -97,35 +95,42 @@
 
       (testing "from value"
         (is (= "titok"
-               (secret/get-secret-string
-                {:secret-prop-path    file-db
-                 :secret-prop-options "local"}
-                "secret-prop"))))
+               (secret/value-as-string
+                :secret-test-driver
+                {:keystore-path    file-db
+                 :keystore-options "local"}
+                "keystore"))))
 
       (testing "from the database"
         (mt/with-temp [:model/Secret {id :id} {:name       "private-key"
                                                :kind       ::secret/pem-cert
+                                               :source     :file-path
                                                :value      file-db
                                                :creator_id (mt/user->id :crowberto)}]
           (is (= "titok"
-                 (secret/get-secret-string
-                  {:secret-prop-id      id
-                   :secret-prop-options "local"}
-                  "secret-prop")))
+                 (secret/value-as-string
+                  :secret-test-driver
+                  {:keystore-id id}
+                  "keystore")))
           (testing "but prefer value if both value and id are given (#33452)"
             (is (= "psszt!"
-                   (secret/get-secret-string
-                    {:secret-prop-id      id
-                     :secret-prop-value   file-value
-                     :secret-prop-options "local"}
-                    "secret-prop")))))))))
+                   (secret/value-as-string
+                    :secret-test-driver
+                    {:keystore-id      id
+                     :keystore-path    file-value
+                     :keystore-options "local"}
+                    "keystore")))))))))
+
+(defn- tempfile-with-contents
+  ^File [contents encoding]
+  (doto (File/createTempFile "value-to-file-test_" ".txt")
+    (.deleteOnExit)
+    (spit contents :encoding (str encoding))))
 
 (deftest value->file!-test
   (testing "value->file! works for a secret value"
     (let [file-secret-val "dingbat"
-          ^File tmp-file  (doto (File/createTempFile "value-to-file-test_" ".txt")
-                            (.deleteOnExit))]
-      (spit tmp-file file-secret-val)
+          ^File tmp-file (tempfile-with-contents file-secret-val StandardCharsets/UTF_8)]
       (doseq [[value-kind exp-val secret-map] [["string"
                                                 nil
                                                 {:name  "string secret"
@@ -143,8 +148,8 @@
                                                  :source "file-path"
                                                  :value  (.getAbsolutePath tmp-file)}]]]
         (testing (format " with a %s value" value-kind)
-          (mt/with-temp [:model/Secret {:keys [value] :as secret} (assoc secret-map :creator_id (mt/user->id :crowberto))]
-            (let [val-file (secret/value->file! secret nil)]
+          (mt/with-temp [:model/Secret {secret-id :id :keys [value]} (assoc secret-map :creator_id (mt/user->id :crowberto))]
+            (let [val-file (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore")]
               (is (value-matches? (or exp-val value)
                                   (let [result (byte-array (.length val-file))]
                                     (with-open [in (DataInputStream. (io/input-stream val-file))]
@@ -153,62 +158,79 @@
   (testing "value->file! returns the same file for secrets"
     (testing "for file paths"
       (let [file-secret-val "dingbat"
-            ^File tmp-file  (doto (File/createTempFile "value-to-file-test_" ".txt")
-                              (.deleteOnExit))]
-        (spit tmp-file file-secret-val)
-        (mt/with-temp [:model/Secret secret {:name   "file based secret"
-                                             :kind   :perm-cert
-                                             :source "file-path"
-                                             :value  (.getAbsolutePath tmp-file)}]
-          (is (instance? java.io.File (secret/value->file! secret nil)))
-          (is (= (secret/value->file! secret nil)
-                 (secret/value->file! secret nil))
+            ^File tmp-file  (tempfile-with-contents file-secret-val StandardCharsets/UTF_8)]
+        (mt/with-temp [:model/Secret {secret-id :id} {:name   "file based secret"
+                                                      :kind   :perm-cert
+                                                      :source "file-path"
+                                                      :value  (.getAbsolutePath tmp-file)}]
+          (is (instance? java.io.File (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore")))
+          (is (= (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore")
+                 (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore"))
               "Secret did not return the same file"))))
     (testing "for upload files (#23034)"
-      (mt/with-temp [:model/Secret secret {:name   "file based secret"
-                                           :kind   :perm-cert
-                                           :source nil
-                                           :value  (.getBytes "super secret")}]
-        (is (instance? java.io.File (secret/value->file! secret nil)))
-        (is (= (secret/value->file! secret nil)
-               (secret/value->file! secret nil))
+      (mt/with-temp [:model/Secret {secret-id :id} {:name   "file based secret"
+                                                    :kind   :perm-cert
+                                                    :source nil
+                                                    :value  (.getBytes "super secret")}]
+        (is (instance? java.io.File (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore")))
+        (is (= (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore")
+               (secret/value-as-file! :secret-test-driver {:keystore-id secret-id} "keystore"))
             "Secret did not return the same file")))))
 
-(defn- decode-ssl-db-property [content mime-type property]
-  (let [value-key (keyword (str property "-value"))
-        options-key (keyword (str property "-options"))]
-    (:value (secret/db-details-prop->secret-map
-             {:ssl true
-              :ssl-mode "verify-ca"
-              value-key (format "data:%s;base64,%s" mime-type (u/encode-base64 content))
-              options-key "uploaded"
-              :port 5432,
-              :advanced-options false
-              :dbname "the-bean-base"
-              :host "localhost"
-              :tunnel-enabled false
-              :engine :postgres
-              :user "human-bean"}
-             property))))
-
-(deftest ssl-cert-base
-  (testing "db-details-prop->secret-map"
-    (let [content "<Certificate text goes here>"
+(deftest ssl-cert-base-uploaded
+  (testing "secrets aren't mangled by encoding"
+    (let [content "☃️<Certificate text goes here>☃️"
           mime-types ["application/x-x509-ca-cert" "application/octet-stream"]]
       (testing "decodes root cert value properly (#20319, #22626)"
-        (doseq [property ["ssl-root-cert" "ssl-client-cert"]
-                mime-type mime-types]
-          (testing (format "property %s with mime-type %s" property mime-type)
-            (is (= content
-                   (decode-ssl-db-property content mime-type property))))))
-      (testing "decodes client key value properly (#22626)"
-        (doseq [property ["ssl-key"]
-                mime-type mime-types]
-          (testing (format "property %s with mime-type %s" property mime-type)
-            (let [decoded (decode-ssl-db-property content mime-type property)]
-              (is (bytes? decoded))
-              (is (= content
-                     (String. ^bytes decoded "UTF-8"))))))))))
+        (doseq [mime-type mime-types
+                charset [StandardCharsets/UTF_8 StandardCharsets/ISO_8859_1]
+                :let [uploaded-bytes (codecs/str->bytes content (str charset))
+                      uploaded-str-value (codecs/bytes->str (codecs/str->bytes content (str charset))
+                                                            (str charset))]
+                uploaded-value [uploaded-str-value
+                                (format "data:%s;base64,%s" mime-type (u/encode-base64-bytes uploaded-bytes))]]
+          (testing (format "mime-type %s charset %s " mime-type (str charset))
+            (let [details {:keystore-value uploaded-value}
+                  file (secret/value-as-file!
+                        :secret-test-driver
+                        details
+                        "keystore")
+                  file-bytes (mt/file->bytes file)]
+              (is (=? uploaded-bytes file-bytes))
+              (is (=? uploaded-str-value (secret/value-as-string :secret-test-driver details "keystore")))
+              (mt/with-temp [:model/Database {db-details :details} {:engine "secret-test-driver"
+                                                                    :details details}]
+                (is (=? uploaded-bytes
+                        (mt/file->bytes (secret/value-as-file! :secret-test-driver db-details "keystore"))))
+                (is (=? uploaded-str-value
+                        (secret/value-as-string :secret-test-driver db-details "keystore")))))))))))
+
+(deftest ssl-cert-base-file-path
+  (testing "file secrets aren't mangled by encoding"
+    (let [content "☃️<Certificate text goes here>☃️"
+          mime-types ["application/x-x509-ca-cert" "application/octet-stream"]]
+      (testing "decodes root cert value properly (#20319, #22626)"
+        (doseq [mime-type mime-types
+                charset [StandardCharsets/UTF_8 StandardCharsets/ISO_8859_1]
+                :let [uploaded-bytes (codecs/str->bytes content (str charset))
+                      uploaded-str-value (codecs/bytes->str (codecs/str->bytes content (str charset))
+                                                            (str charset))]]
+          (testing (format "mime-type %s charset %s " mime-type (str charset))
+            (let [temp-file (tempfile-with-contents content charset)
+                  details {:keystore-path (.getAbsolutePath temp-file)}
+                  file (secret/value-as-file!
+                        :secret-test-driver
+                        details
+                        "keystore")
+                  file-bytes (mt/file->bytes file)]
+              (is (=? uploaded-bytes file-bytes))
+              (is (=? uploaded-str-value (secret/value-as-string :secret-test-driver details "keystore")))
+              (mt/with-temp [:model/Database {db-details :details} {:engine "secret-test-driver"
+                                                                    :details details}]
+                (is (=? uploaded-bytes
+                        (mt/file->bytes (secret/value-as-file! :secret-test-driver db-details "keystore"))))
+                (is (=? uploaded-str-value
+                        (secret/value-as-string :secret-test-driver db-details "keystore")))))))))))
 
 (deftest use-latest-version-test
   (testing "when reading a secret from the DB, the latest version is taken (#33116)"
@@ -216,7 +238,7 @@
           latest-value (str initial-value "s")
           initial-source "source"
           latest-source (str initial-source "s")
-          secret-property "secret"
+          secret-property "keystore"
           secret-map1 {:name  secret-property
                        :kind  ::secret/password
                        :value initial-value
@@ -226,27 +248,15 @@
                        :value latest-value
                        :source latest-source}
           crowberto-id (mt/user->id :crowberto)
-          by-crowberto #(assoc % :creator_id crowberto-id)
-          timestamp-string? (fn [s]
-                              (try
-                                (java.time.Instant/parse s)
-                                true
-                                (catch Exception _
-                                  false)))]
+          by-crowberto #(assoc % :creator_id crowberto-id)]
       (mt/with-temp [:model/Secret {:keys [id version]} (by-crowberto secret-map1)
                      :model/Secret _ (-> secret-map2
                                          by-crowberto
                                          (assoc :id id :version (inc version)))]
-        (let [details {:secret-id id}]
-          (testing "db-details-prop->secret-map"
-            (let [secret (secret/db-details-prop->secret-map details secret-property)]
+        (let [details {:keystore-id id}]
+          (testing "latest-for-id"
+            (let [secret (secret/latest-for-id id)]
               (is (= latest-value (-> secret :value bytes (String. "UTF8"))))
               (is (= (keyword latest-source) (:source secret)))))
           (testing "get-secret-string"
-            (is (= latest-value (secret/get-secret-string details secret-property))))
-          (testing "expand-inferred-secret-values"
-            (is (=? {:secret-id id
-                     :secret-source (keyword latest-source)
-                     :secret-creator-id crowberto-id
-                     :secret-created-at timestamp-string?}
-                    (secret/expand-inferred-secret-values details secret-property id)))))))))
+            (is (= latest-value (secret/value-as-string :secret-test-driver details secret-property)))))))))

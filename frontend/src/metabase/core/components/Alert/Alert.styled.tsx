@@ -14,17 +14,17 @@ interface AlertRootProps {
 const colorsByVariant = {
   border: {
     info: "var(--mb-color-bg-medium)",
-    error: color("error"),
+    error: "var(--mb-color-error)",
     warning: color("warning"),
   },
   background: {
     info: "var(--mb-color-bg-light)",
-    error: lighten("error", 0.4),
+    error: "var(--mb-color-bg-error)",
     warning: lighten("warning", 0.5),
   },
   icon: {
     info: color("text-dark"),
-    error: color("error"),
+    error: "var(--mb-color-error)",
     warning: color("warning"),
   },
 };

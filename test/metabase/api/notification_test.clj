@@ -4,7 +4,7 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.models.collection :as collection]
    [metabase.models.notification :as models.notification]
    [metabase.models.permissions :as perms]
@@ -99,7 +99,7 @@
           (is (=? (assoc notification :id (mt/malli=? int?))
                   (mt/user-http-request :crowberto :post 200 "notification" notification))))))))
 
-(defn- do-with-send-messages-sync!
+(defn do-with-send-messages-sync!
   [f]
   (let [orig-send-email! @#'messages/send-email!]
     (with-redefs [messages/send-email! (fn [& args]
@@ -132,7 +132,7 @@
             (let [[email] (notification.tu/with-mock-inbox-email!
                             (with-send-messages-sync!
                               (mt/user-http-request :crowberto :post 200 "notification" notification)))
-                  a-card-url (format "<a href=\"https://metabase.com/testmb/question/%d\">My Card</a>." card-id)]
+                  a-card-url (format "<a href=\"https://testmb.com/question/%d\">My Card</a>." card-id)]
               (testing (format "send email with %s condition" send_condition)
                 (is (=? {:bcc     #{"rasta@metabase.com" "ngoc@metabase.com" "crowberto@metabase.com"}
                          :subject "Crowberto Corv added you to an alert"
@@ -203,8 +203,7 @@
                 existing-user-recipient (m/find-first #(= "notification-recipient/user" (:type %))
                                                       (:recipients existing-email-handler))
                 new-recipients          [(assoc existing-user-recipient :user_id (mt/user->id :rasta))
-                                         {:id                      -1
-                                          :type                    :notification-recipient/group
+                                         {:type                    :notification-recipient/group
                                           :notification_handler_id (:id existing-email-handler)
                                           :permissions_group_id    (:id (perms-group/admin))}]
                 new-handlers            [(assoc existing-email-handler :recipients new-recipients)]]
@@ -220,11 +219,9 @@
                           :handlers (m/find-first #(= "channel/email" (:channel_type %))) :recipients))))))
 
         (testing "can add new handler"
-          (let [new-handler {:id              -1
-                             :notification_id notification-id
+          (let [new-handler {:notification_id notification-id
                              :channel_type    :channel/slack
-                             :recipients      [{:id      -1
-                                                :type    :notification-recipient/user
+                             :recipients      [{:type    :notification-recipient/user
                                                 :user_id (mt/user->id :rasta)}]}
                 new-handlers (conj (:handlers @notification) new-handler)]
             (is (=? {:channel_type "channel/slack"
@@ -821,7 +818,7 @@
           (let [[email] (notification.tu/with-mock-inbox-email!
                           (with-send-messages-sync!
                             (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
-                a-href (format "<a href=\"https://metabase.com/testmb/question/%d\">My Card</a>."
+                a-href (format "<a href=\"https://testmb.com/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
             (testing "sends unsubscribe confirmation email"
               (is (=? {:bcc     #{"lucky@metabase.com"}
@@ -844,7 +841,7 @@
                                                                 {:type    :notification-recipient/raw-value
                                                                  :details {:value "test@metabase.com"}}]}]}
               make-card-url-tag (fn [notification]
-                                  (format "<a href=\"https://metabase.com/testmb/question/%d\">Test Card</a>."
+                                  (format "<a href=\"https://testmb.com/question/%d\">Test Card</a>."
                                           (-> notification :payload :card_id)))
               update-notification! (fn [noti-id notification updates]
                                      (notification.tu/with-mock-inbox-email!
@@ -882,12 +879,10 @@
             (notification.tu/with-card-notification
               [{noti-id :id :as notification} base-notification]
               (let [handler-id (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :id)
-                    updated-recipients [{:id                      -1
-                                         :notification_handler_id handler-id
+                    updated-recipients [{:notification_handler_id handler-id
                                          :type                    :notification-recipient/user
                                          :user_id                 (mt/user->id :lucky)}
-                                        {:id                      -2
-                                         :notification_handler_id handler-id
+                                        {:notification_handler_id handler-id
                                          :type                    :notification-recipient/raw-value
                                          :details                 {:value "new@metabase.com"}}]
                     [removed-email added-email] (update-notification! noti-id notification

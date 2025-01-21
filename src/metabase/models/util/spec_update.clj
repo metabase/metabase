@@ -183,19 +183,8 @@
         (log/debugf "%s no change detected for %s %s" (format-path path) model existing-id)
         (handle-nested! existing-data new-data existing-id)))))
 
-(defn- check-id-exists
-  "if x is a map, check if it has id key, if x is a seq, check if all elements have id key."
-  [x id-col]
-  (when x
-    (assert (if (sequential? x)
-              (every? id-col x)
-              (id-col x))
-            (format "%s is missing in %s" id-col x))))
-
 (defn- do-update!*
-  [existing-data new-data {:keys [id-col] :as spec} path]
-  (check-id-exists existing-data id-col)
-  (check-id-exists new-data id-col)
+  [existing-data new-data spec path]
   (if (:multi-row? spec)
     (do
       (log/tracef "%s multi-row spec found" (format-path path))

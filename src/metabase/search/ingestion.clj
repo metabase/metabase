@@ -47,7 +47,7 @@
       (update :archived boolean)
       (assoc
        :display_data (display-data m)
-       :legacy_input m
+       :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
        :searchable_text (searchable-text m))))
 
 (defn- attrs->select-items [attrs]
@@ -86,7 +86,7 @@
        (eduction (map #(assoc % :model search-model)))))
 
 (defn- search-items-reducible []
-  (reduce u/rconcat [] (map spec-index-reducible (keys (methods search.spec/spec)))))
+  (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))
 
 (defn- query->documents [query-reducible]
   (->> query-reducible

@@ -6,7 +6,7 @@
   (:require
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.models.channel :as models.channel]
+   [metabase.channel.models.channel :as models.channel]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.util.spec-update :as models.u.spec-update]
@@ -466,6 +466,16 @@
               :payload
               :subscriptions
               [:handlers :channel :template :recipients]))
+
+(mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]
+  "Find all active card notifications for a given card-id."
+  [card-id :- pos-int?]
+  (hydrate-notification (t2/select :model/Notification
+                                   :active true
+                                   :payload_type :notification/card
+                                   :payload_id [:in {:select [:id]
+                                                     :from   [:notification_card]
+                                                     :where  [:= :card_id card-id]}])))
 
 (defn notifications-for-event
   "Find all active notifications for a given event."

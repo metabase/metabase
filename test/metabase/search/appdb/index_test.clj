@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.db :as mdb]
+   [metabase.models.model-index :as model-index]
    [metabase.models.search-index-metadata :as search-index-metadata]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
@@ -84,7 +85,7 @@
     (testing "The index is updated when model dependencies change"
       (let [index-table    (search.index/active-table)
             table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
-            legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
+            legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id (str table-id))
                                 :legacy_input
                                 json/decode+kw)
             db-id          (t2/select-one-fn :db_id :model/Table table-id)
@@ -157,14 +158,16 @@
    (#'search.ingestion/query->documents
     (#'search.ingestion/spec-index-reducible model where-clause))))
 
+(defn fetch [model & clauses]
+  (apply t2/select (search.index/active-table) :model model clauses))
+
+(defn fetch-one [model & clauses]
+  (apply t2/select-one (search.index/active-table) :model model clauses))
+
 (defn ingest-then-fetch!
   [model entity-name]
   (ingest! model [:= :this.name entity-name])
-  (t2/query-one {:select [:*]
-                 :from   [(search.index/active-table)]
-                 :where  [:and
-                          [:= :name entity-name]
-                          [:= :model model]]}))
+  (fetch-one model :name entity-name))
 
 (def default-index-entity
   {:model               nil
@@ -200,7 +203,7 @@
                                                     :last_used_at yesterday}]
             (is (=? (index-entity
                      {:model                    model-type
-                      :model_id                 card-id
+                      :model_id                 (str card-id)
                       :name                     card-name
                       :official_collection      nil
                       :database_id              (mt/id)
@@ -263,7 +266,7 @@
                                                      :moderator_id        (mt/user->id :crowberto)}]
             (is (=? (index-entity
                      {:model                    model-type
-                      :model_id                 card-id
+                      :model_id                 (str card-id)
                       :name                     card-name
                       :official_collection      true
                       :database_id              (mt/id)
@@ -288,7 +291,7 @@
                                                   :updated_at yesterday}]
         (is (=? (index-entity
                  {:model            "database"
-                  :model_id         db-id
+                  :model_id         (str db-id)
                   :name             db-name
                   :model_created_at yesterday
                   :model_updated_at yesterday})
@@ -310,7 +313,7 @@
                                                   :updated_at yesterday}]
         (is (=? (index-entity
                  {:model            "table"
-                  :model_id         table-id
+                  :model_id         (str table-id)
                   :name             table-name
                   :view_count       42
                   :database_id      db-id
@@ -333,7 +336,7 @@
                                                       :created_at yesterday}]
         (is (=? (index-entity
                  {:model            "collection"
-                  :model_id         coll-id
+                  :model_id         (str coll-id)
                   :collection_id    coll-id
                   :name             collection-name
                   :archived         true
@@ -365,7 +368,7 @@
                                                          :action_id     action-id}]
         (is (=? (index-entity
                  {:model            "action"
-                  :model_id         action-id
+                  :model_id         (str action-id)
                   :name             action-name
                   :collection_id    coll-id
                   :model_created_at yesterday
@@ -401,7 +404,7 @@
 
         (is (=? (index-entity
                  {:model            "dashboard"
-                  :model_id         dashboard-id
+                  :model_id         (str dashboard-id)
                   :name             dashboard-name
                   :model_created_at yesterday
                   :model_updated_at yesterday
@@ -425,39 +428,51 @@
                                                          :updated_at yesterday}]
         (is (=? (index-entity
                  {:model            "segment"
-                  :model_id         segment-id
+                  :model_id         (str segment-id)
                   :name             segment-name
                   :database_id      db-id
                   :model_updated_at yesterday})
                 (ingest-then-fetch! "segment" segment-name)))))))
 
 (deftest indexed-entity-ingestion-test
-  (search.tu/with-temp-index-table
-    (let [entity-name (mt/random-name)]
-      (mt/with-temp [:model/Collection      {coll-id :id}        {}
-                     :model/Card            {model-id :id}       {:type        "model"
-                                                                  ;; :database_id = (mt/id)
-                                                                  :database_id (mt/id)
-                                                                  ;; :collection_id = coll-id
-                                                                  :collection_id coll-id}
-                     :model/ModelIndex      {model-index-id :id} {:model_id   model-id
-                                                                  :pk_ref     (mt/$ids :products $id)
-                                                                  :value_ref  (mt/$ids :products $title)
-                                                                  :schedule   "0 0 0 * * *"
-                                                                  :state      "initial"
-                                                                  :creator_id (mt/user->id :rasta)}]
-        ;; :model/ModelIndexValue does not have id column so does not work nicely with with-temp
-        (t2/insert! :model/ModelIndexValue {:name       entity-name
-                                            :model_index_id model-index-id
-                                            ;; :model_id = model-id
-                                            :model_pk   42})
-        (is (=? (index-entity
-                 {:model            "indexed-entity"
-                  :model_id         42
-                  :name             entity-name
-                  :database_id      (mt/id)
-                  :collection_id    coll-id})
-                (ingest-then-fetch! "indexed-entity" entity-name)))))))
+  (let [model-id (fn [miv] (str (:model_index_id miv) ":" (:model_pk miv)))]
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Collection      {coll-id :id} {}
+                     :model/Card            model         (assoc (mt/card-with-source-metadata-for-query
+                                                                  (mt/mbql-query products {:fields [$id $title]
+                                                                                           :limit  1}))
+                                                                 :type          "model"
+                                                                 :database_id   (mt/id)
+                                                                 :collection_id coll-id)
+                     :model/ModelIndex      model-index   {:model_id   (:id model)
+                                                           :pk_ref     (mt/$ids :products $id)
+                                                           :value_ref  (mt/$ids :products $title)
+                                                           :schedule   "0 0 0 * * *"
+                                                           :state      "initial"
+                                                           :creator_id (mt/user->id :rasta)}]
+        (model-index/add-values! model-index)
+        (let [miv (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
+          (testing "Adding values indexes them"
+            (is (=? [(index-entity
+                      {:model         "indexed-entity"
+                       :model_id      (model-id miv)
+                       :name          (:name miv)
+                       :database_id   (mt/id)
+                       :collection_id coll-id})]
+                    (fetch "indexed-entity" :name (:name miv)))))
+          (testing "Changing values syncs the index"
+            (t2/update! :model/Card (:id model) (assoc-in model
+                                                          [:dataset_query :query :filter]
+                                                          [:!= (mt/$ids :products $id) (:model_pk miv)]))
+            (model-index/add-values! model-index)
+            (let [miv2 (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
+              (is (=? [(index-entity
+                        {:model         "indexed-entity"
+                         :model_id      (model-id miv2)
+                         :name          (:name miv2)
+                         :database_id   (mt/id)
+                         :collection_id coll-id})]
+                      (fetch "indexed-entity" :model_id [:in [(model-id miv) (model-id miv2)]]))))))))))
 
 (deftest ^:synchronized table-cleanup-test
   (when (search/supports-index?)

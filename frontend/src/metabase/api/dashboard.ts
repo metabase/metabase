@@ -214,6 +214,7 @@ export const {
   useUpdateDashboardEnableEmbeddingMutation,
   useUpdateDashboardEmbeddingParamsMutation,
   endpoints: {
+    getDashboard,
     deleteDashboardPublicLink,
     createDashboardPublicLink,
     updateDashboardEnableEmbedding,
