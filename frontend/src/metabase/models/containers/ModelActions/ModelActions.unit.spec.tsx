@@ -11,6 +11,7 @@ import {
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
 import {
+  getIcon,
   renderWithProviders,
   screen,
   waitFor,
