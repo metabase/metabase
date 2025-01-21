@@ -23,6 +23,22 @@ type SchemaCompletionOptions = {
   databaseId?: DatabaseId | null;
 };
 
+function matchAfter(context: CompletionContext, expr: RegExp) {
+  const line = context.state.doc.lineAt(context.pos);
+  const str = line.text.slice(context.pos - line.from);
+  const found = str.search(expr);
+  if (found < 0) {
+    return null;
+  }
+
+  const text = str.slice(found);
+  return {
+    from: context.pos,
+    to: context.pos + text.length,
+    text,
+  };
+}
+
 // Completes column and table names from the database schema
 export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
   const matchStyle = useSetting("native-query-autocomplete-match-style");
@@ -51,6 +67,8 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
         return null;
       }
 
+      const suffix = matchAfter(context, /\w+/);
+
       // Do not cache this in the rtk-query's cache, since there is no
       // way to invalidate it. The autocomplete endpoint set caching headers
       // so the request should be cached in the browser.
@@ -64,12 +82,22 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
         return null;
       }
 
+      const seen = new Set();
+
+      const deduped = data.filter(([value]) => {
+        if (seen.has(value)) {
+          return false;
+        }
+        seen.add(value);
+        return true;
+      });
+
       return {
         from: word.from,
-        options: data.map(([value, meta]) => ({
+        to: suffix?.to,
+        options: deduped.map(([value, meta]) => ({
           label: value,
           detail: meta,
-          boost: 50,
         })),
         validFor(text: string) {
           if (data.length >= AUTOCOMPLETE_SUGGESTIONS_LIMIT) {
@@ -110,14 +138,11 @@ export function useSnippetCompletion() {
 
       return {
         from: tag.content.from,
-        validFor(text: string) {
-          return text.startsWith(query);
-        },
+        to: tag.content.to,
         options: results.map(snippet => ({
           label: snippet.name,
           apply: tag.hasClosingTag ? snippet.name : `${snippet.name} }}`,
           detail: t`Snippet`,
-          boost: 50,
         })),
       };
     },
@@ -175,13 +200,13 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
       return {
         // -1 because we want to include the # in the autocomplete
         from: tag.content.from - 1,
+        to: tag.content.to,
         options: data.map(({ id, name, type, collection_name }) => ({
           label: `#${id}-${slugg(name)}`,
           detail: getCardAutocompleteResultMeta(type, collection_name),
           apply: tag.hasClosingTag
             ? `#${id}-${slugg(name)}`
             : `#${id}-${slugg(name)} }}`,
-          boost: 50,
         })),
         validFor(text: string) {
           if (data.length >= AUTOCOMPLETE_CARD_SUGGESTIONS_LIMIT) {
@@ -216,6 +241,7 @@ export function useReferencedCardCompletion({
     const data = await Promise.all(
       referencedQuestionIds.map(id => getCard({ id }, shouldCache)),
     );
+
     return data
       .map(item => item.data)
       .filter(isNotNull)
@@ -247,17 +273,22 @@ export function useReferencedCardCompletion({
         return null;
       }
 
+      const suffix = matchAfter(context, /\w+/);
+
       const results = await getCardColumns();
+      if (results.length === 0) {
+        return null;
+      }
 
       return {
         from: word.from,
+        to: suffix?.to,
         validFor(text: string) {
           return text.startsWith(word.text);
         },
         options: results.map(column => ({
           label: column.field.name,
           detail: `${column.card.name} :${column.field.base_type}`,
-          boost: 50,
         })),
       };
     },

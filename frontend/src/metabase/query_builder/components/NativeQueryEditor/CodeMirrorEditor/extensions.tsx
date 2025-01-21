@@ -1,8 +1,12 @@
 import {
   type CompletionContext,
+  type CompletionResult,
   type CompletionSource,
+  acceptCompletion,
   autocompletion,
+  moveCompletionSelection,
 } from "@codemirror/autocomplete";
+import { insertTab } from "@codemirror/commands";
 import { json } from "@codemirror/lang-json";
 import {
   MySQL,
@@ -14,14 +18,18 @@ import {
 import {
   HighlightStyle,
   foldService,
+  indentService,
+  indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
+import { Prec } from "@codemirror/state";
 import {
   Decoration,
   EditorView,
   MatchDecorator,
   ViewPlugin,
   drawSelection,
+  keymap,
 } from "@codemirror/view";
 import { type Tag, tags } from "@lezer/highlight";
 import type { EditorState, Extension } from "@uiw/react-codemirror";
@@ -31,7 +39,7 @@ import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
-import type { CardId, DatabaseId } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
 import {
   useCardTagCompletion,
@@ -39,19 +47,21 @@ import {
   useSchemaCompletion,
   useSnippetCompletion,
 } from "./completers";
-import { matchTagAtCursor } from "./util";
+import {
+  referencedQuestionIds as getReferencedQuestionIds,
+  matchTagAtCursor,
+} from "./util";
 
-type ExtensionOptions = {
-  engine?: string;
-  databaseId?: DatabaseId;
-  referencedQuestionIds?: CardId[];
-};
+export function useExtensions(query: Lib.Query): Extension[] {
+  const { databaseId, engine, referencedQuestionIds } = useMemo(
+    () => ({
+      databaseId: Lib.databaseID(query),
+      engine: Lib.engine(query),
+      referencedQuestionIds: getReferencedQuestionIds(query),
+    }),
+    [query],
+  );
 
-export function useExtensions({
-  engine,
-  databaseId,
-  referencedQuestionIds = [],
-}: ExtensionOptions): Extension[] {
   const schemaCompletion = useSchemaCompletion({ databaseId });
   const snippetCompletion = useSnippetCompletion();
   const cardTagCompletion = useCardTagCompletion({ databaseId });
@@ -79,6 +89,8 @@ export function useExtensions({
       highlighting(),
       tagDecorator(),
       folds(),
+      indentation(),
+      disableCmdEnter(),
     ]
       .flat()
       .filter(isNotNull);
@@ -89,6 +101,52 @@ export function useExtensions({
     cardTagCompletion,
     referencedCardCompletion,
   ]);
+}
+
+function disableCmdEnter() {
+  // Stop Cmd+Enter in CodeMirror from inserting a newline
+  // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
+  return Prec.highest(
+    keymap.of([
+      {
+        key: "Mod-Enter",
+        run: () => true,
+      },
+      {
+        key: "Tab",
+        run: acceptCompletion,
+      },
+      {
+        key: "Tab",
+        run: insertTab,
+      },
+      {
+        key: "Mod-j",
+        run: moveCompletionSelection(true),
+      },
+      {
+        key: "Mod-k",
+        run: moveCompletionSelection(false),
+      },
+    ]),
+  );
+}
+
+function indentation() {
+  return [
+    // set indentation to tab
+    indentUnit.of("\t"),
+
+    // persist the indentation from the previous line
+    indentService.of((context, pos) => {
+      const previousLine = context.lineAt(pos, -1);
+      const previousLineText = previousLine.text.replaceAll(
+        "\t",
+        " ".repeat(context.state.tabSize),
+      );
+      return previousLineText.match(/^(\s)*/)?.[0].length ?? 0;
+    }),
+  ];
 }
 
 function nonce() {
@@ -236,9 +294,13 @@ function language({ engine, completers = [] }: LanguageOptions) {
 
   // Wraps the language completer so that it does not trigger when we're
   // inside a variable or tag
-  async function completeFromLanguage(context: CompletionContext) {
+  async function completeFromLanguage(
+    context: CompletionContext,
+  ): Promise<CompletionResult | null> {
     const facets = context.state.facet(language.language.data.reader);
-    const complete = facets.find(facet => facet.autocomplete)?.autocomplete;
+    const complete: CompletionSource | undefined = facets.find(
+      facet => facet.autocomplete,
+    )?.autocomplete;
 
     const tag = matchTagAtCursor(context.state, {
       allowOpenEnded: true,
@@ -249,7 +311,18 @@ function language({ engine, completers = [] }: LanguageOptions) {
       return null;
     }
 
-    return complete?.(context);
+    const result = await complete?.(context);
+    if (!result) {
+      return null;
+    }
+
+    return {
+      ...result,
+      options: result.options.map(option => ({
+        ...option,
+        detail: option.detail ?? "keyword",
+      })),
+    };
   }
 
   return [
