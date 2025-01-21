@@ -43,8 +43,9 @@
 
 (defn- process-query** [query rff]
   (qp.debug/debug> (list `process-query query))
+  ;; TODO: cleanup.
   (let [preprocessed @(def ppp (qp.preprocess/preprocess query))
-        compiled     (qp.compile/attach-compiled-query preprocessed)
+        compiled     @(def ccc (qp.compile/attach-compiled-query preprocessed))
         rff          (qp.postprocess/post-processing-rff preprocessed rff)]
     (qp.execute/execute compiled rff)))
 

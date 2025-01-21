@@ -132,25 +132,31 @@
           (recur (next bs) (inc i) granularity     i)
           (recur (next bs) (inc i) min-granularity finest-index))))))
 
+;; this coupling
+;; 
 (defn- add-implicit-breakouts
   [stage]
-  (if-let [breakouts (not-empty (:breakout stage))]
-    (let [finest-temp-breakout (finest-temporal-breakout-index breakouts 1)
-          breakout-exprs (if finest-temp-breakout
-                           (concat (m/remove-nth finest-temp-breakout breakouts)
-                                   [(nth breakouts finest-temp-breakout)])
-                           breakouts)
-          explicit-order-bys (vec (:order-by stage))
-          explicit-order-by-exprs (set (for [[_dir _opts col-ref] explicit-order-bys]
-                                         (lib.schema.util/remove-randomized-idents col-ref)))
-          order-bys (into explicit-order-bys
-                          (comp (map lib.schema.util/remove-randomized-idents)
-                                (remove explicit-order-by-exprs)
-                                (map (fn [expr]
-                                       (lib.options/ensure-uuid [:asc (lib.options/ensure-uuid expr)]))))
-                          breakout-exprs)]
-      (assoc stage :order-by order-bys))
-    stage))
+  @(def rrr (if-let [[breakouts metric-breakouts]
+                     (not-empty (split-with (comp
+                                             :metabase.query-processor.middleware.metrics.joined-subquery-expansion/metric-id
+                                             lib.options/options)
+                                            (:breakout stage)))]
+              (let [finest-temp-breakout (finest-temporal-breakout-index breakouts 1)
+                    breakout-exprs @(def bsbs (if finest-temp-breakout
+                                                (concat (m/remove-nth finest-temp-breakout breakouts)
+                                                        [(nth breakouts finest-temp-breakout)])
+                                                breakouts))
+                    explicit-order-bys (vec (:order-by stage))
+                    explicit-order-by-exprs (set (for [[_dir _opts col-ref] explicit-order-bys]
+                                                   (lib.schema.util/remove-randomized-idents col-ref)))
+                    order-bys (into explicit-order-bys
+                                    (comp (map lib.schema.util/remove-randomized-idents)
+                                          (remove explicit-order-by-exprs)
+                                          (map (fn [expr]
+                                                 (lib.options/ensure-uuid [:asc (lib.options/ensure-uuid expr)]))))
+                                    (concat breakout-exprs metric-breakouts))]
+                (assoc stage :order-by order-bys))
+              stage)))
 
 (mu/defn- new-second-stage :- ::lib.schema/stage
   "All references need to be updated to be prior-stage references using the desired alias from the previous stage.

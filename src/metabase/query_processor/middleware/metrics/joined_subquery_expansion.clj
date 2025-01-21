@@ -188,10 +188,6 @@
                           (lib/= (lib.util/fresh-uuids (lib/ref breakout-col)) (lib/ref joined-col)))))
         (always-true-conditions))))
 
-(comment
-  (lib/breakouts (first kkk))
-)
-
 (defn metric-join-alias
   [metric-id]
   (assert (int metric-id) "Metric id must be an int.")
@@ -203,15 +199,42 @@
   Convey `metric-query` keys need for next phases of the expansion."
   [query stage-number metric-query]
   ;; WIP: If append-stage missing from join-clause-method is not causing problems elsewehere throughout this
-  ;; implementation, it could stay withing scope of this ns.
+  ;; implementation, it could stay within scope of this ns.
   (let [metric-join (-> (lib/join-clause #_metric-query (lib/append-stage metric-query))
                         (lib/with-join-strategy :left-join)
                         (lib/with-join-alias (metric-join-alias (::metric-id metric-query)))
                         (lib/with-join-conditions (join-conditions query stage-number metric-query))
-                        (merge (select-keys metric-query [::metric-id ::display-name])))]
+                        (merge (select-keys metric-query [::metric-id ::display-name])))
+        query-with-join (lib/join query stage-number metric-join)
+        _ (assert (= (count (lib/joins query stage-number))
+                     (dec (count (lib/joins query-with-join stage-number)))))
+        joined-join-clause @(def ll (last (lib/joins query-with-join stage-number)))
+        join-columns @(def jooj (lib/returned-columns query-with-join stage-number joined-join-clause))
+        #_#__ (def aaas [query-with-join stage-number join-columns])
+        query-with-join-with-fields #_query-with-join (lib.util/update-query-stage
+                                                       query-with-join stage-number update :joins
+                                                       (fn [joins]
+                                                         (let [but-last-joins (subvec joins 0 (dec (count joins)))
+                                                               last-join (joins (dec (count joins)))]
+                                                           (conj but-last-joins (lib/with-join-fields last-join
+                                                                                  join-columns)))))]
+    (def qqq [query-with-join metric-join query stage-number metric-query query-with-join-with-fields])
     (assert (= (-> metric-join :stages last) {:lib/type :mbql.stage/mbql})
             "Metric join's stages must end with empty stage.")
-    (lib/join query stage-number metric-join)))
+
+    query-with-join-with-fields))
+
+(comment
+  
+  (lib.util/update-query-stage
+   (first aaas) (second aaas) update :joins
+   (fn [joins]
+     (def joo joins)
+     (let [but-last-joins (subvec joins 0 (dec (count joins)))
+           last-join @(def lj (joins (dec (count joins))))]
+       @(def ahoj (conj @(def blj but-last-joins) (lib/with-join-fields last-join
+                                                              (nth aaas 2)))))))
+  )
 
 (defonce asd (atom []))
 
@@ -222,7 +245,8 @@
   (->> (for [join (lib/joins query stage-number)
              :when (::metric-id join)
              ;; returned columns -- guaranteed that are inorder?
-             :let [metric-column (last (lib/returned-columns query stage-number join))]]
+             ;; TODO: Revert!
+             :let [metric-column (last @(def coco (lib/returned-columns query stage-number join)))]]
          (do (assert (-> metric-column :lib/type (#{:metadata/column})))
              (merge metric-column (select-keys join [::metric-id ::display-name]))))
        (m/index-by ::metric-id)))
@@ -321,10 +345,13 @@
                         :else (let [[_tag _opts & args] y]
                                 (recur (into (vec queue) args))))))))
 
-(def ^:private ordering-keys [::original-column-number ::original-sort-order ::original-sort-dir])
+;; TODO WIP: metric-id temporarily here for window fn expansion
+(def ^:private ordering-keys [::original-column-number ::original-sort-order ::original-sort-dir ::metric-id])
 
 ;; TODO: Probably remove those convey functions?
 ;; TODO: Ensure this works correctly for refs and columns -- now it works for refs only
+;;
+;; TODO: This is wrong?
 (defn- convey-ordering-metadata
   "from c1 to c2!"
   [c1 c2]
@@ -358,6 +385,8 @@
   [query stage-number ref]
   (if-some [index (some->> (lib/breakouts-metadata query stage-number)
                            (matching-column-index ref))]
+    ;; this branch works weirdly
+    ;; metric can come only from same join! -- I should iterate differntly here!
     (lib.util/update-query-stage query stage-number
                                  update-in [:breakout index]
                                  (partial convey-ordering-metadata ref))
@@ -388,7 +417,20 @@
   [query stage-number [index aggregation]]
   (let [index (- index (or (::aggregations-removed (lib.util/query-stage query stage-number)) 0))]
     (letfn [(metric-ref [id]
-              (lib/ref (metric-column query stage-number id)))
+              ;; TODO: Resolve! It should not be necessary to pass ordering metdata, but metric-id should be passed for
+                        ;; every breakout that 
+                        ;; convey 
+                        (lib.options/update-options
+                         (->> (lib/ref ;; this is missing ::display-name
+                               (metric-column query stage-number id))
+                                                      ;; this ought to be???
+                              (convey-naming-metadata (metric-column query stage-number id))
+                                                      ;; eg this is redundant for this case
+                              (convey-ordering-metadata metric-ref))
+                         m/assoc-some ::metric-id id)
+                        #_(let [col @(def mc (metric-column query stage-number id))]
+                            @(def pa (lib.options/update-options (lib/ref (metric-column query stage-number id))
+                                                                 m/assoc-some ::metric-id (::metric-id col)))))
             (swap-metrics [aggregation]
               (lib.util.match/replace aggregation [:metric _opts id] (metric-ref id)))
             (add-metric-breakouts [query stage-number]
@@ -475,7 +517,8 @@
         field-refs (map (fn [summary-ref]
                           (let [ref-opts (lib.options/options summary-ref)
                                 ref-uuid (:lib/uuid ref-opts)
-                                metric-opts (select-keys ref-opts [::metric-id ::display-name])]
+                                ;; is this actually redundant?
+                                metric-opts (doto (select-keys ref-opts [::metric-id ::display-name]) println)]
                             (lib.options/update-options (lib/ref (source-uuid->column ref-uuid))
                                                         merge metric-opts)))
                         ordered-summary-refs)]
@@ -544,6 +587,7 @@
           (attach-metric-columns stage-number)
           #_(preprocess-for-expansion stage-number)
           (reconcile-aggregations stage-number)
+          #_(as-> $ (do (def rere $) $))
           (inject-ordering-stage stage-number)))
     query))
 
