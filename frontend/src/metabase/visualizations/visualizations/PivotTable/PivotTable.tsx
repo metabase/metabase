@@ -357,7 +357,7 @@ function _PivotTable({
 
   return (
     <PivotTableRoot
-      ref={el => forwardedRef(el)}
+      ref={el => forwardedRef?.(el)}
       shouldOverflow={shouldOverflow}
       shouldHideScrollbars={isEditing && isDashboard}
       isDashboard={isDashboard}

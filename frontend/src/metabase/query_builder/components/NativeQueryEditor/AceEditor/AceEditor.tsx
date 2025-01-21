@@ -531,7 +531,7 @@ export class AceEditorInner extends Component<AceEditorProps> {
         id={ACE_ELEMENT_ID}
         data-testid="native-query-editor"
         ref={el => {
-          this.props.forwardedRef(el);
+          this.props.forwardedRef?.(el);
           this.editor.current = el;
         }}
       />

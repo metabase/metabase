@@ -1175,7 +1175,7 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
-                ref={el => this.props.forwardedRef(el)}
+                ref={el => this.props.forwardedRef?.(el)}
                 bg={backgroundColor}
                 className={cx(
                   className,

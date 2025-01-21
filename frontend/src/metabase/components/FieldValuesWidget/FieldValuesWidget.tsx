@@ -520,6 +520,8 @@ const FieldValuesWidgetWithRef = forwardRef((props, ref) => (
   <FieldValuesWidgetInner {...props} forwardedRef={ref} />
 ));
 
+FieldValuesWidgetWithRef.displayName = "FieldValuesWidgetWithRef";
+
 export const FieldValuesWidget = ExplicitSize<IFieldValuesWidgetProps>()(
   FieldValuesWidgetWithRef,
 );

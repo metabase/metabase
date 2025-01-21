@@ -134,9 +134,9 @@ function TabRowInner<T>({
 }
 
 export const TabRow = ExplicitSize<TabRowProps<unknown>>()(
-  forwardRef((props, ref) => (
-    <TabRowInner {...props} forwardedRef={ref}></TabRowInner>
-  )),
+  forwardRef(function _TabRowRefWrapper(props, ref) {
+    return <TabRowInner {...props} forwardedRef={ref} />;
+  }),
 ) as <T>(props: TabRowProps<T>) => ReactNode;
 
 interface ScrollArrowProps {

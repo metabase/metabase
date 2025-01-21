@@ -235,7 +235,7 @@ function TableSimpleInner({
   );
 
   return (
-    <Root className={className} ref={el => forwardedRef(el)}>
+    <Root className={className} ref={el => forwardedRef?.(el)}>
       <ContentContainer>
         <TableContainer className={cx(CS.scrollShow, CS.scrollShowHover)}>
           <Table
