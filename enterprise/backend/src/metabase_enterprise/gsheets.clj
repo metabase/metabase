@@ -88,7 +88,7 @@
 (mu/defn- get-gdrive-connection :- [:maybe [:map {:description "The Harbormaster Gdrive Connection"}
                                             [:id :string]
                                             [:type [:= "gdrive"]]
-                                            [:status [:enum "syncing" "active" "initializing" "error"]]
+                                            [:status [:enum "initializing" "syncing" "active" "error"]]
                                             [:last-sync-at [:maybe :time/zoned-date-time]]
                                             [:last-sync-started-at [:maybe :time/zoned-date-time]]
                                             [:created-at :time/zoned-date-time]
@@ -138,8 +138,8 @@
   "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to
   stop showing the setup widget.
 
-  Returns the gsheets shape, with the attached datawarehouse's db id in db_id."
-  [] :- [:or ::gsheets [:map [:error :string]]]
+  Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`."
+  [] :- ::gsheets
   (api/check-superuser)
   (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
     (assert (some? attached-dwh) "No attached dwh found.")
@@ -160,7 +160,7 @@
                 (gsheets! new-gsheets) new-gsheets)
               (gsheets))
             (assoc :db_id (:id attached-dwh))))
-      {:error "google drive connection not found."})))
+      (throw (ex-info "Google Drive Connection not found." {})))))
 
 (api.macros/defendpoint :delete "/folder"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
