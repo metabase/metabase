@@ -116,12 +116,12 @@
   []
   {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/recents"
+(api.macros/defendpoint :get "/recents"
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
   Allows for filtering by context: views or selections"
-  [:as {{:keys [context]} :params}]
-  {context (ms/QueryVectorOf [:enum :selections :views])}
+  [_route-params
+   {:keys [context]} :- [:map
+          [:context (ms/QueryVectorOf [:enum :selections :views])]]]
   (when-not (seq context) (throw (ex-info "context is required." {})))
   (recent-views/get-recents *current-user-id* context))
 
