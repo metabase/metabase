@@ -3,15 +3,15 @@ import type { Location } from "history";
 import type { PropsWithChildren } from "react";
 
 import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { useSetEmbedFont } from "metabase/public/hooks";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { useDashboardUrlParams } from "./use-dashboard-url-params";
-import { useEmbedFont } from "./use-embed-font";
 
-jest.mock("./use-embed-font", () => ({
-  useEmbedFont: jest.fn(),
+jest.mock("../../public/hooks/use-set-embed-font", () => ({
+  useSetEmbedFont: jest.fn(),
 }));
 
 const setup = ({ location }: { location: Location }) => {
@@ -21,39 +21,23 @@ const setup = ({ location }: { location: Location }) => {
     <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>
   );
 
-  const setFontMock = jest.fn();
-  const onRefreshMock = jest.fn();
+  const useSetEmbedFontMock = useSetEmbedFont as jest.Mock;
 
-  (useEmbedFont as jest.Mock).mockReturnValue({
-    font: null,
-    setFont: setFontMock,
-  });
-
-  const { result, rerender } = renderHook(
-    props => useDashboardUrlParams(props),
+  const { result } = renderHook(
+    () => useDashboardUrlParams({ location, onRefresh: jest.fn() }),
     {
       wrapper: Wrapper,
-      initialProps: { location, onRefresh: onRefreshMock },
     },
   );
 
-  return { result, rerender, setFontMock, onRefreshMock };
+  return { result, useSetEmbedFontMock };
 };
 
 describe("useDashboardUrlParams", () => {
-  it("sets and updates font", () => {
-    const { setFontMock, onRefreshMock, rerender } = setup({
-      location: { hash: "#font=Roboto" } as Location,
-    });
+  it("sets embed font", () => {
+    const location = { hash: "#font=Roboto" } as Location;
+    const { useSetEmbedFontMock } = setup({ location });
 
-    expect(setFontMock).toHaveBeenCalledWith("Roboto");
-
-    rerender({
-      location: { hash: "" } as Location,
-      onRefresh: onRefreshMock,
-    });
-
-    expect(setFontMock).toHaveBeenCalledWith(null);
-    expect(setFontMock).toHaveBeenCalledTimes(2);
+    expect(useSetEmbedFontMock).toHaveBeenCalledWith({ location });
   });
 });

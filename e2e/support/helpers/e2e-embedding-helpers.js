@@ -77,7 +77,7 @@ export function getEmbeddedPageUrl(
   payload,
   {
     setFilters = {},
-    additionalHashOptions: { hideFilters = [], locale } = {},
+    additionalHashOptions: { hideFilters = [], locale, font } = {},
     pageStyle = {},
     onBeforeLoad,
     qs,
@@ -100,7 +100,8 @@ export function getEmbeddedPageUrl(
     const urlHash = getHash(
       {
         ...pageStyle,
-        ...(locale ? { locale } : {}),
+        ...(locale && { locale }),
+        ...(font && { font }),
       },
       hiddenFilters,
     );

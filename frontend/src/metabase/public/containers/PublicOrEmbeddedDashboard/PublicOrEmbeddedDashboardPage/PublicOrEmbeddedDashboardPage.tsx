@@ -41,7 +41,6 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     onRefreshPeriodChange,
     theme,
     titled,
-    font,
     locale,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
@@ -68,7 +67,6 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         downloadsEnabled={downloadsEnabled}
         theme={theme}
         titled={titled}
-        font={font}
         parameterQueryParams={parameterQueryParams}
         cardTitled={true}
         locale={canWhitelabel ? locale : undefined}
