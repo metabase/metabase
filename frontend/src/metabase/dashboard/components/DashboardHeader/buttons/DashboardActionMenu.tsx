@@ -11,7 +11,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 
 // Fixes this bug: https://github.com/mantinedev/mantine/issues/5571#issue-2082430353
-// Hover states get wierd when using Link directly. Since Link does not take the standard
+// Hover states get weird when using Link directly. Since Link does not take the standard
 // `ref` prop, we have to manually forward it to the correct prop name to hover work as expected.
 const ForwardRefLink = forwardRef((props: LinkProps, ref) => (
   // @ts-expect-error - innerRef not in prop types but it is a valid prop. docs can be found here: https://github.com/remix-run/react-router/blob/v3.2.6/docs/API.md#innerref
