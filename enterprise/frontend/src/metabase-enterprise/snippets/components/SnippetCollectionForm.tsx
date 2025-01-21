@@ -7,7 +7,7 @@ import FormCollectionPicker from "metabase/collections/containers/FormCollection
 import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import FormFooter from "metabase/core/components/FormFooter";
+import { FormFooter } from "metabase/core/components/FormFooter";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormTextArea from "metabase/core/components/FormTextArea";

@@ -26,11 +26,10 @@ import * as Lib from "metabase-lib";
 import DatasetEditor from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
-import { ViewFooter } from "../../ViewFooter";
 import ViewSidebar from "../../ViewSidebar";
-import { ChartSettingsSidebar } from "../../sidebars/ChartSettingsSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
+import { ViewLeftSidebarContainer } from "../ViewLeftSidebarContainer";
 import { ViewMainContainer } from "../ViewMainContainer";
 import { ViewRightSidebarContainer } from "../ViewRightSidebarContainer";
 
@@ -75,6 +74,14 @@ const ViewInner = props => {
     onOpenModal,
     originalQuestion,
     isShowingChartSettingsSidebar,
+    isShowingChartTypeSidebar,
+    onCloseChartSettings,
+    addField,
+    initialChartSetting,
+    onReplaceAllVisualizationSettings,
+    onOpenChartType,
+    visualizationSettings,
+    showSidebarTitle,
     isShowingSummarySidebar,
     isShowingTemplateTagsEditor,
     isShowingDataReference,
@@ -150,7 +157,8 @@ const ViewInner = props => {
   const isNotebookContainerOpen =
     isNewQuestion || queryBuilderMode === "notebook";
 
-  const showLeftSidebar = isShowingChartSettingsSidebar;
+  const showLeftSidebar =
+    isShowingChartSettingsSidebar || isShowingChartTypeSidebar;
   const showRightSidebar =
     isShowingTimelineSidebar ||
     isShowingQuestionInfoSidebar ||
@@ -196,9 +204,21 @@ const ViewInner = props => {
             />
           )}
           <ViewSidebar side="left" isOpen={showLeftSidebar}>
-            {isShowingChartSettingsSidebar && (
-              <ChartSettingsSidebar question={question} result={result} />
-            )}
+            <ViewLeftSidebarContainer
+              question={question}
+              result={result}
+              isShowingChartSettingsSidebar={isShowingChartSettingsSidebar}
+              isShowingChartTypeSidebar={isShowingChartTypeSidebar}
+              onCloseChartSettings={onCloseChartSettings}
+              addField={addField}
+              initialChartSetting={initialChartSetting}
+              onReplaceAllVisualizationSettings={
+                onReplaceAllVisualizationSettings
+              }
+              onOpenChartType={onOpenChartType}
+              visualizationSettings={visualizationSettings}
+              showSidebarTitle={showSidebarTitle}
+            />
           </ViewSidebar>
           <ViewMainContainer
             showLeftSidebar={showLeftSidebar}
@@ -213,10 +233,6 @@ const ViewInner = props => {
             <ViewRightSidebarContainer {...props} />
           </ViewSidebar>
         </Flex>
-
-        {queryBuilderMode !== "notebook" && (
-          <ViewFooter className={CS.flexNoShrink} />
-        )}
       </Flex>
 
       {isShowingNewbModal && (

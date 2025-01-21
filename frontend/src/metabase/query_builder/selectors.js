@@ -65,9 +65,12 @@ export const getIsShowingRawTable = state =>
 
 const SIDEBARS = [
   "isShowingQuestionDetailsSidebar",
+  "isShowingChartTypeSidebar",
   "isShowingChartSettingsSidebar",
   "isShowingTimelineSidebar",
+
   "isShowingSummarySidebar",
+
   "isShowingDataReference",
   "isShowingTemplateTagsEditor",
   "isShowingSnippetSidebar",

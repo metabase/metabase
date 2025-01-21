@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.xrays.related :as related]

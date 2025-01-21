@@ -14,8 +14,8 @@
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task :as task]
-   [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -351,6 +351,7 @@
                                        :name "Secret Test"
                                        :details base-details}]
       (mt/with-current-user (mt/user->id :crowberto)
+        #_{:clj-kondo/ignore [:redundant-nested-call]}
         (are [expected extra-details] (= (merge
                                           base-details
                                           expected)

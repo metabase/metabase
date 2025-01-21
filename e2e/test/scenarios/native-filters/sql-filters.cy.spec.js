@@ -10,7 +10,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
     cy.signInAsAdmin();
 
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
   });
 
   describe("should work for text", () => {

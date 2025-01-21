@@ -4,12 +4,14 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
+import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   onOpenQuestionSettings,
   softReloadCard,
   turnModelIntoQuestion,
+  turnQuestionIntoModel,
 } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import DatasetMetadataStrengthIndicator from "metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
@@ -81,12 +83,18 @@ export const QuestionMoreActionsMenu = ({
       datasetEditorTab: "metadata",
     });
 
+  const [ackedModelModal] = useUserAcknowledgement("turn_into_model_modal");
+
   const handleTurnToModel = () => {
-    const modal = checkCanBeModel(question)
-      ? MODAL_TYPES.TURN_INTO_DATASET
-      : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+    if (!ackedModelModal) {
+      const modal = checkCanBeModel(question)
+        ? MODAL_TYPES.TURN_INTO_DATASET
+        : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+      onOpenModal(modal);
+    } else {
+      dispatch(turnQuestionIntoModel());
+    }
     trackTurnIntoModelClicked(question);
-    onOpenModal(modal);
   };
   const onOpenSettingsSidebar = () => dispatch(onOpenQuestionSettings());
 
@@ -163,7 +171,7 @@ export const QuestionMoreActionsMenu = ({
       </Menu.Item>
     ),
     hasCollectionPermissions && (
-      <Fragment key="move-block">
+      <Fragment key="move">
         <Menu.Divider />
         <Menu.Item
           icon={<Icon name="move" />}
@@ -185,7 +193,7 @@ export const QuestionMoreActionsMenu = ({
       </Menu.Item>
     ),
     hasCollectionPermissions && (
-      <Fragment key="trash-block">
+      <Fragment key="trash">
         <Menu.Divider />
         <Menu.Item
           icon={<Icon name="trash" />}

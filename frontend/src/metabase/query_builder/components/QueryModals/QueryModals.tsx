@@ -14,7 +14,7 @@ import * as Urls from "metabase/lib/urls";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/updateQuestion";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
-import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
+import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import type { QueryModalType } from "metabase/query_builder/constants";

@@ -38,9 +38,8 @@ describe("scenarios > question > trendline", () => {
     H.leftSidebar().within(() => {
       cy.findByText("Data").click();
       cy.icon("close").last().click({ force: true });
+      cy.findByText("Done").click();
     });
-
-    H.closeVizSettingsSidebar();
 
     // Graph should still exist
     cy.findByPlaceholderText("Created At").should("not.exist");
