@@ -814,6 +814,7 @@
   metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
   metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
+  metabase.notification.test-util/with-temp-notification                                clojure.core/let
   metabase.notification.test-util/with-card-notification                                clojure.core/let
   metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
   metabase.public-settings.premium-features/defenterprise-schema                        clj-kondo.lint-as/def-catch-all

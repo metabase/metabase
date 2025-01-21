@@ -119,6 +119,14 @@
   (validate-notification instance)
   instance)
 
+(defn- update-subscription-trigger!
+  [& args]
+  (apply (requiring-resolve 'metabase.task.notification/update-subscription-trigger!) args))
+
+(defn- delete-trigger-for-subscription!
+  [& args]
+  (apply (requiring-resolve 'metabase.task.notification/delete-trigger-for-subscription!) args))
+
 (t2/define-before-update :model/Notification
   [instance]
   (validate-notification instance)
@@ -126,11 +134,15 @@
     (throw (ex-info (format "Update %s is not allowed." (name unallowed-key))
                     {:status-code 400
                      :changes     (t2/changes instance)})))
+  (when (contains? (t2/changes instance) :active)
+    (let [subscriptions (t2/select :model/NotificationSubscription
+                                   :notification_id (:id instance)
+                                   :type :notification-subscription/cron)]
+      (doseq [subscription subscriptions]
+        (if (:active instance)
+          (update-subscription-trigger! subscription)
+          (delete-trigger-for-subscription! (:id subscription))))))
   instance)
-
-(defn- delete-trigger-for-subscription!
-  [& args]
-  (apply (requiring-resolve 'metabase.task.notification/delete-trigger-for-subscription!) args))
 
 (t2/define-before-delete :model/Notification
   [instance]
@@ -180,10 +192,6 @@
   [instance]
   (validate-subscription instance)
   instance)
-
-(defn- update-subscription-trigger!
-  [& args]
-  (apply (requiring-resolve 'metabase.task.notification/update-subscription-trigger!) args))
 
 (t2/define-after-insert :model/NotificationSubscription
   [instance]
