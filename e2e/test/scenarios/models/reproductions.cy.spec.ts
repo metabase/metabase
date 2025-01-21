@@ -965,6 +965,8 @@ describe("issue 34574", () => {
       cy.log("Make sure we immediately render the proper markdown");
       cy.findByTestId("editable-text").get("textarea").should("not.exist");
       cy.findByTestId("editable-text").within(assertMarkdownPreview);
+
+      cy.findByLabelText("Close").click();
     });
 
     // Let redux handle async actions so that they won't interfere with the action
