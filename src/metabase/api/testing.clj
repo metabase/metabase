@@ -11,6 +11,7 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.search.core :as search]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
@@ -86,7 +87,8 @@
       ;; parameterization doesn't work with view names. If someone maliciously named a table, this is bad. On the
       ;; other hand, this is not running in prod and you already had to have enough access to maliciously name the
       ;; table, so this is probably safe enough.
-      (jdbc/execute! {:connection conn} (format "ALTER VIEW %s RECOMPILE" table-name)))))
+      (jdbc/execute! {:connection conn} (format "ALTER VIEW %s RECOMPILE" table-name))
+      (search/reindex!))))
 
 (defn- restore-snapshot! [snapshot-name]
   (assert-h2 (mdb/app-db))
