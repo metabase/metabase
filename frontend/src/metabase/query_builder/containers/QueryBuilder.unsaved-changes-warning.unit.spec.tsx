@@ -6,6 +6,7 @@ import {
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
+  setupGetUserKeyValueEndpoint,
 } from "__support__/server-mocks";
 import {
   act,
@@ -55,6 +56,12 @@ describe("QueryBuilder - unsaved changes warning", () => {
     HTMLElement.prototype.getBoundingClientRect = jest
       .fn()
       .mockReturnValue({ height: 1, width: 1 });
+
+    setupGetUserKeyValueEndpoint({
+      namespace: "user_acknowledgement",
+      key: "turn_into_model_modal",
+      value: false,
+    });
   });
 
   afterEach(() => {

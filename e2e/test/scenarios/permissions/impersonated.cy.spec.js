@@ -74,7 +74,7 @@ H.describeEE("impersonated permission", () => {
         cy.reload();
 
         // No access through the native query builder
-        H.startNewNativeQuestion({ database: PG_DB_ID }).as("editor");
+        H.startNewNativeQuestion().as("editor");
 
         cy.findByTestId("gui-builder-data").click();
         cy.findByLabelText("QA Postgres12").click();
