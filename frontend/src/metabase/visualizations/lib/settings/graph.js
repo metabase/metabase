@@ -317,17 +317,13 @@ export const TOOLTIP_SETTINGS = {
   },
   "graph.tooltip_columns": {
     section: t`Display`,
-    title: t`Additional tooltip metrics`,
-    placeholder: t`Enter metric names`,
+    title: t`Additional tooltip columns`,
+    placeholder: t`Enter column names`,
     widget: "multiselect",
     useRawSeries: true,
     getValue: getComputedAdditionalColumnsValue,
     getHidden: (rawSeries, vizSettings) => {
-      const isAggregatedChart = rawSeries[0].card.display !== "scatter";
-      return (
-        getAvailableAdditionalColumns(rawSeries, vizSettings, isAggregatedChart)
-          .length === 0
-      );
+      return getAvailableAdditionalColumns(rawSeries, vizSettings).length === 0;
     },
     getProps: (rawSeries, vizSettings) => {
       const isAggregatedChart = rawSeries[0].card.display !== "scatter";
