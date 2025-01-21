@@ -309,6 +309,7 @@ export function createEntity(def) {
       withCachedDataAndRequestState(
         entityQuery => [...getListStatePath(entityQuery)],
         entityQuery => [...getListStatePath(entityQuery), "fetch"],
+        entityQuery => entity.getQueryKey(entityQuery),
       ),
     )((entityQuery = null) => async (dispatch, getState) => {
       const fetched = await entity.api.list(
@@ -672,7 +673,7 @@ export async function entityCompatibleQuery(
   entityQuery,
   dispatch,
   endpoint,
-  { forceRefetch = false } = {},
+  { forceRefetch = true } = {},
 ) {
   const request = entityQuery === EMPTY_ENTITY_QUERY ? undefined : entityQuery;
   const action = dispatch(endpoint.initiate(request, { forceRefetch }));
