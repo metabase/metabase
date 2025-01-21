@@ -213,6 +213,7 @@
                     {:from    (if-let [from-name (email-from-name)]
                                 (str from-name " <" (email-from-address) ">")
                                 (email-from-address))
+                     ;; FIXME: postal doesn't accept recipients if it's a set, need to fix this from upstream
                      to-type  (seq recipients)
                      :subject subject
                      :body    (case message-type
