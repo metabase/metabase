@@ -1068,7 +1068,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
   :visibility :internal
   :export?    false
-  :default    :in-place
+  :default    :appdb                                     ;; make sure to change this back after verifying e2e tests
   :type       :keyword)
 
 (defsetting experimental-search-weight-overrides
