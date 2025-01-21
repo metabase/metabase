@@ -6,7 +6,6 @@
    [metabase.util.files :as u.files]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
    [rewrite-clj.zip :as z]))
@@ -390,33 +389,111 @@
       (println "Error rewriting defendpoint:" e)
       defendpoint)))
 
-(mu/defn- rewrite-namespace :- ::zloc
+(mu/defn- rewrite-all-defendpoints :- ::zloc
   [zloc :- ::zloc]
   (if-let [defendpoint (z/find-next zloc #(defendpoint-node? (z/node %)))]
     (let [zloc' (rewrite-defendpoint defendpoint)]
       (recur zloc'))
     zloc))
 
-;; TODO -- require needs to include api.macros.
+(mu/defn- ns-node?
+  [node :- ::node]
+  (when (= (n/tag node) :list)
+    (let [[first-child] (n/children node)]
+      (and (= (n/tag first-child) :token)
+           (= (n/sexpr first-child) 'ns)))))
 
-(defn rewrite-defendpoints! [^String filename & {:keys [write?], :or {write? true}}]
+(mu/defn- find-ns-node :- ::zloc
+  [zloc :- ::zloc]
+  (z/find-depth-first zloc #(ns-node? (z/node %))))
+
+(mu/defn- require-node?
+  [node :- ::node]
+  (when (= (n/tag node) :list)
+    (let [[first-child] (n/children node)]
+      (and (= (n/tag first-child) :token)
+           (= (n/sexpr first-child) :require)))))
+
+(mu/defn- find-require :- ::zloc
+  [zloc :- ::zloc]
+  (let [ns-node-loc (find-ns-node zloc)]
+    (z/find-depth-first ns-node-loc #(require-node? (z/node %)))))
+
+(mu/defn- has-api-macros-require?
+  [require-loc :- ::zloc]
+  (z/find-next
+   (z/down require-loc)
+   (fn [zloc]
+     (and (= (z/tag zloc) :vector)
+          (let [[first-child] (n/children (z/node zloc))]
+            (and (= (n/tag first-child) :token)
+                 (= (n/sexpr first-child) 'metabase.api.macros)))))))
+
+(mu/defn- add-api-macros-require :- ::zloc
+  [require-loc :- ::zloc]
+  ;; keep iterating thru the requires until we find one that should appear after the `metabase.api.macros`
+  (letfn [(required-namespace-symb [zloc]
+            (when (= (z/tag zloc) :vector)
+              (let [[first-child] (n/children (z/node zloc))]
+                (when (= (n/tag first-child) :token)
+                  (n/sexpr first-child)))))
+          (before-or-after [zloc]
+            (or (when-let [symb (required-namespace-symb zloc)]
+                  (when (= (sort [symb 'metabase.api.macros])
+                           [symb 'metabase.api.macros])
+                    :before))
+                :after))]
+    (let [preceding-zloc (loop [zloc (z/find-depth-first require-loc required-namespace-symb)]
+                           (case (before-or-after zloc)
+                             :before (if (z/rightmost? zloc)
+                                       zloc
+                                       (recur (z/right zloc)))
+                             :after  (z/left zloc)))]
+      (-> preceding-zloc
+          (z/insert-right (n/vector-node
+                           [(n/token-node 'metabase.api.macros)
+                            (n/whitespace-node " ")
+                            (n/keyword-node :as)
+                            (n/whitespace-node " ")
+                            (n/token-node 'api.macros)]))
+          (z/insert-right (n/whitespace-node " "))
+          (z/insert-right (n/newline-node "\n"))))))
+
+(mu/defn- add-macros-namespace-require :- ::zloc
+  [top-level-forms :- ::zloc]
+  (z/subedit-node
+   top-level-forms
+   (fn [top-level-forms]
+     (let [require-loc (find-require top-level-forms)]
+       (if (has-api-macros-require? require-loc)
+         require-loc
+         (add-api-macros-require require-loc))))))
+
+(mu/defn- rewrite-namespace :- ::zloc
+  [top-level-forms :- ::zloc]
+  (-> top-level-forms
+      add-macros-namespace-require
+      rewrite-all-defendpoints))
+
+(defn rewrite-file! [^String filename & {:keys [write?], :or {write? true}}]
   (println "Rewriting" filename)
-  (let [node (r.parser/parse-file-all filename)
-        zloc (-> (z/of-node node)
-                 rewrite-namespace)]
+  (let [node            (r.parser/parse-file-all filename)
+        top-level-forms (-> (z/of-node node)
+                            rewrite-namespace)]
     (letfn [(print-root [w]
-              (z/print-root zloc w))]
+              (z/print-root top-level-forms w))]
       (if write?
         (with-open [w (java.io.FileWriter. filename)]
           (print-root w))
         (print-root *out*)))))
 
-(def ^:private files
+(defn- files []
   (->> (u.files/files-seq (u.files/get-path "src/metabase/api/"))
        (map str)
        (filter #(str/ends-with? % ".clj"))
-       sort))
+       sort
+       (take 3)))
 
 (defn rewrite-all! []
-  (doseq [file (take 3 files)]
-    (rewrite-defendpoints! file :write? true)))
+  (doseq [file (files)]
+    (rewrite-file! file :write? true)))
