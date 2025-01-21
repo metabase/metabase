@@ -50,18 +50,28 @@
   (and (map? content)
        (contains? #{:query "query"} (:type content))))
 
+(defn- stringified-content [{:keys [structured-content content]}]
+  (or content
+      (some-> structured-content json/encode)))
+
+(defn- stringify-content [msg]
+  (-> msg
+      (dissoc :structured-content)
+      (assoc :content (stringified-content msg))))
+
+(defn- maybe-remove-query [msg]
+  (cond-> msg
+    (and (is-tool-call-response? msg)
+         (is-query? (:structured-content msg)))
+    (update :structured-content dissoc :query)))
+
 (defn- llm-message
   "Formats a message for the LLM. Removes things we don't want the LLM to see (e.g. `query`) and stringifies structured
   content."
-  [{:as msg :keys [structured-content content]}]
-  (cond-> msg
-    (and
-     (is-tool-call-response? msg)
-     (is-query? structured-content)) (update :structured-content dissoc :query)
-    structured-content (as-> msg*
-                             (assoc msg* :content (or content
-                                                      (json/encode (:structured-content msg*)))))
-    true (dissoc :structured-content)))
+  [msg]
+  (-> msg
+      maybe-remove-query
+      stringify-content))
 
 (defn llm-history
   "History shaped for the LLM"
