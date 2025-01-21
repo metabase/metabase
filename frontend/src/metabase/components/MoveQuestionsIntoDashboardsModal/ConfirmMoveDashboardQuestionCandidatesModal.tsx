@@ -1,31 +1,39 @@
 import { useMemo } from "react";
+import { P, match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { Button, Flex, Icon, Modal } from "metabase/ui";
+import { Button, Flex, Icon, Loader, Modal, Text } from "metabase/ui";
+import type { GetCollectionDashboardQuestionCandidates } from "metabase-types/api";
 
 import S from "./ConfirmMoveDashboardQuestionCandidatesModal.module.css";
 
 interface ConfirmMoveDashboardQuestionCandidatesModalProps {
-  candidates: any[]; // TODO:
+  candidates: GetCollectionDashboardQuestionCandidates["data"] | undefined;
+  isLoading: boolean;
+  error: unknown;
   onConfirm: () => Promise<void>;
   onCancel: () => void;
 }
 
 export const ConfirmMoveDashboardQuestionCandidatesModal = ({
   candidates,
+  isLoading,
+  error,
   onConfirm,
   onCancel,
 }: ConfirmMoveDashboardQuestionCandidatesModalProps) => {
-  const rows = useMemo(
-    () =>
-      candidates.map((_, i) => ({
-        id: i,
-        questionName: `Question ${i}`,
-        dashboardName: `Dashboard ${i}`,
-      })),
-    [candidates],
-  );
+  const rows = useMemo(() => {
+    if (isLoading || error || !candidates) {
+      return [];
+    }
+
+    return candidates.map(candidate => ({
+      id: candidate.id,
+      questionName: candidate.name,
+      dashboardName: candidate.sole_dashboard_info.name,
+    }));
+  }, [isLoading, error, candidates]);
 
   return (
     <Modal.Root
@@ -43,11 +51,13 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
           className={S.modalHeader}
         >
           <Modal.Title fz="20px">
-            {ngettext(
-              msgid`Move this question into its dashboard?`,
-              `Move these ${candidates.length} questions into their dashboards?`,
-              candidates.length,
-            )}
+            {error || isLoading || rows.length === 0
+              ? t`Move these questions into their dashboards?`
+              : ngettext(
+                  msgid`Move this question into its dashboard?`,
+                  `Move these ${rows.length} questions into their dashboards?`,
+                  rows.length,
+                )}
           </Modal.Title>
           <Modal.CloseButton data-testid="move-questions-into-dashboard-modal-close-btn" />
         </Modal.Header>
@@ -69,12 +79,39 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
             </div>
           </div>
           <div className={S.tbody}>
-            {rows.map(row => (
-              <div key={row.id} className={S.tableRow}>
-                <div className={S.cell}>{row.questionName}</div>
-                <div className={S.cell}>{row.dashboardName}</div>
-              </div>
-            ))}
+            {match({ isLoading, error, rows })
+              .with({ isLoading: true }, () => (
+                <Flex justify="center" py="18.25rem">
+                  <Loader size="xl" />
+                </Flex>
+              ))
+              .with({ error: P.not(P.nullish) }, ({ error }) => {
+                const defaultMsg = t`Something went wrong`;
+                return (
+                  <Flex justify="center" py="19rem">
+                    <Text color="error" size="1.25rem" px="md">
+                      {error instanceof Error
+                        ? (error?.message ?? defaultMsg)
+                        : defaultMsg}
+                    </Text>
+                  </Flex>
+                );
+              })
+              .with({ rows: [] }, () => (
+                <Flex justify="center" py="19rem">
+                  <Text size="1.25rem" px="md" color="text-light">
+                    {t`There's no questions to clean up! Looks like everything is in its place.`}
+                  </Text>
+                </Flex>
+              ))
+              .otherwise(() =>
+                rows.map(row => (
+                  <div key={row.id} className={S.tableRow}>
+                    <div className={S.cell}>{row.questionName}</div>
+                    <div className={S.cell}>{row.dashboardName}</div>
+                  </div>
+                )),
+              )}
           </div>
           <Flex
             className={S.modalFooter}
@@ -84,7 +121,11 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
             px="1.25rem"
           >
             <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
-            <Button variant="filled" onClick={onConfirm}>
+            <Button
+              variant="filled"
+              onClick={onConfirm}
+              disabled={!!(isLoading || error)}
+            >
               {t`Move these questions`}
             </Button>
           </Flex>

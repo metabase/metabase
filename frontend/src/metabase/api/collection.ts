@@ -1,7 +1,9 @@
 import type {
   Collection,
+  CollectionId,
   CreateCollectionRequest,
   DeleteCollectionRequest,
+  GetCollectionDashboardQuestionCandidates,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListCollectionsRequest,
@@ -109,6 +111,13 @@ export const collectionApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("collection"), idTag("collection", id)]),
     }),
+    listCollectionDashboardQuestionCandidates: builder.query<
+      GetCollectionDashboardQuestionCandidates,
+      CollectionId
+    >({
+      query: id => `/api/collection/${id}/dashboard-question-candidates`,
+      providesTags: (_, __, id) => [idTag("collection", id)],
+    }),
   }),
 });
 
@@ -120,4 +129,5 @@ export const {
   useCreateCollectionMutation,
   useUpdateCollectionMutation,
   useDeleteCollectionMutation,
+  useListCollectionDashboardQuestionCandidatesQuery,
 } = collectionApi;
