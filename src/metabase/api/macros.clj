@@ -449,7 +449,7 @@
   [{:keys [method route], :as _args} base-handler]
   `(compojure/make-route
     ~method
-    (clout/route-compile ~(:path route) ~(:regexes route {}))
+    (clout/route-compile ~(:path route) ~(:regexes route))
     ~base-handler))
 
 (mu/defn defendpoint-openapi-spec
