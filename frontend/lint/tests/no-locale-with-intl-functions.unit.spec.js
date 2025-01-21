@@ -37,42 +37,42 @@ const VALID_CASES = [
 const INVALID_CASES = [
   {
     name: "String.localeCompare should not take a locales argument",
-    code: `"a".localeCompare("b", "en")`,
+    code: `const locale = "pt_BR"; "a".localeCompare("b", locale);`,
     error: /Avoid providing a locales argument to String.localeCompare/,
   },
   {
     name: "Intl.NumberFormat should not take a locales argument",
-    code: `Intl.NumberFormat("en").format(1000);`,
+    code: `const locale = "pt_BR"; Intl.NumberFormat(locale).format(1000);`,
     error: /Avoid providing a locales argument to Intl.NumberFormat/,
   },
   {
     name: "Intl.DateTimeFormat should not take a locales argument",
-    code: `Intl.DateTimeFormat("en").format(Date.now());`,
+    code: `const locale = "pt_BR"; Intl.DateTimeFormat(locale).format(Date.now());`,
     error: /Avoid providing a locales argument to Intl.DateTimeFormat/,
   },
   {
     name: "Intl.RelativeTimeFormat should not take a locales argument",
-    code: `Intl.RelativeTimeFormat("en").format(3, 'seconds')`,
+    code: `const locale = "pt_BR"; Intl.RelativeTimeFormat(locale).format(3, 'seconds');`,
     error: /Avoid providing a locales argument to Intl.RelativeTimeFormat/,
   },
   {
     name: "Intl.ListFormat should not take a locales argument",
-    code: `new Intl.ListFormat('en').format(['Alice', 'Bob'])`,
+    code: `const locale = "pt_BR"; new Intl.ListFormat(locale).format(['Alice', 'Bob']);`,
     error: /Avoid providing a locales argument to Intl.ListFormat/,
   },
   {
     name: "Intl.Segmenter should not take a locales argument",
-    code: `new Intl.Segmenter('en').segment('a')[Symbol.iterator]().next()`,
+    code: `const locale = "pt_BR"; new Intl.Segmenter(locale).segment('a')[Symbol.iterator]().next();`,
     error: /Avoid providing a locales argument to Intl.Segmenter/,
   },
   {
     name: "Intl.Collator should not take a locales argument",
-    code: `new Intl.Collator('en').compare('a', 'b')`,
+    code: `const locale = "pt_BR"; new Intl.Collator(locale).compare('a', 'b');`,
     error: /Avoid providing a locales argument to Intl.Collator/,
   },
   {
     name: "Intl.DisplayNames cannot be called",
-    code: `new Intl.DisplayNames()`,
+    code: `new Intl.DisplayNames();`,
     error: /Intl.DisplayNames is not supported in Metabase/,
   },
 ];
