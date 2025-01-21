@@ -65,6 +65,7 @@ export const SaveQuestionModal = ({
           </Modal.Header>
           <Modal.Body>
             <SaveQuestionForm
+              saveToDashboard={saveToDashboard}
               onSaveSuccess={() => closeOnSuccess && modalProps.onClose()}
               onCancel={modalProps.onClose}
             />
