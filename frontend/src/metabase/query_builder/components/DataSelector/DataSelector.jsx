@@ -587,6 +587,13 @@ export class UnconnectedDataSelector extends Component {
       index -= 1;
     }
 
+    if (
+      steps[index] === DATABASE_STEP &&
+      this.props.combineDatabaseSchemaSteps
+    ) {
+      index -= 1;
+    }
+
     // data bucket step doesn't make a lot of sense when there're no models or metrics
     if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableModelsOrMetrics()) {
       return null;
