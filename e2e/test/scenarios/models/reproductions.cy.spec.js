@@ -352,7 +352,7 @@ describe("issue 20963", () => {
   it("should allow converting questions with static snippets to models (metabase#20963)", () => {
     cy.visit("/");
 
-    H.openNativeEditor();
+    H.startNewNativeQuestion().as("editor");
 
     // Creat a snippet
     cy.icon("snippet").click();
