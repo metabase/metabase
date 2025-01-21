@@ -84,7 +84,7 @@ You can include a variable in a text card, then wire that variable up to a dashb
 
 And connect that variable to a dashboard filter widget that filters for states. If someone selected `WI` in the state filter, the text in the markdown card would read: **WI orders**.
 
-You can also make text options by wrapping the text in double brackets, `[[` and `]]`:
+You can also make text optional by wrapping the text in double brackets, `[[` and `]]`:
 
 ```
 {% raw %}
@@ -103,6 +103,16 @@ To see how to wire up a filter to a card, see [dashboard filters](./filters.md).
 Link cards are specialized cards that let you search and link to other items in your Metabase. You can also use them for external links. Useful for pointing people to other resources relevant to your dashboard.
 
 To add a link card to a dashboard, click the **pencil** icon to enter dashboard editing mode, then click on the **link** icon. Click on the input field in the link card to search your Metabase for an item to link to, or paste an external link.
+
+Link cards support parameters so you can use dashboard filters to update values in the link card's URL. For example, you could include a variable in a URL using double braces, like so:
+
+```
+{% raw %}
+https://www.example.com/{{path}}
+{% endraw %}
+```
+
+To provide values for the variable, you'll need to add a filter to the dashboard, and connect that filter to the card's variable (in this case `path`). Parameters are only supported for non-Metabase URLs (that is, URLs that you manually enter, not URLs you search and select from your Metabase). You can optionally set a default value for the variable. See [Connecting a filter or parameter widget to dashboard cards](./filters.md#connecting-a-filter-or-parameter-widget-to-dashboard-cards).
 
 ## Iframe cards
 
@@ -130,6 +140,16 @@ To add an iframe card to a dashboard, click the **pencil** icon to enter dashboa
 And behold, a dashboard with an embedded video:
 
 ![Dashboard with iframe of video](./images/dashboard-with-iframe.png)
+
+Iframe cards support parameters so that you can use a filter widget to update values in the iframe. For example, you could include a parameter in the iframe's `src` URL with double braces, like so:
+
+```
+{% raw %}
+src="https://www.youtube.com/embed/{{video_id}}
+{% endraw %}
+```
+
+To provide values for the variable, you'll then need to add a filter to the dashboard, and connect that filter to the card's variable (in this case `video_id`). You can optionally set a default value for the variable. See [Connecting a filter or parameter widget to dashboard cards](./filters.md#connecting-a-filter-or-parameter-widget-to-dashboard-cards).
 
 ## Dashboard tabs
 
