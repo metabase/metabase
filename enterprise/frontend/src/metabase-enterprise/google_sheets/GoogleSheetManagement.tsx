@@ -1,93 +1,128 @@
-import { useEffect, useState } from "react";
-import { c, t } from "ttag";
+import { useState } from "react";
+import { match } from "ts-pattern";
+import { jt, t } from "ttag";
 
-import { skipToken } from "metabase/api";
+import { reloadSettings } from "metabase/admin/settings/settings";
 import { useSetting } from "metabase/common/hooks";
+import { CopyButton } from "metabase/components/CopyButton";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
   Button,
   Center,
-  Divider,
   Flex,
+  Icon,
+  Menu,
   Modal,
+  Stack,
   Text,
   TextInput,
 } from "metabase/ui";
 import {
-  useGetGsheetsOauthStatusQuery,
-  useInitiateOauthMutation,
+  useDeleteGsheetsFolderLinkMutation,
+  useGetServiceAccountQuery,
   useSaveGsheetsFolderLinkMutation,
 } from "metabase-enterprise/api";
 
-const AUTH_COMPLETE_POLL_INTERVAL = 2000;
+import disconnectIllustration from "./disconnect.svg?component";
 
-type Step =
-  | "no-auth"
-  | "auth-started" // loading
-  | "auth-complete"
-  | "setting-folder"
-  | "folder-saved";
-
-export function GSheetManagement() {
-  const [step, setStep] = useState<Step>("no-auth");
+export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
   const gSheetsSetting = useSetting("gsheets");
   const gSheetsEnabled = useSetting("show-google-sheets-integration");
 
-  useEffect(() => {
-    setStep(gSheetsSetting?.status ?? "no-auth");
-  }, [gSheetsSetting]);
+  const { status } = gSheetsSetting;
+  const userIsAdmin = useSelector(getUserIsAdmin);
+  const { data: { email: serviceAccountEmail } = {} } =
+    useGetServiceAccountQuery();
 
-  const showModal = !["no-auth", "folder-saved"].includes(step);
-  const showButton = step !== "folder-saved";
-  const showStatus = step === "folder-saved";
-
-  if (!gSheetsEnabled) {
+  if (
+    !gSheetsEnabled ||
+    !gSheetsSetting ||
+    !userIsAdmin ||
+    !serviceAccountEmail
+  ) {
     return null;
   }
 
+  const buttonText = match(status)
+    .with("not-connected", () => t`Connect Google Sheets`)
+    .with("loading", () => t`Google Sheets`)
+    .with("complete", () => t`Google Sheets`)
+    .otherwise(() => t`Google Sheets`);
+
+  const helperText = match(status)
+    .with("not-connected", () => null)
+    .with("loading", () => t`Importing files...`)
+    .with("complete", () => t`Connected`)
+    .otherwise(() => null);
+
   return (
-    <>
-      <Box py="lg" mx="md">
-        <Divider />
-        <Box py="lg">
-          <Box>
-            {showStatus && (
-              <Text
-                mb="md"
-                color="text-medium"
-                component="a"
-                href={gSheetsSetting?.folder_url ?? ""}
-              >
-                {c("{0} is the name of a google drive folder")
-                  .t`Folder is connected`}
+    <Menu.Item onClick={onClick} disabled={status === "loading"}>
+      <Flex gap="sm" align="flex-start" justify="space-between" w="100%">
+        <Flex>
+          <Icon name="google_sheet" mt="xs" mr="sm" />
+          <div>
+            <Text
+              fw="bold"
+              c={status === "loading" ? "text-light" : "text-dark"}
+            >
+              {buttonText}
+            </Text>
+            {helperText && (
+              <Text size="sm" c="text-medium">
+                {helperText}
               </Text>
             )}
-            {showButton && (
-              <Button
-                variant="filled"
-                onClick={() =>
-                  setStep(
-                    step === "auth-complete"
-                      ? "setting-folder"
-                      : "auth-started",
-                  )
-                }
-              >
-                {t`Connect Google Sheets Folder`}
-              </Button>
-            )}
-          </Box>
-        </Box>
-        <Divider />
-      </Box>
-      {showModal && (
-        <GoogleSheetsConnectModal
-          step={step}
-          setStep={setStep}
-          onClose={() => setStep("no-auth") /* FIXME this is more complex */}
-        />
-      )}
-    </>
+          </div>
+        </Flex>
+        {status === "complete" && (
+          <Button variant="subtle" onClick={onClick}>
+            {t`Add New`}
+          </Button>
+        )}
+      </Flex>
+    </Menu.Item>
+  );
+}
+
+export function GsheetConnectionModal({
+  isModalOpen,
+  onClose,
+}: {
+  isModalOpen: boolean;
+  onClose: () => void;
+}) {
+  const gSheetsSetting = useSetting("gsheets");
+  const userIsAdmin = useSelector(getUserIsAdmin);
+  const { data: { email: serviceAccountEmail } = {} } =
+    useGetServiceAccountQuery();
+
+  const gSheetsEnabled = useSetting("show-google-sheets-integration");
+
+  if (
+    !gSheetsEnabled ||
+    !gSheetsSetting ||
+    !userIsAdmin ||
+    !serviceAccountEmail
+  ) {
+    console.error("Google Sheets integration is not enabled");
+    return null;
+  }
+
+  const { status, folder_url } = gSheetsSetting;
+
+  return (
+    isModalOpen &&
+    (status === "not-connected" ? (
+      <GoogleSheetsConnectModal
+        onClose={onClose}
+        serviceAccountEmail={serviceAccountEmail}
+        folderUrl={folder_url}
+      />
+    ) : (
+      <GoogleSheetsDisconnectModal onClose={onClose} reconnect={true} />
+    ))
   );
 }
 
@@ -98,104 +133,169 @@ const ModalWrapper = ({
   children: React.ReactNode;
   onClose: () => void;
 }) => (
-  <Modal
-    opened
-    title={t`Connect Google Sheets Folder`}
-    onClose={onClose}
-    size="lg"
-  >
-    <Flex py="lg" gap="md" direction="column">
+  <Modal opened onClose={onClose} size="lg">
+    <Flex px="lg" pb="lg" gap="md" direction="column">
       {children}
     </Flex>
   </Modal>
 );
 
 function GoogleSheetsConnectModal({
-  step,
-  setStep,
   onClose,
+  folderUrl,
+  serviceAccountEmail,
 }: {
-  step: Step;
-  setStep: (newStep: Step) => void;
   onClose: () => void;
+  folderUrl: string | null;
+  serviceAccountEmail: string;
 }) {
-  const [folderLink, setFolderLink] = useState("");
-
-  const { data: oauthStatus } = useGetGsheetsOauthStatusQuery(
-    step === "auth-started" ? undefined : skipToken,
-    {
-      pollingInterval: AUTH_COMPLETE_POLL_INTERVAL,
-      skipPollingIfUnfocused: true,
-    },
-  );
-
-  const [initiateOauth, { isLoading: isLoadingOauthLink, data: oauthLink }] =
-    useInitiateOauthMutation();
+  const dispatch = useDispatch();
+  const [folderLink, setFolderLink] = useState(folderUrl ?? "");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [saveFolderLink, { isLoading: isSavingFolderLink }] =
     useSaveGsheetsFolderLinkMutation();
 
-  useEffect(() => {
-    if (step === "auth-started" && oauthStatus?.oauth_setup) {
-      setStep("auth-complete");
-    }
-  }, [step, setStep, oauthStatus]);
+  const onSave = async () => {
+    setErrorMessage("");
+    await saveFolderLink({
+      url: folderLink.trim(),
+    })
+      .unwrap()
+      .then(() => {
+        dispatch(reloadSettings());
+        onClose();
+      })
+      .catch(response => {
+        setErrorMessage(response?.data?.message ?? "Something went wrong");
+      });
+  };
 
-  useEffect(() => {
-    if (step === "auth-started") {
-      initiateOauth({ redirect_url: window.location.href });
-    }
-  }, [initiateOauth, step, setStep, oauthStatus]);
-
-  if (step === "auth-started") {
-    return (
-      <ModalWrapper onClose={onClose}>
-        <Center>
-          <Button
-            loading={isLoadingOauthLink || !oauthLink}
-            variant="filled"
-            component="a"
-            href={oauthLink?.oauth_url ?? undefined}
-            target="_blank"
-          >
-            {isLoadingOauthLink
-              ? t`Getting authorization link`
-              : t`Authorize Google Sheets`}
-          </Button>
-        </Center>
-      </ModalWrapper>
-    );
-  }
-
-  if (step === "auth-complete") {
-    return (
-      <ModalWrapper onClose={onClose}>
+  return (
+    <ModalWrapper onClose={onClose}>
+      <Text size="lg" fw="bold">
+        {
+          // eslint-disable-next-line no-literal-metabase-strings -- admin only string
+          t`Share the Google Drive folder that contains your Google Sheets with Metabase`
+        }
+      </Text>
+      <Flex
+        bg="bg-light"
+        style={{ borderRadius: "0.5rem" }}
+        p="md"
+        direction="column"
+        gap="md"
+      >
+        <Box>
+          <Text>
+            1. {t`In Google Drive, right-click on the folder → Share`}
+          </Text>
+        </Box>
+        <Flex align="center" justify="space-between">
+          <Text>
+            2. {jt`Enter: ${(<strong>{serviceAccountEmail}</strong>)}`}
+          </Text>
+          <CopyButton value={serviceAccountEmail}></CopyButton>
+        </Flex>
+        <Box>
+          <Text>3. {t`Click on Done`} </Text>
+        </Box>
+      </Flex>
+      <Box>
+        <Text
+          size="lg"
+          fw="bold"
+        >{t`Paste the sharing link for the folder`}</Text>
         <TextInput
+          my="sm"
           disabled={isSavingFolderLink}
-          label={t`Google Drive folder url`}
           value={folderLink}
           onChange={e => setFolderLink(e.target.value)}
           placeholder="https://drive.google.com/drive/folders/abc123-xyz456"
         />
+        <Text
+          size="sm"
+          color="secondary"
+        >{t`In Google Drive, right-click on the folder → Share → Copy link`}</Text>
+      </Box>
+      <Flex justify="space-between" align="center" mt="sm">
+        <Text c="error">{errorMessage}</Text>
         <Button
           variant="filled"
           loading={isSavingFolderLink}
           disabled={folderLink.length < 3}
-          onClick={async () => {
-            const response = await saveFolderLink({
-              url: folderLink.trim(),
-            }).unwrap();
-
-            if (response.success) {
-              setStep("folder-saved");
-            }
-          }}
+          onClick={onSave}
         >
-          {t`Sync folder`}
+          {t`Import Google Sheets`}
         </Button>
-      </ModalWrapper>
-    );
-  }
+      </Flex>
+    </ModalWrapper>
+  );
+}
 
-  return null;
+function GoogleSheetsDisconnectModal({
+  onClose,
+  reconnect = false,
+}: {
+  onClose: () => void;
+  reconnect: boolean;
+}) {
+  const [errorMessage, setErrorMessage] = useState("");
+  const dispatch = useDispatch();
+
+  const [deleteFolderLink, { isLoading: isDeletingFolderLink }] =
+    useDeleteGsheetsFolderLinkMutation();
+
+  const onDelete = async () => {
+    setErrorMessage("");
+    await deleteFolderLink()
+      .unwrap()
+      .then(() => {
+        dispatch(reloadSettings());
+        if (!reconnect) {
+          onClose();
+        }
+      })
+      .catch(response => {
+        setErrorMessage(response?.data?.message ?? "Something went wrong");
+      });
+  };
+
+  return (
+    <ModalWrapper onClose={onClose}>
+      <Flex justify="center" align="center" direction="column" gap="md" p="xl">
+        <Center p="md">
+          <Box component={disconnectIllustration} />
+        </Center>
+        <Text size="lg" fw="bold">
+          {reconnect
+            ? t`To add a new Google Drive folder, the existing one needs to be disconnected first.`
+            : t`Disconnect from Google Drive?`}
+        </Text>
+        <Text>
+          {reconnect
+            ? // eslint-disable-next-line no-literal-metabase-strings -- admin only string
+              t`Only one folder can be synced with Metabase at a time. Your tables and Google Sheets will remain in place.`
+            : t`Your existing tables and Google Sheets will remain in place but they will no longer be updated automatically.`}
+        </Text>
+        <Stack mt="sm" w="13rem">
+          <Button
+            fullWidth
+            variant="filled"
+            color="danger"
+            loading={isDeletingFolderLink}
+            onClick={onDelete}
+          >
+            {t`Disconnect`}
+          </Button>
+          <Button fullWidth variant="outline" onClick={onClose}>
+            {t`Keep connected`}
+          </Button>
+          <Text c="error" ta="center">
+            {errorMessage}
+          </Text>
+        </Stack>
+      </Flex>
+    </ModalWrapper>
+  );
 }

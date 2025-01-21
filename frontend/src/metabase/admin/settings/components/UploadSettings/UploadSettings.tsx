@@ -6,7 +6,6 @@ export const UploadSettings = () => {
   return (
     <>
       <UploadSettingsForm />
-      <PLUGIN_UPLOAD_MANAGEMENT.GSheetManagement />
       <PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable />
     </>
   );

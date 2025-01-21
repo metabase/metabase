@@ -552,9 +552,17 @@ export const PLUGIN_AUDIT = {
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
 };
 
+type GsheetConnectionModalProps = {
+  isModalOpen: boolean;
+  onClose: () => void;
+};
+
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   UploadManagementTable: PluginPlaceholder,
-  GSheetManagement: PluginPlaceholder,
+  GsheetsSyncStatus: PluginPlaceholder,
+  GsheetConnectionModal:
+    PluginPlaceholder as ComponentType<GsheetConnectionModalProps>,
+  GsheetMenuItem: PluginPlaceholder as ComponentType<{ onClick: () => void }>,
 };
 
 export const PLUGIN_IS_EE_BUILD = {
