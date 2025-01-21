@@ -31,7 +31,7 @@ describe("issue 29943", () => {
 
   function assertColumnSelected(columnIndex: number, name: string) {
     getHeaderCell(columnIndex, name)
-      .find("div")
+      .find("div > div")
       .should("have.css", "background-color")
       .and("eq", "rgb(80, 158, 227)");
 
