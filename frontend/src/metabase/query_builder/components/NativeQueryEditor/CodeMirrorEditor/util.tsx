@@ -1,8 +1,7 @@
 import type { EditorState } from "@codemirror/state";
-import { useState } from "react";
-import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import type { CardId, CardType } from "metabase-types/api";
 
 import type { Location } from "../types";
@@ -225,10 +224,9 @@ export function matchCardIdAtCursor(
   return parsedId;
 }
 
-export function useMemoized<T>(value: T): T {
-  const [memoized, setMemoized] = useState(value);
-  useDeepCompareEffect(() => {
-    setMemoized(value);
-  }, [value]);
-  return memoized;
+export function referencedQuestionIds(query: Lib.Query): CardId[] {
+  return Object.values(Lib.templateTags(query))
+    .filter(tag => tag.type === "card")
+    .map(tag => tag["card-id"])
+    .filter(cardId => cardId != null);
 }

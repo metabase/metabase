@@ -39,7 +39,7 @@ import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
-import type { CardId, DatabaseId } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 
 import {
   useCardTagCompletion,
@@ -47,19 +47,21 @@ import {
   useSchemaCompletion,
   useSnippetCompletion,
 } from "./completers";
-import { matchTagAtCursor } from "./util";
+import {
+  referencedQuestionIds as getReferencedQuestionIds,
+  matchTagAtCursor,
+} from "./util";
 
-type ExtensionOptions = {
-  engine?: string;
-  databaseId?: DatabaseId;
-  referencedQuestionIds?: CardId[];
-};
+export function useExtensions(query: Lib.Query): Extension[] {
+  const { databaseId, engine, referencedQuestionIds } = useMemo(
+    () => ({
+      databaseId: Lib.databaseID(query),
+      engine: Lib.engine(query),
+      referencedQuestionIds: getReferencedQuestionIds(query),
+    }),
+    [query],
+  );
 
-export function useExtensions({
-  engine,
-  databaseId,
-  referencedQuestionIds = [],
-}: ExtensionOptions): Extension[] {
   const schemaCompletion = useSchemaCompletion({ databaseId });
   const snippetCompletion = useSnippetCompletion();
   const cardTagCompletion = useCardTagCompletion({ databaseId });

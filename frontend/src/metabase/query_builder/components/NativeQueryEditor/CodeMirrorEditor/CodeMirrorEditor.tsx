@@ -11,13 +11,13 @@ import {
 } from "react";
 
 import { isEventOverElement } from "metabase/lib/dom";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
 
 import type { SelectionRange } from "../types";
 
 export type EditorProps = {
-  query: NativeQuery;
+  query: Lib.Query;
   onChange?: (queryText: string) => void;
   readOnly?: boolean;
   onCursorMoveOverCardTag?: (id: CardId) => void;
@@ -32,11 +32,7 @@ export interface EditorRef {
 
 import S from "./CodeMirrorEditor.module.css";
 import { useExtensions } from "./extensions";
-import {
-  convertIndexToPosition,
-  matchCardIdAtCursor,
-  useMemoized,
-} from "./util";
+import { convertIndexToPosition, matchCardIdAtCursor } from "./util";
 
 type CodeMirrorEditorProps = EditorProps;
 
@@ -51,13 +47,8 @@ export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
       onRightClickSelection,
       onCursorMoveOverCardTag,
     } = props;
-    const referencedQuestionIds = useMemoized(query.referencedQuestionIds());
 
-    const extensions = useExtensions({
-      engine: query.engine() ?? undefined,
-      databaseId: query.datasetQuery()?.database ?? undefined,
-      referencedQuestionIds,
-    });
+    const extensions = useExtensions(query);
 
     useImperativeHandle(ref, () => {
       return {
@@ -119,7 +110,7 @@ export const CodeMirrorEditor = forwardRef<EditorRef, CodeMirrorEditorProps>(
         data-testid="native-query-editor"
         className={S.editor}
         extensions={extensions}
-        value={query.queryText()}
+        value={Lib.rawNativeQuery(query)}
         readOnly={readOnly}
         onChange={onChange}
         height="100%"
