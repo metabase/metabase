@@ -48,6 +48,9 @@ function nativeEditorType(
     focusNativeEditor();
   }
 
+  const isMac = Cypress.platform === "darwin";
+  const metaKey = isMac ? "Meta" : "Control";
+
   const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
   function type(text: string) {
@@ -97,11 +100,11 @@ function nativeEditorType(
 
       case "{nextcompletion}":
         cy.wait(50);
-        return cy.realPress(["Meta", "j"]);
+        return cy.realPress([metaKey, "j"]);
 
       case "{prevcompletion}":
         cy.wait(50);
-        return cy.realPress(["Meta", "k"]);
+        return cy.realPress([metaKey, "k"]);
 
       case "{{}":
         return cy.realType("{");
