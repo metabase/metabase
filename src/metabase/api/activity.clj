@@ -1,7 +1,6 @@
 (ns metabase.api.activity
   (:require
    [clojure.string :as str]
-   [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.api.macros :as api.macros]
@@ -109,19 +108,19 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint ^:deprecated GET "/recent_views"
+(api.macros/defendpoint :get "/recent_views"
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
+  {:deprecated true}
   []
   {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/recents"
+(api.macros/defendpoint :get "/recents"
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
   Allows for filtering by context: views or selections"
-  [:as {{:keys [context]} :params}]
-  {context (ms/QueryVectorOf [:enum :selections :views])}
+  [_route-params
+   {:keys [context]} :- [:map
+                         [:context (ms/QueryVectorOf [:enum :selections :views])]]]
   (when-not (seq context) (throw (ex-info "context is required." {})))
   (recent-views/get-recents *current-user-id* context))
 
