@@ -1,6 +1,9 @@
 (ns metabase.db.custom-migrations.pulse-to-notification
   (:require
    [clojure.string :as str]
+   [clojurewerkz.quartzite.scheduler :as qs]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.db.custom-migrations.util :as custom-migrations.util]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -81,10 +84,17 @@
              (assoc pc :recipients (get pc-id->recipients (:id pc))))
            pcs))))
 
+(defn- send-pulse-trigger-key
+  [pulse-id schedule-map]
+  (triggers/key (format "metabase.task.send-pulse.trigger.%d.%s"
+                        pulse-id (-> schedule-map
+                                     schedule-map->cron-string
+                                     (str/replace " " "_")))))
+
 (defn- alert->notification!
   "Create a new notification with `subsciptions`.
   Return the created notifications."
-  [pulse]
+  [scheduler pulse]
   (let [pulse-id   (:id pulse)
         pcs        (hydrate-recipients (t2/select :pulse_channel :pulse_id pulse-id :enabled true))
         ;; alerts have one pulse-card, but to be safe we select the latest one by id
@@ -107,8 +117,9 @@
                             :creator_id   (:creator_id pulse)
                             :created_at   :%now
                             :updated_at   :%now}
+             pc            (first pcs)
              subscriptions [{:type          "notification-subscription/cron"
-                             :cron_schedule (schedule-map->cron-string (first pcs))
+                             :cron_schedule (schedule-map->cron-string pc)
                              :created_at    :%now}]
              handlers      (map (fn [pc]
                                   (merge
@@ -135,15 +146,23 @@
                                      {:channel_type "channel/http"
                                       :channel_id    (:channel_id pc)})))
                                 pcs)]
-         (create-notification! notification subscriptions handlers))))))
+         (create-notification! notification subscriptions handlers)
+         (qs/delete-trigger scheduler (send-pulse-trigger-key pulse-id pc)))))))
 
 (defn migrate-alerts!
   "Migrate alerts from `pulse` to `notification`."
   []
-  (run! alert->notification!
-        (t2/reducible-query {:select [:*]
-                             :from   [:pulse]
-                             :where  [:and [:in :alert_condition ["rows" "goal"]] [:not :archived]]})))
+  (custom-migrations.util/with-temp-schedule! [scheduler]
+    (run! #(alert->notification! scheduler %)
+          (t2/reducible-query {:select [:*]
+                               :from   [:pulse]
+                               :where  [:and [:in :alert_condition ["rows" "goal"]] [:not :archived]]}))))
+
+(defn remove-init-send-pulse-trigger
+  "Remove the init-send-pulse-triggers.trigger from the scheduler so that it can run again."
+  []
+  (custom-migrations.util/with-temp-schedule! [scheduler]
+    (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.init-send-pulse-triggers.trigger"))))
 
 (comment
   (t2/delete! :model/Notification)
