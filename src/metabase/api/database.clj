@@ -31,10 +31,8 @@
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.sample-data :as sample-data]
-   [metabase.sync.analyze :as analyze]
-   [metabase.sync.field-values :as sync.field-values]
+   [metabase.sync.core :as sync]
    [metabase.sync.schedules :as sync.schedules]
-   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
@@ -1030,9 +1028,10 @@
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
-        (future
-          (sync-metadata/sync-db-metadata! db)
-          (analyze/analyze-db! db))
+        (sync/submit-task!
+         (fn []
+           (sync/sync-db-metadata! db)
+           (sync/analyze-db! db)))
         {:status :ok}))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -1073,8 +1072,10 @@
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
       (if *rescan-values-async*
-        (future (sync.field-values/update-field-values! db))
-        (sync.field-values/update-field-values! db))))
+        (sync/submit-task!
+         (fn []
+           (sync/update-field-values! db)))
+        (sync/update-field-values! db))))
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]

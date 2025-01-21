@@ -15,6 +15,7 @@
    [metabase.notification.init]
    [metabase.query-analysis.init]
    [metabase.search.init]
+   [metabase.sync.init]
    [metabase.task.init]))
 
 ;; load EE init code on system launch if it exists.

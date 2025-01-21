@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.setup.api-test
+(ns metabase.setup.api-test
   "Tests for /api/setup endpoints."
   (:require
    [clojure.spec.alpha :as s]

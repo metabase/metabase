@@ -210,16 +210,19 @@ describe("binning related reproductions", () => {
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    H.openVizSettingsSidebar();
+    // Open settings through viz type picker to ensure "Table Options" is in the sidebar.
+    H.openVizTypeSidebar();
     cy.findByTestId("sidebar-left").within(() => {
+      cy.findByTestId("Table-button").click();
+      cy.findByTextEnsureVisible("Table options");
       cy.findByTestId("draggable-item-Created At: Month")
         .findByText("Created At: Month")
         .should("be.visible");
       cy.findByTestId("draggable-item-Created At: Month")
         .icon("eye_outline")
         .click({ force: true });
+      cy.button("Done").click();
     });
-    H.closeVizSettingsSidebar();
 
     H.summarize();
 

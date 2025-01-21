@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.util.performance-test
+(ns metabase.util.performance-test
   (:require [clojure.test :refer :all]
             [metabase.util.performance :as perf]))
 

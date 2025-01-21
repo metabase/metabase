@@ -66,16 +66,19 @@
 ;; NOTE: These multimethods take and return queries, not contexts.
 (defmulti ^:private run-step*
   "Applies a step to the given query, returning the updated query."
+  {:arglists '([query step])}
   (fn [_query step]
     (step-key step)))
 
 (defmulti ^:private before-and-after
   "Runs the before/after tests for the given step, given the before and after queries."
+  {:arglists '([before after step])}
   (fn [_before _after step]
     (step-key step)))
 
 (defmulti ^:private next-steps*
   "Given a query, generate a nested set of choices, with the leaf nodes being possible steps."
+  {:arglists '([query step-kind])}
   (fn [_query step-kind]
     step-kind))
 

@@ -4,7 +4,7 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.models.collection :as collection]
    [metabase.models.notification :as models.notification]
    [metabase.models.permissions :as perms]

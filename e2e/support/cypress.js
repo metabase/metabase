@@ -114,12 +114,25 @@ Cypress.on("window:load", window => {
   };
 });
 
-// cypress-terminal-report
 if (isCI) {
+  // cypress-terminal-report
   afterEach(() => {
     cy.wait(50, { log: false }).then(() =>
       cy.addTestContext(Cypress.TerminalReport.getLogs("txt")),
     );
+  });
+
+  // Fast failure notifications
+  afterEach(() => {
+    const testInfo = Cypress.mocha.getRunner().suite.ctx.currentTest;
+    const isLastRetry = testInfo.currentRetry() === testInfo.retries();
+
+    if (testInfo.state === "failed" && isLastRetry) {
+      cy.task("reportCIFailure", {
+        spec: Cypress.spec,
+        test: Cypress.currentTest,
+      });
+    }
   });
 
   const options = {
