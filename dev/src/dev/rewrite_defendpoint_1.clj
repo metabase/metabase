@@ -492,7 +492,7 @@
        (map str)
        (filter #(str/ends-with? % ".clj"))
        sort
-       (take 3)))
+       #_(take 3)))
 
 (defn rewrite-all! []
   (doseq [file (files)]
