@@ -12,7 +12,7 @@ const CHANNEL_MAP = {
     name: "email",
     link: "/admin/settings/email",
   },
-  slack: {
+  Slack: {
     name: "Slack",
     link: "/admin/settings/notifications/slack",
   },
@@ -37,11 +37,11 @@ export const ChannelSetupMessage = ({
     return (
       <div>
         {channels.map(c => {
-          const config = CHANNEL_MAP[c.toLowerCase()];
+          const config = CHANNEL_MAP[c];
 
           return config ? (
             <Link
-              to={CHANNEL_MAP[c.toLowerCase()].link}
+              to={CHANNEL_MAP[c].link}
               key={c.toLowerCase()}
               className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.mr1)}
               target="_blank"
