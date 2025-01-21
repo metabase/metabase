@@ -31,3 +31,20 @@
     }
   }
 }
+
+.TabSibling {
+  padding: 11px 8px;
+  color: var(--mb-color-text-dark);
+  font-weight: bold;
+  line-height: 1rem;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+
+  &:not([data-specificity-hack]) {
+    &:disabled {
+      cursor: pointer;
+    }
+  }
+}
