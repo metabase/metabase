@@ -1,8 +1,7 @@
 (ns metabase.api.automagic-dashboards
   (:require
    [buddy.core.codecs :as codecs]
-   [compojure.core :refer [GET]]
-   [metabase.api.common :as api] 
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.query-metadata :as api.query-metadata]
    [metabase.models.query :as query]
@@ -51,7 +50,7 @@
 (api.macros/defendpoint :get "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards ordered by interestingness."
   [{:keys [id]} :- [:map
-          [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]]
   (-> (t2/select-one :model/Database :id id)
       api/read-check
       xrays/candidate-tables))
@@ -148,19 +147,19 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `id`."
   [{:keys [entity entity-id-or-query]} :- [:map
-          [:entity (mu/with-api-error-message
-           (into [:enum] entities)
-           (deferred-tru "Invalid entity type"))]]
+                                           [:entity (mu/with-api-error-message
+                                                     (into [:enum] entities)
+                                                     (deferred-tru "Invalid entity type"))]]
    {:keys [show]} :- [:map
-          [:show {:optional true} [:maybe [:or [:= "all"] nat-int?]]]]]
+                      [:show {:optional true} [:maybe [:or [:= "all"] nat-int?]]]]]
   (get-automagic-dashboard entity entity-id-or-query show))
 
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/query_metadata"
   "Return all metadata for an automagic dashboard for entity `entity` with id `id`."
   [{:keys [entity entity-id-or-query]} :- [:map
-          [:entity (mu/with-api-error-message
-           (into [:enum] entities)
-           (deferred-tru "Invalid entity type"))]]]
+                                           [:entity (mu/with-api-error-message
+                                                     (into [:enum] entities)
+                                                     (deferred-tru "Invalid entity type"))]]]
   (api.query-metadata/batch-fetch-dashboard-metadata
    [(get-automagic-dashboard entity entity-id-or-query nil)]))
 
@@ -254,8 +253,8 @@
   "Return an automagic dashboard for an entity detail specified by `entity`
   with id `id` and a primary key of `indexed-value`."
   [{:keys [model-index-id pk-id]} :- [:map
-          [:model-index-id :int]
-          [:pk-id          :int]]]
+                                      [:model-index-id :int]
+                                      [:pk-id          :int]]]
   (api/let-404 [model-index (t2/select-one :model/ModelIndex model-index-id)
                 model (t2/select-one :model/Card (:model_id model-index))
                 model-index-value (t2/select-one :model/ModelIndexValue
@@ -274,12 +273,12 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
   [{:keys [entity entity-id-or-query prefix dashboard-template]} :- [:map
-          [:entity             Entity]
-          [:entity-id-or-query ms/NonBlankString]
-          [:prefix             Prefix]
-          [:dashboard-template DashboardTemplate]]
+                                                                     [:entity             Entity]
+                                                                     [:entity-id-or-query ms/NonBlankString]
+                                                                     [:prefix             Prefix]
+                                                                     [:dashboard-template DashboardTemplate]]
    {:keys [show]} :- [:map
-          [:show Show]]]
+                      [:show Show]]]
   (-> (->entity entity entity-id-or-query)
       (xrays/automagic-analysis {:show               (coerce-show show)
                                  :dashboard-template ["table" prefix dashboard-template]})))
@@ -289,11 +288,11 @@
    defined by
    query `cell-query`."
   [{:keys [entity entity-id-or-query cell-query]} :- [:map
-          [:entity             Entity]
-          [:entity-id-or-query ms/NonBlankString]
-          [:cell-query         Base64EncodedJSON]]
+                                                      [:entity             Entity]
+                                                      [:entity-id-or-query ms/NonBlankString]
+                                                      [:cell-query         Base64EncodedJSON]]
    {:keys [show]} :- [:map
-          [:show Show]]]
+                      [:show Show]]]
   (-> (->entity entity entity-id-or-query)
       (xrays/automagic-analysis {:show       (coerce-show show)
                                  :cell-query (decode-base64-json cell-query)})))
@@ -302,13 +301,13 @@
   "Return an automagic dashboard analyzing cell in question  with id `id` defined by
    query `cell-query` using dashboard-template `dashboard-template`."
   [{:keys [entity entity-id-or-query cell-query prefix dashboard-template]} :- [:map
-          [:entity             Entity]
-          [:entity-id-or-query ms/NonBlankString]
-          [:prefix             Prefix]
-          [:dashboard-template DashboardTemplate]
-          [:cell-query         Base64EncodedJSON]]
+                                                                                [:entity             Entity]
+                                                                                [:entity-id-or-query ms/NonBlankString]
+                                                                                [:prefix             Prefix]
+                                                                                [:dashboard-template DashboardTemplate]
+                                                                                [:cell-query         Base64EncodedJSON]]
    {:keys [show]} :- [:map
-          [:show Show]]]
+                      [:show Show]]]
   (-> (->entity entity entity-id-or-query)
       (xrays/automagic-analysis {:show               (coerce-show show)
                                  :dashboard-template ["table" prefix dashboard-template]
@@ -317,12 +316,13 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`"
-  [{:keys [entity entity-id-or-query comparison-entity comparison-entity-id-or-query]} :- [:map
-          [:entity-id-or-query ms/NonBlankString]
-          [:entity             Entity]
-          [:comparison-entity  ComparisonEntity]]
+  [{:keys [entity entity-id-or-query comparison-entity
+           comparison-entity-id-or-query]} :- [:map
+                                               [:entity-id-or-query ms/NonBlankString]
+                                               [:entity             Entity]
+                                               [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
-          [:show Show]]]
+                      [:show Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (xrays/automagic-analysis left {:show         (coerce-show show)
@@ -333,14 +333,15 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`;
    compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
-  [{:keys [entity entity-id-or-query prefix dashboard-template comparison-entity comparison-entity-id-or-query]} :- [:map
-          [:entity             Entity]
-          [:entity-id-or-query ms/NonBlankString]
-          [:prefix             Prefix]
-          [:dashboard-template DashboardTemplate]
-          [:comparison-entity  ComparisonEntity]]
+  [{:keys [entity entity-id-or-query prefix dashboard-template
+           comparison-entity comparison-entity-id-or-query]} :- [:map
+                                                                 [:entity             Entity]
+                                                                 [:entity-id-or-query ms/NonBlankString]
+                                                                 [:prefix             Prefix]
+                                                                 [:dashboard-template DashboardTemplate]
+                                                                 [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
-          [:show Show]]]
+                      [:show Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (xrays/automagic-analysis left {:show               (coerce-show show)
@@ -353,13 +354,14 @@
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `id` defined by query `cell-query`; compared with entity `comparison-entity` with id
    `comparison-entity-id-or-query.`."
-  [{:keys [entity entity-id-or-query cell-query comparison-entity comparison-entity-id-or-query]} :- [:map
-          [:entity             Entity]
-          [:entity-id-or-query ms/NonBlankString]
-          [:cell-query         Base64EncodedJSON]
-          [:comparison-entity  ComparisonEntity]]
+  [{:keys [entity entity-id-or-query cell-query
+           comparison-entity comparison-entity-id-or-query]} :- [:map
+                                                                 [:entity             Entity]
+                                                                 [:entity-id-or-query ms/NonBlankString]
+                                                                 [:cell-query         Base64EncodedJSON]
+                                                                 [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
-          [:show Show]]]
+                      [:show Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (xrays/automagic-analysis left {:show         (coerce-show show)
@@ -371,15 +373,16 @@
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `id` defined by query `cell-query` using dashboard-template `dashboard-template`; compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`."
-  [{:keys [entity entity-id-or-query cell-query prefix dashboard-template comparison-entity comparison-entity-id-or-query]} :- [:map
-          [:entity             Entity]
-          [:entity-id-or-query ms/NonBlankString]
-          [:prefix             Prefix]
-          [:dashboard-template DashboardTemplate]
-          [:cell-query         Base64EncodedJSON]
-          [:comparison-entity  ComparisonEntity]]
+  [{:keys [entity entity-id-or-query cell-query prefix dashboard-template
+           comparison-entity comparison-entity-id-or-query]} :- [:map
+                                                                 [:entity             Entity]
+                                                                 [:entity-id-or-query ms/NonBlankString]
+                                                                 [:prefix             Prefix]
+                                                                 [:dashboard-template DashboardTemplate]
+                                                                 [:cell-query         Base64EncodedJSON]
+                                                                 [:comparison-entity  ComparisonEntity]]
    {:keys [show]} :- [:map
-          [:show Show]]]
+                      [:show Show]]]
   (let [left      (->entity entity entity-id-or-query)
         right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (xrays/automagic-analysis left {:show               (coerce-show show)
