@@ -144,9 +144,7 @@ export class ClickActionsPopover extends Component<
           <div data-testid={`click-actions-popover-content-for-${columnName}`}>
             <ClickActionsView
               clickActions={clickActions}
-              close={() => {
-                this.close();
-              }}
+              close={this.close}
               onClick={this.handleClickAction}
             />
           </div>

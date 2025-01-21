@@ -795,6 +795,7 @@ class TableInteractive extends Component {
       mode,
       theme,
       onActionDismissal,
+      clicked: currentClicked,
     } = this.props;
 
     const { dragColIndex, showDetailShortcut } = this.state;
@@ -838,7 +839,12 @@ class TableInteractive extends Component {
             dragColStyle: style,
             dragColNewIndex: columnIndex,
           });
-          onActionDismissal();
+
+          if (currentClicked?.column?.id === column.id) {
+            // only close when the currently open action is the one for this header
+            // other action modals will be closed by their own click-outside handlers.
+            onActionDismissal();
+          }
         }}
         onDrag={(e, data) => {
           const newIndex = this.getDragColNewIndex(data);
@@ -921,7 +927,9 @@ class TableInteractive extends Component {
             stageIndex={-1}
             column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
             timezone={data.results_timezone}
-            disabled={this.props.clicked != null || !hasMetadataPopovers}
+            disabled={
+              this.props.clicked != null || !hasMetadataPopovers || isDragging
+            }
             openDelay={500}
             showFingerprintInfo
           >
