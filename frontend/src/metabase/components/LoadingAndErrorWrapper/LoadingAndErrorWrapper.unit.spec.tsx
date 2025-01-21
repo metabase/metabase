@@ -26,19 +26,6 @@ describe("LoadingAndErrorWrapper", () => {
       ).not.toThrow();
     });
 
-    it("should display a given scene during loading", () => {
-      const Scene = () => <div>Fun load animation</div>;
-
-      render(
-        <LoadingAndErrorWrapper
-          loading={true}
-          error={null}
-          loadingScenes={[<Scene key="0" />]}
-        />,
-      );
-      expect(screen.getByText("Fun load animation")).toBeInTheDocument();
-    });
-
     describe("cycling", () => {
       it("should cycle through loading messages if provided", () => {
         jest.useFakeTimers();
