@@ -115,15 +115,15 @@ The sorting step lets you pick one or more columns to sort your results by. For 
 
 The row limit step lets you cap how many rows you want from the previous results. When used in conjunction with sorting, limits can let you do things like create a top-10 list, by first sorting by one of the columns in your result, then adding a row limit of 10. Unlike other steps, the row limit step can only be added at the end of your question. If you do want to add more steps to limited results, you can always save the limited results as a question, then start a _new_ question based on those results.
 
-## Viewing the SQL that powers your question
+## Viewing the native query that powers your question
 
 ![View the SQL](../images/view-the-sql.png)
 
-Under the hood, all Metabase questions are SQL (gasp!). To view the SQL that Metabase will run when you click **Visualize**, click the little **Console** icon in the top right of the query builder. Metabase will preview the SQL in a sidebar:
+Under the hood, all Metabase questions are converted to SQL or another language native to your query engine. To view the native query that Metabase will run when you click **Visualize**, click the **View SQL** or **View query** button in the top right of the query builder. Metabase will preview the native query in a sidebar:
 
 ![SQL sidebar](../images/sql-sidebar.png)
 
-To view the SQL, you must have [query builder and native permissions](../../permissions/data.md).
+To view the native query, you must have [query builder and native permissions](../../permissions/data.md).
 
 ### Convert a query-builder question to SQL
 
