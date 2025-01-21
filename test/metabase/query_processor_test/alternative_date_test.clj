@@ -397,7 +397,8 @@
               :base-type {:natives {:postgres "BYTEA"
                                     :h2       "BYTEA"
                                     :mysql    "VARBINARY(100)"
-                                    :redshift "VARBYTE"}}
+                                    :redshift "VARBYTE"
+                                    :presto-jdbc "VARBINARY"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
     [["foo" (.getBytes "20190421164300")]
@@ -414,11 +415,6 @@
   [driver _feature _database]
   (not= (get-method sql.qp/cast-temporal-byte [driver :Coercion/YYYYMMDDHHMMSSBytes->Temporal])
         (get-method sql.qp/cast-temporal-byte :default)))
-
-;;; Currently broken for Presto. See #46848
-(defmethod driver/database-supports? [:presto-jdbc ::yyyymmddhhss-binary-timestamps]
-  [_driver _feature _database]
-  false)
 
 (defmulti yyyymmddhhmmss-binary-dates-expected-rows
   "Expected rows for the [[yyyymmddhhmmss-binary-dates]] test below."
@@ -437,7 +433,7 @@
      [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
      [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
 
-(doseq [driver [:mysql :sqlserver]]
+(doseq [driver [:mysql :sqlserver :presto-jdbc]]
   (defmethod yyyymmddhhmmss-binary-dates-expected-rows driver
     [_driver]
     [[1 "foo" #t "2019-04-21T16:43"]
@@ -446,13 +442,14 @@
 
 (deftest ^:parallel yyyymmddhhmmss-binary-dates
   (mt/test-drivers (mt/normal-drivers-with-feature ::yyyymmddhhss-binary-timestamps)
-    (is (= (yyyymmddhhmmss-binary-dates-expected-rows driver/*driver*)
-           (sort-by
-            first
-            (mt/rows (mt/dataset yyyymmddhhss-binary-times
-                       (qp/process-query
-                        (assoc (mt/mbql-query times)
-                               :middleware {:format-rows? false})))))))))
+    (mt/dataset yyyymmddhhss-binary-times
+      (is (= (yyyymmddhhmmss-binary-dates-expected-rows driver/*driver*)
+             (sort-by
+              first
+              (mt/rows
+               (qp/process-query
+                (assoc (mt/mbql-query times)
+                       :middleware {:format-rows? false})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-string-timestamps]
   [_driver _feature _database]
