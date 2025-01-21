@@ -4,6 +4,12 @@ body:where(:global(.mb-wrapper)) {
 }
 
 :where(:global(.mb-wrapper)) {
+  *,
+  ::before,
+  ::after {
+    box-sizing: content-box;
+  }
+
   div,
   nav,
   article,
@@ -11,7 +17,9 @@ body:where(:global(.mb-wrapper)) {
   main,
   header,
   footer,
+  button,
   input,
+  select,
   form,
   table,
   fieldset,
