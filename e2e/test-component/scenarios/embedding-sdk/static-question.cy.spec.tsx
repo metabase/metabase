@@ -2,9 +2,9 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion, describeEE } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
-  mountStaticQuestion,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
+import { mountStaticQuestion } from "e2e/support/helpers/component-testing-sdk/component-embedding-sdk-question-helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -91,6 +91,16 @@ describeEE("scenarios > embedding-sdk > static-question", () => {
           cy.findByText("Max of Quantity").should("not.exist");
         });
       });
+    });
+  });
+
+  it("is able to change visualization types", () => {
+    mountStaticQuestion({ withChartTypeSelector: true });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("chart-container").should("not.exist");
+      cy.findByTestId("Bar-button").click();
+      cy.findByTestId("chart-container").should("be.visible");
     });
   });
 });
