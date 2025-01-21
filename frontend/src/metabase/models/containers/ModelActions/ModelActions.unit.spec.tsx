@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Route } from "react-router";
+import { Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -53,8 +53,6 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-
-import ModelActions from "./ModelActions";
 
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
@@ -232,8 +230,7 @@ async function setup({
   const { history } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
-        <IndexRedirect to="actions" />
-        <Route path="actions" component={ModelActions}>
+        <Route path="actions" component={ModelDetailPage}>
           <ModalRoute
             path="new"
             modal={ActionCreator}
