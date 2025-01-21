@@ -26,9 +26,17 @@ function appendStyleIfNotExists(logConfig) {
     const style = document.createElement("style");
 
     style.textContent = `
-    .command-name-${logConfig.name} .command-pin-target{
+    .command-name-${logConfig.name} .command-pin-target {
       color: #ffffff !important;
       background-color: ${bgColor} !important;
+      font-weight: bold !important;
+    }
+      [class*="command-name-H."] .command-info span {
+      color: #6470F3 !important;
+      font-weight: bold !important;
+    }
+      [class*="command-name-H."] .command-info span.command-message-text {
+      color: #9aa2fc !important;
       font-weight: bold !important;
     }
     `;
