@@ -30,10 +30,9 @@
    :collection-id       :pk
    :created-at          :timestamp
    :creator-id          :pk
-   :dashboard-id        :int
    :dashboardcard-count :int
    :database-id         :pk
-   :id                  :pk
+   :id                  :text
    :last-edited-at      :timestamp
    :last-editor-id      :pk
    :last-viewed-at      :timestamp
@@ -58,7 +57,6 @@
         [:id                                                ;;  in addition to being a filter, this is a key property
          :name
          :official-collection
-         :dashboard-id
          :dashboardcard-count
          :last-viewed-at
          :pinned

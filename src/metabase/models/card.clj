@@ -1032,7 +1032,6 @@
    :attrs        {:archived            true
                   :collection-id       true
                   :creator-id          true
-                  :dashboard-id        true
                   :dashboardcard-count {:select [:%count.*]
                                         :from   [:report_dashboardcard]
                                         :where  [:= :report_dashboardcard.card_id :this.id]}

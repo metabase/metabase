@@ -135,11 +135,6 @@
                               ;; NOTE: we limit id-based search to only a subset of the models
                               ;; TODO this should just become part of the model spec e.g. :search-by-id?
                               [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]))
-    (sql.helpers/where qry [:or
-                            ;; leverage the fact that only card-related models populate this attribute
-                            [:= nil :search_index.dashboard_id]
-                            (when (:include-dashboard-questions? search-context)
-                              [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])])
     (reduce (fn [qry {t :type :keys [context-key required-feature supported-value? field]}]
               (or (when-some [v (get search-context context-key)]
                     (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
