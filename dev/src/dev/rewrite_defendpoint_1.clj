@@ -14,6 +14,13 @@
 
 (mr/def ::zloc vector?)
 
+(mr/def ::defendpoint-loc
+  [:and
+   ::zloc
+   [:fn
+    {:error/message "zipper location pointing to list node"}
+    #(= (z/tag %) :list)]])
+
 (mr/def ::node
   [:fn
    {:error/message "Valid rewrite-clj node"}
@@ -36,7 +43,7 @@
    [:schema-map ::schema-map]])
 
 (mu/defn- parse-defendpoint-1-args :- ::parsed
-  [defendpoint :- ::zloc]
+  [defendpoint :- ::defendpoint-loc]
   (let [symb       (z/down defendpoint)
         method     (z/right symb)
         route      (z/right method)
@@ -257,7 +264,7 @@
 
 (mu/defn- rewrite-defendpoint-symbol :- ::zloc
   [_parsed     :- ::parsed
-   defendpoint :- ::zloc]
+   defendpoint :- ::defendpoint-loc]
   (z/replace (z/down defendpoint) (n/token-node 'api.macros/defendpoint)))
 
 ;;;
@@ -265,7 +272,7 @@
 ;;;
 
 (mu/defn- rewrite-method :- ::zloc
-  [_parsed defendpoint :- ::zloc]
+  [_parsed defendpoint :- ::defendpoint-loc]
   (let [method (-> defendpoint z/down z/right)]
     (z/replace method (n/keyword-node (keyword (u/lower-case-en (name (z/sexpr method))))))))
 
@@ -273,16 +280,26 @@
 ;;; rewrite argslist
 ;;;
 
+(mu/defn- find-route :- [:and
+                         ::zloc
+                         [:fn
+                          {:error/message "zipper location pointing to route node (string or vector)"}
+                          #(or (#{:vector :string} (z/tag %))
+                               ;; for whatever reason sometimes string nodes are `:token` nodes?
+                               (string? (z/sexpr %)))]]
+  [defendpoint :- ::defendpoint-loc]
+  (-> defendpoint
+      z/down    ; symb
+      z/right   ; method
+      z/right)) ; route
+
 (mu/defn- find-argslist :- [:and
                             ::zloc
                             [:fn
                              {:error/message "zipper location pointing to vector node"}
                              #(= (z/tag %) :vector)]]
-  [defendpoint :- ::zloc]
-  (let [route (-> defendpoint
-                  z/down    ; symb
-                  z/right   ; method
-                  z/right)] ; route
+  [defendpoint :- ::defendpoint-loc]
+  (let [route (find-route defendpoint)]
     ;; first vector after route
     (z/find-next route #(= (z/tag %) :vector))))
 
@@ -298,7 +315,7 @@
 
 (mu/defn- rewrite-args :- ::zloc
   [parsed      :- ::parsed
-   defendpoint :- ::zloc]
+   defendpoint :- ::defendpoint-loc]
   (z/replace (find-argslist defendpoint) (new-args-node parsed)))
 
 ;;;
@@ -307,7 +324,7 @@
 
 (mu/defn- add-metadata-map :- ::zloc
   [parsed      :- ::parsed
-   defendpoint :- ::zloc]
+   defendpoint :- ::defendpoint-loc]
   (if (= (n/tag (:method parsed)) :meta)
     (let [metadata  (first (n/children (:method parsed)))
           node      (if (= (n/tag metadata) :token)
@@ -315,8 +332,8 @@
                       (n/map-node [metadata (n/whitespace-node " ") (n/token-node true)])
                       metadata)]
       (as-> defendpoint defendpoint
-        (z/insert-left (find-argslist defendpoint) node)
-        (z/insert-left (find-argslist defendpoint) (n/newline-node "\n"))))
+        (z/subedit-node defendpoint (fn [defendpoint] (z/insert-left (find-argslist defendpoint) node)))
+        (z/subedit-node defendpoint (fn [defendpoint] (z/insert-left (find-argslist defendpoint) (n/newline-node "\n"))))))
     defendpoint))
 
 ;;;
@@ -324,12 +341,12 @@
 ;;;
 
 (mu/defn- find-body :- ::zloc
-  [defendpoint :- ::zloc]
+  [defendpoint :- ::defendpoint-loc]
   (z/right (find-argslist defendpoint)))
 
 (mu/defn- rewrite-body :- ::zloc
   [_parsed     :- ::parsed
-   defendpoint :- ::zloc]
+   defendpoint :- ::defendpoint-loc]
   (let [body (find-body defendpoint)]
     ;; if the first form is a map but there are more forms after, it's the schema map and we can remove it.
     (if (and (= (z/tag body) :map)
@@ -342,7 +359,7 @@
 ;;;
 
 (mu/defn- rewrite-defendpoint* :- ::zloc
-  [defendpoint :- ::zloc]
+  [defendpoint :- ::defendpoint-loc]
   (let [parsed (parse-defendpoint-1-args defendpoint)]
     (reduce
      (fn [defendpoint f]
@@ -369,7 +386,7 @@
       {:clj-kondo/ignore [:deprecated-var]})))
 
 (mu/defn- remove-preceding-kondo-ignore-node :- [:maybe ::zloc]
-  [defendpoint :- ::zloc]
+  [defendpoint :- ::defendpoint-loc]
   (when-let [previous (z/left defendpoint)]
     (when (some-> previous z/node kondo-ignore-node?)
       (-> (z/subedit-node
@@ -379,8 +396,8 @@
           ; move back to first child
           z/down))))
 
-(mu/defn- rewrite-defendpoint :- ::zloc
-  [defendpoint :- ::zloc]
+(mu/defn- rewrite-defendpoint :- ::defendpoint-loc
+  [defendpoint :- ::defendpoint-loc]
   (try
     (-> defendpoint
         rewrite-defendpoint*
@@ -492,9 +509,4 @@
   (->> (u.files/files-seq (u.files/get-path "src/metabase/api/"))
        (map str)
        (filter #(str/ends-with? % ".clj"))
-       sort
-       #_(take 3)))
-
-#_(defn rewrite-all! []
-  (doseq [file (files)]
-    (rewrite-file! file :write? true)))
+       sort))
