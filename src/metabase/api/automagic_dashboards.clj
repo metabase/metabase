@@ -1,7 +1,6 @@
 (ns metabase.api.automagic-dashboards
   (:require
    [buddy.core.codecs :as codecs]
-   [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.query-metadata :as api.query-metadata]
