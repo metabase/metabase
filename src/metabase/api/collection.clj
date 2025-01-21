@@ -202,12 +202,13 @@
   TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
   some point in the future."
   [_route-params
-   {:keys [exclude-archived exclude-other-user-collections namespace shallow collection-id]} :- [:map
-                                                                                                 [:exclude-archived               {:optional true} [:maybe :boolean]]
-                                                                                                 [:exclude-other-user-collections {:optional true} [:maybe :boolean]]
-                                                                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                                 [:shallow                        {:optional true} [:maybe :boolean]]
-                                                                                                 [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [exclude-archived exclude-other-user-collections
+           namespace shallow collection-id]} :- [:map
+                                                 [:exclude-archived               {:default false} [:maybe :boolean]]
+                                                 [:exclude-other-user-collections {:default false} [:maybe :boolean]]
+                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+                                                 [:shallow                        {:default false} [:maybe :boolean]]
+                                                 [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
   (let [archived    (if exclude-archived false nil)
         collections (select-collections {:archived                       archived
                                          :exclude-other-user-collections exclude-other-user-collections
@@ -988,7 +989,7 @@
   [_route-params
    {:keys [include archived]} :- [:map
                                   [:include  {:optional true} [:maybe [:= "events"]]]
-                                  [:archived {:optional true} [:maybe :boolean]]]]
+                                  [:archived {:default false} [:maybe :boolean]]]]
   (api/read-check collection/root-collection)
   (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
                                           :timeline/archived? archived}))
@@ -999,7 +1000,7 @@
                     [:id ms/PositiveInt]]
    {:keys [include archived]} :- [:map
                                   [:include  {:optional true} [:maybe [:= "events"]]]
-                                  [:archived {:optional true} [:maybe :boolean]]]]
+                                  [:archived {:default false} [:maybe :boolean]]]]
   (api/read-check (t2/select-one :model/Collection :id id))
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))
@@ -1017,14 +1018,15 @@
   changed, that should too."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [models archived pinned_state sort_column sort_direction official_collections_first show_dashboard_questions]} :- [:map
-                                                                                                                             [:models                     {:optional true} [:maybe Models]]
-                                                                                                                             [:archived                   {:default false} [:maybe ms/BooleanValue]]
-                                                                                                                             [:pinned_state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                                                                                                             [:sort_column                {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                                                                                                             [:sort_direction             {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                                                                                                             [:official_collections_first {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                                                                             [:show_dashboard_questions   {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [models archived pinned_state sort_column sort_direction official_collections_first
+           show_dashboard_questions]} :- [:map
+                                          [:models                     {:optional true} [:maybe Models]]
+                                          [:archived                   {:default false} [:maybe ms/BooleanValue]]
+                                          [:pinned_state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                          [:sort_column                {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                          [:sort_direction             {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                          [:official_collections_first {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                          [:show_dashboard_questions   {:default false} [:maybe ms/BooleanValue]]]]
   (let [model-kwds (set (map keyword (u/one-or-many models)))
         collection (api/read-check :model/Collection id)]
     (u/prog1 (collection-children collection
@@ -1078,14 +1080,16 @@
 (api.macros/defendpoint :get "/:id/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
   "Find cards in this collection that can be moved into dashboards in this collection.
 
-  To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a dashboard question."
+  To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a
+  dashboard question."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check :model/Collection id)
   (present-dashboard-question-candidates
    (dashboard-question-candidates id)))
 
 (api.macros/defendpoint :get "/root/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
-  "Find cards in the root collection that can be moved into dashboards in the root collection. (Same as the above endpoint, but for the root collection)"
+  "Find cards in the root collection that can be moved into dashboards in the root collection. (Same as the above
+  endpoint, but for the root collection)"
   []
   (present-dashboard-question-candidates
    (dashboard-question-candidates nil)))
@@ -1172,15 +1176,16 @@
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [_route-params
-   {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first show_dashboard_questions]} :- [:map
-                                                                                                                                       [:models                     {:optional true} [:maybe Models]]
-                                                                                                                                       [:archived                   {:default false} [:maybe ms/BooleanValue]]
-                                                                                                                                       [:namespace                  {:optional true} [:maybe ms/NonBlankString]]
-                                                                                                                                       [:pinned_state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                                                                                                                       [:sort_column                {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                                                                                                                       [:sort_direction             {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                                                                                                                       [:official_collections_first {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                                                                                       [:show_dashboard_questions   {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+   {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
+           show_dashboard_questions]} :- [:map
+                                          [:models                     {:optional true} [:maybe Models]]
+                                          [:archived                   {:default false} [:maybe ms/BooleanValue]]
+                                          [:namespace                  {:optional true} [:maybe ms/NonBlankString]]
+                                          [:pinned_state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                          [:sort_column                {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                          [:sort_direction             {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                          [:official_collections_first {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                          [:show_dashboard_questions   {:optional true} [:maybe ms/MaybeBooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
