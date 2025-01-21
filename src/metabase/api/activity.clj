@@ -121,7 +121,7 @@
   Allows for filtering by context: views or selections"
   [_route-params
    {:keys [context]} :- [:map
-          [:context (ms/QueryVectorOf [:enum :selections :views])]]]
+                         [:context (ms/QueryVectorOf [:enum :selections :views])]]]
   (when-not (seq context) (throw (ex-info "context is required." {})))
   (recent-views/get-recents *current-user-id* context))
 
