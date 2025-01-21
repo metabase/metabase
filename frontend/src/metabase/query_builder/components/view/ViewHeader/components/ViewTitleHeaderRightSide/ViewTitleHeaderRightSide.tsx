@@ -3,9 +3,11 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
+import * as Urls from "metabase/lib/urls";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
@@ -24,6 +26,8 @@ import { QuestionActions } from "../QuestionActions";
 import { QuestionNotebookButton } from "../QuestionNotebookButton";
 import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
 import { ToggleNativeQueryPreview } from "../ToggleNativeQueryPreview";
+
+import S from "./ViewTitleHeaderRightSide.module.css";
 
 interface ViewTitleHeaderRightSideProps {
   question: Question;
@@ -143,6 +147,12 @@ export function ViewTitleHeaderRightSide({
       className={ViewTitleHeaderS.ViewHeaderActionPanel}
       data-testid="qb-header-action-panel"
     >
+      {isSaved && (
+        <Link
+          className={S.visualizerLink}
+          to={Urls.visualizer("card", question.id())}
+        >{t`Visualize with…`}</Link>
+      )}
       {FilterHeaderButton.shouldRender({
         question,
         queryBuilderMode,
