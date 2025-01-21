@@ -16,7 +16,7 @@ export const ModelsVideo = ({ autoplay }: { autoplay: 0 | 1 }) => {
   );
 };
 
-export const ModelsVideoThumnail = ({ onClick }: { onClick: () => void }) => {
+export const ModelsVideoThumbnail = ({ onClick }: { onClick: () => void }) => {
   return (
     <div
       className={cx(S.thumbnail)}

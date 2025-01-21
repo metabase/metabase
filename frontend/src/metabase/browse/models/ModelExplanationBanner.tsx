@@ -14,7 +14,7 @@ import {
   Title,
 } from "metabase/ui";
 
-import { ModelsVideo, ModelsVideoThumnail } from "./EmptyStates";
+import { ModelsVideo, ModelsVideoThumbnail } from "./EmptyStates";
 
 export const ModelExplanationBanner = () => {
   const [hasDismissedBanner, setHasDismissedBanner] = useUserSetting(
@@ -44,7 +44,7 @@ export const ModelExplanationBanner = () => {
       mb="xl"
     >
       <Flex>
-        <ModelsVideoThumnail onClick={() => setOpened(true)} />
+        <ModelsVideoThumbnail onClick={() => setOpened(true)} />
         <Stack spacing="md">
           <Title
             order={2}
