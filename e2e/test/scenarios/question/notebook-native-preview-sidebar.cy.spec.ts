@@ -1,6 +1,5 @@
 import { onlyOn } from "@cypress/skip-test";
 
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -12,28 +11,28 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > notebook > native query preview sidebar", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should show empty sidebar when no data source is selected", () => {
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
-    H.openReviewsTable({ mode: "notebook", limit: 1 });
+    cy.openReviewsTable({ mode: "notebook", limit: 1 });
     cy.findByLabelText("View SQL").click();
     cy.wait("@nativeDataset");
 
     cy.findByTestId("app-bar").findByLabelText("New").click();
-    H.popover().findByTextEnsureVisible("Question").click();
+    cy.popover().findByTextEnsureVisible("Question").click();
     cy.wait("@nativeDataset");
     cy.findByTestId("data-step-cell").should(
       "have.text",
       "Pick your starting data",
     );
-    H.entityPickerModal().button("Close").click();
+    cy.entityPickerModal().button("Close").click();
 
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
-      H.nativeEditor().should("not.exist");
+      cy.nativeEditor().should("not.exist");
       cy.button("Convert this question to SQL").should("be.disabled");
     });
   });
@@ -44,12 +43,12 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
 
-    H.openReviewsTable({ mode: "notebook", limit: queryLimit });
+    cy.openReviewsTable({ mode: "notebook", limit: queryLimit });
     cy.findByLabelText("View SQL").click();
     cy.wait("@nativeDataset");
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
-      H.nativeEditor()
+      cy.nativeEditor()
         .should("be.visible")
         .and("contain", "SELECT")
         .and("contain", queryLimit);
@@ -59,19 +58,19 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.log(
       "Sidebar state should be persisted when navigating away from the notebook",
     );
-    H.visualize();
+    cy.visualize();
     cy.findAllByTestId("header-cell").should("contain", "Rating");
     cy.findByTestId("native-query-preview-sidebar")
       .should("exist")
       .and("not.be.visible");
 
-    H.openNotebook();
+    cy.openNotebook();
     cy.findByTestId("native-query-preview-sidebar").should("be.visible");
 
     cy.log("Modifying GUI query should update the SQL preview");
     cy.findByTestId("step-limit-0-0").icon("close").click({ force: true });
     cy.wait("@nativeDataset");
-    H.nativeEditor()
+    cy.nativeEditor()
       .should("be.visible")
       .and("contain", "SELECT")
       .and("contain", defaultRowLimit)
@@ -84,7 +83,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
   it("should not offer the sidebar preview for a user without native permissions", () => {
     cy.signIn("nosql");
-    H.openReviewsTable({ mode: "notebook" });
+    cy.openReviewsTable({ mode: "notebook" });
     cy.findByTestId("qb-header-action-panel")
       .findByLabelText(/View SQL/i)
       .should("not.exist");
@@ -97,7 +96,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     "should work on small screens",
     { viewportWidth: 480, viewportHeight: 800 },
     () => {
-      H.openReviewsTable({ mode: "notebook", limit: 1 });
+      cy.openReviewsTable({ mode: "notebook", limit: 1 });
       cy.location("pathname").should("eq", "/question/notebook");
 
       cy.log("Opening a preview sidebar should completely cover the notebook");
@@ -144,7 +143,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       "updatePreviewState",
     );
 
-    H.openReviewsTable({ mode: "notebook", limit: 1 });
+    cy.openReviewsTable({ mode: "notebook", limit: 1 });
     cy.wait("@metadata");
     cy.findByLabelText("View SQL").click();
     cy.wait(["@updatePreviewState", "@sessionProperties"]);
@@ -171,8 +170,8 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.log("User preferences should be preserved across sessions");
     cy.signOut();
     cy.signInAsAdmin();
-    H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-    H.openNotebook();
+    cy.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+    cy.openNotebook();
     cy.findByTestId("native-query-preview-sidebar")
       .should("be.visible")
       .then($sidebar => {
@@ -183,8 +182,8 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.log("Preferences should not be shared across users");
     cy.signOut();
     cy.signInAsNormalUser();
-    H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-    H.openNotebook();
+    cy.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+    cy.openNotebook();
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
     cy.findByLabelText("View SQL").click();
@@ -199,12 +198,12 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
 describe("converting question to SQL (metabase#12651, metabase#21615, metabase#32121, metabase#40422)", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
   it("should be possible to convert an ad-hoc time-series table query to SQL (metabase#21615)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       display: "table",
       dataset_query: {
         type: "query",
@@ -231,9 +230,9 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
   });
 
   it("should be possible to save a question based on a table after converting to SQL (metabase#40422)", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.visitQuestion(ORDERS_QUESTION_ID);
     convertToSql();
-    H.saveSavedQuestion();
+    cy.saveSavedQuestion();
     cy.get("[data-testid=cell-data]").should("contain", "37.65");
 
     cy.log(
@@ -244,12 +243,12 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
   });
 
   it("should be possible to save a question based on another question after converting to SQL (metabase#40422)", () => {
-    H.createQuestion(
+    cy.createQuestion(
       { query: { "source-table": `card__${ORDERS_QUESTION_ID}` } },
       { visitQuestion: true },
     );
     convertToSql();
-    H.saveSavedQuestion();
+    cy.saveSavedQuestion();
     cy.get("[data-testid=cell-data]").should("contain", "37.65");
   });
 });
@@ -262,14 +261,14 @@ describe(
     const MONGO_DB_ID = 2;
 
     beforeEach(() => {
-      H.restore("mongo-5");
+      cy.restore("mongo-5");
       cy.signInAsAdmin();
     });
 
     it("should work for both simple and nested questions based on previously converted GUI query", () => {
-      H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      cy.startNewQuestion();
+      cy.entityPickerModal().within(() => {
+        cy.entityPickerModalTab("Tables").click();
         cy.findByText(MONGO_DB_NAME).click();
         cy.findByText("Products").click();
       });
@@ -278,7 +277,7 @@ describe(
       cy.findByLabelText("View native query").click();
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
-        H.nativeEditor()
+        cy.nativeEditor()
           .should("be.visible")
           .and("contain", "$project")
           .and("contain", "$limit");
@@ -295,7 +294,7 @@ describe(
       cy.log(
         "should be possible to save a question and `Explore results` (metabase#32121)",
       );
-      H.saveQuestion("foo", undefined, {
+      cy.saveQuestion("foo", undefined, {
         tab: "Browse",
         path: ["Our analytics"],
       });
@@ -303,10 +302,10 @@ describe(
       cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
 
       cy.log("The generated query should be valid (metabase#38181)");
-      H.openNotebook(); // SQL sidebar state was persisted so it's already open now
+      cy.openNotebook(); // SQL sidebar state was persisted so it's already open now
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
-        H.nativeEditor()
+        cy.nativeEditor()
           .should("be.visible")
           .and("contain", "$project")
           .and("contain", "$limit")
@@ -331,10 +330,10 @@ describe(
     });
 
     it.skip("should work for a nested GUI question (metabase#40557)", () => {
-      H.withDatabase(
+      cy.withDatabase(
         MONGO_DB_ID,
         ({ PRODUCTS_ID }: { PRODUCTS_ID: number }) => {
-          H.createQuestion({
+          cy.createQuestion({
             name: "Mongo Source",
             query: {
               "source-table": PRODUCTS_ID,
@@ -342,7 +341,7 @@ describe(
             },
             database: MONGO_DB_ID,
           }).then(({ body: { id: sourceId } }) => {
-            H.createQuestion(
+            cy.createQuestion(
               {
                 name: "Mongo Nested",
                 query: {
@@ -357,12 +356,12 @@ describe(
       );
 
       cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
-      H.openNotebook();
+      cy.openNotebook();
       cy.findByLabelText("View native query").click();
 
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
-        H.nativeEditor()
+        cy.nativeEditor()
           .should("be.visible")
           .and("contain", "$project")
           .and("contain", "$limit")
@@ -380,52 +379,52 @@ describe(
   },
 );
 
-H.describeWithSnowplow(
+cy.describeWithSnowplow(
   "scenarios > notebook > native query preview sidebar tracking events",
   () => {
     beforeEach(() => {
-      H.resetSnowplow();
-      H.restore();
+      cy.resetSnowplow();
+      cy.restore();
       cy.signInAsAdmin();
-      H.enableTracking();
+      cy.enableTracking();
     });
 
     afterEach(() => {
-      H.expectNoBadSnowplowEvents();
+      cy.expectNoBadSnowplowEvents();
     });
 
     it("should track `notebook_native_preview_shown|hidden` events", () => {
       cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
-      H.openReviewsTable({ mode: "notebook", limit: 1 });
-      H.expectGoodSnowplowEvents(1); // page view
+      cy.openReviewsTable({ mode: "notebook", limit: 1 });
+      cy.expectGoodSnowplowEvents(1); // page view
 
       cy.findByLabelText("View SQL").click();
       cy.wait("@nativeDataset");
       cy.findByTestId("native-query-preview-sidebar").should("exist");
 
-      H.expectGoodSnowplowEvent({
+      cy.expectGoodSnowplowEvent({
         event: "notebook_native_preview_shown",
       });
 
       cy.findByLabelText("Hide SQL").click();
       cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
-      H.expectGoodSnowplowEvent({
+      cy.expectGoodSnowplowEvent({
         event: "notebook_native_preview_hidden",
       });
 
-      H.expectGoodSnowplowEvents(3);
+      cy.expectGoodSnowplowEvents(3);
     });
   },
 );
 
 function convertToSql() {
-  H.openNotebook();
+  cy.openNotebook();
   cy.findByLabelText("View SQL").click();
   cy.intercept("POST", "/api/dataset").as("dataset");
   cy.button("Convert this question to SQL").click();
   cy.wait("@dataset");
-  H.nativeEditor().should("be.visible");
+  cy.nativeEditor().should("be.visible");
 }
 
 type ResizeSidebarCallback = (

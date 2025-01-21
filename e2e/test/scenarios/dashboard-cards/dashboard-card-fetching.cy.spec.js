@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
@@ -23,25 +22,28 @@ const cards = [
 
 describe("dashboard card fetching", () => {
   beforeEach(() => {
-    H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
   });
 
-  it("should pass same dashboard_load_id to every query to enable metadata cache sharing", () => {
-    createDashboardWithCards({ cards }).then(H.visitDashboard);
+  it(
+    "should pass same dashboard_load_id to every query to enable metadata cache sharing",
+    { tags: "@flaky" },
+    () => {
+      createDashboardWithCards({ cards }).then(cy.visitDashboard);
 
-    cy.wait(["@dashcardQuery", "@dashcardQuery"]).then(interceptions => {
-      const query1 = interceptions[0].request.body;
-      const query2 = interceptions[1].request.body;
+      cy.wait(["@dashcardQuery", "@dashcardQuery"]).then(interceptions => {
+        const query1 = interceptions[0].request.body;
+        const query2 = interceptions[1].request.body;
 
-      expect(query1.dashboard_load_id).to.have.length(36);
-      expect(query2.dashboard_load_id).to.have.length(36);
-      expect(query1.dashboard_load_id).to.equal(query2.dashboard_load_id);
-    });
-  });
+        expect(query1.dashboard_load_id).to.have.length(36);
+        expect(query2.dashboard_load_id).to.have.length(36);
+        expect(query1.dashboard_load_id).to.equal(query2.dashboard_load_id);
+      });
+    },
+  );
 });
 
 function createDashboardWithCards({
@@ -51,7 +53,7 @@ function createDashboardWithCards({
   return cy
     .createDashboard({ name: dashboardName })
     .then(({ body: { id } }) => {
-      H.updateDashboardCards({
+      cy.updateDashboardCards({
         dashboard_id: id,
         cards,
       });

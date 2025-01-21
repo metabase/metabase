@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -7,7 +6,7 @@ import {
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-type StructuredQuestionDetailsWithName = H.StructuredQuestionDetails & {
+type StructuredQuestionDetailsWithName = cy.StructuredQuestionDetails & {
   name: string;
 };
 
@@ -86,7 +85,7 @@ const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 describe("scenarios > browse > metrics", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -94,12 +93,12 @@ describe("scenarios > browse > metrics", () => {
   describe("no metrics", () => {
     it("should not hide the browse metrics link in the sidebar", () => {
       cy.visit("/");
-      H.navigationSidebar().findByText("Metrics").should("be.visible");
+      cy.navigationSidebar().findByText("Metrics").should("be.visible");
     });
 
     it("should show the empty metrics page", () => {
       cy.visit("/browse/metrics");
-      H.main().within(() => {
+      cy.main().within(() => {
         cy.findByText(
           "Create Metrics to define the official way to calculate important numbers for your team",
         ).should("be.visible");
@@ -111,7 +110,7 @@ describe("scenarios > browse > metrics", () => {
     it("should not show the create metric button if the user does not have data access", () => {
       cy.signInAsSandboxedUser();
       cy.visit("/browse/metrics");
-      H.main().within(() => {
+      cy.main().within(() => {
         cy.findByText(
           "Create Metrics to define the official way to calculate important numbers for your team",
         ).should("be.visible");
@@ -124,7 +123,7 @@ describe("scenarios > browse > metrics", () => {
     it("can browse metrics", () => {
       createMetrics(ALL_METRICS);
       cy.visit("/browse/metrics");
-      H.navigationSidebar().findByText("Metrics").should("be.visible");
+      cy.navigationSidebar().findByText("Metrics").should("be.visible");
 
       ALL_METRICS.forEach(metric => {
         findMetric(metric.name).should("be.visible");
@@ -190,7 +189,7 @@ describe("scenarios > browse > metrics", () => {
       metricsTable()
         .findByText(/This is a/)
         .should("be.visible")
-        .then(el => H.assertIsEllipsified(el[0]));
+        .then(el => cy.assertIsEllipsified(el[0]));
 
       metricsTable()
         .findByText(/This is a/)
@@ -240,12 +239,12 @@ describe("scenarios > browse > metrics", () => {
       shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
       metricsTable().findByLabelText("Metric options").click();
-      H.popover().findByText("Bookmark").should("be.visible").click();
+      cy.popover().findByText("Bookmark").should("be.visible").click();
 
       shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
       metricsTable().findByLabelText("Metric options").click();
-      H.popover()
+      cy.popover()
         .findByText("Remove from bookmarks")
         .should("be.visible")
         .click();
@@ -253,7 +252,7 @@ describe("scenarios > browse > metrics", () => {
       shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
       metricsTable().findByLabelText("Metric options").click();
-      H.popover().findByText("Bookmark").should("be.visible");
+      cy.popover().findByText("Bookmark").should("be.visible");
     });
 
     it("should be possible to navigate to the collection from the dot menu", () => {
@@ -262,7 +261,7 @@ describe("scenarios > browse > metrics", () => {
       cy.visit("/browse/metrics");
 
       metricsTable().findByLabelText("Metric options").click();
-      H.popover().findByText("Open collection").should("be.visible").click();
+      cy.popover().findByText("Open collection").should("be.visible").click();
 
       cy.location("pathname").should(
         "match",
@@ -276,19 +275,19 @@ describe("scenarios > browse > metrics", () => {
       cy.visit("/browse/metrics");
 
       metricsTable().findByLabelText("Metric options").click();
-      H.popover().findByText("Move to trash").should("be.visible").click();
+      cy.popover().findByText("Move to trash").should("be.visible").click();
 
-      H.main()
+      cy.main()
         .findByText(
           "Create Metrics to define the official way to calculate important numbers for your team",
         )
         .should("be.visible");
 
-      H.navigationSidebar().findByText("Trash").should("be.visible").click();
+      cy.navigationSidebar().findByText("Trash").should("be.visible").click();
       cy.button("Actions").click();
-      H.popover().findByText("Restore").should("be.visible").click();
+      cy.popover().findByText("Restore").should("be.visible").click();
 
-      H.navigationSidebar().findByText("Metrics").should("be.visible").click();
+      cy.navigationSidebar().findByText("Metrics").should("be.visible").click();
       metricsTable().findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
     });
 
@@ -300,7 +299,7 @@ describe("scenarios > browse > metrics", () => {
         cy.visit("/browse/metrics");
 
         metricsTable().findByLabelText("Metric options").click();
-        H.popover().findByText("Move to trash").should("not.exist");
+        cy.popover().findByText("Move to trash").should("not.exist");
       });
 
       it("should be possible to navigate to the collection from the dot menu", () => {
@@ -310,7 +309,7 @@ describe("scenarios > browse > metrics", () => {
         cy.visit("/browse/metrics");
 
         metricsTable().findByLabelText("Metric options").click();
-        H.popover().findByText("Open collection").should("be.visible").click();
+        cy.popover().findByText("Open collection").should("be.visible").click();
 
         cy.location("pathname").should("eq", "/collection/root");
       });
@@ -324,12 +323,12 @@ describe("scenarios > browse > metrics", () => {
         shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
         metricsTable().findByLabelText("Metric options").click();
-        H.popover().findByText("Bookmark").should("be.visible").click();
+        cy.popover().findByText("Bookmark").should("be.visible").click();
 
         shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
         metricsTable().findByLabelText("Metric options").click();
-        H.popover()
+        cy.popover()
           .findByText("Remove from bookmarks")
           .should("be.visible")
           .click();
@@ -337,16 +336,16 @@ describe("scenarios > browse > metrics", () => {
         shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
         metricsTable().findByLabelText("Metric options").click();
-        H.popover().findByText("Bookmark").should("be.visible");
+        cy.popover().findByText("Bookmark").should("be.visible");
       });
     });
   });
 
   describe("verified metrics", () => {
-    H.describeEE("on enterprise", () => {
+    cy.describeEE("on enterprise", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        cy.setTokenFeatures("all");
       });
 
       it("should not the verified metrics filter when there are no verified metrics", () => {
@@ -409,7 +408,7 @@ describe("scenarios > browse > metrics", () => {
         verifyMetric(ORDERS_SCALAR_METRIC);
 
         cy.findByLabelText("Filters").should("be.visible").click();
-        H.popover()
+        cy.popover()
           .findByLabelText("Show verified metrics only")
           .should("be.checked");
 
@@ -422,7 +421,7 @@ describe("scenarios > browse > metrics", () => {
 
         cy.visit("/browse/metrics");
         cy.findByLabelText("Filters").should("be.visible").click();
-        H.popover()
+        cy.popover()
           .findByLabelText("Show verified metrics only")
           .should("not.be.checked");
       });
@@ -433,7 +432,7 @@ describe("scenarios > browse > metrics", () => {
 function createMetrics(
   metrics: StructuredQuestionDetailsWithName[] = ALL_METRICS,
 ) {
-  metrics.forEach(metric => H.createQuestion(metric));
+  metrics.forEach(metric => cy.createQuestion(metric));
 }
 
 function metricsTable() {
@@ -449,24 +448,24 @@ function getMetricsTableItem(index: number) {
 }
 
 function shouldHaveBookmark(name: string) {
-  H.getSidebarSectionTitle(/Bookmarks/).should("be.visible");
-  H.navigationSidebar().findByText(name).should("be.visible");
+  cy.getSidebarSectionTitle(/Bookmarks/).should("be.visible");
+  cy.navigationSidebar().findByText(name).should("be.visible");
 }
 
 function shouldNotHaveBookmark(name: string) {
-  H.getSidebarSectionTitle(/Bookmarks/).should("not.exist");
-  H.navigationSidebar().findByText(name).should("not.exist");
+  cy.getSidebarSectionTitle(/Bookmarks/).should("not.exist");
+  cy.navigationSidebar().findByText(name).should("not.exist");
 }
 
 function verifyMetric(metric: StructuredQuestionDetailsWithName) {
   metricsTable().findByText(metric.name).should("be.visible").click();
 
   cy.findByLabelText("Move, trash, and more…").click();
-  H.popover().findByText("Verify this metric").click();
+  cy.popover().findByText("Verify this metric").click();
 
-  H.openNavigationSidebar();
+  cy.openNavigationSidebar();
 
-  H.navigationSidebar()
+  cy.navigationSidebar()
     .findByRole("listitem", { name: "Browse metrics" })
     .click();
 }
@@ -475,17 +474,17 @@ function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
   metricsTable().findByText(metric.name).should("be.visible").click();
 
   cy.findByLabelText("Move, trash, and more…").click();
-  H.popover().findByText("Remove verification").click();
+  cy.popover().findByText("Remove verification").click();
 
-  H.openNavigationSidebar();
+  cy.openNavigationSidebar();
 
-  H.navigationSidebar()
+  cy.navigationSidebar()
     .findByRole("listitem", { name: "Browse metrics" })
     .click();
 }
 
 function toggleVerifiedMetricsFilter() {
   cy.findByLabelText("Filters").should("be.visible").click();
-  H.popover().findByText("Show verified metrics only").click();
+  cy.popover().findByText("Show verified metrics only").click();
   cy.findByLabelText("Filters").should("be.visible").click();
 }

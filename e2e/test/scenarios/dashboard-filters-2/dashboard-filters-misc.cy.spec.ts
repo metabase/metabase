@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { Card, StructuredQuery } from "metabase-types/api";
 
@@ -9,14 +8,14 @@ const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 describe("scenarios > dashboard > filters > query stages + temporal unit parameters", () => {
   describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
 
       cy.intercept("POST", "/api/dataset").as("dataset");
     });
 
     it("1st stage explicit join + unit of time parameter", () => {
-      H.createDashboard(
+      cy.createDashboard(
         {
           name: "My new dashboard",
         },
@@ -31,17 +30,17 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
         });
       });
 
-      H.startNewQuestion();
+      cy.startNewQuestion();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        H.entityPickerModalItem(2, "Orders").click();
+      cy.entityPickerModal().within(() => {
+        cy.entityPickerModalTab("Tables").click();
+        cy.entityPickerModalItem(2, "Orders").click();
       });
 
-      H.getNotebookStep("filter")
+      cy.getNotebookStep("filter")
         .findByText("Add filters to narrow your answer")
         .click();
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Orders").click();
         cy.findByText("Product").click();
         cy.findByText("Category").click();
@@ -50,67 +49,67 @@ describe("scenarios > dashboard > filters > query stages + temporal unit paramet
         cy.button("Add filter").click();
       });
 
-      H.getNotebookStep("summarize")
+      cy.getNotebookStep("summarize")
         .findByText("Pick a function or metric")
         .click();
-      H.popover().findByText("Count of rows").click();
-      H.getNotebookStep("summarize").icon("add").click();
-      H.popover().within(() => {
+      cy.popover().findByText("Count of rows").click();
+      cy.getNotebookStep("summarize").icon("add").click();
+      cy.popover().within(() => {
         cy.findByText("Sum of ...").click();
         cy.findByText("Total").click();
       });
 
-      H.getNotebookStep("summarize")
+      cy.getNotebookStep("summarize")
         .findByText("Pick a column to group by")
         .click();
-      H.popover()
+      cy.popover()
         .findByLabelText("Created At")
         .findByLabelText("Temporal bucket")
         .click();
-      H.popover().last().findByText("Week").click();
-      H.getNotebookStep("summarize")
+      cy.popover().last().findByText("Week").click();
+      cy.getNotebookStep("summarize")
         .findByTestId("breakout-step")
         .icon("add")
         .click();
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Orders").click();
         cy.findByText("Product").click();
         cy.findByText("Category").click();
       });
 
       cy.findAllByTestId("action-buttons").last().button("Summarize").click();
-      H.popover().findByText("Count of rows").click();
-      H.getNotebookStep("summarize", { stage: 1 })
+      cy.popover().findByText("Count of rows").click();
+      cy.getNotebookStep("summarize", { stage: 1 })
         .findByText("Pick a column to group by")
         .click();
-      H.popover().findByLabelText("Created At: Week").click();
+      cy.popover().findByLabelText("Created At: Week").click();
 
-      H.visualize(); // need to visualize because startNewQuestion does not set "display" property on a card
+      cy.visualize(); // need to visualize because startNewQuestion does not set "display" property on a card
       cy.wait("@dataset");
-      H.saveQuestion("test"); // added to new dash automatically
+      cy.saveQuestion("test"); // added to new dash automatically
 
       cy.findByLabelText("Add a filter or parameter").click();
-      H.popover().findByText("Text or Category").click();
-      H.getDashboardCard().findByText("Select…").click();
+      cy.popover().findByText("Text or Category").click();
+      cy.getDashboardCard().findByText("Select…").click();
       cy.findAllByText("Category").first().click();
 
       cy.findByLabelText("Add a filter or parameter").click();
-      H.popover().findByText("Time grouping").click();
-      H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Created At: Week").click();
+      cy.popover().findByText("Time grouping").click();
+      cy.getDashboardCard().findByText("Select…").click();
+      cy.popover().findByText("Created At: Week").click();
 
-      H.saveDashboard();
-      H.filterWidget().eq(0).click();
-      H.popover().within(() => {
+      cy.saveDashboard();
+      cy.filterWidget().eq(0).click();
+      cy.popover().within(() => {
         cy.findByText("Gizmo").click();
         cy.button("Add filter").click();
       });
 
-      H.filterWidget().eq(1).click();
-      H.popover().findByText("Quarter").click();
+      cy.filterWidget().eq(1).click();
+      cy.popover().findByText("Quarter").click();
 
-      H.getDashboardCard().findByText("Q1 2023").should("be.visible");
-      H.getDashboardCard().findByTestId("legend-caption-title").click();
+      cy.getDashboardCard().findByText("Q1 2023").should("be.visible");
+      cy.getDashboardCard().findByTestId("legend-caption-title").click();
       cy.wait("@dataset");
 
       // assert that new filter was applied
@@ -133,7 +132,7 @@ describe("pivot tables", () => {
   const QUESTION_PIVOT_INDEX = 0;
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     QSHelpers.createBaseQuestions();
 
@@ -143,7 +142,7 @@ describe("pivot tables", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     cy.then(function () {
-      H.createQuestion({
+      cy.createQuestion({
         type: "question",
         query: createPivotableQuery(this.baseQuestion),
         name: "Question - pivot viz",
@@ -183,7 +182,7 @@ describe("pivot tables", () => {
   it("does not use extra filtering stage for pivot tables", () => {
     cy.log("dashboard parameters mapping");
 
-    H.editDashboard();
+    cy.editDashboard();
 
     cy.log("## date columns");
     QSHelpers.getFilter("Date").click();
@@ -201,14 +200,12 @@ describe("pivot tables", () => {
 
     cy.log("filter modal");
 
-    H.getDashboardCard(QUESTION_PIVOT_INDEX)
+    cy.getDashboardCard(QUESTION_PIVOT_INDEX)
       .findByTestId("legend-caption-title")
       .click();
     cy.wait("@datasetPivot");
-    cy.findByTestId("qb-header")
-      .button(/Filter/)
-      .click();
-    H.modal().findByText("Summaries").should("not.exist");
+    cy.button("Filter").click();
+    cy.modal().findByText("Summaries").should("not.exist");
 
     function verifyDateMappingOptions() {
       QSHelpers.verifyDashcardMappingOptions(QUESTION_PIVOT_INDEX, [

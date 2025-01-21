@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -39,7 +38,7 @@ const targetQuestion = {
 
 describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -50,17 +49,17 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
       });
 
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
+      cy.editDashboard();
+      cy.setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      H.setFilterQuestionSource({ question: "GUI source", field: "Category" });
-      H.saveDashboard();
+      cy.setFilterQuestionSource({ question: "GUI source", field: "Category" });
+      cy.saveDashboard();
       filterDashboard();
 
-      cy.get("@questionId").then(H.visitQuestion);
+      cy.get("@questionId").then(cy.visitQuestion);
       archiveQuestion();
     });
 
@@ -72,7 +71,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
             dashboardDetails: getStructuredDashboard(questionId),
           }).then(({ body: card }) => {
             cy.editDashboardCard(card, getParameterMapping(card));
-            H.visitEmbeddedPage(getDashboardResource(card));
+            cy.visitEmbeddedPage(getDashboardResource(card));
           });
         },
       );
@@ -88,7 +87,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
             dashboardDetails: getStructuredDashboard(questionId),
           }).then(({ body: card }) => {
             cy.editDashboardCard(card, getParameterMapping(card));
-            H.visitPublicDashboard(card.dashboard_id);
+            cy.visitPublicDashboard(card.dashboard_id);
           });
         },
       );
@@ -101,20 +100,20 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
       });
 
-      H.editDashboard();
-      H.setFilter("Text or Category", "Contains");
+      cy.editDashboard();
+      cy.setFilter("Text or Category", "Contains");
       mapFilterToQuestion();
-      H.setDropdownFilterType();
-      H.setFilterQuestionSource({ question: "GUI source", field: "Category" });
-      H.saveDashboard();
-      H.getDashboardCard().findByText("200").should("be.visible");
-      H.filterWidget().click();
-      H.popover().findByText("Gizmo").click();
-      H.popover().button("Add filter").click();
-      H.getDashboardCard().findByText("51").should("be.visible");
+      cy.setDropdownFilterType();
+      cy.setFilterQuestionSource({ question: "GUI source", field: "Category" });
+      cy.saveDashboard();
+      cy.getDashboardCard().findByText("200").should("be.visible");
+      cy.filterWidget().click();
+      cy.popover().findByText("Gizmo").click();
+      cy.popover().button("Add filter").click();
+      cy.getDashboardCard().findByText("51").should("be.visible");
     });
   });
 
@@ -124,17 +123,17 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
       });
 
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
+      cy.editDashboard();
+      cy.setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      H.setFilterQuestionSource({ question: "SQL source", field: "CATEGORY" });
-      H.saveDashboard();
+      cy.setFilterQuestionSource({ question: "SQL source", field: "CATEGORY" });
+      cy.saveDashboard();
       filterDashboard();
 
-      cy.get("@questionId").then(H.visitQuestion);
+      cy.get("@questionId").then(cy.visitQuestion);
       archiveQuestion();
     });
 
@@ -146,7 +145,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
             dashboardDetails: getNativeDashboard(questionId),
           }).then(({ body: card }) => {
             cy.editDashboardCard(card, getParameterMapping(card));
-            H.visitEmbeddedPage(getDashboardResource(card));
+            cy.visitEmbeddedPage(getDashboardResource(card));
           });
         },
       );
@@ -162,7 +161,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
             dashboardDetails: getNativeDashboard(questionId),
           }).then(({ body: card }) => {
             cy.editDashboardCard(card, getParameterMapping(card));
-            H.visitPublicDashboard(card.dashboard_id);
+            cy.visitPublicDashboard(card.dashboard_id);
           });
         },
       );
@@ -176,18 +175,18 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
       });
 
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
+      cy.editDashboard();
+      cy.setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      H.setFilterListSource({
+      cy.setFilterListSource({
         values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
       });
-      H.saveDashboard();
+      cy.saveDashboard();
       filterDashboard({ isLabeled: true });
-      H.filterWidget().findByText("Gizmo Label").should("be.visible");
+      cy.filterWidget().findByText("Gizmo Label").should("be.visible");
     });
 
     it("should be able to use a static list source when embedded", () => {
@@ -196,11 +195,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
         cy.editDashboardCard(card, getParameterMapping(card));
-        H.visitEmbeddedPage(getDashboardResource(card));
+        cy.visitEmbeddedPage(getDashboardResource(card));
       });
 
       filterDashboard({ isLabeled: true });
-      H.filterWidget().findByText("Gizmo Label").should("be.visible");
+      cy.filterWidget().findByText("Gizmo Label").should("be.visible");
     });
 
     it("should be able to use a static list source when public", () => {
@@ -209,11 +208,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         dashboardDetails: getListDashboard(),
       }).then(({ body: card }) => {
         cy.editDashboardCard(card, getParameterMapping(card));
-        H.visitPublicDashboard(card.dashboard_id);
+        cy.visitPublicDashboard(card.dashboard_id);
       });
 
       filterDashboard({ isLabeled: true });
-      H.filterWidget().findByText("Gizmo Label").should("be.visible");
+      cy.filterWidget().findByText("Gizmo Label").should("be.visible");
     });
   });
 
@@ -222,17 +221,17 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
       });
 
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
+      cy.editDashboard();
+      cy.setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      H.sidebar().findByText("Search box").click();
-      H.setFilterListSource({
+      cy.sidebar().findByText("Search box").click();
+      cy.setFilterListSource({
         values: [["Gadget"], ["Gizmo", "Gizmo Label"], "Widget"],
       });
-      H.saveDashboard();
+      cy.saveDashboard();
 
       setSearchFilter("Gizmo Label");
     });
@@ -243,11 +242,11 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         dashboardDetails: getListDashboard("search"),
       }).then(({ body: card }) => {
         cy.editDashboardCard(card, getParameterMapping(card));
-        H.visitEmbeddedPage(getDashboardResource(card));
+        cy.visitEmbeddedPage(getDashboardResource(card));
       });
 
       setSearchFilter("Gizmo Label");
-      H.filterWidget().findByText("Gizmo Label").should("be.visible");
+      cy.filterWidget().findByText("Gizmo Label").should("be.visible");
     });
 
     it("should be able to use a static list source when public", () => {
@@ -256,7 +255,7 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
         dashboardDetails: getListDashboard("search"),
       }).then(({ body: card }) => {
         cy.editDashboardCard(card, getParameterMapping(card));
-        H.visitPublicDashboard(card.dashboard_id);
+        cy.visitPublicDashboard(card.dashboard_id);
       });
 
       setSearchFilter("Gizmo Label");
@@ -268,14 +267,14 @@ describe("scenarios > dashboard > filters", { tags: "@slow" }, () => {
       cy.createQuestionAndDashboard({
         questionDetails: targetQuestion,
       }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
       });
 
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
+      cy.editDashboard();
+      cy.setFilter("Text or Category", "Is");
       mapFilterToQuestion();
-      H.setSearchBoxFilterType();
-      H.saveDashboard();
+      cy.setSearchBoxFilterType();
+      cy.saveDashboard();
       filterDashboard({ isField: true });
     });
   });
@@ -288,15 +287,15 @@ describe(
     const TABLE_NAME = "ip_addresses";
 
     beforeEach(() => {
-      H.resetTestTable({ type: "postgres", table: TABLE_NAME });
-      H.restore("postgres-writable");
+      cy.resetTestTable({ type: "postgres", table: TABLE_NAME });
+      cy.restore("postgres-writable");
       cy.signInAsAdmin();
-      H.resyncDatabase({
+      cy.resyncDatabase({
         dbId: WRITABLE_DB_ID,
         tableName: TABLE_NAME,
       });
 
-      H.getTable({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(
+      cy.getTable({ databaseId: WRITABLE_DB_ID, name: TABLE_NAME }).then(
         table => {
           const countField = table.fields.find(field => field.name === "count");
           cy.request("PUT", `/api/field/${countField.id}`, {
@@ -311,27 +310,27 @@ describe(
               },
             },
           }).then(({ body: { dashboard_id } }) => {
-            H.visitDashboard(dashboard_id);
+            cy.visitDashboard(dashboard_id);
           });
         },
       );
     });
 
     it("should be possible to use custom labels on IP address columns", () => {
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
+      cy.editDashboard();
+      cy.setFilter("Text or Category", "Is");
       mapFilterToQuestion("Inet");
-      H.setFilterListSource({
+      cy.setFilterListSource({
         values: [
           ["192.168.0.1/24", "Router"],
           ["127.0.0.1", "Localhost"],
           "0.0.0.1/0",
         ],
       });
-      H.saveDashboard();
+      cy.saveDashboard();
 
       openFilter();
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Router").should("be.visible");
         cy.findByText("Localhost").should("be.visible");
         cy.findByText("0.0.0.1/0").should("be.visible");
@@ -344,16 +343,16 @@ describe(
     });
 
     it("should be possible to use custom labels on type/Quantity fields", () => {
-      H.editDashboard();
-      H.setFilter("Text or Category", "Is");
+      cy.editDashboard();
+      cy.setFilter("Text or Category", "Is");
       mapFilterToQuestion("Count");
-      H.setFilterListSource({
+      cy.setFilterListSource({
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
-      H.saveDashboard();
+      cy.saveDashboard();
 
       openFilter();
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Ten").should("be.visible");
         cy.findByText("Twenty").should("be.visible");
         cy.findByText("30").should("be.visible");
@@ -367,12 +366,12 @@ describe(
   },
 );
 
-H.describeEE("scenarios > dashboard > filters", () => {
+cy.describeEE("scenarios > dashboard > filters", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
-    H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+    cy.setTokenFeatures("all");
+    cy.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
   });
 
   it("should sandbox parameter values in dashboards", () => {
@@ -392,8 +391,8 @@ H.describeEE("scenarios > dashboard > filters", () => {
           cy.editDashboardCard(card, getParameterMapping(card));
           cy.signOut();
           cy.signInAsSandboxedUser();
-          H.visitDashboard(card.dashboard_id);
-          H.assertDatasetReqIsSandboxed({
+          cy.visitDashboard(card.dashboard_id);
+          cy.assertDatasetReqIsSandboxed({
             requestAlias: `@dashcardQuery${card.id}`,
           });
         });
@@ -406,7 +405,7 @@ H.describeEE("scenarios > dashboard > filters", () => {
 
 const mapFilterToQuestion = (column = "Category") => {
   cy.findByText("Select…").click();
-  H.popover().within(() => cy.findByText(column).click());
+  cy.popover().within(() => cy.findByText(column).click());
 };
 
 const filterDashboard = ({
@@ -416,7 +415,7 @@ const filterDashboard = ({
 } = {}) => {
   cy.findByText("Text").click();
 
-  H.popover().within(() => {
+  cy.popover().within(() => {
     const GIZMO = isLabeled ? "Gizmo Label" : "Gizmo";
 
     cy.findByText(GIZMO).should("be.visible");
@@ -439,7 +438,7 @@ function openFilter() {
 }
 
 const archiveQuestion = () => {
-  H.openQuestionActions();
+  cy.openQuestionActions();
   cy.findByTestId("archive-button").click();
   cy.findByText(
     "This question will be removed from any dashboards or alerts using it. It will also be removed from the filter that uses it to populate values.",
@@ -505,16 +504,16 @@ const getParameterMapping = ({ card_id }) => ({
 });
 
 function setSearchFilter(label) {
-  H.filterWidget().click();
-  H.popover().within(() => {
-    H.fieldValuesInput().type(label);
+  cy.filterWidget().click();
+  cy.popover().within(() => {
+    cy.fieldValuesInput().type(label);
   });
 
-  H.popover().last().findByText(label).click();
-  H.popover().within(() => {
-    H.fieldValuesValue(0).should("be.visible").should("contain", label);
+  cy.popover().last().findByText(label).click();
+  cy.popover().within(() => {
+    cy.fieldValuesValue(0).should("be.visible").should("contain", label);
     cy.button("Add filter").click();
   });
 
-  H.filterWidget().findByText(label).should("be.visible");
+  cy.filterWidget().findByText(label).should("be.visible");
 }

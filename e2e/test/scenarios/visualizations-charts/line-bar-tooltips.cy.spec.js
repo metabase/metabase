@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -19,16 +18,16 @@ function testSumTotalChange(
   seriesName = "Sum of Total",
 ) {
   tooltipSelector("#88BF4D", 0);
-  H.echartsTooltip().within(() => {
-    H.tooltipHeader("2022");
-    H.assertTooltipRow(seriesName, { color: "#88BF4D", value: "42,156.87" });
+  cy.echartsTooltip().within(() => {
+    cy.tooltipHeader("2022");
+    cy.assertTooltipRow(seriesName, { color: "#88BF4D", value: "42,156.87" });
   });
 
   tooltipSelector("#88BF4D", 1);
 
-  H.echartsTooltip().within(() => {
-    H.tooltipHeader("2023");
-    H.assertTooltipRow(seriesName, {
+  cy.echartsTooltip().within(() => {
+    cy.tooltipHeader("2023");
+    cy.assertTooltipRow(seriesName, {
       color: "#88BF4D",
       value: "205,256.02",
       secondaryValue: "+386.89%",
@@ -96,18 +95,18 @@ function testAvgTotalChange(
   seriesName = "Average of Total",
 ) {
   tooltipSelector("#A989C5", 0);
-  H.echartsTooltip().within(() => {
-    H.tooltipHeader("2022");
-    H.assertTooltipRow(seriesName, {
+  cy.echartsTooltip().within(() => {
+    cy.tooltipHeader("2022");
+    cy.assertTooltipRow(seriesName, {
       color: "#A989C5",
       value: "56.66",
     });
   });
 
   tooltipSelector("#A989C5", 1);
-  H.echartsTooltip().within(() => {
-    H.tooltipHeader("2022");
-    H.assertTooltipRow(seriesName, {
+  cy.echartsTooltip().within(() => {
+    cy.tooltipHeader("2022");
+    cy.assertTooltipRow(seriesName, {
       color: "#A989C5",
       value: "56.86",
       secondaryValue: "+0.34%",
@@ -137,9 +136,9 @@ function testCumSumChange(
   // specific spec
   if (testFirstTooltip) {
     showTooltipForCircleInSeries("#88BF4D", 0);
-    H.echartsTooltip().within(() => {
-      H.tooltipHeader("2022");
-      H.assertTooltipRow(seriesName, {
+    cy.echartsTooltip().within(() => {
+      cy.tooltipHeader("2022");
+      cy.assertTooltipRow(seriesName, {
         color: "#88BF4D",
         value: "3,236",
       });
@@ -147,9 +146,9 @@ function testCumSumChange(
   }
 
   showTooltipForCircleInSeries("#88BF4D", 1);
-  H.echartsTooltip().within(() => {
-    H.tooltipHeader("2023");
-    H.assertTooltipRow(seriesName, {
+  cy.echartsTooltip().within(() => {
+    cy.tooltipHeader("2023");
+    cy.assertTooltipRow(seriesName, {
       color: "#88BF4D",
       value: "17,587",
       secondaryValue: "+443.48%",
@@ -172,18 +171,18 @@ const AVG_DISCOUNT_SUM_DISCOUNT = {
 
 function testAvgDiscountChange(seriesName = "Average of Discount") {
   showTooltipForCircleInSeries("#509EE3", 0);
-  H.echartsTooltip().within(() => {
-    H.tooltipHeader("2022");
-    H.assertTooltipRow(seriesName, {
+  cy.echartsTooltip().within(() => {
+    cy.tooltipHeader("2022");
+    cy.assertTooltipRow(seriesName, {
       color: "#509EE3",
       value: "5.03",
     });
   });
 
   showTooltipForCircleInSeries("#509EE3", 1);
-  H.echartsTooltip().within(() => {
-    H.tooltipHeader("2023");
-    H.assertTooltipRow(seriesName, {
+  cy.echartsTooltip().within(() => {
+    cy.tooltipHeader("2023");
+    cy.assertTooltipRow(seriesName, {
       color: "#509EE3",
       value: "5.41",
       secondaryValue: "+7.54%",
@@ -193,18 +192,18 @@ function testAvgDiscountChange(seriesName = "Average of Discount") {
 
 function testSumDiscountChange(seriesName = "Sum of Discount") {
   showTooltipForCircleInSeries("#98D9D9", 0);
-  H.echartsTooltip().within(() => {
-    H.tooltipHeader("2022");
-    H.assertTooltipRow(seriesName, {
+  cy.echartsTooltip().within(() => {
+    cy.tooltipHeader("2022");
+    cy.assertTooltipRow(seriesName, {
       color: "#98D9D9",
       value: "342.09",
     });
   });
 
   showTooltipForCircleInSeries("#98D9D9", 1);
-  H.echartsTooltip().within(() => {
-    H.tooltipHeader("2023");
-    H.assertTooltipRow(seriesName, {
+  cy.echartsTooltip().within(() => {
+    cy.tooltipHeader("2023");
+    cy.assertTooltipRow(seriesName, {
       color: "#98D9D9",
       value: "1,953.08",
       secondaryValue: "+470.93%",
@@ -214,7 +213,7 @@ function testSumDiscountChange(seriesName = "Sum of Discount") {
 
 describe("scenarios > visualizations > line/bar chart > tooltips", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -252,15 +251,15 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     };
 
     it("should allow adding non-series columns from data to the tooltip", () => {
-      H.visitQuestionAdhoc(testQuestion);
+      cy.visitQuestionAdhoc(testQuestion);
 
       // Tooltip by default shows only visible series data
       showTooltipForBarInSeries(COUNT_COLOR);
-      H.assertEChartsTooltipNotContain([SUM_OF_TOTAL, AVG_OF_QUANTITY]);
+      cy.assertEChartsTooltipNotContain([SUM_OF_TOTAL, AVG_OF_QUANTITY]);
 
       // Go to the additional tooltip columns setting
-      H.openVizSettingsSidebar();
-      H.leftSidebar().within(() => {
+      cy.openVizSettingsSidebar();
+      cy.leftSidebar().within(() => {
         cy.findByText("Display").click();
         cy.findByPlaceholderText("Enter metric names").click();
       });
@@ -275,7 +274,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       // Ensure the tooltip shows additional columns
       showTooltipForBarInSeries(COUNT_COLOR);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "0",
         rows: [
           { name: COUNT, value: "2,308" },
@@ -285,7 +284,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       // Add a breakout to the chart
-      H.leftSidebar().within(() => {
+      cy.leftSidebar().within(() => {
         cy.findByText("Data").click();
         cy.findByText("Add series breakout").click();
       });
@@ -293,7 +292,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       // Ensure the tooltip still shows additional columns
       showTooltipForBarInSeries(DOOHICKEY_COLOR);
       const assertBreakoutTooltip = () => {
-        H.assertEChartsTooltip({
+        cy.assertEChartsTooltip({
           header: "0",
           rows: [
             { name: "Doohickey", value: "192" },
@@ -308,7 +307,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       assertBreakoutTooltip();
 
       // Make the chart stacked
-      H.leftSidebar().within(() => {
+      cy.leftSidebar().within(() => {
         cy.findByText("Display").click();
         cy.findByText("Stack").click();
       });
@@ -324,7 +323,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: SUM_OF_TOTAL,
       }).then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
       });
     });
 
@@ -332,8 +331,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const originalName = "Sum of Total";
       const customName = "Custom";
 
-      H.cartesianChartCircle().first().realHover();
-      H.assertEChartsTooltip({
+      cy.cartesianChartCircle().first().realHover();
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [{ name: originalName, value: "42,156.87" }],
       });
@@ -344,8 +343,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      H.cartesianChartCircle().first().realHover();
-      H.assertEChartsTooltip({
+      cy.cartesianChartCircle().first().realHover();
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [{ name: customName, value: "42,156.87" }],
       });
@@ -362,7 +361,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         question: SUM_OF_TOTAL,
         addedSeriesQuestion: AVG_OF_TOTAL,
       }).then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
       });
     });
 
@@ -373,7 +372,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const updatedAddedSeriesName = "Custom Q2";
 
       showTooltipForCircleInSeries("#88BF4D");
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [
           { color: "#88BF4D", name: originalSeriesName, value: "42,156.87" },
@@ -381,7 +380,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       showTooltipForCircleInSeries("#A989C5");
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [
           {
@@ -400,7 +399,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       saveDashCardVisualizationOptions();
 
       showTooltipForCircleInSeries("#88BF4D");
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [
           {
@@ -412,7 +411,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       showTooltipForCircleInSeries("#A989C5");
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [
           {
@@ -435,7 +434,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
       }).then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
       });
     });
 
@@ -445,8 +444,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const customAvgSeriesName = "Custom 1";
       const customCumSumSeriesName = "Custom 2";
 
-      H.cartesianChartCircle().first().realHover();
-      H.assertEChartsTooltip({
+      cy.cartesianChartCircle().first().realHover();
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [
           {
@@ -469,8 +468,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      H.cartesianChartCircle().first().realHover();
-      H.assertEChartsTooltip({
+      cy.cartesianChartCircle().first().realHover();
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [
           {
@@ -502,21 +501,21 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         y: 4,
       },
     }).then(dashboardId => {
-      H.visitDashboard(dashboardId);
+      cy.visitDashboard(dashboardId);
     });
-    H.cartesianChartCircleWithColor("#A989C5")
+    cy.cartesianChartCircleWithColor("#A989C5")
       .first()
       .as("firstCircle")
       .realHover();
 
     // Ensure the tooltip is visible
-    H.assertEChartsTooltip({ header: "2022" });
+    cy.assertEChartsTooltip({ header: "2022" });
 
     // Ensuring the circle is not covered by the tooltip element
     cy.get("@firstCircle").then($circle => {
       const circleRect = $circle[0].getBoundingClientRect();
 
-      H.echartsTooltip().then($tooltip => {
+      cy.echartsTooltip().then($tooltip => {
         const tooltipRect = $tooltip[0].getBoundingClientRect();
         const isCovered =
           circleRect.top < tooltipRect.bottom &&
@@ -533,20 +532,20 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     setup({
       question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
     }).then(dashboardId => {
-      H.visitDashboard(dashboardId);
+      cy.visitDashboard(dashboardId);
     });
 
-    H.cartesianChartCircleWithColor("#A989C5")
+    cy.cartesianChartCircleWithColor("#A989C5")
       .first()
       .as("firstCircle")
       .realHover();
 
     // Ensure the tooltip is visible
-    H.assertEChartsTooltip({ header: "2022" });
+    cy.assertEChartsTooltip({ header: "2022" });
 
     cy.get("@firstCircle").click();
 
-    H.echartsTooltip().should("not.be.visible");
+    cy.echartsTooltip().should("not.be.visible");
   });
 
   describe("> multi series question on dashboard with added question", () => {
@@ -555,7 +554,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
         addedSeriesQuestion: AVG_DISCOUNT_SUM_DISCOUNT,
       }).then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
       });
     });
 
@@ -576,7 +575,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       [...originalSeriesColors, ...addedSeriesColors].forEach(color => {
         showTooltipForCircleInSeries(color, circleIndex);
-        H.assertEChartsTooltip({
+        cy.assertEChartsTooltip({
           header: "2023",
           rows: [
             {
@@ -618,7 +617,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       [...originalSeriesColors, ...addedSeriesColors].forEach(color => {
         showTooltipForCircleInSeries(color, circleIndex);
-        H.assertEChartsTooltip({
+        cy.assertEChartsTooltip({
           header: "2023",
           rows: [
             {
@@ -659,7 +658,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: { ...SUM_OF_TOTAL, display: "bar" },
       }).then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
       });
     });
 
@@ -667,8 +666,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const originalName = "Sum of Total";
       const updatedName = "Custom";
 
-      H.chartPathWithFillColor("#88BF4D").first().realHover();
-      H.assertEChartsTooltip({
+      cy.chartPathWithFillColor("#88BF4D").first().realHover();
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [
           {
@@ -685,8 +684,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       saveDashCardVisualizationOptions();
 
-      H.chartPathWithFillColor("#88BF4D").first().realHover();
-      H.assertEChartsTooltip({
+      cy.chartPathWithFillColor("#88BF4D").first().realHover();
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [
           {
@@ -709,7 +708,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         question: { ...SUM_OF_TOTAL, display: "bar" },
         addedSeriesQuestion: { ...AVG_OF_TOTAL, display: "bar" },
       }).then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
       });
     });
 
@@ -722,7 +721,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       const updatedAddedSeriesName = "Custom Q2";
 
       showTooltipForBarInSeries(originalSeriesColor, 0);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [
           {
@@ -734,7 +733,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       showTooltipForBarInSeries(addedSeriesColor, 0);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [
           {
@@ -753,7 +752,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       saveDashCardVisualizationOptions();
 
       showTooltipForBarInSeries(originalSeriesColor, 0);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [
           {
@@ -765,7 +764,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       showTooltipForBarInSeries(addedSeriesColor, 0);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "2022",
         rows: [
           {
@@ -788,11 +787,11 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH,
       }).then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
       });
 
       showTooltipForCircleInSeries("#88BF4D", 0);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "April 2022",
         rows: [
           {
@@ -805,7 +804,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipExcludesText("Compared to previous month");
 
       showTooltipForCircleInSeries("#88BF4D", 1);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "May 2022",
         rows: [
           {
@@ -822,11 +821,11 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG,
       }).then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
       });
 
       showTooltipForCircleInSeries("#88BF4D", 0);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "April 2022",
         rows: [
           {
@@ -838,7 +837,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
       testTooltipExcludesText("Compared to previous month");
       showTooltipForCircleInSeries("#88BF4D", 1);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "June 2022",
         rows: [
           {
@@ -851,7 +850,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipExcludesText("Compared to previous month");
 
       showTooltipForCircleInSeries("#88BF4D", 2);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "July 2022",
         rows: [
           {
@@ -864,7 +863,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       });
 
       showTooltipForCircleInSeries("#88BF4D", 3);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "September 2022",
         rows: [
           {
@@ -881,11 +880,11 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH_ORDINAL,
       }).then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
       });
 
       showTooltipForCircleInSeries("#88BF4D", 0);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "April 2022",
         rows: [
           {
@@ -898,7 +897,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipExcludesText("Compared to previous month");
 
       showTooltipForCircleInSeries("#88BF4D", 1);
-      H.assertEChartsTooltip({
+      cy.assertEChartsTooltip({
         header: "May 2022",
         rows: [
           {
@@ -970,7 +969,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
     it("should not omit percent change on April", () => {
       setup({ question: SUM_OF_TOTAL_APRIL }).then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
       });
 
       APRIL_CHANGES.forEach((change, index) => {
@@ -979,7 +978,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           testTooltipExcludesText("Compared to previous");
           return;
         }
-        H.assertEChartsTooltip({
+        cy.assertEChartsTooltip({
           rows: [
             {
               color: "#88BF4D",
@@ -993,7 +992,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
     it("should not omit percent change the week after DST begins", () => {
       setup({ question: SUM_OF_TOTAL_DST_WEEK }).then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
       });
 
       DST_WEEK_CHANGES.forEach((change, index) => {
@@ -1003,7 +1002,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           return;
         }
 
-        H.assertEChartsTooltip({
+        cy.assertEChartsTooltip({
           rows: [
             {
               color: "#88BF4D",
@@ -1017,7 +1016,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
     it("should not omit percent change the day after DST begins", () => {
       setup({ question: SUM_OF_TOTAL_DST_DAY }).then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
       });
 
       DST_DAY_CHANGES.forEach((change, index) => {
@@ -1026,7 +1025,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
           testTooltipExcludesText("Compared to previous");
           return;
         }
-        H.assertEChartsTooltip({
+        cy.assertEChartsTooltip({
           rows: [
             {
               color: "#88BF4D",
@@ -1060,36 +1059,38 @@ function setupDashboard(
   cardSize = { x: 24, y: 12 },
 ) {
   return cy.createDashboard().then(({ body: { id: dashboardId } }) => {
-    return H.addOrUpdateDashboardCard({
-      dashboard_id: dashboardId,
-      card_id: cardId,
-      card: {
-        size_x: cardSize.x,
-        size_y: cardSize.y,
-        series: addedSeriesCardId ? [{ id: addedSeriesCardId }] : [],
-      },
-    }).then(() => {
-      return dashboardId;
-    });
+    return cy
+      .addOrUpdateDashboardCard({
+        dashboard_id: dashboardId,
+        card_id: cardId,
+        card: {
+          size_x: cardSize.x,
+          size_y: cardSize.y,
+          series: addedSeriesCardId ? [{ id: addedSeriesCardId }] : [],
+        },
+      })
+      .then(() => {
+        return dashboardId;
+      });
   });
 }
 function resetHoverState() {
-  H.echartsTriggerBlur();
+  cy.echartsTriggerBlur();
   cy.wait(50);
 }
 
 function showTooltipForCircleInSeries(seriesColor, index = 0) {
   resetHoverState();
-  H.cartesianChartCircleWithColor(seriesColor).eq(index).realHover();
+  cy.cartesianChartCircleWithColor(seriesColor).eq(index).realHover();
 }
 
 function showTooltipForBarInSeries(seriesColor, index = 0) {
   resetHoverState();
-  H.chartPathWithFillColor(seriesColor).eq(index).realHover();
+  cy.chartPathWithFillColor(seriesColor).eq(index).realHover();
 }
 
 function testTooltipExcludesText(text) {
-  H.echartsTooltip().within(() => {
+  cy.echartsTooltip().within(() => {
     cy.contains(text).should("not.exist");
   });
 }
@@ -1105,9 +1106,9 @@ function updateColumnTitle(originalText, updatedText) {
 }
 
 function saveDashCardVisualizationOptions() {
-  H.modal().within(() => {
+  cy.modal().within(() => {
     cy.findByText("Done").click();
   });
 
-  H.saveDashboard();
+  cy.saveDashboard();
 }

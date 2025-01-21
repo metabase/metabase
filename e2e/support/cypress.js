@@ -6,6 +6,8 @@ import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
+
+import { H as helpers } from "e2e/support";
 import "./commands";
 
 const isCI = Cypress.env("CI");
@@ -155,3 +157,6 @@ if (isCI) {
   // Ensure that after plugin installation is after the afterEach handling the integration.
   require("cypress-terminal-report/src/installLogsCollector")(options);
 }
+
+// add all helpers to cypress object
+cy = { ...helpers, ...cy };

@@ -26,7 +26,7 @@ describeEE("scenarios > embedding-sdk > dashboard-click-behavior", () => {
       semantic_type: "type/URL",
     });
 
-    H.createDashboardWithQuestions({
+    cy.createDashboardWithQuestions({
       dashboardName: "Orders in a dashboard",
       questions: [
         {
@@ -109,27 +109,27 @@ describeEE("scenarios > embedding-sdk > dashboard-click-behavior", () => {
 
       root.within(() => {
         // Table should not contain any anchor links
-        H.getDashboardCard(0).get("table a").should("have.length", 0);
+        cy.getDashboardCard(0).get("table a").should("have.length", 0);
 
         // Drill-through should work on columns without click behavior
-        H.getDashboardCard(0).findByText("39.72").click();
+        cy.getDashboardCard(0).findByText("39.72").click();
         popover().should("contain.text", "Filter by this value");
 
         // Drill-through should work on URL columns, which is PRODUCT_ID in this case.
         // It should open a popover, not open a new link.
-        const urlCell = H.getDashboardCard(0).findByText("123");
+        const urlCell = cy.getDashboardCard(0).findByText("123");
         urlCell.should("not.have.attr", "data-testid", "link-formatted-text");
         urlCell.click();
 
         popover().should("contain.text", "Filter by this value");
 
         // URL formatting via column click behavior should not apply.
-        H.getDashboardCard(0).should("not.contain.text", "Link Text Applied");
-        H.getDashboardCard(0).findByText("37.65").click();
+        cy.getDashboardCard(0).should("not.contain.text", "Link Text Applied");
+        cy.getDashboardCard(0).findByText("37.65").click();
         cy.get(POPOVER_ELEMENT).should("not.exist");
 
         // Line chart click behavior should be disabled in the sdk
-        H.getDashboardCard(1).within(() => {
+        cy.getDashboardCard(1).within(() => {
           cartesianChartCircle()
             .eq(0)
             .then(([circle]) => {

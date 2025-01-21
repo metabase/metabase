@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
@@ -69,7 +68,7 @@ const SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE = {
 
 describe("scenarios > collection pinned items overview", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/card/**/query").as("getCardQuery");
@@ -78,11 +77,11 @@ describe("scenarios > collection pinned items overview", () => {
 
   it("should be able to pin a dashboard", () => {
     openRootCollection();
-    H.openUnpinnedItemMenu(DASHBOARD_NAME);
-    H.popover().findByText("Pin this").click();
+    cy.openUnpinnedItemMenu(DASHBOARD_NAME);
+    cy.popover().findByText("Pin this").click();
     cy.wait("@getPinnedItems");
 
-    H.getPinnedSection().within(() => {
+    cy.getPinnedSection().within(() => {
       cy.icon("dashboard").should("be.visible");
       cy.findByText("A dashboard").should("be.visible");
       cy.findByText(DASHBOARD_NAME).click();
@@ -92,11 +91,11 @@ describe("scenarios > collection pinned items overview", () => {
 
   it("should be able to pin a question", () => {
     openRootCollection();
-    H.openUnpinnedItemMenu(QUESTION_NAME);
-    H.popover().findByText("Pin this").click();
+    cy.openUnpinnedItemMenu(QUESTION_NAME);
+    cy.popover().findByText("Pin this").click();
     cy.wait(["@getPinnedItems", "@getCardQuery"]);
 
-    H.getPinnedSection().within(() => {
+    cy.getPinnedSection().within(() => {
       cy.findByText("18,760").should("be.visible");
       cy.findByText(QUESTION_NAME).click();
       cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
@@ -111,7 +110,7 @@ describe("scenarios > collection pinned items overview", () => {
     openRootCollection();
     cy.wait("@getCardQuery");
 
-    H.getPinnedSection().within(() => {
+    cy.getPinnedSection().within(() => {
       cy.findByText(PIVOT_QUESTION_DETAILS.name).should("be.visible");
       cy.findByText("Created At: Month").should("be.visible");
       cy.findByText("Count").should("be.visible");
@@ -122,11 +121,11 @@ describe("scenarios > collection pinned items overview", () => {
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
 
     openRootCollection();
-    H.openUnpinnedItemMenu(MODEL_NAME);
-    H.popover().findByText("Pin this").click();
+    cy.openUnpinnedItemMenu(MODEL_NAME);
+    cy.popover().findByText("Pin this").click();
     cy.wait("@getPinnedItems");
 
-    H.getPinnedSection().within(() => {
+    cy.getPinnedSection().within(() => {
       cy.icon("model").should("be.visible");
       cy.findByText(MODEL_NAME).should("be.visible");
       cy.findByText("A model").click();
@@ -140,11 +139,11 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     openRootCollection();
-    H.openPinnedItemMenu(DASHBOARD_NAME);
-    H.popover().findByText("Unpin").click();
+    cy.openPinnedItemMenu(DASHBOARD_NAME);
+    cy.popover().findByText("Unpin").click();
     cy.wait("@getPinnedItems");
 
-    H.getPinnedSection().should("not.exist");
+    cy.getPinnedSection().should("not.exist");
   });
 
   it("should be able to move a pinned dashboard", () => {
@@ -153,8 +152,8 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     openRootCollection();
-    H.openPinnedItemMenu(DASHBOARD_NAME);
-    H.popover().findByText("Move").click();
+    cy.openPinnedItemMenu(DASHBOARD_NAME);
+    cy.popover().findByText("Move").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Move "${DASHBOARD_NAME}"?`).should("be.visible");
@@ -166,8 +165,8 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     openRootCollection();
-    H.openPinnedItemMenu(DASHBOARD_NAME);
-    H.popover().findByText("Duplicate").click();
+    cy.openPinnedItemMenu(DASHBOARD_NAME);
+    cy.popover().findByText("Duplicate").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Duplicate "${DASHBOARD_NAME}" and its questions`).should(
@@ -181,11 +180,11 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     openRootCollection();
-    H.openPinnedItemMenu(DASHBOARD_NAME);
-    H.popover().findByText("Move to trash").click();
+    cy.openPinnedItemMenu(DASHBOARD_NAME);
+    cy.popover().findByText("Move to trash").click();
     cy.wait("@getPinnedItems");
 
-    H.getPinnedSection().should("not.exist");
+    cy.getPinnedSection().should("not.exist");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(DASHBOARD_NAME).should("not.exist");
   });
@@ -196,11 +195,11 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     openRootCollection();
-    H.openPinnedItemMenu(QUESTION_NAME);
-    H.popover().findByText("Don’t show visualization").click();
+    cy.openPinnedItemMenu(QUESTION_NAME);
+    cy.popover().findByText("Don’t show visualization").click();
     cy.wait("@getPinnedItems");
 
-    H.getPinnedSection().within(() => {
+    cy.getPinnedSection().within(() => {
       cy.findByText("18,760").should("not.exist");
       cy.findByText("A question").should("be.visible");
       cy.findByText(QUESTION_NAME).click();
@@ -215,11 +214,11 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     openRootCollection();
-    H.openPinnedItemMenu(QUESTION_NAME);
-    H.popover().findByText("Show visualization").click();
+    cy.openPinnedItemMenu(QUESTION_NAME);
+    cy.popover().findByText("Show visualization").click();
     cy.wait(["@getPinnedItems", "@getCardQuery"]);
 
-    H.getPinnedSection().within(() => {
+    cy.getPinnedSection().within(() => {
       cy.findByText(QUESTION_NAME).should("be.visible");
       cy.findByText("18,760").should("be.visible");
     });
@@ -234,7 +233,7 @@ describe("scenarios > collection pinned items overview", () => {
       );
 
       openRootCollection();
-      H.getPinnedSection().within(() => {
+      cy.getPinnedSection().within(() => {
         cy.findByText(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE.name).should(
           "be.visible",
         );
@@ -250,7 +249,7 @@ describe("scenarios > collection pinned items overview", () => {
       );
 
       openRootCollection();
-      H.getPinnedSection().within(() => {
+      cy.getPinnedSection().within(() => {
         cy.findByText(SQL_QUESTION_DETAILS_WITH_DEFAULT_VALUE.name).should(
           "be.visible",
         );
@@ -280,7 +279,7 @@ describe("scenarios > collection pinned items overview", () => {
     // for example, this test would not have caught https://github.com/metabase/metabase/issues/30614
     // even libraries like https://github.com/dmtrKovalenko/cypress-real-events rely on firing events
     // on specific elements rather than truly simulating mouse movements across the screen
-    H.dragAndDrop("draggingViz", "pinnedItems");
+    cy.dragAndDrop("draggingViz", "pinnedItems");
 
     cy.findByTestId("collection-table")
       .findByText("Orders, Count, Grouped by Created At (year)")

@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -6,49 +5,46 @@ const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > maps", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should display a pin map for a native query", () => {
     cy.signInAsNormalUser();
     // create a native query with lng/lat fields
-    H.startNewNativeQuestion().type(
+    cy.openNativeEditor().type(
       "select -80 as lng, 40 as lat union all select -120 as lng, 40 as lat",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     // switch to a pin map visualization
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
+    cy.openVizTypeSidebar();
     cy.icon("pinmap").click();
-    cy.findByTestId("Map-container").within(() => {
-      cy.icon("gear").click();
-    });
+    cy.openVizSettingsSidebar({ isSidebarOpen: true });
 
     toggleFieldSelectElement("Map type");
-    H.popover().findByText("Pin map").click();
+    cy.popover().findByText("Pin map").click();
 
     // When the settings sidebar opens, both latitude and longitude selects are
     // open. That makes it difficult to select each in Cypress, so we click
     // inside both of them before reopening them one-by-one. :(
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
     ["Latitude field", "Longitude field"].map(field =>
-      H.leftSidebar().within(() => {
+      cy.leftSidebar().within(() => {
         toggleFieldSelectElement(field);
       }),
     );
 
     // select both columns
-    H.leftSidebar().within(() => {
+    cy.leftSidebar().within(() => {
       toggleFieldSelectElement("Latitude field");
     });
-    H.popover().findByText("LAT").click();
+    cy.popover().findByText("LAT").click();
 
-    H.leftSidebar().within(() => {
+    cy.leftSidebar().within(() => {
       toggleFieldSelectElement("Longitude field");
     });
-    H.popover().findByText("LNG").click();
+    cy.popover().findByText("LNG").click();
 
     // check that a map appears
     cy.get(".leaflet-container");
@@ -74,7 +70,7 @@ describe("scenarios > visualizations > maps", () => {
       { visitQuestion: true },
     );
 
-    cy.button("Visualization").click();
+    cy.openVizTypeSidebar();
     cy.findByTestId("display-options-sensible").as("sensibleOptions");
 
     cy.get("@sensibleOptions").within(() => {
@@ -84,7 +80,7 @@ describe("scenarios > visualizations > maps", () => {
 
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
     cy.intercept("/app/assets/geojson/**").as("geojson");
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
         query: {
@@ -132,7 +128,7 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should display a tooltip for a grid map without a metric column (metabase#17940)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       display: "map",
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -180,7 +176,7 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should render grid map visualization for native questions (metabase#8362)", () => {
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
@@ -218,7 +214,7 @@ describe("scenarios > visualizations > maps", () => {
   it("should apply brush filters by dragging map", () => {
     cy.viewport(1280, 800);
 
-    H.visitQuestionAdhoc({
+    cy.visitQuestionAdhoc({
       dataset_query: {
         type: "query",
         database: SAMPLE_DB_ID,

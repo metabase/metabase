@@ -1,5 +1,3 @@
-import { H } from "e2e/support";
-
 import * as QSHelpers from "./shared/dashboard-filters-query-stages";
 
 /**
@@ -17,7 +15,7 @@ const NAMELESS_SECTION = "";
  */
 describe("scenarios > dashboard > filters > query stages", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     QSHelpers.createBaseQuestions();
 
@@ -44,7 +42,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       it("allows to map to all relevant columns", () => {
-        H.editDashboard();
+        cy.editDashboard();
 
         cy.log("## date columns");
         QSHelpers.getFilter("Date").click();
@@ -247,7 +245,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       it("allows to map to all relevant columns", () => {
-        H.editDashboard();
+        cy.editDashboard();
 
         cy.log("## date columns");
         QSHelpers.getFilter("Date").click();
@@ -582,7 +580,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       it("allows to map to all relevant columns", () => {
-        H.editDashboard();
+        cy.editDashboard();
 
         cy.log("## date columns");
         QSHelpers.getFilter("Date").click();
@@ -977,7 +975,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       it("allows to map to all relevant columns", () => {
-        H.editDashboard();
+        cy.editDashboard();
 
         cy.log("## date columns");
         QSHelpers.getFilter("Date").click();
@@ -1211,22 +1209,22 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           cy.log("public dashboard");
           QSHelpers.getDashboardId().then(dashboardId =>
-            H.visitPublicDashboard(dashboardId),
+            cy.visitPublicDashboard(dashboardId),
           );
           QSHelpers.waitForPublicDashboardData();
           QSHelpers.apply1stStageExplicitJoinFilter();
           QSHelpers.waitForPublicDashboardData();
 
-          H.getDashboardCard(0)
+          cy.getDashboardCard(0)
             .findByText("Rows 1-1 of 953")
             .should("be.visible");
-          H.getDashboardCard(1)
+          cy.getDashboardCard(1)
             .findByText("Rows 1-1 of 953")
             .should("be.visible");
 
           cy.log("embedded dashboard");
           QSHelpers.getDashboardId().then(dashboardId => {
-            H.visitEmbeddedPage({
+            cy.visitEmbeddedPage({
               resource: { dashboard: dashboardId },
               params: {},
             });
@@ -1235,10 +1233,10 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.apply1stStageExplicitJoinFilter();
           QSHelpers.waitForEmbeddedDashboardData();
 
-          H.getDashboardCard(0)
+          cy.getDashboardCard(0)
             .findByText("Rows 1-1 of 953")
             .should("be.visible");
-          H.getDashboardCard(1)
+          cy.getDashboardCard(1)
             .findByText("Rows 1-1 of 953")
             .should("be.visible");
         });
@@ -1374,22 +1372,22 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           cy.log("public dashboard");
           QSHelpers.getDashboardId().then(dashboardId =>
-            H.visitPublicDashboard(dashboardId),
+            cy.visitPublicDashboard(dashboardId),
           );
           QSHelpers.waitForPublicDashboardData();
           QSHelpers.apply2ndStageCustomColumnFilter();
           QSHelpers.waitForPublicDashboardData();
 
-          H.getDashboardCard(0)
+          cy.getDashboardCard(0)
             .findByText("Rows 1-1 of 31")
             .should("be.visible");
-          H.getDashboardCard(1)
+          cy.getDashboardCard(1)
             .findByText("Rows 1-1 of 31")
             .should("be.visible");
 
           cy.log("embedded dashboard");
           QSHelpers.getDashboardId().then(dashboardId => {
-            H.visitEmbeddedPage({
+            cy.visitEmbeddedPage({
               resource: { dashboard: dashboardId },
               params: {},
             });
@@ -1398,10 +1396,10 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.apply2ndStageCustomColumnFilter();
           QSHelpers.waitForEmbeddedDashboardData();
 
-          H.getDashboardCard(0)
+          cy.getDashboardCard(0)
             .findByText("Rows 1-1 of 31")
             .should("be.visible");
-          H.getDashboardCard(1)
+          cy.getDashboardCard(1)
             .findByText("Rows 1-1 of 31")
             .should("be.visible");
         });
@@ -1443,28 +1441,28 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           cy.log("public dashboard");
           QSHelpers.getDashboardId().then(dashboardId =>
-            H.visitPublicDashboard(dashboardId),
+            cy.visitPublicDashboard(dashboardId),
           );
           QSHelpers.waitForPublicDashboardData();
           QSHelpers.apply2ndStageAggregationFilter();
           QSHelpers.waitForPublicDashboardData();
 
-          H.getDashboardCard(0)
+          cy.getDashboardCard(0)
             .findByText("Rows 1-1 of 6")
             .should("be.visible");
-          H.getDashboardCard(1)
+          cy.getDashboardCard(1)
             .findByText("Rows 1-1 of 6")
             .should("be.visible");
-          H.getDashboardCard(2)
+          cy.getDashboardCard(2)
             .findByText("Rows 1-1 of 6")
             .should("be.visible");
-          H.getDashboardCard(3)
+          cy.getDashboardCard(3)
             .findByText("Rows 1-1 of 6")
             .should("be.visible");
 
           cy.log("embedded dashboard");
           QSHelpers.getDashboardId().then(dashboardId => {
-            H.visitEmbeddedPage({
+            cy.visitEmbeddedPage({
               resource: { dashboard: dashboardId },
               params: {},
             });
@@ -1473,16 +1471,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.apply2ndStageAggregationFilter();
           QSHelpers.waitForEmbeddedDashboardData();
 
-          H.getDashboardCard(0)
+          cy.getDashboardCard(0)
             .findByText("Rows 1-1 of 6")
             .should("be.visible");
-          H.getDashboardCard(1)
+          cy.getDashboardCard(1)
             .findByText("Rows 1-1 of 6")
             .should("be.visible");
-          H.getDashboardCard(2)
+          cy.getDashboardCard(2)
             .findByText("Rows 1-1 of 6")
             .should("be.visible");
-          H.getDashboardCard(3)
+          cy.getDashboardCard(3)
             .findByText("Rows 1-1 of 6")
             .should("be.visible");
         });
@@ -1524,34 +1522,34 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           cy.log("public dashboard");
           QSHelpers.getDashboardId().then(dashboardId =>
-            H.visitPublicDashboard(dashboardId),
+            cy.visitPublicDashboard(dashboardId),
           );
           QSHelpers.waitForPublicDashboardData();
           // We're not using apply2ndStageBreakoutFilter() here because in public dashboards
           // there are no field values to choose from. We need to search for those values manually.
-          H.filterWidget().eq(0).click();
-          H.popover().within(() => {
+          cy.filterWidget().eq(0).click();
+          cy.popover().within(() => {
             cy.findByPlaceholderText("Enter some text").type("Gadget");
             cy.button("Add filter").click();
           });
           QSHelpers.waitForPublicDashboardData();
 
-          H.getDashboardCard(0)
+          cy.getDashboardCard(0)
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
-          H.getDashboardCard(1)
+          cy.getDashboardCard(1)
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
-          H.getDashboardCard(2)
+          cy.getDashboardCard(2)
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
-          H.getDashboardCard(3)
+          cy.getDashboardCard(3)
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
 
           cy.log("embedded dashboard");
           QSHelpers.getDashboardId().then(dashboardId => {
-            H.visitEmbeddedPage({
+            cy.visitEmbeddedPage({
               resource: { dashboard: dashboardId },
               params: {},
             });
@@ -1559,23 +1557,23 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.waitForEmbeddedDashboardData();
           // We're not using apply2ndStageBreakoutFilter() here because in public dashboards
           // there are no field values to choose from. We need to search for those values manually.
-          H.filterWidget().eq(0).click();
-          H.popover().within(() => {
+          cy.filterWidget().eq(0).click();
+          cy.popover().within(() => {
             cy.findByPlaceholderText("Enter some text").type("Gadget");
             cy.button("Add filter").click();
           });
           QSHelpers.waitForEmbeddedDashboardData();
 
-          H.getDashboardCard(0)
+          cy.getDashboardCard(0)
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
-          H.getDashboardCard(1)
+          cy.getDashboardCard(1)
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
-          H.getDashboardCard(2)
+          cy.getDashboardCard(2)
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
-          H.getDashboardCard(3)
+          cy.getDashboardCard(3)
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
         });

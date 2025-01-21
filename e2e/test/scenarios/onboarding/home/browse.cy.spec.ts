@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -9,22 +8,22 @@ const filterButton = () =>
     .findByTestId("browse-models-header")
     .findByRole("button", { name: /Filters/i });
 
-H.describeWithSnowplow("scenarios > browse", () => {
+cy.describeWithSnowplow("scenarios > browse", () => {
   beforeEach(() => {
-    H.resetSnowplow();
-    H.restore();
+    cy.resetSnowplow();
+    cy.restore();
     cy.signInAsAdmin();
-    H.enableTracking();
+    cy.enableTracking();
   });
 
   it("can browse to a model", () => {
     cy.visit("/");
-    H.navigationSidebar().findByLabelText("Browse models").click();
+    cy.navigationSidebar().findByLabelText("Browse models").click();
     cy.location("pathname").should("eq", "/browse/models");
     cy.findByRole("heading", { name: "Orders Model" }).click();
     cy.url().should("include", `/model/${ORDERS_MODEL_ID}-`);
-    H.expectNoBadSnowplowEvents();
-    H.expectGoodSnowplowEvent({
+    cy.expectNoBadSnowplowEvents();
+    cy.expectGoodSnowplowEvent({
       event: "browse_data_model_clicked",
       model_id: ORDERS_MODEL_ID,
     });
@@ -52,13 +51,13 @@ H.describeWithSnowplow("scenarios > browse", () => {
 
   it("can browse to a table in a database", () => {
     cy.visit("/");
-    H.browseDatabases().click();
+    cy.browseDatabases().click();
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
     cy.findByRole("button", { name: /Summarize/ });
     cy.findByRole("link", { name: /Sample Database/ }).click();
-    H.expectNoBadSnowplowEvents();
-    H.expectGoodSnowplowEvent({
+    cy.expectNoBadSnowplowEvents();
+    cy.expectGoodSnowplowEvent({
       event: "browse_data_table_clicked",
       table_id: PRODUCTS_ID,
     });
@@ -74,7 +73,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
       cy.spy().as("schemasForOtherDatabases"),
     );
     cy.visit("/");
-    H.browseDatabases().click();
+    cy.browseDatabases().click();
     cy.findByRole("link", { name: /Sample Database/ }).click();
     cy.wait("@schemasForSampleDatabase");
     cy.get("@schemasForOtherDatabases").should("not.have.been.called");
@@ -82,7 +81,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
 
   it("can visit 'Learn about our data' page", () => {
     cy.visit("/");
-    H.browseDatabases().click();
+    cy.browseDatabases().click();
     cy.findByRole("link", { name: /Learn about our data/ }).click();
     cy.location("pathname").should("eq", "/reference/databases");
     cy.go("back");
@@ -93,7 +92,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
 
   it("on an open-source instance, the Browse models page has no controls for setting filters", () => {
     cy.visit("/");
-    H.navigationSidebar().findByLabelText("Browse models").click();
+    cy.navigationSidebar().findByLabelText("Browse models").click();
     filterButton().should("not.exist");
     cy.findByRole("switch", { name: /Show verified models only/ }).should(
       "not.exist",
@@ -105,7 +104,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
     cy.intercept("GET", "/api/search*", req => {
       req.reply({ statusCode: 400 });
     });
-    H.navigationSidebar().findByLabelText("Browse models").click();
+    cy.navigationSidebar().findByLabelText("Browse models").click();
     cy.findByLabelText("Models")
       .findAllByText("An error occurred")
       .should("have.length", 2);
@@ -116,20 +115,20 @@ H.describeWithSnowplow("scenarios > browse", () => {
     cy.intercept("GET", "/api/search*", req => {
       req.reply({ statusCode: 400 });
     });
-    H.navigationSidebar().findByLabelText("Browse metrics").click();
+    cy.navigationSidebar().findByLabelText("Browse metrics").click();
     cy.findByLabelText("Metrics")
       .findByText("An error occurred")
       .should("be.visible");
   });
 });
 
-H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
+cy.describeWithSnowplowEE("scenarios > browse (EE)", () => {
   beforeEach(() => {
-    H.resetSnowplow();
-    H.restore();
+    cy.resetSnowplow();
+    cy.restore();
     cy.signInAsAdmin();
-    H.enableTracking();
-    H.setTokenFeatures("all");
+    cy.enableTracking();
+    cy.setTokenFeatures("all");
     cy.intercept("PUT", "/api/setting/browse-filter-only-verified-models").as(
       "updateFilter",
     );
@@ -171,7 +170,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
   const browseModels = () => {
     cy.visit("/");
 
-    H.navigationSidebar()
+    cy.navigationSidebar()
       .findByRole("listitem", { name: "Browse models" })
       .click();
   };

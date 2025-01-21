@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -22,11 +21,11 @@ const {
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DOWNLOAD_PERMISSION_INDEX = 2;
 
-H.describeEE("scenarios > admin > permissions > data > downloads", () => {
+cy.describeEE("scenarios > admin > permissions > data > downloads", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
     // Restrict downloads for Collection and Data groups before each test so that they don't override All Users
     cy.updatePermissionsGraph({
       [COLLECTION_GROUP]: {
@@ -47,23 +46,23 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
 
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
-    H.modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
+    cy.modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
 
     cy.button("Save changes").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Save permissions?");
       cy.findByText("Are you sure you want to do this?");
       cy.button("Yes").click();
     });
 
-    H.assertPermissionForItem("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
+    cy.assertPermissionForItem("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
 
     cy.log("Make sure we can change download results permission for a table");
 
-    H.sidebar().contains("Orders").click();
+    cy.sidebar().contains("Orders").click();
 
-    H.modifyPermission(
+    cy.modifyPermission(
       "All Users",
       DOWNLOAD_PERMISSION_INDEX,
       "1 million rows",
@@ -71,13 +70,13 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
 
     cy.button("Save changes").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Save permissions?");
       cy.findByText("Are you sure you want to do this?");
       cy.button("Yes").click();
     });
 
-    H.assertPermissionForItem(
+    cy.assertPermissionForItem(
       "All Users",
       DOWNLOAD_PERMISSION_INDEX,
       "1 million rows",
@@ -86,24 +85,24 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
 
   it("respects 'no download' permissions when 'All users' group data permissions are set to `Blocked` (metabase#22408)", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
-    H.modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Blocked");
+    cy.modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Blocked");
 
     cy.button("Save changes").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Save permissions?");
       cy.findByText("Are you sure you want to do this?");
       cy.button("Yes").click();
     });
 
     // When data permissions are set to `Blocked`, download permissions are automatically revoked
-    H.assertPermissionForItem("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
+    cy.assertPermissionForItem("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
 
     // Normal user belongs to both "data" and "collection" groups.
     // They both have restricted downloads so this user shouldn't have the right to download anything.
     cy.signInAsNormalUser();
 
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.visitQuestion(ORDERS_QUESTION_ID);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing first 2,000 rows");
@@ -122,20 +121,20 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
 
     cy.signInAsNormalUser();
 
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.visitQuestion(ORDERS_QUESTION_ID);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing first 2,000 rows");
     cy.icon("download").should("not.exist");
 
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.findByTestId("dashcard").within(() => {
       cy.findByTestId("legend-caption").realHover();
       cy.findByTestId("dashcard-menu").click();
     });
 
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Edit question").should("be.visible");
       cy.findByText("Download results").should("not.exist");
     });
@@ -152,11 +151,11 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
     });
 
     cy.signInAsNormalUser();
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.visitQuestion(ORDERS_QUESTION_ID);
 
-    H.downloadAndAssert(
+    cy.downloadAndAssert(
       { fileType: "xlsx", questionId: ORDERS_QUESTION_ID },
-      H.assertSheetRowsCount(10000),
+      cy.assertSheetRowsCount(10000),
     );
   });
 
@@ -179,30 +178,30 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
       cy.signInAsNormalUser();
 
       cy.get("@nativeQuestionId").then(id => {
-        H.visitQuestion(id);
+        cy.visitQuestion(id);
 
-        H.downloadAndAssert(
+        cy.downloadAndAssert(
           { fileType: "xlsx", questionId: id },
-          H.assertSheetRowsCount(18760),
+          cy.assertSheetRowsCount(18760),
         );
 
         // Make sure we can download results from an ad-hoc nested query based on a native question
         cy.findByText("Explore results").click();
         cy.wait("@dataset");
 
-        H.downloadAndAssert(
+        cy.downloadAndAssert(
           { fileType: "xlsx" },
-          H.assertSheetRowsCount(18760),
+          cy.assertSheetRowsCount(18760),
         );
 
         // Make sure we can download results from a native model
         cy.request("PUT", `/api/card/${id}`, { name: "Native Model" });
 
-        H.visitQuestion(id);
+        cy.visitQuestion(id);
 
-        H.downloadAndAssert(
+        cy.downloadAndAssert(
           { fileType: "xlsx", questionId: id },
-          H.assertSheetRowsCount(18760),
+          cy.assertSheetRowsCount(18760),
         );
       });
     });
@@ -213,7 +212,7 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
       cy.signInAsNormalUser();
 
       cy.get("@nativeQuestionId").then(id => {
-        H.visitQuestion(id);
+        cy.visitQuestion(id);
 
         cy.findByText("Showing first 2,000 rows");
         cy.icon("download").should("not.exist");
@@ -228,7 +227,7 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
         // Convert question to a model, which also shouldn't be downloadable
         cy.request("PUT", `/api/card/${id}`, { name: "Native Model" });
 
-        H.visitQuestion(id);
+        cy.visitQuestion(id);
 
         cy.findByText("Showing first 2,000 rows");
         cy.icon("download").should("not.exist");
@@ -241,30 +240,30 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
       cy.signInAsNormalUser();
 
       cy.get("@nativeQuestionId").then(id => {
-        H.visitQuestion(id);
+        cy.visitQuestion(id);
 
-        H.downloadAndAssert(
+        cy.downloadAndAssert(
           { fileType: "xlsx", questionId: id },
-          H.assertSheetRowsCount(10000),
+          cy.assertSheetRowsCount(10000),
         );
 
         // Ad-hoc nested query based on a native question should also have a download row limit
         cy.findByText("Explore results").click();
         cy.wait("@dataset");
 
-        H.downloadAndAssert(
+        cy.downloadAndAssert(
           { fileType: "xlsx" },
-          H.assertSheetRowsCount(10000),
+          cy.assertSheetRowsCount(10000),
         );
 
         // Convert question to a model, which should also have a download row limit
         cy.request("PUT", `/api/card/${id}`, { name: "Native Model" });
 
-        H.visitQuestion(id);
+        cy.visitQuestion(id);
 
-        H.downloadAndAssert(
+        cy.downloadAndAssert(
           { fileType: "xlsx", questionId: id },
-          H.assertSheetRowsCount(10000),
+          cy.assertSheetRowsCount(10000),
         );
       });
     });

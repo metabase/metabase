@@ -1,7 +1,6 @@
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 
-import { H } from "e2e/support";
 dayjs.extend(timezone);
 
 import {
@@ -14,7 +13,7 @@ import {
  * These tests guarantee that this endpoint works as expected. */
 describe("server clock", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     resetServerTime();
     cy.signInAsAdmin();
   });

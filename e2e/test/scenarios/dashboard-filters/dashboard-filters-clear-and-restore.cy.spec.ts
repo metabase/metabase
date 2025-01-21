@@ -1,17 +1,16 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("dashboard filters values source config clearing and restoring", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should clear and restore parameter static-list values when the type changes", () => {
-    H.createQuestionAndDashboard({
+    cy.createQuestionAndDashboard({
       questionDetails: {
         display: "scalar",
         query: {
@@ -20,27 +19,27 @@ describe("dashboard filters values source config clearing and restoring", () => 
         },
       },
     }).then(({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
 
-      H.editDashboard();
-      H.setFilter("Number", "Equal to", "Foo");
+      cy.editDashboard();
+      cy.setFilter("Number", "Equal to", "Foo");
       mapFilterToQuestion();
-      H.setFilterListSource({
+      cy.setFilterListSource({
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
-      H.saveDashboard();
+      cy.saveDashboard();
 
-      H.editDashboard();
+      cy.editDashboard();
       editFilter("Foo");
 
       editFilterType("Text or Category", "Is");
-      H.checkFilterListSourceHasValue({ values: [] });
+      cy.checkFilterListSourceHasValue({ values: [] });
 
       mapFilterToQuestion("Email");
       setFilterSourceFromConnectedFields();
 
       editFilterType("Number", "Equal to");
-      H.checkFilterListSourceHasValue({
+      cy.checkFilterListSourceHasValue({
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
     });
@@ -48,8 +47,8 @@ describe("dashboard filters values source config clearing and restoring", () => 
 });
 
 function setFilterSourceFromConnectedFields() {
-  H.sidebar().findByText("Edit").click();
-  H.modal().within(() => {
+  cy.sidebar().findByText("Edit").click();
+  cy.modal().within(() => {
     cy.findByText("From connected fields").click();
     cy.button("Done").click();
   });
@@ -57,7 +56,7 @@ function setFilterSourceFromConnectedFields() {
 
 const mapFilterToQuestion = (column = "Quantity") => {
   cy.findByText("Select…").click();
-  H.popover().within(() => cy.findByText(column).click());
+  cy.popover().within(() => cy.findByText(column).click());
 };
 
 function editFilter(name: string) {
@@ -67,9 +66,9 @@ function editFilter(name: string) {
 }
 
 function editFilterType(type: string, subType: string) {
-  H.sidebar().findByText("Filter or parameter type").next().click();
-  H.selectDropdown().findByText(type).click();
+  cy.sidebar().findByText("Filter or parameter type").next().click();
+  cy.selectDropdown().findByText(type).click();
 
-  H.sidebar().findByText("Filter operator").next().click();
-  H.selectDropdown().findByText(subType).click();
+  cy.sidebar().findByText("Filter operator").next().click();
+  cy.selectDropdown().findByText(subType).click();
 }

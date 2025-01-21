@@ -1,5 +1,3 @@
-import { H } from "e2e/support";
-
 export const visitApiKeySettings = () => {
   cy.visit("/admin/settings/authentication/api-keys");
   return cy.wait("@getKeys");
@@ -22,7 +20,7 @@ export const tryToCreateApiKeyViaModal = ({
       cy.findByLabelText(/group/).click();
     });
 
-  H.selectDropdown()
+  cy.selectDropdown()
     .findByRole("option", {
       name: group,
       // Workaround for Mantine bug where the dropdown is hidden while the modal is open

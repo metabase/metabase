@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID, USERS, WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -22,23 +21,23 @@ const { WEB_PORT } = WEBMAIL_CONFIG;
 
 describe("issue 18009", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.setupSMTP();
+    cy.setupSMTP();
 
     cy.signIn("nodata");
   });
 
   it("nodata user should be able to create and receive an email subscription without errors (metabase#18009)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    H.openSharingMenu("Subscriptions");
+    cy.openSharingMenu("Subscriptions");
 
-    H.sidebar()
+    cy.sidebar()
       .findByPlaceholderText("Enter user names or email addresses")
       .click();
-    H.popover()
+    cy.popover()
       .contains(/^No Data/)
       .click();
 
@@ -46,7 +45,7 @@ describe("issue 18009", { tags: "@external" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To:").click();
 
-    H.sendEmailAndAssert(email => {
+    cy.sendEmailAndAssert(email => {
       expect(email.html).not.to.include(
         "An error occurred while displaying this card.",
       );
@@ -62,34 +61,34 @@ describe("issue 18344", { tags: "@external" }, () => {
   } = USERS;
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.setupSMTP();
+    cy.setupSMTP();
 
     // Rename the question
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    H.editDashboard();
+    cy.editDashboard();
 
     // Open visualization options
     cy.findByTestId("dashcard").realHover();
     cy.icon("palette").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByDisplayValue("Orders").type("Foo").blur();
 
       cy.button("Done").click();
     });
 
-    H.saveDashboard();
+    cy.saveDashboard();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("OrdersFoo");
   });
 
   it("subscription should not include original question name when it's been renamed in the dashboard (metabase#18344)", () => {
     // Send a test email subscription
-    H.openSharingMenu("Subscriptions");
+    cy.openSharingMenu("Subscriptions");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
@@ -100,7 +99,7 @@ describe("issue 18344", { tags: "@external" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To:").click();
 
-    H.sendEmailAndAssert(email => {
+    cy.sendEmailAndAssert(email => {
       expect(email.html).to.include("OrdersFoo");
     });
   });
@@ -119,22 +118,22 @@ describe("issue 18352", { tags: "@external" }, () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.setupSMTP();
+    cy.setupSMTP();
 
     cy.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
-        H.visitQuestion(card_id);
+        cy.visitQuestion(card_id);
 
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
       },
     );
   });
 
   it("should send the card with the INT64 values (metabase#18352)", () => {
-    H.openSharingMenu("Subscriptions");
+    cy.openSharingMenu("Subscriptions");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
@@ -146,7 +145,7 @@ describe("issue 18352", { tags: "@external" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To:").click();
 
-    H.sendEmailAndAssert(({ html }) => {
+    cy.sendEmailAndAssert(({ html }) => {
       expect(html).not.to.include(
         "An error occurred while displaying this card.",
       );
@@ -157,7 +156,7 @@ describe("issue 18352", { tags: "@external" }, () => {
   });
 });
 
-H.describeEE("issue 18669", { tags: "@external" }, () => {
+cy.describeEE("issue 18669", { tags: "@external" }, () => {
   const questionDetails = {
     name: "Product count",
     database: SAMPLE_DB_ID,
@@ -191,21 +190,21 @@ H.describeEE("issue 18669", { tags: "@external" }, () => {
   });
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
-    H.setupSMTP();
+    cy.setTokenFeatures("all");
+    cy.setupSMTP();
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: card }) => {
         cy.editDashboardCard(card, getFilterMapping(card));
-        H.visitDashboard(card.dashboard_id);
+        cy.visitDashboard(card.dashboard_id);
       },
     );
   });
 
   it("should send a test email with non-default parameters (metabase#18669)", () => {
-    H.openSharingMenu("Subscriptions");
+    cy.openSharingMenu("Subscriptions");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
@@ -214,16 +213,16 @@ H.describeEE("issue 18669", { tags: "@external" }, () => {
       .type(`${admin.first_name} ${admin.last_name}{enter}`)
       .blur();
 
-    H.sidebar().within(() => {
+    cy.sidebar().within(() => {
       cy.findByText("Doohickey").click();
     });
 
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Gizmo").click();
       cy.button("Update filter").click();
     });
 
-    H.clickSend();
+    cy.clickSend();
   });
 });
 
@@ -243,34 +242,34 @@ describe("issue 20393", () => {
             name: "Q2 in a dashboard",
           },
         })
-        .then(({ body: { dashboard_id } }) => H.visitDashboard(dashboard_id)),
+        .then(({ body: { dashboard_id } }) => cy.visitDashboard(dashboard_id)),
     );
   }
 
   beforeEach(() => {
     cy.intercept("POST", "/api/dashboard/*/public_link").as("publicLink");
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should show public dashboards with nested cards mapped to parameters (metabase#20393)", () => {
     createDashboardWithNestedCard();
 
-    H.editDashboard();
+    cy.editDashboard();
 
-    H.setFilter("Date picker", "All Options");
+    cy.setFilter("Date picker", "All Options");
 
     // map the date parameter to the card
     cy.findByTestId("dashcard-container").contains("Select").click();
-    H.popover().contains("CREATED_AT").click();
+    cy.popover().contains("CREATED_AT").click();
 
     // save the dashboard
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     // open the sharing modal and enable sharing
-    H.openNewPublicLinkDropdown("dashboard");
+    cy.openNewPublicLinkDropdown("dashboard");
 
     // navigate to the public dashboard link
     cy.wait("@publicLink").then(({ response: { body } }) => {
@@ -306,19 +305,19 @@ describe("issue 21559", { tags: "@external" }, () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.setupSMTP();
+    cy.setupSMTP();
 
-    H.createQuestionAndDashboard({
+    cy.createQuestionAndDashboard({
       questionDetails: q1Details,
     }).then(({ body: { dashboard_id } }) => {
-      H.createQuestion(q2Details);
+      cy.createQuestion(q2Details);
 
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
       cy.findByTestId("scalar-value").should("have.text", "80.52");
-      H.editDashboard();
+      cy.editDashboard();
     });
   });
 
@@ -329,8 +328,8 @@ describe("issue 21559", { tags: "@external" }, () => {
       cy.findByText(q2Details.name).click();
 
       // wait for elements to appear inside modal
-      H.chartPathWithFillColor("#A989C5").should("have.length", 1);
-      H.chartPathWithFillColor("#88BF4D").should("have.length", 1);
+      cy.chartPathWithFillColor("#A989C5").should("have.length", 1);
+      cy.chartPathWithFillColor("#88BF4D").should("have.length", 1);
 
       cy.button("Done").click();
     });
@@ -338,21 +337,21 @@ describe("issue 21559", { tags: "@external" }, () => {
     cy.findByTestId("add-series-modal").should("not.exist");
 
     // Make sure visualization changed to bars
-    H.getDashboardCard(0).within(() => {
-      H.chartPathWithFillColor("#A989C5").should("have.length", 1);
-      H.chartPathWithFillColor("#88BF4D").should("have.length", 1);
+    cy.getDashboardCard(0).within(() => {
+      cy.chartPathWithFillColor("#A989C5").should("have.length", 1);
+      cy.chartPathWithFillColor("#88BF4D").should("have.length", 1);
     });
 
-    H.saveDashboard();
+    cy.saveDashboard();
     // Wait for "Edited a few seconds ago" to disappear because the whole
     // dashboard re-renders after that!
     cy.findByTestId("revision-history-button").should("not.be.visible");
 
-    H.openAndAddEmailsToSubscriptions([
+    cy.openAndAddEmailsToSubscriptions([
       `${admin.first_name} ${admin.last_name}`,
     ]);
 
-    H.sendEmailAndAssert(email => {
+    cy.sendEmailAndAssert(email => {
       expect(email.html).to.include("img"); // Bar chart is sent as img (inline attachment)
       expect(email.html).not.to.include("80.52"); // Scalar displays its value in HTML
     });
@@ -376,7 +375,7 @@ describe("issue 22524", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -386,21 +385,21 @@ describe("issue 22524", () => {
         cy.intercept("POST", `/api/dashboard/${dashboard_id}/public_link`).as(
           "publicLink",
         );
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
       },
     );
 
-    H.editDashboard();
-    H.setFilter("Text or Category", "Is");
+    cy.editDashboard();
+    cy.setFilter("Text or Category", "Is");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
-    H.popover().contains("City").click();
+    cy.popover().contains("City").click();
 
-    H.saveDashboard();
+    cy.saveDashboard();
 
     // Share dashboard
-    H.openNewPublicLinkDropdown("dashboard");
+    cy.openNewPublicLinkDropdown("dashboard");
 
     cy.wait("@publicLink").then(({ response: { body } }) => {
       const { uuid } = body;
@@ -418,7 +417,7 @@ describe("issue 22524", () => {
   });
 });
 
-H.describeEE("issue 24223", () => {
+cy.describeEE("issue 24223", () => {
   const questionDetails = {
     name: "24223",
     query: {
@@ -485,10 +484,10 @@ H.describeEE("issue 24223", () => {
   });
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
-    H.setupSMTP();
+    cy.setTokenFeatures("all");
+    cy.setupSMTP();
   });
 
   it("should clear default filter (metabase#24223)", () => {
@@ -498,13 +497,13 @@ H.describeEE("issue 24223", () => {
 
         cy.editDashboardCard(dashboardCard, mapFiltersToCard(card_id));
 
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
         cy.location("search").should("eq", "?category=Doohickey&title=Awesome");
         cy.findByTestId("dashcard").should("contain", "36.37");
       },
     );
 
-    H.openAndAddEmailsToSubscriptions([
+    cy.openAndAddEmailsToSubscriptions([
       `${admin.first_name} ${admin.last_name}`,
     ]);
     cy.findByTestId("subscription-parameters-section").within(() => {
@@ -514,14 +513,14 @@ H.describeEE("issue 24223", () => {
         .click();
     });
 
-    H.sidebar().button("Done").click();
+    cy.sidebar().button("Done").click();
 
     cy.findByLabelText("Pulse Card")
       .should("contain", "Title is Awesome")
       .and("not.contain", "1 more filter")
       .click();
 
-    H.sendEmailAndVisitIt();
+    cy.sendEmailAndVisitIt();
     cy.get("table.header")
       .should("contain", containsFilter.name)
       .and("contain", "Awesome")
@@ -566,7 +565,7 @@ describe("issue 25473", () => {
     cy.findAllByTestId("column-header").last().should("have.text", ccName);
     cy.findAllByText("xavier").should("have.length", 2);
 
-    H.filterWidget().click();
+    cy.filterWidget().click();
     cy.findByPlaceholderText("Enter some text").type("e").blur();
     cy.button("Add filter").click();
 
@@ -576,7 +575,7 @@ describe("issue 25473", () => {
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
@@ -610,7 +609,7 @@ describe("issue 25473", () => {
 
   it("public sharing: dashboard text filter on a custom column should accept text input (metabase#25473-1)", () => {
     cy.get("@dashboardId").then(id => {
-      H.visitPublicDashboard(id);
+      cy.visitPublicDashboard(id);
     });
 
     assertOnResults();
@@ -630,22 +629,22 @@ describe("issue 25473", () => {
         params: {},
       };
 
-      H.visitEmbeddedPage(payload);
+      cy.visitEmbeddedPage(payload);
     });
 
     assertOnResults();
   });
 });
 
-H.describeEE("issue 26988", () => {
+cy.describeEE("issue 26988", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.intercept("GET", "/api/preview_embed/dashboard/*").as(
       "previewDashboard",
     );
 
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
   });
 
   it("should apply embedding settings passed in URL on load", () => {
@@ -661,30 +660,30 @@ H.describeEE("issue 26988", () => {
         enable_embedding: true,
       },
     }).then(({ body: card }) => {
-      H.visitDashboard(card.dashboard_id);
+      cy.visitDashboard(card.dashboard_id);
     });
 
-    H.openStaticEmbeddingModal({
+    cy.openStaticEmbeddingModal({
       activeTab: "lookAndFeel",
       previewMode: "preview",
       acceptTerms: false,
     });
 
     cy.wait("@previewDashboard");
-    H.getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
+    cy.getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
 
     cy.findByLabelText("Customizing look and feel")
       .findByLabelText("Font")
       .as("font-control")
       .click();
-    H.popover().findByText("Oswald").click();
+    cy.popover().findByText("Oswald").click();
 
-    H.getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
+    cy.getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
 
     cy.get("@font-control").click();
-    H.popover().findByText("Slabo 27px").click();
+    cy.popover().findByText("Slabo 27px").click();
 
-    H.getIframeBody().should(
+    cy.getIframeBody().should(
       "have.css",
       "font-family",
       '"Slabo 27px", sans-serif',
@@ -694,16 +693,16 @@ H.describeEE("issue 26988", () => {
 
 describe("issue 30314", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setupSMTP();
+    cy.setupSMTP();
   });
 
   it("should clean the new subscription form on cancel (metabase#30314)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    H.openSharingMenu("Subscriptions");
-    H.sidebar().within(() => {
+    cy.openSharingMenu("Subscriptions");
+    cy.sidebar().within(() => {
       cy.findByText("Email it").click();
 
       cy.findByLabelText("Attach results").should("not.be.checked").click();
@@ -764,21 +763,21 @@ describe("issue 17657", () => {
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     createSubscriptionWithoutRecipients();
   });
 
   it("frontend should gracefully handle the case of a subscription without a recipient (metabase#17657)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    H.openSharingMenu("Subscriptions");
+    cy.openSharingMenu("Subscriptions");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();
 
-    H.sidebar().within(() => {
+    cy.sidebar().within(() => {
       cy.button("Done").should("be.disabled");
     });
 
@@ -788,7 +787,7 @@ describe("issue 17657", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${first_name} ${last_name}`).click();
 
-    H.sidebar().within(() => {
+    cy.sidebar().within(() => {
       cy.button("Done").should("not.be.disabled");
     });
   });
@@ -836,7 +835,7 @@ describe("issue 17658", { tags: "@external" }, () => {
                   email,
                   first_name,
                   last_name,
-                  common_name: H.getFullName(admin),
+                  common_name: cy.getFullName(admin),
                 },
               ],
               details: {},
@@ -857,18 +856,18 @@ describe("issue 17658", { tags: "@external" }, () => {
 
   beforeEach(() => {
     cy.intercept("PUT", "/api/pulse/*").as("deletePulse");
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.setupSMTP();
+    cy.setupSMTP();
 
     moveDashboardToCollection("First collection");
   });
 
   it("should delete dashboard subscription from any collection (metabase#17658)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    H.openSharingMenu("Subscriptions");
+    cy.openSharingMenu("Subscriptions");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();
@@ -932,20 +931,20 @@ describe("issue 17547", () => {
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.mockSlackConfigured();
+    cy.mockSlackConfigured();
 
     cy.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
       setUpAlert(questionId);
 
-      H.visitQuestion(questionId);
+      cy.visitQuestion(questionId);
     });
   });
 
   it("editing an alert should not delete it (metabase#17547)", () => {
-    H.openSharingMenu("Edit alerts");
-    H.popover().within(() => {
+    cy.openSharingMenu("Edit alerts");
+    cy.popover().within(() => {
       cy.findByText("Daily, 12:00 PM");
       cy.findByText("Edit").click();
     });
@@ -956,8 +955,8 @@ describe("issue 17547", () => {
 
     cy.wait("@alertQuery");
 
-    H.openSharingMenu("Edit alerts");
-    H.popover().within(() => {
+    cy.openSharingMenu("Edit alerts");
+    cy.popover().within(() => {
       cy.findByText("Daily, 12:00 AM");
     });
   });
@@ -965,16 +964,16 @@ describe("issue 17547", () => {
 
 describe("issue 16108", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.visitQuestion(ORDERS_QUESTION_ID);
     cy.icon("download").realHover();
-    H.tooltip().findByText("Download full results");
-    H.sharingMenuButton().realHover();
-    H.tooltip().findByText("Sharing");
+    cy.tooltip().findByText("Download full results");
+    cy.sharingMenuButton().realHover();
+    cy.tooltip().findByText("Sharing");
   });
 });
 
@@ -1004,29 +1003,29 @@ describe("issue 49525", { tags: "@external" }, () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.setupSMTP();
+    cy.setupSMTP();
 
-    H.createQuestionAndDashboard({
+    cy.createQuestionAndDashboard({
       questionDetails: q1Details,
     }).then(({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
     });
   });
 
   it("Subscriptions with 'Keep data pivoted' checked should work (metabase#49525)", () => {
     // Send a test email subscription
-    H.openSharingMenu("Subscriptions");
-    H.sidebar().within(() => {
+    cy.openSharingMenu("Subscriptions");
+    cy.sidebar().within(() => {
       cy.findByText("Email it").click();
       cy.findByPlaceholderText("Enter user names or email addresses").click();
     });
 
-    H.popover().findByText(`${first_name} ${last_name}`).click();
+    cy.popover().findByText(`${first_name} ${last_name}`).click();
 
-    H.sidebar().within(() => {
+    cy.sidebar().within(() => {
       // Click this just to close the popover that is blocking the "Send email now" button
       cy.findByText("To:").click();
       cy.findByLabelText("Attach results").click();
@@ -1034,7 +1033,7 @@ describe("issue 49525", { tags: "@external" }, () => {
       cy.findByText("Questions to attach").click();
     });
 
-    H.sendEmailAndAssert(email => {
+    cy.sendEmailAndAssert(email => {
       // Get the CSV attachment data
       const csvAttachment = email.attachments.find(
         attachment => attachment.contentType === "text/csv",

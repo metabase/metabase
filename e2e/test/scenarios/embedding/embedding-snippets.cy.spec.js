@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -11,17 +10,17 @@ const features = ["none", "all"];
 features.forEach(feature => {
   describe(`[tokenFeatures=${feature}] scenarios > embedding > code snippets`, () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures(feature);
+      cy.setTokenFeatures(feature);
     });
 
     it("dashboard should have the correct embed snippet", () => {
       const defaultDownloadsValue = feature === "all" ? true : undefined;
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openStaticEmbeddingModal({ acceptTerms: false });
+      cy.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.openStaticEmbeddingModal({ acceptTerms: false });
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByText(
           "To embed this dashboard in your application you’ll just need to publish it, and paste these code snippets in the proper places in your app.",
         );
@@ -47,7 +46,7 @@ features.forEach(feature => {
           .click();
       });
 
-      H.popover()
+      cy.popover()
         .should("contain", "Node.js")
         .and("contain", "Ruby")
         .and("contain", "Python")
@@ -55,18 +54,18 @@ features.forEach(feature => {
 
       cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
 
-      H.modal()
+      cy.modal()
         .findAllByTestId("embed-frontend-select-button")
         .should("contain", "Pug / Jade")
         .click();
 
-      H.popover()
+      cy.popover()
         .should("contain", "Mustache")
         .and("contain", "Pug / Jade")
         .and("contain", "ERB")
         .and("contain", "JSX");
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByRole("tab", { name: "Look and Feel" }).click();
 
         // set transparent background metabase#23477
@@ -105,10 +104,10 @@ features.forEach(feature => {
 
     it("question should have the correct embed snippet", () => {
       const defaultDownloadsValue = feature === "all" ? true : undefined;
-      H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openStaticEmbeddingModal({ acceptTerms: false });
+      cy.visitQuestion(ORDERS_QUESTION_ID);
+      cy.openStaticEmbeddingModal({ acceptTerms: false });
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByText(
           "To embed this question in your application you’ll just need to publish it, and paste these code snippets in the proper places in your app.",
         );
@@ -152,7 +151,7 @@ features.forEach(feature => {
           .click();
       });
 
-      H.popover()
+      cy.popover()
         .should("contain", "Node.js")
         .and("contain", "Ruby")
         .and("contain", "Python")

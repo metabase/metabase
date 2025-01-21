@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 
@@ -14,7 +13,7 @@ describe("issue 39487", () => {
   ];
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     cy.viewport(1280, 1000);
   });
@@ -32,23 +31,23 @@ describe("issue 39487", () => {
     checkSingleDateFilter();
 
     cy.log("filter modal");
-    cy.button(/Filter/).click();
-    H.modal().findByText("After Jan 1, 2015").click();
+    cy.button("Filter").click();
+    cy.modal().findByText("After Jan 1, 2015").click();
     checkSingleDateFilter();
-    H.modal().button("Close").click();
+    cy.modal().button("Close").click();
 
     cy.log("filter drill");
     cy.findByLabelText("Switch to data").click();
-    H.tableHeaderClick("Created At: Year");
-    H.popover().findByText("Filter by this column").click();
-    H.popover().findByText("Specific dates…").click();
-    H.popover().findByText("After").click();
-    H.popover().findByRole("textbox").clear().type("2015/01/01");
+    cy.tableHeaderClick("Created At: Year");
+    cy.popover().findByText("Filter by this column").click();
+    cy.popover().findByText("Specific dates…").click();
+    cy.popover().findByText("After").click();
+    cy.popover().findByRole("textbox").clear().type("2015/01/01");
     checkSingleDateFilter();
 
     cy.log("notebook editor");
-    H.openNotebook();
-    H.getNotebookStep("filter")
+    cy.openNotebook();
+    cy.getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .first()
       .click();
@@ -73,24 +72,24 @@ describe("issue 39487", () => {
     checkDateRangeFilter();
 
     cy.log("filter modal");
-    cy.button(/Filter/).click();
-    H.modal().findByText("May 1 – Jun 1, 2024").click();
+    cy.button("Filter").click();
+    cy.modal().findByText("May 1 – Jun 1, 2024").click();
     checkDateRangeFilter();
-    H.modal().button("Close").click();
+    cy.modal().button("Close").click();
 
     cy.log("filter drill");
     cy.findByLabelText("Switch to data").click();
-    H.tableHeaderClick("Created At: Year");
-    H.popover().findByText("Filter by this column").click();
-    H.popover().findByText("Specific dates…").click();
-    H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
-    H.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
+    cy.tableHeaderClick("Created At: Year");
+    cy.popover().findByText("Filter by this column").click();
+    cy.popover().findByText("Specific dates…").click();
+    cy.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
+    cy.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
     previousButton().click();
     checkDateRangeFilter();
 
     cy.log("notebook editor");
-    H.openNotebook();
-    H.getNotebookStep("filter")
+    cy.openNotebook();
+    cy.getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .first()
       .click();
@@ -105,17 +104,17 @@ describe("issue 39487", () => {
       "2015-03-01", // 6 day rows
     ]);
 
-    H.openNotebook();
-    H.getNotebookStep("filter")
+    cy.openNotebook();
+    cy.getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .first()
       .click();
-    H.popover().scrollTo("bottom");
-    H.popover().button("Update filter").should("be.visible").click();
+    cy.popover().scrollTo("bottom");
+    cy.popover().button("Update filter").should("be.visible").click();
   });
 
   function createTimeSeriesQuestionWithFilter(filter: Filter) {
-    H.createQuestion(
+    cy.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -195,7 +194,7 @@ describe("issue 39487", () => {
   }
 
   function measureDatetimeFilterPickerHeight() {
-    return H.popover().then(([$element]) => {
+    return cy.popover().then(([$element]) => {
       const { height } = $element.getBoundingClientRect();
       return height;
     });
@@ -214,18 +213,18 @@ describe("issue 39487", () => {
   }
 
   function nextButton() {
-    return H.popover().get("button[data-next]");
+    return cy.popover().get("button[data-next]");
   }
 
   function previousButton() {
-    return H.popover().get("button[data-previous]");
+    return cy.popover().get("button[data-previous]");
   }
 });
 
 const MONGO_DB_ID = 2;
 
 describe("issue 47793", () => {
-  const questionDetails: H.NativeQuestionDetails = {
+  const questionDetails: cy.NativeQuestionDetails = {
     database: MONGO_DB_ID,
     native: {
       query: `[
@@ -262,7 +261,7 @@ describe("issue 47793", () => {
   };
 
   beforeEach(() => {
-    H.restore("mongo-5");
+    cy.restore("mongo-5");
     cy.signInAsAdmin();
   });
 
@@ -270,14 +269,14 @@ describe("issue 47793", () => {
     "should be able to preview queries for mongodb (metabase#47793)",
     { tags: ["@external", "@mongo"] },
     () => {
-      H.createNativeQuestion(questionDetails, { visitQuestion: true });
+      cy.createNativeQuestion(questionDetails, { visitQuestion: true });
       cy.findByTestId("visibility-toggler")
         .findByText(/open editor/i)
         .click();
       cy.findByTestId("native-query-editor-container")
         .findByLabelText("Preview the query")
         .click();
-      H.modal()
+      cy.modal()
         .should("contain.text", "$project")
         .and("contain.text", "quantity: 10");
     },

@@ -1,11 +1,10 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > null", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -67,7 +66,7 @@ describe("scenarios > question > null", () => {
         ],
       },
     }).then(({ body: { card_id, dashboard_id } }) => {
-      H.addOrUpdateDashboardCard({
+      cy.addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
         card: {
@@ -111,7 +110,7 @@ describe("scenarios > question > null", () => {
         cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           cy.log("Add both previously created questions to the dashboard");
 
-          H.updateDashboardCards({
+          cy.updateDashboardCards({
             dashboard_id: DASHBOARD_ID,
             cards: [
               { card_id: Q1_ID, row: 0, col: 0, size_x: 8, size_y: 4 },
@@ -119,7 +118,7 @@ describe("scenarios > question > null", () => {
             ],
           });
 
-          H.visitDashboard(DASHBOARD_ID);
+          cy.visitDashboard(DASHBOARD_ID);
           cy.log("P0 regression in v0.37.1!");
           cy.findByTestId("loading-indicator").should("not.exist");
           cy.findByText("13801_Q1");
@@ -131,7 +130,7 @@ describe("scenarios > question > null", () => {
   });
 
   it("should filter by clicking on the row with `null` value (metabase#18386)", () => {
-    H.openOrdersTable();
+    cy.openOrdersTable();
 
     // Total of "39.72", and the next cell is the `discount` (which is empty)
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -143,7 +142,7 @@ describe("scenarios > question > null", () => {
       // Open the context menu that lets us apply filter using this column directly
       .click({ force: true });
 
-    H.popover().contains("=").click();
+    cy.popover().contains("=").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72");
@@ -154,17 +153,17 @@ describe("scenarios > question > null", () => {
 
   describe("aggregations with null values", () => {
     it("summarize with null values (metabase#12585)", () => {
-      H.openOrdersTable();
+      cy.openOrdersTable();
 
-      H.summarize();
-      H.rightSidebar().within(() => {
+      cy.summarize();
+      cy.rightSidebar().within(() => {
         // remove pre-selected "Count"
         cy.icon("close").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add a function or metric").click();
       // dropdown immediately opens with the new set of metrics to choose from
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Cumulative sum of ...").click();
         cy.findByText("Discount").click();
       });
@@ -179,7 +178,7 @@ describe("scenarios > question > null", () => {
         "not.exist",
       );
 
-      H.cartesianChartCircle().should("have.length.of.at.least", 40);
+      cy.cartesianChartCircle().should("have.length.of.at.least", 40);
     });
   });
 });

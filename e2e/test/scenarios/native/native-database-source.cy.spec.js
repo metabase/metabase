@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 
 const PG_DB_ID = 2;
@@ -18,7 +17,7 @@ describe(
         "persistDatabase",
       );
 
-      H.restore("postgres-12");
+      cy.restore("postgres-12");
       cy.signInAsAdmin();
       cy.updatePermissionsGraph({
         [ALL_USERS_GROUP]: {
@@ -61,7 +60,7 @@ describe(
     });
 
     it("deleting previously persisted database should result in the new database selection prompt", () => {
-      H.addPostgresDatabase(additionalPG);
+      cy.addPostgresDatabase(additionalPG);
 
       startNativeQuestion();
       assertNoDatabaseSelected();
@@ -100,7 +99,7 @@ describe(
     });
 
     it("should not update the setting when the same database is selected again", () => {
-      H.updateSetting("last-used-native-database-id", SAMPLE_DB_ID);
+      cy.updateSetting("last-used-native-database-id", SAMPLE_DB_ID);
 
       startNativeQuestion();
       cy.findByTestId("selected-database")
@@ -143,12 +142,12 @@ describe(
           .should("have.text", postgresName)
           .click();
 
-        cy.get(H.POPOVER_ELEMENT).should("not.exist");
+        cy.get(cy.POPOVER_ELEMENT).should("not.exist");
 
         cy.signOut();
         cy.signInAsAdmin();
 
-        H.addPostgresDatabase(additionalPG);
+        cy.addPostgresDatabase(additionalPG);
         cy.updatePermissionsGraph({
           [ALL_USERS_GROUP]: {
             [ADDITIONAL_PG_DB_ID]: {
@@ -165,7 +164,7 @@ describe(
           .should("have.text", postgresName)
           .click();
 
-        H.popover()
+        cy.popover()
           .should("contain", postgresName)
           .and("contain", "New Database");
       });
@@ -180,7 +179,7 @@ describe(
         .should("have.text", postgresName)
         .click();
 
-      cy.get(H.POPOVER_ELEMENT).should("not.exist");
+      cy.get(cy.POPOVER_ELEMENT).should("not.exist");
     });
 
     it("users that lose permissions to the last used database should not have that database preselected anymore", () => {
@@ -190,7 +189,7 @@ describe(
 
       cy.signOut();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      cy.setTokenFeatures("all");
       cy.updatePermissionsGraph({
         [DATA_GROUP]: {
           [SAMPLE_DB_ID]: {
@@ -211,7 +210,7 @@ describe(
 
 describe("mongo as the default database", { tags: "@mongo" }, () => {
   beforeEach(() => {
-    H.restore("mongo-5");
+    cy.restore("mongo-5");
     cy.signInAsAdmin();
   });
 
@@ -223,7 +222,7 @@ describe("mongo as the default database", { tags: "@mongo" }, () => {
     cy.findByTestId("native-query-top-bar")
       .findByText("Select a table")
       .click();
-    H.popover().findByText("Reviews").click();
+    cy.popover().findByText("Reviews").click();
     cy.findByTestId("native-query-top-bar").should(
       "not.contain",
       "Select a table",
@@ -243,18 +242,13 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.restore("mysql-8");
+    cy.restore("mysql-8");
     cy.signInAsAdmin();
   });
 
   it("can write a native MySQL query with a field filter", () => {
     // Write Native query that includes a filter
-    H.startNewNativeQuestion().as("editor");
-
-    cy.findByTestId("gui-builder-data").click();
-    cy.findByLabelText(MYSQL_DB_NAME).click();
-
-    cy.get("@editor").type(
+    cy.openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
       "SELECT TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.ID = {{id}}]];",
       {
         parseSpecialCharSequences: false,
@@ -279,12 +273,9 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
   });
 
   it("can save a native MySQL query", () => {
-    H.startNewNativeQuestion().as("editor");
-
-    cy.findByTestId("gui-builder-data").click();
-    cy.findByLabelText(MYSQL_DB_NAME).click();
-
-    cy.get("@editor").type("SELECT * FROM ORDERS");
+    cy.openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
+      "SELECT * FROM ORDERS",
+    );
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.wait("@dataset");
@@ -294,7 +285,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     cy.contains("37.65");
 
     // Save the query
-    H.saveQuestion("sql count", { wrapId: true });
+    cy.saveQuestion("sql count", { wrapId: true });
     cy.url().should("match", /\/dashboard\/\d+-[a-z0-9-]*#edit$/);
   });
 });
@@ -306,7 +297,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.restore("mongo-5");
+    cy.restore("mongo-5");
     cy.signInAsAdmin();
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -334,7 +325,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   });
 
   it("can save a native MongoDB query", () => {
-    H.focusNativeEditor().type('[ { $count: "Total" } ]', {
+    cy.focusNativeEditor().type('[ { $count: "Total" } ]', {
       parseSpecialCharSequences: false,
     });
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -366,7 +357,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
 function startNativeQuestion() {
   cy.visit("/");
   cy.findByTestId("app-bar").findByText("New").click();
-  H.popover()
+  cy.popover()
     .findByTextEnsureVisible(/(SQL|Native) query/)
     .click();
 }
@@ -381,7 +372,7 @@ function startNativeModel() {
 function startNewAction() {
   cy.visit("/");
   cy.findByTestId("app-bar").findByText("New").click();
-  H.popover().findByTextEnsureVisible("Action").click();
+  cy.popover().findByTextEnsureVisible("Action").click();
 }
 
 function assertNoDatabaseSelected() {
@@ -393,7 +384,7 @@ function assertNoDatabaseSelected() {
 }
 
 function selectDatabase(database) {
-  H.popover().findByText(database).click();
+  cy.popover().findByText(database).click();
   cy.findByTestId("selected-database").should("have.text", database);
 }
 

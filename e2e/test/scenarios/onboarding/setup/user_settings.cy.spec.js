@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -7,10 +6,10 @@ const { normal } = USERS;
 const { first_name, last_name, email, password } = normal;
 
 describe("user > settings", () => {
-  const fullName = H.getFullName(normal);
+  const fullName = cy.getFullName(normal);
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
@@ -123,7 +122,7 @@ describe("user > settings", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Use site default").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    H.popover().within(() => cy.findByText("Indonesian").click());
+    cy.popover().within(() => cy.findByText("Indonesian").click());
 
     cy.button("Update").click();
     cy.wait("@updateUserSettings");
@@ -165,8 +164,8 @@ describe("user > settings", () => {
 
     // should be redirected to new question page
     cy.wait("@getUser");
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModal().findByText("Orders Model").click();
+    cy.entityPickerModalTab("Collections").click();
+    cy.entityPickerModal().findByText("Orders Model").click();
     cy.findByTestId("step-summarize-0-0")
       .findByText("Summarize")
       .should("not.exist");

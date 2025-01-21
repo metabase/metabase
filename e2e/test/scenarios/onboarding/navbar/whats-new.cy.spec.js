@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import {
   createMockVersionInfo,
   createMockVersionInfoRecord as mockVersion,
@@ -6,7 +5,7 @@ import {
 
 describe("nav > what's new notification", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
 
     mockVersions({
       currentVersion: "v0.48.0",
@@ -28,29 +27,29 @@ describe("nav > what's new notification", () => {
     cy.request("PUT", "api/setting/last-acknowledged-version", { value: null });
 
     loadHomepage();
-    H.navigationSidebar().findByText("See what's new");
+    cy.navigationSidebar().findByText("See what's new");
 
     // should persist reloads
     loadHomepage();
-    H.navigationSidebar().findByText("See what's new");
+    cy.navigationSidebar().findByText("See what's new");
 
-    H.navigationSidebar().icon("close").click();
-    H.navigationSidebar().findByText("See what's new").should("not.exist");
+    cy.navigationSidebar().icon("close").click();
+    cy.navigationSidebar().findByText("See what's new").should("not.exist");
 
     loadHomepage();
-    H.navigationSidebar().findByText("See what's new").should("not.exist");
+    cy.navigationSidebar().findByText("See what's new").should("not.exist");
   });
 
   it("it should show the notification for other users after one user dismissed it", () => {
     cy.signInAsAdmin();
     cy.request("PUT", "api/setting/last-acknowledged-version", { value: null });
     loadHomepage();
-    H.navigationSidebar().findByText("See what's new");
-    H.navigationSidebar().icon("close").click();
+    cy.navigationSidebar().findByText("See what's new");
+    cy.navigationSidebar().icon("close").click();
 
     cy.signInAsNormalUser();
     loadHomepage();
-    H.navigationSidebar().findByText("See what's new");
+    cy.navigationSidebar().findByText("See what's new");
   });
 });
 
@@ -72,5 +71,5 @@ function loadHomepage() {
   // make sure page is loaded
   cy.findByText("loading").should("not.exist");
 
-  H.navigationSidebar().findByText("Home").should("exist");
+  cy.navigationSidebar().findByText("Home").should("exist");
 }

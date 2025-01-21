@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { ValuesQueryType } from "metabase-types/api";
 
@@ -33,7 +32,7 @@ export function runAll(cases: TestCase[]) {
 
 export function run(test: TestCase) {
   it(`a parameter (${filterName(test)}) where the admin field setting is ${test.adminType} should render ${test.component}`, () => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     setup(test);
@@ -100,7 +99,7 @@ function setup(test: TestCase) {
     has_field_values: queryType(test.adminType),
   });
 
-  H.createQuestion({
+  cy.createQuestion({
     name: "Accounts Question",
     query: { "source-table": ACCOUNTS_ID },
   }).then(({ body: { id: otherCardId } }) => {
@@ -129,7 +128,7 @@ function setup(test: TestCase) {
     }).then(({ dashboard, questions: cards }) => {
       const [question] = cards;
 
-      H.updateDashboardCards({
+      cy.updateDashboardCards({
         dashboard_id: dashboard.id,
         cards: [
           {
@@ -145,7 +144,7 @@ function setup(test: TestCase) {
         ],
       });
 
-      H.visitDashboard(dashboard.id);
+      cy.visitDashboard(dashboard.id);
 
       cy.wrap(dashboard.id).as("dashboardId");
     });
@@ -153,7 +152,7 @@ function setup(test: TestCase) {
 }
 
 function openParameterWidget(test: TestCase) {
-  H.filterWidget().contains(filterName(test)).click();
+  cy.filterWidget().contains(filterName(test)).click();
 }
 
 function checkComponent(test: TestCase) {

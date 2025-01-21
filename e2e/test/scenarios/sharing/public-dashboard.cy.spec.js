@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -66,7 +65,7 @@ const USERS = {
 };
 
 const prepareDashboard = () => {
-  H.updateSetting("enable-public-sharing", true);
+  cy.updateSetting("enable-public-sharing", true);
 
   cy.intercept("/api/dashboard/*/public_link").as("publicLink");
 
@@ -107,16 +106,16 @@ const prepareDashboard = () => {
 
 describe("scenarios > public > dashboard", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     prepareDashboard();
   });
 
   it("should allow users to create public dashboards", () => {
-    H.visitDashboard("@dashboardId");
+    cy.visitDashboard("@dashboardId");
 
-    H.openNewPublicLinkDropdown("dashboard");
+    cy.openNewPublicLinkDropdown("dashboard");
 
     cy.wait("@publicLink").then(({ response }) => {
       expect(response.body.uuid).not.to.be.null;
@@ -135,13 +134,13 @@ describe("scenarios > public > dashboard", () => {
 
   it("should only allow non-admin users to see a public link if one has already been created", () => {
     cy.get("@dashboardId").then(id => {
-      H.createPublicDashboardLink(id);
+      cy.createPublicDashboardLink(id);
       cy.signOut();
     });
 
     cy.signInAsNormalUser().then(() => {
-      H.visitDashboard("@dashboardId");
-      H.openSharingMenu("Public link");
+      cy.visitDashboard("@dashboardId");
+      cy.openSharingMenu("Public link");
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");
@@ -172,8 +171,8 @@ describe("scenarios > public > dashboard", () => {
 
         cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
 
-        H.filterWidget().click();
-        H.popover().within(() => {
+        cy.filterWidget().click();
+        cy.popover().within(() => {
           cy.findByText("Doohickey").click();
           cy.button("Add filter").click();
         });
@@ -189,14 +188,14 @@ describe("scenarios > public > dashboard", () => {
         auto_apply_filters: false,
       });
 
-      H.visitPublicDashboard(id);
+      cy.visitPublicDashboard(id);
     });
 
     cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
     cy.button("Apply").should("not.exist");
 
-    H.filterWidget().click();
-    H.popover().within(() => {
+    cy.filterWidget().click();
+    cy.popover().within(() => {
       cy.findByText("Doohickey").click();
       cy.button("Add filter").click();
     });
@@ -210,17 +209,17 @@ describe("scenarios > public > dashboard", () => {
 
   it("should only display filters mapped to cards on the selected tab", () => {
     cy.get("@dashboardId").then(id => {
-      H.visitPublicDashboard(id);
+      cy.visitPublicDashboard(id);
     });
 
-    H.dashboardParametersContainer().within(() => {
+    cy.dashboardParametersContainer().within(() => {
       cy.findByText(textFilter.name).should("be.visible");
       cy.findByText(unusedFilter.name).should("not.exist");
     });
 
-    H.goToTab(tab2.name);
+    cy.goToTab(tab2.name);
 
-    H.dashboardParametersContainer().should("not.exist");
+    cy.dashboardParametersContainer().should("not.exist");
     cy.findByTestId("embed-frame").within(() => {
       cy.findByText(textFilter.name).should("not.exist");
       cy.findByText(unusedFilter.name).should("not.exist");
@@ -229,11 +228,11 @@ describe("scenarios > public > dashboard", () => {
 
   it("should respect dashboard width setting in a public dashboard", () => {
     cy.get("@dashboardId").then(id => {
-      H.visitPublicDashboard(id);
+      cy.visitPublicDashboard(id);
     });
 
     // new dashboards should default to 'fixed' width
-    H.assertDashboardFixedWidth();
+    cy.assertDashboardFixedWidth();
 
     // toggle full-width
     cy.get("@dashboardId").then(id => {
@@ -241,26 +240,26 @@ describe("scenarios > public > dashboard", () => {
       cy.request("PUT", `/api/dashboard/${id}`, {
         width: "full",
       });
-      H.visitPublicDashboard(id);
+      cy.visitPublicDashboard(id);
     });
 
-    H.assertDashboardFullWidth();
+    cy.assertDashboardFullWidth();
   });
 
   it("should render when a filter passed with value starting from '0' (metabase#41483)", () => {
     cy.get("@dashboardId").then(id => {
-      H.visitPublicDashboard(id, {
+      cy.visitPublicDashboard(id, {
         params: { text: "002" },
       });
     });
 
     cy.url().should("include", "text=002");
 
-    H.filterWidget().findByText("002").should("be.visible");
+    cy.filterWidget().findByText("002").should("be.visible");
   });
 
   it("should respect click behavior", () => {
-    H.createDashboardWithQuestions({
+    cy.createDashboardWithQuestions({
       dashboardName: "test click behavior",
       questions: [
         {
@@ -287,7 +286,7 @@ describe("scenarios > public > dashboard", () => {
         },
       ],
     }).then(({ dashboard }) => {
-      H.visitPublicDashboard(dashboard.id);
+      cy.visitPublicDashboard(dashboard.id);
     });
 
     // This is a hacky way to intercept the link click we create an a element
@@ -296,7 +295,7 @@ describe("scenarios > public > dashboard", () => {
       cy.spy(win.document.body, "appendChild").as("appendChild");
     });
 
-    H.getDashboardCard().findByText("39.72").click();
+    cy.getDashboardCard().findByText("39.72").click();
 
     cy.get("@appendChild").then(appendChild => {
       // last call is a link
@@ -308,21 +307,21 @@ describe("scenarios > public > dashboard", () => {
   });
 });
 
-H.describeEE("scenarios [EE] > public > dashboard", () => {
+cy.describeEE("scenarios [EE] > public > dashboard", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     prepareDashboard();
 
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
   });
 
   it("should set the window title to `{dashboard name} · {application name}`", () => {
-    H.updateSetting("application-name", "Custom Application Name");
+    cy.updateSetting("application-name", "Custom Application Name");
 
     cy.get("@dashboardId").then(id => {
-      H.visitPublicDashboard(id);
+      cy.visitPublicDashboard(id);
 
       cy.title().should("eq", "Test Dashboard · Custom Application Name");
     });
@@ -334,7 +333,7 @@ H.describeEE("scenarios [EE] > public > dashboard", () => {
     cy.intercept("/app/locales/de.json").as("deLocale");
 
     cy.get("@dashboardId").then(id => {
-      H.visitPublicDashboard(id, {
+      cy.visitPublicDashboard(id, {
         hash: { locale: "de-CH" },
       });
     });

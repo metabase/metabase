@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -6,7 +5,7 @@ const { PEOPLE, PEOPLE_ID, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > filters > management", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -43,7 +42,7 @@ describe("scenarios > dashboard > filters > management", () => {
       }).then(({ dashboard, questions: cards }) => {
         const [peopleCard, ordersCard] = cards;
 
-        H.updateDashboardCards({
+        cy.updateDashboardCards({
           dashboard_id: dashboard.id,
           cards: [
             {
@@ -79,33 +78,35 @@ describe("scenarios > dashboard > filters > management", () => {
           ],
         });
 
-        H.visitDashboard(dashboard.id);
+        cy.visitDashboard(dashboard.id);
       });
 
       cy.log("verify filters are there");
-      H.filterWidget().should("contain", "Location").and("contain", "Text");
+      cy.filterWidget().should("contain", "Location").and("contain", "Text");
 
-      H.editDashboard();
+      cy.editDashboard();
 
       selectFilter("Location");
 
-      H.getDashboardCard().contains("People.State");
-      H.getDashboardCard(1).contains("User.City");
+      cy.getDashboardCard().contains("People.State");
+      cy.getDashboardCard(1).contains("User.City");
 
       cy.log("Disconnect cards");
-      H.sidebar().findByText("Disconnect from cards").click();
+      cy.sidebar().findByText("Disconnect from cards").click();
 
-      H.getDashboardCard().should("not.contain", "People.State");
-      H.getDashboardCard(1).should("not.contain", "User.City");
+      cy.getDashboardCard().should("not.contain", "People.State");
+      cy.getDashboardCard(1).should("not.contain", "User.City");
 
       selectFilter("Text");
 
-      H.getDashboardCard().should("contain", "People.Name");
-      H.getDashboardCard(1).should("contain", "User.Name");
+      cy.getDashboardCard().should("contain", "People.Name");
+      cy.getDashboardCard(1).should("contain", "User.Name");
 
-      H.saveDashboard();
+      cy.saveDashboard();
 
-      H.filterWidget().should("contain", "Text").and("not.contain", "Location");
+      cy.filterWidget()
+        .should("contain", "Text")
+        .and("not.contain", "Location");
     });
   });
 
@@ -115,27 +116,27 @@ describe("scenarios > dashboard > filters > management", () => {
 
       selectFilter("Text");
 
-      H.getDashboardCard().should("contain", "People.Name");
+      cy.getDashboardCard().should("contain", "People.Name");
 
       cy.log("change filter type");
 
-      H.sidebar().within(() => {
+      cy.sidebar().within(() => {
         // verifies default value presents
         cy.findByText("value to check default").should("exist");
         cy.findByDisplayValue("Text or Category").click();
       });
 
-      H.popover().findByText("Number").click();
+      cy.popover().findByText("Number").click();
 
-      H.sidebar().within(() => {
+      cy.sidebar().within(() => {
         // verifies no default value
         cy.findByText("No default").should("exist");
       });
-      H.getDashboardCard().should("not.contain", "People.Name");
+      cy.getDashboardCard().should("not.contain", "People.Name");
 
-      H.saveDashboard();
+      cy.saveDashboard();
 
-      H.filterWidget().should("not.exist");
+      cy.filterWidget().should("not.exist");
     });
 
     it("should preselect default value for every type of filter", () => {
@@ -144,7 +145,7 @@ describe("scenarios > dashboard > filters > management", () => {
       selectFilter("Text");
 
       cy.log("verify Text default value: Is");
-      H.sidebar().findByDisplayValue("Is").should("exist");
+      cy.sidebar().findByDisplayValue("Is").should("exist");
 
       changeFilterType("Number");
 
@@ -154,7 +155,7 @@ describe("scenarios > dashboard > filters > management", () => {
       changeFilterType("ID");
 
       cy.log("verify ID doesn't render operator select");
-      H.sidebar().findAllByRole("searchbox").should("have.length", 1);
+      cy.sidebar().findAllByRole("searchbox").should("have.length", 1);
 
       changeFilterType("Date picker");
 
@@ -188,7 +189,7 @@ describe("scenarios > dashboard > filters > management", () => {
       }).then(({ dashboard, questions: cards }) => {
         const [peopleCard] = cards;
 
-        H.updateDashboardCards({
+        cy.updateDashboardCards({
           dashboard_id: dashboard.id,
           cards: [
             {
@@ -204,24 +205,24 @@ describe("scenarios > dashboard > filters > management", () => {
           ],
         });
 
-        H.visitDashboard(dashboard.id);
+        cy.visitDashboard(dashboard.id);
       });
 
-      H.editDashboard();
+      cy.editDashboard();
 
       selectFilter("Text Text");
 
-      H.sidebar().findByDisplayValue("Does not contain").should("exist");
+      cy.sidebar().findByDisplayValue("Does not contain").should("exist");
 
       changeFilterType("Number");
 
       // default value for a number type
-      H.sidebar().findByDisplayValue("Equal to").should("exist");
+      cy.sidebar().findByDisplayValue("Equal to").should("exist");
 
       changeFilterType("Text or Category");
 
       cy.log("verify the saved parameter value is restored");
-      H.sidebar().within(() => {
+      cy.sidebar().within(() => {
         cy.findByDisplayValue("Does not contain").should("exist");
         cy.findByDisplayValue("Text or Category").should("exist");
         cy.findByDisplayValue("Text Text").should("exist");
@@ -249,7 +250,7 @@ describe("scenarios > dashboard > filters > management", () => {
       }).then(({ dashboard, questions: cards }) => {
         const [peopleCard] = cards;
 
-        H.updateDashboardCards({
+        cy.updateDashboardCards({
           dashboard_id: dashboard.id,
           cards: [
             {
@@ -265,26 +266,26 @@ describe("scenarios > dashboard > filters > management", () => {
           ],
         });
 
-        H.visitDashboard(dashboard.id);
+        cy.visitDashboard(dashboard.id);
       });
 
-      H.editDashboard();
+      cy.editDashboard();
 
       selectFilter("Text Text");
 
-      H.sidebar().findByDisplayValue("Does not contain").should("exist");
+      cy.sidebar().findByDisplayValue("Does not contain").should("exist");
 
-      H.getDashboardCard().should("contain", "People.Name");
+      cy.getDashboardCard().should("contain", "People.Name");
 
       changeFilterType("Number");
 
       cy.log("verify that mapping is cleared");
-      H.getDashboardCard().should("not.contain", "People.Name");
+      cy.getDashboardCard().should("not.contain", "People.Name");
 
       changeFilterType("Text or Category");
 
       cy.log("verify that mapping is restored");
-      H.getDashboardCard().should("contain", "People.Name");
+      cy.getDashboardCard().should("contain", "People.Name");
     });
   });
 
@@ -295,20 +296,20 @@ describe("scenarios > dashboard > filters > management", () => {
       selectFilter("Text");
 
       // verifies default value is there
-      H.sidebar().findByText("value to check default").should("exist");
+      cy.sidebar().findByText("value to check default").should("exist");
 
-      H.getDashboardCard().should("contain", "People.Name");
+      cy.getDashboardCard().should("contain", "People.Name");
 
       changeOperator("Contains");
 
-      H.getDashboardCard().should("contain", "People.Name");
+      cy.getDashboardCard().should("contain", "People.Name");
 
       // verifies default value does not exist
-      H.sidebar().findByText("No default").should("exist");
+      cy.sidebar().findByText("No default").should("exist");
 
-      H.saveDashboard();
+      cy.saveDashboard();
 
-      H.filterWidget().should("contain", "Text");
+      cy.filterWidget().should("contain", "Text");
     });
   });
 });
@@ -335,7 +336,7 @@ function createDashboardWithFilterAndQuestionMapped() {
   }).then(({ dashboard, questions: cards }) => {
     const [peopleCard] = cards;
 
-    H.updateDashboardCards({
+    cy.updateDashboardCards({
       dashboard_id: dashboard.id,
       cards: [
         {
@@ -351,10 +352,10 @@ function createDashboardWithFilterAndQuestionMapped() {
       ],
     });
 
-    H.visitDashboard(dashboard.id);
+    cy.visitDashboard(dashboard.id);
   });
 
-  H.editDashboard();
+  cy.editDashboard();
 }
 
 function selectFilter(name) {
@@ -364,17 +365,17 @@ function selectFilter(name) {
 }
 
 function changeFilterType(type) {
-  H.sidebar().findByText("Filter or parameter type").next().click();
-  H.popover().findByText(type).click();
+  cy.sidebar().findByText("Filter or parameter type").next().click();
+  cy.popover().findByText(type).click();
 }
 
 function changeOperator(operator) {
-  H.sidebar().findByText("Filter operator").next().click();
-  H.popover().findByText(operator).click();
+  cy.sidebar().findByText("Filter operator").next().click();
+  cy.popover().findByText(operator).click();
 }
 
 function verifyOperatorValue(value) {
-  H.sidebar()
+  cy.sidebar()
     .findByText("Filter operator")
     .next()
     .findByRole("searchbox")

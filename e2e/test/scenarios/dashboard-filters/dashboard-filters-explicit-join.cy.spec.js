@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -41,7 +40,7 @@ describe("scenarios > dashboard > filters", () => {
       "filterValues",
     );
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
@@ -71,13 +70,13 @@ describe("scenarios > dashboard > filters", () => {
 
         cy.editDashboardCard(dashboardCard, updatedCardDetails);
 
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
       },
     );
   });
 
   it("should work properly when connected to the explicitly joined field", () => {
-    H.filterWidget().click();
+    cy.filterWidget().click();
     cy.wait("@filterValues");
 
     cy.findByPlaceholderText("Search the list").type("Awe");
@@ -91,7 +90,7 @@ describe("scenarios > dashboard > filters", () => {
       "?text=Awesome+Concrete+Shoes&text=Awesome+Iron+Hat",
     );
 
-    H.filterWidget().contains("2 selections");
+    cy.filterWidget().contains("2 selections");
 
     cy.findByTestId("dashcard").within(() => {
       cy.findAllByText("Awesome Concrete Shoes");

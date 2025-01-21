@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
@@ -103,7 +102,7 @@ const SCATTER_VIZ_QUESTION = {
 
 describe("scenarios > visualizations > legend", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -148,12 +147,12 @@ describe("scenarios > visualizations > legend", () => {
           size_y: 5,
         },
       ],
-    }).then(({ dashboard }) => H.visitDashboard(dashboard.id));
+    }).then(({ dashboard }) => cy.visitDashboard(dashboard.id));
 
-    H.getDashboardCard(0).within(() =>
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover(),
+    cy.getDashboardCard(0).within(() =>
+      cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover(),
     );
-    H.assertEChartsTooltip({
+    cy.assertEChartsTooltip({
       header: "2022",
       rows: [
         { name: "Doohickey", value: "177" },
@@ -163,15 +162,15 @@ describe("scenarios > visualizations > legend", () => {
       ],
     });
 
-    H.getDashboardCard(0).within(() => {
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+    cy.getDashboardCard(0).within(() => {
+      cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
         "have.length",
         5,
       );
-      H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
-      H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
-      H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
-      H.echartsContainer().within(() => {
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+      cy.echartsContainer().within(() => {
         cy.findByText("Count").should("exist"); // y-axis label
         cy.findByText("Created At: Year").should("exist"); // x-axis label
 
@@ -182,28 +181,28 @@ describe("scenarios > visualizations > legend", () => {
       });
 
       hideSeries(1); // Gadget
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
         "have.length",
         5,
       );
-      H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
-      H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
-      H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
 
       hideSeries(2); // Gizmo
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
         "have.length",
         5,
       );
-      H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
-      H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
-      H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
     });
 
-    H.getDashboardCard(0).within(() =>
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover(),
+    cy.getDashboardCard(0).within(() =>
+      cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover(),
     );
-    H.assertEChartsTooltip({
+    cy.assertEChartsTooltip({
       header: "2022",
       rows: [
         { name: "Doohickey", value: "177" },
@@ -211,27 +210,27 @@ describe("scenarios > visualizations > legend", () => {
       ],
     });
 
-    H.getDashboardCard(0).within(() => {
+    cy.getDashboardCard(0).within(() => {
       hideSeries(3); // Widget
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
         "have.length",
         5,
       );
-      H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
-      H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
-      H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
 
       hideSeries(0);
       // Ensure can't hide the last visible series
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
         "have.length",
         5,
       );
-      H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
-      H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
-      H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
 
-      H.echartsContainer().within(() => {
+      cy.echartsContainer().within(() => {
         cy.findByText("Count").should("exist"); // y-axis label
         cy.findByText("Created At: Year").should("exist"); // x-axis label
 
@@ -242,15 +241,15 @@ describe("scenarios > visualizations > legend", () => {
       });
 
       showSeries(1);
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
         "have.length",
         5,
       );
-      H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
-      H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
-      H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
 
-      H.echartsContainer().within(() => {
+      cy.echartsContainer().within(() => {
         cy.findByText("Count").should("exist"); // y-axis label
         cy.findByText("Created At: Year").should("exist"); // x-axis label
         cy.findByText("1,800").should("exist");
@@ -262,18 +261,18 @@ describe("scenarios > visualizations > legend", () => {
       showSeries(3);
     });
 
-    H.getDashboardCard(1).within(() => {
-      H.echartsContainer().findByText("500").should("exist"); // max y-axis value
+    cy.getDashboardCard(1).within(() => {
+      cy.echartsContainer().findByText("500").should("exist"); // max y-axis value
       cy.findByText("And 39 more").click();
     });
-    H.popover().within(() => hideSeries(29)); // TX (Texas);
-    H.getDashboardCard(1).click(); // click outside of popover to close it
-    H.getDashboardCard(1).within(() =>
-      H.echartsContainer().findByText("500").should("not.exist"),
+    cy.popover().within(() => hideSeries(29)); // TX (Texas);
+    cy.getDashboardCard(1).click(); // click outside of popover to close it
+    cy.getDashboardCard(1).within(() =>
+      cy.echartsContainer().findByText("500").should("not.exist"),
     );
 
-    H.getDashboardCard(2).within(() => {
-      H.echartsContainer().within(() => {
+    cy.getDashboardCard(2).within(() => {
+      cy.echartsContainer().within(() => {
         // left axis
         cy.findByText("Sum of Total").should("exist");
         cy.findByText("600,000").should("exist");
@@ -282,11 +281,11 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("Sum of Quantity").should("exist");
         cy.findByText("30,000").should("exist");
       });
-      H.trendLine().should("have.length", 2);
+      cy.trendLine().should("have.length", 2);
 
       hideSeries(0); // Sum of Total
 
-      H.echartsContainer().within(() => {
+      cy.echartsContainer().within(() => {
         // left axis
         cy.findByText("Sum of Total").should("not.exist");
         cy.findByText("600,000").should("not.exist");
@@ -295,12 +294,12 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("Sum of Quantity").should("exist");
         cy.findByText("30,000").should("exist");
       });
-      H.trendLine().should("have.length", 1);
+      cy.trendLine().should("have.length", 1);
 
       showSeries(0);
       hideSeries(1);
 
-      H.echartsContainer().within(() => {
+      cy.echartsContainer().within(() => {
         // left axis
         cy.findByText("Sum of Total").should("exist");
         cy.findByText("600,000").should("exist");
@@ -309,53 +308,53 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("Sum of Quantity").should("not.exist");
         cy.findByText("30,000").should("not.exist");
       });
-      H.trendLine().should("have.length", 1);
+      cy.trendLine().should("have.length", 1);
     });
 
-    H.getDashboardCard(3).within(() => {
-      H.scatterBubbleWithColor(CATEGORY_COLOR.DOOHICKEY).should(
+    cy.getDashboardCard(3).within(() => {
+      cy.scatterBubbleWithColor(CATEGORY_COLOR.DOOHICKEY).should(
         "have.length",
         5,
       );
-      H.scatterBubbleWithColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
-      H.scatterBubbleWithColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
-      H.scatterBubbleWithColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+      cy.scatterBubbleWithColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
+      cy.scatterBubbleWithColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
+      cy.scatterBubbleWithColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
 
-      H.echartsContainer().findByText("54").should("exist"); // max y-axis value
+      cy.echartsContainer().findByText("54").should("exist"); // max y-axis value
 
       hideSeries(1); // Gadget
       hideSeries(2); // Gizmo
       hideSeries(3); // Widget
 
-      H.scatterBubbleWithColor(CATEGORY_COLOR.DOOHICKEY).should(
+      cy.scatterBubbleWithColor(CATEGORY_COLOR.DOOHICKEY).should(
         "have.length",
         5,
       );
-      H.scatterBubbleWithColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
-      H.scatterBubbleWithColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
-      H.scatterBubbleWithColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
+      cy.scatterBubbleWithColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+      cy.scatterBubbleWithColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
+      cy.scatterBubbleWithColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
 
-      H.echartsContainer().within(() => {
+      cy.echartsContainer().within(() => {
         cy.findByText("54").should("not.exist"); // old max y-axis value
         cy.findByText("42").should("exist"); // new max y-axis value
       });
     });
 
-    H.getDashboardCard(4).within(() => {
+    cy.getDashboardCard(4).within(() => {
       cy.findByText("18,760").should("exist"); // total value
-      H.pieSlices().should("have.length", 4);
+      cy.pieSlices().should("have.length", 4);
       getPieChartLegendItemPercentage("TX").should("have.text", "7.15%");
 
       hideSeries(0); // TX (Texas)
 
-      H.pieSlices().should("have.length", 3);
+      cy.pieSlices().should("have.length", 3);
       cy.findByText("18,760").should("not.exist");
       cy.findByText("17,418").should("exist");
       getPieChartLegendItemPercentage("TX").should("have.text", "");
 
       hideSeries(3); // "Other" slice
 
-      H.pieSlices().should("have.length", 2);
+      cy.pieSlices().should("have.length", 2);
       cy.findByText("17,418").should("not.exist");
       cy.findByText("1,660").should("exist");
       getPieChartLegendItemPercentage("Other").should("have.text", "");
@@ -364,12 +363,12 @@ describe("scenarios > visualizations > legend", () => {
 
       showSeries(0);
 
-      H.pieSlices().should("have.length", 3);
+      cy.pieSlices().should("have.length", 3);
       getPieChartLegendItemPercentage("TX").should("have.text", "44.7%");
     });
 
     // Ensure can't toggle series visibility in edit mode
-    H.editDashboard();
+    cy.editDashboard();
 
     function ensureCanNotToggleSeriesVisibility() {
       cy.findAllByTestId("legend-item").eq(0).as("legend-item");
@@ -379,32 +378,34 @@ describe("scenarios > visualizations > legend", () => {
         .findByTestId("legend-item-dot")
         .click({ force: true });
 
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
         "have.length",
         5,
       );
-      H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
-      H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
-      H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
+      cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
     }
 
-    H.showDashboardCardActions(0);
-    H.getDashboardCard(0).findByLabelText("Show visualization options").click();
+    cy.showDashboardCardActions(0);
+    cy.getDashboardCard(0)
+      .findByLabelText("Show visualization options")
+      .click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       ensureCanNotToggleSeriesVisibility();
       cy.button("Cancel").click();
     });
 
-    H.showDashboardCardActions(0);
-    H.getDashboardCard(0).findByLabelText("Add series").click();
+    cy.showDashboardCardActions(0);
+    cy.getDashboardCard(0).findByLabelText("Add series").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       ensureCanNotToggleSeriesVisibility();
       cy.button("Cancel").click();
     });
 
-    H.getDashboardCard(0).within(() => {
+    cy.getDashboardCard(0).within(() => {
       ensureCanNotToggleSeriesVisibility();
     });
   });
@@ -414,14 +415,17 @@ describe("scenarios > visualizations > legend", () => {
       questions: [SINGLE_AGGREGATION_QUESTION],
       cards: [{ col: 0, row: 0, size_x: 24, size_y: 6 }],
     }).then(({ dashboard }) => {
-      H.visitPublicDashboard(dashboard.id);
+      cy.visitPublicDashboard(dashboard.id);
     });
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
-    H.echartsContainer().within(() => {
+    cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      "have.length",
+      5,
+    );
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+    cy.echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis label
       cy.findByText("Created At: Year").should("exist"); // x-axis label
 
@@ -432,22 +436,28 @@ describe("scenarios > visualizations > legend", () => {
     });
 
     hideSeries(1); // Gadget
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      "have.length",
+      5,
+    );
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
   });
 
   it("should toggle series visibility in the query builder", () => {
-    H.createQuestion(SINGLE_AGGREGATION_QUESTION, { visitQuestion: true });
+    cy.createQuestion(SINGLE_AGGREGATION_QUESTION, { visitQuestion: true });
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      "have.length",
+      5,
+    );
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
-    H.assertEChartsTooltip({
+    cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    cy.assertEChartsTooltip({
       header: "2022",
       rows: [
         { name: "Doohickey", value: "177" },
@@ -457,7 +467,7 @@ describe("scenarios > visualizations > legend", () => {
       ],
     });
 
-    H.echartsContainer().within(() => {
+    cy.echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis label
       cy.findByText("Created At: Year").should("exist"); // x-axis label
 
@@ -468,19 +478,25 @@ describe("scenarios > visualizations > legend", () => {
     });
 
     hideSeries(1); // Gadget
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      "have.length",
+      5,
+    );
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
 
     hideSeries(2); // Gizmo
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
-    H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      "have.length",
+      5,
+    );
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
-    H.assertEChartsTooltip({
+    cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    cy.assertEChartsTooltip({
       header: "2022",
       rows: [
         { name: "Doohickey", value: "177" },
@@ -489,19 +505,25 @@ describe("scenarios > visualizations > legend", () => {
     });
 
     hideSeries(3); // Widget
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
-    H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      "have.length",
+      5,
+    );
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
 
     hideSeries(0);
     // Ensure can't hide the last visible series
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
-    H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      "have.length",
+      5,
+    );
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
 
-    H.echartsContainer().within(() => {
+    cy.echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis label
       cy.findByText("Created At: Year").should("exist"); // x-axis label
 
@@ -512,12 +534,15 @@ describe("scenarios > visualizations > legend", () => {
     });
 
     showSeries(1);
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
-    H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
-    H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
+      "have.length",
+      5,
+    );
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
+    cy.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 0);
 
-    H.echartsContainer().within(() => {
+    cy.echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis label
       cy.findByText("Created At: Year").should("exist"); // x-axis label
       cy.findByText("1,800").should("exist");
@@ -528,16 +553,16 @@ describe("scenarios > visualizations > legend", () => {
     showSeries(2);
     showSeries(3);
 
-    H.openVizSettingsSidebar();
+    cy.openVizSettingsSidebar();
 
-    H.leftSidebar().within(() => {
+    cy.leftSidebar().within(() => {
       cy.findByText("Display").click();
       cy.findByText("Stack - 100%").click();
     });
     cy.wait(500);
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
-    H.assertEChartsTooltip({
+    cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    cy.assertEChartsTooltip({
       header: "2022",
       rows: [
         { name: "Doohickey", value: "177", secondaryValue: "23.79 %" },
@@ -551,8 +576,8 @@ describe("scenarios > visualizations > legend", () => {
     hideSeries(2); // Gizmo
     hideSeries(3); // Widget
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
-    H.assertEChartsTooltip({
+    cy.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    cy.assertEChartsTooltip({
       header: "2022",
       rows: [
         { name: "Doohickey", value: "177", secondaryValue: "47.07 %" },

@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
@@ -12,30 +11,30 @@ describe("scenarios > dashboard > filters > date", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    H.editDashboard();
+    cy.editDashboard();
   });
 
   it("should work when set through the filter widget", () => {
     // Add and connect every single available date filter type
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
-      H.setFilter("Date picker", filter);
+      cy.setFilter("Date picker", filter);
 
       cy.findByText("Select…").click();
-      H.popover().contains("Created At").first().click();
+      cy.popover().contains("Created At").first().click();
     });
 
-    H.saveDashboard();
+    cy.saveDashboard();
 
     // Go through each of the filters and make sure they work individually
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
-        H.filterWidget().eq(index).click();
+        cy.filterWidget().eq(index).click();
 
         dateFilterSelector({
           filterType: filter,
@@ -47,7 +46,7 @@ describe("scenarios > dashboard > filters > date", () => {
           cy.findByText(representativeResult);
         });
 
-        H.clearFilterWidget(index);
+        cy.clearFilterWidget(index);
         cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
       },
     );
@@ -56,7 +55,7 @@ describe("scenarios > dashboard > filters > date", () => {
   // Rather than going through every single filter type,
   // make sure the default filter works for just one of the available options
   it("should work when set as the default filter", () => {
-    H.setFilter("Date picker", "Month and Year");
+    cy.setFilter("Date picker", "Month and Year");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
@@ -67,9 +66,9 @@ describe("scenarios > dashboard > filters > date", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
-    H.popover().contains("Created At").first().click();
+    cy.popover().contains("Created At").first().click();
 
-    H.saveDashboard();
+    cy.saveDashboard();
 
     // The default value should immediately be applied
     cy.findByTestId("dashcard").within(() => {
@@ -79,57 +78,57 @@ describe("scenarios > dashboard > filters > date", () => {
     // Make sure we can override the default value
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("November 2022").click();
-    H.popover().contains("Jun").click();
+    cy.popover().contains("Jun").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("33.9");
   });
 
   it("should support being required", () => {
-    H.setFilter("Date picker", "Month and Year", "Month and Year");
+    cy.setFilter("Date picker", "Month and Year", "Month and Year");
 
     // Can't save without a default value
-    H.toggleRequiredParameter();
-    H.dashboardSaveButton().should("be.disabled");
-    H.dashboardSaveButton().realHover();
+    cy.toggleRequiredParameter();
+    cy.dashboardSaveButton().should("be.disabled");
+    cy.dashboardSaveButton().realHover();
     cy.findByRole("tooltip").should(
       "contain.text",
       'The "Month and Year" parameter requires a default value but none was provided.',
     );
 
     // Can't close sidebar without a default value
-    H.dashboardParametersDoneButton().should("be.disabled");
-    H.dashboardParametersDoneButton().realHover();
+    cy.dashboardParametersDoneButton().should("be.disabled");
+    cy.dashboardParametersDoneButton().realHover();
     cy.findByRole("tooltip").should(
       "contain.text",
       "The parameter requires a default value but none was provided.",
     );
 
-    H.sidebar().findByText("Default value").next().click();
+    cy.sidebar().findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
       month: "Nov",
       year: "2023",
     });
 
-    H.selectDashboardFilter(cy.findByTestId("dashcard"), "Created At");
-    H.saveDashboard();
+    cy.selectDashboardFilter(cy.findByTestId("dashcard"), "Created At");
+    cy.saveDashboard();
 
     // Updates the filter value
-    H.filterWidget().should("contain.text", "November 2023").click();
-    H.popover().findByText("Dec").click();
-    H.filterWidget().findByText("December 2023");
-    H.ensureDashboardCardHasText("76.83");
+    cy.filterWidget().should("contain.text", "November 2023").click();
+    cy.popover().findByText("Dec").click();
+    cy.filterWidget().findByText("December 2023");
+    cy.ensureDashboardCardHasText("76.83");
 
     // Resets the value back by clicking widget icon
-    H.resetFilterWidgetToDefault();
-    H.filterWidget().findByText("November 2023");
-    H.ensureDashboardCardHasText("27.74");
+    cy.resetFilterWidgetToDefault();
+    cy.filterWidget().findByText("November 2023");
+    cy.ensureDashboardCardHasText("27.74");
   });
 
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.editDashboard();
 
-    H.setFilter("Date picker", "All Options");
+    cy.setFilter("Date picker", "All Options");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No default").click();
@@ -158,18 +157,18 @@ describe("scenarios > dashboard > filters > date", () => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
     });
 
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    cy.visitDashboard(ORDERS_DASHBOARD_ID);
     // we can't use helpers as they use english words
     cy.icon("pencil").click();
     cy.icon("filter").click();
 
-    H.popover().icon("calendar").click(); // "Time" -> "All Options"
+    cy.popover().icon("calendar").click(); // "Time" -> "All Options"
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sélectionner...").click(); // "Select…"
-    H.popover().contains("Created At").first().click();
+    cy.popover().contains("Created At").first().click();
 
-    H.saveDashboard({
+    cy.saveDashboard({
       buttonLabel: "Sauvegarder",
       editBarText: "Vous êtes en train d'éditer ce tableau de bord.",
     });

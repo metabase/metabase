@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
@@ -10,11 +9,11 @@ import {
   questionSettingsSidesheet,
 } from "../admin/performance/helpers/e2e-strategy-form-helpers";
 
-H.describeEE("scenarios > question > caching", () => {
+cy.describeEE("scenarios > question > caching", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
   });
 
   /**
@@ -23,7 +22,7 @@ H.describeEE("scenarios > question > caching", () => {
    */
   it("can configure cache for a question, on an enterprise instance", () => {
     interceptPerformanceRoutes();
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.visitQuestion(ORDERS_QUESTION_ID);
 
     openSidebarCacheStrategyForm("question");
 
@@ -66,7 +65,7 @@ H.describeEE("scenarios > question > caching", () => {
 
   it("can click 'Clear cache' for a question", () => {
     interceptPerformanceRoutes();
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.visitQuestion(ORDERS_QUESTION_ID);
 
     openSidebarCacheStrategyForm("question");
 

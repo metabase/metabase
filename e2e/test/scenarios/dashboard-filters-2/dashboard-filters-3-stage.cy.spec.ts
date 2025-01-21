@@ -1,5 +1,3 @@
-import { H } from "e2e/support";
-
 import * as QSHelpers from "./shared/dashboard-filters-query-stages";
 
 /**
@@ -17,7 +15,7 @@ const NAMELESS_SECTION = "";
  */
 describe("scenarios > dashboard > filters > query stages", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     QSHelpers.createBaseQuestions();
 
@@ -44,7 +42,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       it("allows to map to all relevant columns", () => {
-        H.editDashboard();
+        cy.editDashboard();
 
         cy.log("## date columns");
         QSHelpers.getFilter("Date").click();
@@ -382,18 +380,18 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         it("2nd stage breakout", () => {
-          H.editDashboard();
+          cy.editDashboard();
 
           QSHelpers.getFilter("Text").click();
 
-          H.getDashboardCard(0).findByText("Select…").click();
-          H.popover().within(() => {
+          cy.getDashboardCard(0).findByText("Select…").click();
+          cy.popover().within(() => {
             QSHelpers.getPopoverList().scrollTo("bottom");
             QSHelpers.getPopoverItem("Category", 2).click();
           });
 
-          H.getDashboardCard(1).findByText("Select…").click();
-          H.popover().within(() => {
+          cy.getDashboardCard(1).findByText("Select…").click();
+          cy.popover().within(() => {
             QSHelpers.getPopoverList().scrollTo("bottom");
             QSHelpers.getPopoverItem("Category", 2).click();
           });
@@ -401,8 +399,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
           cy.button("Save").click();
           cy.wait("@updateDashboard");
 
-          H.filterWidget().eq(0).click();
-          H.popover().within(() => {
+          cy.filterWidget().eq(0).click();
+          cy.popover().within(() => {
             cy.findByLabelText("Gadget").click();
             cy.button("Add filter").click();
           });

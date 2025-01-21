@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
@@ -7,11 +6,11 @@ import {
 } from "./shared/group-mappings-widget";
 import { getSuccessUi, getUserProvisioningInput } from "./shared/helpers";
 
-H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
+cy.describeEE("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
     cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
   });
@@ -19,7 +18,7 @@ H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
   it("should allow to save and enable jwt", () => {
     cy.visit("/admin/settings/authentication/jwt");
 
-    H.typeAndBlurUsingLabel(
+    cy.typeAndBlurUsingLabel(
       /JWT Identity Provider URI/,
       "https://example.test",
     );
@@ -47,12 +46,12 @@ H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.visit("/admin/settings/authentication");
 
     getJwtCard().icon("ellipsis").click();
-    H.popover().findByText("Pause").click();
+    cy.popover().findByText("Pause").click();
     cy.wait("@updateSetting");
     getJwtCard().findByText("Paused").should("exist");
 
     getJwtCard().icon("ellipsis").click();
-    H.popover().findByText("Resume").click();
+    cy.popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getJwtCard().findByText("Active").should("exist");
   });
@@ -73,8 +72,8 @@ H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.visit("/admin/settings/authentication");
 
     getJwtCard().icon("ellipsis").click();
-    H.popover().findByText("Deactivate").click();
-    H.modal().button("Deactivate").click();
+    cy.popover().findByText("Deactivate").click();
+    cy.modal().button("Deactivate").click();
     cy.wait("@updateSettings");
 
     getJwtCard().findByText("Set up").should("exist");
@@ -85,7 +84,7 @@ H.describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.visit("/admin/settings/authentication/jwt");
 
     cy.button("Regenerate key").click();
-    H.modal().within(() => {
+    cy.modal().within(() => {
       cy.findByText("Regenerate JWT signing key?").should("exist");
       cy.findByText(
         "This will cause existing tokens to stop working until the identity provider is updated with the new key.",

@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -8,7 +7,7 @@ const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > OLD parameters", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -54,7 +53,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
             ],
           });
 
-          H.visitDashboard(dashboard_id);
+          cy.visitDashboard(dashboard_id);
         },
       );
     });
@@ -64,7 +63,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Category").click();
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Gadget").click();
         cy.findByText("Add filter").click();
       });
@@ -115,7 +114,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
             ],
           });
 
-          H.visitDashboard(dashboard_id);
+          cy.visitDashboard(dashboard_id);
         },
       );
     });
@@ -123,8 +122,8 @@ describe("scenarios > dashboard > OLD parameters", () => {
     it("should work", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("City").click();
-      H.popover().within(() => {
-        H.fieldValuesInput().type("Flagstaff{enter}");
+      cy.popover().within(() => {
+        cy.fieldValuesInput().type("Flagstaff{enter}");
         cy.findByText("Add filter").click();
       });
 
@@ -188,7 +187,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
           ],
         });
 
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
       });
     });
 
@@ -197,7 +196,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Category").click();
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Gadget").click();
         cy.findByText("Add filter").click();
       });

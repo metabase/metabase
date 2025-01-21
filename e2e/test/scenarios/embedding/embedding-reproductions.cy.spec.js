@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { defer } from "metabase/lib/promise";
@@ -54,7 +53,7 @@ describe.skip("issue 15860", () => {
   }
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createQuestionAndDashboard({
@@ -87,7 +86,7 @@ describe.skip("issue 15860", () => {
         name: "Q2",
         query: { "source-table": PRODUCTS_ID },
       }).then(({ body: { id: q2 } }) => {
-        H.updateDashboardCards({
+        cy.updateDashboardCards({
           dashboard_id,
           cards: [
             // Add card for second question with parameter mappings
@@ -140,7 +139,7 @@ describe.skip("issue 15860", () => {
         enable_embedding: true,
       });
 
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
     });
   });
 
@@ -152,12 +151,12 @@ describe.skip("issue 15860", () => {
     setDefaultValueForLockedFilter("Q1 ID", 1);
     setDefaultValueForLockedFilter("Q2 ID", 3);
 
-    H.visitIframe();
+    cy.visitIframe();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Q1 Category").click();
 
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByRole("listitem")
         .should("have.length", 1)
         .and("contain", "Gizmo");
@@ -166,7 +165,7 @@ describe.skip("issue 15860", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Q2 Category").click();
 
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByRole("listitem")
         .should("have.length", 1)
         .and("contain", "Doohickey");
@@ -209,7 +208,7 @@ describe("issue 20438", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/embed/dashboard/**").as("getEmbed");
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestionAndDashboard({
@@ -243,21 +242,21 @@ describe("issue 20438", () => {
         embedding_params: { [filter.slug]: "enabled" },
       });
 
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
     });
   });
 
   it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    cy.openStaticEmbeddingModal({ activeTab: "parameters" });
 
-    H.visitIframe();
+    cy.visitIframe();
 
     cy.wait("@getEmbed");
 
-    H.filterWidget().click();
+    cy.filterWidget().click();
     cy.wait("@getEmbed");
 
-    H.popover().contains("Doohickey").click();
+    cy.popover().contains("Doohickey").click();
     cy.wait("@getEmbed");
 
     cy.button("Add filter").click();
@@ -275,7 +274,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
   beforeEach(() => {
     cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestion(
@@ -299,9 +298,9 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
   });
 
   it("should let the user lock parameters to specific values", () => {
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    cy.openStaticEmbeddingModal({ activeTab: "parameters" });
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       // select the dropdown next to the Text parameter so that we can set the value to "Locked"
       cy.findByText("Text")
         .parent()
@@ -313,7 +312,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Locked").click();
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       // set a parameter value
       cy.findByPlaceholderText("Text").type("foo{enter}");
 
@@ -323,7 +322,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     });
 
     // directly navigate to the embedded question
-    H.visitIframe();
+    cy.visitIframe();
 
     // verify that the Text parameter doesn't show up but that its value is reflected in the dashcard
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -379,7 +378,7 @@ describe("issues 20845, 25031", () => {
     beforeEach(() => {
       cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
 
       const questionDetails = getQuestionDetails(value);
@@ -391,7 +390,7 @@ describe("issues 20845, 25031", () => {
         cy.wrap(card_id).as("questionId");
         cy.wrap(dashboard_id).as("dashboardId");
 
-        H.visitQuestion(card_id);
+        cy.visitQuestion(card_id);
 
         // Connect dashbaord filter to the card
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -432,7 +431,7 @@ describe("issues 20845, 25031", () => {
             `Make sure it works with ${type.toUpperCase()} in the payload`,
           );
 
-          H.visitEmbeddedPage({
+          cy.visitEmbeddedPage({
             resource: { question: questionId },
             params: {
               qty_locked: type === "string" ? "15" : 15, // IMPORTANT: integer
@@ -447,7 +446,7 @@ describe("issues 20845, 25031", () => {
 
     it(`DASHBOARD: locked parameter should work with numeric values ${conditionalPartOfTestTitle} (metabase#25031)`, () => {
       cy.get("@dashboardId").then(dashboardId => {
-        H.visitDashboard(dashboardId);
+        cy.visitDashboard(dashboardId);
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           enable_embedding: true,
           embedding_params: {
@@ -469,7 +468,7 @@ describe("issues 20845, 25031", () => {
             },
           };
 
-          H.visitEmbeddedPage(payload);
+          cy.visitEmbeddedPage(payload);
 
           // wait for the results to load
           cy.contains(dashboardDetails.name);
@@ -516,9 +515,9 @@ describe("issue 27643", () => {
 
   beforeEach(() => {
     // This issue was only reproducible against the Postgres database.
-    H.restore("postgres-12");
+    cy.restore("postgres-12");
     cy.signInAsAdmin();
-    H.withDatabase(PG_DB_ID, ({ INVOICES }) => {
+    cy.withDatabase(PG_DB_ID, ({ INVOICES }) => {
       cy.wrap(INVOICES.EXPECTED_INVOICE).as(
         "postgresInvoicesExpectedInvoiceId",
       );
@@ -572,32 +571,32 @@ describe("issue 27643", () => {
 
     it("in static embedding and in public dashboard scenarios (metabase#27643-1)", () => {
       cy.log("Test the dashboard");
-      H.visitDashboard("@dashboardId");
-      H.getDashboardCard().should("contain", "true");
-      H.toggleFilterWidgetValues(["false"]);
-      H.getDashboardCard().should("contain", "false");
+      cy.visitDashboard("@dashboardId");
+      cy.getDashboardCard().should("contain", "true");
+      cy.toggleFilterWidgetValues(["false"]);
+      cy.getDashboardCard().should("contain", "false");
 
       cy.log("Test the embedded dashboard");
       cy.get("@dashboardId").then(dashboard => {
-        H.visitEmbeddedPage({
+        cy.visitEmbeddedPage({
           resource: { dashboard },
           params: {},
         });
 
-        H.getDashboardCard().should("contain", "true");
-        H.toggleFilterWidgetValues(["false"]);
-        H.getDashboardCard().should("contain", "false");
+        cy.getDashboardCard().should("contain", "true");
+        cy.toggleFilterWidgetValues(["false"]);
+        cy.getDashboardCard().should("contain", "false");
       });
 
       cy.log("Test the public dashboard");
       cy.get("@dashboardId").then(dashboardId => {
         // We were signed out due to the previous visitEmbeddedPage
         cy.signInAsAdmin();
-        H.visitPublicDashboard(dashboardId);
+        cy.visitPublicDashboard(dashboardId);
 
-        H.getDashboardCard().should("contain", "true");
-        H.toggleFilterWidgetValues(["false"]);
-        H.getDashboardCard().should("contain", "false");
+        cy.getDashboardCard().should("contain", "true");
+        cy.toggleFilterWidgetValues(["false"]);
+        cy.getDashboardCard().should("contain", "false");
       });
     });
   });
@@ -605,7 +604,7 @@ describe("issue 27643", () => {
   describe("should allow a native question filter to map to a boolean field filter parameter (metabase#27643)", () => {
     beforeEach(() => {
       cy.get("@postgresInvoicesExpectedInvoiceId").then(fieldId => {
-        H.createNativeQuestion(getQuestionDetails(fieldId), {
+        cy.createNativeQuestion(getQuestionDetails(fieldId), {
           wrapId: true,
           idAlias: "questionId",
         });
@@ -614,21 +613,21 @@ describe("issue 27643", () => {
 
     it("in static embedding and in public question scenarios (metabase#27643-2)", () => {
       cy.log("Test the question");
-      H.visitQuestion("@questionId");
+      cy.visitQuestion("@questionId");
       cy.findAllByTestId("cell-data").should("contain", "true");
-      H.toggleFilterWidgetValues(["false"]);
-      H.queryBuilderMain().button("Get Answer").click();
+      cy.toggleFilterWidgetValues(["false"]);
+      cy.queryBuilderMain().button("Get Answer").click();
       cy.findAllByTestId("cell-data").should("contain", "false");
 
       cy.log("Test the embedded question");
       cy.get("@questionId").then(question => {
-        H.visitEmbeddedPage({
+        cy.visitEmbeddedPage({
           resource: { question },
           params: {},
         });
 
         cy.findAllByTestId("cell-data").should("contain", "true");
-        H.toggleFilterWidgetValues(["false"]);
+        cy.toggleFilterWidgetValues(["false"]);
         cy.findAllByTestId("cell-data").should("contain", "false");
       });
 
@@ -636,17 +635,17 @@ describe("issue 27643", () => {
       cy.get("@questionId").then(questionId => {
         // We were signed out due to the previous visitEmbeddedPage
         cy.signInAsAdmin();
-        H.visitPublicQuestion(questionId);
+        cy.visitPublicQuestion(questionId);
 
         cy.findAllByTestId("cell-data").should("contain", "true");
-        H.toggleFilterWidgetValues(["false"]);
+        cy.toggleFilterWidgetValues(["false"]);
         cy.findAllByTestId("cell-data").should("contain", "false");
       });
     });
   });
 });
 
-H.describeEE("issue 30535", () => {
+cy.describeEE("issue 30535", () => {
   const questionDetails = {
     name: "3035",
     query: {
@@ -656,9 +655,9 @@ H.describeEE("issue 30535", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
 
     cy.sandboxTable({
       table_id: PRODUCTS_ID,
@@ -670,12 +669,12 @@ H.describeEE("issue 30535", () => {
     cy.createQuestion(questionDetails).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
-      H.visitQuestion(id);
+      cy.visitQuestion(id);
     });
   });
 
   it("user session should not apply sandboxing to a signed embedded question (metabase#30535)", () => {
-    H.openStaticEmbeddingModal({
+    cy.openStaticEmbeddingModal({
       activeTab: "parameters",
       previewMode: "preview",
       acceptTerms: false,
@@ -738,7 +737,7 @@ describe("dashboard preview", () => {
       "previewValues",
     );
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -756,7 +755,7 @@ describe("dashboard preview", () => {
       questionDetails,
       dashboardDetails,
     }).then(({ body: { card_id, dashboard_id } }) => {
-      H.addOrUpdateDashboardCard({
+      cy.addOrUpdateDashboardCard({
         dashboard_id,
         card_id,
         card: {
@@ -789,25 +788,25 @@ describe("dashboard preview", () => {
         },
       });
 
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
     });
 
-    H.openStaticEmbeddingModal({
+    cy.openStaticEmbeddingModal({
       activeTab: "parameters",
       previewMode: "preview",
     });
 
-    H.modal().within(() => {
+    cy.modal().within(() => {
       // Makes it less likely to flake.
       cy.wait("@previewDashboard");
 
-      H.getIframeBody().within(() => {
+      cy.getIframeBody().within(() => {
         cy.log(
           "Set filter 2 value, so filter 1 should be filtered by filter 2",
         );
         cy.button(filter2.name).click();
         cy.wait("@previewValues");
-        H.popover().within(() => {
+        cy.popover().within(() => {
           cy.findByText("Gadget").should("be.visible");
           cy.findByText("Gizmo").should("be.visible");
           cy.findByText("Widget").should("be.visible");
@@ -817,7 +816,7 @@ describe("dashboard preview", () => {
 
         cy.log("Assert filter 1");
         cy.button(filter.name).click();
-        H.popover().within(() => {
+        cy.popover().within(() => {
           cy.findByText("Gadget").should("not.exist");
           cy.findByText("Gizmo").should("not.exist");
           cy.findByText("Widget").should("not.exist");
@@ -841,7 +840,7 @@ describe("dashboard preview", () => {
       questionDetails,
       dashboardDetails,
     }).then(({ body: { card_id, dashboard_id } }) => {
-      H.addOrUpdateDashboardCard({
+      cy.addOrUpdateDashboardCard({
         dashboard_id,
         card_id,
         card: {
@@ -874,10 +873,10 @@ describe("dashboard preview", () => {
         },
       });
 
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
     });
 
-    H.openStaticEmbeddingModal({
+    cy.openStaticEmbeddingModal({
       activeTab: "parameters",
       previewMode: "preview",
     });
@@ -886,31 +885,31 @@ describe("dashboard preview", () => {
     cy.wait("@previewDashboard");
 
     cy.log("Set the first locked parameter values");
-    H.modal()
+    cy.modal()
       .findByRole("generic", { name: "Previewing locked parameters" })
       .findByText("Text 1")
       .click();
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Doohickey").click();
       cy.button("Add filter").click();
     });
 
     cy.log("Set the second locked parameter values");
-    H.modal()
+    cy.modal()
       .findByRole("generic", { name: "Previewing locked parameters" })
       .findByText("Text 2")
       .click();
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("Doohickey").click();
       cy.findByText("Gizmo").click();
       cy.findByText("Gadget").click();
       cy.button("Add filter").click();
     });
 
-    H.getIframeBody().within(() => {
+    cy.getIframeBody().within(() => {
       cy.log("Assert filter 1");
       cy.button(filter.name).click();
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Gadget").should("not.exist");
         cy.findByText("Gizmo").should("not.exist");
         cy.findByText("Widget").should("not.exist");
@@ -936,29 +935,29 @@ describe("issue 40660", () => {
       "previewDashboard",
     );
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
-      H.updateDashboardCards({
+      cy.updateDashboardCards({
         dashboard_id,
         cards: [{ card_id }, { card_id }, { card_id }],
       });
 
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
     });
   });
 
   it("static dashboard content shouldn't overflow its container (metabase#40660)", () => {
-    H.openStaticEmbeddingModal({
+    cy.openStaticEmbeddingModal({
       activeTab: "parameters",
       previewMode: "preview",
     });
 
-    H.getIframeBody().within(() => {
+    cy.getIframeBody().within(() => {
       cy.findByTestId("embed-frame").scrollTo("bottom");
 
       cy.findByRole("link", { name: "Powered by Metabase" }).should(
@@ -981,19 +980,19 @@ describe.skip("issue 49142", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.createQuestionAndDashboard({
+    cy.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
     });
   });
 
   it("embedding preview should be always working", () => {
-    H.openStaticEmbeddingModal({
+    cy.openStaticEmbeddingModal({
       activeTab: "lookAndFeel",
       previewMode: "preview",
     });
@@ -1004,13 +1003,13 @@ describe.skip("issue 49142", () => {
   });
 });
 
-H.describeEE("issue 8490", () => {
+cy.describeEE("issue 8490", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    cy.setTokenFeatures("all");
 
-    H.createDashboardWithQuestions({
+    cy.createDashboardWithQuestions({
       dashboardDetails: {
         name: "Dashboard to test locale",
         enable_embedding: true,
@@ -1142,7 +1141,7 @@ H.describeEE("issue 8490", () => {
 
     cy.log("test a static embedded dashboard");
     cy.get("@dashboardId").then(dashboardId => {
-      H.visitEmbeddedPage(
+      cy.visitEmbeddedPage(
         {
           resource: { dashboard: dashboardId },
           params: {},
@@ -1160,7 +1159,7 @@ H.describeEE("issue 8490", () => {
 
     cy.log("test a static embedded question");
     cy.get("@lineChartQuestionId").then(lineChartQuestionId => {
-      H.visitEmbeddedPage(
+      cy.visitEmbeddedPage(
         {
           resource: { question: lineChartQuestionId },
           params: {},
@@ -1192,7 +1191,7 @@ H.describeEE("issue 8490", () => {
     ).as("dashboardRequest");
 
     cy.get("@dashboardId").then(dashboardId => {
-      H.visitEmbeddedPage(
+      cy.visitEmbeddedPage(
         {
           resource: { dashboard: dashboardId },
           params: {},
@@ -1218,7 +1217,7 @@ H.describeEE("issue 8490", () => {
       cy.findByText("PDF로 내보내기").should("be.visible");
 
       cy.log("assert the line chart");
-      H.getDashboardCard(0).within(() => {
+      cy.getDashboardCard(0).within(() => {
         // X-axis labels: Jan 2024 (or some other year)
         cy.findByText(/1월 20\d\d\b/).should("be.visible");
         // Aggregation "count"
@@ -1228,7 +1227,7 @@ H.describeEE("issue 8490", () => {
 
     cy.findByTestId("embed-frame").within(() => {
       cy.log("assert the trend chart");
-      H.getDashboardCard(2).within(() => {
+      cy.getDashboardCard(2).within(() => {
         // N/A
         cy.findByText("해당 없음").should("be.visible");
         // (No data)
@@ -1236,7 +1235,7 @@ H.describeEE("issue 8490", () => {
       });
 
       cy.log("assert the pie chart");
-      H.getDashboardCard(1).within(() => {
+      cy.getDashboardCard(1).within(() => {
         // Total
         cy.findByText("합계").should("be.visible");
         // Other
@@ -1259,7 +1258,7 @@ H.describeEE("issue 8490", () => {
 
     cy.log("assert the line chart");
     cy.get("@lineChartQuestionId").then(lineChartQuestionId => {
-      H.visitEmbeddedPage(
+      cy.visitEmbeddedPage(
         {
           resource: { question: lineChartQuestionId },
           params: {},
@@ -1312,6 +1311,6 @@ describe("issue 50373", () => {
       },
     );
 
-    H.visitEmbeddedPage({ resource: { dashboard: ORDERS_DASHBOARD_ID } });
+    cy.visitEmbeddedPage({ resource: { dashboard: ORDERS_DASHBOARD_ID } });
   });
 });

@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -11,9 +10,9 @@ const TEST_QUESTION_QUERY = {
   breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }]],
 };
 
-H.describeEE("official collections", () => {
+cy.describeEE("official collections", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -30,7 +29,7 @@ H.describeEE("official collections", () => {
         },
       }).then(({ body, status, statusText }) => {
         expect(body).to.deep.include(
-          H.getPartialPremiumFeatureError("Official Collections"),
+          cy.getPartialPremiumFeatureError("Official Collections"),
         );
         expect(status).to.eq(402);
         expect(statusText).to.eq("Payment Required");
@@ -39,20 +38,20 @@ H.describeEE("official collections", () => {
       // Gate the UI
       cy.visit("/collection/root");
 
-      H.openNewCollectionItemFlowFor("collection");
+      cy.openNewCollectionItemFlowFor("collection");
       cy.findByTestId("new-collection-modal").then(modal => {
         assertNoCollectionTypeInput();
         cy.findByLabelText("Close").click();
       });
 
       openCollection("First collection");
-      H.openCollectionMenu();
+      cy.openCollectionMenu();
       assertNoCollectionTypeOption();
     });
   });
 
   context("premium token with paid features", () => {
-    beforeEach(() => H.setTokenFeatures("all"));
+    beforeEach(() => cy.setTokenFeatures("all"));
 
     it("should be able to manage collection authority level", () => {
       cy.visit("/collection/root");
@@ -84,14 +83,14 @@ H.describeEE("official collections", () => {
 
       openCollection("First collection");
 
-      H.openNewCollectionItemFlowFor("collection");
+      cy.openNewCollectionItemFlowFor("collection");
       cy.findByTestId("new-collection-modal").then(modal => {
         assertNoCollectionTypeInput();
         cy.findByLabelText("Close").click();
       });
 
-      H.openCollectionMenu();
-      H.popover().within(() => {
+      cy.openCollectionMenu();
+      cy.popover().within(() => {
         assertNoCollectionTypeOption();
       });
     });
@@ -100,14 +99,14 @@ H.describeEE("official collections", () => {
       cy.visit("/collection/root");
 
       openCollection("Your personal collection");
-      H.getCollectionActions().within(() => {
+      cy.getCollectionActions().within(() => {
         cy.icon("ellipsis").should("exist");
         cy.icon("ellipsis").click();
       });
 
-      H.popover().findByText("Make collection official").should("exist");
+      cy.popover().findByText("Make collection official").should("exist");
 
-      H.openNewCollectionItemFlowFor("collection");
+      cy.openNewCollectionItemFlowFor("collection");
       cy.findByTestId("new-collection-modal").then(modal => {
         assertHasCollectionTypeInput();
         cy.findByPlaceholderText("My new fantastic collection").type(
@@ -118,13 +117,13 @@ H.describeEE("official collections", () => {
 
       openCollection("Personal collection child");
 
-      H.getCollectionActions().within(() => {
+      cy.getCollectionActions().within(() => {
         cy.icon("ellipsis").should("exist");
         cy.icon("ellipsis").click();
       });
-      H.popover().findByText("Make collection official").should("exist");
+      cy.popover().findByText("Make collection official").should("exist");
 
-      H.openNewCollectionItemFlowFor("collection");
+      cy.openNewCollectionItemFlowFor("collection");
       cy.findByTestId("new-collection-modal").then(modal => {
         assertHasCollectionTypeInput();
         cy.findByLabelText("Close").click();
@@ -133,7 +132,7 @@ H.describeEE("official collections", () => {
   });
 
   context("token expired or removed", () => {
-    beforeEach(() => H.setTokenFeatures("all"));
+    beforeEach(() => cy.setTokenFeatures("all"));
 
     it("should not display official collection icon anymore", () => {
       testOfficialBadgePresence(false);
@@ -161,7 +160,7 @@ function testOfficialBadgePresence(expectBadge = true) {
       collection_id: collectionId,
     });
 
-    !expectBadge && H.setTokenFeatures("none");
+    !expectBadge && cy.setTokenFeatures("none");
     cy.visit(`/collection/${collectionId}`);
   });
 
@@ -193,7 +192,7 @@ function testOfficialBadgeInSearch({
   question,
   expectBadge,
 }) {
-  H.commandPaletteSearch(searchQuery);
+  cy.commandPaletteSearch(searchQuery);
 
   cy.findByTestId("search-app").within(() => {
     assertSearchResultBadge(collection, {
@@ -221,7 +220,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
     });
   });
 
-  !expectBadge && H.setTokenFeatures("none");
+  !expectBadge && cy.setTokenFeatures("none");
 
   cy.visit("/collection/root");
   cy.findByText("Regular Dashboard").click();
@@ -232,24 +231,24 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
 }
 
 function openCollection(collectionName) {
-  H.navigationSidebar().findByText(collectionName).click();
+  cy.navigationSidebar().findByText(collectionName).click();
 }
 
 function createAndOpenOfficialCollection({ name }) {
-  H.openNewCollectionItemFlowFor("collection");
+  cy.openNewCollectionItemFlowFor("collection");
   cy.findByTestId("new-collection-modal").then(modal => {
     cy.findByPlaceholderText("My new fantastic collection").type(name);
     cy.findByText("Official").click();
     cy.findByText("Create").click();
   });
-  H.navigationSidebar().within(() => {
+  cy.navigationSidebar().within(() => {
     cy.findByText(name).click();
   });
 }
 
 function changeCollectionTypeTo(type) {
-  H.openCollectionMenu();
-  H.popover().within(() => {
+  cy.openCollectionMenu();
+  cy.popover().within(() => {
     if (type === "official") {
       cy.findByText("Make collection official").click();
     } else {
@@ -276,7 +275,7 @@ function assertNoCollectionTypeOption() {
 }
 
 function assertSidebarIcon(collectionName, expectedIcon) {
-  H.navigationSidebar()
+  cy.navigationSidebar()
     .findByText(collectionName)
     .parent()
     .within(() => {

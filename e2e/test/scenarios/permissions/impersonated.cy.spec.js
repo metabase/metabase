@@ -1,17 +1,16 @@
-import { H } from "e2e/support";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
 const PG_DB_ID = 2;
 
-H.describeEE("impersonated permission", () => {
+cy.describeEE("impersonated permission", () => {
   describe("admins", () => {
     beforeEach(() => {
-      H.restore("postgres-12");
-      H.createTestRoles({ type: "postgres" });
+      cy.restore("postgres-12");
+      cy.createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      cy.setTokenFeatures("all");
     });
 
     describe("impersonated users", () => {
@@ -44,10 +43,10 @@ H.describeEE("impersonated permission", () => {
       };
 
       beforeEach(() => {
-        H.restore("postgres-12");
-        H.createTestRoles({ type: "postgres" });
+        cy.restore("postgres-12");
+        cy.createTestRoles({ type: "postgres" });
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        cy.setTokenFeatures("all");
 
         setImpersonatedPermission();
 
@@ -71,15 +70,11 @@ H.describeEE("impersonated permission", () => {
         cy.get("main").findByText("Orders").click();
         cy.findAllByTestId("header-cell").contains("Subtotal");
 
-        cy.reload();
-
         // No access through the native query builder
-        H.startNewNativeQuestion().as("editor");
-
-        cy.findByTestId("gui-builder-data").click();
-        cy.findByLabelText("QA Postgres12").click();
-        cy.get("@editor").type("select * from reviews");
-        H.runNativeQuery();
+        cy.openNativeEditor({ databaseName: "QA Postgres12" }).type(
+          "select * from reviews",
+        );
+        cy.runNativeQuery();
 
         cy.findByTestId("query-builder-main").within(() => {
           cy.findByText("An error occurred in your query");
@@ -91,7 +86,7 @@ H.describeEE("impersonated permission", () => {
           .type("{selectall}{backspace}", { delay: 50 })
           .type("select * from orders");
 
-        H.runNativeQuery();
+        cy.runNativeQuery();
 
         cy.findAllByTestId("header-cell").contains("subtotal");
       });

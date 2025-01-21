@@ -1,5 +1,3 @@
-import { H } from "e2e/support";
-
 import {
   TEST_TABLE,
   instanceDefault,
@@ -51,14 +49,14 @@ const testCacheStrategy = ({
     });
 
     const expectedCacheDuration = getExpectedCacheDuration(strategy);
-    H.queryWritableDB(`UPDATE ${TEST_TABLE} SET my_text='Old Value';`);
+    cy.queryWritableDB(`UPDATE ${TEST_TABLE} SET my_text='Old Value';`);
 
     // first visit causes us to cache it
     visitItem();
     cy.findByTestId("visualization-root").findByText("Old Value");
 
     // value changes in the DB
-    H.queryWritableDB(`UPDATE ${TEST_TABLE} SET my_text='New Value';`);
+    cy.queryWritableDB(`UPDATE ${TEST_TABLE} SET my_text='New Value';`);
 
     // check that old value is still cached
     advanceServerClockBy(expectedCacheDuration - 1000);
@@ -94,11 +92,11 @@ const testDoNotCachePolicy = ({
       });
     }
 
-    H.queryWritableDB(`UPDATE ${TEST_TABLE} SET my_text='Value 2';`).then(
+    cy.queryWritableDB(`UPDATE ${TEST_TABLE} SET my_text='Value 2';`).then(
       () => {
         visitItem();
         cy.findByTestId("visualization-root").findByText("Value 2");
-        H.queryWritableDB(`UPDATE ${TEST_TABLE} SET my_text='Value 3';`).then(
+        cy.queryWritableDB(`UPDATE ${TEST_TABLE} SET my_text='Value 3';`).then(
           () => {
             visitItem();
             cy.findByTestId("visualization-root").findByText("Value 3");
@@ -122,14 +120,14 @@ describe(
   "Cache invalidation for dashboards and questions",
   { tags: "@external" },
   () => {
-    H.describeEE("ee", () => {
+    cy.describeEE("ee", () => {
       beforeEach(() => {
         resetServerTime();
         interceptPerformanceRoutes();
-        H.resetTestTable({ type: "postgres", table: TEST_TABLE });
-        H.restore("postgres-writable");
+        cy.resetTestTable({ type: "postgres", table: TEST_TABLE });
+        cy.restore("postgres-writable");
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        cy.setTokenFeatures("all");
       });
 
       describe("adaptive and duration strategies", () => {
@@ -264,8 +262,8 @@ describe(
       beforeEach(() => {
         resetServerTime();
         interceptPerformanceRoutes();
-        H.resetTestTable({ type: "postgres", table: TEST_TABLE });
-        H.restore("postgres-writable");
+        cy.resetTestTable({ type: "postgres", table: TEST_TABLE });
+        cy.restore("postgres-writable");
         cy.signInAsAdmin();
         cy.visit("/admin/performance");
         cacheStrategyForm();

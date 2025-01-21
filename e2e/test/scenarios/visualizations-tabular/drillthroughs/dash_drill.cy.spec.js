@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -15,7 +14,7 @@ const Q2 = {
 describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
   describe("card title click action", () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
     });
 
@@ -111,7 +110,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             size_y: 12,
           },
         }).then(({ body: { dashboard_id, card_id } }) => {
-          H.visitDashboard(dashboard_id);
+          cy.visitDashboard(dashboard_id);
           cy.findByText(DASHBOARD_NAME);
 
           cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
@@ -124,7 +123,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       it("should result in a correct query result", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Affiliate");
-        H.cartesianChartCircle().should("have.length.of.at.least", 100);
+        cy.cartesianChartCircle().should("have.length.of.at.least", 100);
       });
     });
 
@@ -162,7 +161,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
           },
         }).then(({ body: { dashboard_id, card_id } }) => {
           // Adding filter parameter mapping to dashcard
-          H.addOrUpdateDashboardCard({
+          cy.addOrUpdateDashboardCard({
             card_id,
             dashboard_id,
             card: {
@@ -184,12 +183,12 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             },
           });
 
-          H.visitDashboard(dashboard_id);
+          cy.visitDashboard(dashboard_id);
           cy.findByTestId("dashcard").findByText(QUESTION_NAME).click();
           cy.findByTestId("qb-filters-panel")
             .findByText("Product → Category is Doohickey")
             .should("be.visible");
-          H.queryBuilderMain().findByText("177").should("be.visible"); // Doohickeys for 2022
+          cy.queryBuilderMain().findByText("177").should("be.visible"); // Doohickeys for 2022
         });
       });
     });
@@ -205,8 +204,8 @@ function clickScalarCardTitle(card_name) {
 function addCardToNewDashboard(dashboard_name, card_id) {
   cy.createDashboard({ name: dashboard_name }).then(
     ({ body: { id: dashboard_id } }) => {
-      H.addOrUpdateDashboardCard({ card_id, dashboard_id });
-      H.visitDashboard(dashboard_id);
+      cy.addOrUpdateDashboardCard({ card_id, dashboard_id });
+      cy.visitDashboard(dashboard_id);
     },
   );
 }

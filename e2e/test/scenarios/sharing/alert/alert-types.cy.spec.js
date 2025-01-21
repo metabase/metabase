@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -44,22 +43,22 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
     cy.intercept("POST", "/api/alert").as("savedAlert");
     cy.intercept("GET", "/api/channel").as("channel");
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     cy.setCookie("metabase.SEEN_ALERT_SPLASH", "true");
 
-    H.setupSMTP();
+    cy.setupSMTP();
   });
 
   describe("rows based alerts", () => {
     rawTestCases.forEach(({ questionType, questionId }) => {
       it(`should be supported for ${questionType}`, () => {
-        H.visitQuestion(questionId);
+        cy.visitQuestion(questionId);
 
-        H.openSharingMenu("Create alert");
+        cy.openSharingMenu("Create alert");
         cy.wait("@channel");
 
-        H.modal().within(() => {
+        cy.modal().within(() => {
           cy.findByText("Let's set up your alert").should("be.visible");
           cy.findByText("Done").click();
         });
@@ -83,10 +82,10 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       });
 
       cy.log("Set the goal on timeseries question");
-      H.visitQuestion(timeSeriesQuestionId);
+      cy.visitQuestion(timeSeriesQuestionId);
       cy.findByTestId("chart-container").should("contain", "Goal");
 
-      H.openSharingMenu("Create alert");
+      cy.openSharingMenu("Create alert");
       cy.wait("@channel");
 
       cy.findByTestId("alert-create").within(() => {
@@ -106,7 +105,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
     it("should not be possible to create goal based alert for a multi-series question", () => {
       cy.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
 
-      H.openSharingMenu("Create alert");
+      cy.openSharingMenu("Create alert");
       cy.wait("@channel");
 
       // *** The warning below is not showing when we try to make an alert (Issue #???)
@@ -114,7 +113,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       //   "Goal-based alerts aren't yet supported for charts with more than one line",
       // );
 
-      H.modal().within(() => {
+      cy.modal().within(() => {
         cy.findByText("Let's set up your alert").should("be.visible");
         cy.findByText("Done").click();
       });

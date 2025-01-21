@@ -1,14 +1,13 @@
-import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 
 describe("scenarios > auth > password", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
 
     cy.signInAsAdmin();
-    H.setupSMTP();
+    cy.setupSMTP();
     cy.signOut();
   });
 
@@ -21,7 +20,7 @@ describe("scenarios > auth > password", { tags: "@external" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Check your email/);
 
-    H.getInbox().then(({ body: [{ html }] }) => {
+    cy.getInbox().then(({ body: [{ html }] }) => {
       cy.visit(getResetLink(html));
 
       cy.findByLabelText("Create a password").type(admin.password);

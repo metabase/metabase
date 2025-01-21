@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
@@ -7,7 +6,7 @@ const { ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > filters > SQL > ID", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -17,9 +16,9 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
     });
 
     it("when set through the filter widget", () => {
-      H.saveDashboard();
+      cy.saveDashboard();
 
-      H.filterWidget().click();
+      cy.filterWidget().click();
       addWidgetStringFilter("15");
 
       cy.findByTestId("dashcard").within(() => {
@@ -32,7 +31,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
       cy.findByText("Default value").next().click();
       addWidgetStringFilter("15");
 
-      H.saveDashboard();
+      cy.saveDashboard();
 
       cy.findByTestId("dashcard").within(() => {
         cy.findByText("114.42");
@@ -46,9 +45,9 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
     });
 
     it("when set through the filter widget", () => {
-      H.saveDashboard();
+      cy.saveDashboard();
 
-      H.filterWidget().click();
+      cy.filterWidget().click();
       addWidgetStringFilter("4");
 
       cy.findByTestId("dashcard").within(() => {
@@ -61,7 +60,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
       cy.findByText("Default value").next().click();
       addWidgetStringFilter("4");
 
-      H.saveDashboard();
+      cy.saveDashboard();
 
       cy.findByTestId("dashcard").within(() => {
         cy.findByText("47.68");
@@ -91,15 +90,15 @@ function prepareDashboardWithFilterConnectedTo(rowId) {
 
   cy.createNativeQuestionAndDashboard({ questionDetails }).then(
     ({ body: { card_id, dashboard_id } }) => {
-      H.visitQuestion(card_id);
+      cy.visitQuestion(card_id);
 
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
     },
   );
 
-  H.editDashboard();
-  H.setFilter("ID");
+  cy.editDashboard();
+  cy.setFilter("ID");
 
   cy.findByText("Select…").click();
-  H.popover().contains("Filter").click();
+  cy.popover().contains("Filter").click();
 }

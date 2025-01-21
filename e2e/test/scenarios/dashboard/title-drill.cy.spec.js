@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -7,7 +6,7 @@ const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
 describe("scenarios > dashboard > title drill", () => {
   describe("on a native question without connected dashboard parameters", () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
 
       const questionDetails = {
@@ -23,7 +22,7 @@ describe("scenarios > dashboard > title drill", () => {
       cy.createNativeQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id }, questionId }) => {
           cy.wrap(questionId).as("questionId");
-          H.visitDashboard(dashboard_id);
+          cy.visitDashboard(dashboard_id);
         },
       );
     });
@@ -33,14 +32,14 @@ describe("scenarios > dashboard > title drill", () => {
         cy.get("@questionId").then(questionId => {
           cy.findByTestId("loading-indicator").should("not.exist");
 
-          H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
+          cy.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
           cy.get("@title").realHover();
           cy.get("@title")
             .should("have.attr", "href")
             .and("include", `/question/${questionId}`);
           cy.get("@title").click();
 
-          H.queryBuilderMain().within(() => {
+          cy.queryBuilderMain().within(() => {
             cy.findByText("This question is written in SQL.").should(
               "be.visible",
             );
@@ -63,14 +62,14 @@ describe("scenarios > dashboard > title drill", () => {
         cy.get("@questionId").then(questionId => {
           cy.findByTestId("loading-indicator").should("not.exist");
 
-          H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
+          cy.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
           cy.get("@title").realHover();
           cy.get("@title")
             .should("have.attr", "href")
             .and("include", `/question/${questionId}`);
           cy.get("@title").click();
 
-          H.queryBuilderMain().within(() => {
+          cy.queryBuilderMain().within(() => {
             cy.findByText("This question is written in SQL.").should(
               "be.visible",
             );
@@ -86,7 +85,7 @@ describe("scenarios > dashboard > title drill", () => {
 
   describe("on a native question with a connected dashboard parameter", () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
 
       const filter = {
@@ -143,7 +142,7 @@ describe("scenarios > dashboard > title drill", () => {
           ],
         });
 
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
         checkScalarResult("200");
       });
     });
@@ -222,7 +221,7 @@ describe("scenarios > dashboard > title drill", () => {
     };
 
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
@@ -253,7 +252,7 @@ describe("scenarios > dashboard > title drill", () => {
             `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
           ).as("cardQuery");
 
-          H.visitDashboard(dashboard_id);
+          cy.visitDashboard(dashboard_id);
         },
       );
     });
@@ -263,9 +262,9 @@ describe("scenarios > dashboard > title drill", () => {
         cy.wait("@cardQuery");
 
         // make sure query results are correct
-        H.getDashboardCard().findByText("42");
+        cy.getDashboardCard().findByText("42");
 
-        H.getDashboardCard()
+        cy.getDashboardCard()
           .findByRole("link", { name: "GUI Question" })
           .as("title");
         cy.get("@title").realHover();
@@ -280,7 +279,7 @@ describe("scenarios > dashboard > title drill", () => {
           .should("be.visible");
 
         // make sure the results match
-        H.queryBuilderMain().findByText("42").should("be.visible");
+        cy.queryBuilderMain().findByText("42").should("be.visible");
         cy.location("href").should("include", "/question#");
       });
     });
@@ -295,9 +294,9 @@ describe("scenarios > dashboard > title drill", () => {
         cy.wait("@cardQuery");
 
         // make sure query results are correct
-        H.getDashboardCard().findByText("42").should("be.visible");
+        cy.getDashboardCard().findByText("42").should("be.visible");
 
-        H.getDashboardCard()
+        cy.getDashboardCard()
           .findByRole("link", { name: "GUI Question" })
           .as("title");
         cy.get("@title").realHover();
@@ -307,7 +306,7 @@ describe("scenarios > dashboard > title drill", () => {
         cy.get("@title").click();
 
         // make sure the results match
-        H.queryBuilderMain().findByText("42").should("be.visible");
+        cy.queryBuilderMain().findByText("42").should("be.visible");
         cy.get("@questionId").then(questionId => {
           cy.location("href").should(
             "include",
@@ -316,9 +315,9 @@ describe("scenarios > dashboard > title drill", () => {
         });
 
         // update the parameter filter to a new value
-        H.filterWidget().contains("Doohickey").click();
-        H.popover().within(() => {
-          H.fieldValuesInput().type("{backspace}Gadget,");
+        cy.filterWidget().contains("Doohickey").click();
+        cy.popover().within(() => {
+          cy.fieldValuesInput().type("{backspace}Gadget,");
           cy.findByText("Update filter").click();
         });
 
@@ -327,18 +326,18 @@ describe("scenarios > dashboard > title drill", () => {
         cy.wait("@cardQuery");
 
         // make sure the results reflect the new filter
-        H.queryBuilderMain().findByText("53").should("be.visible");
+        cy.queryBuilderMain().findByText("53").should("be.visible");
 
         // make sure the set parameter filter persists after a page refresh
         cy.reload();
         cy.wait("@cardQuery");
 
-        H.queryBuilderMain().findByText("53").should("be.visible");
+        cy.queryBuilderMain().findByText("53").should("be.visible");
 
         // make sure the unset id parameter works
-        H.filterWidget().last().click();
-        H.popover().within(() => {
-          H.fieldValuesInput().type("5");
+        cy.filterWidget().last().click();
+        cy.popover().within(() => {
+          cy.fieldValuesInput().type("5");
           cy.findByText("Add filter").click();
         });
 
@@ -346,7 +345,7 @@ describe("scenarios > dashboard > title drill", () => {
         cy.findAllByTestId("run-button").first().click();
         cy.wait("@cardQuery");
 
-        H.queryBuilderMain().findByText("1").should("be.visible");
+        cy.queryBuilderMain().findByText("1").should("be.visible");
       });
     });
   });
@@ -370,7 +369,7 @@ describe("scenarios > dashboard > title drill", () => {
     };
 
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
 
       cy.createQuestion(questionDetails, {
@@ -398,7 +397,7 @@ describe("scenarios > dashboard > title drill", () => {
       );
 
       cy.then(function () {
-        H.addOrUpdateDashboardCard({
+        cy.addOrUpdateDashboardCard({
           card_id: this.nestedQuestionId,
           dashboard_id: this.dashboardId,
           card: {
@@ -416,16 +415,16 @@ describe("scenarios > dashboard > title drill", () => {
 
     it("should lead you to a table question with filtered ID (metabase#17213)", () => {
       const productRecordId = 3;
-      H.visitDashboard("@dashboardId", { params: { id: productRecordId } });
+      cy.visitDashboard("@dashboardId", { params: { id: productRecordId } });
 
-      H.getDashboardCard()
+      cy.getDashboardCard()
         .findByRole("link", { name: baseNestedQuestionDetails.name })
         .as("title");
       cy.get("@title").realHover();
       cy.get("@title").should("have.attr", "href").and("include", "/question#");
       cy.get("@title").click();
 
-      H.appBar()
+      cy.appBar()
         .contains(`Started from ${baseNestedQuestionDetails.name}`)
         .should("be.visible");
       cy.findByTestId("question-row-count")
@@ -439,7 +438,7 @@ describe("scenarios > dashboard > title drill", () => {
 
   describe("on various charts", () => {
     beforeEach(() => {
-      H.restore();
+      cy.restore();
       cy.signInAsAdmin();
     });
 
@@ -497,23 +496,23 @@ describe("scenarios > dashboard > title drill", () => {
           { row: 6, col: 6, size_x: 6, size_y: 6 },
         ],
       }).then(({ dashboard, questions }) => {
-        H.visitDashboard(dashboard.id);
+        cy.visitDashboard(dashboard.id);
 
         // make cursor start from a place where subsequent realHover() calls
         // won't make the cursor move over the other cards during test
         // (which would interfere with assertions)
         cy.findByTestId("sidebar-toggle").realHover();
 
-        H.getDashboardCard(0)
+        cy.getDashboardCard(0)
           .findByRole("link", { name: "Line chart" })
           .as("line-chart-title");
-        H.getDashboardCard(1)
+        cy.getDashboardCard(1)
           .findByRole("link", { name: "Row chart" })
           .as("row-chart-title");
-        H.getDashboardCard(2)
+        cy.getDashboardCard(2)
           .findByRole("link", { name: "Map chart" })
           .as("map-chart-title");
-        H.getDashboardCard(3)
+        cy.getDashboardCard(3)
           .findByRole("link", { name: "Funnel chart" })
           .as("funnel-chart-title");
 
@@ -551,8 +550,8 @@ describe("scenarios > dashboard > title drill", () => {
 });
 
 function checkFilterLabelAndValue(label, value) {
-  H.filterWidget().find("legend").invoke("text").should("eq", label);
-  H.filterWidget().contains(value);
+  cy.filterWidget().find("legend").invoke("text").should("eq", label);
+  cy.filterWidget().contains(value);
 }
 
 function checkScalarResult(result) {

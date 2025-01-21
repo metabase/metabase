@@ -1,6 +1,5 @@
 import { produce } from "immer";
 
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -43,7 +42,7 @@ const dashboardDetails = {
 
 describe("scenarios > dashboard > filters > SQL > field filter > required ", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
@@ -53,7 +52,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
       dashboardDetails,
     }).then(({ body: dashboardCard }) => {
       const { dashboard_id } = dashboardCard;
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
     });
 
     // the native SQL filter is not mapped to the dashcard filter
@@ -80,10 +79,10 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
         ],
       };
       cy.editDashboardCard(dashboardCard, mapFilterToCard);
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
     });
 
-    H.clearFilterWidget();
+    cy.clearFilterWidget();
 
     // the results should show that the field filter was not applied
     cy.findByTestId("dashcard").within(() => {
@@ -107,7 +106,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
         ],
       };
       cy.editDashboardCard(dashboardCard, mapFilterToCard);
-      H.visitDashboard(dashboard_id);
+      cy.visitDashboard(dashboard_id);
     });
 
     // Default dashboard filter
@@ -115,9 +114,9 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
 
     cy.findByTestId("dashcard").as("dashboardCard").contains("Widget");
 
-    H.filterWidget().contains("Widget");
+    cy.filterWidget().contains("Widget");
 
-    H.clearFilterWidget();
+    cy.clearFilterWidget();
 
     cy.location("search").should("eq", "?category=");
 
@@ -125,7 +124,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
     cy.findByTestId("dashcard").contains("Gizmo");
 
     // The empty filter widget
-    H.filterWidget().contains("Category");
+    cy.filterWidget().contains("Category");
 
     cy.reload();
 

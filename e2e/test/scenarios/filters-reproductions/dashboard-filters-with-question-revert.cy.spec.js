@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -53,7 +52,7 @@ describe("issue 35954", () => {
     "dashboard filter that loses connection should not crash the UI (metabase#35954)",
     () => {
       before(() => {
-        H.restore();
+        cy.restore();
         cy.signInAsAdmin();
 
         cy.createQuestionAndDashboard({
@@ -69,16 +68,16 @@ describe("issue 35954", () => {
 
           cy.request("PUT", `/api/card/${card_id}`, updatedQuestionDetails);
 
-          H.visitDashboard(dashboard_id);
-          H.editDashboard();
+          cy.visitDashboard(dashboard_id);
+          cy.editDashboard();
           cy.log("Add the number filter");
-          H.setFilter("Number");
+          cy.setFilter("Number");
           connectFilterToColumn("Field-mapped Rating");
-          H.saveDashboard();
+          cy.saveDashboard();
 
           cy.log("Give it a value and make sure that the filer applies");
-          H.filterWidget().click();
-          H.popover().within(() => {
+          cy.filterWidget().click();
+          cy.popover().within(() => {
             cy.findByText("3").click();
             cy.button("Add filter").click();
           });
@@ -96,7 +95,7 @@ describe("issue 35954", () => {
 
           cy.log("Revert the question to its original (GUI) version");
           cy.intercept("POST", "/api/revision/revert").as("revertQuestion");
-          H.questionInfoButton().click();
+          cy.questionInfoButton().click();
           cy.findByRole("tab", { name: "History" }).click();
 
           cy.findByTestId("saved-question-history-list")
@@ -138,36 +137,36 @@ describe("issue 35954", () => {
           cy.log(
             "Make sure the UI shows the filter is not connected to the GUI card",
           );
-          H.editDashboard();
+          cy.editDashboard();
 
           cy.findByTestId("fixed-width-filters").icon("gear").click();
-          H.getDashboardCard().should("contain", "Unknown Field");
+          cy.getDashboardCard().should("contain", "Unknown Field");
 
-          H.snapshot("35954");
+          cy.snapshot("35954");
         });
       });
 
       beforeEach(() => {
-        H.restore("35954");
+        cy.restore("35954");
         cy.signInAsAdmin();
       });
 
       it("should be able to remove the broken connection and connect the filter to the GUI question", function () {
-        H.visitDashboard(this.dashboardId);
-        H.editDashboard();
+        cy.visitDashboard(this.dashboardId);
+        cy.editDashboard();
         openFilterSettings();
-        H.getDashboardCard().findByLabelText("Disconnect").click();
+        cy.getDashboardCard().findByLabelText("Disconnect").click();
         connectFilterToColumn("Rating");
-        H.saveDashboard();
+        cy.saveDashboard();
 
         cy.location("search").should("eq", "?equal_to=3");
         assertFilterIsApplied();
       });
 
       it("filter should automatically be re-connected when the question is reverted back to the SQL version", function () {
-        H.visitQuestion(this.questionId);
+        cy.visitQuestion(this.questionId);
 
-        H.questionInfoButton().click();
+        cy.questionInfoButton().click();
         cy.findByRole("tab", { name: "History" }).click();
         cy.findByTestId("saved-question-history-list")
           .find("li")
@@ -178,7 +177,7 @@ describe("issue 35954", () => {
         cy.location("search").should("eq", "?RATING=");
         assertFilterIsDisconnected();
 
-        H.visitDashboard(this.dashboardId);
+        cy.visitDashboard(this.dashboardId);
         cy.location("search").should("eq", "?equal_to=3");
         assertFilterIsApplied();
       });
@@ -205,11 +204,11 @@ describe("issue 35954", () => {
         });
 
         // Discard the legalese modal so we don't need to do an extra click in the UI
-        H.updateSetting("show-static-embed-terms", false);
+        cy.updateSetting("show-static-embed-terms", false);
 
-        H.visitDashboard(id);
-        H.openSharingMenu("Embed");
-        H.modal().findByText("Static embedding").click();
+        cy.visitDashboard(id);
+        cy.openSharingMenu("Embed");
+        cy.modal().findByText("Static embedding").click();
 
         cy.findByTestId("embedding-preview").within(() => {
           cy.intercept("GET", "api/preview_embed/dashboard/**").as(
@@ -221,12 +220,12 @@ describe("issue 35954", () => {
           cy.wait(["@previewEmbed", "@previewEmbed"]);
         });
 
-        H.getIframeBody().within(() => {
+        cy.getIframeBody().within(() => {
           cy.findByRole("heading", { name: dashboardDetails.name });
 
           assertFilterIsDisconnected();
 
-          H.filterWidget().click();
+          cy.filterWidget().click();
           cy.findByPlaceholderText("Enter a number").type("3{enter}");
           cy.button("Add filter").click();
 
@@ -249,10 +248,10 @@ describe("issue 35954", () => {
           params: {},
         };
 
-        H.visitEmbeddedPage(payload);
+        cy.visitEmbeddedPage(payload);
         assertFilterIsDisconnected();
 
-        H.filterWidget().click();
+        cy.filterWidget().click();
         cy.findByPlaceholderText("Enter a number").type("3{enter}");
         cy.button("Add filter").click();
 
@@ -274,7 +273,7 @@ describe("issue 35954", () => {
           params: { equal_to: [3] },
         };
 
-        H.visitEmbeddedPage(payload);
+        cy.visitEmbeddedPage(payload);
         assertFilterIsDisconnected();
       });
     },
@@ -282,12 +281,12 @@ describe("issue 35954", () => {
 });
 
 function connectFilterToColumn(column, index = 0) {
-  H.getDashboardCard().within(() => {
+  cy.getDashboardCard().within(() => {
     cy.findByText("Column to filter on");
     cy.findByText("Select…").click();
   });
 
-  H.popover().within(() => {
+  cy.popover().within(() => {
     cy.findAllByText(column).eq(index).click();
   });
 }

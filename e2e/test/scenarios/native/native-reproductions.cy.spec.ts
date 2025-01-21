@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
@@ -18,17 +17,17 @@ describe("issue 11727", { tags: "@external" }, () => {
   };
 
   beforeEach(() => {
-    H.restore("postgres-12");
+    cy.restore("postgres-12");
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/database").as("getDatabases");
   });
 
   it("should cancel the native query via the keyboard shortcut (metabase#11727)", () => {
-    H.withDatabase(PG_DB_ID, () => {
-      cy.visit("/question#" + H.adhocQuestionHash(questionDetails));
+    cy.withDatabase(PG_DB_ID, () => {
+      cy.visit("/question#" + cy.adhocQuestionHash(questionDetails));
       cy.wait("@getDatabases");
 
-      H.runNativeQuery({ wait: false });
+      cy.runNativeQuery({ wait: false });
       cy.findByText("Doing science...").should("be.visible");
       cy.get("body").type("{cmd}{enter}");
       cy.findByText("Here's where your results will appear").should(
@@ -40,7 +39,7 @@ describe("issue 11727", { tags: "@external" }, () => {
 
 describe("issue 16584", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
   });
 
@@ -50,7 +49,7 @@ describe("issue 16584", () => {
     // - the issue is unrelated to using a date filter, using a text filter works too
     // - the issue is unrelated to whether or not the parameter is required or if default value is set
     // - the space at the end of the query is not needed to reproduce this issue
-    H.startNewNativeQuestion()
+    cy.openNativeEditor()
       .type(
         "SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 1",
         {
@@ -62,7 +61,7 @@ describe("issue 16584", () => {
 
     cy.findByPlaceholderText("Country").type("NL", { delay: 0 });
 
-    H.runNativeQuery();
+    cy.runNativeQuery();
 
     cy.findByTestId("query-visualization-root")
       .findByText("NL")
@@ -90,12 +89,12 @@ describe("issue 38083", () => {
   };
 
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should not show the revert to default icon when the default value is selected (metabase#38083)", () => {
-    H.createNativeQuestion(QUESTION, {
+    cy.createNativeQuestion(QUESTION, {
       visitQuestion: true,
     });
 
@@ -110,13 +109,13 @@ describe("issue 38083", () => {
 
 describe("issue 33327", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
   it("should recover from a visualization error (metabase#33327)", () => {
     const query = "SELECT 1";
-    H.createNativeQuestion(
+    cy.createNativeQuestion(
       { native: { query }, display: "scalar" },
       {
         visitQuestion: true,
@@ -126,17 +125,17 @@ describe("issue 33327", () => {
     cy.findByTestId("scalar-value").should("have.text", "1");
 
     cy.findByTestId("visibility-toggler").click();
-    H.focusNativeEditor().should("contain", query).type("{leftarrow}--");
+    cy.focusNativeEditor().should("contain", query).type("{leftarrow}--");
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    H.nativeEditor().should("be.visible").and("contain", "SELECT --1");
+    cy.nativeEditor().should("be.visible").and("contain", "SELECT --1");
     getRunQueryButton().click();
     cy.wait("@dataset");
 
     cy.findByTestId("visualization-root").icon("warning").should("be.visible");
     cy.findByTestId("scalar-value").should("not.exist");
 
-    H.focusNativeEditor()
+    cy.focusNativeEditor()
       .should("contain", "SELECT --1")
       .type("{leftarrow}{backspace}{backspace}")
       .should("contain", query);
@@ -151,10 +150,10 @@ describe("issue 33327", () => {
 
 describe("issue 49454", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.createQuestion({
+    cy.createQuestion({
       name: "Test Metric 49454",
       type: "metric",
       query: {
@@ -162,7 +161,7 @@ describe("issue 49454", () => {
         aggregation: [["count"]],
       },
     });
-    H.createQuestion({
+    cy.createQuestion({
       name: "Test Question 49454",
       type: "question",
       query: {
@@ -173,9 +172,9 @@ describe("issue 49454", () => {
   });
 
   it("should be possible to use metrics in native queries (metabase#49454)", () => {
-    H.startNewNativeQuestion().type("select * from {{ #test");
+    cy.openNativeEditor().type("select * from {{ #test");
 
-    H.nativeEditorCompletions().within(() => {
+    cy.nativeEditorCompletions().within(() => {
       cy.findByText("-question-49454").should("be.visible");
       cy.findByText("-metric-49454").should("be.visible");
     });

@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -12,22 +11,22 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
   // Intentional use of before (not beforeEach) hook because the setup is quite long.
   // Make sure that all tests are always able to run independently!
   before(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
-    H.setupSMTP();
+    cy.setupSMTP();
 
     // Create alert as admin
-    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.visitQuestion(ORDERS_QUESTION_ID);
     createBasicAlert({ firstAlert: true });
 
     // Create alert as admin that user can see
-    H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+    cy.visitQuestion(ORDERS_COUNT_QUESTION_ID);
     createBasicAlert({ includeNormal: true });
 
     // Create alert as normal user
     cy.signInAsNormalUser();
-    H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+    cy.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
     createBasicAlert();
   });
 
@@ -44,15 +43,15 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       cy.intercept("PUT", "/api/alert/*").as("updatedAlert");
 
       // Change alert
-      H.visitQuestion(ORDERS_QUESTION_ID);
+      cy.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.openSharingMenu("Edit alerts");
+      cy.openSharingMenu("Edit alerts");
 
-      H.popover().findByText("Edit").click();
+      cy.popover().findByText("Edit").click();
 
-      H.modal().findByText("Daily").click();
-      H.popover().findByText("Weekly").click();
-      H.modal().button("Save changes").click();
+      cy.modal().findByText("Daily").click();
+      cy.popover().findByText("Weekly").click();
+      cy.modal().button("Save changes").click();
 
       // Check that changes stuck
       cy.wait("@updatedAlert").then(({ response: { body } }) => {
@@ -65,56 +64,56 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
     beforeEach(cy.signInAsNormalUser);
 
     it("should not let you see other people's alerts", () => {
-      H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu();
+      cy.visitQuestion(ORDERS_QUESTION_ID);
+      cy.openSharingMenu();
 
-      H.sharingMenu().findByText("Edit alerts").should("not.exist");
-      H.sharingMenu().findByText("Create alert").should("be.visible");
+      cy.sharingMenu().findByText("Edit alerts").should("not.exist");
+      cy.sharingMenu().findByText("Create alert").should("be.visible");
     });
 
     it("should let you see other alerts where you are a recipient", () => {
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      H.openSharingMenu("Edit alerts");
+      cy.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      cy.openSharingMenu("Edit alerts");
 
-      H.popover().findByText(
-        `You're receiving ${H.getFullName(admin)}'s alerts`,
+      cy.popover().findByText(
+        `You're receiving ${cy.getFullName(admin)}'s alerts`,
       );
-      H.popover().findByText("Set up your own alert");
+      cy.popover().findByText("Set up your own alert");
     });
 
     it("should let you see your own alerts", () => {
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      H.openSharingMenu("Edit alerts");
+      cy.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      cy.openSharingMenu("Edit alerts");
 
-      H.popover().findByText("You set up an alert");
+      cy.popover().findByText("You set up an alert");
     });
 
     it("should let you unsubscribe from both your own and others' alerts", () => {
       // Unsubscribe from your own alert
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      H.openSharingMenu("Edit alerts");
-      H.popover().findByText("Unsubscribe").click();
-      H.notificationList().findByText("Okay, you're unsubscribed.");
+      cy.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      cy.openSharingMenu("Edit alerts");
+      cy.popover().findByText("Unsubscribe").click();
+      cy.notificationList().findByText("Okay, you're unsubscribed.");
 
       // Unsubscribe from others' alerts
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      H.openSharingMenu("Edit alerts");
-      H.popover().findByText("Unsubscribe").click();
-      H.notificationList().findByText("Okay, you're unsubscribed.");
+      cy.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      cy.openSharingMenu("Edit alerts");
+      cy.popover().findByText("Unsubscribe").click();
+      cy.notificationList().findByText("Okay, you're unsubscribed.");
     });
   });
 });
 
 function createBasicAlert({ firstAlert, includeNormal } = {}) {
-  H.openSharingMenu("Create alert");
+  cy.openSharingMenu("Create alert");
 
   if (firstAlert) {
-    H.modal().findByText("Set up an alert").click();
+    cy.modal().findByText("Set up an alert").click();
   }
 
   if (includeNormal) {
     cy.findByText("Email alerts to:").parent().children().last().click();
-    cy.findByText(H.getFullName(normal)).click();
+    cy.findByText(cy.getFullName(normal)).click();
   }
   cy.findByText("Done").click();
   cy.findByText("Let's set up your alert").should("not.exist");

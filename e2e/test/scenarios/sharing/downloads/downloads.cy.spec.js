@@ -1,4 +1,3 @@
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
@@ -35,38 +34,38 @@ const cannotSavePngQuestion = {
 
 describe("scenarios > question > download", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
   });
 
-  H.describeWithSnowplow("[snowplow]", () => {
+  cy.describeWithSnowplow("[snowplow]", () => {
     beforeEach(() => {
-      H.resetSnowplow();
-      H.enableTracking();
+      cy.resetSnowplow();
+      cy.enableTracking();
     });
 
     afterEach(() => {
-      H.expectNoBadSnowplowEvents();
+      cy.expectNoBadSnowplowEvents();
     });
 
     testCases.forEach(fileType => {
       it(`downloads ${fileType} file`, () => {
-        H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Collections").click();
+        cy.startNewQuestion();
+        cy.entityPickerModal().within(() => {
+          cy.entityPickerModalTab("Collections").click();
           cy.findByText("Orders, Count").click();
         });
 
-        H.visualize();
+        cy.visualize();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("18,760");
 
-        H.downloadAndAssert({ fileType }, sheet => {
+        cy.downloadAndAssert({ fileType }, sheet => {
           expect(sheet["A1"].v).to.eq("Count");
           expect(sheet["A2"].v).to.eq(18760);
         });
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: "download_results_clicked",
           resource_type: "ad-hoc-question",
           accessed_via: "internal",
@@ -81,7 +80,7 @@ describe("scenarios > question > download", () => {
       const fieldRef = ["field", ORDERS.TOTAL, null];
       const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
 
-      H.createQuestion(
+      cy.createQuestion(
         {
           query: {
             "source-table": ORDERS_ID,
@@ -101,12 +100,12 @@ describe("scenarios > question > download", () => {
         { visitQuestion: true, wrapId: true },
       );
 
-      H.queryBuilderMain().findByText("USD 39.72").should("exist");
+      cy.queryBuilderMain().findByText("USD 39.72").should("exist");
 
       cy.get("@questionId").then(questionId => {
         const opts = { questionId, fileType };
 
-        H.downloadAndAssert(
+        cy.downloadAndAssert(
           {
             ...opts,
             enableFormatting: true,
@@ -117,7 +116,7 @@ describe("scenarios > question > download", () => {
           },
         );
 
-        H.downloadAndAssert(
+        cy.downloadAndAssert(
           {
             ...opts,
             enableFormatting: false,
@@ -132,7 +131,7 @@ describe("scenarios > question > download", () => {
   });
 
   it("should allow downloading pivoted results", () => {
-    H.createQuestion(
+    cy.createQuestion(
       {
         name: "Pivot Table",
         query: {
@@ -148,7 +147,7 @@ describe("scenarios > question > download", () => {
       { visitQuestion: true },
     );
 
-    H.downloadAndAssert(
+    cy.downloadAndAssert(
       {
         enableFormatting: true,
         fileType: "csv",
@@ -159,7 +158,7 @@ describe("scenarios > question > download", () => {
       },
     );
 
-    H.downloadAndAssert(
+    cy.downloadAndAssert(
       {
         enableFormatting: true,
         pivoting: "non-pivoted",
@@ -207,7 +206,7 @@ describe("scenarios > question > download", () => {
     const totalLeftColumnKey = '["name","TOTAL"]';
     const totalRightColumnKey = '["name","TOTAL_2"]';
 
-    H.createQuestion(
+    cy.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -238,14 +237,14 @@ describe("scenarios > question > download", () => {
       { visitQuestion: true, wrapId: true },
     );
 
-    H.queryBuilderMain().findByText("Left Total").should("exist");
-    H.queryBuilderMain().findByText("Right Total").should("exist");
+    cy.queryBuilderMain().findByText("Left Total").should("exist");
+    cy.queryBuilderMain().findByText("Right Total").should("exist");
 
     cy.get("@questionId").then(questionId => {
       testCases.forEach(fileType => {
         const opts = { questionId, fileType };
 
-        H.downloadAndAssert(
+        cy.downloadAndAssert(
           {
             ...opts,
             enableFormatting: true,
@@ -264,7 +263,7 @@ describe("scenarios > question > download", () => {
   describe("from dashboards", () => {
     it("should allow downloading card data", () => {
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTestId("dashcard").within(() => {
         cy.findByTestId("legend-caption").realHover();
       });
@@ -272,18 +271,18 @@ describe("scenarios > question > download", () => {
       // In CI agents after downloads Cypress gets stuck for a while so the downloads status gets closed by timeout
       assertOrdersExport(18760);
 
-      H.editDashboard();
+      cy.editDashboard();
 
-      H.setFilter("ID");
+      cy.setFilter("ID");
 
       cy.findByTestId("dashcard-container").contains("Select…").click();
-      H.popover().contains("ID").eq(0).click();
+      cy.popover().contains("ID").eq(0).click();
 
-      H.saveDashboard();
+      cy.saveDashboard();
 
-      H.filterWidget().contains("ID").click();
+      cy.filterWidget().contains("ID").click();
 
-      H.popover().within(() => H.fieldValuesInput().type("1"));
+      cy.popover().within(() => cy.fieldValuesInput().type("1"));
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filter").click();
@@ -319,7 +318,7 @@ describe("scenarios > question > download", () => {
             ],
           });
 
-          H.addOrUpdateDashboardCard({
+          cy.addOrUpdateDashboardCard({
             card_id: questionId,
             dashboard_id: dashboardId,
             card: {
@@ -347,15 +346,15 @@ describe("scenarios > question > download", () => {
             },
           }).then(({ body: { id } }) => {
             cy.signIn("nodata");
-            H.visitDashboard(dashboardId);
+            cy.visitDashboard(dashboardId);
 
             cy.findByLabelText("ID").click();
-            H.popover().findByPlaceholderText("Enter an ID").type("1");
+            cy.popover().findByPlaceholderText("Enter an ID").type("1");
             cy.button("Add filter").click();
 
             cy.findByTestId("legend-caption").contains("20868").click();
 
-            H.downloadAndAssert(
+            cy.downloadAndAssert(
               {
                 fileType: "xlsx",
                 questionId,
@@ -366,7 +365,7 @@ describe("scenarios > question > download", () => {
                 expect(sheet["A1"].v).to.eq("ID");
                 expect(sheet["A2"].v).to.eq(1);
 
-                H.assertSheetRowsCount(1)(sheet);
+                cy.assertSheetRowsCount(1)(sheet);
               },
             );
           });
@@ -381,22 +380,22 @@ describe("scenarios > question > download", () => {
         dashboardName: "saving pngs dashboard",
         questions: [canSavePngQuestion, cannotSavePngQuestion],
       }).then(({ dashboard }) => {
-        H.visitDashboard(dashboard.id);
+        cy.visitDashboard(dashboard.id);
       });
 
-      H.showDashboardCardActions(0);
-      H.getDashboardCard(0)
+      cy.showDashboardCardActions(0);
+      cy.getDashboardCard(0)
         .findByText("Created At: Month")
         .should("be.visible");
-      H.getDashboardCardMenu(0).click();
+      cy.getDashboardCardMenu(0).click();
 
-      H.exportFromDashcard(".png");
+      cy.exportFromDashcard(".png");
 
-      H.showDashboardCardActions(1);
-      H.getDashboardCard(1).findByText("User ID").should("be.visible");
-      H.getDashboardCardMenu(1).click();
+      cy.showDashboardCardActions(1);
+      cy.getDashboardCard(1).findByText("User ID").should("be.visible");
+      cy.getDashboardCardMenu(1).click();
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("Download results").click();
         cy.findByText(".png").should("not.exist");
       });
@@ -409,7 +408,7 @@ describe("scenarios > question > download", () => {
 
       cy.findByTestId("download-button").click();
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText(".png").click();
         cy.findByTestId("download-results-button").click();
       });
@@ -420,7 +419,7 @@ describe("scenarios > question > download", () => {
 
       cy.findByTestId("download-button").click();
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText(".png").should("not.exist");
       });
     });
@@ -429,7 +428,7 @@ describe("scenarios > question > download", () => {
 
 describe("scenarios > dashboard > download pdf", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     cy.deleteDownloadsFolder();
   });
@@ -440,24 +439,24 @@ describe("scenarios > dashboard > download pdf", () => {
       dashboardName: `saving pdf dashboard - ${date}`,
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
-      H.visitDashboard(dashboard.id);
+      cy.visitDashboard(dashboard.id);
     });
 
-    H.openSharingMenu("Export as PDF");
+    cy.openSharingMenu("Export as PDF");
     cy.verifyDownload(`saving pdf dashboard - ${date}.pdf`);
   });
 });
 
-H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
+cy.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
   beforeEach(() => {
-    H.restore();
-    H.resetSnowplow();
+    cy.restore();
+    cy.resetSnowplow();
     cy.signInAsAdmin();
-    H.enableTracking();
+    cy.enableTracking();
   });
 
   afterEach(() => {
-    H.expectNoBadSnowplowEvents();
+    cy.expectNoBadSnowplowEvents();
   });
 
   it("should allow you to download a PDF of a dashboard", () => {
@@ -465,10 +464,10 @@ H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
       dashboardName: "test dashboard",
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
-      H.visitDashboard(dashboard.id);
-      H.openSharingMenu("Export as PDF");
+      cy.visitDashboard(dashboard.id);
+      cy.openSharingMenu("Export as PDF");
 
-      H.expectGoodSnowplowEvent({
+      cy.expectGoodSnowplowEvent({
         event: "dashboard_pdf_exported",
         dashboard_id: dashboard.id,
         dashboard_accessed_via: "internal",
@@ -481,16 +480,16 @@ H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
       dashboardName: "saving pngs dashboard",
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
-      H.visitDashboard(dashboard.id);
+      cy.visitDashboard(dashboard.id);
     });
 
-    H.showDashboardCardActions(0);
-    H.getDashboardCard(0).findByText("Created At: Month").should("be.visible");
-    H.getDashboardCardMenu(0).click();
+    cy.showDashboardCardActions(0);
+    cy.getDashboardCard(0).findByText("Created At: Month").should("be.visible");
+    cy.getDashboardCardMenu(0).click();
 
-    H.exportFromDashcard(".png");
+    cy.exportFromDashcard(".png");
 
-    H.expectGoodSnowplowEvent({
+    cy.expectGoodSnowplowEvent({
       event: "download_results_clicked",
       resource_type: "dashcard",
       accessed_via: "internal",
@@ -500,7 +499,7 @@ H.describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
 });
 
 function assertOrdersExport(length) {
-  H.downloadAndAssert(
+  cy.downloadAndAssert(
     {
       fileType: "xlsx",
       questionId: ORDERS_QUESTION_ID,
@@ -514,7 +513,7 @@ function assertOrdersExport(length) {
       expect(sheet["B1"].v).to.eq("User ID");
       expect(sheet["B2"].v).to.eq(1);
 
-      H.assertSheetRowsCount(length)(sheet);
+      cy.assertSheetRowsCount(length)(sheet);
     },
   );
 }

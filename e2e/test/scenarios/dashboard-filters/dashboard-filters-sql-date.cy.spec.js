@@ -1,5 +1,3 @@
-import { H } from "e2e/support";
-
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
 import {
@@ -13,34 +11,34 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
       "dashcardQuery",
     );
 
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
 
     cy.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
-        H.visitQuestion(card_id);
+        cy.visitQuestion(card_id);
 
-        H.visitDashboard(dashboard_id);
+        cy.visitDashboard(dashboard_id);
       },
     );
 
-    H.editDashboard();
+    cy.editDashboard();
   });
 
   it("should work when set through the filter widget", () => {
     Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
-      H.setFilter("Date picker", filter);
+      cy.setFilter("Date picker", filter);
 
       cy.findByText("Select…").click();
-      H.popover().contains(filter).click();
+      cy.popover().contains(filter).click();
     });
 
-    H.saveDashboard();
+    cy.saveDashboard();
 
     Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
-        H.filterWidget().eq(index).click();
+        cy.filterWidget().eq(index).click();
         dateFilterSelector({
           filterType: filter,
           filterValue: value,
@@ -51,14 +49,14 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
           cy.contains(representativeResult);
         });
 
-        H.clearFilterWidget(index);
+        cy.clearFilterWidget(index);
         cy.wait("@dashcardQuery");
       },
     );
   });
 
   it("should work when set as the default filter", () => {
-    H.setFilter("Date picker", "Month and Year");
+    cy.setFilter("Date picker", "Month and Year");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
@@ -69,8 +67,8 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
-    H.popover().contains("Month and Year").click();
-    H.saveDashboard();
+    cy.popover().contains("Month and Year").click();
+    cy.saveDashboard();
 
     // The default value should immediately be applied
     cy.findByTestId("dashcard").within(() => {
@@ -80,7 +78,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
     // Make sure we can override the default value
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("October 2022").click();
-    H.popover().contains("Aug").click();
+    cy.popover().contains("Aug").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Macy Olson");
   });

@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -215,7 +214,7 @@ const nestedQuestionWithJoinOnQuestion = card => ({
 
 describe("scenarios > visualizations > table column settings", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
@@ -350,9 +349,9 @@ describe("scenarios > visualizations > table column settings", () => {
     it("should be able to rename table columns via popover", () => {
       cy.createQuestion(tableQuestion, { visitQuestion: true });
 
-      H.tableHeaderClick("Product ID");
+      cy.tableHeaderClick("Product ID");
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.icon("gear").click();
         cy.findByDisplayValue("Product ID").clear().type("prod_id");
       });
@@ -765,10 +764,10 @@ describe("scenarios > visualizations > table column settings", () => {
         cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
       });
 
-      H.openNotebook();
+      cy.openNotebook();
       cy.findByTestId("fields-picker").click();
-      H.popover().findByText("Tax").click();
-      H.visualize();
+      cy.popover().findByText("Tax").click();
+      cy.visualize();
 
       openSettings();
 
@@ -812,7 +811,7 @@ const hideColumn = column => {
 };
 
 const openSettings = () => {
-  H.openVizSettingsSidebar();
+  cy.openVizSettingsSidebar();
 };
 
 const visualization = () => {

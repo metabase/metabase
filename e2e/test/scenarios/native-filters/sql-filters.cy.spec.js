@@ -1,16 +1,14 @@
-import { H } from "e2e/support";
-
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
 describe("scenarios > filters > sql filters > basic filter types", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
 
-    H.startNewNativeQuestion();
+    cy.openNativeEditor();
   });
 
   describe("should work for text", () => {
@@ -52,15 +50,15 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       it("when there's a default value, enabling required sets it as a parameter value", () => {
         SQLFilter.setDefaultValue("New value");
-        H.filterWidget().find("input").invoke("val", "");
+        cy.filterWidget().find("input").invoke("val", "");
         SQLFilter.toggleRequired();
-        H.filterWidget().find("input").should("have.value", "New value");
+        cy.filterWidget().find("input").should("have.value", "New value");
       });
 
       it("when there's a default value and input is empty, blur sets default value back", () => {
         SQLFilter.setDefaultValue("default");
         SQLFilter.toggleRequired();
-        H.filterWidget().within(() => {
+        cy.filterWidget().within(() => {
           cy.get("input")
             .type("{selectAll}{backspace}")
             .should("have.value", "");
@@ -71,7 +69,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       it("when there's a default value and template tag is required, can reset it back", () => {
         SQLFilter.setDefaultValue("default");
         SQLFilter.toggleRequired();
-        H.filterWidget().within(() => {
+        cy.filterWidget().within(() => {
           cy.get("input").type("abc").should("have.value", "defaultabc");
           cy.icon("revert").click();
           cy.get("input").should("have.value", "default");
@@ -122,15 +120,15 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       it("when there's a default value, enabling required sets it as a parameter value", () => {
         SQLFilter.setDefaultValue("3");
-        H.filterWidget().find("input").invoke("val", "");
+        cy.filterWidget().find("input").invoke("val", "");
         SQLFilter.toggleRequired();
-        H.filterWidget().find("input").should("have.value", "3");
+        cy.filterWidget().find("input").should("have.value", "3");
       });
 
       it("when there's a default value and input is empty, blur sets default value back", () => {
         SQLFilter.setDefaultValue("3");
         SQLFilter.toggleRequired();
-        H.filterWidget().within(() => {
+        cy.filterWidget().within(() => {
           cy.get("input")
             .type("{selectAll}{backspace}")
             .should("have.value", "");
@@ -141,7 +139,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       it("when there's a default value and template tag is required, can reset it back", () => {
         SQLFilter.setDefaultValue("3");
         SQLFilter.toggleRequired();
-        H.filterWidget().within(() => {
+        cy.filterWidget().within(() => {
           cy.get("input").type(".11").should("have.value", "3.11");
           cy.icon("revert").click();
           cy.get("input").should("have.value", "3");
@@ -161,11 +159,11 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     });
 
     it("when set through the filter widget", () => {
-      H.filterWidget().click();
+      cy.filterWidget().click();
       // Since we have fixed dates in Sample Database (dating back a couple of years), it'd be cumbersome to click back month by month.
       // Instead, let's choose the 15th of the current month and assert that there are no products / no results.
 
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("15").click();
         cy.findByText("Add filter").click();
       });
@@ -183,7 +181,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       cy.findByTestId("sidebar-content")
         .findByText("Select a default value…")
         .click();
-      H.popover().within(() => {
+      cy.popover().within(() => {
         cy.findByText("15").click();
         cy.findByText("Add filter").click();
       });
@@ -199,7 +197,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       cy.findByTestId("sidebar-content")
         .findByText("Select a default value…")
         .click();
-      H.popover().within(() => {
+      cy.popover().within(() => {
         DateFilter.setSingleDate(`${month}/${day}/${year}`);
         cy.findByText("Add filter").click();
       });
@@ -214,9 +212,9 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       it("when there's a default value, enabling required sets it as a parameter value", () => {
         setDefaultDate("2023", "11", "01");
-        H.filterWidget().icon("close").click();
+        cy.filterWidget().icon("close").click();
         SQLFilter.toggleRequired();
-        H.filterWidget()
+        cy.filterWidget()
           .findByTestId("field-set-content")
           .should("have.text", "November 1, 2023");
       });
@@ -224,13 +222,13 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       it("when there's a default value and template tag is required, can reset it back", () => {
         setDefaultDate("2023", "11", "01");
         SQLFilter.toggleRequired();
-        H.filterWidget().click();
-        H.popover().within(() => {
+        cy.filterWidget().click();
+        cy.popover().within(() => {
           cy.findByText("15").click();
           cy.findByText("Update filter").click();
         });
-        H.filterWidget().icon("revert").click();
-        H.filterWidget()
+        cy.filterWidget().icon("revert").click();
+        cy.filterWidget()
           .findByTestId("field-set-content")
           .should("have.text", "November 1, 2023");
       });
@@ -274,12 +272,12 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Field Filter");
 
-    H.popover().within(() => {
+    cy.popover().within(() => {
       cy.findByText("People").click();
       cy.findByText("City").trigger("mouseenter");
     });
 
-    H.popover().contains("City");
-    H.popover().contains("1,966 distinct values");
+    cy.popover().contains("City");
+    cy.popover().contains("1,966 distinct values");
   });
 });

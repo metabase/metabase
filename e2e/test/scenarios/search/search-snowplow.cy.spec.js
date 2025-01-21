@@ -1,30 +1,28 @@
-import { H } from "e2e/support";
-
 import { commandPaletteInput } from "../../../support/helpers/e2e-command-palette-helpers";
 
-H.describeWithSnowplow("scenarios > search > snowplow", () => {
+cy.describeWithSnowplow("scenarios > search > snowplow", () => {
   const NEW_SEARCH_QUERY_EVENT_NAME = "search_query";
   const SEARCH_CLICK = "search_click";
 
   beforeEach(() => {
-    H.restore();
-    H.resetSnowplow();
+    cy.restore();
+    cy.resetSnowplow();
     cy.signInAsAdmin();
-    H.enableTracking();
+    cy.enableTracking();
     cy.intercept("GET", "/api/search**").as("search");
   });
 
   afterEach(() => {
-    H.expectNoBadSnowplowEvents();
+    cy.expectNoBadSnowplowEvents();
   });
 
   describe("command palette", () => {
     it("should send snowplow events search queries on a click", () => {
       cy.visit("/");
-      H.commandPaletteSearch("Orders", false);
+      cy.commandPaletteSearch("Orders", false);
 
       //Passing a function to ensure that runtime_milliseconds is populated as a number
-      H.expectGoodSnowplowEvent(data => {
+      cy.expectGoodSnowplowEvent(data => {
         if (!data) {
           return false;
         }
@@ -35,8 +33,10 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         );
       });
 
-      H.commandPalette().findByRole("option", { name: "Orders Model" }).click();
-      H.expectGoodSnowplowEvent(
+      cy.commandPalette()
+        .findByRole("option", { name: "Orders Model" })
+        .click();
+      cy.expectGoodSnowplowEvent(
         {
           event: SEARCH_CLICK,
           context: "command-palette",
@@ -48,10 +48,10 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
 
     it("should send snowplow events search queries on keyboard navigation", () => {
       cy.visit("/");
-      H.commandPaletteSearch("Orders", false);
+      cy.commandPaletteSearch("Orders", false);
 
       //Passing a function to ensure that runtime_milliseconds is populated as a number
-      H.expectGoodSnowplowEvent(data => {
+      cy.expectGoodSnowplowEvent(data => {
         if (!data) {
           return false;
         }
@@ -69,7 +69,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         delay: 200,
       });
 
-      H.expectGoodSnowplowEvent(
+      cy.expectGoodSnowplowEvent(
         {
           event: SEARCH_CLICK,
           context: "command-palette",
@@ -84,22 +84,22 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
     it("should send snowplow events search queries", () => {
       cy.visit("/");
       cy.button("New").click();
-      H.popover().findByText("Dashboard").click();
-      H.modal().findByTestId("collection-picker-button").click();
+      cy.popover().findByText("Dashboard").click();
+      cy.modal().findByTestId("collection-picker-button").click();
 
-      H.entityPickerModal().findByPlaceholderText("Search…").type("second");
+      cy.entityPickerModal().findByPlaceholderText("Search…").type("second");
 
-      H.expectGoodSnowplowEvent({
+      cy.expectGoodSnowplowEvent({
         event: NEW_SEARCH_QUERY_EVENT_NAME,
         context: "entity-picker",
         content_type: ["collection"],
       });
 
-      H.entityPickerModal()
+      cy.entityPickerModal()
         .findByRole("button", { name: /Second/ })
         .click();
 
-      H.expectGoodSnowplowEvent({
+      cy.expectGoodSnowplowEvent({
         event: SEARCH_CLICK,
         context: "entity-picker",
         position: 0,
@@ -109,14 +109,14 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
 
   describe("search bar - embedding only", () => {
     it("should send snowplow events search queries", () => {
-      H.visitFullAppEmbeddingUrl({
+      cy.visitFullAppEmbeddingUrl({
         url: "/",
         qs: { top_nav: true, search: true },
       });
       cy.findByPlaceholderText("Search…").type("coun");
       cy.findByTestId("loading-indicator").should("not.exist");
 
-      H.expectGoodSnowplowEvent({
+      cy.expectGoodSnowplowEvent({
         event: NEW_SEARCH_QUERY_EVENT_NAME,
         context: "search-bar",
       });
@@ -125,7 +125,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         .findByRole("heading", { name: "People" })
         .click();
 
-      H.expectGoodSnowplowEvent({
+      cy.expectGoodSnowplowEvent({
         event: SEARCH_CLICK,
         context: "search-bar",
         position: 2,
@@ -138,13 +138,13 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a new_search_query snowplow event", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
         });
 
         cy.findByRole("heading", { name: "Orders in a dashboard" }).click();
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: SEARCH_CLICK,
           context: "search-app",
           position: 0,
@@ -157,7 +157,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         cy.visit("/search?q=orders&type=card");
         cy.wait("@search");
 
-        H.expectGoodSnowplowEvent(
+        cy.expectGoodSnowplowEvent(
           {
             event: NEW_SEARCH_QUERY_EVENT_NAME,
 
@@ -171,20 +171,20 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
         });
 
         cy.findByTestId("type-search-filter").click();
-        H.popover().within(() => {
+        cy.popover().within(() => {
           cy.findAllByTestId("type-filter-checkbox").each($el => {
             cy.wrap($el).click();
           });
           cy.findByText("Apply").click();
         });
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
 
           context: "search-app",
@@ -203,7 +203,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&type=card");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -214,7 +214,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
           .findByLabelText("close icon")
           .click();
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -227,7 +227,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&created_by=1");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -238,19 +238,19 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
           creator: false,
         });
 
         cy.findByTestId("created_by-search-filter").click();
-        H.popover().within(() => {
+        cy.popover().within(() => {
           cy.findByText("Bobby Tables").click();
           cy.findByText("Apply").click();
         });
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -261,7 +261,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&created_by=1");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -272,7 +272,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
           .findByLabelText("close icon")
           .click();
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -285,7 +285,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&last_edited_by=1");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -296,7 +296,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -304,12 +304,12 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("last_edited_by-search-filter").click();
-        H.popover().within(() => {
+        cy.popover().within(() => {
           cy.findByText("Bobby Tables").click();
           cy.findByText("Apply").click();
         });
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -320,7 +320,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&last_edited_by=1");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -331,7 +331,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
           .findByLabelText("close icon")
           .click();
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -344,7 +344,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&created_at=thisday");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -355,7 +355,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -363,11 +363,11 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("created_at-search-filter").click();
-        H.popover().within(() => {
+        cy.popover().within(() => {
           cy.findByText("Today").click();
         });
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -378,7 +378,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&created_at=thisday");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -389,7 +389,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
           .findByLabelText("close icon")
           .click();
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -402,7 +402,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&last_edited_at=thisday");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -413,7 +413,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -421,11 +421,11 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("last_edited_at-search-filter").click();
-        H.popover().within(() => {
+        cy.popover().within(() => {
           cy.findByText("Today").click();
         });
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -436,7 +436,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&last_edited_at=thisday");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -447,7 +447,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
           .findByLabelText("close icon")
           .click();
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -456,15 +456,15 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       });
     });
 
-    H.describeEE("verified filter", () => {
+    cy.describeEE("verified filter", () => {
       beforeEach(() => {
-        H.setTokenFeatures("all");
+        cy.setTokenFeatures("all");
       });
 
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&verified=true");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -475,7 +475,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -486,7 +486,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
           .findByText("Verified items only")
           .click();
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -497,7 +497,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&verified=true");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -508,7 +508,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
           .findByText("Verified items only")
           .click();
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -521,7 +521,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&search_native_query=true");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -532,7 +532,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -543,7 +543,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
           .findByText("Search the contents of native queries")
           .click();
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -554,7 +554,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&search_native_query=true");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -565,7 +565,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
           .findByText("Search the contents of native queries")
           .click();
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -578,7 +578,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&archived=true");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -589,7 +589,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -600,7 +600,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
           .findByText("Search items in trash")
           .click();
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -611,7 +611,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&archived=true");
         cy.wait("@search");
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 
@@ -622,7 +622,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
           .findByText("Search items in trash")
           .click();
 
-        H.expectGoodSnowplowEvent({
+        cy.expectGoodSnowplowEvent({
           event: NEW_SEARCH_QUERY_EVENT_NAME,
           context: "search-app",
 

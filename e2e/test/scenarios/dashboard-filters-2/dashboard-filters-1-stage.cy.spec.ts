@@ -1,5 +1,3 @@
-import { H } from "e2e/support";
-
 import * as QSHelpers from "./shared/dashboard-filters-query-stages";
 
 /**
@@ -17,7 +15,7 @@ const NAMELESS_SECTION = "";
  */
 describe("scenarios > dashboard > filters > query stages", () => {
   beforeEach(() => {
-    H.restore();
+    cy.restore();
     cy.signInAsAdmin();
     QSHelpers.createBaseQuestions();
 
@@ -44,7 +42,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       it("allows to map to all relevant columns", () => {
-        H.editDashboard();
+        cy.editDashboard();
 
         cy.log("## date columns");
         QSHelpers.getFilter("Date").click();
@@ -263,7 +261,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       it("allows to map to all relevant columns (metabase#47184)", () => {
-        H.editDashboard();
+        cy.editDashboard();
 
         cy.log("## date columns");
         QSHelpers.getFilter("Date").click();
@@ -402,7 +400,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       it("allows to map to all relevant columns", () => {
-        H.editDashboard();
+        cy.editDashboard();
 
         cy.log("## date columns");
         QSHelpers.getFilter("Date").click();
@@ -561,7 +559,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       it("allows to map to all relevant columns", () => {
-        H.editDashboard();
+        cy.editDashboard();
 
         cy.log("## date columns");
         QSHelpers.getFilter("Date").click();
