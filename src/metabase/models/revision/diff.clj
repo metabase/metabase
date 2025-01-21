@@ -94,9 +94,9 @@
       (and v1 v2) (deferred-tru "moved from dashboard {0} to {1}"
                                 (t2/select-one-fn :name :model/Dashboard :id v1)
                                 (t2/select-one-fn :name :model/Dashboard :id v2))
-      (nil? v1) (deferred-tru "made this a dashboard-internal question in {0}"
+      (nil? v1) (deferred-tru "moved this question into {0}"
                               (t2/select-one-fn :name :model/Dashboard :id v2))
-      (nil? v2) (deferred-tru "extracted this question from {0}"
+      (nil? v2) (deferred-tru "moved this question from {0}"
                               (t2/select-one-fn :name :model/Dashboard :id v1)))
 
     [:width v1 v2]
@@ -133,7 +133,12 @@
   The directionality of the statement should indicate that `o1` changed into `o2`."
   [model o1 o2]
   (when-let [[before after] (data/diff o1 o2)]
-    (let [ks         (keys (or after before))
+    (let [all-ks         (keys (or after before))
+          ;; ignore collection_id as part of diff if the dashboard_id has changed
+          ;; so that the final diff string doesn't contain two messages about moving
+          ks         (if (not= (:dashboard_id before) (:dashboard_id after))
+                       (remove #{:collection_id} all-ks)
+                       all-ks)
           model-name (model-str->i18n-str model)]
       (loop [ks               ks
              identifier-count 0
