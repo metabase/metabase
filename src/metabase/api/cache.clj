@@ -78,12 +78,12 @@
   "Return cache configuration."
   [_route-params
    {:keys [model collection id]} :- [:map
-                                     [:model      (mu/with (ms/QueryVectorOf cache-config/CachingModel)
-                                                           {:default "root", :description "Type of model"})]
-                                     [:collection (mu/with [:maybe ms/PositiveInt]
-                                                           {:description "Collection id to filter results. Returns everything if not supplied."})]
-                                     [:id         (mu/with [:maybe ms/PositiveInt]
-                                                           {:description "Model id to get configuration for."})]]]
+                                     [:model      {:default ["root"]} (mu/with (ms/QueryVectorOf cache-config/CachingModel)
+                                                                               {:description "Type of model"})]
+                                     [:collection {:optional true} (mu/with [:maybe ms/PositiveInt]
+                                                                            {:description "Collection id to filter results. Returns everything if not supplied."})]
+                                     [:id         {:optional true} (mu/with [:maybe ms/PositiveInt]
+                                                                            {:description "Model id to get configuration for."})]]]
   (when (and (not (premium-features/enable-cache-granular-controls?))
              (not= model ["root"]))
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
