@@ -147,14 +147,12 @@ describe(
         cy.button("Disable").click();
       });
 
-      cy.findAllByRole("tabpanel")
-        .filter(":visible")
-        .within(() => {
-          cy.findByLabelText("Action list").should("not.exist");
-          cy.findByText("Create").should("not.exist");
-          cy.findByText("Update").should("not.exist");
-          cy.findByText("Delete").should("not.exist");
-        });
+      cy.findByRole("main").within(() => {
+        cy.findByLabelText("Action list").should("not.exist");
+        cy.findByText("Create").should("not.exist");
+        cy.findByText("Update").should("not.exist");
+        cy.findByText("Delete").should("not.exist");
+      });
     });
 
     it("should allow to create an action with the New button", () => {
