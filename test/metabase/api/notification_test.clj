@@ -351,6 +351,43 @@
       (testing "other than that no one can view"
         (get-notification :lucky 403)))))
 
+(deftest create-card-notification-permissions-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-user-in-groups [group {:name "test notification perm"}
+                             user  [group]]
+      (mt/with-temp
+        [:model/Card {card-id :id} {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))}]
+        (let [create-notification! (fn [user-or-id expected-status]
+                                     (mt/user-http-request user-or-id :post expected-status "notification"
+                                                           {:payload_type "notification/card"
+                                                            :creator_id   (mt/user->id :rasta)
+                                                            :payload      {:card_id card-id}}))]
+          (mt/with-premium-features #{}
+            (testing "admin can create"
+              (create-notification! :crowberto 200))
+
+            (testing "users who can view the card can create"
+              (create-notification! :rasta 200))
+
+            (testing "normal users can't create"
+              (create-notification! (:id user) 403))
+
+            (mt/when-ee-evailable
+             (testing "users with subscription permissions"
+               (perms/grant-application-permissions! group :subscription)
+
+               (testing "without advanced-permissions enabled"
+                 (testing "cannot create notifications"
+                   (create-notification! (:id user) 403)))
+
+               (mt/with-premium-features #{:advanced-permissions}
+                 (testing "with advanced-permissions enabled"
+                   (testing "cannot create if they cannot read the card"
+                     (create-notification! (:id user) 403))
+
+                   (testing "can create if they can read the card"
+                     (create-notification! (mt/user->id :rasta) 200))))))))))))
+
 (defmacro with-disabled-subscriptions-permissions
   [& body]
   `(try
@@ -712,7 +749,7 @@
                              (->> notification :handlers (m/find-first #(= :channel/email (:channel_type %))) :recipients))]
       (testing "creator can unsubscribe themselves"
         (unsbuscribe
-         :crowberto 200
+         :crowberto 204
          (fn [noti]
            (is (=?
                 [{:type    :notification-recipient/user
@@ -721,7 +758,7 @@
 
       (testing "recipient can unsubscribe themselves"
         (unsbuscribe
-         :lucky 200
+         :lucky 204
          (fn [noti]
            (is (=?
                 [{:type    :notification-recipient/user
@@ -758,7 +795,7 @@
                                                                                    :recipients   [{:type    :notification-recipient/user
                                                                                                    :user_id (mt/user->id :lucky)}]}]}]
               ;; Unsubscribe from first notification
-              (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))
+              (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))
 
               ;; Check first notification has no recipients
               ;; First notification should have no recipients
@@ -780,7 +817,7 @@
                                                                                                      :user_id (mt/user->id :lucky)}]}]}]
           (let [[email] (notification.tu/with-mock-inbox-email!
                           (with-send-messages-sync!
-                            (mt/user-http-request :lucky :post 200 (format "notification/%d/unsubscribe" noti-1))))
+                            (mt/user-http-request :lucky :post 204 (format "notification/%d/unsubscribe" noti-1))))
                 a-href (format "<a href=\"https://testmb.com/question/%d\">My Card</a>."
                                (-> notification :payload :card_id))]
             (testing "sends unsubscribe confirmation email"
