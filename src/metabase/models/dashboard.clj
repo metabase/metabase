@@ -549,7 +549,10 @@
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
     (add-dashcards! dashboard
                     (for [dashcard dashcards]
-                      (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
+                      (let [card     (some-> dashcard :card
+                                             (assoc :collection_id (:id collection)
+                                                    :dashboard_id (:id dashboard))
+                                             save-card!)
                             series   (some->> dashcard :series (map (fn [card]
                                                                       (-> card
                                                                           (assoc :collection_id (:id collection))
