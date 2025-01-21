@@ -11,9 +11,6 @@ import {
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
 import {
-  fireEvent,
-  getIcon,
-  queryIcon,
   renderWithProviders,
   screen,
   waitFor,
@@ -49,13 +46,14 @@ import {
 import {
   createNativeModelCard as _createNativeModelCard,
   createStructuredModelCard as _createStructuredModelCard,
+  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
 
-import ModelDetailPage from "./ModelDetailPage";
+import ModelActions from "./ModelActions";
 
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
@@ -234,7 +232,7 @@ async function setup({
     <>
       <Route path="/model/:slug/detail">
         <IndexRedirect to="actions" />
-        <Route path="actions" component={ModelDetailPage}>
+        <Route path="actions" component={ModelActions}>
           <ModalRoute
             path="new"
             modal={ActionCreator}
@@ -273,7 +271,7 @@ async function openActionMenu(action: WritebackAction) {
   await userEvent.click(menuButton);
 }
 
-describe("ModelDetailPage", () => {
+describe("ModelActions", () => {
   describe.each([
     { type: "structured", getModel: createStructuredModelCard },
     { type: "native", getModel: createNativeModelCard },
@@ -287,22 +285,6 @@ describe("ModelDetailPage", () => {
     });
 
     describe("management", () => {
-      it("allows to rename model", async () => {
-        const { model, modelUpdateSpy } = await setup({ model: getModel() });
-
-        const input = screen.getByDisplayValue(model.displayName() as string);
-        await userEvent.clear(input);
-        await userEvent.type(input, "New model name");
-        fireEvent.blur(input);
-
-        await waitFor(() => {
-          expect(modelUpdateSpy).toHaveBeenCalledWith({
-            ...model.card(),
-            name: "New model name",
-          });
-        });
-      });
-
       it("can be archived", async () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
@@ -323,7 +305,7 @@ describe("ModelDetailPage", () => {
       });
     });
 
-    describe("actions section", () => {
+    describe("core actions section", () => {
       it("is shown if actions are enabled for model's database", async () => {
         await setup({
           model: getModel(),
@@ -519,25 +501,6 @@ describe("ModelDetailPage", () => {
     describe("read-only permissions", () => {
       const modelCard = getModel({ can_write: false });
 
-      it("doesn't allow to rename a model", async () => {
-        const { model } = await setup({ model: modelCard });
-        expect(
-          screen.getByDisplayValue(model.displayName() as string),
-        ).toBeDisabled();
-      });
-
-      it("doesn't show model management actions", async () => {
-        await setup({ model: modelCard });
-        expect(queryIcon("ellipsis")).not.toBeInTheDocument();
-        expect(screen.queryByText("Archive")).not.toBeInTheDocument();
-        expect(screen.queryByText("Move")).not.toBeInTheDocument();
-      });
-
-      it("doesn't show a link to the query editor", async () => {
-        await setup({ model: modelCard });
-        expect(screen.queryByText("Edit definition")).not.toBeInTheDocument();
-      });
-
       it("doesn't allow to create actions", async () => {
         await setupActions({ model: modelCard, actions: [] });
         expect(screen.queryByText("New action")).not.toBeInTheDocument();
@@ -720,18 +683,6 @@ describe("ModelDetailPage", () => {
         screen.queryByText("Disable basic actions"),
       ).not.toBeInTheDocument();
     });
-
-    describe("no data permissions", () => {
-      it("shows limited model info", async () => {
-        await setup({ model: modelCard, databases: [] });
-
-        expect(screen.queryByText("Relationships")).not.toBeInTheDocument();
-        expect(screen.queryByText("Backing table")).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(TEST_TABLE.display_name),
-        ).not.toBeInTheDocument();
-      });
-    });
   });
 
   describe("native model", () => {
@@ -748,6 +699,16 @@ describe("ModelDetailPage", () => {
   });
 
   describe("navigation", () => {
+    it("redirects to query builder when trying to open a question", async () => {
+      const { model: question, history } = await setup({
+        model: createSavedStructuredCard(),
+      });
+
+      expect(history?.getCurrentLocation().pathname).toBe(
+        ML_Urls.getUrl(question),
+      );
+    });
+
     it("shows 404 when opening an archived model", async () => {
       const { model } = await setup({
         model: createStructuredModelCard({ archived: true }),
