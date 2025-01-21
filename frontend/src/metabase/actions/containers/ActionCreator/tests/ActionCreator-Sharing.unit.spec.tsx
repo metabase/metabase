@@ -78,7 +78,7 @@ describe("ActionCreator > Sharing", () => {
         const headerTitle = await screen.findByTestId("sidebar-header-title");
         expect(headerTitle).toBeInTheDocument();
         expect(headerTitle).toHaveTextContent("Action settings");
-        const makePublicToggle = screen.getByRole("switch", {
+        const makePublicToggle = screen.getByRole("checkbox", {
           name: "Make public",
         });
         expect(makePublicToggle).not.toBeChecked();
@@ -92,7 +92,7 @@ describe("ActionCreator > Sharing", () => {
           { overwriteRoutes: true },
         );
         await userEvent.click(
-          screen.getByRole("switch", { name: "Make public" }),
+          screen.getByRole("checkbox", { name: "Make public" }),
         );
 
         await waitFor(() => {
@@ -123,7 +123,7 @@ describe("ActionCreator > Sharing", () => {
         const headerTitle = await screen.findByTestId("sidebar-header-title");
         expect(headerTitle).toBeInTheDocument();
         expect(headerTitle).toHaveTextContent("Action settings");
-        const makePublicToggle = screen.getByRole("switch", {
+        const makePublicToggle = screen.getByRole("checkbox", {
           name: "Make public",
         });
         expect(makePublicToggle).toBeChecked();
@@ -166,7 +166,7 @@ describe("ActionCreator > Sharing", () => {
           screen.getByRole("button", { name: "Action settings" }),
         );
         expect(
-          screen.queryByRole("switch", {
+          screen.queryByRole("checkbox", {
             name: "Make public",
           }),
         ).not.toBeInTheDocument();
@@ -182,7 +182,7 @@ describe("ActionCreator > Sharing", () => {
           screen.getByRole("button", { name: "Action settings" }),
         );
         expect(
-          screen.queryByRole("switch", {
+          screen.queryByRole("checkbox", {
             name: "Make public",
           }),
         ).not.toBeInTheDocument();
