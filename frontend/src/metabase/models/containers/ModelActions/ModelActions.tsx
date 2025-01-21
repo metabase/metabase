@@ -94,13 +94,6 @@ function ModelActions({
     }
   }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
 
-  useEffect(() => {
-    if (!shouldShowActionsUI) {
-      const nextUrl = Urls.model(model.card());
-      onChangeLocation(nextUrl);
-    }
-  }, [model, shouldShowActionsUI, onChangeLocation]);
-
   if (model.isArchived()) {
     return <NotFound />;
   }
