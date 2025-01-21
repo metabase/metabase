@@ -119,6 +119,7 @@
   [name]
   {name ms/NonBlankString}
   (restore-snapshot! name)
+  (search/reindex!)
   nil)
 
 (api/defendpoint POST "/echo"
