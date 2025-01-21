@@ -90,6 +90,7 @@ If set to 0, Metabase will keep all rows.")
                :where [:<=
                        (keyword time-column)
                        (t/minus (t/offset-date-time) (t/days (audit-max-retention-days)))]
+               :order-by [[:id :asc]]
                :limit (audit-table-truncation-batch-size)}]}
 
      (:mysql :mariadb)

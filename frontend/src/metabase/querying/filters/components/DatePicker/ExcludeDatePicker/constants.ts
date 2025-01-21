@@ -24,10 +24,10 @@ export const EXCLUDE_UNIT_OPTIONS: ExcludeUnitOption[] = [
 export const EXCLUDE_OPERATOR_OPTIONS: ExcludeOperatorOption[] = [
   {
     operator: "not-null",
-    label: t`Is empty`,
+    label: t`Empty values`,
   },
   {
     operator: "is-null",
-    label: t`Is not empty`,
+    label: t`Not empty values`,
   },
 ];

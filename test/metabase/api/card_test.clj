@@ -3696,7 +3696,7 @@
               (is (mi/can-read? card)))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
 
-(deftest query-metadata-test
+(deftest ^:parallel query-metadata-test
   (mt/with-temp
     [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
                                   :database_id (mt/id)}
@@ -3902,7 +3902,7 @@
       (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
       (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id)))))
 
-(deftest moving-dashboard-questions
+(deftest move-question-to-collection-test
   (testing "We can move a dashboard question to a collection"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3914,8 +3914,9 @@
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:collection_id coll-id
                                                                            :dashboard_id  nil})))
       (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
-      ;; the old dashboardcard is still there (we don't remove the card from the dashboard it was in)
-      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+
+(deftest move-question-to-collection-remove-reference-test
   (testing "We can move a dashboard question to a collection and remove the old reference to it"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3924,11 +3925,13 @@
                                            :card_id      card-id}]
       (is (=? {:collection_id coll-id
                :dashboard_id  nil}
-              (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:collection_id coll-id
-                                                                                                        :dashboard_id  nil})))
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true")
+                                    {:collection_id coll-id
+                                     :dashboard_id  nil})))
       (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
-      ;; we remove the card from the dashboard it was in
-      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))))
+
+(deftest move-question-to-existing-dashboard-test
   (testing "We can move a question from a collection to a dashboard it is already in"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3937,7 +3940,9 @@
                                            :card_id      card-id}]
       (is (=? {:collection_id coll-id
                :dashboard_id  dash-id}
-              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))))
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id}))))))
+
+(deftest move-question-to-new-dashboard-test
   (testing "We can move a question from a collection to a dashboard it is NOT already in"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3947,7 +3952,9 @@
                :dashboard_id  dash-id}
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
       (is (=? {:dashboard_id dash-id :card_id card-id}
-              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id))))))
+
+(deftest move-question-to-dashboard-with-tabs
   (testing "We can move a question from a collection to a dashboard with tabs"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3958,7 +3965,9 @@
                :dashboard_id  dash-id}
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
       (is (=? {:dashboard_id dash-id :card_id card-id :dashboard_tab_id dash-tab-id}
-              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id))))))
+
+(deftest move-question-between-dashboards-test
   (testing "We can move a question from one dashboard to another"
     (mt/with-temp [:model/Collection {source-coll-id :id} {}
                    :model/Collection {dest-coll-id :id} {}
@@ -3971,7 +3980,9 @@
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dest-dash-id})))
       (testing "old dashcards are deleted, a new one is created"
         (is (=? #{dest-dash-id}
-                (set (map :dashboard_id (t2/select :model/DashboardCard :card_id card-id))))))))
+                (set (map :dashboard_id (t2/select :model/DashboardCard :card_id card-id)))))))))
+
+(deftest cant-move-question-to-dashboard-if-in-another-test
   (testing "We can't move a question from a collection to a dashboard if it's in another dashboard"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3979,7 +3990,9 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id other-dash-id
                                            :card_id      card-id}]
-      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id})))
+      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id}))))
+
+(deftest can-move-with-delete-old-dashcards-test
   (testing "... unless we pass `delete_old_dashcards=true`"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3988,8 +4001,9 @@
                    :model/DashboardCard _ {:dashboard_id other-dash-id
                                            :card_id      card-id}]
       (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
-      (is (= #{dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))
+      (is (= #{dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))
 
+(deftest cant-move-question-if-in-dashboard-as-series-test
   (testing "We can't move a question from a collection to a dashboard if it's in another dashboard AS A SERIES"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3999,8 +4013,9 @@
                    :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
       (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id})
       (testing "... again, unless we pass `delete_old_dashcards=true`"
-        (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id}))))
+        (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})))))
 
+(deftest move-fails-without-permissions-test
   (testing "And, if we don't have permissions on the other dashboard, it fails even when we pass `delete_old_dashcards`"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Collection {forbidden-coll-id :id} {}
@@ -4012,11 +4027,13 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
         (testing "We get a 403 back, because we don't have permissions"
           (is (= "You don't have permissions to do that."
-                 ;; regardless of the `delete_old_dashcards` value, same response
+                ;; regardless of the `delete_old_dashcards` value, same response
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
         (testing "The card is still in the old dashboard and not the new one"
-          (is (= #{other-dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))))
+          (is (= #{other-dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))))
+
+(deftest move-fails-without-permissions-series-test
   (testing "The above includes when a card is 'in' a dashboard in a series"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Collection {forbidden-coll-id :id} {}
@@ -4029,13 +4046,19 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
         (testing "We get a 403 back, because we don't have permissions"
           (is (= "You don't have permissions to do that."
-                 ;; regardless of the `delete_old_dashcards` value, same response
+                ;; regardless of the `delete_old_dashcards` value, same response
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
         (testing "The card is still in the old dashboard and not the new one"
-          (is (= [{:name other-dash-name :collection_id forbidden-coll-id :id other-dash-id}]
+          (is (= [{:name other-dash-name
+                   :collection_id forbidden-coll-id
+                   :id other-dash-id
+                   :description nil
+                   :archived false}]
                  (:in_dashboards (t2/hydrate (t2/select-one :model/Card :id card-id) :in_dashboards))))
-          (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))))
+          (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))))
+
+(deftest moving-archived-card-test
   (testing "Moving an archived card to a Dashboard unarchives and autoplaces it"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:archived true}]
@@ -4046,7 +4069,9 @@
       (testing "it got unarchived"
         (is (not (:archived (t2/select-one :model/Card :id card-id)))))
       (testing "it got autoplaced"
-        (is (= dash-id (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :card_id card-id))))))
+        (is (= dash-id (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :card_id card-id)))))))
+
+(deftest cant-archive-and-move-test
   (testing "You can't mark a card as archived *and* move it to a dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {}]
@@ -4057,7 +4082,8 @@
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (is (= [{:id dash-id :name "My Dashboard"}]
+      (is (= [{:id dash-id
+               :name "My Dashboard"}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
 
   (testing "card in no dashboards"

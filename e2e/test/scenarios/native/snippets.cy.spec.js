@@ -21,7 +21,8 @@ describe("scenarios > question > snippets", () => {
 
   it("should let you create and use a snippet", () => {
     cy.log("Type a query and highlight some of the text");
-    H.openNativeEditor().type(
+    H.startNewNativeQuestion().as("editor");
+    cy.get("@editor").type(
       "select 'stuff'" + "{shift}{leftarrow}".repeat("'stuff'".length),
     );
 
@@ -51,7 +52,8 @@ describe("scenarios > question > snippets", () => {
 
     // Populate the native editor first
     // 1. select
-    H.openNativeEditor().type("select ");
+    H.startNewNativeQuestion().as("editor");
+    cy.get("@editor").type("select ");
     // 2. snippet
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-right").within(() => {
@@ -156,7 +158,7 @@ describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
     createNestedSnippet();
 
     // Open editor and sidebar
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.icon("snippet").click();
 
     // Confirm snippet is not in folder
@@ -179,7 +181,7 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
 
       cy.signIn(user);
 
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       cy.icon("snippet").click();
       cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
 
@@ -211,7 +213,7 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
       collection_id: null,
     });
 
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
 
     // create folder
     cy.icon("snippet").click();
@@ -294,7 +296,7 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
       cy.signIn(user);
 
       // Open editor and sidebar
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       cy.icon("snippet").click();
 
       // Confirm snippet is in folder
@@ -327,7 +329,7 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
     });
 
     it("should not allow you to move a snippet collection into a itself or a child (metabase#44930)", () => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       cy.icon("snippet").click();
 
       // Edit snippet folder
@@ -359,7 +361,7 @@ H.describeEE("scenarios > question > snippets (EE)", () => {
         "updatePermissions",
       );
 
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       cy.icon("snippet").click();
 
       // Edit permissions for a snippet folder
