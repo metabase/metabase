@@ -19,7 +19,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { onCloseQuestionInfo } from "metabase/query_builder/actions";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
-import { Box, Flex, Icon, Stack, Tabs, Title } from "metabase/ui";
+import { Flex, Icon, Stack, Tabs, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionDetails } from "./QuestionDetails";
@@ -76,13 +76,12 @@ export const QuestionInfoSidebar = ({
           <Tabs.Tab value="overview">{t`Overview`}</Tabs.Tab>
           {!isIAQuestion && <Tabs.Tab value="history">{t`History`}</Tabs.Tab>}
           {question.type() === "model" && !question.isArchived() && (
-            <Flex gap="xs" className={SidesheetStyles.TabSibling}>
-              <Icon name="external" />
-              <Box
-                component={Link}
-                to={Urls.modelDetail(question.card())}
-              >{t`Actions`}</Box>
-            </Flex>
+            <Link to={Urls.modelDetail(question.card())}>
+              <Flex gap="xs" className={SidesheetStyles.TabSibling}>
+                <Icon name="external" />
+                {t`Actions`}
+              </Flex>
+            </Link>
           )}
           <InsightsTabOrLink question={question} />
         </Tabs.List>
