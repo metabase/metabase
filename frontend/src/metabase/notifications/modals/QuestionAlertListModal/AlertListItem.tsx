@@ -2,13 +2,16 @@ import cx from "classnames";
 import { type MouseEvent, useState } from "react";
 import { t } from "ttag";
 
-import { getNotificationEnabledChannelsMap } from "metabase/lib/notifications";
+import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
+import {
+  formatNotificationSchedule,
+  getNotificationEnabledChannelsMap,
+} from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 import type { Notification } from "metabase-types/api";
 
-import { AlertCreatorTitle } from "./AlertCreatorTitle";
 import S from "./AlertListItem.module.css";
 import { AlertListItemActionButton } from "./AlertListItemActionButton";
 
@@ -32,6 +35,7 @@ export const AlertListItem = ({
   const [showHoverActions, setShowHoverActions] = useState(false);
 
   const enabledChannelsMap = getNotificationEnabledChannelsMap(alert);
+  const subscription = alert.subscriptions[0];
 
   const handleEdit = () => {
     onEdit(alert);
@@ -90,7 +94,17 @@ export const AlertListItem = ({
           {enabledChannelsMap["channel/http"] && (
             <Icon name="webhook" size={16} />
           )}
-          {user && <AlertCreatorTitle alert={alert} user={user} />}
+          <Group spacing="0.25rem" align="center" c="text-medium">
+            {subscription && (
+              <span>{formatNotificationSchedule(subscription)}</span>
+            )}
+            {user && (
+              <>
+                {" · "}
+                {<span>{formatCreatorMessage(alert, user?.id)}</span>}
+              </>
+            )}
+          </Group>
         </Group>
       </Box>
       {showHoverActions && (

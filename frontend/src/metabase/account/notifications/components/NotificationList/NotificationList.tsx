@@ -21,7 +21,7 @@ import {
 type NotificationListProps = {
   listItems: NotificationListItem[];
   user: User;
-  children: ReactNode;
+  children?: ReactNode;
   canManageSubscriptions: boolean;
   onHelp: () => void;
   onUnsubscribe: (listItem: NotificationListItem) => void;

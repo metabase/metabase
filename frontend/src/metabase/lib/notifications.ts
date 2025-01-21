@@ -2,7 +2,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
+import { cronToScheduleSettings } from "metabase/admin/performance/utils";
 import { getEmailDomain, isEmail } from "metabase/lib/email";
+import { capitalize } from "metabase/lib/formatting/strings";
+import { formatChannelSchedule } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
@@ -16,7 +19,11 @@ import type {
   Notification,
   NotificationCardSendCondition,
   NotificationChannelType,
+  NotificationCronSubscription,
   NotificationHandler,
+  NotificationHandlerEmail,
+  NotificationHandlerHttp,
+  NotificationHandlerSlack,
   NotificationRecipient,
   NotificationRecipientRawValue,
   UpdateAlertNotificationRequest,
@@ -174,4 +181,50 @@ export const getNotificationEnabledChannelsMap = (
   });
 
   return result;
+};
+
+export const getNotificationHandlersGroupedByTypes = (
+  notificationHandlers: NotificationHandler[],
+) => {
+  let emailHandler: NotificationHandlerEmail | undefined;
+  let slackHandler: NotificationHandlerSlack | undefined;
+  let hookHandlers: NotificationHandlerHttp[] | undefined;
+
+  notificationHandlers.forEach(handler => {
+    if (handler.channel_type === "channel/email") {
+      emailHandler = handler;
+      return;
+    }
+
+    if (handler.channel_type === "channel/slack") {
+      slackHandler = handler;
+      return;
+    }
+
+    if (handler.channel_type === "channel/http") {
+      if (!hookHandlers) {
+        hookHandlers = [];
+      }
+
+      hookHandlers.push(handler);
+      return;
+    }
+  });
+
+  return { emailHandler, slackHandler, hookHandlers };
+};
+
+export const formatNotificationSchedule = (
+  subscription: NotificationCronSubscription,
+): string | null => {
+  const schedule = cronToScheduleSettings(subscription.cron_schedule);
+
+  if (schedule) {
+    const scheduleMessage = formatChannelSchedule(schedule);
+
+    if (scheduleMessage) {
+      return capitalize(scheduleMessage);
+    }
+  }
+  return null;
 };

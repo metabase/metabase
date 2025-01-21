@@ -35,13 +35,6 @@ export const AlertListModal = ({
   const isAdmin = user?.is_superuser;
   const canEditAlert = isAdmin || canManageSubscriptions;
 
-  // close list if there are no alerts (e.g. after delete)
-  // useEffect(() => {
-  //   if (questionAlerts?.length || 0 <= 0) {
-  //     onClose();
-  //   }
-  // }, [onClose, questionAlerts?.length]);
-
   if (!questionAlerts) {
     return null;
   }

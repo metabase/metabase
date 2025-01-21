@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { getCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
+import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import type { DashboardAlertListItem } from "metabase/account/notifications/types";
 import Link from "metabase/core/components/Link";
 import { formatTitle } from "metabase/lib/notifications";
@@ -65,7 +65,7 @@ export const DashboardNotificationCard = ({
             </NotificationMessage>
           ))}
           <NotificationMessage data-server-date>
-            {getCreatorMessage(item, user)}
+            {formatCreatorMessage(item, user.id)}
           </NotificationMessage>
         </NotificationDescription>
       </NotificationContent>

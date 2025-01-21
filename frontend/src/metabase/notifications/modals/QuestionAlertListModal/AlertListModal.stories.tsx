@@ -2,7 +2,11 @@ import { action } from "@storybook/addon-actions";
 import type { StoryFn } from "@storybook/react";
 import { type ComponentProps, useState } from "react";
 
-import { createMockNotification } from "metabase-types/api/mocks/notification";
+import {
+  createMockNotification,
+  createMockNotificationHandlerEmail,
+  createMockNotificationHandlerSlack,
+} from "metabase-types/api/mocks/notification";
 
 import { AlertListModal } from "./AlertListModal";
 
@@ -26,7 +30,14 @@ const Template: StoryFn<ComponentProps<typeof AlertListModal>> = args => {
   );
 };
 
-const questionAlerts = [createMockNotification()];
+const questionAlerts = [
+  createMockNotification({
+    handlers: [
+      createMockNotificationHandlerEmail(),
+      createMockNotificationHandlerSlack(),
+    ],
+  }),
+];
 
 export const Default = {
   render: Template,

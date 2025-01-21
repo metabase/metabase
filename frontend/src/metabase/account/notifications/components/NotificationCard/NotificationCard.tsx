@@ -8,20 +8,18 @@ import {
   NotificationIcon,
   NotificationMessage,
 } from "metabase/account/notifications/components/NotificationCard/DashboardNotificationCard.styled";
-import { getCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
+import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
-import { cronToScheduleSettings } from "metabase/admin/performance/utils";
 import Link from "metabase/core/components/Link/Link";
-import { capitalize } from "metabase/lib/formatting/strings";
 import {
   canArchive,
+  formatNotificationSchedule,
   formatTitle,
   getNotificationEnabledChannelsMap,
 } from "metabase/lib/notifications";
-import { formatChannelSchedule } from "metabase/lib/pulse";
 import * as Urls from "metabase/lib/urls";
 import { Group, Icon } from "metabase/ui";
-import type { NotificationCronSubscription, User } from "metabase-types/api";
+import type { User } from "metabase-types/api";
 
 type NotificationCardProps = {
   listItem: QuestionNotificationListItem;
@@ -74,9 +72,13 @@ export const NotificationCard = ({
               {enabledChannelsMap["channel/http"] && (
                 <Icon name="webhook" size={16} />
               )}
-              {subscription && formatNotificationSchedule(subscription)}
-              {" · "}
-              {getCreatorMessage(item, user)}
+              <Group spacing="0.25rem" align="center" c="text-medium">
+                {subscription && (
+                  <span>{formatNotificationSchedule(subscription)}</span>
+                )}
+                {" · "}
+                {<span>{formatCreatorMessage(item, user.id)}</span>}
+              </Group>
             </Group>
           </NotificationMessage>
         </NotificationDescription>
@@ -98,19 +100,4 @@ export const NotificationCard = ({
       )}
     </NotificationCardRoot>
   );
-};
-
-const formatNotificationSchedule = (
-  subscription: NotificationCronSubscription,
-): string | null => {
-  const schedule = cronToScheduleSettings(subscription.cron_schedule);
-
-  if (schedule) {
-    const scheduleMessage = formatChannelSchedule(schedule);
-
-    if (scheduleMessage) {
-      return capitalize(scheduleMessage);
-    }
-  }
-  return null;
 };

@@ -10,6 +10,8 @@ import { getStore } from "metabase/store";
 import {
   createMockCard,
   createMockDataset,
+  createMockNotificationHandlerEmail,
+  createMockNotificationHandlerSlack,
   createMockUser,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
@@ -88,7 +90,12 @@ export const EditMode = {
   render: Template,
 
   args: {
-    editingNotification: createMockNotification(),
+    editingNotification: createMockNotification({
+      handlers: [
+        createMockNotificationHandlerEmail(),
+        createMockNotificationHandlerSlack(),
+      ],
+    }),
     onAlertUpdated: action("onAlertUpdated"),
     onClose: action("onClose"),
   },

@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
+import { getNotificationHandlersGroupedByTypes } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
 import { EmailChannelEdit } from "metabase/notifications/channels/EmailChannelEdit";
 import { SlackChannelEdit } from "metabase/notifications/channels/SlackChannelEdit";
 import { WebhookChannelEdit } from "metabase/notifications/channels/WebhookChannelEdit";
@@ -15,9 +15,6 @@ import { Stack } from "metabase/ui";
 import type {
   ChannelApiResponse,
   NotificationHandler,
-  NotificationHandlerEmail,
-  NotificationHandlerHttp,
-  NotificationHandlerSlack,
   User,
 } from "metabase-types/api";
 
@@ -112,66 +109,33 @@ export const NotificationChannelsPicker = ({
   const channels = (nullableChannels ||
     DEFAULT_CHANNELS_CONFIG) as ChannelApiResponse["channels"];
 
-  const emailChannel = notificationHandlers.find(
-    ({ channel_type }) => channel_type === "channel/email",
-  ) as NotificationHandlerEmail | undefined;
-  const slackChannel = notificationHandlers.find(
-    ({ channel_type }) => channel_type === "channel/slack",
-  ) as NotificationHandlerSlack | undefined;
-  const hookChannels = notificationHandlers.filter(
-    ({ channel_type }) => channel_type === "channel/http",
-  ) as NotificationHandlerHttp[];
-
-  const channelsToAdd: ChannelToAddOption[] = [
-    channels.email.configured && !emailChannel
-      ? {
-          type: "channel/email" as const,
-          name: t`Email`,
-        }
-      : null,
-    channels.slack.configured && !slackChannel
-      ? {
-          type: "channel/slack" as const,
-          name: t`Slack`,
-        }
-      : null,
-    ...(channels.http.configured && isAdmin
-      ? notificationChannels
-          .filter(
-            ({ id }) =>
-              !hookChannels.find(({ channel_id }) => id === channel_id),
-          )
-          .map(({ id, type, name }) => ({
-            channel_id: id,
-            type,
-            name,
-          }))
-      : []),
-  ].filter(isNotNull);
+  const { emailHandler, slackHandler, hookHandlers } =
+    getNotificationHandlersGroupedByTypes(notificationHandlers);
 
   return (
     <Stack spacing="xl" align="start">
-      {channels.email.configured && !!emailChannel && (
+      {channels.email.configured && !!emailHandler && (
         <EmailChannelEdit
-          channel={emailChannel}
+          channel={emailHandler}
           users={usersListOptions}
           invalidRecipientText={getInvalidRecipientText}
-          onChange={newConfig => onChannelChange(emailChannel, newConfig)}
-          onRemoveChannel={() => onRemoveChannel(emailChannel)}
+          onChange={newConfig => onChannelChange(emailHandler, newConfig)}
+          onRemoveChannel={() => onRemoveChannel(emailHandler)}
         />
       )}
 
-      {channels.slack.configured && !!slackChannel && (
+      {channels.slack.configured && !!slackHandler && (
         <SlackChannelEdit
-          channel={slackChannel}
+          channel={slackHandler}
           channelSpec={channels.slack}
-          onChange={newConfig => onChannelChange(slackChannel, newConfig)}
-          onRemoveChannel={() => onRemoveChannel(slackChannel)}
+          onChange={newConfig => onChannelChange(slackHandler, newConfig)}
+          onRemoveChannel={() => onRemoveChannel(slackHandler)}
         />
       )}
 
       {isAdmin &&
-        hookChannels.map(channel => (
+        hookHandlers &&
+        hookHandlers.map(channel => (
           <WebhookChannelEdit
             key={`webhook-${channel.channel_id}`}
             notificationChannel={
@@ -181,12 +145,13 @@ export const NotificationChannelsPicker = ({
           />
         ))}
 
-      {!!channelsToAdd.length && (
-        <NotificationChannelsAddMenu
-          channelsToAdd={channelsToAdd}
-          onAddChannel={addChannel}
-        />
-      )}
+      <NotificationChannelsAddMenu
+        notificationHandlers={notificationHandlers}
+        channelsSpec={channels}
+        notificationChannels={notificationChannels}
+        onAddChannel={addChannel}
+        isAdmin={isAdmin}
+      />
     </Stack>
   );
 };
