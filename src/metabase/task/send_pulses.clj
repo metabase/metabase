@@ -150,7 +150,10 @@
   SendPulse
   [context]
   (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
-    (send-pulse!* pulse-id channel-ids)))
+    (send-pulse!* pulse-id channel-ids)
+
+    ;; TODO delete the trigger if pulse-id doesn't exists
+    #_:a))
 
 ;;; ------------------------------------------------ Job: InitSendPulseTriggers ----------------------------------------------------
 

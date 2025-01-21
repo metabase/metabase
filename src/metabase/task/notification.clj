@@ -30,6 +30,11 @@
   (triggers/key (format "metabase.task.notification.trigger.subscription.%d"
                         subscription-id)))
 
+(defn- send-notification-trigger-key->subscription-id
+  [trigger-key]
+  (when-let [[_ m] (re-matches #"metabase\.task\.notification\.trigger\.subscription\.(\d+)" (str trigger-key))]
+    (parse-long m)))
+
 (defn- build-trigger
   "Build a Quartz Trigger for `database` and `task-info` if a schedule exists."
   ^CronTrigger [subscription-id cron-schedule]
@@ -104,16 +109,50 @@
         (log/errorf e "Failed to send notification %d for subscription %d" notification-id subscription-id)
         (throw e)))))
 
+;; called in [driver/report-timezone] setter
+(defn update-send-notification-triggers-timezone!
+  "Update the timezone of all SendPulse triggers if the report timezone changes."
+  []
+  (let [triggers     (-> send-notification-job-key task/job-info :triggers)
+        new-timezone (send-notification-timezone)
+        subscription-id->cron (t2/select-fn->fn :id :cron_schedule :model/NotificationSubscription :type :notification-subscription/cron)]
+    (doseq [trigger triggers
+            :when (not= new-timezone (:timezone trigger))] ; skip if timezone is the same
+      (let [trigger-key     (:key trigger)
+            subscription-id (send-notification-trigger-key->subscription-id trigger-key)]
+        (log/infof "Updating timezone of trigger %s to %s. Was: %s" trigger-key new-timezone (:timezone trigger))
+        (task/reschedule-trigger! (build-trigger subscription-id (get subscription-id->cron subscription-id)))))))
+
 (jobs/defjob ^{:doc "Triggers that send a notification for a subscription."}
   SendNotification
   [context]
   (let [{:strs [subscription-id]} (qc/from-job-data context)]
     (send-notification* subscription-id)))
 
+(jobs/defjob
+  ^{:doc
+    "Find all notification subscriptions with cron schedules and create a trigger for each.
+
+    Context: We've migrated alerts from pulse to notifications, see the `v53.2024-12-12T08:05:00` migration.
+    This job is needed to create triggers for all existing notification subscriptions.
+    Will only run once when Metabase starts up."}
+  InitNotificationTriggers
+  [_context]
+  (doall (map update-subscription-trigger! (t2/select :model/NotificationSubscription))))
+
 (defmethod task/init! ::SendNotifications [_]
-  (let [send-notification-job (jobs/build
-                               (jobs/with-identity send-notification-job-key)
-                               (jobs/with-description "Send Notification")
-                               (jobs/of-type SendNotification)
-                               (jobs/store-durably))]
-    (task/add-job! send-notification-job)))
+  (let [send-notification-job              (jobs/build
+                                            (jobs/with-identity send-notification-job-key)
+                                            (jobs/with-description "Send Notification")
+                                            (jobs/of-type SendNotification)
+                                            (jobs/store-durably))
+        init-notification-triggers-job     (jobs/build
+                                            (jobs/of-type InitNotificationTriggers)
+                                            (jobs/with-identity (jobs/key "metabase.task.notification.init-notification-triggers.job"))
+                                            (jobs/store-durably))
+        init-notification-triggers-trigger (triggers/build
+                                            (triggers/with-identity (triggers/key "metabase.task.notification.init-notification-triggers.trigger"))
+                                            ;; run only once per MB instance (like a migration)
+                                            (triggers/start-now))]
+    (task/add-job! send-notification-job)
+    (task/schedule-task! init-notification-triggers-job init-notification-triggers-trigger)))
