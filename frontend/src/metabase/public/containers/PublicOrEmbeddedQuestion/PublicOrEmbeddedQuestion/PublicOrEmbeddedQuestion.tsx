@@ -2,10 +2,12 @@ import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useMount } from "react-use";
 
+import type { DashboardUrlHashOptions } from "metabase/dashboard/types";
+import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
-import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
+import { useEmbedFont } from "metabase/public/hooks/use-embed-font";
 import { setErrorPage } from "metabase/redux/app";
 import { addFields, addParamValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -50,7 +52,12 @@ export const PublicOrEmbeddedQuestion = ({
     {},
   );
 
-  useSetEmbedFont({ location });
+  const { setFont } = useEmbedFont();
+  useEffect(() => {
+    const { font } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
+
+    setFont(font ?? null);
+  }, [location.hash, setFont]);
 
   const { bordered, hide_parameters, theme, titled, downloadsEnabled, locale } =
     useEmbedFrameOptions({ location });

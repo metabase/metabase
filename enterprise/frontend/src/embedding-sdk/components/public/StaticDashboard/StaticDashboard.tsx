@@ -18,6 +18,7 @@ import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
+import { useEmbedFont } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Box } from "metabase/ui";
@@ -55,6 +56,8 @@ export const StaticDashboardInner = ({
 
   const { theme } = useEmbedTheme();
 
+  const { font } = useEmbedFont();
+
   return (
     <Box
       w="100%"
@@ -75,6 +78,7 @@ export const StaticDashboardInner = ({
         refreshPeriod={refreshPeriod}
         onRefreshPeriodChange={onRefreshPeriodChange}
         setRefreshElapsedHook={setRefreshElapsedHook}
+        font={font}
         bordered={displayOptions.bordered}
         onLoad={onLoad}
         onLoadWithoutCards={onLoadWithoutCards}

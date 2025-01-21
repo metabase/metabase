@@ -1,5 +1,4 @@
-import { renderHook } from "@testing-library/react";
-import type { Location } from "history";
+import { act, renderHook } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 
 import { MetabaseReduxProvider } from "metabase/lib/redux";
@@ -8,18 +7,17 @@ import { getStore } from "metabase/store";
 import type { EmbedState } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { useSetEmbedFont } from "./use-set-embed-font";
+import { useEmbedFont } from "./use-embed-font";
 
-const setup = ({ location }: { location: Location }) => {
+const setup = () => {
   const store = getStore(mainReducers, undefined, createMockState());
 
   const Wrapper = ({ children }: PropsWithChildren) => (
     <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>
   );
 
-  const { result, rerender } = renderHook(props => useSetEmbedFont(props), {
+  const { result, rerender } = renderHook(() => useEmbedFont(), {
     wrapper: Wrapper,
-    initialProps: { location },
   });
 
   const getEmbedOptionsState = () =>
@@ -28,18 +26,20 @@ const setup = ({ location }: { location: Location }) => {
   return { result, rerender, getEmbedOptionsState };
 };
 
-describe("useSetEmbedFont", () => {
+describe("useEmbedFont", () => {
   it("sets and updates font", () => {
-    const { rerender, getEmbedOptionsState } = setup({
-      location: { hash: "#font=Roboto" } as Location,
+    const { result, getEmbedOptionsState } = setup();
+
+    act(() => {
+      result.current.setFont("Roboto");
     });
 
     expect(getEmbedOptionsState().font).toBe("Roboto");
 
-    rerender({
-      location: { hash: "" } as Location,
+    act(() => {
+      result.current.setFont(null);
     });
 
-    expect(getEmbedOptionsState().font).toBe(undefined);
+    expect(getEmbedOptionsState().font).toBe("Lato");
   });
 });
