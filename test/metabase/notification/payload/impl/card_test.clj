@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.api.testing :as testing]
    [metabase.channel.core :as channel]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -10,6 +11,7 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
 (use-fixtures
@@ -335,18 +337,26 @@
      notification
      {:channel/email
       (fn [[email]]
-        (is (= (construct-email
-                {:recipients #{"ngoc@metabase.com"}
-                 :message [{notification.tu/default-card-name true
-                            "Manage your subscriptions"       false
-                            "Unsubscribe"                     true}
-                           notification.tu/png-attachment
-                           notification.tu/csv-attachment]})
-               (mt/summarize-multipart-single-email
-                email
-                card-name-regex
-                #"Manage your subscriptions"
-                #"Unsubscribe"))))})))
+        (testing "email is sent correctly"
+          (is (= (construct-email
+                  {:recipients #{"ngoc@metabase.com"}
+                   :message [{notification.tu/default-card-name true
+                              "Manage your subscriptions"       false
+                              "Unsubscribe"                     true}
+                             notification.tu/png-attachment
+                             notification.tu/csv-attachment]})
+                 (mt/summarize-multipart-single-email
+                  email
+                  card-name-regex
+                  #"Manage your subscriptions"
+                  #"Unsubscribe"))))
+
+        (testing "the unsubscribe url is correct"
+          (let [url    (re-find #"https://[^/]+/testmb/unsubscribe[^\"]*" (-> email :message first :content))
+                params (codec/form-decode (second (str/split url #"\?")))]
+            (is (int? (parse-long (get params "notification-handler-id"))))
+            (is (= "ngoc@metabase.com" (get params "email")))
+            (is (string? (get params "hash"))))))})))
 
 (deftest permission-test
   (mt/with-temp [:model/Collection coll {}]

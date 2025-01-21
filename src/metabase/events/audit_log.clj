@@ -118,6 +118,18 @@
                               :model    :model/Card
                               :model-id (:id object)})))
 
+(derive ::notification-event ::event)
+(derive :event/notification-unsubscribe-ex ::notification-event)
+(derive :event/notification-unsubscribe-undo-ex ::notification-event)
+
+(methodical/defmethod events/publish-event! ::notification-event
+  [topic {:keys [object user-id] :as _event}]
+  (audit-log/record-event! topic
+                           {:details  object
+                            :user-id  user-id
+                            :model    :model/Notification
+                            :model-id (:id object)}))
+
 (derive ::segment-event ::event)
 (derive :event/segment-create ::segment-event)
 (derive :event/segment-update ::segment-event)
