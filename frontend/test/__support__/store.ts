@@ -7,7 +7,6 @@ import {
   DashboardSchema,
   DatabaseSchema,
   FieldSchema,
-  IndexedEntitySchema,
   QuestionSchema,
   SchemaSchema,
   SegmentSchema,
@@ -59,7 +58,6 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   fields: [FieldSchema],
   segments: [SegmentSchema],
   snippets: [SnippetSchema],
-  indexedEntities: [IndexedEntitySchema],
   users: [UserSchema],
   questions: [QuestionSchema],
 };

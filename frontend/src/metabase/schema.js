@@ -11,7 +11,6 @@ export const ActionSchema = new schema.Entity("actions");
 export const UserSchema = new schema.Entity("users");
 export const QuestionSchema = new schema.Entity("questions");
 export const CacheConfigSchema = new schema.Entity("cacheConfigs");
-export const IndexedEntitySchema = new schema.Entity("indexedEntities");
 export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
@@ -115,7 +114,6 @@ export const ENTITIES_SCHEMA_MAP = {
   actions: ActionSchema,
   questions: QuestionSchema,
   cacheConfigs: CacheConfigSchema,
-  indexedEntity: IndexedEntitySchema,
   bookmarks: BookmarkSchema,
   dashboards: DashboardSchema,
   pulses: PulseSchema,

@@ -11,6 +11,7 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
+import type { $TS_FIXME } from "metabase/lib/entities-types";
 import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { ActionSchema } from "metabase/schema";
@@ -115,11 +116,11 @@ const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 /**
  * @deprecated use "metabase/api" instead
  */
+// @ts-expect-error -- deprecated self-referential type
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",
   schema: ActionSchema,
-  path: "/api/action",
   rtk: {
     getUseGetQuery: () => ({
       useGetQuery: useGetActionQuery,
@@ -207,7 +208,10 @@ const Actions = createEntity({
         undo({}, t`action`, archived ? t`archived` : t`unarchived`),
       ),
   },
-  reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
+  reducer: (
+    state: $TS_FIXME = {},
+    { type, payload }: { type: string; payload: any },
+  ) => {
     switch (type) {
       case CREATE_PUBLIC_LINK: {
         const { id, uuid } = payload;

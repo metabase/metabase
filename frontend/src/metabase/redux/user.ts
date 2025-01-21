@@ -2,6 +2,7 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 
 import Dashboards from "metabase/entities/dashboards";
 import Users from "metabase/entities/users";
+import type { $TS_FIXME } from "metabase/lib/entities-types";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
 import { UserApi } from "metabase/services";
@@ -42,7 +43,7 @@ export const currentUser = createReducer<User | null>(null, builder => {
       }
       return state;
     })
-    .addCase(Users.actionTypes.UPDATE, (state, { payload }) => {
+    .addCase(Users.actionTypes.UPDATE, (state, { payload }: $TS_FIXME) => {
       const isCurrentUserUpdated =
         payload.user && state?.id === payload.user.id;
       if (isCurrentUserUpdated) {
