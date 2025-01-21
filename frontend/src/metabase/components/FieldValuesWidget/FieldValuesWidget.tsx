@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { StyleHTMLAttributes } from "react";
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -135,6 +135,7 @@ export function FieldValuesWidgetInner({
   valueRenderer,
   optionRenderer,
   layoutRenderer,
+  forwardedRef,
 }: IFieldValuesWidgetProps) {
   const [options, setOptions] = useState<FieldValue[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingStateType>("INIT");
@@ -451,6 +452,7 @@ export function FieldValuesWidgetInner({
           minWidth: minWidth ?? undefined,
           maxWidth: maxWidth ?? undefined,
         }}
+        ref={forwardedRef}
       >
         {isListMode && isLoading ? (
           <LoadingState />
@@ -514,8 +516,19 @@ export function FieldValuesWidgetInner({
   );
 }
 
+const FieldValuesWidgetWithRef = forwardRef((props, ref) => (
+  <FieldValuesWidgetInner {...props} forwardedRef={ref} />
+));
+
+FieldValuesWidgetWithRef.displayName = "FieldValuesWidgetWithRef";
+
 export const FieldValuesWidget = ExplicitSize<IFieldValuesWidgetProps>()(
-  FieldValuesWidgetInner,
+  FieldValuesWidgetWithRef,
+);
+
+// eslint-disable-next-line import/no-default-export
+export default connect(mapStateToProps, null, null, { forwardRef: true })(
+  FieldValuesWidget,
 );
 
 const LoadingState = () => (
@@ -549,9 +562,6 @@ const EveryOptionState = () => (
   <OptionsMessage>{t`Including every option in your filter probably won’t do much…`}</OptionsMessage>
 );
 
-// eslint-disable-next-line import/no-default-export
-export default connect(mapStateToProps)(FieldValuesWidget);
-
 interface RenderOptionsProps {
   alwaysShowOptions: boolean;
   parameter?: Parameter;
@@ -566,7 +576,6 @@ interface RenderOptionsProps {
   isAllSelected: boolean;
   isFiltered: boolean;
 }
-
 function renderOptions({
   alwaysShowOptions,
   parameter,

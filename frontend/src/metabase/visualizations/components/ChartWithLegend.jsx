@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import { Component, forwardRef } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -126,6 +126,7 @@ class ChartWithLegend extends Component {
           paddingLeft: PADDING,
           paddingRight: PADDING,
         }}
+        ref={this.props.forwardedRef}
       >
         {legend && (
           <div className={cx(styles.LegendWrapper)} data-testid="chart-legend">
@@ -154,7 +155,13 @@ class ChartWithLegend extends Component {
   }
 }
 
+const ChartWithLegendWithRef = forwardRef((props, ref) => {
+  return <ChartWithLegend {...props} forwardedRef={ref} />;
+});
+
+ChartWithLegendWithRef.displayName = "ChartWithLegendWithRef";
+
 export default ExplicitSize({
   wrapped: true,
   refreshMode: "debounceLeading",
-})(ChartWithLegend);
+})(ChartWithLegendWithRef);

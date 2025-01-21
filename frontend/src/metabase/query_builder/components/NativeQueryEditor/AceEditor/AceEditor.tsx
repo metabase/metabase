@@ -530,7 +530,10 @@ export class AceEditorInner extends Component<AceEditorProps> {
         className={S.editor}
         id={ACE_ELEMENT_ID}
         data-testid="native-query-editor"
-        ref={this.editor}
+        ref={el => {
+          this.props.forwardedRef?.(el);
+          this.editor.current = el;
+        }}
       />
     );
   }
@@ -548,10 +551,16 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
   },
 });
 
+const AceEditorWithRef = forwardRef((props, ref) => {
+  return <AceEditorInner {...props} forwardedRef={ref}></AceEditorInner>;
+});
+
+AceEditorWithRef.displayName = "AceEditorInner";
+
 const ConnectedAceEditor = _.compose(
   ExplicitSize(),
   connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
-)(AceEditorInner);
+)(AceEditorWithRef);
 
 export const AceEditor = forwardRef<EditorRef, EditorProps>(
   function AceEditor(props, ref) {
