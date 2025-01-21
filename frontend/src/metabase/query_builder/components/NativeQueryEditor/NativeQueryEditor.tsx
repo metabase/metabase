@@ -310,6 +310,11 @@ export class NativeQueryEditor extends Component<
     const engine = Lib.engine(query);
     const queryText = Lib.rawNativeQuery(query);
 
+    if (!engine) {
+      // no engine found, do nothing
+      return;
+    }
+
     const formattedQuery = await formatQuery(queryText, engine);
     this.onChange(formattedQuery);
     this.focus();

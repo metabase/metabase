@@ -250,11 +250,11 @@ const engineToDialect = {
 };
 
 type LanguageOptions = {
-  engine?: string;
+  engine?: string | null;
   completers?: CompletionSource[];
 };
 
-function source(engine?: string) {
+function source(engine?: string | null) {
   // TODO: this should be provided by the engine driver through the API
   switch (engine) {
     case "mongo":
@@ -287,7 +287,6 @@ function source(engine?: string) {
 
 function language({ engine, completers = [] }: LanguageOptions) {
   const { language } = source(engine);
-
   if (!language) {
     return [];
   }
