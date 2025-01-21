@@ -2,7 +2,8 @@
   (:require
    [clojure.walk :as walk]
    [compojure.core :refer [GET]]
-   [metabase.api.common :as api]
+   [metabase.api.common :as api] 
+   [metabase.api.macros :as api.macros]
    [metabase.models.cache-config :as cache-config]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.i18n :refer [tru trun]]
@@ -92,30 +93,31 @@
   (check-cache-access (first model) id)
   {:data (cache-config/get-list model collection id)})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/"
+(api.macros/defendpoint :put "/"
   "Store cache configuration."
-  [:as {{:keys [model model_id strategy] :as config} :body}]
-  {model    cache-config/CachingModel
-   model_id ms/IntGreaterThanOrEqualToZero
-   strategy (CacheStrategyAPI)}
+  [_route-params
+   _query-params
+   {:keys [model model_id strategy] :as config} :- [:map
+          [:model    cache-config/CachingModel]
+          [:model_id ms/IntGreaterThanOrEqualToZero]
+          [:strategy (CacheStrategyAPI)]]]
   (assert-valid-models model [model_id] (premium-features/enable-cache-granular-controls?))
   (check-cache-access model model_id)
   {:id (cache-config/store! api/*current-user-id* config)})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/"
+(api.macros/defendpoint :delete "/"
   "Delete cache configurations."
-  [:as {{:keys [model model_id]} :body}]
-  {model    cache-config/CachingModel
-   model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)}
+  [_route-params
+   _query-params
+   {:keys [model model_id]} :- [:map
+          [:model    cache-config/CachingModel]
+          [:model_id (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]
   (assert-valid-models model model_id (premium-features/enable-cache-granular-controls?))
   (doseq [id model_id] (check-cache-access model id))
   (cache-config/delete! api/*current-user-id* model model_id)
   nil)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/invalidate"
+(api.macros/defendpoint :post "/invalidate"
   "Invalidate cache entries.
 
   Use it like `/api/cache/invalidate?database=1&dashboard=15` (any number of database/dashboard/question can be
@@ -123,12 +125,12 @@
 
   `&include=overrides` controls whenever you want to invalidate cache for a specific cache configuration without
   touching all nested configurations, or you want your invalidation to trickle down to every card."
-  [include database dashboard question]
-  {include   [:maybe {:description "All cache configuration overrides should invalidate cache too"} [:= :overrides]]
-   database  [:maybe {:description "A list of database ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
-   dashboard [:maybe {:description "A list of dashboard ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
-   question  [:maybe {:description "A list of question ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]}
-
+  [_route-params
+   {:keys [include database dashboard question]} :- [:map
+          [:include   {:optional true} [:maybe {:description "All cache configuration overrides should invalidate cache too"} [:= :overrides]]]
+          [:database  {:optional true} [:maybe {:description "A list of database ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+          [:dashboard {:optional true} [:maybe {:description "A list of dashboard ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+          [:question  {:optional true} [:maybe {:description "A list of question ids"} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (when-not (premium-features/enable-cache-granular-controls?)
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
 
