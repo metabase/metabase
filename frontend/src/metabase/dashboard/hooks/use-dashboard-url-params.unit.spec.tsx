@@ -3,14 +3,14 @@ import type { Location } from "history";
 import type { PropsWithChildren } from "react";
 
 import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { useEmbedFont } from "metabase/public/hooks";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { useDashboardUrlParams } from "./use-dashboard-url-params";
-import { useEmbedFont } from "./use-embed-font";
 
-jest.mock("./use-embed-font", () => ({
+jest.mock("metabase/public/hooks/use-embed-font", () => ({
   useEmbedFont: jest.fn(),
 }));
 

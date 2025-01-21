@@ -1,42 +1,36 @@
-import PropTypes from "prop-types";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
-import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
+import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
+import { useDispatch } from "metabase/lib/redux";
 import { turnQuestionIntoModel } from "metabase/query_builder/actions";
-import { Box, Text } from "metabase/ui";
+import { Box, Button, Text } from "metabase/ui";
 
 import NewDatasetModalS from "./NewDatasetModal.module.css";
 
-const propTypes = {
-  turnQuestionIntoModel: PropTypes.func.isRequired,
-  onClose: PropTypes.func.isRequired,
-};
+export function NewDatasetModal({ onClose }: { onClose: () => void }) {
+  const dispatch = useDispatch();
 
-const mapDispatchToProps = {
-  turnQuestionIntoModel,
-};
+  const [, ack] = useUserAcknowledgement("turn_into_model_modal");
 
-function NewDatasetModal({ turnQuestionIntoModel, onClose }) {
-  const onConfirm = () => {
-    turnQuestionIntoModel();
+  const onConfirm = useCallback(() => {
+    ack();
+    dispatch(turnQuestionIntoModel());
     onClose();
-  };
+  }, [dispatch, ack, onClose]);
 
   return (
     <ModalContent
       footer={[
-        <Link
-          className={CS.textBrand}
+        <Button
           key="cancel"
           onClick={onClose}
-        >{t`Cancel`}</Link>,
+          variant="subtle"
+        >{t`Cancel`}</Button>,
         <Button
           key="action"
-          primary
+          variant="filled"
           onClick={onConfirm}
         >{t`Turn this into a model`}</Button>,
       ]}
@@ -62,7 +56,3 @@ function NewDatasetModal({ turnQuestionIntoModel, onClose }) {
     </ModalContent>
   );
 }
-
-NewDatasetModal.propTypes = propTypes;
-
-export default connect(null, mapDispatchToProps)(NewDatasetModal);
