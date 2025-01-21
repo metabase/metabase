@@ -15,3 +15,7 @@
                            (-> d :errors :email))]
           {:output message}
           (throw e))))))
+
+(mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/invite-user
+  [_tool-name _context]
+  false)
