@@ -26,9 +26,9 @@ import type {
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
 import {
-  CodeMirrorEditor as Editor,
-  type EditorProps,
-  type EditorRef,
+  CodeMirrorEditor,
+  type CodeMirrorEditorProps,
+  type CodeMirrorEditorRef,
 } from "./CodeMirrorEditor";
 import DataSourceSelectors from "./DataSourceSelectors";
 import S from "./NativeQueryEditor.module.css";
@@ -108,7 +108,10 @@ interface EntityLoaderProps {
   snippetCollections?: Collection[];
 }
 
-type Props = OwnProps & ExplicitSizeProps & EntityLoaderProps & EditorProps;
+type Props = OwnProps &
+  ExplicitSizeProps &
+  EntityLoaderProps &
+  Omit<CodeMirrorEditorProps, "query">;
 
 interface NativeQueryEditorState {
   initialHeight: number;
@@ -122,7 +125,7 @@ export class NativeQueryEditor extends Component<
   NativeQueryEditorState
 > {
   resizeBox = createRef<HTMLDivElement & ResizableBox>();
-  editor = createRef<EditorRef>();
+  editor = createRef<CodeMirrorEditorRef>();
 
   constructor(props: Props) {
     super(props);
@@ -403,7 +406,7 @@ export class NativeQueryEditor extends Component<
           }}
         >
           <>
-            <Editor
+            <CodeMirrorEditor
               ref={this.editor}
               query={question.query()}
               readOnly={readOnly}
