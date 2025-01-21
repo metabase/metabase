@@ -1,4 +1,6 @@
+/* eslint-disable testing-library/no-node-access */
 import { render, screen } from "@testing-library/react";
+
 import MiniBar from "metabase/visualizations/components/MiniBar";
 
 const _MINIBAR_OPTIONS = {
@@ -23,7 +25,7 @@ describe("MiniBar", () => {
     render(<MiniBar value={0.4} extent={[0.1, 0.8]} options={options} />);
     const miniBar = screen.getByTestId("mini-bar");
     const progressBar = miniBar.children[0];
-    expect(progressBar.style.width).toBe("40%");
+    expect(progressBar).toHaveStyle({ width: "40%" });
   });
 
   it("should use max value as reference max for decimal columns", () => {
@@ -34,6 +36,6 @@ describe("MiniBar", () => {
     render(<MiniBar value={0.8} extent={[0.1, 0.8]} options={options} />);
     const miniBar = screen.getByTestId("mini-bar");
     const progressBar = miniBar.children[0];
-    expect(progressBar.style.width).toBe("100%");
+    expect(progressBar).toHaveStyle({ width: "100%" });
   });
 });
