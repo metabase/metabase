@@ -479,7 +479,7 @@ describe("issue 30165", () => {
   });
 
   it("should not autorun native queries after updating a question (metabase#30165)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.findByTestId("native-query-editor").type("SELECT * FROM ORDERS");
     H.saveQuestionToCollection("Q1");
 
