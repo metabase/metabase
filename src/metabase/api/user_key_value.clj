@@ -1,5 +1,5 @@
 (ns metabase.api.user-key-value
-  (:require [compojure.core :refer [GET PUT DELETE]]
+  (:require [compojure.core :refer [DELETE GET PUT]]
             [malli.core :as mc]
             [malli.experimental.time.transform :as mett]
             [malli.transform :as mtx]

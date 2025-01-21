@@ -243,7 +243,7 @@
         dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
     (doseq [dashboard dashboards]
       (api/write-check dashboard))
-    (map #(dissoc % :collection_id) dashboards)))
+    (map #(dissoc % :collection_id :description :archived) dashboards)))
 
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
