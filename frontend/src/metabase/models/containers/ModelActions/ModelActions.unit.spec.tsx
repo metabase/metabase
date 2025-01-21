@@ -54,6 +54,8 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
+import ModelActions from "./ModelActions";
+
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
   <div data-testid="mock-action-editor" />
@@ -230,7 +232,7 @@ async function setup({
   const { history } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
-        <Route path="actions" component={ModelDetailPage}>
+        <Route path="actions" component={ModelActions}>
           <ModalRoute
             path="new"
             modal={ActionCreator}
