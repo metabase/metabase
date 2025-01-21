@@ -23,6 +23,7 @@ import { Box, Stack, Tabs, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionDetails } from "./QuestionDetails";
+import { SidesheetCardWithFields } from "./components/SidesheetCardWithFields";
 
 interface QuestionInfoSidebarProps {
   question: Question;
@@ -108,6 +109,7 @@ export const QuestionInfoSidebar = ({
               <SidesheetCard>
                 <QuestionDetails question={question} />
               </SidesheetCard>
+              <SidesheetCardWithFields question={question} />
               <EntityIdCard entityId={question._card.entity_id} />
             </Stack>
           </Tabs.Panel>

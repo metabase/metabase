@@ -17,7 +17,6 @@ import {
   TabRow,
 } from "./ModelDetailPage.styled";
 import ModelInfoSidePanel from "./ModelInfoSidePanel";
-import ModelSchemaDetails from "./ModelSchemaDetails";
 import { ModelUsageDetails } from "./ModelUsageDetails";
 
 interface Props {
@@ -62,10 +61,6 @@ function ModelDetailPage({
               value="usage"
               to={Urls.modelDetail(modelCard, "usage")}
             >{t`Used by`}</TabLink>
-            <TabLink
-              value="schema"
-              to={Urls.modelDetail(modelCard, "schema")}
-            >{t`Schema`}</TabLink>
             {hasActionsTab && (
               <TabLink
                 value="actions"
@@ -82,14 +77,6 @@ function ModelDetailPage({
                   supportsNestedQueries &&
                   hasNestedQueriesEnabled
                 }
-              />
-            </TabPanelContent>
-          </TabPanel>
-          <TabPanel value="schema">
-            <TabPanelContent>
-              <ModelSchemaDetails
-                model={model}
-                hasEditMetadataLink={hasDataPermissions}
               />
             </TabPanelContent>
           </TabPanel>
