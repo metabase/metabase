@@ -51,8 +51,7 @@ describe("scenarios > visualizations > table", () => {
 
     cy.findByTestId(/subtotal-hide-button/i).click();
     cy.findByTestId(/tax-hide-button/i).click();
-
-    H.closeVizSettingsSidebar();
+    cy.findByTestId("sidebar-left").findByText("Done").click();
 
     headerCells().eq(3).should("contain.text", "TOTAL").as("total");
 
@@ -269,7 +268,10 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should show field metadata hovercards for native query tables", () => {
-    H.startNewNativeQuestion({ query: "select * from products limit 1" });
+    H.startNewNativeQuestion({
+      query: "select * from products limit 1",
+      display: "table",
+    });
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.log("Wait for the table to load");

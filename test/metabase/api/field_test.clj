@@ -7,8 +7,8 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
-   [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.timeseries-query-processor-test.util :as tqpt]
@@ -183,7 +183,7 @@
                                         ;; unix is an integer->Temporal conversion
                                         {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime}))))))
       (testing "Refingerprints field when updated"
-        (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
+        (with-redefs [sync.concurrent/submit-task! (fn [task] (task))]
           (mt/dataset integer-coerceable
             (sync/sync-database! (t2/select-one :model/Database :id (mt/id)))
             (let [field-id      (mt/id :t :f)

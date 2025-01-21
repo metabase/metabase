@@ -6,7 +6,7 @@
   (:require
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.models.channel :as models.channel]
+   [metabase.channel.models.channel :as models.channel]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.util.spec-update :as models.u.spec-update]

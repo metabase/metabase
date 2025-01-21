@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.xrays.automagic-dashboards.core-test
+(ns metabase.xrays.automagic-dashboards.core-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -11,7 +11,7 @@
    [metabase.models.query :as query]
    [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]

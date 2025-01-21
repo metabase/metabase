@@ -15,7 +15,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]

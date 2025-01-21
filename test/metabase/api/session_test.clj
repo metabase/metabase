@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.api.session-test
+(ns metabase.api.session-test
   "Tests for /api/session"
   (:require
    [clj-http.client :as http]
