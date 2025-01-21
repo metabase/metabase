@@ -5,6 +5,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
+   [metabase.channel.template.core :as channel.template]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -44,7 +45,7 @@
               :url          url}
              (when method
                {:method (keyword method)})
-             (cond-> request
+             (cond-> (update-keys request keyword)
                (= "request-body" auth-method) (update :body merge auth-info)
                (= "header" auth-method)       (update :headers merge auth-info)
                (= "query-param" auth-method)  (update :query-params merge auth-info)))]
@@ -85,22 +86,26 @@
     {:cols (map :name (:cols data))
      :rows (:rows data)}))
 
+(def ^:private
+  default-template {:type :email/handlebars-resource
+                    :path "metabase/email/notification_card_http.hbs"})
+
 (mu/defmethod channel/render-notification [:channel/http :notification/card]
-  [_channel-type {:keys [payload creator]} _template _recipients]
-  (let [{:keys [card notification_card card_part]} payload
+  [_channel-type {:keys [payload] :as notification-payload} _template _recipients]
+  (let [{:keys [card_part]} payload
         card_part                        (channel.shared/realize-data-rows card_part)
-        request-body {:type               "alert"
-                      ;; TODO: can we rename this???
-                      :alert_id           (:id notification_card)
-                      :alert_creator_id   (:id creator)
-                      :alert_creator_name (:common_name creator)
-                      :data               {:type          "question"
-                                           :question_id   (:id card)
-                                           :question_name (:name card)
-                                           :question_url  (urls/card-url (:id card))
-                                           :visualization (let [{:keys [card dashcard result]} card_part]
-                                                            (channel.render/render-pulse-card-to-base64
-                                                             (channel.render/defaulted-timezone card) card dashcard result image-width))
-                                           :raw_data      (qp-result->raw-data (:result card_part))}
-                      :sent_at            (t/offset-date-time)}]
-    [{:body request-body}]))
+        notification-payload             (-> notification-payload
+                                             (assoc-in [:payload :card_part] card_part)
+                                             (assoc-in [:payload :card_part :visualization] (let [{:keys [card dashcard result]} card_part]
+                                                                                              (channel.render/render-pulse-card-to-base64
+                                                                                               (channel.render/defaulted-timezone card) card dashcard result image-width)))
+                                             (assoc-in [:payload :card_part :raw_data] (qp-result->raw-data (:result card_part))))]
+    [(->> notification-payload
+          (channel.template/render (:path default-template))
+          json/decode)]))
+(comment
+  (metabase.test/with-temp [:model/Channel {chn-id :id} {:type :channel/http}]
+    (metabase.notification.test-util/with-card-notification
+      [notification {:handlers [{:channel_type :channel/http}]}]
+      (metabase.notification.core/send-notification! notification :notification/sync? true)
+      notification)))
