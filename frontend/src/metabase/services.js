@@ -355,6 +355,12 @@ export const PulseUnsubscribeApi = {
   undo_unsubscribe: POST("/api/pulse/unsubscribe/undo"),
 };
 
+// also unauthenticated
+export const NotificationUnsubscribeAPI = {
+  unsubscribe: POST("/api/notification/unsubscribe"),
+  undo_unsubscribe: POST("/api/notification/unsubscribe/undo"),
+};
+
 export const SegmentApi = {
   list: GET("/api/segment"),
   create: POST("/api/segment"),
