@@ -307,14 +307,13 @@
 
 (defn- get-linked-secrets
   [{:keys [details] :as database}]
-  (when-let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
-    (let [conn-props (conn-props-fn (driver.u/database->driver database))]
-      (into {}
-            (keep (fn [prop-name]
-                    (let [id-prop (keyword (str prop-name "-id"))]
-                      (when-let [id (get details id-prop)]
-                        [id-prop id]))))
-            (keys (secret/conn-props->secret-props-by-name conn-props))))))
+  (when-let [conn-props (secret/secret-conn-props-by-name (driver.u/database->driver database))]
+    (into {}
+          (keep (fn [prop-name]
+                  (let [id-prop (keyword (str prop-name "-id"))]
+                    (when-let [id (get details id-prop)]
+                      [id-prop id]))))
+          (keys conn-props))))
 
 (defn- copy-secrets [database]
   (let [prop->old-id (get-linked-secrets database)]

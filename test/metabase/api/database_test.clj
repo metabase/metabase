@@ -16,18 +16,18 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
-   [metabase.models.database :refer [protected-password]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.secret :as secret]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.premium-features.core :as premium-features]
-   [metabase.sync :as sync]
    [metabase.sync.analyze :as analyze]
+   [metabase.sync.core :as sync]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
+   [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.task :as task]
-   [metabase.task.sync-databases :as task.sync-databases]
-   [metabase.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -1627,17 +1627,22 @@
           (is (= ["schema-with-perms"]
                  (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" database-id)))))))))
 
-(deftest get-schema-tables-test
+(deftest ^:parallel get-schema-tables-test
   (testing "GET /api/database/:id/schema/:schema"
     (testing "Should return a 404 if the database isn't found"
       (is (= "Not found."
-             (mt/user-http-request :crowberto :get 404 (format "database/%s/schema/%s" Integer/MAX_VALUE "schema1")))))
+             (mt/user-http-request :crowberto :get 404 (format "database/%s/schema/%s" Integer/MAX_VALUE "schema1")))))))
+
+(deftest ^:parallel get-schema-tables-test-2
+  (testing "GET /api/database/:id/schema/:schema"
     (testing "Should return a 404 if the schema isn't found"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table    _ {:db_id db-id :schema "schema1"}]
         (is (= "Not found."
-               (mt/user-http-request :crowberto :get 404 (format "database/%d/schema/%s" db-id "not schema1"))))))
+               (mt/user-http-request :crowberto :get 404 (format "database/%d/schema/%s" db-id "not schema1"))))))))
 
+(deftest get-schema-tables-test-3
+  (testing "GET /api/database/:id/schema/:schema"
     (testing "should exclude Tables for which the user has no perms"
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Table    table-with-perms {:db_id database-id :schema "public" :name "table-with-perms"}
@@ -1646,30 +1651,38 @@
           (data-perms/set-database-permission! (perms-group/all-users) database-id :perms/view-data :unrestricted)
           (data-perms/set-table-permission! (perms-group/all-users) table-with-perms :perms/create-queries :query-builder)
           (is (= ["table-with-perms"]
-                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))))))))
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))))))))))
 
+(deftest ^:parallel get-schema-tables-test-4
+  (testing "GET /api/database/:id/schema/:schema"
     (testing "should exclude inactive Tables"
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Table    _ {:db_id database-id :schema "public" :name "table"}
                      :model/Table    _ {:db_id database-id :schema "public" :name "inactive-table" :active false}]
         (is (= ["table"]
-               (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
+               (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))))
 
+(deftest ^:parallel get-schema-tables-test-5
+  (testing "GET /api/database/:id/schema/:schema"
     (testing "should exclude hidden Tables"
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Table    _ {:db_id database-id :schema "public" :name "table"}
                      :model/Table    _ {:db_id database-id :schema "public" :name "hidden-table" :visibility_type "hidden"}]
         (is (= ["table"]
-               (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
+               (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))))
 
+(deftest ^:parallel get-schema-tables-test-6
+  (testing "GET /api/database/:id/schema/:schema"
     (testing "should show hidden Tables when explicitly asked for"
       (mt/with-temp [:model/Database {database-id :id} {}
                      :model/Table    _ {:db_id database-id :schema "public" :name "table"}
                      :model/Table    _ {:db_id database-id :schema "public" :name "hidden-table" :visibility_type "hidden"}]
         (is (= #{"table" "hidden-table"}
                (set (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")
-                                                     :include_hidden true)))))))
+                                                     :include_hidden true)))))))))
 
+(deftest ^:parallel get-schema-tables-test-7
+  (testing "GET /api/database/:id/schema/:schema"
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp [:model/Collection coll   {:name "My Collection"}
                      :model/Card       card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))
@@ -1718,7 +1731,10 @@
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :lucky :get 404
-                                       (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin Collection")))))))
+                                       (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin Collection")))))))))
+
+(deftest ^:parallel get-schema-tables-test-8
+  (testing "GET /api/database/:id/schema/:schema"
     (testing "should work for the datasets in the 'virtual' database"
       (mt/with-temp [:model/Collection coll   {:name "My Collection"}
                      :model/Card       card-1 (assoc (card-with-native-query "Card 1")
@@ -1785,8 +1801,10 @@
         (testing "Should throw 404 if the schema/Collection doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :lucky :get 404
-                                       (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin Collection")))))))
+                                       (format "database/%d/schema/%s" lib.schema.id/saved-questions-virtual-database-id "Coin Collection")))))))))
 
+(deftest ^:parallel get-schema-tables-test-9
+  (testing "GET /api/database/:id/schema/:schema"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    _ {:db_id db-id :schema nil :name "t1"}
                    :model/Table    _ {:db_id db-id :schema "" :name "t2"}]
@@ -1860,16 +1878,21 @@
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t3) :perms/view-data :unrestricted)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t3) :perms/create-queries :query-builder)
           (is (= ["t3"]
-                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))))
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))))))
 
+(deftest get-schema-tables-permissions-test-2
+  (testing "GET /api/database/:id/schema/:schema against permissions"
     (testing "should return a 403 for a user that doesn't have read permissions"
       (testing "for the DB"
         (mt/with-temp [:model/Database {database-id :id} {}
                        :model/Table    _ {:db_id database-id :schema "test"}]
           (mt/with-no-data-perms-for-all-users!
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "test")))))))
+                   (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "test"))))))))))
 
+(deftest get-schema-tables-permissions-test-2b
+  (testing "GET /api/database/:id/schema/:schema against permissions"
+    (testing "should return a 403 for a user that doesn't have read permissions"
       (testing "for all tables in the schema"
         (mt/with-temp [:model/Database {database-id :id} {}
                        :model/Table    {t1-id :id} {:db_id database-id :schema "schema-with-perms"}
@@ -1974,14 +1997,14 @@
                                                                   :access-token                  "access-token"
                                                                   :refresh-token                 "refresh-token"}
                                                     :id          (mt/id)}
-                                                   {:service-account-json          protected-password
+                                                   {:service-account-json          secret/protected-password
                                                     :password                      "new-password"
-                                                    :pass                          protected-password
-                                                    :tunnel-pass                   protected-password
-                                                    :tunnel-private-key            protected-password
-                                                    :tunnel-private-key-passphrase protected-password
-                                                    :access-token                  protected-password
-                                                    :refresh-token                 protected-password})))))
+                                                    :pass                          secret/protected-password
+                                                    :tunnel-pass                   secret/protected-password
+                                                    :tunnel-private-key            secret/protected-password
+                                                    :tunnel-private-key-passphrase secret/protected-password
+                                                    :access-token                  secret/protected-password
+                                                    :refresh-token                 secret/protected-password})))))
 
 (deftest ^:parallel upsert-sensitive-fields-no-fields-replaced-test
   (testing "no fields are replaced"
@@ -2010,14 +2033,14 @@
                                                                   :access-token                  "access-token"
                                                                   :refresh-token                 "refresh-token"}
                                                     :id          (mt/id)}
-                                                   {:service-account-json          protected-password
-                                                    :password                      protected-password
-                                                    :pass                          protected-password
-                                                    :tunnel-pass                   protected-password
-                                                    :tunnel-private-key            protected-password
-                                                    :tunnel-private-key-passphrase protected-password
-                                                    :access-token                  protected-password
-                                                    :refresh-token                 protected-password})))))
+                                                   {:service-account-json          secret/protected-password
+                                                    :password                      secret/protected-password
+                                                    :pass                          secret/protected-password
+                                                    :tunnel-pass                   secret/protected-password
+                                                    :tunnel-private-key            secret/protected-password
+                                                    :tunnel-private-key-passphrase secret/protected-password
+                                                    :access-token                  secret/protected-password
+                                                    :refresh-token                 secret/protected-password})))))
 
 (deftest ^:parallel secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
@@ -2026,13 +2049,12 @@
                                                :name    "Test secret DB with password path"
                                                :details {:host           "localhost"
                                                          :password-path "/path/to/password.txt"}}]
-        (is (= {:password-source "file-path"
-                :password-value  "/path/to/password.txt"}
-               (as-> (u/the-id database) d
-                 (format "database/%d" d)
-                 (mt/user-http-request :crowberto :get 200 d)
-                 (:details d)
-                 (select-keys d [:password-source :password-value]))))))))
+        (is (=? {:password-options "local"
+                 :password-path  "/path/to/password.txt"}
+                (as-> (u/the-id database) d
+                  (format "database/%d" d)
+                  (mt/user-http-request :crowberto :get 200 d)
+                  (:details d))))))))
 
 ;; these descriptions use deferred-tru because the `defsetting` macro complains if they're not, but since these are in
 ;; tests they won't get scraped for i18n purposes so it's ok.

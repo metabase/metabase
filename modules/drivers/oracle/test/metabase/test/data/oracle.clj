@@ -3,8 +3,8 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [environ.core :as env]
    [honey.sql :as sql]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.oracle]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -20,7 +20,8 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,23 +42,36 @@
 (defonce ^:private session-password "password")
 ;; Session password is only used when creating session user, not anywhere else
 
-(defn- connection-details []
+(defn- truststore-details []
+  (when (some-> (tx/db-test-env-var :oracle :ssl-use-truststore) Boolean/parseBoolean)
+    (into {:ssl-use-truststore true}
+          (keep (fn [k]
+                  (when-let [v (tx/db-test-env-var :oracle k)]
+                    [k v])))
+          [:ssl-truststore-options :ssl-truststore-path :ssl-truststore-value :ssl-truststore-password-value])))
+
+(defn- keystore-details []
+  (when (some-> (tx/db-test-env-var :oracle :ssl-use-keystore) Boolean/parseBoolean)
+    (into {:ssl-use-keystore true}
+          (keep (fn [k]
+                  (when-let [v (tx/db-test-env-var :oracle k)]
+                    [k v])))
+          [:ssl-keystore-options :ssl-keystore-path :ssl-keystore-value :ssl-keystore-password-value])))
+
+(mu/defn- connection-details :- :metabase.driver.oracle/details
+  []
   (let [details* {:host                    (tx/db-test-env-var-or-throw :oracle :host "localhost")
-                  :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
+                  :port                    (parse-long (tx/db-test-env-var-or-throw :oracle :port "1521"))
                   :user                    (tx/db-test-env-var :oracle :user)
                   :password                (tx/db-test-env-var :oracle :password)
                   :sid                     (tx/db-test-env-var :oracle :sid)
                   :service-name            (tx/db-test-env-var :oracle :service-name (when-not (tx/db-test-env-var :oracle :sid) "XEPDB1"))
-                  :ssl                     (tx/db-test-env-var :oracle :ssl false)
+                  :ssl                     (Boolean/parseBoolean (tx/db-test-env-var :oracle :ssl "false"))
                   :schema-filters-type     "inclusion"
                   :schema-filters-patterns session-schema}
-        ssl-keys [:ssl-use-truststore :ssl-truststore-options :ssl-truststore-path :ssl-truststore-value
-                  :ssl-truststore-password-value
-                  :ssl-use-keystore :ssl-keystore-options :ssl-keystore-path :ssl-keystore-value
-                  :ssl-keystore-password-value]
         details* (merge details*
-                        (m/filter-vals some?
-                                       (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))]
+                        (truststore-details)
+                        (keystore-details))]
     ;; if user or password are not set and we cannot possibly be using SSL auth, set the defaults
     (cond-> details*
       (and (nil? (:user details*)) (not (:ssl-use-keystore details*)))
@@ -65,6 +79,18 @@
 
       (and (nil? (:password details*)) (not (:ssl-use-keystore details*)))
       (assoc :password "password"))))
+
+(deftest connection-details-test
+  (testing "Make sure connection details handle things like MB_ORACLE_TEST_SSL_USE_TRUSTSTORE=false correctly"
+    (with-redefs [env/env (assoc env/env
+                                 :mb-oracle-test-user ""
+                                 :mb-oracle-test-ssl "FALSE"
+                                 :mb-oracle-test-ssl-use-truststore "true"
+                                 :mb-oracle-test-ssl-use-keystore "false")]
+      (is (=? {:user               "system"
+               :ssl                false
+               :ssl-use-truststore true}
+              (connection-details))))))
 
 (defn- dbspec [& _]
   (let [conn-details (connection-details)]

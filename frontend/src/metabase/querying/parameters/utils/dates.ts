@@ -443,7 +443,7 @@ const SERIALIZERS: Serializer[] = [
   },
 ];
 
-export function serializeDateFilter(value: DateFilterValue): string {
+export function serializeDateParameterValue(value: DateFilterValue): string {
   for (const serializer of SERIALIZERS) {
     const text = serializer.serialize(value);
     if (text != null) {
@@ -454,7 +454,7 @@ export function serializeDateFilter(value: DateFilterValue): string {
   throw new TypeError("Date filter cannot be serialized");
 }
 
-export function deserializeDateFilter(
+export function deserializeDateParameterValue(
   text: string,
 ): DateFilterValue | undefined {
   for (const serializer of SERIALIZERS) {

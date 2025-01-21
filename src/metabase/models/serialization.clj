@@ -372,6 +372,7 @@
      :skip [;; it's nice to comment why it's skipped
             :internal_data]
      :transform {:card_id (serdes/fk :model/Card)}})"
+  {:arglists '([model-name opts])}
   (fn [model-name _opts] model-name))
 
 (defmethod make-spec :default [_ _] nil)
@@ -704,6 +705,7 @@
   Keyed on the model name.
 
   Returns the primary key of the updated or inserted entity."
+  {:arglists '([ingested maybe-local])}
   (fn [ingested _]
     (ingested-model ingested)))
 

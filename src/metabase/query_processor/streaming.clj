@@ -1,6 +1,5 @@
 (ns metabase.query-processor.streaming
   (:require
-   [metabase.async.streaming-response :as streaming-response]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.visualization-settings :as mb.viz]
@@ -10,13 +9,14 @@
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.json :as qp.json]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
-   (metabase.async.streaming_response StreamingResponse)
+   (metabase.server.streaming_response StreamingResponse)
    (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)

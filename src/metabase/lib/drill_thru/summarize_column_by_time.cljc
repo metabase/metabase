@@ -49,7 +49,7 @@
              (nil? value)
              (not (lib.types.isa/structured? column))
              (lib.types.isa/summable? column)
-             (not (lib.drill-thru.common/aggregation-sourced? query column)))
+             (not (lib.underlying/aggregation-sourced? query column)))
     ;; There must be a date dimension available.
     (let [stage-number (lib.underlying/top-level-stage-number query)]
       (when-let [breakout-column (m/find-first lib.types.isa/temporal?

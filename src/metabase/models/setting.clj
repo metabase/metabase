@@ -1494,6 +1494,7 @@
 
 (defmulti may-contain-raw-token?
   "Indicate whether we must redact an exception to avoid leaking sensitive env vars"
+  {:arglists '([ex setting])}
   (fn [_ex setting] (:type setting)))
 
 ;; fallback to redaction if we have not defined behaviour for a given format

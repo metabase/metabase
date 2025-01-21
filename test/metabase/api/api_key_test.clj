@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.api.api-key-test
+(ns metabase.api.api-key-test
   "Tests for /api/api-key endpoints"
   (:require
    [clojure.test :refer [deftest testing is]]

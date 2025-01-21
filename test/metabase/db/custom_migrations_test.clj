@@ -1,5 +1,13 @@
 (ns metabase.db.custom-migrations-test
-  "Tests to make sure the custom migrations work as expected."
+  "Tests to make sure the custom migrations work as expected.
+
+  As of #52254, any tests marked `^:mb/old-migrations-test` are only run on pushes to `master` or `release-`
+  branches (i.e., PR merges). We don't need to run tests for ancient migrations on every single random PR, but it's
+  good to run them occasionally just to be sure we didn't break stuff.
+
+  My policy is that migrations for any version older than the current backport target are 'old'. For example at the
+  time of this writing our current release is 52.6, meaning `master` is targeting 53.x; all migrations shipped with
+  51.x or older are now 'old'."
   (:require
    [clojure.math :as math]
    [clojure.math.combinatorics :as math.combo]
@@ -24,9 +32,9 @@
    [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.models.setting :as setting]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
-   [metabase.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -45,6 +53,30 @@
 (use-fixtures :each (fn [thunk]
                       (binding [search.ingestion/*disable-updates* true]
                         (thunk))))
+
+(defn- migrations-versions []
+  (letfn [(form->version [form]
+            (cond
+              (sequential? form)
+              (some form->version form)
+
+              (string? form)
+              (some-> (re-find #"^(v\d{2,})\." form) second)))]
+    (with-open [r (java.io.PushbackReader. (java.io.FileReader. "test/metabase/db/custom_migrations_test.clj"))]
+      (binding [*ns*        (the-ns 'metabase.db.custom-migrations-test)
+                *read-eval* false]
+        (into []
+              (comp (take-while some?)
+                    (keep form->version))
+              (repeatedly #(read {:eof nil} r)))))))
+
+;; Kooky that I have to write this, but I do. Make sure people keep tests in order -- I don't want to find any more 52
+;; tests sandwiched between 48 tests.
+(deftest ^:parallel order-your-migration-tests-test
+  (testing "Migrations tests should be grouped together by major version and those major versions should be in order"
+    (let [versions (migrations-versions)]
+      (is (= (sort versions)
+             versions)))))
 
 (jobs/defjob AbandonmentEmail [_] :default)
 
@@ -83,7 +115,11 @@
   ([table properties]
    (t2/insert-returning-instance! table (merge (table-default table) properties))))
 
-(deftest delete-abandonment-email-task-test
+;;;
+;;; 46 tests
+;;;
+
+(deftest ^:mb/old-migrations-test delete-abandonment-email-task-test
   (testing "Migration v46.00-086: Delete the abandonment email task"
     (impl/test-migrations ["v46.00-086"] [migrate!]
       (try (do (task/start-scheduler!)
@@ -112,7 +148,11 @@
                    (is (nil? (qs/get-trigger (@#'task/scheduler) (triggers/key abandonment-emails-trigger-key)))))))
            (finally (task/stop-scheduler!))))))
 
-(deftest migrate-legacy-column-settings-field-refs-test
+;;;
+;;; 47 tests
+;;;
+
+(deftest ^:mb/old-migrations-test migrate-legacy-column-settings-field-refs-test
   (testing "Migrations v47.00-016: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-016"] [migrate!]
       (let [visualization-settings
@@ -183,7 +223,7 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
 
-(deftest migrate-legacy-result-metadata-field-refs-test
+(deftest ^:mb/old-migrations-test migrate-legacy-result-metadata-field-refs-test
   (testing "Migrations v47.00-027: update report_card.result_metadata legacy field refs"
     (impl/test-migrations ["v47.00-027"] [migrate!]
       (let [result_metadata [{"field_ref" ["field-literal" "column_name" "type/Text"]}
@@ -246,7 +286,7 @@
                        ((:out mi/transform-result-metadata))
                        json/encode)))))))))
 
-(deftest add-join-alias-to-visualization-settings-field-refs-test
+(deftest ^:mb/old-migrations-test add-join-alias-to-visualization-settings-field-refs-test
   (testing "Migrations v47.00-028: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-028"] [migrate!]
       (let [result_metadata
@@ -316,7 +356,7 @@
                        :visualization_settings
                        json/decode)))))))))
 
-(deftest downgrade-dashboard-tabs-test
+(deftest ^:mb/old-migrations-test downgrade-dashboard-tabs-test
   (testing "Migrations v47.00-029: downgrade dashboard tab test"
     ;; it's "v47.00-030" but not "v47.00-029" for some reason,
     ;; SOMETIMES the rollback of custom migration doesn't get triggered on mysql and this test got flaky.
@@ -410,7 +450,7 @@
                  :row 18}]
                (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id)))))))
 
-(deftest migrate-dashboard-revision-grid-from-18-to-24-test
+(deftest ^:mb/old-migrations-test migrate-dashboard-revision-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
     (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User)
                                                         {:first_name  "Howard"
@@ -463,7 +503,7 @@
         (is (= cards (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
                          :object json/decode+kw :cards)))))))
 
-(deftest migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
+(deftest ^:mb/old-migrations-test migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
     (let [user-id      (first (t2/insert-returning-pks! (t2/table-name :model/User)
                                                         {:first_name  "Howard"
@@ -560,7 +600,7 @@
        :size_x size_x
        :size_y size_y})))
 
-(deftest migrated-grid-18-to-24-stretch-test
+(deftest ^:mb/old-migrations-test migrated-grid-18-to-24-stretch-test
   (let [migrated-to-18   (map @#'custom-migrations/migrate-dashboard-grid-from-18-to-24 big-random-dashboard-cards)
         rollbacked-to-24 (map @#'custom-migrations/migrate-dashboard-grid-from-24-to-18 migrated-to-18)]
 
@@ -580,7 +620,7 @@
       (testing "shouldn't have overlapping cards"
         (is (true? (no-cards-are-overlap? rollbacked-to-24)))))))
 
-(deftest revision-migrate-legacy-column-settings-field-refs-test
+(deftest ^:mb/old-migrations-test revision-migrate-legacy-column-settings-field-refs-test
   (testing "Migrations v47.00-033: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-033"] [migrate!]
       (let [visualization-settings
@@ -645,7 +685,7 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
 
-(deftest revision-add-join-alias-to-column-settings-field-refs-test
+(deftest ^:mb/old-migrations-test revision-add-join-alias-to-column-settings-field-refs-test
   (testing "Migrations v47.00-034: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-034"] [migrate!]
       (let [visualization-settings
@@ -708,7 +748,7 @@
                      json/decode
                      (get "visualization_settings")))))))))
 
-(deftest migrate-legacy-dashboard-card-column-settings-field-refs-test
+(deftest ^:mb/old-migrations-test migrate-legacy-dashboard-card-column-settings-field-refs-test
   (testing "Migrations v47.00-043: update report_dashboardcard.visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-043"] [migrate!]
       (let [visualization-settings
@@ -789,7 +829,7 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
 
-(deftest add-join-alias-to-dashboard-card-visualization-settings-field-refs-test
+(deftest ^:mb/old-migrations-test add-join-alias-to-dashboard-card-visualization-settings-field-refs-test
   (testing "Migrations v47.00-044: update report_dashboardcard.visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-044"] [migrate!]
       (let [result_metadata
@@ -868,7 +908,7 @@
                      :visualization_settings
                      json/decode))))))))
 
-(deftest revision-migrate-legacy-dashboard-card-column-settings-field-refs-test
+(deftest ^:mb/old-migrations-test revision-migrate-legacy-dashboard-card-column-settings-field-refs-test
   (testing "Migrations v47.00-045: update dashboard cards' visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-045"] [migrate!]
       (let [visualization-settings
@@ -933,7 +973,7 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
 
-(deftest revision-add-join-alias-to-dashboard-card-column-settings-field-refs-test
+(deftest ^:mb/old-migrations-test revision-add-join-alias-to-dashboard-card-column-settings-field-refs-test
   (testing "Migrations v47.00-046: update dashboard cards' visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-046"] [migrate!]
       (let [visualization-settings
@@ -1013,7 +1053,11 @@
                      json/decode
                      (get-in ["cards" 0 "visualization_settings"])))))))))
 
-(deftest migrate-database-options-to-database-settings-test
+;;;
+;;; 48 tests
+;;;
+
+(deftest ^:mb/old-migrations-test migrate-database-options-to-database-settings-test
   (let [do-test
         (fn [encrypted?]
           ;; set-new-database-permissions! relies on the data_permissions table, which was added after the migrations
@@ -1104,7 +1148,7 @@
                                            :dashcard_visualization dash
                                            :card_visualization     card})))
 
-(deftest ^:parallel fix-click-through-test
+(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test
   (testing "toplevel"
     (let [card {"some_setting:"       {"foo" 123}
                 "click_link_template" "http://example.com/{{col_name}}"
@@ -1116,7 +1160,7 @@
                                 "linkTemplate" "http://example.com/{{col_name}}"}}
              (fix-click-thru card dash))))))
 
-(deftest ^:parallel fix-click-through-test-2
+(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test-2
   (testing "top level disabled"
     (let [card {"some_setting:"       {"foo" 123}
                 "click_link_template" "http://example.com/{{col_name}}"
@@ -1128,7 +1172,7 @@
       ;; would be fine but isn't needed.
       (is (nil? (fix-click-thru card dash))))))
 
-(deftest ^:parallel fix-click-through-test-3
+(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test-3
   (testing "column settings"
     (let [card {"some_setting" {"foo" 123}
                 "column_settings"
@@ -1152,7 +1196,7 @@
                {"other_fun_formatting" 123}}}
              (fix-click-thru card dash))))))
 
-(deftest ^:parallel fix-click-through-test-4
+(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test-4
   (testing "manually updated new behavior"
     (let [card {"some_setting"        {"foo" 123}
                 "click_link_template" "http://example.com/{{col_name}}"
@@ -1163,7 +1207,7 @@
                                   "linkTemplate" "http://example.com/{{other_col_name}}"}}]
       (is (nil? (fix-click-thru card dash))))))
 
-(deftest ^:parallel fix-click-through-test-5
+(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test-5
   (testing "Manually updated to new behavior on Column"
     (let [card {"some_setting" {"foo" 123},
                 "column_settings"
@@ -1199,7 +1243,7 @@
                  "linkTemplate" "http://example.com/{{something_else}}"}}}}
              (fix-click-thru card dash))))))
 
-(deftest ^:parallel fix-click-through-test-6
+(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test-6
   (testing "If there is migration eligible on dash but also new style on dash, new style wins"
     (let [dash {"column_settings"
                 {"[\"ref\",[\"field-id\",4]]"
@@ -1215,7 +1259,7 @@
       ;; no change
       (is (nil? (fix-click-thru nil dash))))))
 
-(deftest ^:parallel fix-click-through-test-7
+(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test-7
   (testing "flamber case"
     (let [card {"column_settings"
                 {"[\"ref\",[\"field-id\",4]]"
@@ -1295,7 +1339,7 @@
               "table.pivot_column" "CATEGORY"}
              (fix-click-thru card dash))))))
 
-(deftest fix-click-through-general-test
+(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-general-test
   (testing "general case"
     (let [card-vis              {"column_settings"
                                  {"[\"ref\",[\"field-id\",2]]"
@@ -1352,8 +1396,9 @@
         (is (= nil (#'custom-migrations/fix-click-through
                     {:id                     1
                      :card_visualization     card-vis
-                     :dashcard_visualization (:visualization_settings fixed)}))))))
+                     :dashcard_visualization (:visualization_settings fixed)})))))))
 
+(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-general-test-2
   (testing "ignores columns when `view_as` is null"
     (let [card-viz {"column_settings"
                     {"normal"
@@ -1373,7 +1418,7 @@
                                                             :dashcard_visualization dash-viz})
                     [:visualization_settings "column_settings"])))))))
 
-(deftest migrate-click-through-test
+(deftest ^:mb/old-migrations-test migrate-click-through-test
   (let [expect-correct-settings!
         (fn [f]
           (let [card-vis       (json/encode
@@ -1493,7 +1538,7 @@
 ;; [[metabase.models.setting/get]] and [[metabase.test.util/with-temporary-setting-values]]
 ;; because they require all settings are defined.
 ;; That's why we use a set of helper functions that get setting directly from DB during tests
-(deftest migrate-remove-admin-from-group-mapping-if-needed-test
+(deftest ^:mb/old-migrations-test migrate-remove-admin-from-group-mapping-if-needed-test
   (let [admin-group-id        (u/the-id (perms-group/admin))
         sso-group-mappings    {"group-mapping-a" [admin-group-id (inc admin-group-id)]
                                "group-mapping-b" [admin-group-id (inc admin-group-id) (+ 2 admin-group-id)]}
@@ -1527,7 +1572,7 @@
           (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
           (is (= ldap-group-mappings (get-json-setting :ldap-group-mappings))))))))
 
-(deftest check-data-migrations-rollback
+(deftest ^:mb/old-migrations-test check-data-migrations-rollback
   ;; We're actually testing `v48.00-024`, but we want the `migrate!` function to run all the migrations in 48
   ;; after rolling back to 47, so we're using `v48.00-000` as the start of the migration range in `test-migrations`
   (impl/test-migrations ["v48.00-000"] [migrate!]
@@ -1562,7 +1607,11 @@
               [(keyword (u/lower-case-en table_name)) (keyword (u/lower-case-en column_name)) (= is_nullable "YES")]))
        set))
 
-(deftest unify-type-of-time-columns-test
+;;;
+;;; 49 tests
+;;;
+
+(deftest ^:mb/old-migrations-test unify-type-of-time-columns-test
   (impl/test-migrations ["v49.00-054"] [migrate!]
     (let [db-type       (mdb/db-type)
           datetime-type (case db-type
@@ -1607,7 +1656,7 @@
           {:a 1}
           (range 35)))
 
-(deftest card-revision-add-type-test
+(deftest ^:mb/old-migrations-test card-revision-add-type-test
   (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
     (let [user-id          (:id (new-instance-with-default :core_user))
           db-id            (:id (new-instance-with-default :metabase_database))
@@ -1653,7 +1702,7 @@
           (is (not (contains? card-revision-object "type")))
           (is (not (contains? model-revision-object "type"))))))))
 
-(deftest card-revision-add-type-null-character-test
+(deftest ^:mb/old-migrations-test card-revision-add-type-null-character-test
   (testing "CardRevisionAddType migration works even if there's a null character in revision.object (metabase#40835)")
   (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
     (let [user-id          (:id (new-instance-with-default :core_user))
@@ -1679,7 +1728,7 @@
             (is (= viz-settings
                    (get card-revision-object "visualization_settings")))))))))
 
-(deftest delete-scan-field-values-trigger-test
+(deftest ^:mb/old-migrations-test delete-scan-field-values-trigger-test
   (testing "We should delete the triggers for DBs that are configured not to scan their field values\n"
     (impl/test-migrations "v49.2024-04-09T10:00:03" [migrate!]
       (letfn [(do-test []
@@ -1732,7 +1781,7 @@
           (encryption-test/with-secret-key "dont-tell-anyone-about-this"
             (do-test)))))))
 
-(deftest migration-works-when-have-encryption-key-test
+(deftest ^:mb/old-migrations-test migration-works-when-have-encryption-key-test
   ;; this test is here to warn developers that they should test their migrations with and without encryption key
   (encryption-test/with-secret-key "dont-tell-anyone-about-this"
     ;; run migration to the latest migration
@@ -1760,7 +1809,11 @@
        (map :key)
        set))
 
-(deftest delete-send-pulse-job-on-migrate-down-test
+;;;
+;;; 50 tests
+;;;
+
+(deftest ^:mb/old-migrations-test delete-send-pulse-job-on-migrate-down-test
   (impl/test-migrations ["v50.2024-04-25T01:04:06"] [migrate!]
     (migrate!)
     (pulse-channel-test/with-send-pulse-setup!
@@ -1867,7 +1920,7 @@
     :expected {:display                "table"
                :visualization_settings {}}}})
 
-(deftest migrate-stacked-area-bar-combo-display-settings-test
+(deftest ^:mb/old-migrations-test migrate-stacked-area-bar-combo-display-settings-test
   (testing "Migrations v50.2024-05-15T13:13:13: Fix visualization settings for stacked area/bar/combo displays"
     (impl/test-migrations ["v50.2024-05-15T13:13:13"] [migrate!]
       (let [user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
@@ -1912,7 +1965,7 @@
    :updated_at :%now
    :details    "{}"})
 
-(deftest migrate-uploads-settings-test-1
+(deftest ^:mb/old-migrations-test migrate-uploads-settings-test-1
   (testing "MigrateUploadsSettings with valid settings state works as expected."
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
@@ -1945,7 +1998,7 @@
                   (is (= (set (map #(update % :value encryption/maybe-decrypt) settings-before))
                          (set (map #(update % :value encryption/maybe-decrypt) settings-after)))))))))))))
 
-(deftest migrate-uploads-settings-test-2
+(deftest ^:mb/old-migrations-test migrate-uploads-settings-test-2
   (testing "MigrateUploadsSettings with invalid settings state (missing uploads-database-id) doesn't fail."
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
@@ -1963,7 +2016,7 @@
                                   :uploads_table_prefix nil}}
                   (m/index-by :id (t2/select :metabase_database)))))))))
 
-(deftest migrate-uploads-settings-test-3
+(deftest ^:mb/old-migrations-test migrate-uploads-settings-test-3
   (testing "MigrateUploadsSettings with invalid settings state (missing uploads-enabled) doesn't set uploads_enabled on the database."
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (impl/test-migrations ["v50.2024-05-17T19:54:26"] [migrate!]
@@ -1983,54 +2036,7 @@
 (defn- sample-content-created? []
   (boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce Insights'"))))
 
-(deftest create-sample-content-test
-  (testing "The sample content is created iff *create-sample-content*=true"
-    (doseq [create? [true false]]
-      (testing (str "*create-sample-content* = " create?)
-        (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
-          (binding [custom-migrations/*create-sample-content* create?]
-            (is (false? (sample-content-created?)))
-            (migrate!)
-            (is (= create? (sample-content-created?))))
-
-          (when (true? create?)
-            (testing "The Examples collection has permissions set to grant read-write access to all users"
-              (let [id (t2/select-one-pk :model/Collection :is_sample true)]
-                (is (partial=
-                     {:collection_id id
-                      :perm_type     :perms/collection-access
-                      :perm_value    :read-and-write}
-                     (t2/select-one :model/Permissions :collection_id id))))))))))
-
-  (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
-    (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
-      (is (false? (sample-content-created?)))
-      (t2/insert-returning-pks! :metabase_database {:name       "db"
-                                                    :engine     "h2"
-                                                    :created_at :%now
-                                                    :updated_at :%now
-                                                    :details    "{}"})
-      (t2/query {:delete-from :metabase_database})
-      (migrate!)
-      (is (false? (sample-content-created?)))
-      (is (empty? (t2/query "SELECT * FROM metabase_database"))
-          "No database should have been created")))
-
-  (testing "The sample content isn't created if a user existed already"
-    (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
-      (is (false? (sample-content-created?)))
-      (t2/insert-returning-pks!
-       :core_user
-       {:first_name    "Rasta"
-        :last_name     "Toucan"
-        :email         "rasta@metabase.com"
-        :password      "password"
-        :password_salt "and pepper"
-        :date_joined   :%now})
-      (migrate!)
-      (is (false? (sample-content-created?))))))
-
-(deftest decrypt-cache-settings-test
+(deftest ^:mb/old-migrations-test decrypt-cache-settings-test
   (impl/test-migrations "v50.2024-06-12T12:33:07" [migrate!]
     (encryption-test/with-secret-key "whateverwhatever"
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
@@ -2047,6 +2053,10 @@
       (is (= "true" (t2/select-one-fn :value :setting :key "enable-query-caching")))
       (is (= "100" (t2/select-one-fn :value :setting :key "query-caching-ttl-ratio")))
       (is (= "123" (t2/select-one-fn :value :setting :key "query-caching-min-ttl"))))))
+
+;;;
+;;; 51 tests
+;;;
 
 (def ^:private result-metadata-for-viz-settings
   [{:name "C1"    :field_ref [:field 1 nil]}
@@ -2087,7 +2097,7 @@
 (defn- keyword-except-column-key [key]
   (if (str/starts-with? key "[") key (keyword key)))
 
-(deftest update-legacy-column-keys-in-card-viz-settings-test
+(deftest ^:mb/old-migrations-test update-legacy-column-keys-in-card-viz-settings-test
   (testing "v51.2024-08-07T10:00:00"
     (impl/test-migrations ["v51.2024-08-07T10:00:00"] [migrate!]
       (let [user-id (t2/insert-returning-pks! (t2/table-name :model/User)
@@ -2130,7 +2140,7 @@
                      :visualization_settings
                      (json/decode keyword-except-column-key)))))))))
 
-(deftest update-legacy-column-keys-in-dashboard-card-viz-settings-test
+(deftest ^:mb/old-migrations-test update-legacy-column-keys-in-dashboard-card-viz-settings-test
   (testing "v51.2024-08-07T11:00:00"
     (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
       (let [user-id (t2/insert-returning-pks! (t2/table-name :model/User)
@@ -2182,6 +2192,59 @@
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
                      (json/decode keyword-except-column-key)))))))))
+
+;;;
+;;; 52 tests
+;;;
+
+(deftest create-sample-content-test
+  (testing "The sample content is created iff *create-sample-content*=true"
+    (doseq [create? [true false]]
+      (testing (str "*create-sample-content* = " create?)
+        (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
+          (binding [custom-migrations/*create-sample-content* create?]
+            (is (false? (sample-content-created?)))
+            (migrate!)
+            (is (= create? (sample-content-created?))))
+
+          (when (true? create?)
+            (testing "The Examples collection has permissions set to grant read-write access to all users"
+              (let [id (t2/select-one-pk :model/Collection :is_sample true)]
+                (is (partial=
+                     {:collection_id id
+                      :perm_type     :perms/collection-access
+                      :perm_value    :read-and-write}
+                     (t2/select-one :model/Permissions :collection_id id)))))))))))
+
+(deftest create-sample-content-test-2
+  (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
+    (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
+      (is (false? (sample-content-created?)))
+      (t2/insert-returning-pks! :metabase_database {:name       "db"
+                                                    :engine     "h2"
+                                                    :created_at :%now
+                                                    :updated_at :%now
+                                                    :details    "{}"})
+      (t2/query {:delete-from :metabase_database})
+      (migrate!)
+      (is (false? (sample-content-created?)))
+      (is (empty? (t2/query "SELECT * FROM metabase_database"))
+          "No database should have been created"))))
+
+(deftest create-sample-content-test-3
+  (testing "The sample content isn't created if a user existed already"
+    (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
+      (is (false? (sample-content-created?)))
+      (t2/insert-returning-pks!
+       :core_user
+       {:first_name    "Rasta"
+        :last_name     "Toucan"
+        :email         "rasta@metabase.com"
+        :password      "password"
+        :password_salt "and pepper"
+        :date_joined   :%now})
+      (migrate!)
+      (is (false? (sample-content-created?))))))
 
 (defn- insert-returning-pk!
   [table record]

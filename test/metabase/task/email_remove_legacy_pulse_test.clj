@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.task.email-remove-legacy-pulse-test
+(ns metabase.task.email-remove-legacy-pulse-test
   (:require
    [clojure.test :refer :all]
    [metabase.task.email-remove-legacy-pulse :as email-remove-legacy-pulse]

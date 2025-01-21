@@ -338,7 +338,9 @@
     (name k)
     (str k)))
 
-(defn- expand-secret-conn-prop [{prop-name :name, :as conn-prop}]
+(defn expand-secret-conn-prop
+  "Expands a connection-property into multiple fields based on :secret-kind."
+  [{prop-name :name, :as conn-prop}]
   (case (->str (:secret-kind conn-prop))
     "password"    [(-> conn-prop
                        (assoc :type "password")
@@ -485,65 +487,6 @@
 (def data-url-pattern
   "A regex to match data-URL-encoded files uploaded via the frontend"
   #"^data:[^;]+;base64,")
-
-(defn decode-uploaded
-  "Returns bytes from encoded frontend file upload string."
-  ^bytes [^String uploaded-data]
-  (u/decode-base64-to-bytes (str/replace uploaded-data data-url-pattern "")))
-
-(defn db-details-client->server
-  "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
-  Sort of the opposite of `connection-props-server->client`, except that it operates on DB details key/values populated
-  by the client, not on connection detail maps created on the server."
-  {:added "0.42.0"}
-  [driver db-details]
-  (when db-details
-    (assert (some? driver))
-    (let [secret-names->props    (reduce (fn [acc prop]
-                                           (if (= "secret" (:type prop))
-                                             (assoc acc (:name prop) prop)
-                                             acc))
-                                         {}
-                                         (driver/connection-properties driver))
-
-          secrets-server->client (reduce (fn [acc prop]
-                                           (assoc acc (keyword (:name prop)) prop))
-                                         {}
-                                         (connection-props-server->client driver (vals secret-names->props)))]
-      (reduce-kv (fn [acc prop-name _prop]
-                   (let [subprop    (fn [suffix]
-                                      (keyword (str prop-name suffix)))
-                         path-kw    (subprop "-path")
-                         val-kw     (subprop "-value")
-                         source-kw  (subprop "-source")
-                         options-kw (subprop "-options")
-                         path       (path-kw acc)
-                         get-treat  (fn []
-                                      (let [options (options-kw acc)]
-                                        (when (= "uploaded" options)
-                                          ;; the :treat-before-posting, if defined, would be applied to the client
-                                          ;; version of the -value property (the :type "textFile" one)
-                                          (let [textfile-prop (val-kw secrets-server->client)]
-                                            (:treat-before-posting textfile-prop)))))
-                         value      (when-let [^String v (val-kw acc)]
-                                      (case (get-treat)
-                                        "base64" (decode-uploaded v)
-                                        v))]
-                     (cond-> (assoc acc val-kw value)
-                       ;; keywords here are associated to nil, rather than being dissoced, because they will be merged
-                       ;; with the existing db-details blob to produce the final details
-                       ;; therefore, if we want a changed setting to take effect (i.e. switching from a file path to an
-                       ;; upload), then we need to ensure the nil value is merged, rather than the stale value from the
-                       ;; app DB being picked
-                       path  (-> ; from outer cond->
-                              (assoc val-kw nil) ; local path specified; remove the -value entry, if it exists
-                              (assoc source-kw :file-path)) ; and set the :source to :file-path
-                       value (-> ; from outer cond->
-                              (assoc path-kw nil) ; value specified; remove the -path entry, if it exists
-                              (assoc source-kw nil)) ; and remove the :source mapping
-                       true  (dissoc (subprop "-options")))))
-                 db-details
-                 secret-names->props))))
 
 (def official-drivers
   "The set of all official drivers"
@@ -706,7 +649,7 @@
   [driver]
   (if-some [conn-prop-fn (get-method driver/connection-properties driver)]
     (let [all-fields      (conn-prop-fn driver)
-          password-fields (filter #(contains? #{:password :secret} (get % :type)) all-fields)]
+          password-fields (filter #(contains? #{:password :secret} (keyword (get % :type))) all-fields)]
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
 
