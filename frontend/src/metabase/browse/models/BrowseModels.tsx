@@ -91,7 +91,7 @@ export const BrowseModels = () => {
                 <Box maw="45rem" w="100%">
                   <ModelsVideo autoplay={0} />
                 </Box>
-                <Stack spacing="xs" maw="30rem">
+                <Stack spacing="xs" maw="28rem">
                   <Title
                     order={2}
                     align="center"
