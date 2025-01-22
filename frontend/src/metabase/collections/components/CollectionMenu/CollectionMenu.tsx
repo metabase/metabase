@@ -36,6 +36,7 @@ export const CollectionMenu = ({
         skip: !PLUGIN_COLLECTIONS.canCleanUp(collection),
       },
     ).data?.total ?? 0;
+  const hasDqCandidates = useHasDashboardQuestionCandidates(collection.id);
 
   const items = [];
   const url = Urls.collection(collection);
@@ -47,7 +48,6 @@ export const CollectionMenu = ({
   const canWrite = collection.can_write;
   const canMove =
     !isRoot && !isPersonal && canWrite && !isInstanceAnalyticsCustom;
-  const hasDqCandidates = useHasDashboardQuestionCandidates(collection.id);
 
   if (isAdmin && !isRoot && canWrite) {
     items.push(

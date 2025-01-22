@@ -113,4 +113,38 @@ describe("CollectionMenu", () => {
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();
   });
+
+  it("should not show 'Move saved questions into dashboards' option if there's no dashboard question candidates", async () => {
+    setup({
+      collection: createMockCollection({ can_write: true }),
+    });
+
+    await userEvent.click(getIcon("ellipsis"));
+    expect(
+      screen.queryByText("Move saved questions into dashboards"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should show 'Move saved questions into dashboards' option if there's dashboard question candidates", async () => {
+    setup({
+      collection: createMockCollection({ can_write: true }),
+      dashboardQuestionCandidates: [
+        {
+          id: 1,
+          name: "Card",
+          description: null,
+          sole_dashboard_info: {
+            id: 1,
+            name: "Dashboard",
+            description: null,
+          },
+        },
+      ],
+    });
+
+    await userEvent.click(getIcon("ellipsis"));
+    expect(
+      await screen.findByText("Move saved questions into dashboards"),
+    ).toBeInTheDocument();
+  });
 });
