@@ -49,7 +49,11 @@ const DownloadButton = ({
     let requestOptions = { method: "GET" }; // Default request options
 
     try {
-      if (downloadUrl.includes("api/card") && params) {
+      if (
+        (downloadUrl.includes("api/card") ||
+          downloadUrl.includes("api/dataset")) &&
+        params
+      ) {
         // If URL contains api/card, use POST and send data as x-www-form-urlencoded
         const urlEncodedData = new URLSearchParams();
         Object.entries(params).forEach(([key, value]) => {
