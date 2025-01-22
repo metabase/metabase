@@ -1355,7 +1355,7 @@
                                    [:> {} [:field {} "RATING"] [:value {} 3]]]}]}
               (adjust query))))))
 
-;; TODO: This does not work!!! -- probably already visible bug, but also a new one!!!!
+;; TODO: Cleanup, check correspondence to the mirror test for old metrics, why the test is taking that long?
 (deftest ^:parallel model-based-metric-with-implicit-join-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         model-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
@@ -1377,20 +1377,11 @@
                            (lib/breakout $q (m/find-first (comp #{"Category"} :display-name)
                                                           (lib/breakoutable-columns $q)))
                            (lib/aggregate $q (lib/count)))]
-        #_(def ala (metabase.query-processor.compile/compile etalon-query))
-        #_(def asdf (mt/rows (qp/process-query etalon-query)))
-        (def mee metric-query)
-        (def fdsa (mt/rows (qp/process-query metric-query)))
-        
-        (is (=? 1 1 #_#_(mt/rows (qp/process-query etalon-query))
-                      (mt/rows (qp/process-query metric-query))))))))
+        (is (=? (mt/rows (qp/process-query etalon-query))
+                (mt/rows (qp/process-query metric-query))))))))
 
-;; TODO: This does not work, while should!!! -- actually does not finish??? wtf -- editor unable to print results
-;; 
-;; this produces sane query!!!!
-;;
-;; this requires working source stage!
-;;
+;; TODO: Originally the test was missing breakouts temporal unit. Case like that should not occur in the wild.
+;;       This must be verified!
 (deftest ^:parallel metric-with-explicit-join-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
@@ -1399,7 +1390,7 @@
                                                       (lib.metadata/field mp (mt/id :orders :user_id))
                                                       (lib.metadata/field mp (mt/id :people :id)))]))
                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
-                         ;; the temporal unit is missing here
+                         ;; the temporal unit was missing here
                          (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at))
                                          :day)))]
     (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
@@ -1407,17 +1398,8 @@
                                        :name "Orders Total Sum metric"
                                        :type :metric}]
       (let [query (lib/query mp (lib.metadata/card mp (:id metric)))]
-        #_(def mmm metric-query)
-        #_(def qqq query)
-        #_(def rew (qp/process-query metric-query))
-        (def kok (qp/process-query query))
-        (comment
-          (metabase.query-processor.compile/compile qqq)
-          (metabase.query-processor.preprocess/preprocess qqq)
-          )
-        #_(is (=? (mt/rows (qp/process-query metric-query))
-                  (mt/rows (qp/process-query query))
-                  #_#_1 1))))))
+        (is (=? (mt/rows (qp/process-query metric-query))
+                (mt/rows (qp/process-query query))))))))
 
 (comment
   

@@ -38,13 +38,18 @@
 ;; Metric query generation
 ;;
 
-;; OK
+;; TODO: test with implicit joins in other places: filters, join conditions
 (defn- raw-metric-query
+  "Generate metric query from metric card.
+
+  Order of operations is significant. Breakouts must be removed prior preprocess call, in case those contain
+  fields to be implicitly joined."
   [metadata-providerable card]
-  (->> ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
-        (lib/query metadata-providerable (:dataset-query card)))
-       (lib/query metadata-providerable)
-       lib/remove-all-breakouts))
+  (->> (lib/query metadata-providerable (:dataset-query card))
+       lib/remove-all-breakouts
+       ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
+       ;; Following call transforms legacy result of preprocess into pMBQL.
+       (lib/query metadata-providerable)))
 
 ;; OK (probably will be modfying some stuff, fields, aliases, references?; but not now)
 (defn- combine-joins
