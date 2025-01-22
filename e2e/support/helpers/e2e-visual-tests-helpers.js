@@ -137,8 +137,6 @@ export function pieSliceWithColor(color) {
 export function echartsTooltip() {
   // ECharts may keep two dom instances of the tooltip
   return cy.findAllByTestId("echarts-tooltip").should($elements => {
-    console.log(`found ${$elements.length} echarts tooltips`);
-
     // Use a custom function to check if the fixed-position tooltip is visible,
     // as Cypress's ":visible" or "be.visible" fails to identify a fixed-position tooltip as visible.
     const visibleTooltips = $elements
