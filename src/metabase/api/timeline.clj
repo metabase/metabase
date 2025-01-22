@@ -1,7 +1,6 @@
 (ns metabase.api.timeline
   "/api/timeline endpoints."
   (:require
-   [compojure.core :refer [DELETE PUT]]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.collection :as collection]
@@ -80,18 +79,19 @@
                                                :events/start (when start (u.date/parse start))
                                                :events/end   (when end (u.date/parse end))}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id"
+(api.macros/defendpoint :put "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
-  [id :as {{:keys [name default description icon collection_id archived] :as timeline-updates} :body}]
-  {id            ms/PositiveInt
-   name          [:maybe ms/NonBlankString]
-   default       [:maybe :boolean]
-   description   [:maybe :string]
-   icon          [:maybe timeline-event/Icon]
-   collection_id [:maybe ms/PositiveInt]
-   archived      [:maybe :boolean]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [archived] :as timeline-updates} :- [:map
+                                               [:name          {:optional true} [:maybe ms/NonBlankString]]
+                                               [:default       {:optional true} [:maybe :boolean]]
+                                               [:description   {:optional true} [:maybe :string]]
+                                               [:icon          {:optional true} [:maybe timeline-event/Icon]]
+                                               [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                               [:archived      {:optional true} [:maybe :boolean]]]]
   (let [existing (api/write-check :model/Timeline id)
         current-archived (:archived (t2/select-one :model/Timeline :id id))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
@@ -103,11 +103,10 @@
       (t2/update! :model/TimelineEvent {:timeline_id id} {:archived archived}))
     (t2/hydrate (t2/select-one :model/Timeline :id id) :creator [:collection :can_write])))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/:id"
+(api.macros/defendpoint :delete "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/write-check :model/Timeline id)
   (t2/delete! :model/Timeline :id id)
   api/generic-204-no-content)
