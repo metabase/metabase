@@ -353,7 +353,7 @@
   {uuid          ms/UUIDString
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
-   parameters    [:maybe ms/JSONString]
+   parameters    [:maybe [:or ms/JSONString [:sequential ms/Parameter]]]
    format_rows   [:maybe ms/BooleanValue]
    pivot_results [:maybe ms/BooleanValue]
    export-format (into [:enum] api.dataset/export-formats)}
