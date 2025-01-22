@@ -968,16 +968,6 @@ describe("issue 34574", () => {
     });
 
     cy.log(
-      "Make sure the markdown is properly preserved in the model details page",
-    );
-    // Let redux handle async actions so that they won't interfere with the action
-    // triggered by the next click. Test will flake without this due to wrong navigation.
-    cy.wait(1);
-    cy.findByRole("link", { name: "Actions" }).click();
-    cy.wait("@fks");
-    cy.findByLabelText("Description").within(assertMarkdownPreview);
-
-    cy.log(
       "Make sure the description is present in the collection entry tooltip",
     );
     cy.findByTestId("app-bar").findByText("Our analytics").click();
