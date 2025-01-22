@@ -1115,6 +1115,7 @@ describe("scenarios > admin > settings > map settings", () => {
 // docker run -p 9080:8080/tcp tarampampam/webhook-tester:1.1.0 serve --create-session 00000000-0000-0000-0000-000000000000
 describe("notifications", { tags: "@external" }, () => {
   beforeEach(() => {
+    H.resetWebhookTester();
     H.restore();
     cy.signInAsAdmin();
     cy.request({
