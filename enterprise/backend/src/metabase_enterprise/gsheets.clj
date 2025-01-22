@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.harbormaster.client :as hm.client]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.auth :as api.auth]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -142,7 +143,10 @@
   [] :- ::gsheets
   (api/check-superuser)
   (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
-    (assert (some? attached-dwh) "No attached dwh found.")
+    (when-not (some? attached-dwh)
+      (snowplow/track-event! ::snowplow/simple_event
+                             {:event "sheets_connected" :event_detail "fail"})
+      (throw (ex-info "No attached dwh found." {})))
     (if-let [{:keys [status]
               last-gdrive-conn-sync :last-sync-at
               :as _gdrive-conn} (get-gdrive-connection)]
@@ -156,11 +160,16 @@
                      last-gdrive-conn-sync ;; make sure it's not nil
                      ;; We finished a sync of the dwh from metabase After the HM conn was synced:
                      (t/after? (t/instant last-dwh-sync) (t/instant last-gdrive-conn-sync)))
-              (let [new-gsheets (assoc (gsheets) :status "complete")]
-                (gsheets! new-gsheets) new-gsheets)
+              (u/prog1 (assoc (gsheets) :status "complete")
+                (gsheets! <>)
+                (snowplow/track-event! ::snowplow/simple_event
+                                       {:event "sheets_connected" :event_detail "success"}))
               (gsheets))
             (assoc :db_id (:id attached-dwh))))
-      (throw (ex-info "Google Drive Connection not found." {})))))
+      (do
+        (snowplow/track-event! ::snowplow/simple_event
+                               {:event "sheets_connected" :event_detail "fail"})
+        (throw (ex-info "Google Drive Connection not found." {}))))))
 
 (api.macros/defendpoint :delete "/folder"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
@@ -169,7 +178,9 @@
   (if-let [conn-id (:id (get-gdrive-connection))]
     (let [[status _] (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" conn-id))]
       (if (= status :ok)
-        (u/prog1 gsheets-not-connected (gsheets! <>))
+        (u/prog1 gsheets-not-connected
+          (gsheets! <>)
+          (snowplow/track-event! ::snowplow/simple_event {:event "sheets_disconnected"}))
         (throw (ex-info "Unable to disconnect google service account" {}))))
     (u/prog1 gsheets-not-connected
       (gsheets! <>)

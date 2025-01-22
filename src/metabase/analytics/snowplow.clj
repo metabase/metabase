@@ -50,6 +50,7 @@
    ::instance       "1-1-2"
    ::metabot        "1-0-1"
    ::search         "1-0-1"
+   ::simple_event   "1-0-0"
    ::model          "1-0-0"
    ::timeline       "1-0-0"
    ::task           "1-0-0"
@@ -231,3 +232,12 @@
          (track-event-impl! tracker event))
        (catch Throwable e
          (log/errorf e "Error sending Snowplow analytics event for schema %s" schema))))))
+
+(comment
+  (def schema ::simple_event)
+  (def data {:event "test"})
+  (def user-id 1)
+  (with-redefs [track-event-impl! println]
+    )
+
+  )
