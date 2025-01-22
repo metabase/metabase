@@ -15,6 +15,7 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupFieldValuesEndpoints,
+  setupGetUserKeyValueEndpoint,
   setupModelIndexEndpoints,
   setupPropertiesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
@@ -248,6 +249,11 @@ export const setup = async ({
   );
   setupRecentViewsEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([]);
+  setupGetUserKeyValueEndpoint({
+    namespace: "user_acknowledgement",
+    key: "turn_into_model_modal",
+    value: false,
+  });
 
   const metadata = createMockCardQueryMetadata({ databases: [TEST_DB] });
   setupAdhocQueryMetadataEndpoint(metadata);

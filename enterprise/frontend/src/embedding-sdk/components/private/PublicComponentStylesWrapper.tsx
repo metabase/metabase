@@ -30,6 +30,8 @@ const PublicComponentStylesWrapperInner = styled.div`
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
+  transition: var(--transition-theme-change);
+
   ${saveDomImageStyles}
 
   :where(svg) {
