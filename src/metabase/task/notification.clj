@@ -138,7 +138,7 @@
     Will only run once when Metabase starts up."}
   InitNotificationTriggers
   [_context]
-  (doall (map update-subscription-trigger! (t2/select :model/NotificationSubscription))))
+  (run! update-subscription-trigger! (t2/reducible-select :model/NotificationSubscription)))
 
 (defmethod task/init! ::SendNotifications [_]
   (let [send-notification-job              (jobs/build

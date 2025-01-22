@@ -10534,11 +10534,19 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateAlertToNotification"
+
+  - changeSet:
+      id: v53.2024-12-12T08:06:00
+      author: qnkhuat
+      comment: Delete all the migrated alerts from notification table
+      changes:
+        - sql: select 1;
       rollback:
         # delete all migrated notification on rollback so we can re-run the migration
+        # no need to delete notification_card because the table will be dropped
         - sql:
             sql: >-
-              DELETE FROM notification WHERE internal_id IS NOT NULL;
+              DELETE FROM notification WHERE payload_type = 'notification/card';
 
   - changeSet:
       id: v53.2024-12-27T17:33:54

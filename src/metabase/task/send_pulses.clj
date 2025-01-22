@@ -150,10 +150,7 @@
   SendPulse
   [context]
   (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
-    (send-pulse!* pulse-id channel-ids)
-
-    ;; TODO delete the trigger if pulse-id doesn't exists
-    #_:a))
+    (send-pulse!* pulse-id channel-ids)))
 
 ;;; ------------------------------------------------ Job: InitSendPulseTriggers ----------------------------------------------------
 
@@ -163,6 +160,7 @@
   "Update send pulse triggers for all active pulses.
   Called once when Metabase starts up to create triggers for all existing PulseChannels"
   []
+  (log/info "Initializing SendPulse triggers")
   (let [trigger-slot->pc-ids (as-> (t2/select :model/PulseChannel
                                               {:select    [:pc.*]
                                                :from      [[:pulse_channel :pc]]
