@@ -176,10 +176,10 @@
       (doseq [[send-condition condition-regex]
               [[:has_result
                 #"This alert will be sent\s+whenever this question has any results"]
-               #_[:goal_above
-                  #"This alert will be sent\s+when this question meets its goal"]
-               #_[:goal_below
-                  #"This alert will be sent\s+when this question goes below its goal"]]]
+               [:goal_above
+                #"This alert will be sent\s+when this question meets its goal"]
+               [:goal_below
+                #"This alert will be sent\s+when this question goes below its goal"]]]
         (check send-condition condition-regex)))))
 
 (deftest slack-error-token-email-test
