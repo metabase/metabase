@@ -30,7 +30,7 @@ const ChartCaption = ({
   getHref,
   width,
 }: ChartCaptionProps) => {
-  const title = settings["card.title"] ?? series[0].card.name;
+  const title = settings["card.title"];
   const description = settings["card.description"];
   const data = (series as TransformedSeries)._raw || series;
   const card = data[0].card;

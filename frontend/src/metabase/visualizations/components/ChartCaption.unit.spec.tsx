@@ -71,16 +71,39 @@ describe("ChartCaption", () => {
   it("should render without a title (metabase#36788)", () => {
     setup();
 
-    expect(screen.getByTestId("legend-caption")).toBeInTheDocument();
+    const legendCaption = screen.getByTestId("legend-caption");
+
+    expect(legendCaption).toBeInTheDocument();
+    expect(legendCaption).toHaveTextContent("");
   });
 
-  it("should render with a title", () => {
+  it("should ignore the first series' name to render the title", () => {
     setup({
       series: getSeries({ card: createMockCard({ name: "card name" }) }),
       settings: { "card.description": "description" },
     });
 
-    expect(screen.getByTestId("legend-caption")).toBeInTheDocument();
+    const legendCaption = screen.getByTestId("legend-caption");
+
+    expect(legendCaption).toBeInTheDocument();
+    expect(legendCaption).toHaveTextContent("");
+  });
+
+  it("should use the settings card.title to render the title", () => {
+    setup({
+      series: getSeries({ card: createMockCard({ name: "card name" }) }),
+      settings: {
+        "card.description": "description",
+        "card.title": "Hello, is it me you're looking for",
+      },
+    });
+
+    const legendCaption = screen.getByTestId("legend-caption");
+
+    expect(legendCaption).toBeInTheDocument();
+    expect(legendCaption).toHaveTextContent(
+      "Hello, is it me you're looking for",
+    );
   });
 
   it("should render markdown in description", async () => {
