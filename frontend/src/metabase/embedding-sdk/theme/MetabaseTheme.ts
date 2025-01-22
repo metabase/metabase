@@ -119,6 +119,10 @@ export type MetabaseComponentTheme = {
 
   question: {
     backgroundColor: string;
+
+    toolbar?: {
+      backgroundColor?: string;
+    };
   };
 
   /** Data tables **/

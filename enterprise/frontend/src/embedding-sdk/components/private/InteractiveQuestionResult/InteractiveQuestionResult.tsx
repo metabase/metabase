@@ -102,7 +102,7 @@ export const InteractiveQuestionResult = ({
         <Group
           position="apart"
           p="sm"
-          bg="var(--mb-color-background-disabled)"
+          bg="var(--mb-color-bg-sdk-question-toolbar)"
           style={{ borderRadius: "0.5rem" }}
         >
           <Group spacing="xs">

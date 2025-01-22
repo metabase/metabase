@@ -22,6 +22,7 @@ const CSS_VARIABLES_TO_SDK_THEME_MAP = {
     "collectionBrowser.breadcrumbs.expandButton.hoverTextColor",
   "--mb-color-bg-collection-browser-expand-button-hover":
     "collectionBrowser.breadcrumbs.expandButton.hoverBackgroundColor",
+  "--mb-color-bg-sdk-question-toolbar": "question.toolbar.backgroundColor",
   "--mb-overlay-z-index": "popover.zIndex",
 } satisfies Record<string, MetabaseComponentThemeKey>;
 
