@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.permissions.util :as perms-util]
    [metabase.public-settings :as public-settings]
@@ -47,8 +48,7 @@
                 raise)))
    (meta handler)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/re-init"
+(api.macros/defendpoint :post "/re-init"
   "This will blow away any search indexes, re-create, and re-populate them."
   []
   (api/check-superuser)
@@ -56,8 +56,7 @@
     {:message (search/init-index! {:force-reset? true})}
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/force-reindex"
+(api.macros/defendpoint :post "/force-reindex"
   "This will trigger an immediate reindexing, if we are using search index."
   []
   (api/check-superuser)
@@ -94,8 +93,7 @@
       (set-weights! context overrides))
     (search.config/weights context)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Search for items in Metabase.
   For the list of supported models, check [[metabase.search.config/all-models]].
 
@@ -117,26 +115,25 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
-  [q context archived created_at created_by table_db_id models last_edited_at last_edited_by
-   filter_items_in_personal_collection model_ancestors search_engine search_native_query
-   verified ids calculate_available_models include_dashboard_questions]
-  {q                                   [:maybe ms/NonBlankString]
-   context                             [:maybe :keyword]
-   archived                            [:maybe :boolean]
-   table_db_id                         [:maybe ms/PositiveInt]
-   models                              [:maybe (ms/QueryVectorOf search/SearchableModel)]
-   filter_items_in_personal_collection [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
-   created_at                          [:maybe ms/NonBlankString]
-   created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   last_edited_at                      [:maybe ms/NonBlankString]
-   last_edited_by                      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   model_ancestors                     [:maybe :boolean]
-   search_engine                       [:maybe string?]
-   search_native_query                 [:maybe true?]
-   verified                            [:maybe true?]
-   ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   calculate_available_models          [:maybe true?]
-   include_dashboard_questions         [:maybe :boolean]}
+  [_route-params
+   {:keys [q context archived created_at created_by table_db_id models last_edited_at last_edited_by filter_items_in_personal_collection model_ancestors search_engine search_native_query verified ids calculate_available_models include_dashboard_questions]} :- [:map
+                                                                                                                                                                                                                                                                     [:q                                   {:optional true} [:maybe ms/NonBlankString]]
+                                                                                                                                                                                                                                                                     [:context                             {:optional true} [:maybe :keyword]]
+                                                                                                                                                                                                                                                                     [:archived                            {:default false} [:maybe :boolean]]
+                                                                                                                                                                                                                                                                     [:table_db_id                         {:optional true} [:maybe ms/PositiveInt]]
+                                                                                                                                                                                                                                                                     [:models                              {:optional true} [:maybe (ms/QueryVectorOf search/SearchableModel)]]
+                                                                                                                                                                                                                                                                     [:filter_items_in_personal_collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
+                                                                                                                                                                                                                                                                     [:created_at                          {:optional true} [:maybe ms/NonBlankString]]
+                                                                                                                                                                                                                                                                     [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+                                                                                                                                                                                                                                                                     [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
+                                                                                                                                                                                                                                                                     [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+                                                                                                                                                                                                                                                                     [:model_ancestors                     {:default false} [:maybe :boolean]]
+                                                                                                                                                                                                                                                                     [:search_engine                       {:optional true} [:maybe string?]]
+                                                                                                                                                                                                                                                                     [:search_native_query                 {:optional true} [:maybe true?]]
+                                                                                                                                                                                                                                                                     [:verified                            {:optional true} [:maybe true?]]
+                                                                                                                                                                                                                                                                     [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+                                                                                                                                                                                                                                                                     [:calculate_available_models          {:optional true} [:maybe true?]]
+                                                                                                                                                                                                                                                                     [:include_dashboard_questions         {:default false} [:maybe :boolean]]]]
   (api/check-valid-page-params (request/limit) (request/offset))
   (try
     (u/prog1 (search/search
