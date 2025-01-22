@@ -2,7 +2,6 @@
   "/api/permissions endpoints."
   (:require
    [clojure.data :as data]
-   [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [malli.core :as mc]
@@ -107,8 +106,7 @@
   [_impersonations]
   (throw (premium-features/ee-feature-error (tru "Connection impersonation"))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/graph"
+(api.macros/defendpoint :put "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
   format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
   modified graph must correspond to the `PermissionsGraph` schema. If successful, this endpoint returns the updated
@@ -124,12 +122,11 @@
   `:sandboxes` feature flag is not present.
 
   If the skip-graph query param is truthy, then the graph will not be returned."
-  [:as {body :body
-        {skip-graph :skip-graph
-         force      :force} :params}]
-  {body :map
-   skip-graph [:maybe ms/BooleanValue]
-   force      [:maybe ms/BooleanValue]}
+  [_route-params
+   {:keys [skip-graph force]} :- [:map
+                                  [:skip-graph {:default false} [:maybe ms/BooleanValue]]
+                                  [:force      {:default false} [:maybe ms/BooleanValue]]]
+   body :- :map]
   (api/check-superuser)
   (let [new-graph (mc/decode api.permission-graph/StrictApiPermissionsGraph
                              body
