@@ -187,12 +187,34 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
-  credentials. Public sharing must be enabled."
+  credentials. Public sharing must be enabled. The endpoint is kept for backward compatibility only as it does not
+  handle requests with many (> 10) parameters because of the URL length constraints; the new POST endpoint should be
+  used instead."
   [uuid export-format :as {{:keys [parameters format_rows pivot_results]} :params}]
   {uuid          ms/UUIDString
    export-format api.dataset/ExportFormat
    format_rows   [:maybe :boolean]
    pivot_results [:maybe :boolean]
+   parameters    [:maybe ms/JSONString]}
+  (process-query-for-card-with-public-uuid
+   uuid
+   export-format
+   (json/decode+kw parameters)
+   :constraints nil
+   :middleware {:process-viz-settings? true
+                :js-int-to-string?     false
+                :format-rows?          (or format_rows false)
+                :pivot?                (or pivot_results false)}))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/card/:uuid/query/:export-format"
+  "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
+  credentials. Public sharing must be enabled."
+  [uuid export-format :as {{:keys [parameters format_rows pivot_results]} :params}]
+  {uuid          ms/UUIDString
+   export-format api.dataset/ExportFormat
+   format_rows   [:maybe ms/BooleanValue]
+   pivot_results [:maybe ms/BooleanValue]
    parameters    [:maybe ms/JSONString]}
   (process-query-for-card-with-public-uuid
    uuid
