@@ -217,6 +217,11 @@ const luminaraTheme: MetabaseTheme = {
     dashboard: {
       backgroundColor: "transparent",
     },
+    question: {
+      toolbar: {
+        backgroundColor: "#F4F3EF",
+      },
+    },
     number: {
       value: {
         fontSize: "36px",
