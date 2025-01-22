@@ -62,6 +62,6 @@ describe("scenarios > dashboard cards > visualization options", () => {
     cy.findByLabelText("Show visualization options").click();
     cy.findByTestId("Subtotal-settings-button").click();
     H.popover().findByLabelText("Show a mini bar chart").click({ force: true });
-    cy.findAllByTestId("mini-bar").should("have.length.above", 0);
+    cy.findAllByTestId("mini-bar-container").should("have.length.above", 0);
   });
 });

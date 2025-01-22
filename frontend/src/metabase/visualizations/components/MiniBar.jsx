@@ -62,7 +62,7 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
       </div>
       {/* OUTER CONTAINER BAR */}
       <div
-        data-testid="mini-bar"
+        data-testid="mini-bar-container"
         className={CS.ml1}
         style={{
           position: "relative",
@@ -74,6 +74,7 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
       >
         {/* INNER PROGRESS BAR */}
         <div
+          data-testid="mini-bar"
           style={{
             position: "absolute",
             top: 0,
