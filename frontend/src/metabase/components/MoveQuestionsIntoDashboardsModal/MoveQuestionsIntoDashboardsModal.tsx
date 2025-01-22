@@ -1,6 +1,6 @@
 import { QueryStatus } from "@reduxjs/toolkit/query";
 import type { Location } from "history";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { withRouter } from "react-router";
 import { replace } from "react-router-redux";
 import _ from "underscore";
@@ -10,6 +10,7 @@ import {
   useListCollectionDashboardQuestionCandidatesQuery,
   useMoveCollectionDashboardQuestionCandidatesMutation,
 } from "metabase/api";
+import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 
@@ -29,7 +30,9 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
     onClose: handleClose,
   }: MoveQuestionsIntoDashboardsModalProps) => {
     const collectionId = Urls.extractCollectionId(params.slug);
-    const [acknowledgedInfoStep, setAcknowledgedInfoStep] = useState(false);
+    const [ackedInfoStep, ackInfoStep] = useUserAcknowledgement(
+      "dashboard_question_migration_info_modal",
+    );
 
     const dispatch = useDispatch();
     const candidatesReq = useListCollectionDashboardQuestionCandidatesQuery(
@@ -66,10 +69,10 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
       }
     }, [bulkMoveReq]);
 
-    if (!acknowledgedInfoStep) {
+    if (!ackedInfoStep) {
       return (
         <MoveQuestionsIntoDashboardsInfoModal
-          onConfirm={() => setAcknowledgedInfoStep(true)}
+          onConfirm={ackInfoStep}
           onCancel={handleClose}
         />
       );
