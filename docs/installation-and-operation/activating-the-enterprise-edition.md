@@ -2,6 +2,7 @@
 title: Activating your Metabase commercial license
 redirect_from:
   - /docs/latest/enterprise-guide/activating-the-enterprise-edition
+  - /docs/latest/paid-features/activating-the-enterprise-edition
 ---
 
 # Activating your Metabase commercial license
