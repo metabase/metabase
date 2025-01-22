@@ -124,7 +124,7 @@ describe("issue 35954", () => {
               "eq",
               `/dashboard/${id}-${dashboardDetails.name.toLowerCase()}`,
             );
-            cy.location("search").should("eq", "?equal_to=3");
+            cy.location("search").should("eq", "?number=3");
           });
 
           cy.log("Make sure the disconnected filter doesn't break UI");
@@ -160,7 +160,7 @@ describe("issue 35954", () => {
         connectFilterToColumn("Rating");
         H.saveDashboard();
 
-        cy.location("search").should("eq", "?equal_to=3");
+        cy.location("search").should("eq", "?number=3");
         assertFilterIsApplied();
       });
 
@@ -179,7 +179,7 @@ describe("issue 35954", () => {
         assertFilterIsDisconnected();
 
         H.visitDashboard(this.dashboardId);
-        cy.location("search").should("eq", "?equal_to=3");
+        cy.location("search").should("eq", "?number=3");
         assertFilterIsApplied();
       });
 
@@ -189,7 +189,7 @@ describe("issue 35954", () => {
           `/api/dashboard/${this.dashboardId}/public_link`,
         ).then(({ body: { uuid } }) => {
           // Set the filter through the URL
-          cy.visit(`/public/dashboard/${uuid}?equal_to=3`);
+          cy.visit(`/public/dashboard/${uuid}?number=3`);
         });
         assertFilterIsDisconnected();
       });
@@ -199,7 +199,7 @@ describe("issue 35954", () => {
 
         cy.request("PUT", `/api/dashboard/${id}`, {
           embedding_params: {
-            equal_to: "enabled",
+            number: "enabled",
           },
           enable_embedding: true,
         });
@@ -239,7 +239,7 @@ describe("issue 35954", () => {
 
         cy.request("PUT", `/api/dashboard/${id}`, {
           embedding_params: {
-            equal_to: "enabled",
+            number: "enabled",
           },
           enable_embedding: true,
         });
@@ -264,14 +264,14 @@ describe("issue 35954", () => {
 
         cy.request("PUT", `/api/dashboard/${id}`, {
           embedding_params: {
-            equal_to: "locked",
+            number: "locked",
           },
           enable_embedding: true,
         });
 
         const payload = {
           resource: { dashboard: id },
-          params: { equal_to: [3] },
+          params: { number: [3] },
         };
 
         H.visitEmbeddedPage(payload);
