@@ -352,7 +352,7 @@
                   #"Unsubscribe"))))
 
         (testing "the unsubscribe url is correct"
-          (let [url    (re-find #"https://[^/]+/testmb/unsubscribe[^\"]*" (-> email :message first :content))
+          (let [url    (re-find #"https://[^/]+/unsubscribe[^\"]*" (-> email :message first :content))
                 params (codec/form-decode (second (str/split url #"\?")))]
             (is (int? (parse-long (get params "notification-handler-id"))))
             (is (= "ngoc@metabase.com" (get params "email")))
