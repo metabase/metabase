@@ -52,10 +52,11 @@ jobs:
             const inputChunks = Number(process.env.chunks);
             const regularChunks = inputChunks - specialTests.length;
 
-            const regularTests = chunkedFiles.map((files, index) => ({
-              name: `e2e-group-${index + 1}`,
-              runner: index < 5 ? beefyRunner : defaultRunner, // FOR TESTING
-            }));
+            const regularTests = new Array(regularChunks).fill(1)
+              .map((files, index) => ({
+                name: `e2e-group-${index + 1}`,
+                runner: index < 5 ? beefyRunner : defaultRunner, // FOR TESTING
+              }));
 
             // regular chunks need to come before special chunks
             const testSets = [...regularTests, ...specialTests];
