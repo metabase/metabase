@@ -507,7 +507,7 @@ describe(
     it("should allow you to enable a webhook alert", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("sharing-menu-button").click();
-      H.popover().findByText("Create alert").click();
+      H.popover().findByText("Create an alert").click();
 
       H.modal()
         .first()
@@ -536,7 +536,7 @@ describe(
     it("should allow you to test a webhook", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("sharing-menu-button").click();
-      H.popover().findByText("Create alert").click();
+      H.popover().findByText("Create an alert").click();
 
       H.modal()
         .first()

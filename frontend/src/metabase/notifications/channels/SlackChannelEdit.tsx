@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
-import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
+import { SlackChannelFieldNew } from "metabase/notifications/channels/SlackChannelFieldNew";
 import type {
   NotificationHandlerSlack,
   SlackChannelSpec,
@@ -24,7 +24,7 @@ export const SlackChannelEdit = ({
       iconName="int"
       onRemoveChannel={onRemoveChannel}
     >
-      <SlackChannelField
+      <SlackChannelFieldNew
         channel={channel}
         channelSpec={channelSpec}
         onChange={onChange}

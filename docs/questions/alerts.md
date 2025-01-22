@@ -27,7 +27,7 @@ To create an alert:
 
 1. Save your question
 2. Click on the sharing icon in the top-right of the screen
-3. Select **Create alert**.
+3. Select **Create an alert**.
 
 ![Get alerts](./images/get-alerts-about-this.png)
 

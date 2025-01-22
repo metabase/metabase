@@ -15,28 +15,25 @@ describe("scenarios > alert", () => {
   describe("with nothing set", () => {
     it("should prompt you to add email/slack credentials", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu("Create alert");
+      H.openSharingMenu("Create an alert");
 
       H.modal().within(() => {
         cy.findByText(
-          "To send alerts, you'll need to set up email, Slack or Webhook integration.",
+          "To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook first.",
         );
 
-        cy.findByRole("link", { name: "Configure email" }).should(
-          "have.attr",
-          "href",
-          "/admin/settings/email",
-        );
-        cy.findByRole("link", { name: "Configure Slack" }).should(
-          "have.attr",
-          "href",
-          "/admin/settings/notifications/slack",
-        );
-        cy.findByRole("link", { name: "Configure webhook" }).should(
-          "have.attr",
-          "href",
-          "/admin/settings/notifications",
-        );
+        cy.findByText("Set up SMTP")
+          .should("be.visible")
+          .closest("a")
+          .should("have.attr", "href", "/admin/settings/email");
+        cy.findByText("Set up Slack")
+          .should("be.visible")
+          .closest("a")
+          .should("have.attr", "href", "/admin/settings/notifications/slack");
+        cy.findByText("Add a webhook")
+          .should("be.visible")
+          .closest("a")
+          .should("have.attr", "href", "/admin/settings/notifications");
       });
     });
 
@@ -44,12 +41,17 @@ describe("scenarios > alert", () => {
       cy.signInAsNormalUser();
 
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu("Create alert");
+      H.openSharingMenu("Create an alert");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "To send alerts, an admin needs to set up email integration.",
-      );
+      H.modal().within(() => {
+        cy.findByText(
+          "To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook first.",
+        );
+
+        cy.findByText("Set up SMTP").should("not.exist");
+        cy.findByText("Set up Slack").should("not.exist");
+        cy.findByText("Add a webhook").should("not.exist");
+      });
     });
   });
 
@@ -68,7 +70,7 @@ describe("scenarios > alert", () => {
 
     it("should be able to create and delete alerts with webhooks enabled", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
-      H.openSharingMenu("Create alert");
+      H.openSharingMenu("Create an alert");
 
       //Disable Email
       H.toggleAlertChannel("Email");
@@ -129,12 +131,14 @@ describe("scenarios > alert", () => {
       { visitQuestion: true },
     );
 
-    H.openSharingMenu("Create alert");
-    H.modal().button("Set up an alert").click();
+    H.openSharingMenu("Create an alert");
     H.modal().button("Done").click();
 
     H.openSharingMenu("Edit alerts");
-    H.popover().findByText("You set up an alert").should("be.visible");
+    H.modal().within(() => {
+      cy.findByText("Edit alerts").should("be.visible");
+      cy.findByText("Created by you").should("be.visible");
+    });
   });
 });
 
@@ -167,7 +171,7 @@ H.describeEE(
     it("should validate approved email domains for a question alert", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.openSharingMenu("Create alert");
+      H.openSharingMenu("Create an alert");
       H.modal().findByText("Set up an alert").click();
 
       H.modal()

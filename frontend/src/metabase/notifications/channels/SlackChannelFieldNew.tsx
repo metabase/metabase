@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -6,7 +5,7 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Autocomplete } from "metabase/ui";
-import type { Channel, ChannelSpec } from "metabase-types/api";
+import type { ChannelSpec, NotificationHandlerSlack } from "metabase-types/api";
 
 const CHANNEL_FIELD_NAME = "channel";
 const CHANNEL_PREFIX = "#";
@@ -15,15 +14,16 @@ const USER_PREFIX = "@";
 const ALLOWED_PREFIXES = [CHANNEL_PREFIX, USER_PREFIX];
 
 interface SlackChannelFieldProps {
-  channel: Channel;
+  channel: NotificationHandlerSlack;
   channelSpec: ChannelSpec;
-  onChannelPropertyChange: any;
+  onChange: (newConfig: NotificationHandlerSlack) => void;
 }
 
-export const SlackChannelField = ({
+// TODO: this is used for new Notifications. Unify this with SlackChannelField
+export const SlackChannelFieldNew = ({
   channel,
   channelSpec,
-  onChannelPropertyChange,
+  onChange,
 }: SlackChannelFieldProps) => {
   const [hasPrivateChannelWarning, setHasPrivateChannelWarning] =
     useState(false);
@@ -31,13 +31,21 @@ export const SlackChannelField = ({
   const channelField = channelSpec.fields?.find(
     field => field.name === CHANNEL_FIELD_NAME,
   );
-  const value = channel?.details?.[CHANNEL_FIELD_NAME] ?? "";
+  const value = channel.recipients[0]?.details.value ?? "";
 
-  const updateChannel = (value: string) =>
-    onChannelPropertyChange("details", {
-      ...channel.details,
-      [CHANNEL_FIELD_NAME]: value,
+  const updateChannel = (value: string) => {
+    onChange({
+      ...channel,
+      recipients: [
+        {
+          type: "notification-recipient/raw-value",
+          details: {
+            value,
+          },
+        },
+      ],
     });
+  };
 
   const handleChange = (value: string) => {
     updateChannel(value);
@@ -65,9 +73,6 @@ export const SlackChannelField = ({
 
   return (
     <div>
-      <span className={cx(CS.block, CS.textBold, CS.pb2)}>
-        {channelField?.displayName}
-      </span>
       <Autocomplete
         data={channelField?.options || []}
         value={value}

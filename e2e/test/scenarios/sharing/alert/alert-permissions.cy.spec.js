@@ -69,7 +69,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       H.openSharingMenu();
 
       H.sharingMenu().findByText("Edit alerts").should("not.exist");
-      H.sharingMenu().findByText("Create alert").should("be.visible");
+      H.sharingMenu().findByText("Create an alert").should("be.visible");
     });
 
     it("should let you see other alerts where you are a recipient", () => {
@@ -106,7 +106,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
 });
 
 function createBasicAlert({ firstAlert, includeNormal } = {}) {
-  H.openSharingMenu("Create alert");
+  H.openSharingMenu("Create an alert");
 
   if (firstAlert) {
     H.modal().findByText("Set up an alert").click();
