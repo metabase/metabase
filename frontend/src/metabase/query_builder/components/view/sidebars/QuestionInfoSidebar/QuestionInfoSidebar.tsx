@@ -23,8 +23,8 @@ import { Flex, Icon, Stack, Tabs, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionDetails } from "./QuestionDetails";
-import { SidesheetCardWithFields } from "./components/SidesheetCardWithFields";
 import { QuestionRelationshipsTab } from "./components/QuestionRelationshipsTab";
+import { SidesheetCardWithFields } from "./components/SidesheetCardWithFields";
 
 interface QuestionInfoSidebarProps {
   question: Question;
