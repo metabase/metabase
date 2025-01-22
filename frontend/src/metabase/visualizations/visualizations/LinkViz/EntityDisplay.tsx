@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import { isEmpty } from "metabase/lib/validate";
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 import {
   EllipsifiedEntityContainer,
@@ -25,9 +25,11 @@ export const EntityDisplay = ({
         <EllipsifiedEntityContainer>{entity?.name}</EllipsifiedEntityContainer>
       </LeftContainer>
       {showDescription && entity?.description && (
-        <Tooltip multiline label={entity.description} opened>
-          <Icon name="info" color="var(--mb-color-text-light)" />
-        </Tooltip>
+        <Icon
+          name="info"
+          color="var(--mb-color-text-light)"
+          tooltip={entity.description}
+        />
       )}
     </EntityDisplayContainer>
   );

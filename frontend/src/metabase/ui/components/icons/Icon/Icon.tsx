@@ -10,6 +10,7 @@ import type { IconName } from "./icons";
 import { Icons } from "./icons";
 
 const defaultSize = 16;
+const multiline = true;
 
 export type IconProps = SVGAttributes<SVGSVGElement> &
   BoxProps & {
@@ -39,7 +40,17 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
     />
   );
 
-  return tooltip ? <Tooltip label={tooltip}>{icon}</Tooltip> : icon;
+  return tooltip ? (
+    <Tooltip
+      style={{ whiteSpace: multiline ? "unset" : "nowrap" }}
+      label={tooltip}
+      data-testid={`${multiline ? "wrapped-" : ""}tooltip`}
+    >
+      {icon}
+    </Tooltip>
+  ) : (
+    icon
+  );
 });
 
 /** An icon that does not shrink when its container is too narrow **/
