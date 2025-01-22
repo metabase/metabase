@@ -12,7 +12,7 @@
   (if (int? dashboard-id)
     (let [dashboard (-> (t2/select-one :model/Dashboard :id dashboard-id)
                         (t2/hydrate [:dashcards :card]))
-          cards (for [{:keys [id card]} (sort-by (juxt :tab :row :col) (:dashcards dashboard))
+          cards (for [{:keys [id card]} (:dashcards dashboard)
                       :when (-> card :id int?)]
                   (-> card
                       (select-keys [:id :name :collection_id :description :display :parameter_mappings])
@@ -36,8 +36,15 @@
                          (assoc :dashboard_id  dashboard-id
                                 :creator_id    api/*current-user-id*
                                 :skip_if_empty false))]
-      (if recipient-id
-        (do (models.pulse/create-pulse! (map models.pulse/card->ref cards) [channel] pulse-data)
-            {:output "success"})
-        {:output "no user with this email found"}))
+      {:output
+       (cond
+         (nil? recipient-id)
+         "no user with this email found"
+
+         (nil? dashboard)
+         "no dashboard with this dashboard_id found"
+
+         :else
+         (do (models.pulse/create-pulse! (map models.pulse/card->ref cards) [channel] pulse-data)
+             "success"))})
     {:output "invalid dashboard_id"}))
