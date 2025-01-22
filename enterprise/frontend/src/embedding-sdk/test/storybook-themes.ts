@@ -248,7 +248,7 @@ const proficiencyTheme: MetabaseTheme = {
     border: "rgba(0, 0, 0, 0.12)",
     background: proficiencyColors.background,
     "background-hover": "#fCFDFD",
-    "background-disabled": proficiencyColors.lighterGrey,
+    "background-disabled": "rgba(0, 0, 0, 0.1)",
     charts: [
       proficiencyColors.primary,
       "rgba(37, 90, 157, 1)",
