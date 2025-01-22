@@ -134,7 +134,7 @@
   [channel]
   (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
     (-> (t2/select-one :model/PulseChannel :id new-channel-id)
-        (t2/hydrate :recipients)
+        (t2/hydrate :pulse-recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
         (update :entity_id boolean)
@@ -144,7 +144,7 @@
   [{:keys [id] :as channel}]
   (pulse-channel/update-pulse-channel! channel)
   (-> (t2/select-one :model/PulseChannel :id id)
-      (t2/hydrate :recipients)
+      (t2/hydrate :pulse-recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (update :entity_id boolean)
       (m/dissoc-in [:details :emails])))
@@ -334,7 +334,7 @@
                    :first_name  "Rasta"
                    :last_name   "Toucan"
                    :common_name "Rasta Toucan"}]))
-               (:recipients (t2/hydrate channel :recipients))))))))
+               (:recipients (t2/hydrate channel :pulse-recipients))))))))
 
 (deftest validate-email-domains-check-user-ids-match-emails
   (testing `pulse-channel/validate-email-domains

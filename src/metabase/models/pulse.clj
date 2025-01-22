@@ -268,7 +268,7 @@
   "Batched-hydrate multiple Pulses or Alerts."
   [notifications :- [:sequential (ms/InstanceOf :model/Pulse)]]
   (as-> notifications <>
-    (t2/hydrate <> :creator :cards [:channels :recipients])
+    (t2/hydrate <> :creator :cards [:channels :pulse-recipients])
     (map #(m/dissoc-in % [:details :emails]) <>)))
 
 (mu/defn- notification->pulse :- (ms/InstanceOf :model/Pulse)
