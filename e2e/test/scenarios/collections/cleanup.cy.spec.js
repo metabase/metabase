@@ -26,7 +26,7 @@ describe("scenarios > collections > clean up", () => {
       cleanUpAlert().should("not.exist");
       collectionMenu().click();
       H.popover().within(() => {
-        cy.findByText("Clean things up").should("not.exist");
+        cy.findByText("Get rid of unused items").should("not.exist");
       });
     });
   });
@@ -45,7 +45,7 @@ describe("scenarios > collections > clean up", () => {
         });
         collectionMenu().click();
         H.popover().within(() => {
-          cy.findByText("Clean things up").should("not.exist");
+          cy.findByText("Get rid of unused items").should("not.exist");
         });
 
         cy.log(
@@ -54,7 +54,7 @@ describe("scenarios > collections > clean up", () => {
         H.visitCollection(FIRST_COLLECTION_ID);
         collectionMenu().click();
         H.popover().within(() => {
-          cy.findByText("Clean things up").should("exist");
+          cy.findByText("Get rid of unused items").should("exist");
         });
 
         cy.log("should not show in custom analytics collections");
@@ -72,7 +72,7 @@ describe("scenarios > collections > clean up", () => {
           H.visitCollection(id);
           collectionMenu().click();
           H.popover().within(() => {
-            cy.findByText("Clean things up").should("not.exist");
+            cy.findByText("Get rid of unused items").should("not.exist");
           });
         });
 
@@ -101,7 +101,7 @@ describe("scenarios > collections > clean up", () => {
               H.visitCollection(id);
               collectionMenu().click();
               H.popover().within(() => {
-                cy.findByText("Clean things up").should("not.exist");
+                cy.findByText("Get rid of unused items").should("not.exist");
               });
               cleanUpAlert().should("not.exist");
             });
@@ -427,7 +427,7 @@ const selectCleanThingsUpCollectionAction = () => {
   H.popover()
     .should("exist")
     .within(() => {
-      cy.findByText("Clean things up").click();
+      cy.findByText("Get rid of unused items").click();
     });
 };
 const setDateFilter = timeSpan => {
