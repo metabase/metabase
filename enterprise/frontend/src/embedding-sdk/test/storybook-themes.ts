@@ -295,6 +295,11 @@ const proficiencyTheme: MetabaseTheme = {
     popover: {
       zIndex: 201,
     },
+    question: {
+      toolbar: {
+        backgroundColor: "transparent",
+      },
+    },
   },
 };
 
