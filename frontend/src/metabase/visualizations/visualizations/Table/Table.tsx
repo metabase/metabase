@@ -22,7 +22,15 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { type CSSProperties, useCallback, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent,
+  type MouseEventHandler,
+  type TouchEvent,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 
 import { connect } from "metabase/lib/redux";
 import {
@@ -76,26 +84,23 @@ const DraggableHeader = ({ header, isPivoted }: DraggableHeaderProps) => {
   const dndProps = {
     ...attributes,
     ...listeners,
-    onMouseDown: (e: React.MouseEvent) => {
-      if (e.button === 0 && e.target === e.currentTarget) {
-        listeners?.onMouseDown?.(e);
-      }
-    },
   };
 
+  const handleMouseDown = useCallback(
+    (e: MouseEvent<HTMLDivElement> | TouchEvent<HTMLDivElement>) => {
+      e.stopPropagation();
+      header.getResizeHandler(e as any);
+    },
+    [header],
+  );
+
   return (
-    <div
-      ref={setNodeRef}
-      className={styles.th}
-      style={style}
-      {...dndProps}
-      tabIndex={-1}
-    >
+    <div ref={setNodeRef} className={styles.th} style={style} {...dndProps}>
       {flexRender(header.column.columnDef.header, header.getContext())}
       <div
         className={styles.resizer}
-        onMouseDown={header.getResizeHandler()}
-        onTouchStart={header.getResizeHandler()}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleMouseDown}
       />
     </div>
   );
@@ -310,8 +315,9 @@ export const _Table = ({
                       className={styles.tr}
                       style={{
                         position: "absolute",
-                        transform: `translateY(${virtualRow.start}px)`,
                         width: "100%",
+                        minHeight: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
                       }}
                     >
                       {virtualPaddingLeft ? (

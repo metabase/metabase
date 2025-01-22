@@ -1,7 +1,7 @@
 import type { ColumnDef, Table as ReactTable } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type React from "react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useLayoutEffect, useMemo } from "react";
 import _ from "underscore";
 
 import type { DatasetData, RowValue, RowValues } from "metabase-types/api";
@@ -108,11 +108,12 @@ export const useVirtualGrid = ({
   }
 
   const measureGrid = useCallback(() => {
-    columnVirtualizer.measure();
-    rowVirtualizer.measure();
-  }, [columnVirtualizer, rowVirtualizer]);
+    Array.from(rowVirtualizer.elementsCache.values()).forEach(el =>
+      rowVirtualizer.measureElement(el),
+    );
+  }, [rowVirtualizer]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     measureGrid();
   }, [columns, measureGrid]);
 
