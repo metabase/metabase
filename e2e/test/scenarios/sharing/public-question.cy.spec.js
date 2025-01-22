@@ -1,9 +1,9 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PEOPLE } = SAMPLE_DATABASE;
+const { PEOPLE, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-const questionData = {
+const questionDetails = {
   name: "Parameterized Public Question",
   native: {
     query: "SELECT * FROM PEOPLE WHERE {{birthdate}} AND {{source}} limit 5",
@@ -30,6 +30,31 @@ const questionData = {
   },
 };
 
+const pivotQuestionDetails = {
+  name: "Pivot Public Question",
+  display: "pivot",
+  query: {
+    "source-table": PRODUCTS_ID,
+    breakout: [
+      ["field", PRODUCTS.CATEGORY, null],
+      ["field", PRODUCTS.VENDOR, null],
+    ],
+    aggregation: [["count"]],
+  },
+  visualization_settings: {
+    "pivot_table.column_widths": {
+      leftHeaderWidths: [201],
+      totalLeftHeaderWidths: 201,
+      valueHeaderWidths: {},
+    },
+    "pivot_table.column_split": {
+      rows: ["VENDOR"],
+      columns: ["CATEGORY"],
+      values: ["count"],
+    },
+  },
+};
+
 const PUBLIC_QUESTION_REGEX =
   /\/public\/question\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/;
 
@@ -43,6 +68,9 @@ const USERS = {
 describe("scenarios > public > question", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/public/card/*/query").as("publicQuery");
+    cy.intercept("POST", "/api/public/pivot/card/*/query").as(
+      "publicPivotQuery",
+    );
 
     H.restore();
     cy.signInAsAdmin();
@@ -51,7 +79,7 @@ describe("scenarios > public > question", () => {
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
-    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       H.visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
@@ -82,8 +110,27 @@ describe("scenarios > public > question", () => {
     });
   });
 
+  it("should be able to view a pivot public question and download query results", () => {
+    H.createQuestion(pivotQuestionDetails, {
+      visitQuestion: true,
+      wrapId: true,
+    });
+    H.assertQueryBuilderRowCount(405);
+    H.openNewPublicLinkDropdown("card");
+    visitPublicURL();
+    cy.wait("@publicPivotQuery");
+    cy.get("@uuid").then(publicUuid => {
+      cy.get("@questionId").then(questionId => {
+        H.downloadAndAssert(
+          { fileType: "csv", questionId, publicUuid },
+          H.assertNotEmptyObject,
+        );
+      });
+    });
+  });
+
   it("should only allow non-admin users to see a public link if one has already been created", () => {
-    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       H.createPublicQuestionLink(id);
       cy.signOut();
       cy.signInAsNormalUser().then(() => {
@@ -105,7 +152,7 @@ describe("scenarios > public > question", () => {
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it("should be able to view public questions", () => {
-        cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+        cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
           cy.request("POST", `/api/card/${id}/public_link`).then(
             ({ body: { uuid } }) => {
               setUser();
