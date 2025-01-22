@@ -14,6 +14,7 @@
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
 
@@ -66,27 +67,37 @@
 
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
-(defn- set-weights! [context overrides]
+(mu/defn- set-weights!
+  [context   :- :keyword
+   overrides :- [:map-of keyword? double?]]
   (api/check-superuser)
   (when (= context :all)
     (throw (ex-info "Cannot set weights for all context"
                     {:status-code 400})))
   (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
-        rankers         (into #{} (map (fn [k] (keyword (first (str/split (name k) #"/"))))) (keys overrides))
-        unknown-rankers (seq (remove known-ranker? rankers))]
+        rankers         (into #{}
+                              (map (fn [k]
+                                     (if (namespace k)
+                                       (keyword (namespace k))
+                                       k)))
+                              (keys overrides))
+        unknown-rankers (not-empty (remove known-ranker? rankers))]
     (when unknown-rankers
       (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
                       {:status-code 400})))
     (public-settings/experimental-search-weight-overrides!
-     (merge-with merge (public-settings/experimental-search-weight-overrides) {context overrides}))))
+     (merge-with merge (public-settings/experimental-search-weight-overrides) {context (update-keys overrides u/qualified-name)}))))
 
+;;; TODO -- why the HECC is our GET endpoint used to SET custom weights? Whoever did this, fix it before I throw up --
+;;; Cam
 (api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"
   [_route-params
-   {:keys [overrides]}]
+   {:keys [context], :as overrides} :- [:map
+                                        [:context {:default :default} :keyword]
+                                        [:search_engine {:optional true} :any]]]
   ;; remove cookie
-  (let [context   (keyword (:context overrides :default))
-        overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
+  (let [overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
     (when (seq overrides)
       (set-weights! context overrides))
     (search.config/weights context)))
