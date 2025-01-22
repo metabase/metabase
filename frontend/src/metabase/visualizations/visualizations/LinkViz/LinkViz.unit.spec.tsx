@@ -238,8 +238,9 @@ describe("LinkViz", () => {
         expect(screen.getByText(longDescription)).toBeInTheDocument();
       });
 
-      const tooltip = screen.getByText(longDescription);
-      expect(tooltip).toHaveStyle({ whiteSpace: "unset" });
+      expect(screen.getByText(longDescription)).toBe(
+        screen.getByTestId("wrapped-tooltip"),
+      );
     });
 
     it("shows a link to a pie chart question", () => {
