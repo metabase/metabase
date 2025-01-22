@@ -4041,3 +4041,66 @@ describe("issue 48351", () => {
     H.assertTabSelected("Tab 2");
   });
 });
+
+describe("issue 52484", () => {
+  const questionDetails = {
+    native: {
+      query: "SELECT ID, RATING FROM PRODUCTS [[WHERE RATING = {{rating}}]]",
+      "template-tags": {
+        rating: {
+          id: "56708d23-6f01-42b7-98ed-f930295d31b9",
+          name: "rating",
+          type: "number",
+          "display-name": "Rating",
+        },
+      },
+    },
+    parameters: [
+      {
+        id: "56708d23-6f01-42b7-98ed-f930295d31b9",
+        name: "Rating",
+        slug: "rating",
+        type: "number/=",
+        target: ["dimension", ["template-tag", "rating"]],
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use click behaviors with numeric columns that are not database fields (metabase#52484)", () => {
+    H.createNativeQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+      },
+    );
+
+    cy.log("setup a dashboard with a click behavior");
+    H.editDashboard();
+    H.setFilter("Number", "Equal to");
+    H.selectDashboardFilter(H.getDashboardCard(), "Rating");
+    H.dashboardParametersDoneButton().click();
+    H.showDashboardCardActions();
+    cy.findByLabelText("Click behavior").click();
+    H.sidebar().within(() => {
+      cy.findByText("ID").click();
+      cy.findByText("Update a dashboard filter").click();
+      cy.findByText("Number").click();
+    });
+    H.popover().findByText("ID").click();
+    H.saveDashboard();
+
+    cy.log("update a dashboard filter by clicking on a ID column value");
+    H.getDashboardCard().findByText("2").click();
+    H.filterWidget().findByDisplayValue("2").should("be.visible");
+
+    cy.log("verify query results for the new filter");
+    H.getDashboardCard().within(() => {
+      cy.findByText("27").should("be.visible");
+      cy.findByText("123").should("be.visible");
+    });
+  });
+});
