@@ -118,14 +118,18 @@ export const DashCardMenuItems = ({
     withEditLink,
   ]);
 
-  return menuItems.map(item => (
-    <Menu.Item
-      fw="bold"
-      {...item}
-      key={item.key}
-      icon={<Icon name={item.iconName} aria-hidden />}
-    >
-      {item.label}
-    </Menu.Item>
-  ));
+  return menuItems.map(item => {
+    const { iconName, key, ...rest } = item;
+
+    return (
+      <Menu.Item
+        fw="bold"
+        {...rest}
+        key={key}
+        icon={<Icon name={iconName} aria-hidden />}
+      >
+        {item.label}
+      </Menu.Item>
+    );
+  });
 };
