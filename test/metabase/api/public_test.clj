@@ -143,7 +143,7 @@
                    (client/client :get 404 (str "public/card/" uuid))))))))))
 
 (deftest public-queries-are-counted-test
-  (testing "GET /api/public/card/:uuid/query coutns as a public query"
+  (testing "GET /api/public/card/:uuid/query counts as a public query"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-card [{uuid :public_uuid}]
         (testing "should increment the public link query count when fetching a public Card"
@@ -319,25 +319,26 @@
        (spreadsheet/select-columns {:A :col})))
 
 (deftest execute-public-card-test
-  (testing "GET /api/public/card/:uuid/query"
-    (mt/with-temporary-setting-values [enable-public-sharing true]
-      (with-temp-public-card [{uuid :public_uuid}]
-        (testing "Default :api response format"
-          (is (= [[100]]
-                 (mt/rows (client/client :get 202 (str "public/card/" uuid "/query"))))))
+  (doseq [method [:get :post]]
+    (testing (format "%s /api/public/card/:uuid/query" method)
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (with-temp-public-card [{uuid :public_uuid}]
+          (testing "Default :api response format"
+            (is (= [[100]]
+                   (mt/rows (client/client method 202 (str "public/card/" uuid "/query"))))))
 
-        (testing ":json download response format"
-          (is (= [{:Count "100"}]
-                 (client/client :get 200 (str "public/card/" uuid "/query/json?format_rows=true")))))
+          (testing ":json download response format"
+            (is (= [{:Count "100"}]
+                   (client/client method 200 (str "public/card/" uuid "/query/json?format_rows=true")))))
 
-        (testing ":csv download response format"
-          (is (= "Count\n100\n"
-                 (client/client :get 200 (str "public/card/" uuid "/query/csv?format_rows=true"), :format :csv))))
+          (testing ":csv download response format"
+            (is (= "Count\n100\n"
+                   (client/client method 200 (str "public/card/" uuid "/query/csv?format_rows=true"), :format :csv))))
 
-        (testing ":xlsx download response format"
-          (is (= [{:col "Count"} {:col 100.0}]
-                 (parse-xlsx-response
-                  (client/client :get 200 (str "public/card/" uuid "/query/xlsx?format_rows=true"))))))))))
+          (testing ":xlsx download response format"
+            (is (= [{:col "Count"} {:col 100.0}]
+                   (parse-xlsx-response
+                    (client/client method 200 (str "public/card/" uuid "/query/xlsx?format_rows=true")))))))))))
 
 (deftest execute-public-card-as-user-without-perms-test
   (testing "A user that doesn't have permissions to run the query normally should still be able to run a public Card as if they weren't logged in"
@@ -1601,19 +1602,20 @@
 (deftest pivot-public-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
-      (testing "GET /api/public/pivot/card/:uuid/query"
-        (mt/with-temporary-setting-values [enable-public-sharing true]
-          (with-temp-public-card [{uuid :public_uuid} (api.pivots/pivot-card)]
-            (let [result (client/client :get 202 (format "public/pivot/card/%s/query" uuid))
-                  rows   (mt/rows result)]
-              (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
-              (is (= "completed" (:status result)))
-              (is (= 6 (count (get-in result [:data :cols]))))
-              (is (= 1144 (count rows)))
+      (doseq [method [:get :post]]
+        (testing (format "%s /api/public/pivot/card/:uuid/query" method)
+          (mt/with-temporary-setting-values [enable-public-sharing true]
+            (with-temp-public-card [{uuid :public_uuid} (api.pivots/pivot-card)]
+              (let [result (client/client method 202 (format "public/pivot/card/%s/query" uuid))
+                    rows   (mt/rows result)]
+                (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
+                (is (= "completed" (:status result)))
+                (is (= 6 (count (get-in result [:data :cols]))))
+                (is (= 1144 (count rows)))
 
-              (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
-              (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
-              (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
+                (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+                (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
+                (is (= [nil nil nil 7 18760 69540] (last rows)))))))))))
 
 (defn- pivot-dashcard-url
   "URL for fetching results of a public DashCard."
