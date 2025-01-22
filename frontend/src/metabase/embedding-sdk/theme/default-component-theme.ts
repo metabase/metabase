@@ -68,6 +68,11 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     toolbar: {
       backgroundColor: "var(--mb-color-background-disabled)",
     },
+
+    editorButton: {
+      backgroundColor: "var(--mb-color-background)",
+      activeBackgroundColor: "var(--mb-color-brand)",
+    },
   },
   table: {
     cell: {
