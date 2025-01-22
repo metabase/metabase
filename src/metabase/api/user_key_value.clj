@@ -5,6 +5,7 @@
    [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.lib.schema.literal]
    [metabase.models.user-key-value :as user-key-value]
    [metabase.models.user-key-value.types :as types]
    [metabase.util.malli.schema :as ms]))
@@ -15,24 +16,24 @@
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]
    _query-params
-   {v :value
-    expires-at :expires_at} :- [:map
-                                [:v          :any]
-                                [:expires_at {:optional true} [:maybe :metabase.lib.schema.literal/string.datetime]]]]
-  (try (user-key-value/put! api/*current-user-id* (mc/coerce ::types/user-key-value
-                                                             {:key k
-                                                              :namespace nmspace
-                                                              :value v
-                                                              :expires-at expires-at}
-                                                             (mtx/transformer
-                                                              (mtx/default-value-transformer)
-                                                              (mett/time-transformer)
-                                                              {:name :api-request})))
-       (catch Exception e
-         (when (= (:type (ex-data e))
-                  ::mc/coercion)
-           (api/check-400 false))
-         (throw e))))
+   {v :value, expires-at :expires_at} :- [:map
+                                          [:value      {:optional true} :any]
+                                          [:expires_at {:optional true} [:maybe :metabase.lib.schema.literal/string.datetime]]]]
+  (try
+    (user-key-value/put! api/*current-user-id* (mc/coerce ::types/user-key-value
+                                                          {:key k
+                                                           :namespace nmspace
+                                                           :value v
+                                                           :expires-at expires-at}
+                                                          (mtx/transformer
+                                                           (mtx/default-value-transformer)
+                                                           (mett/time-transformer)
+                                                           {:name :api-request})))
+    (catch Exception e
+      (when (= (:type (ex-data e))
+               ::mc/coercion)
+        (api/check-400 false))
+      (throw e))))
 
 (api.macros/defendpoint :get "/namespace/:namespace/key/:key"
   "Get a value for the user"
