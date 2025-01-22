@@ -8,7 +8,6 @@
   (:require
    [clojure.java.jmx :as jmx]
    [iapetos.collector :as collector]
-   [iapetos.collector.ring :as ring]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -237,7 +236,7 @@
   (log/info "Starting prometheus metrics collector")
   (let [registry (prometheus/collector-registry registry-name)]
     (apply prometheus/register
-           (ring/initialize registry)
+           (collector.ring/initialize registry)
            (concat (jvm-collectors)
                    (jetty-collectors)
                    [@c3p0-collector]
