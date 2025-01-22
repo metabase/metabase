@@ -227,7 +227,6 @@ describe("issue 51020", () => {
   function setupBasicActionsInModel() {
     H.questionInfoButton().click();
     H.sidesheet().findByText("Actions").click();
-    cy.findByRole("tab", { name: "Actions" }).click();
     cy.button(/Create basic actions/).click();
   }
 
