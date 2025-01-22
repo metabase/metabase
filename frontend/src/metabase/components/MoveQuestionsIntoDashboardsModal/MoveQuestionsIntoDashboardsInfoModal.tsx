@@ -18,6 +18,7 @@ export const MoveQuestionsIntoDashboardsInfoModal = ({
     title={t`Move saved questions into dashboards?`}
     size="35rem"
     withCloseButton={false}
+    data-testid="move-questions-into-dashboard-info-modal"
   >
     <List spacing="md" mt="1.25rem">
       <List.Item icon={<Icon name="ai" c="brand" mb="-2px" />} lh="1.5rem">
