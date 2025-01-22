@@ -18,12 +18,14 @@ export interface MiniBarProps {
   value: RowValue;
   extent: [number, number];
   formatter: TableCellFormatter;
+  backgroundColor: string;
 }
 
 export const MiniBar = ({
   value,
   extent: [min, max],
   formatter,
+  backgroundColor,
 }: MiniBarProps) => {
   if (typeof value !== "number") {
     return null;
@@ -60,7 +62,7 @@ export const MiniBar = ({
         };
 
   return (
-    <div className={S.root}>
+    <div className={S.root} style={{ backgroundColor }}>
       {/* TEXT VALUE */}
       <div
         className={cx(CS.textEllipsis, CS.textBold, CS.textRight, CS.flexFull)}
