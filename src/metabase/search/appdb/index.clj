@@ -157,9 +157,9 @@
         (keep (fn [[k t]]
                 (when t
                   (if (= :model-index-id k)
-                   [(->db-column k) :int
-                    [:references :model_index :id]
-                    :on-delete :cascade]
+                    [(->db-column k) :int
+                     [:references :model_index :id]
+                     :on-delete :cascade]
                     (into [(->db-column k) (->db-type t)]
                           (concat
                            (when (not-null k)
