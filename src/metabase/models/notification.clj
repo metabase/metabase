@@ -56,7 +56,7 @@
   [notification]
   (dissoc notification :internal_id))
 
-(methodical/defmethod t2/batched-hydrate [:model/Notification :subscriptions]
+(methodical/defmethod t2/batched-hydrate [:default :subscriptions]
   "Batch hydration NotificationSubscriptions for a list of Notifications."
   [_model k notifications]
   (mi/instances-with-hydrated-data
@@ -66,7 +66,7 @@
    :id
    {:default []}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Notification :payload]
+(methodical/defmethod t2/batched-hydrate [:default :payload]
   "Batch hydration payloads for a list of Notifications."
   [_model k notifications]
   (let [payload-type->ids        (u/group-by :payload_type :payload_id
@@ -85,7 +85,7 @@
              (get payload-type+id->payload [(:payload_type notification)
                                             (:payload_id notification)])))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Notification :handlers]
+(methodical/defmethod t2/batched-hydrate [:default :handlers]
   "Batch hydration NotificationHandlers for a list of Notifications"
   [_model k notifications]
   (mi/instances-with-hydrated-data
@@ -208,7 +208,7 @@
 (t2/deftransforms :model/NotificationHandler
   {:channel_type (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))})
 
-(methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :channel]
+(methodical/defmethod t2/batched-hydrate [:default :channel]
   "Batch hydration Channels for a list of NotificationHandlers"
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
@@ -220,7 +220,7 @@
    :channel_id
    {:default nil}))
 
-(methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :template]
+(methodical/defmethod t2/batched-hydrate [:default :template]
   "Batch hydration ChannelTemplates for a list of NotificationHandlers"
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data
@@ -231,7 +231,7 @@
    :template_id
    {:default nil}))
 
-(methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :recipients]
+(methodical/defmethod t2/batched-hydrate [:default :recipients]
   "Batch hydration NotificationRecipients for a list of NotificationHandlers"
   [_model k notification-handlers]
   (mi/instances-with-hydrated-data

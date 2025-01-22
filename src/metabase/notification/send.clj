@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.channel.core :as channel]
+   [metabase.config :as config]
    [metabase.events :as events]
    [metabase.models.notification :as models.notification]
    [metabase.models.setting :as setting]
@@ -40,7 +41,7 @@
              (.namingPattern "send-notification-thread-pool-%d"))))))
 
 (def ^:private default-retry-config
-  {:max-attempts            7
+  {:max-attempts            (if config/is-dev? 2 7)
    :initial-interval-millis 500
    :multiplier              2.0
    :randomization-factor    0.1
@@ -96,20 +97,11 @@
     (catch Throwable e
       (log/errorf e "[Notification %d] Error sending notification!" notification-id))))
 
-(defn- maybe-hydrate-notification
-  [notification-info]
-  ;; skip hydrating if we already have the necessary keys
-  (let [already-included? (some #{:subscriptions :handlers} (keys notification-info))]
-    (cond-> notification-info
-      ;; always included creator because it's not part of the notification models
-      already-included?       (t2/hydrate :creator)
-      (not already-included?) models.notification/hydrate-notification)))
-
 (defn- hydrate-notification
   [notification-info]
   (case (:payload_type notification-info)
     (:notification/system-event :notification/testing :notification/card)
-    (maybe-hydrate-notification notification-info)
+    (models.notification/hydrate-notification notification-info)
     ;; :notification/dashboard is still on pulse, so we expect it to self-contained. see [[metabase.pulse.send]]
     notification-info))
 
