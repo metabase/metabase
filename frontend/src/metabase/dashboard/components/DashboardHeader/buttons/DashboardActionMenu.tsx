@@ -1,5 +1,5 @@
-import { type JSX, type MouseEvent, useState } from "react";
-import { withRouter } from "react-router";
+import { type JSX, type MouseEvent, forwardRef, useState } from "react";
+import { Link, type LinkProps, withRouter } from "react-router";
 import type { WithRouterProps } from "react-router/lib/withRouter";
 import { c, t } from "ttag";
 
@@ -18,6 +18,16 @@ type DashboardActionMenuProps = {
   dashboard: Dashboard;
   openSettingsSidebar: () => void;
 };
+
+// Fixes this bug: https://github.com/mantinedev/mantine/issues/5571#issue-2082430353
+// Hover states get weird when using Link directly. Since Link does not take the standard
+// `ref` prop, we have to manually forward it to the correct prop name to make hover work as expected.
+const ForwardRefLink = forwardRef((props: LinkProps, ref) => (
+  // @ts-expect-error - innerRef not in prop types but it is a valid prop. docs can be found here: https://github.com/remix-run/react-router/blob/v3.2.6/docs/API.md#innerref
+  <Link {...props} innerRef={ref} />
+));
+// @ts-expect-error - must set a displayName + this works
+ForwardRefLink.displayName = "ForwardRefLink";
 
 const DashboardActionMenuInner = ({
   canResetFilters,
@@ -92,16 +102,16 @@ const DashboardActionMenuInner = ({
 
             <Menu.Item
               icon={<Icon name="move" />}
-              component="a"
-              href={`${location?.pathname}/move`}
+              component={ForwardRefLink}
+              to={`${location?.pathname}/move`}
             >{c("A verb, not a noun").t`Move`}</Menu.Item>
           </>
         )}
 
         <Menu.Item
           icon={<Icon name="clone" />}
-          component="a"
-          href={`${location?.pathname}/copy`}
+          component={ForwardRefLink}
+          to={`${location?.pathname}/copy`}
         >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
 
         {canEdit && (
@@ -109,8 +119,8 @@ const DashboardActionMenuInner = ({
             <Menu.Divider />
             <Menu.Item
               icon={<Icon name="trash" />}
-              component="a"
-              href={`${location?.pathname}/archive`}
+              component={ForwardRefLink}
+              to={`${location?.pathname}/archive`}
             >{t`Move to trash`}</Menu.Item>
           </>
         )}

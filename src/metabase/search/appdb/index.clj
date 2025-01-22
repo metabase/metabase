@@ -234,8 +234,10 @@
         ;; TODO we should handle the MySQL and MariaDB flavors here too
         (if (or (instance? PSQLException (ex-cause e))
                 (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
-          ;; Suppress database errors, which are likely due to stale tracking data.
-          (sync-tracking-atoms!)
+          ;; If resetting tracking atoms resolves the issue (which is likely happened because of stale tracking data),
+          ;; suppress the issue - but throw it all the way to the caller if the issue persists
+          (do (sync-tracking-atoms!)
+              (specialization/batch-upsert! table-name entries))
           (throw e))))))
 
 (defn- batch-update!
