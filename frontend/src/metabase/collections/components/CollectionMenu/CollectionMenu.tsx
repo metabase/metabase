@@ -7,6 +7,7 @@ import {
   isRootPersonalCollection,
 } from "metabase/collections/utils";
 import EntityMenu from "metabase/components/EntityMenu";
+import { useHasDashboardQuestionCandidates } from "metabase/components/MoveQuestionsIntoDashboardsModal/hooks";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
@@ -46,6 +47,7 @@ export const CollectionMenu = ({
   const canWrite = collection.can_write;
   const canMove =
     !isRoot && !isPersonal && canWrite && !isInstanceAnalyticsCustom;
+  const hasDqCandidates = useHasDashboardQuestionCandidates(collection.id);
 
   if (isAdmin && !isRoot && canWrite) {
     items.push(
@@ -79,7 +81,6 @@ export const CollectionMenu = ({
     ),
   );
 
-  const hasDqCandidates = true;
   if (hasDqCandidates) {
     items.push({
       title: t`Move saved questions into dashboards`,
