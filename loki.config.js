@@ -1,6 +1,4 @@
 module.exports = {
-  chromeSelector: "#storybook-root > *",
-  chromeRetries: 3,
   chromeFlags:
     "--headless --disable-gpu --hide-scrollbars --force-prefers-reduced-motion",
   diffingEngine: "looks-same",
