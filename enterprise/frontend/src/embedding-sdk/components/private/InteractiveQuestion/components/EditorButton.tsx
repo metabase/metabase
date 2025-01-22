@@ -19,6 +19,11 @@ export const EditorButton = ({
     }) && (
       <ActionIcon
         data-testid="notebook-button"
+        bg={
+          isOpen
+            ? "var(--mb-color-bg-sdk-editor-button-active)"
+            : "var(--mb-color-bg-sdk-editor-button)"
+        }
         size="lg"
         c={isOpen ? "text-white" : "text-dark"}
         color="brand"

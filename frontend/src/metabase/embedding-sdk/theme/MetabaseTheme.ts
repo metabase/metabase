@@ -123,6 +123,11 @@ export type MetabaseComponentTheme = {
     toolbar?: {
       backgroundColor?: string;
     };
+
+    editorButton?: {
+      backgroundColor?: string;
+      activeBackgroundColor?: string;
+    };
   };
 
   /** Data tables **/
