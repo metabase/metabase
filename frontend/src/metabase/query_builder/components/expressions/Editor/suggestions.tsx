@@ -2,12 +2,10 @@ import {
   type Completion,
   type CompletionContext,
   type CompletionResult,
-  type CompletionSection,
   autocompletion,
   snippetCompletion,
 } from "@codemirror/autocomplete";
 import { renderToString } from "react-dom/server";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -43,31 +41,6 @@ type SuggestOptions = Omit<
 // TODO: render better help texts
 // TODO: shortcuts
 // TODO: use namespaced suggestion for fk sparator (eg. products.|
-
-const FUNCTIONS_SECTION = {
-  name: t`Functions`,
-  rank: 1,
-};
-
-const AGGREGATIONS_SECTION = {
-  name: t`Aggregations`,
-  rank: 2,
-};
-
-const COLUMNS_SECTION = {
-  name: t`Columns`,
-  rank: 3,
-};
-
-const METRICS_SECTION = {
-  name: t`Metrics`,
-  rank: 4,
-};
-
-const LITERALS_SECTION = {
-  name: t`Literals`,
-  rank: 5,
-};
 
 export function suggestions(options: SuggestOptions) {
   return autocompletion({
@@ -135,7 +108,6 @@ function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
       type: "field",
       label: formatIdentifier(displayInfo.longDisplayName),
       displayLabel: displayInfo.longDisplayName,
-      section: COLUMNS_SECTION,
       icon: getColumnIcon(column),
     };
   });
@@ -184,7 +156,6 @@ function suggestFunctions({
     .map(func =>
       expressionClauseCompletion(func, {
         type: "function",
-        section: FUNCTIONS_SECTION,
         database,
         reportTimezone,
       }),
@@ -223,7 +194,6 @@ function suggestAggregations({
     .map(agg =>
       expressionClauseCompletion(agg, {
         type: "aggregation",
-        section: AGGREGATIONS_SECTION,
         database,
         reportTimezone,
       }),
@@ -244,6 +214,19 @@ function suggestAggregations({
   };
 }
 
+function getPopular(startRule: string) {
+  if (startRule === "expression") {
+    return POPULAR_FUNCTIONS;
+  }
+  if (startRule === "boolean") {
+    return POPULAR_FILTERS;
+  }
+  if (startRule === "aggregation") {
+    return POPULAR_AGGREGATIONS;
+  }
+  return null;
+}
+
 function suggestPopular({
   startRule,
   query,
@@ -252,22 +235,7 @@ function suggestPopular({
 }: SuggestOptions) {
   const database = getDatabase(query, metadata);
 
-  let popular: string[] | null = null;
-  let section = null;
-
-  if (startRule === "expression") {
-    popular = POPULAR_FUNCTIONS;
-    section = t`Common functions`;
-  }
-  if (startRule === "boolean") {
-    popular = POPULAR_FILTERS;
-    section = t`Common functions`;
-  }
-  if (startRule === "aggregation") {
-    popular = POPULAR_AGGREGATIONS;
-    section = t`Common aggregations`;
-  }
-
+  const popular = getPopular(startRule);
   if (!popular) {
     return null;
   }
@@ -285,7 +253,6 @@ function suggestPopular({
           database &&
           getHelpText(clause.name, database, reportTimezone)?.description) ??
         undefined,
-      section,
     }));
 
   return function (context: CompletionContext) {
@@ -319,12 +286,10 @@ function suggestLiterals() {
         {
           label: "True",
           type: "literal",
-          section: LITERALS_SECTION,
         },
         {
           label: "False",
           type: "literal",
-          section: LITERALS_SECTION,
         },
       ],
     };
@@ -368,7 +333,6 @@ function suggestMetrics({ startRule, query, stageIndex }: SuggestOptions) {
       type: "metric",
       displayLabel: displayInfo.longDisplayName,
       label: formatIdentifier(displayInfo.longDisplayName),
-      section: METRICS_SECTION,
     };
   });
 
@@ -414,12 +378,10 @@ function expressionClauseCompletion(
   clause: MBQLClauseFunctionConfig,
   {
     type,
-    section,
     database,
     reportTimezone,
   }: {
     type: string;
-    section: string | CompletionSection;
     database: Database | null;
     reportTimezone?: string;
   },
@@ -432,7 +394,6 @@ function expressionClauseCompletion(
   if (helpText) {
     return snippetCompletion(getSnippet(helpText), {
       type,
-      section,
       label: clause.displayName,
       displayLabel: clause.displayName,
       detail: helpText.description,
@@ -441,7 +402,6 @@ function expressionClauseCompletion(
 
   return {
     type,
-    section,
     label: suggestionText(clause),
     displayLabel: clause.displayName,
   };
