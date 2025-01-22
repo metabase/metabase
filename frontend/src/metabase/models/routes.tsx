@@ -5,7 +5,6 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import ModelDetailPage from "metabase/models/containers/ModelDetailPage/ModelDetailPage";
 
-"a".localeCompare("b", "en");
 export const getRoutes = () => (
   <Route path="/model/:slug/detail">
     <IndexRedirect to="usage" />
