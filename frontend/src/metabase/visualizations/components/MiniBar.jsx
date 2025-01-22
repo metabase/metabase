@@ -11,11 +11,20 @@ const BORDER_RADIUS = 3;
 
 const LABEL_MIN_WIDTH = 30;
 
+const resolveMax = (min, max, number_style) => {
+  // For pure percent columns with values within [0, 1] use 1 as top range of minibar
+  if (number_style === "percent" && min >= 0 && max <= 1) {
+    return 1;
+  }
+  return max;
+};
+
 const MiniBar = ({ value, extent: [min, max], options }) => {
   const hasNegative = min < 0;
   const isNegative = value < 0;
+  const resolvedMax = resolveMax(min, max, options["number_style"]);
   const barPercent =
-    (Math.abs(value) / Math.max(Math.abs(min), Math.abs(max))) * 100;
+    (Math.abs(value) / Math.max(Math.abs(min), Math.abs(resolvedMax))) * 100;
   const barColor = isNegative ? color("error") : color("brand");
 
   const barStyle = !hasNegative
@@ -53,7 +62,7 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
       </div>
       {/* OUTER CONTAINER BAR */}
       <div
-        data-testid="mini-bar"
+        data-testid="mini-bar-container"
         className={CS.ml1}
         style={{
           position: "relative",
@@ -65,6 +74,7 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
       >
         {/* INNER PROGRESS BAR */}
         <div
+          data-testid="mini-bar"
           style={{
             position: "absolute",
             top: 0,
