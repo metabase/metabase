@@ -151,20 +151,26 @@ export const getRoutes = store => {
             <IndexRoute component={UserCollectionList} />
           </Route>
 
-          <Route path="collection/:slug" component={CollectionLanding}>
+          <EntityIdAwareRoute
+            path="collection/:slug"
+            component={CollectionLanding}
+            paramsToTranslate={{ slug: { type: "collection", required: true } }}
+          >
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
             {PLUGIN_COLLECTIONS.cleanUpRoute}
             {getCollectionTimelineRoutes()}
-          </Route>
+          </EntityIdAwareRoute>
 
           <EntityIdAwareRoute
             path="dashboard/:slug"
             title={t`Dashboard`}
             component={DashboardAppConnected}
-            paramsToTranslate={{ dashboard: "slug" }}
-            searchParamsToTranslate={{ "dashboard-tab": "tab" }}
+            paramsToTranslate={{ slug: { type: "dashboard", required: true } }}
+            searchParamsToTranslate={{
+              tab: { type: "dashboard-tab", required: false },
+            }}
           >
             <ModalRoute
               path="move"
@@ -175,14 +181,17 @@ export const getRoutes = store => {
             <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
           </EntityIdAwareRoute>
 
-          <Route path="/question">
+          <EntityIdAwareRoute
+            path="/question"
+            paramsToTranslate={{ slug: { type: "card", required: true } }}
+          >
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />
             <Route path=":slug/:objectId" component={QueryBuilder} />
-          </Route>
+          </EntityIdAwareRoute>
 
           {/* MODELS */}
           {getModelRoutes()}
