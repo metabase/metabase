@@ -174,4 +174,3 @@
   (testing "decrypting nil should return nil"
     (is (nil? (encryption/decrypt secret nil)))
     (is (nil? (encryption/maybe-decrypt secret nil)))))
-

@@ -43,11 +43,6 @@
 (defonce ^:private ^{:tag 'bytes} default-secret-key
   (validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))
 
-(def ^:dynamic *default-encryption-key*
-  "The key to use by default for encrypting data.
-  By default it is the default-secret-key, but it can be redefined when changing the encryption scheme"
-  default-secret-key)
-
 (defn default-encryption-enabled?
   "Is the `MB_ENCRYPTION_SECRET_KEY` set, enabling encryption?"
   []
@@ -68,7 +63,7 @@
   `MB_ENCRYPTION_SECRET_KEY`."
   {:added "0.41.0"}
   (^String [^bytes b]
-   (encrypt-bytes *default-encryption-key* b))
+   (encrypt-bytes default-secret-key b))
   (^String [^String secret-key, ^bytes b]
    (let [initialization-vector (nonce/random-bytes 16)]
      (->> (crypto/encrypt b
@@ -82,7 +77,7 @@
   "Encrypt string `s` as hex bytes using a `secret-key` (a 64-byte byte array), which by default is the hashed value of
   `MB_ENCRYPTION_SECRET_KEY`."
   (^String [^String s]
-   (encrypt *default-encryption-key* s))
+   (encrypt default-secret-key s))
   (^String [^String secret-key, ^String s]
    (if (nil? s)
      nil
@@ -108,7 +103,7 @@
   The encryption format is slightly different for streams vs. fixed length data"
   {:added "0.53.0"}
   (^InputStream [^InputStream input-stream]
-   (encrypt-stream *default-encryption-key* input-stream))
+   (encrypt-stream default-secret-key input-stream))
   (^InputStream [secret-key ^InputStream input-stream]
    (let [spec aes-streaming-spec
          spec-header (codecs/to-bytes (format "%-32s" spec))
@@ -121,7 +116,7 @@
   "Encrypts a byte-array in a way that can be used to read it with decrypt-stream instead of decrypt."
   {:added "0.53.0"}
   (^bytes [^bytes input]
-   (encrypt-for-stream *default-encryption-key* input))
+   (encrypt-for-stream default-secret-key input))
   (^bytes [secret-key ^bytes input]
    (with-open [encrypted (encrypt-stream secret-key (ByteArrayInputStream. input))]
      (.readAllBytes encrypted))))
@@ -163,7 +158,7 @@
 (defn maybe-encrypt
   "If `MB_ENCRYPTION_SECRET_KEY` is set, return an encrypted version of `s`; otherwise return `s` as-is."
   (^String [^String s]
-   (maybe-encrypt *default-encryption-key* s))
+   (maybe-encrypt default-secret-key s))
   (^String [secret-key, ^String s]
    (if secret-key
      (when (seq s)
@@ -175,7 +170,7 @@
   as-is."
   {:added "0.41.0"}
   (^bytes [^bytes b]
-   (maybe-encrypt-bytes *default-encryption-key* b))
+   (maybe-encrypt-bytes default-secret-key b))
   (^bytes [secret-key, ^bytes b]
    (if secret-key
      (when (seq b)
@@ -185,7 +180,7 @@
 (defn maybe-encrypt-for-stream
   "If `MB_ENCRYPTION_SECRET_KEY` is set, return an encrypted version of `s` that can be used to stream the data; otherwise return `s` as-is."
   (^bytes [^bytes s]
-   (maybe-encrypt-for-stream *default-encryption-key* s))
+   (maybe-encrypt-for-stream default-secret-key s))
   (^bytes [secret-key, ^bytes s]
    (if secret-key
      (encrypt-for-stream secret-key s)
