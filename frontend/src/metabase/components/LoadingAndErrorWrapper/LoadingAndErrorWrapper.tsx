@@ -13,17 +13,8 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 
 interface LoadingAndErrorWrapperProps {
-  loading: boolean;
-  error?:
-    | null
-    | ({
-        data?: {
-          message?: string;
-          [key: string]: any;
-        };
-        statusText?: string;
-        message?: string;
-      } & (string | Partial<Error>));
+  loading?: boolean;
+  error?: any;
   noBackground?: boolean;
   noWrapper?: boolean;
   showSpinner?: boolean;
