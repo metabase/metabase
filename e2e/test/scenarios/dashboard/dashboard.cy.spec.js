@@ -5,8 +5,12 @@ import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  FIRST_COLLECTION_ENTITY_ID,
+  FIRST_COLLECTION_ID,
   ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ENTITY_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ENTITY_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { mapPinIcon } from "e2e/support/helpers";
@@ -29,6 +33,143 @@ describe("scenarios > dashboard", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+  });
+
+  describe("ENTITY ID SUPPORT --- TODO: move to separate files", () => {
+    describe("dashboard", () => {
+      beforeEach(() => {
+        H.restore();
+        cy.signInAsAdmin();
+      });
+
+      it("when loading `/dashboard/${entity_id}`, it should redirect to `/dashboard/${id}` and display the dashboard correctly", () => {
+        cy.visit(`/dashboard/${ORDERS_DASHBOARD_ENTITY_ID}`);
+
+        cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}`);
+
+        // Making sure the dashboard loads
+        H.main().findByText("Orders in a dashboard").should("be.visible");
+      });
+
+      it("when loading `/dashboard/${entity_id}?tab=${tab_entity_id}`, it should redirect to `/dashboard/${id}?tab=${tab_id}` and select the correct tab", () => {
+        H.createDashboardWithTabs({
+          tabs: [
+            { name: "Tab 1", id: -1 },
+            { name: "Tab 2", id: -2 },
+          ],
+          dashcards: [],
+        }).then(dashboard => {
+          cy.visit(
+            `/dashboard/${dashboard.entity_id}?tab=${dashboard.tabs[1].entity_id}`,
+          );
+
+          cy.url().should(
+            "contain",
+            `/dashboard/${dashboard.id}?tab=${dashboard.tabs[1].id}`,
+          );
+
+          H.main()
+            .findByRole("tab", { name: "Tab 2" })
+            .should("have.attr", "aria-selected", "true");
+        });
+      });
+
+      it("when loading `/dashboard/${entity_id}/move`, it should redirect to `/dashboard/${id}/move` and show the move modal", () => {
+        cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}/move`);
+        cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}/move`);
+
+        H.main().findByText("Orders in a dashboard").should("be.visible");
+        H.modal().findByText("Move dashboard to…").should("be.visible");
+      });
+
+      it("when loading `/dashboard/${21_char_slug}?tab=${21_char_tab_slug}`, it should not redirect and the dashboard should open on the correct tab", () => {
+        // This tests checks that we don't accidentally render a 404 because we mistake a 21 chars slug for an entity id, which will not be found
+        H.createDashboardWithTabs({
+          name: "Dashboard with 2 tabs",
+          tabs: [
+            { name: "Tab 1", id: -1 },
+            { name: "Tab 2", id: -2 },
+          ],
+          dashcards: [],
+        }).then(dashboard => {
+          const slug = `${dashboard.id}-`.padEnd(21, "x");
+          const tabSlug = `${dashboard.tabs[1].id}-`.padEnd(21, "x");
+          cy.visit(`/dashboard/${slug}?tab=${tabSlug}`);
+          cy.url().should("contain", `/dashboard/${dashboard.id}`);
+          H.main().findByText("Dashboard with 2 tabs").should("be.visible");
+          H.main()
+            .findByRole("tab", { name: "Tab 2" })
+            .should("have.attr", "aria-selected", "true");
+        });
+      });
+
+      it("when loading `/dashboard/${non existing entity id that cannot be a slug}`, it should show a 404 page", () => {
+        const invalidSlug = "x".repeat(21);
+        cy.visit(`/dashboard/${invalidSlug}`);
+
+        H.main().findByText("We're a little lost...").should("be.visible");
+      });
+
+      it("when loading `/dashboard/${slug}?tab=${non found entity_id}`, it should load the dashboard and remove the entity id from the url", () => {
+        H.createDashboardWithTabs({
+          name: "Dashboard with 2 tabs",
+          tabs: [
+            { name: "Tab 1", id: -1 },
+            { name: "Tab 2", id: -2 },
+          ],
+          dashcards: [],
+        }).then(dashboard => {
+          const slug = `${dashboard.id}-`.padEnd(21, "x");
+          const tabId = "x".repeat(21);
+          cy.visit(`/dashboard/${slug}?tab=${tabId}`);
+          cy.url().should("contain", `/dashboard/${dashboard.id}`);
+          H.main().findByText("Dashboard with 2 tabs").should("be.visible");
+          // note that the FE will put the tab id of the fist tab in the url when it loads, so it will contain `tab=`
+          cy.url().should("not.contain", `tab=${tabId}`);
+        });
+      });
+
+      it("when loading `/dashboard/${slug}?tab=${non-existing tab id slug of 21 characters}`, it should load the dashboard and remove the entity id from the url", () => {
+        H.createDashboardWithTabs({
+          name: "Dashboard with 2 tabs",
+          tabs: [
+            { name: "Tab 1", id: -1 },
+            { name: "Tab 2", id: -2 },
+          ],
+          dashcards: [],
+        }).then(dashboard => {
+          const slug = `${dashboard.id}-`.padEnd(21, "x");
+          const tabId = "999-".padEnd(21, "x");
+          cy.visit(`/dashboard/${slug}?tab=${tabId}`);
+          cy.url().should("contain", `/dashboard/${dashboard.id}`);
+          H.main().findByText("Dashboard with 2 tabs").should("be.visible");
+
+          cy.url().should("not.contain", `tab=${tabId}`);
+        });
+      });
+    });
+
+    describe("collections", () => {
+      it("collections support entity id in the url", () => {
+        cy.visit(`/collection/${FIRST_COLLECTION_ENTITY_ID}`);
+        cy.url().should("contain", `/collection/${FIRST_COLLECTION_ID}`);
+
+        // Making sure the collection loads
+        H.main().findByText("First collection").should("be.visible");
+      });
+    });
+
+    describe("questions", () => {
+      it("questions support entity id in the url", () => {
+        cy.visit(`/question/${ORDERS_QUESTION_ENTITY_ID}`);
+        cy.url().should("contain", `/question/${ORDERS_QUESTION_ID}`);
+
+        // Making sure the question loads
+        H.main()
+          .findByTestId("saved-question-header-title")
+          .should("have.text", "Orders");
+      });
+    });
   });
 
   describe("create", () => {
