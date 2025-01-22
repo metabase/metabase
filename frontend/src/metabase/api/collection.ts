@@ -113,7 +113,6 @@ export const collectionApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("collection"), idTag("collection", id)]),
     }),
-    // TODO: I should move this definition elsewhere. it's kinda weird here... timelines has it's own file it seems.
     listCollectionDashboardQuestionCandidates: builder.query<
       GetCollectionDashboardQuestionCandidatesResult,
       CollectionId
