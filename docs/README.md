@@ -218,10 +218,6 @@ Metabase's reference documentation.
 
 - [Developer guide](./developers-guide/start.md)
 
-### Paid features
-
-Some Metabase plans offer [additional features](./paid-features/start.md).
-
 ## Getting help
 
 ### Troubleshooting
