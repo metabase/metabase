@@ -310,7 +310,8 @@
 
 (api.macros/defendpoint :post ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
                                :export-format api.dataset/export-format-regex]
-  "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the export formats. Does not require auth credentials. Public sharing must be enabled."
+  "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the
+  export formats. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid dashcard-id card-id export-format]} :- [:map
                                                         [:uuid          ms/UUIDString]
                                                         [:dashcard-id   ms/PositiveInt]
