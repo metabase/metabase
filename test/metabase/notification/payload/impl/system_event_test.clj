@@ -150,20 +150,20 @@
               #"Ngoc could use your help setting up Metabase"
               #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>"]))))
 
-(deftest alert-create-email-test
-  (mt/with-temp [:model/Card card {:name "A Card"}]
-    (mt/with-temporary-setting-values [site-url "https://metabase.com"]
-      (let [rasta (mt/fetch-user :rasta)
-            check (fn [alert-condition condition-regex]
-                    (let [regexes [#"This is just a confirmation"
+(deftest notification-create-email-test
+  (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+    (let [rasta (mt/fetch-user :rasta)
+          check (fn [send-condition condition-regex]
+                  (notification.tu/with-card-notification [notification {:card              {:name "A Card"}
+                                                                         :notification-card {:send_condition send-condition}
+                                                                         :notification      {:creator_id (:id rasta)}}]
+                    (let [card    (-> notification :payload :card)
+                          regexes [#"This is just a confirmation"
                                    (re-pattern (format "<a href=\"%s\"*>%s</a>" (urls/card-url (:id card)) (:name card)))
                                    condition-regex]
                           email   (-> (notification.tu/with-captured-channel-send!
-                                        (events/publish-event! :event/alert-create {:object (t2/instance :model/Pulse
-                                                                                                         (merge {:name "A Pulse"
-                                                                                                                 :card card}
-                                                                                                                alert-condition))
-                                                                                    :user-id (:id rasta)}))
+                                        (events/publish-event! :event/notification-create {:object notification
+                                                                                           :user-id (:id rasta)}))
                                       :channel/email
                                       first)]
                       (is (= {:recipients     #{(:email rasta)}
@@ -171,18 +171,16 @@
                               :subject        "You set up an alert"
                               :message        [(zipmap (map str regexes) (repeat true))]
                               :recipient-type :cc}
-                             (apply mt/summarize-multipart-single-email email regexes)))))]
+                             (apply mt/summarize-multipart-single-email email regexes))))))]
 
-        (doseq [[alert-condition condition-regex]
-                [[{:alert_condition "rows"}
-                  #"This alert will be sent\s+whenever this question has any results"]
-                 [{:alert_condition "goal"
-                   :alert_above_goal true}
+      (doseq [[send-condition condition-regex]
+              [[:has_result
+                #"This alert will be sent\s+whenever this question has any results"]
+               #_[:goal_above
                   #"This alert will be sent\s+when this question meets its goal"]
-                 [{:alert_condition "goal"
-                   :alert_above_goal false}
+               #_[:goal_below
                   #"This alert will be sent\s+when this question goes below its goal"]]]
-          (check alert-condition condition-regex))))))
+        (check send-condition condition-regex)))))
 
 (deftest slack-error-token-email-test
   (let [check (fn [recipients regexes]

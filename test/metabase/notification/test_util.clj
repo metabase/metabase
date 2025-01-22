@@ -184,7 +184,8 @@
 (defmacro with-channel-fixtures
   "Macro that applies the given channel fixtures to the body of the macro."
   [channel-types & body]
-  `(apply-channel-fixtures ~channel-types (fn [] ~@body)))
+  `(with-send-notification-sync
+     (apply-channel-fixtures ~channel-types (fn [] ~@body))))
 
 (defn test-send-notification!
   "Test sending a notification with the given channel-type->assert-fn map."

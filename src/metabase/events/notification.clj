@@ -13,7 +13,7 @@
 (derive :metabase/event ::notification)
 
 (def ^:private supported-topics #{:event/user-invited
-                                  :event/alert-create
+                                  :event/notification-create
                                   :event/slack-token-invalid})
 
 (def ^:private hydrate-transformer
@@ -76,6 +76,8 @@
                                                       :notification_ids (map :id notifications)}}
         (log/infof "Found %d notifications for event: %s" (count notifications) topic)
         (doseq [notification notifications]
+          (def notification (assoc notification :payload {:event_info  (maybe-hydrate-event-info topic event-info)
+                                                          :event_topic topic}))
           (notification/send-notification! (assoc notification :payload {:event_info  (maybe-hydrate-event-info topic event-info)
                                                                          :event_topic topic})))))))
 

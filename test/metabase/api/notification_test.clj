@@ -130,18 +130,28 @@
                                                                :user_id (mt/user->id :crowberto)}
                                                               {:type    :notification-recipient/raw-value
                                                                :details {:value "ngoc@metabase.com"}}]}]}]
-            (let [[email] (notification.tu/with-mock-inbox-email!
-                            (with-send-messages-sync!
-                              (mt/user-http-request :crowberto :post 200 "notification" notification)))
+            (let [[added-email confirmation-email] (sort-by :subject
+                                                            (notification.tu/with-mock-inbox-email!
+                                                              (with-send-messages-sync!
+                                                                (mt/user-http-request :crowberto :post 200 "notification" notification))))
                   a-card-url (format "<a href=\"https://testmb.com/question/%d\">My Card</a>." card-id)]
               (testing (format "send email with %s condition" send_condition)
-                (is (=? {:bcc     #{"rasta@metabase.com" "ngoc@metabase.com" "crowberto@metabase.com"}
-                         :subject "Crowberto Corv added you to an alert"
-                         :body    [{a-card-url true
-                                    expected_text true}]}
-                        (mt/summarize-multipart-single-email email
-                                                             (re-pattern a-card-url)
-                                                             (re-pattern expected_text))))))))))))
+                (testing "recipients will get you were added to a card email"
+                  (is (=? {:bcc     #{"rasta@metabase.com" "ngoc@metabase.com"}
+                           :subject "Crowberto Corv added you to an alert"
+                           :body    [{a-card-url true
+                                      expected_text true}]}
+                          (mt/summarize-multipart-single-email added-email
+                                                               (re-pattern a-card-url)
+                                                               (re-pattern expected_text)))))
+                (testing "creator will get confirmation email"
+                  (is (=? {:to      #{"crowberto@metabase.com"}
+                           :subject "You set up an alert"
+                           :body    [{a-card-url true
+                                      expected_text true}]}
+                          (mt/summarize-multipart-single-email confirmation-email
+                                                               (re-pattern a-card-url)
+                                                               (re-pattern expected_text)))))))))))))
 
 (deftest create-notification-audit-test
   (mt/with-model-cleanup [:model/Notification]
