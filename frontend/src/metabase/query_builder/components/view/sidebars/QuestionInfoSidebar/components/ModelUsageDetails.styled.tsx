@@ -13,12 +13,4 @@ export const CardListItem = styled(Link)`
   width: 100%;
   border-radius: 8px;
   padding: 1rem 0.5rem;
-
-  ${CardTitle} {
-    margin-left: 1rem;
-  }
-
-  &:hover {
-    background-color: var(--mb-color-brand-light);
-  }
 `;
