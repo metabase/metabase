@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { testDataset } from "__support__/testDataset";
+import { screen, within } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import type { BaseEntityId } from "metabase-types/api";
 import {
@@ -190,9 +191,37 @@ describe("QuestionInfoSidebar", () => {
       expect(screen.getByLabelText("embed icon")).toBeInTheDocument();
       expect(screen.getByText("Embedded")).toBeInTheDocument();
     });
+
+    it("should show fields", async () => {
+      const card = createMockCard({
+        name: "Question",
+      });
+      await setup({ card });
+
+      // The card should use these columns
+      const expectedColumns = testDataset.cols;
+      const expectedFieldCount = expectedColumns.length;
+
+      const cardWithFields = await screen.findByLabelText(
+        new RegExp(`${expectedFieldCount} fields`),
+      );
+      expect(cardWithFields).toBeInTheDocument();
+
+      // Expect the correct number of fields
+      const listItems = await within(cardWithFields).findAllByRole("listitem");
+      expect(listItems).toHaveLength(expectedFieldCount);
+
+      // Expect the correct field names
+      const expectedFieldNames = expectedColumns.map(col => col.display_name);
+      expectedFieldNames.forEach(expectedFieldName => {
+        expect(
+          within(cardWithFields).getByText(expectedFieldName),
+        ).toBeInTheDocument();
+      });
+    });
   });
 
-  describe("model detail link", () => {
+  describe("actions link", () => {
     it("is shown for models", async () => {
       const card = createMockCard({
         name: "abc",
@@ -200,8 +229,7 @@ describe("QuestionInfoSidebar", () => {
       });
       await setup({ card });
 
-      const link = screen.getByText("See more about this model");
-
+      const link = await screen.findByRole("link", { name: /Actions/ });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", Urls.modelDetail(card));
     });
@@ -213,9 +241,7 @@ describe("QuestionInfoSidebar", () => {
       });
       await setup({ card });
       expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();
-      expect(
-        screen.queryByText("See more about this model"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Actions")).not.toBeInTheDocument();
     });
   });
 
