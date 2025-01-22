@@ -1618,6 +1618,16 @@
                     (map :id)
                     (into #{}))))))))
 
+(deftest get-dashboard-question-candidates-excludes-existing-dashboard-questions
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (testing "Existing DQs are excluded"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                     :model/Card {card-id :id} {:dashboard_id dash-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (= {:data [] :count 0}
+               (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))))))))
+
 (deftest get-root-dashboard-question-candidates-single-dashboard-card
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Card is in single dashboard"
