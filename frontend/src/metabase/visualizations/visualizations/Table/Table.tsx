@@ -36,8 +36,8 @@ import type { OrderByDirection } from "metabase-lib/types";
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 
 import styles from "./Table.module.css";
-import { MIN_COLUMN_WIDTH } from "./constants";
 import { useTableCellsMeasure } from "./hooks/use-cell-measure";
+import { useColumnResizeObserver } from "./hooks/use-column-resize-observer";
 import { useColumns } from "./hooks/use-columns";
 import { useVirtualGrid } from "./hooks/use-virtual-grid";
 
@@ -51,15 +51,10 @@ interface TableProps extends VisualizationProps {
 
 interface DraggableHeaderProps {
   header: Header<RowValues, unknown>;
-  onResize: (width: number) => void;
   isPivoted?: boolean;
 }
 
-const DraggableHeader = ({
-  header,
-  onResize,
-  isPivoted,
-}: DraggableHeaderProps) => {
+const DraggableHeader = ({ header, isPivoted }: DraggableHeaderProps) => {
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useSortable({
       id: header.id,
@@ -78,40 +73,15 @@ const DraggableHeader = ({
     outline: "none",
   };
 
-  const [isResizing, setIsResizing] = useState(false);
-
-  const handleResizeStart = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const startX = e.pageX;
-    const startWidth = header.column.getSize();
-    setIsResizing(true);
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const width = Math.max(MIN_COLUMN_WIDTH, startWidth + (e.pageX - startX));
-      onResize(width);
-    };
-
-    const handleMouseUp = () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      setIsResizing(false);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-  };
-
-  const dndProps = !isResizing
-    ? {
-        ...attributes,
-        ...listeners,
-        onMouseDown: (e: React.MouseEvent) => {
-          if (e.button === 0 && e.target === e.currentTarget) {
-            listeners?.onMouseDown?.(e);
-          }
-        },
+  const dndProps = {
+    ...attributes,
+    ...listeners,
+    onMouseDown: (e: React.MouseEvent) => {
+      if (e.button === 0 && e.target === e.currentTarget) {
+        listeners?.onMouseDown?.(e);
       }
-    : {};
+    },
+  };
 
   return (
     <div
@@ -122,7 +92,11 @@ const DraggableHeader = ({
       tabIndex={-1}
     >
       {flexRender(header.column.columnDef.header, header.getContext())}
-      <div className={styles.resizer} onMouseDown={handleResizeStart} />
+      <div
+        className={styles.resizer}
+        onMouseDown={header.getResizeHandler()}
+        onTouchStart={header.getResizeHandler()}
+      />
     </div>
   );
 };
@@ -149,7 +123,7 @@ export const _Table = ({
     measureRoot,
   } = useTableCellsMeasure();
 
-  const { columns, columnFormatters, columnWidths } = useColumns({
+  const { columns, columnFormatters, onResizeColumn } = useColumns({
     settings,
     onVisualizationClick,
     data,
@@ -165,9 +139,9 @@ export const _Table = ({
     state: {
       columnOrder,
     },
-    onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
     columnResizeMode: "onEnd",
+    onColumnOrderChange: setColumnOrder,
   });
 
   const sensors = useSensors(
@@ -228,6 +202,7 @@ export const _Table = ({
     virtualPaddingLeft,
     virtualPaddingRight,
     rowVirtualizer,
+    measureGrid,
   } = useVirtualGrid({
     bodyRef,
     table,
@@ -239,25 +214,19 @@ export const _Table = ({
 
   const handleColumnResize = useCallback(
     (columnId: string, width: number) => {
-      const dataIndex = parseInt(columnId, 10);
-      if (isNaN(dataIndex)) {
-        return;
-      }
-
-      const newColumnWidths = [...columnWidths];
-      newColumnWidths[dataIndex] = Math.max(MIN_COLUMN_WIDTH, width);
+      const columnIndex = parseInt(columnId);
+      const newColumnWidths = onResizeColumn(columnIndex, width);
 
       onUpdateVisualizationSettings({
         "table.column_widths": newColumnWidths,
       });
 
-      const column = columns.find(column => column.id === columnId);
-      if (column?.meta?.wrap) {
-        rowVirtualizer.measure();
-      }
+      measureGrid();
     },
-    [columnWidths, onUpdateVisualizationSettings, rowVirtualizer, columns],
+    [measureGrid, onResizeColumn, onUpdateVisualizationSettings],
   );
+
+  useColumnResizeObserver(table.getState(), handleColumnResize);
 
   const measureRef = useCallback(
     (element: HTMLElement | null) => {
@@ -269,6 +238,7 @@ export const _Table = ({
   if (width == null || height == null) {
     return null;
   }
+
   return (
     <DndContext
       sensors={sensors}
@@ -308,9 +278,6 @@ export const _Table = ({
                           <DraggableHeader
                             key={header.id}
                             header={header}
-                            onResize={width =>
-                              handleColumnResize(header.id, width)
-                            }
                             isPivoted={isPivoted}
                           />
                         );
@@ -342,7 +309,6 @@ export const _Table = ({
                       data-index={virtualRow.index}
                       className={styles.tr}
                       style={{
-                        height: `${virtualRow.size}px`,
                         position: "absolute",
                         transform: `translateY(${virtualRow.start}px)`,
                         width: "100%",

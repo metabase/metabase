@@ -63,8 +63,7 @@ export const ExpandButton = styled(Button)`
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   color: var(--mb-color-brand);
-  margin-right: 0.5rem;
-  margin-left: auto;
+  margin: 0 0.5rem;
 
   &:hover {
     color: var(--mb-color-text-white);
