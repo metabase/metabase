@@ -1888,7 +1888,8 @@
       (with-some-children-of-collection! nil
         ;; `:total` should be at least 4 items based on `with-some-children-of-collection`. Might be a bit more if
         ;; other stuff was created
-        (is (<= 4 (:total (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1"))))))))
+        (is (=? {:total #(>= % 4)}
+                (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1")))))))
 
 (deftest fetch-root-items-permissions-test
   (testing "GET /api/collection/root/items"
@@ -1898,7 +1899,11 @@
              (with-some-children-of-collection! nil
                (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                    remove-non-personal-collections
-                   mt/boolean-ids-and-timestamps))))
+                   mt/boolean-ids-and-timestamps)))))))
+
+(deftest fetch-root-items-permissions-test-2
+  (testing "GET /api/collection/root/items"
+    (testing "we don't let you see stuff you wouldn't otherwise be allowed to see"
       (testing "...but if they have read perms for the Root Collection they should get to see them"
         (with-some-children-of-collection! nil
           (mt/with-temp [:model/PermissionsGroup           group {}

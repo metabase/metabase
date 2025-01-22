@@ -273,7 +273,9 @@
       "table orders"
       "call 1 + 1"
       ;; Note this passes the check, but will fail on execution
-      "update venues set name = 'bill'; some query that can't be parsed;"))
+      "update venues set name = 'bill'; some query that can't be parsed;")))
+
+(deftest ^:parallel check-read-only-test-2
   (testing "not read only statements should fail"
     (are [query] (thrown?
                   clojure.lang.ExceptionInfo
@@ -304,7 +306,11 @@
             (is (=? {:message "Error executing Action: DDL commands are not allowed to be used with H2."}
                     (mt/user-http-request :crowberto
                                           :post 500
-                                          (format "action/%s/execute" action-id)))))))
+                                          (format "action/%s/execute" action-id))))))))))
+
+(deftest disallowed-commands-in-action-test-2
+  (mt/test-driver :h2
+    (mt/with-actions-test-data-and-actions-enabled
       (testing "Should be able to execute query actions with allowed commands"
         (let [sql "update categories set name = 'stomp' where id = 1; update categories set name = 'stomp' where id = 2;"]
           (mt/with-actions [{:keys [action-id]} {:type :query
