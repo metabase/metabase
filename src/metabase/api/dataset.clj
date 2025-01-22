@@ -239,9 +239,10 @@
   [{:keys [query]} :- [:map
                        [:query ms/NonBlankString]]
    _query-params
-   {:keys [parameter field_ids]} :- [:map
-                                     [:parameter ms/Parameter]
-                                     [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
-  (parameter-values parameter field_ids query))
+   {:keys     [parameter]
+    field-ids :field_ids} :- [:map
+                              [:parameter ms/Parameter]
+                              [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
+  (parameter-values parameter field-ids query))
 
 (api/define-routes)
