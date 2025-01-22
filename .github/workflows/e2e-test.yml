@@ -114,6 +114,8 @@ jobs:
           SPLIT_FILE: "./e2e/support/timings.json"
           SPLIT_OUTPUT_FILE: "newTimes.json"
           SPLIT_TIME_THRESHOLD: 5.0
+          # do not write cypress-split summary to github
+          SPLIT_SUMMARY: false
         shell: bash
         run: |
           node e2e/runner/run_cypress_ci.js test \
