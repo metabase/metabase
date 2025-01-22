@@ -1,13 +1,5 @@
-import {
-  memo,
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Root } from "react-dom/client";
-import { useUpdateEffect } from "react-use";
 
 import { formatValue } from "metabase/lib/formatting";
 import { renderRoot } from "metabase/lib/react-compat";
@@ -52,7 +44,7 @@ declare module "@tanstack/react-table" {
 
 import type { CellMeasurer } from "./use-cell-measure";
 import { ColumnDef, RowData } from "@tanstack/react-table";
-import { isNotNull } from "metabase/lib/types";
+import { MIN_COLUMN_WIDTH } from "../constants";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
@@ -78,10 +70,10 @@ const getBodyCellVariant = (
 interface UseColumnsProps {
   settings: ComputedVisualizationSettings;
   data: DatasetData;
+  isPivoted?: boolean;
   onVisualizationClick?: VisualizationProps["onVisualizationClick"];
   measureBodyCellDimensions: CellMeasurer;
   measureHeaderCellDimensions: CellMeasurer;
-  isPivoted?: boolean;
   getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
 }
 
@@ -91,6 +83,7 @@ export const useColumns = ({
   data,
   isPivoted = false,
   getColumnSortDirection,
+  measureBodyCellDimensions,
 }: UseColumnsProps) => {
   const [columnIsExpanded, setColumnIsExpanded] = useState<boolean[]>([]);
 
@@ -114,23 +107,62 @@ export const useColumns = ({
     () => settings["table.column_widths"] || [],
     [settings],
   );
+
+  const [measuredColumnWidths, setMeasuredColumnWidths] = useState<number[]>(
+    [],
+  );
   const [columnWidths, setColumnWidths] = useState(savedColumnWidths);
 
-  useUpdateEffect(() => {
-    if (Array.isArray(settings["table.column_widths"])) {
-      setColumnWidths(settings["table.column_widths"]);
-    }
-  }, [settings["table.column_widths"]]);
+  const handleExpandButtonClick = useCallback(
+    (columnIndex: number, content: string) => {
+      const newColumnWidth = measureBodyCellDimensions(content).width;
+      const newWidths = columnWidths.slice();
+      newWidths[columnIndex] = newColumnWidth;
+
+      setColumnWidths(newWidths);
+      onUpdateColumnExpanded(columnIndex);
+    },
+    [columnWidths, measureBodyCellDimensions],
+  );
+
+  const onUpdateColumnExpanded = useCallback(
+    (columnIndex: number, isExapnded = true) => {
+      setColumnIsExpanded(prev => {
+        const updated = prev.slice();
+        updated[columnIndex] = isExapnded;
+        return updated;
+      });
+    },
+    [columnIsExpanded],
+  );
+
+  const onResizeColumn = useCallback(
+    (columnIndex: number, width: number) => {
+      const newWidths = columnWidths.slice();
+      newWidths[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
+
+      if (width > TRUNCATE_WIDTH) {
+        onUpdateColumnExpanded(columnIndex, true);
+      }
+
+      setColumnWidths(newWidths);
+
+      return newWidths;
+    },
+    [onUpdateColumnExpanded, columnWidths],
+  );
 
   const columns: ColumnDef<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((col, index) => {
-      const align = isNumber(col) ? "right" : "left";
       const columnWidth = columnWidths[index] ?? 0;
+      const measuredColumnWidth = measuredColumnWidths[index] ?? 0;
       const columnSettings = settings.column?.(col) ?? {};
-      const wrap = Boolean(settings["text_wrapping"]);
+      const wrap = Boolean(columnSettings["text_wrapping"]);
+      const align = columnSettings["text_align"] ?? "left";
       const variant = getBodyCellVariant(col, columnSettings);
       const isTruncated =
-        !columnIsExpanded[index] && columnWidth > TRUNCATE_WIDTH;
+        !columnIsExpanded[index] &&
+        Math.min(columnWidth, measuredColumnWidth) > TRUNCATE_WIDTH;
 
       return {
         id: index.toString(),
@@ -206,11 +238,9 @@ export const useColumns = ({
                   });
                 }}
                 onExpand={() => {
-                  setColumnIsExpanded(prev => {
-                    const updated = prev.slice();
-                    updated[index] = true;
-                    return updated;
-                  });
+                  const formatter = columnFormatters[index];
+                  const formattedValue = formatter(value);
+                  handleExpandButtonClick(index, formattedValue);
                 }}
                 variant={variant}
                 wrap={wrap}
@@ -230,6 +260,7 @@ export const useColumns = ({
   }, [
     cols,
     columnWidths,
+    measuredColumnWidths,
     settings,
     columnIsExpanded,
     isPivoted,
@@ -242,52 +273,59 @@ export const useColumns = ({
   const measureRootRef = useRef<HTMLDivElement>();
   const measureRootTree = useRef<Root>();
 
-  const measureColumnWidths = useCallback(() => {
-    const onMeasureHeaderRender = (div: HTMLDivElement) => {
-      if (div === null) {
-        return;
-      }
+  const measureColumnWidths = useCallback(
+    (updateCurrent: boolean) => {
+      const onMeasureHeaderRender = (div: HTMLDivElement) => {
+        if (div === null) {
+          return;
+        }
 
-      const contentWidths = Array.from(
-        div.getElementsByClassName("fake-column"),
-      ).map(
-        columnElement =>
-          (columnElement as HTMLElement).offsetWidth + CELL_BORDERS_WIDTH,
+        const contentWidths = Array.from(
+          div.getElementsByClassName("fake-column"),
+        ).map(
+          columnElement =>
+            (columnElement as HTMLElement).offsetWidth + CELL_BORDERS_WIDTH,
+        );
+
+        if (updateCurrent) {
+          setColumnWidths(contentWidths);
+        }
+        setMeasuredColumnWidths(contentWidths);
+      };
+
+      const content = (
+        <EmotionCacheProvider>
+          <ThemeProvider>
+            <div style={{ display: "flex" }} ref={onMeasureHeaderRender}>
+              {cols.map((column, columnIndex) => {
+                const columnSettings = settings.column?.(column) ?? {};
+                const variant = getBodyCellVariant(column, columnSettings);
+
+                return (
+                  <div className="fake-column" key={"column-" + columnIndex}>
+                    <HeaderCell name={column.display_name} sort="asc" />
+                    {pickRowsToMeasure(rows, columnIndex).map(rowIndex => (
+                      <BodyCell
+                        key={rowIndex}
+                        value={rows[rowIndex][columnIndex]}
+                        formatter={columnFormatters[columnIndex]}
+                        variant={variant}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </ThemeProvider>
+        </EmotionCacheProvider>
       );
-      setColumnWidths(contentWidths);
-    };
 
-    const content = (
-      <EmotionCacheProvider>
-        <ThemeProvider>
-          <div style={{ display: "flex" }} ref={onMeasureHeaderRender}>
-            {cols.map((column, columnIndex) => {
-              const columnSettings = settings.column?.(column) ?? {};
-              const variant = getBodyCellVariant(column, columnSettings);
+      measureRootTree.current = renderRoot(content, measureRootRef.current!);
+    },
+    [cols, columnFormatters, rows, settings],
+  );
 
-              return (
-                <div className="fake-column" key={"column-" + columnIndex}>
-                  <HeaderCell name={column.display_name} />
-                  {pickRowsToMeasure(rows, columnIndex).map(rowIndex => (
-                    <BodyCell
-                      key={rowIndex}
-                      value={rows[rowIndex][columnIndex]}
-                      formatter={columnFormatters[columnIndex]}
-                      variant={variant}
-                    />
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </ThemeProvider>
-      </EmotionCacheProvider>
-    );
-
-    measureRootTree.current = renderRoot(content, measureRootRef.current!);
-  }, [cols, columnFormatters, rows, settings]);
-
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!measureRootRef.current) {
       const measureRoot = document.createElement("div");
       measureRoot.style.position = "absolute";
@@ -301,9 +339,9 @@ export const useColumns = ({
       measureRootRef.current = measureRoot;
     }
 
-    if (!savedColumnWidths?.some(isNotNull)) {
-      measureColumnWidths();
-    }
+    const shouldUpdateCurrentWidths =
+      !savedColumnWidths || savedColumnWidths.length === 0;
+    measureColumnWidths(shouldUpdateCurrentWidths);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -312,5 +350,6 @@ export const useColumns = ({
     columnFormatters,
     columnWidths,
     measureColumnWidths,
+    onResizeColumn,
   };
 };

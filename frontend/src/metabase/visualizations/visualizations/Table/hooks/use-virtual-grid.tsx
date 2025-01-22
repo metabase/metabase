@@ -1,7 +1,8 @@
-import type { Table as ReactTable } from "@tanstack/react-table";
+import type { ColumnDef, Table as ReactTable } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type React from "react";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import _ from "underscore";
 
 import type { DatasetData, RowValue, RowValues } from "metabase-types/api";
 
@@ -16,7 +17,7 @@ interface PivotedDatasetData extends DatasetData {
 interface UseVirtualGridProps {
   bodyRef: React.RefObject<HTMLDivElement>;
   table: ReactTable<RowValues>;
-  columns: any[];
+  columns: ColumnDef<RowValues, RowValue>[];
   data: DatasetData | PivotedDatasetData;
   columnFormatters: ((value: RowValue) => React.ReactNode)[];
   measureBodyCellDimensions: CellMeasurer;
@@ -33,7 +34,7 @@ export const useVirtualGrid = ({
   isPivoted = false,
 }: UseVirtualGridProps) => {
   const wrappedColumns = useMemo(() => {
-    return columns.filter(col => col.wrap);
+    return columns.filter(col => col.meta?.wrap);
   }, [columns]);
 
   const { rows: tableRows } = table.getRowModel();
@@ -54,21 +55,38 @@ export const useVirtualGrid = ({
     overscan: 5,
     getItemKey: index => tableRows[index].id,
     measureElement: element => {
-      const rowIndex = element?.getAttribute("data-index");
+      const rowIndexRaw = element?.getAttribute("data-index");
+      const rowIndex = rowIndexRaw != null ? parseInt(rowIndexRaw, 10) : null;
 
-      if (!rowIndex || wrappedColumns.length === 0) {
+      if (
+        rowIndex == null ||
+        !isFinite(rowIndex) ||
+        wrappedColumns.length === 0
+      ) {
         return ROW_HEIGHT;
       }
 
       const height = Math.max(
         ...wrappedColumns.map(column => {
+          const datasetIndex = column.meta?.datasetIndex;
+          if (!datasetIndex) {
+            return 0;
+          }
+
           const value =
             isPivoted && "sourceRows" in data
-              ? data.sourceRows[parseInt(rowIndex, 10)][column.datasetIndex]
-              : data.rows[parseInt(rowIndex, 10)][column.datasetIndex];
-          const formattedValue = columnFormatters[column.datasetIndex](value);
+              ? data.sourceRows[rowIndex][datasetIndex]
+              : data.rows[rowIndex][datasetIndex];
+          const formattedValue = columnFormatters[datasetIndex](value);
+          if (!formattedValue || _.isEmpty(formattedValue)) {
+            return ROW_HEIGHT;
+          }
           const formattedString = formattedValue?.toString() ?? "";
-          return measureBodyCellDimensions(formattedString, column.size).height;
+          const cellDimensions = measureBodyCellDimensions(
+            formattedString,
+            column.size,
+          );
+          return cellDimensions.height;
         }, ROW_HEIGHT),
       );
 
@@ -89,11 +107,21 @@ export const useVirtualGrid = ({
       (virtualColumns[virtualColumns.length - 1]?.end ?? 0);
   }
 
+  const measureGrid = useCallback(() => {
+    columnVirtualizer.measure();
+    rowVirtualizer.measure();
+  }, [columnVirtualizer, rowVirtualizer]);
+
+  useEffect(() => {
+    measureGrid();
+  }, [columns, measureGrid]);
+
   return {
     virtualColumns,
     virtualRows,
     virtualPaddingLeft,
     virtualPaddingRight,
     rowVirtualizer,
+    measureGrid,
   };
 };

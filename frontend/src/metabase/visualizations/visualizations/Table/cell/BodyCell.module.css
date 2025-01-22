@@ -1,10 +1,13 @@
 .root {
   display: flex;
   width: 100%;
-  height: auto;
+  height: 100%;
   font-size: 12.5px;
+  line-height: 18px;
   font-weight: 700;
-  padding: 8px 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 9.25px 12px;
 }
 
 .content {
@@ -24,6 +27,10 @@
 }
 
 .pill {
+  padding: 0px;
+}
+
+.pill .content {
   display: inline-flex;
   color: var(--mb-color-brand);
   border: 1px solid rgba(80, 158, 227, 0.14);

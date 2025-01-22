@@ -213,7 +213,7 @@ class Table extends Component<TableProps, TableState> {
       click_behavior: {},
       text_align: {
         title: t`Align`,
-        widget: "radio",
+        widget: "segmentedControl",
         getDefault: column => {
           return isNumber(column) ? "right" : "left";
         },

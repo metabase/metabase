@@ -56,6 +56,7 @@ export const BodyCell = memo(function BodyCell({
         [S.clickable]: !!onClick,
         [S.alignLeft]: align === "left",
         [S.alignRight]: align === "right",
+        [S.pill]: variant === "pill",
       })}
       style={{
         backgroundColor,
@@ -66,7 +67,6 @@ export const BodyCell = memo(function BodyCell({
         data-grid-cell-content
         className={cx(S.content, {
           [S.noWrap]: !wrap,
-          [S.pill]: variant === "pill",
           [S.minibar]: variant === "minibar",
         })}
         {...contentAttributes}
