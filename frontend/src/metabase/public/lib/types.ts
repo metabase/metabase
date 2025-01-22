@@ -37,7 +37,6 @@ export type EmbeddingDisplayOptions = {
   /** this is deprecated in favor of `downloads`, but it's still supported */
   hide_download_button?: boolean | null;
   downloads: boolean | null;
-  show_footer: boolean | null;
 };
 
 /**

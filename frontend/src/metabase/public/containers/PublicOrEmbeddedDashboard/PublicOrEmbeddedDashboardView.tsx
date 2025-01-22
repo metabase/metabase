@@ -166,7 +166,7 @@ export function PublicOrEmbeddedDashboardView({
       theme={normalizedTheme}
       hide_parameters={hideParameters}
       downloadsEnabled={downloadsEnabled}
-      show_footer={showFooter}
+      showFooter={showFooter}
     >
       <LoadingAndErrorWrapper
         className={cx({

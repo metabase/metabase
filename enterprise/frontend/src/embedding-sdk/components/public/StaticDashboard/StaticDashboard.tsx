@@ -32,6 +32,7 @@ export const StaticDashboardInner = ({
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
+  showFooter = true,
   hiddenParameters = [],
   onLoad,
   onLoadWithoutCards,
@@ -51,6 +52,7 @@ export const StaticDashboardInner = ({
     initialParameters,
     withTitle,
     withDownloads,
+    showFooter,
     hiddenParameters,
   });
 
