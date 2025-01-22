@@ -533,7 +533,7 @@ H.describeEE("scenarios > admin > people", () => {
       cy.createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
       }).then(({ body: { card_id, dashboard_id } }) => {
-        H.createAlert(getAlertDetails({ user_id, card_id }));
+        H.createQuestionAlert(getAlertDetails({ user_id, card_id }));
         H.createPulse(getPulseDetails({ card_id, dashboard_id }));
       });
     });

@@ -44,16 +44,16 @@ describe("QuestionSharingMenu", () => {
     );
   });
 
-  describe("alerts", () => {
+  describe("notifications", () => {
     describe("admins", () => {
-      it("should show the 'Create alert' menu item if no alerts exist", async () => {
+      it("should show the 'Create an alert' menu item if no alerts exist", async () => {
         setupQuestionSharingMenu({
           isAdmin: true,
           isEmailSetup: true,
           alerts: [],
         });
         await openMenu();
-        expect(screen.getByText("Create alert")).toBeInTheDocument();
+        expect(screen.getByText("Create an alert")).toBeInTheDocument();
       });
 
       it("should show the 'Edit alerts' menu item if alerts exist", async () => {
@@ -81,14 +81,14 @@ describe("QuestionSharingMenu", () => {
     });
 
     describe("non-admins", () => {
-      it("should show the 'Create alert' menu item if no alerts exist", async () => {
+      it("should show the 'Create an alert' menu item if no alerts exist", async () => {
         setupQuestionSharingMenu({
           isAdmin: false,
           isEmailSetup: true,
           alerts: [],
         });
         await openMenu();
-        expect(screen.getByText("Create alert")).toBeInTheDocument();
+        expect(screen.getByText("Create an alert")).toBeInTheDocument();
       });
 
       it("should show the 'Edit alerts' menu item if alerts exist", async () => {

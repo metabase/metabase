@@ -57,7 +57,7 @@ describe("scenarios > account > notifications", () => {
     H.restore();
   });
 
-  describe("alerts", () => {
+  describe("notifications", () => {
     beforeEach(() => {
       cy.signInAsAdmin().then(() => {
         H.getCurrentUser().then(({ body: { id: admin_id } }) => {
@@ -65,7 +65,7 @@ describe("scenarios > account > notifications", () => {
             H.getCurrentUser().then(({ body: { id: user_id } }) => {
               cy.createQuestion(getQuestionDetails()).then(
                 ({ body: { id: card_id } }) => {
-                  H.createAlert(
+                  H.createQuestionAlert(
                     getAlertDetails({ card_id, user_id, admin_id }),
                   );
                 },

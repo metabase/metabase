@@ -72,33 +72,28 @@ describe("scenarios > alert", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
       H.openSharingMenu("Create an alert");
 
-      //Disable Email
-      H.toggleAlertChannel("Email");
-      H.toggleAlertChannel("Foo Hook");
-      H.toggleAlertChannel("Bar Hook");
+      H.addNotificationHandlerChannel("Bar Hook");
 
       cy.findByRole("button", { name: "Done" }).click();
 
+      H.notificationList().findByText("Your alert is all set up.");
+
       H.openSharingMenu("Edit alerts");
 
-      H.popover().within(() => {
-        cy.findByText("You set up an alert").should("be.visible");
-        cy.findByRole("listitem", { name: "Number of HTTP channels" })
-          .should("contain.text", "2")
-          .findByRole("img", { name: /webhook/i })
-          .should("exist");
-        cy.findByText("Edit").click();
+      H.modal().within(() => {
+        cy.findByText("Edit alerts").should("be.visible");
+
+        cy.icon("webhook").should("be.visible");
+
+        cy.findByText(/Created by you/)
+          .should("be.visible")
+          .realHover();
+
+        cy.icon("trash").click();
       });
 
-      cy.findByRole("button", { name: "Delete this alert" }).click();
-
-      cy.log(
-        "Webhooks should render with their given names in delete modal metabase#48428",
-      );
-      cy.findByRole("checkbox", { name: /Channel Foo Hook/ }).click();
-      cy.findByRole("checkbox", { name: /Channel Bar Hook/ }).click();
-
-      cy.findByRole("button", { name: "Delete this alert" }).click();
+      cy.findByRole("button", { name: "Delete it" }).click();
+      H.notificationList().findByText("The alert was successfully deleted.");
     });
   });
 
@@ -137,7 +132,7 @@ describe("scenarios > alert", () => {
     H.openSharingMenu("Edit alerts");
     H.modal().within(() => {
       cy.findByText("Edit alerts").should("be.visible");
-      cy.findByText("Created by you").should("be.visible");
+      cy.findByText(/Created by you/).should("be.visible");
     });
   });
 });
@@ -172,16 +167,17 @@ H.describeEE(
       H.visitQuestion(ORDERS_QUESTION_ID);
 
       H.openSharingMenu("Create an alert");
-      H.modal().findByText("Set up an alert").click();
 
-      H.modal()
-        .findByRole("heading", { name: "Email" })
-        .closest("li")
-        .within(() => {
+      H.modal().within(() => {
+        cy.findByText("New alert").should("be.visible");
+
+        cy.findByTestId("token-field").within(() => {
           addEmailRecipient(deniedEmail);
-          cy.findByText(alertError);
         });
-      cy.button("Done").should("be.disabled");
+
+        cy.findByText(alertError);
+        cy.button("Done").should("be.disabled");
+      });
     });
 
     it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
