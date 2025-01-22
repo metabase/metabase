@@ -2,11 +2,8 @@
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [metabase.util :as u]
-   [metabase.util.files :as u.files]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
    [rewrite-clj.zip :as z]))
@@ -14,6 +11,13 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::zloc vector?)
+
+(mr/def ::defendpoint-loc
+  [:and
+   ::zloc
+   [:fn
+    {:error/message "zipper location pointing to list node"}
+    #(= (z/tag %) :list)]])
 
 (mr/def ::node
   [:fn
@@ -37,7 +41,7 @@
    [:schema-map ::schema-map]])
 
 (mu/defn- parse-defendpoint-1-args :- ::parsed
-  [defendpoint :- ::zloc]
+  [defendpoint :- ::defendpoint-loc]
   (let [symb       (z/down defendpoint)
         method     (z/right symb)
         route      (z/right method)
@@ -78,7 +82,7 @@
    (keys m)))
 
 (mu/defn- schema-map->malli :- [:maybe ::node]
-  [schema-map :- ::schema-map]
+  [schema-map :- ::schema-map & {:keys [always-optional?], :or {always-optional? false}}]
   (when (seq schema-map)
     (n/vector-node
      (into [(n/keyword-node :map)]
@@ -93,13 +97,14 @@
                            (n/whitespace-node (str/join (repeat (- (+ max-key-length 2)
                                                                    (count (str (keyword k))))
                                                                 \space)))]
-                          ;; optional
-                          (when (and (= (n/tag schema) :vector)
-                                     (= (n/sexpr (first (n/children schema))) :maybe))
+                          ;; add `:optional` or `:default` values to the map as needed
+                          (when (or always-optional?
+                                    (and (= (n/tag schema) :vector)
+                                         (= (n/sexpr (first (n/children schema))) :maybe)))
                             [(n/map-node
                               ;; apparently the old behavior for booleans coerced `nil`, to `false`, so let's replicate
                               ;; that.
-                              (if (= (n/sexpr schema) [:maybe 'ms/BooleanValue])
+                              (if ('#{[:maybe :boolean] [:maybe ms/BooleanValue]} (n/sexpr schema))
                                 [(n/keyword-node :default) (n/whitespace-node " ") (n/token-node 'false)]
                                 [(n/keyword-node :optional) (n/whitespace-node " ") (n/token-node 'true)]))
                              (n/whitespace-node " ")])
@@ -201,7 +206,7 @@
   [{:keys [schema-map], :as parsed} :- ::parsed]
   (some-> schema-map
           (select-keys* (query-args-symbols parsed))
-          schema-map->malli))
+          (schema-map->malli :always-optional? true)))
 
 (mu/defn- new-query-param-arg-nodes :- [:maybe [:sequential ::node]]
   [parsed :- ::parsed]
@@ -258,7 +263,7 @@
 
 (mu/defn- rewrite-defendpoint-symbol :- ::zloc
   [_parsed     :- ::parsed
-   defendpoint :- ::zloc]
+   defendpoint :- ::defendpoint-loc]
   (z/replace (z/down defendpoint) (n/token-node 'api.macros/defendpoint)))
 
 ;;;
@@ -266,24 +271,34 @@
 ;;;
 
 (mu/defn- rewrite-method :- ::zloc
-  [_parsed defendpoint :- ::zloc]
+  [_parsed defendpoint :- ::defendpoint-loc]
   (let [method (-> defendpoint z/down z/right)]
-    (z/replace method (n/keyword-node (keyword (u/lower-case-en (name (z/sexpr method))))))))
+    (z/replace method (n/keyword-node (keyword (str/lower-case (name (z/sexpr method))))))))
 
 ;;;
 ;;; rewrite argslist
 ;;;
+
+(mu/defn- find-route :- [:and
+                         ::zloc
+                         [:fn
+                          {:error/message "zipper location pointing to route node (string or vector)"}
+                          #(or (#{:vector :string} (z/tag %))
+                               ;; for whatever reason sometimes string nodes are `:token` nodes?
+                               (string? (z/sexpr %)))]]
+  [defendpoint :- ::defendpoint-loc]
+  (-> defendpoint
+      z/down    ; symb
+      z/right   ; method
+      z/right)) ; route
 
 (mu/defn- find-argslist :- [:and
                             ::zloc
                             [:fn
                              {:error/message "zipper location pointing to vector node"}
                              #(= (z/tag %) :vector)]]
-  [defendpoint :- ::zloc]
-  (let [route (-> defendpoint
-                  z/down    ; symb
-                  z/right   ; method
-                  z/right)] ; route
+  [defendpoint :- ::defendpoint-loc]
+  (let [route (find-route defendpoint)]
     ;; first vector after route
     (z/find-next route #(= (z/tag %) :vector))))
 
@@ -299,7 +314,7 @@
 
 (mu/defn- rewrite-args :- ::zloc
   [parsed      :- ::parsed
-   defendpoint :- ::zloc]
+   defendpoint :- ::defendpoint-loc]
   (z/replace (find-argslist defendpoint) (new-args-node parsed)))
 
 ;;;
@@ -308,7 +323,7 @@
 
 (mu/defn- add-metadata-map :- ::zloc
   [parsed      :- ::parsed
-   defendpoint :- ::zloc]
+   defendpoint :- ::defendpoint-loc]
   (if (= (n/tag (:method parsed)) :meta)
     (let [metadata  (first (n/children (:method parsed)))
           node      (if (= (n/tag metadata) :token)
@@ -316,8 +331,8 @@
                       (n/map-node [metadata (n/whitespace-node " ") (n/token-node true)])
                       metadata)]
       (as-> defendpoint defendpoint
-        (z/insert-left (find-argslist defendpoint) node)
-        (z/insert-left (find-argslist defendpoint) (n/newline-node "\n"))))
+        (z/subedit-node defendpoint (fn [defendpoint] (z/insert-left (find-argslist defendpoint) node)))
+        (z/subedit-node defendpoint (fn [defendpoint] (z/insert-left (find-argslist defendpoint) (n/newline-node "\n"))))))
     defendpoint))
 
 ;;;
@@ -325,12 +340,12 @@
 ;;;
 
 (mu/defn- find-body :- ::zloc
-  [defendpoint :- ::zloc]
+  [defendpoint :- ::defendpoint-loc]
   (z/right (find-argslist defendpoint)))
 
 (mu/defn- rewrite-body :- ::zloc
   [_parsed     :- ::parsed
-   defendpoint :- ::zloc]
+   defendpoint :- ::defendpoint-loc]
   (let [body (find-body defendpoint)]
     ;; if the first form is a map but there are more forms after, it's the schema map and we can remove it.
     (if (and (= (z/tag body) :map)
@@ -343,7 +358,7 @@
 ;;;
 
 (mu/defn- rewrite-defendpoint* :- ::zloc
-  [defendpoint :- ::zloc]
+  [defendpoint :- ::defendpoint-loc]
   (let [parsed (parse-defendpoint-1-args defendpoint)]
     (reduce
      (fn [defendpoint f]
@@ -370,7 +385,7 @@
       {:clj-kondo/ignore [:deprecated-var]})))
 
 (mu/defn- remove-preceding-kondo-ignore-node :- [:maybe ::zloc]
-  [defendpoint :- ::zloc]
+  [defendpoint :- ::defendpoint-loc]
   (when-let [previous (z/left defendpoint)]
     (when (some-> previous z/node kondo-ignore-node?)
       (-> (z/subedit-node
@@ -380,8 +395,8 @@
           ; move back to first child
           z/down))))
 
-(mu/defn- rewrite-defendpoint :- ::zloc
-  [defendpoint :- ::zloc]
+(mu/defn- rewrite-defendpoint :- ::defendpoint-loc
+  [defendpoint :- ::defendpoint-loc]
   (try
     (-> defendpoint
         rewrite-defendpoint*
@@ -390,33 +405,109 @@
       (println "Error rewriting defendpoint:" e)
       defendpoint)))
 
-(mu/defn- rewrite-namespace :- ::zloc
+(mu/defn- rewrite-all-defendpoints :- ::zloc
   [zloc :- ::zloc]
   (if-let [defendpoint (z/find-next zloc #(defendpoint-node? (z/node %)))]
     (let [zloc' (rewrite-defendpoint defendpoint)]
       (recur zloc'))
     zloc))
 
-;; TODO -- require needs to include api.macros.
+(mu/defn- ns-node?
+  [node :- ::node]
+  (when (= (n/tag node) :list)
+    (let [[first-child] (n/children node)]
+      (and (= (n/tag first-child) :token)
+           (= (n/sexpr first-child) 'ns)))))
 
-(defn rewrite-defendpoints! [^String filename & {:keys [write?], :or {write? true}}]
+(mu/defn- find-ns-node :- ::zloc
+  [zloc :- ::zloc]
+  (z/find-depth-first zloc #(ns-node? (z/node %))))
+
+(mu/defn- require-node?
+  [node :- ::node]
+  (when (= (n/tag node) :list)
+    (let [[first-child] (n/children node)]
+      (and (= (n/tag first-child) :token)
+           (= (n/sexpr first-child) :require)))))
+
+(mu/defn- find-require :- ::zloc
+  [zloc :- ::zloc]
+  (let [ns-node-loc (find-ns-node zloc)]
+    (z/find-depth-first ns-node-loc #(require-node? (z/node %)))))
+
+(mu/defn- has-api-macros-require?
+  [require-loc :- ::zloc]
+  (z/find-next
+   (z/down require-loc)
+   (fn [zloc]
+     (and (= (z/tag zloc) :vector)
+          (let [[first-child] (n/children (z/node zloc))]
+            (and (= (n/tag first-child) :token)
+                 (= (n/sexpr first-child) 'metabase.api.macros)))))))
+
+(mu/defn- add-api-macros-require :- ::zloc
+  [require-loc :- ::zloc]
+  ;; keep iterating thru the requires until we find one that should appear after the `metabase.api.macros`
+  (letfn [(required-namespace-symb [zloc]
+            (when (= (z/tag zloc) :vector)
+              (let [[first-child] (n/children (z/node zloc))]
+                (when (= (n/tag first-child) :token)
+                  (n/sexpr first-child)))))
+          (before-or-after [zloc]
+            (or (when-let [symb (required-namespace-symb zloc)]
+                  (when (= (sort [symb 'metabase.api.macros])
+                           [symb 'metabase.api.macros])
+                    :before))
+                :after))]
+    (let [preceding-zloc (loop [zloc (z/find-depth-first require-loc required-namespace-symb)]
+                           (case (before-or-after zloc)
+                             :before (if (z/rightmost? zloc)
+                                       zloc
+                                       (recur (z/right zloc)))
+                             :after  (z/left zloc)))]
+      (-> preceding-zloc
+          (z/insert-right (n/vector-node
+                           [(n/token-node 'metabase.api.macros)
+                            (n/whitespace-node " ")
+                            (n/keyword-node :as)
+                            (n/whitespace-node " ")
+                            (n/token-node 'api.macros)]))
+          (z/insert-right (n/whitespace-node " "))
+          (z/insert-right (n/newline-node "\n"))))))
+
+(mu/defn- add-macros-namespace-require :- ::zloc
+  [top-level-forms :- ::zloc]
+  (z/subedit-node
+   top-level-forms
+   (fn [top-level-forms]
+     (let [require-loc (find-require top-level-forms)]
+       (if (has-api-macros-require? require-loc)
+         require-loc
+         (add-api-macros-require require-loc))))))
+
+(mu/defn- rewrite-namespace :- ::zloc
+  [top-level-forms :- ::zloc]
+  (-> top-level-forms
+      add-macros-namespace-require
+      rewrite-all-defendpoints))
+
+(defn rewrite-file! [{:keys [^String filename write?], :or {write? true}}]
+  {:pre [(string? filename)]}
   (println "Rewriting" filename)
-  (let [node (r.parser/parse-file-all filename)
-        zloc (-> (z/of-node node)
-                 rewrite-namespace)]
+  (let [node            (r.parser/parse-file-all filename)
+        top-level-forms (-> (z/of-node node)
+                            rewrite-namespace)]
     (letfn [(print-root [w]
-              (z/print-root zloc w))]
+              (z/print-root top-level-forms w))]
       (if write?
         (with-open [w (java.io.FileWriter. filename)]
           (print-root w))
         (print-root *out*)))))
 
-(def ^:private files
-  (->> (u.files/files-seq (u.files/get-path "src/metabase/api/"))
-       (map str)
-       (filter #(str/ends-with? % ".clj"))
-       sort))
-
-(defn rewrite-all! []
-  (doseq [file (take 3 files)]
-    (rewrite-defendpoints! file :write? true)))
+(comment
+  #_{:clj-kondo/ignore [:unresolved-namespace]}
+  (defn- files []
+    (->> (metabase.util.files/files-seq (metabase.util.files/get-path "src/metabase/api/"))
+         (map str)
+         (filter #(str/ends-with? % ".clj"))
+         sort)))

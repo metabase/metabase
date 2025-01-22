@@ -262,7 +262,8 @@
   [params-type :- ::param-type
    schema      :- some?
    params]
-  (let [decoded ((decoder schema) params)]
+  (let [params  (or params {})
+        decoded ((decoder schema) params)]
     (when-not (mr/validate schema decoded)
       (throw (ex-info (format "Invalid %s" (case params-type
                                              :route "route parameters"
