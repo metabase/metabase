@@ -365,19 +365,21 @@
                    (send-notification-triggers sub-id)))))))))
 
 (deftest archive-notification-triggers-test
-  (notification.tu/with-temp-notification
-    [{id :id} {:notification  {:active true :payload_type :notification/testing}
-               :subscriptions [{:type          :notification-subscription/cron
-                                :cron_schedule "0 * * * * ? *"}
-                               {:type          :notification-subscription/cron
-                                :cron_schedule "1 * * * * ? *"}]}]
-    (testing "sanity check that it has a trigger to begin with"
-      (is (= 2 (count (notification-triggers id)))))
+  (mt/with-temp-scheduler!
+    (task/init! ::task.notification/SendNotifications)
+    (notification.tu/with-temp-notification
+      [{id :id} {:notification  {:active true :payload_type :notification/testing}
+                 :subscriptions [{:type          :notification-subscription/cron
+                                  :cron_schedule "0 * * * * ? *"}
+                                 {:type          :notification-subscription/cron
+                                  :cron_schedule "1 * * * * ? *"}]}]
+      (testing "sanity check that it has a trigger to begin with"
+        (is (= 2 (count (notification-triggers id)))))
 
-    (testing "disabled notification should remove triggers"
-      (t2/update! :model/Notification id {:active false})
-      (is (empty? (notification-triggers id))))
+      (testing "disabled notification should remove triggers"
+        (t2/update! :model/Notification id {:active false})
+        (is (empty? (notification-triggers id))))
 
-    (testing "activate notification should restore triggers"
-      (t2/update! :model/Notification id {:active true})
-      (is (= 2 (count (notification-triggers id)))))))
+      (testing "activate notification should restore triggers"
+        (t2/update! :model/Notification id {:active true})
+        (is (= 2 (count (notification-triggers id))))))))
