@@ -127,7 +127,7 @@
    :schedule_type mi/transform-keyword
    :schedule_frame mi/transform-keyword})
 
-(methodical/defmethod t2/batched-hydrate [:default :pulse-recipients]
+(methodical/defmethod t2/batched-hydrate [:default :recipients]
   [_model _k pcs]
   (when (seq pcs)
     (let [pcid->recipients (-> (group-by :pulse_channel_id

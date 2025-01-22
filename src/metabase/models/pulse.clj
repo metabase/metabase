@@ -141,7 +141,7 @@
 
 (defn- current-user-is-recipient?
   [notification]
-  (let [channels (:channels (t2/hydrate notification [:channels :pulse-recipients]))
+  (let [channels (:channels (t2/hydrate notification [:channels :recipients]))
         recipient-ids (for [{recipients :recipients} channels
                             recipient recipients]
                         (:id recipient))]
@@ -261,14 +261,14 @@
   "Hydrate Pulse or Alert with the Fields needed for sending it."
   [notification :- (ms/InstanceOf :model/Pulse)]
   (-> notification
-      (t2/hydrate :creator :cards [:channels :pulse-recipients])
+      (t2/hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
 (mu/defn- hydrate-notifications :- [:sequential (ms/InstanceOf :model/Pulse)]
   "Batched-hydrate multiple Pulses or Alerts."
   [notifications :- [:sequential (ms/InstanceOf :model/Pulse)]]
   (as-> notifications <>
-    (t2/hydrate <> :creator :cards [:channels :pulse-recipients])
+    (t2/hydrate <> :creator :cards [:channels :recipients])
     (map #(m/dissoc-in % [:details :emails]) <>)))
 
 (mu/defn- notification->pulse :- (ms/InstanceOf :model/Pulse)
