@@ -174,9 +174,11 @@
 (deftest create-dashboard-validation-test
   (testing "POST /api/dashboard"
     (is (= {:errors {:name "value must be a non-blank string."}
-            :specific-errors {:name ["should be a string, received: nil" "non-blank string, received: nil"]}}
-           (mt/user-http-request :rasta :post 400 "dashboard" {})))
+            :specific-errors {:name ["missing required key, received: nil"]}}
+           (mt/user-http-request :rasta :post 400 "dashboard" {})))))
 
+(deftest create-dashboard-validation-test-2
+  (testing "POST /api/dashboard"
     (is (= {:errors {:parameters "nullable sequence of parameter must be a map with :id and :type keys"}
             :specific-errors {:parameters ["invalid type, received: \"abc\""]}}
            (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
@@ -826,8 +828,10 @@
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dash)) {:collection_id (u/the-id new-collection)})
           ;; Check to make sure the ID has changed in the DB
           (is (= (t2/select-one-fn :collection_id :model/Dashboard :id (u/the-id dash))
-                 (u/the-id new-collection))))))
+                 (u/the-id new-collection))))))))
 
+(deftest update-dashboard-change-collection-id-test-2
+  (testing "PUT /api/dashboard/:id"
     (testing "if we don't have the Permissions for the old collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms
         (dashboard-test/with-dash-in-collection! [_db _collection dash]
@@ -837,8 +841,10 @@
             ;; now make an API call to move collections. Should fail
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
-                                         {:collection_id (u/the-id new-collection)})))))))
+                                         {:collection_id (u/the-id new-collection)})))))))))
 
+(deftest update-dashboard-change-collection-id-test-3
+  (testing "PUT /api/dashboard/:id"
     (testing "if we don't have the Permissions for the new collection, we should get an Exception"
       (mt/with-non-admin-groups-no-root-collection-perms
         (dashboard-test/with-dash-in-collection! [_db collection dash]
@@ -865,12 +871,9 @@
                    (t2/select-one-fn :width :model/Dashboard :id (u/the-id dashboard)))))
 
           (testing "values that are not 'fixed' or 'full' error."
-            (is (= "should be either \"fixed\" or \"full\", received: 1200"
-                   (-> (mt/user-http-request :rasta :put 400 (str "dashboard/" (u/the-id dashboard)) {:width 1200})
-                       :specific-errors
-                       :dash-updates
-                       :width
-                       first)))))))))
+            (is (=? {:specific-errors {:width ["should be either \"fixed\" or \"full\", received: 1200"]}
+                     :errors          {:width "enum of fixed, full"}}
+                    (mt/user-http-request :rasta :put 400 (str "dashboard/" (u/the-id dashboard)) {:width 1200})))))))))
 
 (deftest update-dashboard-add-time-granularity-param
   (testing "PUT /api/dashboard/:id"
@@ -3375,8 +3378,9 @@
         (mt/let-url [url (chain-filter-search-url dashboard (:card param-keys) "afr")]
           (is (= {:values          [["African"]]
                   :has_more_values false}
-                 (mt/user-http-request :rasta :get 200 url)))))))
+                 (mt/user-http-request :rasta :get 200 url))))))))
 
+(deftest parameter-values-from-card-test-2
   (testing "fallback to chain-filter"
     (let [mock-chain-filter-result {:has_more_values true
                                     :values [["chain-filter"]]}]
@@ -3401,8 +3405,9 @@
                                                                            :values_source_config {:card_id     card-id
                                                                                                   :value_field (mt/$ids $venues.name)}}]}]
             (mt/let-url [url (chain-filter-values-url dashboard "abc")]
-              (is (= mock-chain-filter-result (mt/user-http-request :rasta :get 200 url)))))))))
+              (is (= mock-chain-filter-result (mt/user-http-request :rasta :get 200 url))))))))))
 
+(deftest parameter-values-from-card-test-3
   (testing "users must have permissions to read the collection that source card is in"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp
@@ -3435,8 +3440,9 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll1)
         (testing "success if has read permission to the source card's collection"
           (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-values-url dashboard-id "abc"))))
-          (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "abc" "red"))))))))
+          (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "abc" "red")))))))))
 
+(deftest parameter-values-from-card-test-4
   ;; TODO: Re-enable this test, or delete it. Now that mapping dashboard filters to fields on cards is powered by MLv2,
   ;; the FE does not use the /api/table/:card__id/query_metadata API call to determine the fields which can be filtered
   ;; on a saved question. It uses `Lib.filterableColumns` instead, which given a saved question with aggregations in the
@@ -3505,7 +3511,7 @@
           (testing "filtered-ids cannot be nil"
             (is (= {:errors {:filtered "vector of value must be an integer greater than zero."}
                     :specific-errors
-                    {:filtered ["invalid type, received: nil"]}}
+                    {:filtered ["missing required key, received: nil"]}}
                    (mt/user-http-request :rasta :get 400 "dashboard/params/valid-filter-fields" :filtering [%categories.name]))))))
       (testing "should check perms for the Fields in question"
         (mt/with-temp-copy-of-db

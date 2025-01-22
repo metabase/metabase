@@ -1142,7 +1142,8 @@
                       (:options param))}))
 
 (mu/defn- chain-filter-constraints :- chain-filter/Constraints
-  [dashboard constraint-param-key->value]
+  [dashboard                   :- :map
+   constraint-param-key->value :- [:map-of string? any?]]
   (vec (for [[param-key value] constraint-param-key->value
              :let              [param (get-in dashboard [:resolved-params param-key])]
              :when             param
@@ -1192,7 +1193,7 @@
 
   ([dashboard                   :- ms/Map
     param-key                   :- ms/NonBlankString
-    constraint-param-key->value :- ms/Map
+    constraint-param-key->value :- [:map-of string? any?]
     query                       :- [:maybe ms/NonBlankString]]
    (let [dashboard   (t2/hydrate dashboard :resolved-params)
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
@@ -1231,7 +1232,7 @@
 
   ([dashboard                   :- :map
     param-key                   :- ms/NonBlankString
-    constraint-param-key->value :- :map
+    constraint-param-key->value :- [:map-of string? any?]
     query                       :- [:maybe ms/NonBlankString]]
    (let [dashboard (t2/hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]
@@ -1250,9 +1251,9 @@
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
-  [{:keys [id param-key]} :- [:map
-                              [:id ms/PositiveInt]]
-   constraint-param-key->value]
+  [{:keys [id param-key]}      :- [:map
+                                   [:id ms/PositiveInt]]
+   constraint-param-key->value :- [:map-of string? any?]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
@@ -1270,7 +1271,7 @@
   [{:keys [id param-key query]} :- [:map
                                     [:id    ms/PositiveInt]
                                     [:query ms/NonBlankString]]
-   constraint-param-key->value]
+   constraint-param-key->value  :- [:map-of string? any?]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
@@ -1299,7 +1300,7 @@
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
   [_route-params
    {:keys [filtered filtering]} :- [:map
-                                    [:filtered  {:optional true} (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
+                                    [:filtered  (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]
                                     [:filtering {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
         filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
