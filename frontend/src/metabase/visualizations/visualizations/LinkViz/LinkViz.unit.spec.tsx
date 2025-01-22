@@ -206,29 +206,25 @@ describe("LinkViz", () => {
       const longDescription =
         "This is a very very very very very very very very very very long dashboard description. Boy, I sure hope it does not overflow the screen when it's displayed in a tooltip. The only thing that would make it worse is if the text didn't wrap.";
 
-      const card = createMockLinkDashboardCard({
-        visualization_settings: {
-          link: {
-            entity: {
-              id: 1,
-              db_id: 20,
-              name: "Table Une",
-              model: "table",
-              description: longDescription,
-            },
+      const settings = {
+        link: {
+          entity: {
+            id: 1,
+            db_id: 20,
+            name: "Table Une",
+            model: "table",
+            description: longDescription,
           },
         },
-      });
+      } as LinkCardVizSettings;
 
-      renderWithProviders(
-        <LinkViz
-          dashboard={createMockDashboard({})}
-          dashcard={card}
-          isEditing={false}
-          settings={card.visualization_settings as LinkCardVizSettings}
-          onUpdateVisualizationSettings={jest.fn()}
-        />,
-      );
+      setup({
+        isEditing: false,
+        dashcard: createMockLinkDashboardCard({
+          visualization_settings: settings,
+        }),
+        settings,
+      });
 
       const infoIcon = screen.getByLabelText("info icon");
 
