@@ -42,7 +42,7 @@ const USERS = {
 
 describe("scenarios > public > question", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
+    cy.intercept("POST", "/api/public/card/*/query").as("publicQuery");
 
     H.restore();
     cy.signInAsAdmin();
@@ -198,7 +198,7 @@ describe("scenarios > public > question", () => {
 
 H.describeEE("scenarios [EE] > public > question", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
+    cy.intercept("POST", "/api/public/card/*/query").as("publicQuery");
 
     H.restore();
     cy.signInAsAdmin();

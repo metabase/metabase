@@ -185,7 +185,7 @@ function getEndpoint({
       };
     }
     return {
-      endpoint: `api/public/question/${publicUuid}.${fileType}**`,
+      endpoint: `api/public/card/${publicUuid}/query/${fileType}`,
       method: "POST",
     };
   }

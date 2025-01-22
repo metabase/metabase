@@ -226,13 +226,13 @@
   [uuid export-format :as {{:keys [parameters format_rows pivot_results]} :body}]
   {uuid          ms/UUIDString
    export-format api.dataset/ExportFormat
-   format_rows   [:maybe :boolean]
-   pivot_results [:maybe :boolean]
-   parameters    [:maybe [:sequential ms/Parameter]]}
+   format_rows   [:maybe ms/BooleanValue]
+   pivot_results [:maybe ms/BooleanValue]
+   parameters    [:maybe ms/JSONString]}
   (process-query-for-card-with-public-uuid
    uuid
    export-format
-   parameters
+   (json/decode+kw parameters)
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
