@@ -377,7 +377,7 @@
    database details."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include include_editable_data_model exclude_uneditable_details]} 
+   {:keys [include include_editable_data_model exclude_uneditable_details]}
    :- [:map [:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]]]
   (get-database id {:include include
                     :include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
