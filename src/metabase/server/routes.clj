@@ -6,19 +6,15 @@
    [compojure.route :as route]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.routes :as api]
-   [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
+   [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.routes.index :as index]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [ring.util.response :as response]))
-
-(when config/ee-available?
-  (classloader/require '[metabase-enterprise.sso.api.routes :as ee.sso.routes]))
 
 (defn- redirect-including-query-string
   "Like `response/redirect`, but passes along query string URL params as well. This is important because the public and
@@ -42,9 +38,7 @@
   (GET "*" [] index/embed))
 
 (defroutes ^{:doc "Top-level ring routes for Metabase.", :arglists '([request] [request respond raise])} routes
-  (or (some-> (resolve 'metabase-enterprise.sso.api.routes/routes) var-get)
-      (fn [_ respond _]
-        (respond nil)))
+  auth-wrapper/routes
   ;; ^/$ -> index.html
   (GET "/" [] index/index)
   (GET "/favicon.ico" [] (response/resource-response (public-settings/application-favicon-url)))

@@ -3,8 +3,9 @@ import { type PropsWithChildren, type ReactNode, useState } from "react";
 
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
-import TransitionS from "metabase/css/core/transitions.module.css";
+import DashboardS from "metabase/css/dashboard.module.css";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -104,9 +105,11 @@ export const ParameterWidget = ({
     return (
       <Box fz={isFullscreen ? "md" : undefined}>
         <ParameterFieldSet
-          className={cx(className, {
-            [TransitionS.transitionThemeChange]: isFullscreen,
-          })}
+          className={cx(
+            className,
+            DashboardS.ParameterFieldSet,
+            EmbedFrameS.ParameterFieldSet,
+          )}
           legend={legend}
           required={enableParameterRequiredBehavior && parameter.required}
           noPadding={true}

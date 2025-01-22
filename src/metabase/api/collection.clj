@@ -5,7 +5,6 @@
   endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`)."
   (:require
    [clojure.string :as str]
-   [compojure.core :refer [GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
    [malli.core :as mc]
    [malli.transform :as mtx]
@@ -120,8 +119,7 @@
     exclude-other-user-collections
     (remove-other-users-personal-subcollections api/*current-user-id*)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
 
@@ -132,11 +130,12 @@
   `?exclude-other-user-collections=true`.
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
-  [archived exclude-other-user-collections namespace personal-only]
-  {archived                       [:maybe ms/BooleanValue]
-   exclude-other-user-collections [:maybe ms/BooleanValue]
-   namespace                      [:maybe ms/NonBlankString]
-   personal-only                  [:maybe ms/BooleanValue]}
+  [_route-params
+   {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map
+                                                                                 [:archived                       {:default false} [:maybe ms/BooleanValue]]
+                                                                                 [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
+                                                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]]]
   (as->
    (select-collections {:archived                       (boolean archived)
                         :exclude-other-user-collections exclude-other-user-collections
@@ -178,8 +177,7 @@
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/tree"
+(api.macros/defendpoint :get "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
   ```
@@ -203,12 +201,14 @@
 
   TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at
   some point in the future."
-  [exclude-archived exclude-other-user-collections namespace shallow collection-id]
-  {exclude-archived               [:maybe :boolean]
-   exclude-other-user-collections [:maybe :boolean]
-   namespace                      [:maybe ms/NonBlankString]
-   shallow                        [:maybe :boolean]
-   collection-id                  [:maybe ms/PositiveInt]}
+  [_route-params
+   {:keys [exclude-archived exclude-other-user-collections
+           namespace shallow collection-id]} :- [:map
+                                                 [:exclude-archived               {:default false} [:maybe :boolean]]
+                                                 [:exclude-other-user-collections {:default false} [:maybe :boolean]]
+                                                 [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
+                                                 [:shallow                        {:default false} [:maybe :boolean]]
+                                                 [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
   (let [archived    (if exclude-archived false nil)
         collections (select-collections {:archived                       archived
                                          :exclude-other-user-collections exclude-other-user-collections
@@ -250,7 +250,7 @@
   (into [:enum] valid-model-param-values))
 
 (def ^:private Models
-  "This is basically a union type. [[api/defendpoint]] splits the string if it only gets one."
+  "This is basically a union type. [[api.macros/defendpoint]] splits the string if it only gets one."
   [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ModelString])
 
 (def ^:private valid-pinned-state-values
@@ -973,43 +973,39 @@
                   :can_restore
                   :can_delete)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id"
+(api.macros/defendpoint :get "/:id"
   "Fetch a specific Collection with standard details added"
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (collection-detail (api/read-check :model/Collection id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/trash"
+(api.macros/defendpoint :get "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
-  {}
   (collection-detail (api/read-check (collection/trash-collection))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/root/timelines"
+(api.macros/defendpoint :get "/root/timelines"
   "Fetch the root Collection's timelines."
-  [include archived]
-  {include  [:maybe [:= "events"]]
-   archived [:maybe :boolean]}
+  [_route-params
+   {:keys [include archived]} :- [:map
+                                  [:include  {:optional true} [:maybe [:= "events"]]]
+                                  [:archived {:default false} [:maybe :boolean]]]]
   (api/read-check collection/root-collection)
   (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
                                           :timeline/archived? archived}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/timelines"
+(api.macros/defendpoint :get "/:id/timelines"
   "Fetch a specific Collection's timelines."
-  [id include archived]
-  {id       ms/PositiveInt
-   include  [:maybe [:= "events"]]
-   archived [:maybe :boolean]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [include archived]} :- [:map
+                                  [:include  {:optional true} [:maybe [:= "events"]]]
+                                  [:archived {:default false} [:maybe :boolean]]]]
   (api/read-check (t2/select-one :model/Collection :id id))
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/items"
+(api.macros/defendpoint :get "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
   *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
@@ -1020,15 +1016,17 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
-  [id models archived pinned_state sort_column sort_direction official_collections_first show_dashboard_questions]
-  {id                         ms/PositiveInt
-   models                     [:maybe Models]
-   archived                   [:maybe ms/BooleanValue]
-   pinned_state               [:maybe (into [:enum] valid-pinned-state-values)]
-   sort_column                [:maybe (into [:enum] valid-sort-columns)]
-   sort_direction             [:maybe (into [:enum] valid-sort-directions)]
-   official_collections_first [:maybe ms/MaybeBooleanValue]
-   show_dashboard_questions   [:maybe ms/BooleanValue]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [models archived pinned_state sort_column sort_direction official_collections_first
+           show_dashboard_questions]} :- [:map
+                                          [:models                     {:optional true} [:maybe Models]]
+                                          [:archived                   {:default false} [:maybe ms/BooleanValue]]
+                                          [:pinned_state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                          [:sort_column                {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                          [:sort_direction             {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                          [:official_collections_first {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                          [:show_dashboard_questions   {:default false} [:maybe ms/BooleanValue]]]]
   (let [model-kwds (set (map keyword (u/one-or-many models)))
         collection (api/read-check :model/Collection id)]
     (u/prog1 (collection-children collection
@@ -1063,44 +1061,87 @@
 
 (mu/defn- dashboard-question-candidates
   "Implementation for the `dashboard-question-candidates` endpoints."
-  [collection-id :- [:maybe ms/PositiveInt]
-   sort-direction :- [:enum :asc :desc]]
+  [collection-id :- [:maybe ms/PositiveInt]]
   (api/check-403 api/*is-superuser?*)
-  (let [cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:= :collection_id collection-id]
-                                                                :order-by [[:%lower.name sort-direction]]}) :in_dashboards)
-        dashboard-question-candidates (filter card/sole-dashboard-id cards-in-collection)
-        present-card (fn [{:keys [in_dashboards] :as card}]
-                       (-> card
-                           (select-keys [:id :name :description])
-                           (assoc :sole_dashboard_info (-> in_dashboards first (select-keys [:id :name :description])))))]
-    {:data (map present-card dashboard-question-candidates)
-     :count (count dashboard-question-candidates)}))
+  (let [cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:= :collection_id collection-id]}) :in_dashboards)]
+    (filter card/sole-dashboard-id cards-in-collection)))
+
+(mu/defn- present-dashboard-question-candidate
+  [{:keys [in_dashboards] :as card}]
+  (-> card
+      (select-keys [:id :name :description])
+      (assoc :sole_dashboard_info (-> in_dashboards first (select-keys [:id :name :description])))))
+
+(mu/defn- present-dashboard-question-candidates
+  [cards]
+  {:data (map present-dashboard-question-candidate cards)
+   :count (count cards)})
 
 (api.macros/defendpoint :get "/:id/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
   "Find cards in this collection that can be moved into dashboards in this collection.
 
-  To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a dashboard question."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [sort_direction]} :- [:map [:sort_direction {:default :asc} [:enum :asc :desc]]]]
+  To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a
+  dashboard question."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check :model/Collection id)
-  (dashboard-question-candidates id sort_direction))
+  (present-dashboard-question-candidates
+   (dashboard-question-candidates id)))
 
 (api.macros/defendpoint :get "/root/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
-  "Find cards in the root collection that can be moved into dashboards in the root collection. (Same as the above endpoint, but for the root collection)"
+  "Find cards in the root collection that can be moved into dashboards in the root collection. (Same as the above
+  endpoint, but for the root collection)"
+  []
+  (present-dashboard-question-candidates
+   (dashboard-question-candidates nil)))
+
+(mr/def ::MoveDashboardQuestionCandidatesResponse
+  [:map
+   [:moved [:sequential ms/PositiveInt]]])
+
+(defn- move-dashboard-question-candidates
+  "Move dash"
+  [id card-ids]
+  (let [cards (cond->> (dashboard-question-candidates id)
+                (some? card-ids) (filter #(contains? card-ids (:id %))))]
+    (t2/with-transaction [_conn]
+      (doall
+       (for [{:as card :keys [in_dashboards]} cards]
+         (do
+           (card/update-card! {:card-before-update card
+                               :card-updates {:dashboard_id (-> in_dashboards first :id)}
+                               :actor @api/*current-user*
+                               :delete-old-dashcards? false})
+           (:id card)))))))
+
+(api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
+  "Move candidate cards to the dashboards they appear in."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [card_ids]} :- [:maybe
+                          [:map [:card_ids {:optional true}
+                                 [:set ms/PositiveInt]]]]]
+  (api/read-check :model/Collection id)
+  {:moved (move-dashboard-question-candidates id card_ids)})
+
+(api.macros/defendpoint :post "/root/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
+  "Move candidate cards to the dashboards they appear in (for the root collection)"
   [_route-params
-   {:keys [sort_direction]} :- [:map [:sort_direction {:default :asc} [:enum :asc :desc]]]]
-  (dashboard-question-candidates nil sort_direction))
+   _query-params
+   {:keys [card_ids]} :- [:maybe
+                          [:map [:card_ids {:optional true}
+                                 [:set ms/PositiveInt]]]]]
+  {:moved (move-dashboard-question-candidates nil card_ids)})
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
 (defn- root-collection [collection-namespace]
   (collection-detail (collection/root-collection-with-ui-details collection-namespace)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/root"
+(api.macros/defendpoint :get "/root"
   "Return the 'Root' Collection object with standard details added"
-  [namespace]
-  {namespace [:maybe ms/NonBlankString]}
+  [_route-params
+   {:keys [namespace]} :- [:map
+                           [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
   (-> (root-collection namespace)
       (api/read-check)
       (dissoc ::collection.root/is-root?)))
@@ -1117,8 +1158,7 @@
       #{:collection}
       #{:no_models})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/root/items"
+(api.macros/defendpoint :get "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
   `collection_id` exist. It does, however, have its own set of Permissions.
@@ -1135,15 +1175,17 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
-  [models archived namespace pinned_state sort_column sort_direction official_collections_first show_dashboard_questions]
-  {models                     [:maybe Models]
-   archived                   [:maybe ms/BooleanValue]
-   namespace                  [:maybe ms/NonBlankString]
-   pinned_state               [:maybe (into [:enum] valid-pinned-state-values)]
-   sort_column                [:maybe (into [:enum] valid-sort-columns)]
-   sort_direction             [:maybe (into [:enum] valid-sort-directions)]
-   official_collections_first [:maybe ms/MaybeBooleanValue]
-   show_dashboard_questions   [:maybe ms/MaybeBooleanValue]}
+  [_route-params
+   {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
+           show_dashboard_questions]} :- [:map
+                                          [:models                     {:optional true} [:maybe Models]]
+                                          [:archived                   {:default false} [:maybe ms/BooleanValue]]
+                                          [:namespace                  {:optional true} [:maybe ms/NonBlankString]]
+                                          [:pinned_state               {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                          [:sort_column                {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                          [:sort_direction             {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                          [:official_collections_first {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                          [:show_dashboard_questions   {:optional true} [:maybe ms/MaybeBooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -1196,15 +1238,16 @@
                {:location (collection/children-location (t2/select-one [:model/Collection :location :id] :id parent_id))})))
     (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Create a new Collection."
-  [:as {{:keys [name description parent_id namespace authority_level] :as body} :body}]
-  {name            ms/NonBlankString
-   description     [:maybe ms/NonBlankString]
-   parent_id       [:maybe ms/PositiveInt]
-   namespace       [:maybe ms/NonBlankString]
-   authority_level [:maybe collection/AuthorityLevel]}
+  [_route-params
+   _query-params
+   body :- [:map
+            [:name            ms/NonBlankString]
+            [:description     {:optional true} [:maybe ms/NonBlankString]]
+            [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
+            [:namespace       {:optional true} [:maybe ms/NonBlankString]]
+            [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
   (create-collection! body))
 
 (defn- maybe-send-archived-notifications!
@@ -1269,21 +1312,22 @@
     :parent_id (move-collection! collection-before-update collection-updates)
     :no-op))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id"
+(api.macros/defendpoint :put "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [id, :as {{:keys [name description archived parent_id authority_level], :as collection-updates} :body}]
-  {id              ms/PositiveInt
-   name            [:maybe ms/NonBlankString]
-   description     [:maybe ms/NonBlankString]
-   archived        [:maybe ms/BooleanValue]
-   parent_id       [:maybe ms/PositiveInt]
-   authority_level [:maybe collection/AuthorityLevel]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {authority-level :authority_level, :as collection-updates} :- [:map
+                                                                  [:name            {:optional true} [:maybe ms/NonBlankString]]
+                                                                  [:description     {:optional true} [:maybe ms/NonBlankString]]
+                                                                  [:archived        {:default false} [:maybe ms/BooleanValue]]
+                                                                  [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
+                                                                  [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
-               (not= (keyword authority_level) (:authority_level collection-before-update)))
+               (not= (keyword authority-level) (:authority_level collection-before-update)))
       (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
       (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
@@ -1299,11 +1343,11 @@
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/graph"
+(api.macros/defendpoint :get "/graph"
   "Fetch a graph of all Collection Permissions."
-  [namespace]
-  {namespace [:maybe ms/NonBlankString]}
+  [_route-params
+   {:keys [namespace]} :- [:map
+                           [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-superuser)
   (graph/graph namespace))
 
@@ -1350,8 +1394,7 @@
     {:revision (c-perm-revision/latest-id)}
     (graph/graph namespace)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/graph"
+(api.macros/defendpoint :put "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph. Will overwrite parts of the graph that
   are present in the request, and leave the rest unchanged.
 
@@ -1360,13 +1403,14 @@
 
   If the `skip_graph` query parameter is `true`, it will only return the current revision, not the entire permissions
   graph."
-  [:as {{:keys [namespace revision groups]} :body
-        {:keys [skip-graph force]} :params}]
-  {namespace  [:maybe ms/NonBlankString]
-   revision   [:maybe ms/Int]
-   groups     :map
-   force      [:maybe ms/BooleanValue]
-   skip-graph [:maybe ms/BooleanValue]}
+  [_route-params
+   {:keys [skip-graph force]} :- [:map
+                                  [:force      {:default false} [:maybe ms/BooleanValue]]
+                                  [:skip-graph {:default false} [:maybe ms/BooleanValue]]]
+   {:keys [namespace revision groups]} :- [:map
+                                           [:namespace {:optional true} [:maybe ms/NonBlankString]]
+                                           [:revision  {:optional true} [:maybe ms/Int]]
+                                           [:groups    :map]]]
   (api/check-superuser)
   (update-graph! namespace
                  (decode-graph {:revision revision :groups groups})
