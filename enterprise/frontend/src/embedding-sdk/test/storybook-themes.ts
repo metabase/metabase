@@ -195,7 +195,7 @@ const luminaraTheme: MetabaseTheme = {
     background: luminaraColors.background,
     "background-secondary": luminaraColors.background,
     "background-hover": luminaraColors.background,
-    "background-disabled": luminaraColors.green2,
+    "background-disabled": luminaraColors.background,
     charts: [
       luminaraColors.viz1,
       "#E09862",
