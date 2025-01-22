@@ -3,11 +3,11 @@
   see [[metabase.api.pulse.unsubscribe]].
 
   Deprecated: will soon be migrated to notification APIs."
-  #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.set :refer [difference]]
    [hiccup.core :refer [html]]
    [hiccup.page :refer [html5]]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.alert :as api.alert]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -25,6 +25,7 @@
    [metabase.permissions.util :as perms-util]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
