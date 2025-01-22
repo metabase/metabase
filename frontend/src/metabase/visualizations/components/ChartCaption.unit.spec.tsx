@@ -13,6 +13,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDataset,
+  createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
 import ChartCaption from "./ChartCaption";
@@ -80,7 +81,9 @@ describe("ChartCaption", () => {
   it("should ignore the first series' name to render the title", () => {
     setup({
       series: getSeries({ card: createMockCard({ name: "card name" }) }),
-      settings: { "card.description": "description" },
+      settings: createMockVisualizationSettings({
+        "card.description": "description",
+      }),
     });
 
     const legendCaption = screen.getByTestId("legend-caption");
@@ -92,10 +95,10 @@ describe("ChartCaption", () => {
   it("should use the settings card.title to render the title", () => {
     setup({
       series: getSeries({ card: createMockCard({ name: "card name" }) }),
-      settings: {
+      settings: createMockVisualizationSettings({
         "card.description": "description",
         "card.title": "Hello, is it me you're looking for",
-      },
+      }),
     });
 
     const legendCaption = screen.getByTestId("legend-caption");
