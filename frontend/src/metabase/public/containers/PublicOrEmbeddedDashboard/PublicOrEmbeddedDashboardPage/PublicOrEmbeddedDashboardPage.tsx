@@ -43,6 +43,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     titled,
     font,
     locale,
+    showFooter,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
   const canWhitelabel = useSelector(getCanWhitelabel);
@@ -69,6 +70,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         theme={theme}
         titled={titled}
         font={font}
+        showFooter={showFooter}
         parameterQueryParams={parameterQueryParams}
         cardTitled={true}
         locale={canWhitelabel ? locale : undefined}

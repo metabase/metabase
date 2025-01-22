@@ -31,6 +31,7 @@ export const useDashboardUrlParams = ({
     hide_parameters,
     downloadsEnabled,
     locale,
+    show_footer,
   } = useEmbedFrameOptions({ location });
 
   const {
@@ -95,5 +96,6 @@ export const useDashboardUrlParams = ({
     locale,
     autoScrollToDashcardId,
     reportAutoScrolledToDashcard,
+    showFooter: show_footer,
   };
 };

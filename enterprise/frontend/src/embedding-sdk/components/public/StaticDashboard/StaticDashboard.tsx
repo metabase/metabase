@@ -86,6 +86,7 @@ export const StaticDashboardInner = ({
         isNightMode={false}
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
+        showFooter={displayOptions.showFooter}
       />
     </Box>
   );

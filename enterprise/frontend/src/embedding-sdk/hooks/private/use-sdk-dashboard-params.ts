@@ -18,6 +18,7 @@ export type SdkDashboardDisplayProps = {
   withTitle?: boolean;
   withCardTitle?: boolean;
   withDownloads?: boolean;
+  showFooter?: boolean;
   hiddenParameters?: string[];
   className?: string;
   style?: CSSProperties;
@@ -27,6 +28,7 @@ export const useSdkDashboardParams = ({
   dashboardId,
   withDownloads,
   withTitle,
+  showFooter,
   hiddenParameters,
   initialParameters = {},
 }: SdkDashboardDisplayProps) => {
@@ -40,6 +42,7 @@ export const useSdkDashboardParams = ({
         titled: withTitle,
         hideDownloadButton,
         hideParameters: hiddenParameters?.join(",") ?? null,
+        showFooter,
       },
       isNotNull,
     ),

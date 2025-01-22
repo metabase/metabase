@@ -103,6 +103,7 @@ export const EmbedFrame = ({
   theme,
   hide_parameters,
   downloadsEnabled = true,
+  show_footer = true,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
@@ -135,7 +136,8 @@ export const EmbedFrame = ({
     .filter(Boolean)
     .join(",");
 
-  const showFooter = hasEmbedBranding || downloadsEnabled || actionButtons;
+  const showFooter =
+    show_footer && (hasEmbedBranding || downloadsEnabled || actionButtons);
 
   const finalName = titled ? name : null;
 

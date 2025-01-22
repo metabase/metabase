@@ -136,6 +136,7 @@ const PublicOrEmbeddedDashboardInner = ({
   theme,
   downloadsEnabled = true,
   hideParameters,
+  showFooter,
   navigateToNewCardFromDashboard,
   selectedTabId,
   slowCards,
@@ -239,6 +240,7 @@ const PublicOrEmbeddedDashboardInner = ({
         slowCards={slowCards}
         cardTitled={cardTitled}
         downloadsEnabled={downloadsEnabled}
+        showFooter={showFooter}
       />
     </LocaleProvider>
   );
