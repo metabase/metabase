@@ -7,6 +7,7 @@ import _ from "underscore";
 import {
   skipToken,
   useListCollectionDashboardQuestionCandidatesQuery,
+  useMoveCollectionDashboardQuestionCandidatesMutation,
 } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -26,17 +27,33 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
     params,
     onClose: handleClose,
   }: MoveQuestionsIntoDashboardsModalProps) => {
+    const collectionId = Urls.extractCollectionId(params.slug);
     const dispatch = useDispatch();
-
     const [acknowledgedInfoStep, setAcknowledgedInfoStep] = useState(true);
 
-    const collectionId = Urls.extractCollectionId(params.slug);
     const candidatesReq = useListCollectionDashboardQuestionCandidatesQuery(
       collectionId ? collectionId : skipToken,
     );
 
+    // TODO: handle error and loading state from the update result
+    const [move] = useMoveCollectionDashboardQuestionCandidatesMutation();
     const handleBulkMoveQuestionIntoDashboards = async () => {
-      handleClose();
+      if (!collectionId) {
+        throw new Error("arg");
+      }
+
+      //
+      move({
+        collectionId,
+        cardIds: candidatesReq.data?.data.map(card => card.id) ?? [],
+      })
+        .unwrap()
+        .then(() => {
+          handleClose();
+        })
+        .catch(err => {
+          console.error(err);
+        });
     };
 
     useEffect(() => {

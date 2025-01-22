@@ -3,11 +3,13 @@ import type {
   CollectionId,
   CreateCollectionRequest,
   DeleteCollectionRequest,
-  GetCollectionDashboardQuestionCandidates,
+  GetCollectionDashboardQuestionCandidatesResult,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListCollectionsRequest,
   ListCollectionsTreeRequest,
+  MoveCollectionDashboardCandidatesRequest,
+  MoveCollectionDashboardCandidatesResult,
   UpdateCollectionRequest,
   getCollectionRequest,
 } from "metabase-types/api";
@@ -111,12 +113,28 @@ export const collectionApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("collection"), idTag("collection", id)]),
     }),
+    // TODO: I should move this definition elsewhere. it's kinda weird here... timelines has it's own file it seems.
     listCollectionDashboardQuestionCandidates: builder.query<
-      GetCollectionDashboardQuestionCandidates,
+      GetCollectionDashboardQuestionCandidatesResult,
       CollectionId
     >({
       query: id => `/api/collection/${id}/dashboard-question-candidates`,
       providesTags: (_, __, id) => [idTag("collection", id)],
+    }),
+    moveCollectionDashboardQuestionCandidates: builder.mutation<
+      MoveCollectionDashboardCandidatesResult,
+      MoveCollectionDashboardCandidatesRequest
+    >({
+      query: ({ collectionId, cardIds }) => ({
+        method: "POST",
+        url: `/api/collection/${collectionId}/move-dashboard-question-candidates`,
+        body: { card_ids: cardIds },
+      }),
+      invalidatesTags: (result, error, { collectionId }) =>
+        invalidateTags(error, [
+          idTag("collection", collectionId),
+          ...(result ? result.moved.map(id => idTag("card", id)) : []),
+        ]),
     }),
   }),
 });
@@ -130,4 +148,5 @@ export const {
   useUpdateCollectionMutation,
   useDeleteCollectionMutation,
   useListCollectionDashboardQuestionCandidatesQuery,
+  useMoveCollectionDashboardQuestionCandidatesMutation,
 } = collectionApi;

@@ -4,12 +4,14 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { Button, Flex, Icon, Loader, Modal, Text } from "metabase/ui";
-import type { GetCollectionDashboardQuestionCandidates } from "metabase-types/api";
+import type { GetCollectionDashboardQuestionCandidatesResult } from "metabase-types/api";
 
 import S from "./ConfirmMoveDashboardQuestionCandidatesModal.module.css";
 
 interface ConfirmMoveDashboardQuestionCandidatesModalProps {
-  candidates: GetCollectionDashboardQuestionCandidates["data"] | undefined;
+  candidates:
+    | GetCollectionDashboardQuestionCandidatesResult["data"]
+    | undefined;
   isLoading: boolean;
   error: unknown;
   onConfirm: () => Promise<void>;
