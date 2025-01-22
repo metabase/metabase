@@ -197,7 +197,7 @@ const getDatasetParams = ({
     if (resource === "question" && uuid) {
       return {
         method: "POST",
-        url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
+        url: `/api/public/card/${uuid}/query/${type}`,
         body: {
           parameters: result?.json_query?.parameters ?? [],
           ...exportParams,
