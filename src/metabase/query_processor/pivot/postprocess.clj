@@ -9,6 +9,7 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [clojure.string :as str]
+   [flatland.ordered.set :as ordered-set]
    [metabase.query-processor.streaming.common :as common]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -102,8 +103,8 @@
   (let [{:keys [pivot-rows pivot-cols pivot-measures]} pivot-spec]
     {:config         pivot-spec
      :data           {}
-     :row-values     (zipmap pivot-rows (repeat (sorted-set)))
-     :column-values  (zipmap pivot-cols (repeat (sorted-set)))
+     :row-paths      (ordered-set/ordered-set)
+     :col-paths      (ordered-set/ordered-set)
      :measure-values (zipmap pivot-measures (repeat (sorted-set)))}))
 
 (defn- update-set
@@ -195,6 +196,8 @@
         (update :row-count (fn [v] (if v (inc v) 0)))
         (update :data update-in (concat row-path col-path)
                 #(update-aggregate (or % (zipmap pivot-measures (repeat {}))) measure-vals measures))
+        (update :row-paths conj row-path)
+        (update :col-paths conj col-path)
         (update :totals (fn [totals]
                           (-> totals
                               (total-fn [[:grand-total]
@@ -225,9 +228,7 @@
                                                ;; the switching, but rather that the second pivot-row's values were IDs, thus the integer 4
                                                ;; was part of some totals paths, breaking aggregating in later steps.
                                                (concat [:column-totals :rows-part] part [:cols-part] col-path))
-                                             (rest (reductions conj [] row-path)))))))
-        (update :row-values #(reduce-kv update-set % (select-keys row pivot-rows)))
-        (update :column-values #(reduce-kv update-set % (select-keys row pivot-cols))))))
+                                             (rest (reductions conj [] row-path))))))))))
 
 (defn- fmt
   "Format a value using the provided formatter or identity function."
@@ -351,14 +352,16 @@
 (defn- sort-column-combos
   [config column-combos]
   (let [{:keys [pivot-cols column-sort-order]} config]
-    (reduce
-     (fn [section [idx pivot-row-idx]]
-       (let [sort-spec (get column-sort-order pivot-row-idx :ascending)
-             transform (if (= :descending sort-spec) reverse identity)
-             groups    (group-by #(nth % idx) section)]
-         (mapcat second (transform (sort groups)))))
-     column-combos
-     (reverse (map-indexed vector pivot-cols)))))
+    (if column-sort-order
+      (reduce
+       (fn [section [idx pivot-row-idx]]
+         (let [sort-spec (get column-sort-order pivot-row-idx :ascending)
+               transform (if (= :descending sort-spec) reverse identity)
+               groups    (group-by #(nth % idx) section)]
+           (mapcat second (transform (sort groups)))))
+       column-combos
+       (reverse (map-indexed vector pivot-cols)))
+      column-combos)))
 
 (defn- append-totals-to-subsections
   [pivot section col-combos ordered-formatters]
@@ -406,8 +409,8 @@
   (let [{:keys [config
                 data
                 totals
-                row-values
-                column-values]} pivot
+                row-paths
+                col-paths]} pivot
         {:keys [pivot-rows
                 pivot-cols
                 pivot-measures
@@ -419,11 +422,9 @@
                                                                                      :descending reverse} direction)))
         row-formatters          (mapv #(get ordered-formatters %) pivot-rows)
         col-formatters          (mapv #(get ordered-formatters %) pivot-cols)
-        row-combos              (mapv vec (apply math.combo/cartesian-product (mapv row-values pivot-rows)))
-        col-combos              (mapv vec (apply math.combo/cartesian-product (mapv column-values pivot-cols)))
-        col-combos              (vec (sort-column-combos config col-combos))
+        col-paths               (vec (sort-column-combos config col-paths))
         row-totals?             (and row-totals? (boolean (seq pivot-cols)))
-        column-headers          (build-column-headers config col-combos col-formatters)
+        column-headers          (build-column-headers config col-paths col-formatters)
         headers                 (or (not-empty (build-headers column-headers config))
                                     [(mapv #(get column-titles %) (into (vec pivot-rows) pivot-measures))])]
     (perf/concat
@@ -434,10 +435,10 @@
                       (mapv (fn [section-row-combos]
                               (into []
                                     (keep (fn [row-combo]
-                                            (build-row row-combo col-combos pivot-measures data totals
+                                            (build-row row-combo col-paths pivot-measures data totals
                                                        row-totals? ordered-formatters row-formatters)))
                                     section-row-combos))
-                            (sort-fn (sort-by ffirst (vals (group-by first row-combos)))))]
+                            (sort-fn (sort-by ffirst (vals (group-by first row-paths)))))]
                   (perf/mapv
                    (fn [section-rows]
                      (->>
@@ -446,7 +447,7 @@
                       ;; section rows are either enriched with column-totals rows or left as is
                       ((fn [rows]
                          (if (and col-totals? (> (count pivot-rows) 1))
-                           (append-totals-to-subsections pivot rows col-combos ordered-formatters)
+                           (append-totals-to-subsections pivot rows col-paths ordered-formatters)
                            rows)))
                       ;; then, we apply the row-formatters to the pivot-rows portion of each row,
                       ;; filtering out any rows that begin with "Totals ..."
@@ -461,4 +462,4 @@
                              (into (mapv fmt row-formatters row-part) vals-part)))))))
                    sections-rows)))
      (when col-totals?
-       [(build-grand-totals config col-combos totals row-totals? ordered-formatters)]))))
+       [(build-grand-totals config col-paths totals row-totals? ordered-formatters)]))))
