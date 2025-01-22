@@ -213,7 +213,16 @@ export interface DashboardQuestionCandidate {
   };
 }
 
-export interface GetCollectionDashboardQuestionCandidates {
+export interface GetCollectionDashboardQuestionCandidatesResult {
   count: number;
   data: DashboardQuestionCandidate[];
+}
+
+export interface MoveCollectionDashboardCandidatesRequest {
+  collectionId: CollectionId;
+  cardIds: CardId[];
+}
+
+export interface MoveCollectionDashboardCandidatesResult {
+  moved: CardId[];
 }
