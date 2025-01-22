@@ -1,5 +1,6 @@
 (ns metabase.api.auth
-  (:require [metabase.models.setting :as setting :refer [defsetting]]))
+  (:require [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.premium-features.core :as premium-features]))
 
 (defsetting api-key
   "When set, this API key is required for all API requests."
@@ -18,12 +19,10 @@
   :setter :none
   :getter (fn []
             (and
-             ;; TEMP (gsheets): check these features when we are ready
-             ;; (premium-features/is-hosted?)
-             ;; (premium-features/has-feature? :attached-dwh)
-             ;; (premium-features/has-feature? :etl-connections)
-
-             ;; Need to know the store-api-url to make requests
+             (premium-features/is-hosted?)
+             (premium-features/has-feature? :attached-dwh)
+             (premium-features/has-feature? :etl-connections)
+             ;; Need to know the store-api-url to make requests to HM
              (some? (setting/get-value-of-type :string :store-api-url))
-             ;; Need API key for Harbormaster Auth
+             ;; Need [[api-key]] to makerequests to HM
              (some? (api-key)))))

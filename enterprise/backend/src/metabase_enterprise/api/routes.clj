@@ -49,10 +49,9 @@
       billing/routes)
     (context
       "/gsheets" []
-      ;;TEMP (gsheets):
-      ;; The dev token doesn't get the :attached-dwh feature, so we can't require it here yet, but we will:
-      ;;(ee.api.common/+require-premium-feature :attached-dwh (deferred-tru "Google Sheets Integration"))
-      gsheets.api/routes)
+      (->> gsheets.api/routes
+           (ee.api.common/+require-premium-feature :attached-dwh (deferred-tru "Google Sheets Integration"))
+           (ee.api.common/+require-premium-feature :etl-connections (deferred-tru "Google Sheets Integration"))))
     (context
       "/logs" []
       (ee.api.common/+require-premium-feature :audit-app (deferred-tru "Audit app") logs/routes))
