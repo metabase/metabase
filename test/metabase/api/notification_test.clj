@@ -1,7 +1,6 @@
 (ns metabase.api.notification-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.channel.email.messages :as messages]
@@ -116,8 +115,8 @@
     (notification.tu/with-channel-fixtures [:channel/email]
       (mt/with-temp [:model/Card {card-id :id} {:name "My Card"}]
         (doseq [[send_condition expected_text] [["has_result" "whenever this question has any results"]
-                                                #_["goal_above" "when this question meets its goal"]
-                                                #_["goal_below" "when this question goes below its goal"]]]
+                                                ["goal_above" "when this question meets its goal"]
+                                                ["goal_below" "when this question goes below its goal"]]]
           (let [notification {:payload_type  "notification/card"
                               :active        true
                               :payload       {:card_id card-id
@@ -280,40 +279,35 @@
                                  (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification))
                                                        {:handler_ids handler-ids}))))))))))))
 
-(defn- strip-keys
-  [x to-remove-keys]
-  (walk/postwalk
-   (fn [x]
-     (if (map? x)
-       (apply dissoc x to-remove-keys)
-       x))
-   x))
-
 (deftest send-unsaved-notification-api-test
   (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
                                                        :details {:url         "https://metabase.com/testhttp"
-                                                                 :auth-method "none"}}]
+                                                                 :auth-method "none"}}
+                 :model/Card    {card-id :id}         {:dataset_query (mt/mbql-query products {:aggregation [[:count]]
+                                                                                               :breakout    [$category]})}]
     (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
-      (notification.tu/with-card-notification
-        [notification {:handlers [{:channel_type :channel/email
-                                   :recipients   [{:type    :notification-recipient/user
-                                                   :user_id (mt/user->id :crowberto)}]}
-                                  {:channel_type :channel/slack
-                                   :recipients   [{:type    :notification-recipient/raw-value
-                                                   :details {:value "#general"}}]}
-                                  {:channel_type :channel/http
-                                   :channel_id   http-channel-id}]}]
-        ;; this test only check that channel will send, the content are tested in [[metabase.notification.payload.impl.card-test]]
-        (testing "send to all handlers"
-          (is (=? {:channel/email [{:message    (mt/malli=? some?)
-                                    :recipients ["crowberto@metabase.com"]}]
-                   :channel/slack [{:attachments (mt/malli=? some?)
-                                    :channel-id  "#general"}]
-                   :channel/http  [{:body (mt/malli=? some?)}]}
-                  (notification.tu/with-captured-channel-send!
-                    (mt/user-http-request :crowberto :post 204 "notification/send" (strip-keys notification [:id :creator_id :created_at :updated_at]))))))))))
-
-;; Permission tests
+      (testing "send to all handlers"
+        (is (=? {:channel/email [{:message    (mt/malli=? some?)
+                                  :recipients ["crowberto@metabase.com"]}]
+                 :channel/slack [{:attachments (mt/malli=? some?)
+                                  :channel-id  "#general"}]
+                 :channel/http  [{:body (mt/malli=? some?)}]}
+                (notification.tu/with-captured-channel-send!
+                  (mt/user-http-request :crowberto :post 204 "notification/send"
+                                        {:handlers [{:channel_type :channel/email
+                                                     :recipients   [{:type    :notification-recipient/user
+                                                                     :user_id (mt/user->id :crowberto)}]}
+                                                    {:channel_type :channel/slack
+                                                     :recipients   [{:type    :notification-recipient/raw-value
+                                                                     :details {:value "#general"}}]}
+                                                    {:channel_type :channel/http
+                                                     :channel_id   http-channel-id}]
+                                         :payload_type :notification/card
+                                         :payload      {:card_id card-id
+                                                        :send_condition :has_result
+                                                        :send_once false}
+                                         :subscriptions [{:type          :notification-subscription/cron
+                                                          :cron_schedule "0 0 0 * * ?"}]}))))))))
 
 (deftest get-notification-permissions-test
   (mt/with-temp
