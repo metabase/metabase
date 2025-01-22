@@ -53,10 +53,33 @@ export function parseParameterValue(value: any, parameter: Parameter) {
   }
 
   if (type === "number") {
-    return normalizeNumberParameterValue(coercedValue);
+    return parseParameterValueForNumber(coercedValue);
   }
 
   return coercedValue;
+}
+
+function parseParameterValueForNumber(value: ParameterValueOrArray) {
+  // HACK to support multiple values for SQL parameters
+  // https://github.com/metabase/metabase/issues/25374#issuecomment-1272520560
+  if (typeof value === "string") {
+    // something like "1,2,3",  "1, 2,  3", ",,,1,2, 3"
+    const splitValues = value.split(",").filter(item => item.trim() !== "");
+    if (splitValues.length === 0) {
+      return null;
+    }
+
+    if (splitValues.length > 1) {
+      const numbers = splitValues.map(number => parseFloat(number));
+      if (numbers.every(number => !isNaN(number))) {
+        return numbers.join(",");
+      }
+
+      return null;
+    }
+  }
+
+  return normalizeNumberParameterValue(value);
 }
 
 function parseParameterValueForFields(
