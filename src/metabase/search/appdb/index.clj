@@ -156,12 +156,16 @@
          [:updated_at :timestamp-with-time-zone :not-null]]
         (keep (fn [[k t]]
                 (when t
-                  (into [(->db-column k) (->db-type t)]
-                        (concat
-                         (when (not-null k)
-                           [:not-null])
-                         (when-some [d (default k)]
-                           [[:default d]]))))))
+                  (if (= :model-index-id k)
+                   [(->db-column k) :int
+                    [:references :model_index :id]
+                    :on-delete :cascade]
+                    (into [(->db-column k) (->db-type t)]
+                          (concat
+                           (when (not-null k)
+                             [:not-null])
+                           (when-some [d (default k)]
+                             [[:default d]])))))))
         search.spec/attr-types))
 
 (defn create-table!
