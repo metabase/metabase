@@ -9,7 +9,6 @@
 
    Refer to the documentation for those endpoints for further details."
   (:require
-   [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.embed.common :as api.embed.common]
@@ -39,7 +38,7 @@
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map
                        [:token ms/NonBlankString]]
-   {:keys [& query-params]}]
+   query-params]
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/process-query-for-card-with-params
@@ -58,10 +57,10 @@
     (api.embed.common/dashboard-for-unsigned-token unsigned-token
                                                    :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/dashboard/:token/params/:param-key/values"
+(api.macros/defendpoint :get "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
-  [token param-key :as {:keys [query-params]}]
+  [{:keys [token param-key]}
+   query-params]
   (api.embed.common/dashboard-param-values token
                                            param-key
                                            nil
@@ -74,7 +73,7 @@
                                            [:token       ms/NonBlankString]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
-   {:keys [& query-params]}]
+   query-params]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
@@ -92,7 +91,7 @@
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map
                        [:token ms/NonBlankString]]
-   {:keys [& query-params]}]
+   query-params]
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/process-query-for-card-with-params
@@ -109,7 +108,7 @@
                                            [:token       ms/NonBlankString]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
-   {:keys [& query-params]}]
+   query-params]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
