@@ -13,5 +13,5 @@ export function setupPublicCardQueryEndpoints(
   uuid: string,
   publicDataset: EmbedDataset,
 ) {
-  fetchMock.get(`path:/api/public/card/${uuid}/query`, publicDataset);
+  fetchMock.post(`path:/api/public/card/${uuid}/query`, publicDataset);
 }
