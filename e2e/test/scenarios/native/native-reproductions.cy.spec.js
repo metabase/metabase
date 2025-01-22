@@ -94,6 +94,7 @@ describe("issue 16886", () => {
 
   it("shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)", () => {
     H.openNativeEditor();
+    cy.wait(1000); // attempt to decrease flakiness
     cy.realType(ORIGINAL_QUERY);
     cy.realPress("Home");
     Cypress._.range(SELECTED_TEXT.length).forEach(() =>
@@ -132,9 +133,12 @@ describe("issue 16914", () => {
 
     H.openVizSettingsSidebar();
     cy.findByTestId("sidebar-left")
-      .contains(/hidden/i)
-      .siblings("[data-testid$=hide-button]")
-      .click();
+      .as("sidebar")
+      .within(() => {
+        cy.findByTestId("draggable-item-HIDDEN")
+          .icon("eye_outline")
+          .click({ force: true });
+      });
     cy.button("Done").click();
 
     H.focusNativeEditor();

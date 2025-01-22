@@ -42,36 +42,50 @@
   "Create a new index, if necessary"
   []
   (when (search/supports-index?)
-    (let [timer    (u/start-timer)
-          report   (search/init-index! {:force-reset? false, :re-populate? false})
-          duration (u/since-ms timer)]
-      (if (seq report)
-        (do (report->prometheus! duration report)
-            (log/infof "Done indexing in %.0fms %s" duration (sort-by (comp - val) report))
-            true)
-        (log/info "Found existing search index, and using it.")))))
+    (try
+      (let [timer    (u/start-timer)
+            report   (search/init-index! {:force-reset? false, :re-populate? false})
+            duration (u/since-ms timer)]
+        (if (seq report)
+          (do (report->prometheus! duration report)
+              (log/infof "Done indexing in %.0fms %s" duration (sort-by (comp - val) report))
+              true)
+          (log/info "Found existing search index, and using it.")))
+      (catch Exception e
+        (prometheus/inc! :metabase-search/index-error)
+        (throw e)))))
 
 (defn reindex!
   "Reindex the whole AppDB"
   []
   (when (search/supports-index?)
-    (log/info "Reindexing searchable entities")
-    (let [timer    (u/start-timer)
-          report   (search/reindex!)
-          duration (u/since-ms timer)]
-      (report->prometheus! duration report)
-      (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
-      report)))
+    (try
+      (log/info "Reindexing searchable entities")
+      (let [timer    (u/start-timer)
+            report   (search/reindex!)
+            duration (u/since-ms timer)]
+        (report->prometheus! duration report)
+        (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
+        report)
+      (catch Exception e
+        (prometheus/inc! :metabase-search/index-error)
+        (throw e)))))
 
 (defn- update-index! []
   (when (search/supports-index?)
     (while true
-      (let [timer    (u/start-timer)
-            report   (search/process-next-batch! Long/MAX_VALUE 100)
-            duration (u/since-ms timer)]
-        (when (seq report)
-          (report->prometheus! duration report)
-          (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) report)))))))
+      (try
+        (let [batch    (search/get-next-batch! Long/MAX_VALUE 100)
+              _        (log/trace "Processing batch" batch)
+              timer    (u/start-timer)
+              report   (search/bulk-ingest! batch)
+              duration (u/since-ms timer)]
+          (when (seq report)
+            (report->prometheus! duration report)
+            (log/debugf "Indexed search entries in %.0fms %s" duration (sort-by (comp - val) report))))
+        (catch Exception e
+          (prometheus/inc! :metabase-search/index-error)
+          (throw e))))))
 
 (defn- force-scheduled-task! [^JobDetail job ^Trigger trigger]
   ;; For some reason, using the schedule-task! with a non-durable job causes it to only fire on the first trigger.
@@ -89,8 +103,7 @@
   SearchIndexReindex [_ctx]
   (reindex!))
 
-(jobs/defjob ^{DisallowConcurrentExecution true
-               :doc                        "Keep Search Index updated"}
+(jobs/defjob ^{:doc                        "Keep Search Index updated"}
   SearchIndexUpdate [_ctx]
   (update-index!))
 

@@ -3,6 +3,8 @@
    [cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
+   [metabase.db :as mdb]
+   [metabase.models.model-index :as model-index]
    [metabase.models.search-index-metadata :as search-index-metadata]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
@@ -22,21 +24,33 @@
   ;; Truncate to milliseconds as precision may be lost when roundtripping to the database.
   (t/truncate-to (t/offset-date-time) :millis))
 
+(defmacro with-fulltext-filtering [& body]
+  `(case (mdb/db-type)
+     :postgres
+     (do ~@body)
+     :h2
+     ;; Fulltext features not supported
+     nil))
+
 ;; These helpers only mutate the temp local AppDb.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+;; TODO make this a :once fixture so that we avoid so much setup and tear down
 (defmacro with-index
   "Ensure a clean, small index."
   [& body]
   `(search.tu/with-temp-index-table
      (binding [search.ingestion/*force-sync* true]
        (mt/dataset ~(symbol "test-data")
-         (mt/with-temp [:model/Card     {}           {:name "Customer Satisfaction"          :collection_id 1}
-                        :model/Card     {}           {:name "The Latest Revenue Projections" :collection_id 1}
-                        :model/Card     {}           {:name "Projected Revenue"              :collection_id 1}
-                        :model/Card     {}           {:name "Employee Satisfaction"          :collection_id 1}
-                        :model/Card     {}           {:name "Projected Satisfaction"         :collection_id 1}
-                        :model/Database {db-id# :id} {:name "Indexed Database"}
-                        :model/Table    {}           {:name "Indexed Table", :db_id db-id#}]
+         ;; Sneaky trick so make sure we have a user with ID 1
+         (mt/with-temp [:model/User       {}            (when-not (t2/exists? :model/User 1) {:id 1})
+                        :model/Collection {col-id# :id} {:name "Collection"}
+                        :model/Card       {}            {:name "Customer Satisfaction"          :collection_id col-id#}
+                        :model/Card       {}            {:name "The Latest Revenue Projections" :collection_id col-id#}
+                        :model/Card       {}            {:name "Projected Revenue"              :collection_id col-id#}
+                        :model/Card       {}            {:name "Employee Satisfaction"          :collection_id col-id#}
+                        :model/Card       {}            {:name "Projected Satisfaction"         :collection_id col-id#}
+                        :model/Database   {db-id# :id}  {:name "Indexed Database"}
+                        :model/Table      {}            {:name "Indexed Table", :db_id db-id#}]
            (search.index/reset-index!)
            (search.ingestion/populate-index! :search.engine/appdb)
            ~@body)))))
@@ -49,26 +63,27 @@
       (is (= rows-before (count-rows))))))
 
 (deftest incremental-update-test
-  (with-index
-    (testing "The index is updated when models change"
+  (let [fulltext? (= :postgres (mdb/db-type))]
+    (with-index
+      (testing "The index is updated when models change"
        ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
-      (is (= 2 (count (search.index/search "Projected Revenue"))))
-      (is (= 0 (count (search.index/search "Protected Avenue"))))
-      (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
-      (is (= 1 (count (search.index/search "Projected Revenue"))))
-      (is (= 1 (count (search.index/search "Protected Avenue"))))
+        (is (= (if fulltext? 2 1) (count (search.index/search "Projected Revenue"))))
+        (is (= 0 (count (search.index/search "Protected Avenue"))))
+        (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
+        (is (= (if fulltext? 1 0) (count (search.index/search "Projected Revenue"))))
+        (is (= 1 (count (search.index/search "Protected Avenue"))))
 
        ;; Delete hooks are remove for now, over performance concerns.
        ;(t2/delete! :model/Card :name "Protected Avenue")
-      #_(is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
-      #_(is (= 0 (count (search.index/search "Protected Avenue")))))))
+        #_(is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
+        #_(is (= 0 (count (search.index/search "Protected Avenue"))))))))
 
 (deftest related-update-test
   (with-index
     (testing "The index is updated when model dependencies change"
       (let [index-table    (search.index/active-table)
             table-id       (t2/select-one-pk :model/Table :name "Indexed Table")
-            legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id table-id)
+            legacy-input   #(-> (t2/select-one [index-table :legacy_input] :model "table" :model_id (str table-id))
                                 :legacy_input
                                 (json/parse-string true))
             db-id          (t2/select-one-fn :db_id :model/Table table-id)
@@ -80,55 +95,59 @@
 
 (deftest partial-word-test
   (with-index
-    (testing "It does not match partial words"
+    (with-fulltext-filtering
+      (testing "It does not match partial words"
       ;; does not include revenue
-      (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.index/search "venue")))))
+        (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.index/search "venue")))))
 
     ;; no longer works without using the english dictionary
-    (testing "Unless their lexemes are matching"
-      (doseq [[a b] [["revenue" "revenues"]
-                     ["collect" "collection"]]]
-        (is (= (search.index/search a)
-               (search.index/search b)))))
+      (testing "Unless their lexemes are matching"
+        (doseq [[a b] [["revenue" "revenues"]
+                       ["collect" "collection"]]]
+          (is (= (search.index/search a)
+                 (search.index/search b)))))
 
-    (testing "Or we match a completion of the final word"
-      (is (seq (search.index/search "sat")))
-      (is (seq (search.index/search "satisf")))
-      (is (seq (search.index/search "employee sat")))
-      (is (seq (search.index/search "satisfaction empl")))
-      (is (empty? (search.index/search "sat employee")))
-      (is (empty? (search.index/search "emp satisfaction"))))))
+      (testing "Or we match a completion of the final word"
+        (is (seq (search.index/search "sat")))
+        (is (seq (search.index/search "satisf")))
+        (is (seq (search.index/search "employee sat")))
+        (is (seq (search.index/search "satisfaction empl")))
+        (is (empty? (search.index/search "sat employee")))
+        (is (empty? (search.index/search "emp satisfaction")))))))
 
 (deftest either-test
   (with-index
-    (testing "We get results for both terms"
-      (is (= 3 (index-hits "satisfaction")))
-      (is (<= 1 (index-hits "user"))))
-    (testing "But stop words are skipped"
-      (is (= 0 (index-hits "or")))
+    (with-fulltext-filtering
+      (testing "We get results for both terms"
+        (is (= 3 (index-hits "satisfaction")))
+        (is (<= 1 (index-hits "user"))))
+      (testing "But stop words are skipped"
+        (is (= 0 (index-hits "or")))
       ;; stop words depend on a dictionary
-      (is (= #_0 3 (index-hits "its the satisfaction of it"))))
-    (testing "We can combine the individual results"
-      (is (= (+ (index-hits "satisfaction")
-                (index-hits "user"))
-             (index-hits "satisfaction or user"))))))
+        (is (= #_0 3 (index-hits "its the satisfaction of it"))))
+      (testing "We can combine the individual results"
+        (is (= (+ (index-hits "satisfaction")
+                  (index-hits "user"))
+               (index-hits "satisfaction or user")))))))
 
 (deftest negation-test
   (with-index
-    (testing "We can filter out results"
-      (is (= 3 (index-hits "satisfaction")))
-      (is (= 1 (index-hits "customer")))
-      (is (= 1 (index-hits "satisfaction and customer")))
-      (is (= 2 (index-hits "satisfaction -customer"))))))
+    (with-fulltext-filtering
+      (testing "We can filter out results"
+        (is (= 3 (index-hits "satisfaction")))
+        (is (= 1 (index-hits "customer")))
+        (is (= 1 (index-hits "satisfaction and customer")))
+        (is (= 2 (index-hits "satisfaction -customer")))))))
 
 (deftest phrase-test
   (with-index
+    (with-fulltext-filtering
     ;; Less matches without an english dictionary
-    (is (= #_2 3 (index-hits "projected")))
-    (is (= 2 (index-hits "revenue")))
-    (is (= #_1 2 (index-hits "projected revenue")))
-    (testing "only sometimes do these occur sequentially in a phrase"
-      (is (= 1 (index-hits "\"projected revenue\""))))))
+      (is (= #_2 3 (index-hits "projected")))
+      (is (= 2 (index-hits "revenue")))
+      (is (= #_1 2 (index-hits "projected revenue")))
+      (testing "only sometimes do these occur sequentially in a phrase"
+        (is (= 1 (index-hits "\"projected revenue\"")))))))
 
 (defn ingest!
   [model where-clause]
@@ -137,14 +156,16 @@
    (#'search.ingestion/query->documents
     (#'search.ingestion/spec-index-reducible model where-clause))))
 
+(defn fetch [model & clauses]
+  (apply t2/select (search.index/active-table) :model model clauses))
+
+(defn fetch-one [model & clauses]
+  (apply t2/select-one (search.index/active-table) :model model clauses))
+
 (defn ingest-then-fetch!
   [model entity-name]
   (ingest! model [:= :this.name entity-name])
-  (t2/query-one {:select [:*]
-                 :from   [(search.index/active-table)]
-                 :where  [:and
-                          [:= :name entity-name]
-                          [:= :model model]]}))
+  (fetch-one model :name entity-name))
 
 (def default-index-entity
   {:model               nil
@@ -180,7 +201,7 @@
                                                     :last_used_at yesterday}]
             (is (=? (index-entity
                      {:model                    model-type
-                      :model_id                 card-id
+                      :model_id                 (str card-id)
                       :name                     card-name
                       :official_collection      nil
                       :database_id              (mt/id)
@@ -243,7 +264,7 @@
                                                      :moderator_id        (mt/user->id :crowberto)}]
             (is (=? (index-entity
                      {:model                    model-type
-                      :model_id                 card-id
+                      :model_id                 (str card-id)
                       :name                     card-name
                       :official_collection      true
                       :database_id              (mt/id)
@@ -268,7 +289,7 @@
                                                   :updated_at yesterday}]
         (is (=? (index-entity
                  {:model            "database"
-                  :model_id         db-id
+                  :model_id         (str db-id)
                   :name             db-name
                   :model_created_at yesterday
                   :model_updated_at yesterday})
@@ -290,7 +311,7 @@
                                                   :updated_at yesterday}]
         (is (=? (index-entity
                  {:model            "table"
-                  :model_id         table-id
+                  :model_id         (str table-id)
                   :name             table-name
                   :view_count       42
                   :database_id      db-id
@@ -313,7 +334,7 @@
                                                       :created_at yesterday}]
         (is (=? (index-entity
                  {:model            "collection"
-                  :model_id         coll-id
+                  :model_id         (str coll-id)
                   :collection_id    coll-id
                   :name             collection-name
                   :archived         true
@@ -345,7 +366,7 @@
                                                          :action_id     action-id}]
         (is (=? (index-entity
                  {:model            "action"
-                  :model_id         action-id
+                  :model_id         (str action-id)
                   :name             action-name
                   :collection_id    coll-id
                   :model_created_at yesterday
@@ -381,7 +402,7 @@
 
         (is (=? (index-entity
                  {:model            "dashboard"
-                  :model_id         dashboard-id
+                  :model_id         (str dashboard-id)
                   :name             dashboard-name
                   :model_created_at yesterday
                   :model_updated_at yesterday
@@ -405,39 +426,51 @@
                                                          :updated_at yesterday}]
         (is (=? (index-entity
                  {:model            "segment"
-                  :model_id         segment-id
+                  :model_id         (str segment-id)
                   :name             segment-name
                   :database_id      db-id
                   :model_updated_at yesterday})
                 (ingest-then-fetch! "segment" segment-name)))))))
 
 (deftest indexed-entity-ingestion-test
-  (search.tu/with-temp-index-table
-    (let [entity-name (mt/random-name)]
-      (mt/with-temp [:model/Collection      {coll-id :id}        {}
-                     :model/Card            {model-id :id}       {:type        "model"
-                                                                  ;; :database_id = (mt/id)
-                                                                  :database_id (mt/id)
-                                                                  ;; :collection_id = coll-id
-                                                                  :collection_id coll-id}
-                     :model/ModelIndex      {model-index-id :id} {:model_id   model-id
-                                                                  :pk_ref     (mt/$ids :products $id)
-                                                                  :value_ref  (mt/$ids :products $title)
-                                                                  :schedule   "0 0 0 * * *"
-                                                                  :state      "initial"
-                                                                  :creator_id (mt/user->id :rasta)}]
-        ;; :model/ModelIndexValue does not have id column so does not work nicely with with-temp
-        (t2/insert! :model/ModelIndexValue {:name       entity-name
-                                            :model_index_id model-index-id
-                                            ;; :model_id = model-id
-                                            :model_pk   42})
-        (is (=? (index-entity
-                 {:model            "indexed-entity"
-                  :model_id         42
-                  :name             entity-name
-                  :database_id      (mt/id)
-                  :collection_id    coll-id})
-                (ingest-then-fetch! "indexed-entity" entity-name)))))))
+  (let [model-id (fn [miv] (str (:model_index_id miv) ":" (:model_pk miv)))]
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Collection      {coll-id :id} {}
+                     :model/Card            model         (assoc (mt/card-with-source-metadata-for-query
+                                                                  (mt/mbql-query products {:fields [$id $title]
+                                                                                           :limit  1}))
+                                                                 :type          "model"
+                                                                 :database_id   (mt/id)
+                                                                 :collection_id coll-id)
+                     :model/ModelIndex      model-index   {:model_id   (:id model)
+                                                           :pk_ref     (mt/$ids :products $id)
+                                                           :value_ref  (mt/$ids :products $title)
+                                                           :schedule   "0 0 0 * * *"
+                                                           :state      "initial"
+                                                           :creator_id (mt/user->id :rasta)}]
+        (model-index/add-values! model-index)
+        (let [miv (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
+          (testing "Adding values indexes them"
+            (is (=? [(index-entity
+                      {:model         "indexed-entity"
+                       :model_id      (model-id miv)
+                       :name          (:name miv)
+                       :database_id   (mt/id)
+                       :collection_id coll-id})]
+                    (fetch "indexed-entity" :name (:name miv)))))
+          (testing "Changing values syncs the index"
+            (t2/update! :model/Card (:id model) (assoc-in model
+                                                          [:dataset_query :query :filter]
+                                                          [:!= (mt/$ids :products $id) (:model_pk miv)]))
+            (model-index/add-values! model-index)
+            (let [miv2 (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
+              (is (=? [(index-entity
+                        {:model         "indexed-entity"
+                         :model_id      (model-id miv2)
+                         :name          (:name miv2)
+                         :database_id   (mt/id)
+                         :collection_id coll-id})]
+                      (fetch "indexed-entity" :model_id [:in [(model-id miv) (model-id miv2)]]))))))))))
 
 (deftest ^:synchronized table-cleanup-test
   (when (search/supports-index?)

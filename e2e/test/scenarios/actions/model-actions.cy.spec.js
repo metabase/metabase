@@ -874,7 +874,7 @@ function enableSharingFor(actionName, { publicUrlAlias }) {
 
   cy.findByRole("dialog").within(() => {
     cy.button("Action settings").click();
-    cy.findByLabelText("Make public").should("not.be.checked").click();
+    cy.findByLabelText("Make public").should("not.be.checked").parent().click();
     cy.wait("@enableActionSharing");
     cy.findByLabelText("Public action form URL")
       .invoke("val")
@@ -889,7 +889,7 @@ function disableSharingFor(actionName) {
   openActionEditorFor(actionName);
   cy.findByRole("dialog").within(() => {
     cy.findByRole("button", { name: "Action settings" }).click();
-    cy.findByLabelText("Make public").should("be.checked").click();
+    cy.findByLabelText("Make public").should("be.checked").parent().click();
   });
   H.modal()
     .eq(1)

@@ -48,29 +48,30 @@
                (search.filter/search-context->applicable-models search-ctx)))))))
 
 (def kitchen-sink-filter-context
-  {:archived?           true
-   :created-at          "2024-10-01"
-   :created-by          [123]
-   :table-db-id         231
-   :last-edited-by      [321]
-   :last-edited-at      "2024-10-02"
-   :search-native-query true
-   :verified            true
-   :ids                 [1 2 3 4]
-   :models              (disj search.config/all-models "dataset")})
+  {:archived?                    true
+   :created-at                   "2024-10-01"
+   :created-by                   [123]
+   :include-dashboard-questions? true
+   :table-db-id                  231
+   :last-edited-by               [321]
+   :last-edited-at               "2024-10-02"
+   :search-native-query          true
+   :verified                     true
+   :ids                          [1 2 3 4]
+   :models                       (disj search.config/all-models "dataset")})
 
 (deftest with-filters-test
   (testing "The kitchen sink context is complete"
     (is (empty? (remove kitchen-sink-filter-context (filter-keys)))))
 
-  (testing "In the general case, we simply filter by models"
+  (testing "In the general case, we simply filter by models, and exclude dashboard cards"
     (is (= {:select [:some :stuff]
             :from   :somewhere
-            :where [:= 1 2]}
+            :where  [:= 1 2]}
            (search.filter/with-filters {:models []} {:select [:some :stuff], :from :somewhere})))
     (is (= {:select [:some :stuff]
             :from   :somewhere
-            :where [:in :search_index.model ["a"]]}
+            :where  [:in :search_index.model ["a"]]}
            (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
 
   (testing "We can insert appropriate constraints for all the filters"
@@ -79,7 +80,7 @@
             ;; This :where clause is a set to avoid flakes, since the clause order will be non-deterministic.
             :where  #{:and
                       [:in :search_index.model #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}]
-                      [:in :search_index.model_id [1 2 3 4]]
+                      [:in :search_index.model_id ["1" "2" "3" "4"]]
                       [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                       [:= :search_index.archived true]
                       [:>= [:cast :search_index.model_created_at :date] #t"2024-10-01"]

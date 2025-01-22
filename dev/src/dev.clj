@@ -55,6 +55,7 @@
    [clojure.test]
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
+   [dev.memory :as dev.memory]
    [dev.migrate :as dev.migrate]
    [dev.model-tracking :as model-tracking]
    [dev.render-png :as render-png]
@@ -109,6 +110,9 @@
   migrate!
   rollback!
   migration-sql-by-id]
+ [dev.memory
+  with-memory-logging
+  measuring-thread-allocations]
  [render-png
   open-html
   open-png-bytes

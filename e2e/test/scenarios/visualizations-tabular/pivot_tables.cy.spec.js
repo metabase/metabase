@@ -139,7 +139,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.log("Implicit assertions on a table itself");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText(/Products? → Category/);
-      cy.findByText(/Users? → Source/);
+      cy.findByText("User → Source");
       cy.findByText("Count");
       cy.findByText(/Totals for Doohickey/i);
       cy.findByText("3,976");
@@ -310,14 +310,18 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     assertOnPivotSettings();
 
     // Confirm that Product -> Category doesn't have the option to hide subtotals
-    openColumnSettings(/Product → Category/);
+    openColumnSettings("Product → Category");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show totals").should("not.be.visible");
 
     // turn off subtotals for User -> Source
-    openColumnSettings(/Users? → Source/);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show totals").parent().find("input").click({ force: true });
+    openColumnSettings("User → Source");
+    cy.findByTestId(
+      "chart-settings-widget-pivot_table.column_show_totals",
+    ).within(() => {
+      cy.findByText("Show totals").should("be.visible");
+      cy.findByRole("switch").click({ force: true });
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
@@ -343,9 +347,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     H.openVizSettingsSidebar();
 
     // turn off subtotals for User -> Source
-    openColumnSettings(/Users? → Source/);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show totals").parent().find("input").click({ force: true });
+    openColumnSettings("User → Source");
+    cy.findByTestId(
+      "chart-settings-widget-pivot_table.column_show_totals",
+    ).within(() => {
+      cy.findByText("Show totals").should("be.visible");
+      cy.findByRole("switch").click({ force: true });
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3,520").should("not.exist"); // the subtotal isn't there
@@ -361,7 +369,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     H.openVizSettingsSidebar();
     assertOnPivotSettings();
-    openColumnSettings(/Users? → Source/);
+    openColumnSettings("User → Source");
 
     cy.log("New panel for the column options");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -384,7 +392,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     H.openVizSettingsSidebar();
     assertOnPivotSettings();
-    openColumnSettings(/Count/);
+    openColumnSettings("Count");
 
     cy.log("New panel for the column options");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -413,7 +421,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     H.openVizSettingsSidebar();
     assertOnPivotSettings();
-    openColumnSettings(/Count/);
+    openColumnSettings("Count");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Sort order/).should("not.be.visible");
@@ -1488,9 +1496,9 @@ function dragColumnHeader(el, xDistance = 50) {
 
 function openColumnSettings(columnName) {
   H.sidebar()
-    .findByText(columnName)
-    .siblings("[data-testid$=settings-button]")
-    .click();
+    .findByTestId(`draggable-item-${columnName}`)
+    .icon("ellipsis")
+    .click({ force: true });
 }
 
 /**

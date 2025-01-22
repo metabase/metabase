@@ -164,7 +164,7 @@ describe("issue 49529", () => {
 
     H.openVizSettingsSidebar();
 
-    cy.findAllByTestId("chartsettings-field-picker-select")
+    cy.findAllByTestId("chart-setting-select")
       .eq(0)
       .as("dimensionSelect")
       .click();
@@ -217,5 +217,66 @@ describe("issue 47847", () => {
         },
       ],
     });
+  });
+});
+
+describe("issue 51926", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render pivot table when selecting it from another viz type", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pivot",
+    });
+
+    H.openVizTypeSidebar();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("Table-button").click();
+      cy.findByTestId("Pivot Table-button").click();
+    });
+
+    cy.findAllByTestId("pivot-table-cell").contains("April 24, 2022");
+  });
+});
+
+describe("issue 51952", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow changing column settings for the x-axis column", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+      visualization_settings: {},
+    });
+
+    H.openVizSettingsSidebar();
+
+    cy.findByTestId("settings-CREATED_AT").click();
+    H.popover().findByText("Abbreviate days and months").click();
+    H.echartsContainer().findByText("Jan 2024");
   });
 });

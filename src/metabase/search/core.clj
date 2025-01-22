@@ -8,6 +8,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.util.log :as log]
    [potemkin :as p]))
 
 (comment
@@ -32,7 +33,8 @@
   search-context]
 
  [search.ingestion
-  process-next-batch!]
+  bulk-ingest!
+  get-next-batch!]
 
  [search.spec
   define-spec])
@@ -53,12 +55,15 @@
 
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index."
-  []
+  [& {:as opts}]
   ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
-  (reduce (partial merge-with max)
-          nil
-          (for [e (search.engine/active-engines)]
-            (search.engine/reindex! e nil))))
+  (try
+    (reduce (partial merge-with max)
+            nil
+            (for [e (search.engine/active-engines)]
+              (search.engine/reindex! e opts)))
+    (catch Throwable e
+      (log/fatal e "Error reindexing search indexes."))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."
@@ -75,3 +80,12 @@
                             seq)]
       ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
       (search.ingestion/ingest-maybe-async! updates))))
+
+(defn delete!
+  "Given a model and a list of model's ids, remove corresponding search entries."
+  [model ids]
+  (doseq [e            (search.engine/active-engines)
+          search-model (->> (vals (search.spec/specifications))
+                            (filter (comp #{model} :model))
+                            (map :name))]
+    (search.engine/delete! e search-model ids)))
