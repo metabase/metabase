@@ -136,6 +136,7 @@ const DataSelectorDatabaseSchemaPicker = ({
       alwaysTogglable={true}
       showSpinner={showSpinner}
       showItemArrows={hasNextStep}
+      maxHeight={Infinity}
     />
   );
 };
