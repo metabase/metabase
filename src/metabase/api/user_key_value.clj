@@ -1,30 +1,29 @@
 (ns metabase.api.user-key-value
-  (:require [compojure.core :refer [DELETE GET PUT]]
-            [malli.core :as mc]
-            [malli.experimental.time.transform :as mett]
-            [malli.transform :as mtx]
-            [metabase.api.common :as api]
-            [metabase.api.macros :as api.macros]
-            [metabase.models.user-key-value :as user-key-value]
-            [metabase.models.user-key-value.types :as types]
-            [metabase.util.malli.schema :as ms]))
+  (:require
+   [malli.core :as mc]
+   [malli.experimental.time.transform :as mett]
+   [malli.transform :as mtx]
+   [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
+   [metabase.models.user-key-value :as user-key-value]
+   [metabase.models.user-key-value.types :as types]
+   [metabase.util.malli.schema :as ms]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/namespace/:namespace/key/:key"
+(api.macros/defendpoint :put "/namespace/:namespace/key/:key"
   "Upsert a KV-pair for the user"
-  [:as {{v :value
-         expires_at :expires_at} :body
-        {namespace :namespace
-         k :key} :params}]
-  {k ms/NonBlankString
-   v :any
-   namespace ms/NonBlankString
-   expires_at [:maybe :metabase.lib.schema.literal/string.datetime]}
+  [{nspace :namespace, k :key} :- [:map
+                                   [:key       ms/NonBlankString]
+                                   [:namespace ms/NonBlankString]]
+   _query-params
+   {v :value
+    expires-at :expires_at} :- [:map
+                                [:v          :any]
+                                [:expires_at {:optional true} [:maybe :metabase.lib.schema.literal/string.datetime]]]]
   (try (user-key-value/put! api/*current-user-id* (mc/coerce ::types/user-key-value
                                                              {:key k
-                                                              :namespace namespace
+                                                              :namespace nspace
                                                               :value v
-                                                              :expires-at expires_at}
+                                                              :expires-at expires-at}
                                                              (mtx/transformer
                                                               (mtx/default-value-transformer)
                                                               (mett/time-transformer)
