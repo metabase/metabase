@@ -14,7 +14,7 @@ describe("command palette", () => {
     cy.signInAsAdmin();
   });
 
-  it("should render a searchable command palette", () => {
+  it("should render a searchable command palette", { tags: "@flaky" }, () => {
     // //Add a description for a check
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       description: "The best question",

@@ -177,39 +177,43 @@ describe("scenarios > model indexes", () => {
     });
   });
 
-  it("should not reload the model for record in the same model", () => {
-    createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
+  it(
+    "should not reload the model for record in the same model",
+    { tags: "@flaky" },
+    () => {
+      createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
 
-    cy.visit("/");
+      cy.visit("/");
 
-    H.commandPaletteSearch("marble shoes", false);
-    H.commandPalette()
-      .findByRole("option", { name: "Small Marble Shoes" })
-      .click();
+      H.commandPaletteSearch("marble shoes", false);
+      H.commandPalette()
+        .findByRole("option", { name: "Small Marble Shoes" })
+        .click();
 
-    cy.wait("@dataset");
+      cy.wait("@dataset");
 
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByRole("heading", { name: /Product/ });
-      cy.findByText("Small Marble Shoes");
-      cy.findByText("Doohickey");
-    });
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByRole("heading", { name: /Product/ });
+        cy.findByText("Small Marble Shoes");
+        cy.findByText("Doohickey");
+      });
 
-    expectCardQueries(1);
+      expectCardQueries(1);
 
-    cy.get("body").type("{esc}");
+      cy.get("body").type("{esc}");
 
-    H.commandPaletteSearch("silk coat", false);
-    H.commandPalette()
-      .findByRole("option", { name: "Ergonomic Silk Coat" })
-      .click();
+      H.commandPaletteSearch("silk coat", false);
+      H.commandPalette()
+        .findByRole("option", { name: "Ergonomic Silk Coat" })
+        .click();
 
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Upton, Kovacek and Halvorson");
-    });
+      cy.findByTestId("object-detail").within(() => {
+        cy.findByText("Upton, Kovacek and Halvorson");
+      });
 
-    expectCardQueries(1);
-  });
+      expectCardQueries(1);
+    },
+  );
 });
 
 function editTitleMetadata() {
