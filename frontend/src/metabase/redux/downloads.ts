@@ -38,6 +38,10 @@ interface DownloadQueryResultsParams {
   url: string;
   body?: Record<string, unknown>;
   params?: URLSearchParams | string;
+  // The BE expects POST request body to be form data and not JSON for certain
+  // legacy endpoints. Going forward all POST download endpoints should work
+  // with JSON.
+  formData: boolean;
 }
 
 export type ResourceType = "question" | "dashcard" | "ad-hoc-question";
@@ -187,6 +191,7 @@ const getDatasetParams = ({
           parameters: result?.json_query?.parameters ?? [],
           ...exportParams,
         },
+        formData: true,
       };
     }
     if (resource === "question" && uuid) {
@@ -197,6 +202,7 @@ const getDatasetParams = ({
           parameters: result?.json_query?.parameters ?? [],
           ...exportParams,
         },
+        formData: false,
       };
     }
   }
@@ -211,6 +217,7 @@ const getDatasetParams = ({
           parameters: JSON.stringify(params),
           ..._.mapObject(exportParams, value => String(value)),
         }),
+        formData: true,
       };
     }
 
@@ -224,6 +231,7 @@ const getDatasetParams = ({
           parameters: JSON.stringify(Object.fromEntries(params)),
           ..._.mapObject(exportParams, value => String(value)),
         }),
+        formData: true,
       };
     }
   }
@@ -238,6 +246,7 @@ const getDatasetParams = ({
         parameters: result?.json_query?.parameters ?? [],
         ...exportParams,
       },
+      formData: true,
     };
   }
 
@@ -249,6 +258,7 @@ const getDatasetParams = ({
         parameters: result?.json_query?.parameters ?? [],
         ...exportParams,
       },
+      formData: true,
     };
   }
   if (resource === "ad-hoc-question") {
@@ -260,6 +270,7 @@ const getDatasetParams = ({
         visualization_settings: visualizationSettings ?? {},
         ...exportParams,
       },
+      formData: true,
     };
   }
 

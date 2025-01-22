@@ -178,18 +178,31 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
-   credentials. Public sharing must be enabled."
+  credentials. Public sharing must be enabled.
+
+  The endpoint is kept for backward compatibility only as it does not handle requests with many (> 10) parameters
+  because of the URL length constraints; the new POST endpoint should be used instead. See #51813 for details."
   [uuid parameters]
   {uuid       ms/UUIDString
-   parameters [:maybe ms/JSONString]}
+   parameters [:maybe [:sequential ms/Parameter]]}
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/card/:uuid/query"
+  "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
+   credentials. Public sharing must be enabled."
+  [uuid :as {{:keys [parameters]} :body}]
+  {uuid       ms/UUIDString
+   parameters [:maybe [:sequential ms/Parameter]]}
+  (process-query-for-card-with-public-uuid uuid :api parameters))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
-  credentials. Public sharing must be enabled. The endpoint is kept for backward compatibility only as it does not
-  handle requests with many (> 10) parameters because of the URL length constraints; the new POST endpoint should be
-  used instead."
+  credentials. Public sharing must be enabled.
+
+  The endpoint is kept for backward compatibility only as it does not handle requests with many (> 10) parameters
+  because of the URL length constraints; the new POST endpoint should be used instead. See #51813 for details."
   [uuid export-format :as {{:keys [parameters format_rows pivot_results]} :params}]
   {uuid          ms/UUIDString
    export-format api.dataset/ExportFormat
@@ -210,12 +223,12 @@
 (api/defendpoint POST "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
-  [uuid export-format :as {{:keys [parameters format_rows pivot_results]} :params}]
+  [uuid export-format :as {{:keys [parameters format_rows pivot_results]} :body}]
   {uuid          ms/UUIDString
    export-format api.dataset/ExportFormat
-   format_rows   [:maybe ms/BooleanValue]
-   pivot_results [:maybe ms/BooleanValue]
-   parameters    [:maybe ms/JSONString]}
+   format_rows   [:maybe :boolean]
+   pivot_results [:maybe :boolean]
+   parameters    [:maybe [:sequential ms/Parameter]]}
   (process-query-for-card-with-public-uuid
    uuid
    export-format
@@ -668,11 +681,24 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/pivot/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
-   credentials. Public sharing must be enabled."
+  credentials. Public sharing must be enabled.
+
+  The endpoint is kept for backward compatibility only as it does not handle requests with many (> 10) parameters
+  because of the URL length constraints; the new POST endpoint should be used instead. See #51813 for details."
   [uuid parameters]
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)
+                                           :qp qp.pivot/run-pivot-query))
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/pivot/card/:uuid/query"
+  "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
+   credentials. Public sharing must be enabled."
+  [uuid :as {{:keys [parameters]} :body}]
+  {uuid       ms/UUIDString
+   parameters [:maybe [:sequential ms/Parameter]]}
+  (process-query-for-card-with-public-uuid uuid :api parameters
                                            :qp qp.pivot/run-pivot-query))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

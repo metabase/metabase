@@ -214,8 +214,8 @@ export const PublicApi = {
   ),
   executeAction: POST("/api/public/action/:uuid/execute"),
   card: GET("/api/public/card/:uuid"),
-  cardQuery: GET("/api/public/card/:uuid/query"),
-  cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
+  cardQuery: POST("/api/public/card/:uuid/query"),
+  cardQueryPivot: POST(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
   dashboard: GET("/api/public/dashboard/:uuid"),
   dashboardCardQuery: GET(
     "/api/public/dashboard/:uuid/dashcard/:dashcardId/card/:cardId",

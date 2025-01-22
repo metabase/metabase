@@ -153,7 +153,7 @@ export const PublicOrEmbeddedQuestion = ({
           card,
         )({
           uuid,
-          parameters: JSON.stringify(datasetQuery.parameters),
+          parameters: datasetQuery.parameters,
         });
       } else {
         throw { status: 404 };
