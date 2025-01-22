@@ -1,7 +1,7 @@
 (ns metabase.api.user
   "/api/user endpoints"
   (:require
-   [compojure.core :refer [DELETE GET POST PUT]]
+   [compojure.core :refer [PUT]]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
@@ -19,22 +19,18 @@
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.permissions.util :as perms-util]
-   [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(when config/ee-available?
-  (classloader/require 'metabase-enterprise.sandbox.api.util
-                       'metabase-enterprise.advanced-permissions.common
-                       'metabase-enterprise.advanced-permissions.models.permissions.group-manager))
 
 (defsetting user-visibility
   (deferred-tru "Note: Sandboxed users will never see suggestions.")
@@ -70,8 +66,19 @@
     (api/check-superuser)
     (user/set-permissions-groups! user-or-id new-groups-or-ids)))
 
-(defn- maybe-set-user-group-memberships!
-  [user-or-id new-user-group-memberships & [is-superuser?]]
+(mr/def ::user-group-membership
+  "Group Membership info of a User.
+  In which :is_group_manager is only included if `advanced-permissions` is enabled."
+  [:map
+   [:id ms/PositiveInt]
+   [:is_group_manager
+    {:optional true, :description "Only relevant if `advanced-permissions` is enabled. If it is, you should always include this key."}
+    :boolean]])
+
+(mu/defn- maybe-set-user-group-memberships!
+  [user-or-id
+   new-user-group-memberships :- [:maybe [:sequential ::user-group-membership]]
+   & [is-superuser?]]
   (when new-user-group-memberships
     ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
     ;; agrees with is_superuser -- don't want to have ambiguous behavior
@@ -79,7 +86,8 @@
       (api/checkp (= is-superuser? (contains? (set (map :id new-user-group-memberships)) (u/the-id (perms-group/admin))))
                   "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
     (if-let [f (and (premium-features/enable-advanced-permissions?)
-                    (resolve 'metabase-enterprise.advanced-permissions.models.permissions.group-manager/set-user-group-memberships!))]
+                    config/ee-available?
+                    (requiring-resolve 'metabase-enterprise.advanced-permissions.models.permissions.group-manager/set-user-group-memberships!))]
       (f user-or-id new-user-group-memberships)
       (maybe-set-user-permissions-groups! user-or-id (map :id new-user-group-memberships)))))
 
@@ -182,11 +190,12 @@
   Takes `query` for filtering on first name, last name, email.
   Also takes `group_id`, which filters on group id."
   [_route-params
-   {:keys [status query group_id include_deactivated]} :- [:map
-                                                           [:status              {:optional true} [:maybe :string]]
-                                                           [:query               {:optional true} [:maybe :string]]
-                                                           [:group_id            {:optional true} [:maybe ms/PositiveInt]]
-                                                           [:include_deactivated {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [status query group_id include_deactivated]}
+   :- [:map
+       [:status              {:optional true} [:maybe :string]]
+       [:query               {:optional true} [:maybe :string]]
+       [:group_id            {:optional true} [:maybe ms/PositiveInt]]
+       [:include_deactivated {:default false} [:maybe ms/BooleanValue]]]]
   (or
    api/*is-superuser?*
    (if group_id
@@ -282,7 +291,8 @@
   [user]
   (if-let [with-advanced-permissions
            (and (premium-features/enable-advanced-permissions?)
-                (resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))]
+                config/ee-available?
+                (requiring-resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))]
     (with-advanced-permissions user)
     user))
 
@@ -359,12 +369,13 @@
   "Create a new `User`, return a 400 if the email address is already taken"
   [_route-params
    _query-params
-   {:keys [email user_group_memberships] :as body} :- [:map
-                                                       [:first_name             {:optional true} [:maybe ms/NonBlankString]]
-                                                       [:last_name              {:optional true} [:maybe ms/NonBlankString]]
-                                                       [:email                  ms/Email]
-                                                       [:user_group_memberships {:optional true} [:maybe [:sequential user/UserGroupMembership]]]
-                                                       [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
+   {:keys [email user_group_memberships] :as body}
+   :- [:map
+       [:first_name             {:optional true} [:maybe ms/NonBlankString]]
+       [:last_name              {:optional true} [:maybe ms/NonBlankString]]
+       [:email                  ms/Email]
+       [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
+       [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
               "email" (tru "Email address already in use."))
@@ -414,15 +425,16 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [email first_name last_name user_group_memberships is_superuser] :as body} :- [:map
-                                                                                         [:email                  {:optional true} [:maybe ms/Email]]
-                                                                                         [:first_name             {:optional true} [:maybe ms/NonBlankString]]
-                                                                                         [:last_name              {:optional true} [:maybe ms/NonBlankString]]
-                                                                                         [:user_group_memberships {:optional true} [:maybe [:sequential user/UserGroupMembership]]]
-                                                                                         [:is_superuser           {:default false} [:maybe :boolean]]
-                                                                                         [:is_group_manager       {:default false} [:maybe :boolean]]
-                                                                                         [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
-                                                                                         [:locale                 {:optional true} [:maybe ms/ValidLocale]]]]
+   {:keys [email first_name last_name user_group_memberships is_superuser] :as body}
+   :- [:map
+       [:email                  {:optional true} [:maybe ms/Email]]
+       [:first_name             {:optional true} [:maybe ms/NonBlankString]]
+       [:last_name              {:optional true} [:maybe ms/NonBlankString]]
+       [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
+       [:is_superuser           {:optional true} [:maybe :boolean]]
+       [:is_group_manager       {:optional true} [:maybe :boolean]]
+       [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
+       [:locale                 {:optional true} [:maybe ms/ValidLocale]]]]
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -440,8 +452,9 @@
       (api/checkp (valid-name-update? user-before-update :last_name last_name)
                   "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
-    (api/checkp (not (t2/exists? :model/User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
-                "email" (tru "Email address already associated to another user."))
+    (when email
+      (api/checkp (not (t2/exists? :model/User, :%lower.email (u/lower-case-en email), :id [:not= id]))
+                  "email" (tru "Email address already associated to another user.")))
     (t2/with-transaction [_conn]
       ;; only superuser or self can update user info
       ;; implicitly prevent group manager from updating users' info
