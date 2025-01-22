@@ -244,7 +244,7 @@ const proficiencyTheme: MetabaseTheme = {
     filter: proficiencyColors.primary,
     "text-primary": proficiencyColors.lightGrey,
     "text-secondary": proficiencyColors.lightGrey,
-    "text-tertiary": "rgba(0, 0, 0, 0.5)",
+    "text-tertiary": "rgba(0, 0, 0, 0.4)",
     border: "rgba(0, 0, 0, 0.12)",
     background: proficiencyColors.background,
     "background-hover": "#fCFDFD",
