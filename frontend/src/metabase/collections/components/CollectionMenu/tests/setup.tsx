@@ -1,8 +1,14 @@
 /* istanbul ignore file */
+import fetchMock from "fetch-mock";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { Collection, TokenFeatures } from "metabase-types/api";
+import type {
+  Collection,
+  DashboardQuestionCandidate,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -17,6 +23,7 @@ export interface SetupOpts {
   isAdmin?: boolean;
   isPersonalCollectionChild?: boolean;
   hasEnterprisePlugins?: boolean;
+  dashboardQuestionCandidates?: DashboardQuestionCandidate[];
 }
 
 export const setup = ({
@@ -25,9 +32,16 @@ export const setup = ({
   isAdmin = false,
   isPersonalCollectionChild = false,
   hasEnterprisePlugins = false,
+  dashboardQuestionCandidates = [],
 }: SetupOpts) => {
+  fetchMock.get("express:/api/collection/:id/dashboard-question-candidates", {
+    count: dashboardQuestionCandidates.length,
+    data: dashboardQuestionCandidates,
+  });
+
   const settings = mockSettings({ "token-features": tokenFeatures });
   const state = createMockState({ settings });
+
   const onUpdateCollection = jest.fn();
 
   if (hasEnterprisePlugins) {
