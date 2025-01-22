@@ -45,30 +45,3 @@ export interface AlertCard {
   format_rows?: boolean;
   dashboard_card_id?: DashCardId;
 }
-
-export interface ListAlertsRequest {
-  user_id?: UserId;
-  archived?: boolean;
-}
-
-export interface ListCardAlertsRequest {
-  id: CardId;
-  archived?: boolean;
-}
-
-export interface CreateAlertRequest {
-  card: AlertCard;
-  alert_condition: AlertCondition;
-  alert_first_only: boolean;
-  alert_above_goal: boolean;
-  channels: Channel[];
-}
-
-export interface UpdateAlertRequest {
-  id: AlertId;
-  card?: AlertCard;
-  alert_condition?: AlertCondition;
-  alert_first_only?: boolean;
-  alert_above_goal?: boolean;
-  channels?: Channel[];
-}

@@ -10,29 +10,6 @@ const getQuestionDetails = () => ({
   },
 });
 
-const getAlertDetails = ({ card_id, user_id, admin_id }) => ({
-  card: {
-    id: card_id,
-    include_csv: false,
-    include_xls: false,
-  },
-  channels: [
-    {
-      enabled: true,
-      channel_type: "email",
-      schedule_type: "hourly",
-      recipients: [
-        {
-          id: user_id,
-        },
-        {
-          id: admin_id,
-        },
-      ],
-    },
-  ],
-});
-
 const getPulseDetails = ({ card_id, dashboard_id }) => ({
   name: "Subscription",
   dashboard_id,
@@ -65,9 +42,7 @@ describe("scenarios > account > notifications", () => {
             H.getCurrentUser().then(({ body: { id: user_id } }) => {
               cy.createQuestion(getQuestionDetails()).then(
                 ({ body: { id: card_id } }) => {
-                  H.createQuestionAlert(
-                    getAlertDetails({ card_id, user_id, admin_id }),
-                  );
+                  H.createQuestionAlert({ card_id, user_id, admin_id });
                 },
               );
             });
