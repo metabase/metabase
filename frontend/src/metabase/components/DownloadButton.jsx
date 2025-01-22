@@ -33,7 +33,7 @@ const DownloadButton = ({
 }) => {
   const [loading, setLoading] = useState(false);
 
-  const handleClick = async (e) => {
+  const handleClick = async e => {
     if (window.OSX) {
       // prevent form from being submitted normally
       e.preventDefault();
@@ -42,7 +42,7 @@ const DownloadButton = ({
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
     setLoading(true);
     let downloadUrl = url;
@@ -50,18 +50,21 @@ const DownloadButton = ({
 
     try {
       if (downloadUrl.includes("api/card") && params) {
-        // If URL contains /api/card, use POST and append data in FormData
-        const formData = new FormData();
+        // If URL contains api/card, use POST and send data as x-www-form-urlencoded
+        const urlEncodedData = new URLSearchParams();
         Object.entries(params).forEach(([key, value]) => {
-          formData.append(key, value);
+          urlEncodedData.append(key, value);
         });
 
         requestOptions = {
           method: "POST",
-          body: formData,
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: urlEncodedData.toString(),
         };
       } else if (params) {
-        // If not /api/card, use query parameters for GET request
+        // If not api/card, use query parameters for GET request
         const qs = querystring.stringify(params);
         downloadUrl += `?${qs}`;
       }
@@ -74,24 +77,24 @@ const DownloadButton = ({
 
       // Read the CSV data as text
       const csvText = await response.text();
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = 'shipx_analytics.csv';
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = "shipx_analytics.csv";
 
-      if (contentDisposition && contentDisposition.includes('attachment')) {
+      if (contentDisposition && contentDisposition.includes("attachment")) {
         const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
         const matches = filenameRegex.exec(contentDisposition);
         if (matches && matches[1]) {
-          filename = matches[1].replace(/['"]/g, '');
+          filename = matches[1].replace(/['"]/g, "");
         }
       }
 
       // Create a Blob with the CSV text
-      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
 
       // Generate a download link
       const downloadLink = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
+      const a = document.createElement("a");
+      a.style.display = "none";
       a.href = downloadLink;
       a.download = filename;
       document.body.appendChild(a);
@@ -101,7 +104,7 @@ const DownloadButton = ({
       window.URL.revokeObjectURL(downloadLink);
       document.body.removeChild(a);
     } catch (error) {
-      console.error('There was a problem with the fetch operation:', error);
+      console.error("There was a problem with the fetch operation:", error);
     } finally {
       setLoading(false);
     }
