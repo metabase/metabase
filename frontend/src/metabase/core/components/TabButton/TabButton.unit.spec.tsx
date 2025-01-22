@@ -1,4 +1,4 @@
-import { act, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { getIcon, renderWithProviders } from "__support__/ui";
@@ -34,7 +34,7 @@ describe("TabButton", () => {
   it("should open the menu upon clicking the chevron", async () => {
     setup();
 
-    await act(async () => await userEvent.click(getIcon("chevrondown")));
+    await userEvent.click(getIcon("chevrondown"));
 
     expect(
       await screen.findByRole("option", { name: "first item" }),
@@ -44,10 +44,10 @@ describe("TabButton", () => {
   it("should call the action function upon clicking an item in the menu", async () => {
     const { action, value } = setup();
 
-    await act(async () => await userEvent.click(getIcon("chevrondown")));
+    await userEvent.click(getIcon("chevrondown"));
 
-    await act(async () =>
-      (await screen.findByRole("option", { name: "first item" })).click(),
+    await userEvent.click(
+      await screen.findByRole("option", { name: "first item" }),
     );
 
     expect(action).toHaveBeenCalledWith(value);
@@ -56,7 +56,7 @@ describe("TabButton", () => {
   it("should not open the menu when disabled", async () => {
     setup({ disabled: true });
 
-    await act(async () => await userEvent.click(getIcon("chevrondown")));
+    await userEvent.click(getIcon("chevrondown"));
 
     expect(
       screen.queryByRole("option", { name: "first item" }),
@@ -66,13 +66,13 @@ describe("TabButton", () => {
   it("should call the onRename function when renaming and update its own label", async () => {
     const { onRename } = setup();
 
-    await act(async () => await userEvent.click(getIcon("chevrondown")));
-    await act(async () => (await renameOption()).click());
+    await userEvent.click(getIcon("chevrondown"));
+    await userEvent.click(await renameOption());
 
     const newLabel = "A new label";
     const inputEl = await screen.findByRole("textbox");
-    await act(async () => await userEvent.clear(inputEl));
-    await act(async () => await userEvent.type(inputEl, `${newLabel}{enter}`));
+    await userEvent.clear(inputEl);
+    await userEvent.type(inputEl, `${newLabel}{enter}`);
 
     expect(onRename).toHaveBeenCalledWith(newLabel);
     expect(await screen.findByDisplayValue(newLabel)).toBeInTheDocument();
@@ -81,23 +81,23 @@ describe("TabButton", () => {
   it("should ignore an empty tab name and revert to the previous on blur", async () => {
     const { onRename } = setup();
 
-    await act(async () => await userEvent.click(getIcon("chevrondown")));
-    await act(async () => (await renameOption()).click());
+    await userEvent.click(getIcon("chevrondown"));
+    await userEvent.click(await renameOption());
 
     const oldLabel = "Tab 1";
     const inputEl = await screen.findByRole("textbox");
 
     // Clear the input and press Enter
-    await act(async () => await userEvent.clear(inputEl));
-    await act(async () => await userEvent.type(inputEl, `{enter}`));
+    await userEvent.clear(inputEl);
+    await userEvent.type(inputEl, `{enter}`);
     expect(onRename).not.toHaveBeenCalled();
     expect(await screen.findByDisplayValue(oldLabel)).toBeInTheDocument();
 
     // Let's do that one more time but with a name that contains only spaces
-    await act(async () => await userEvent.click(getIcon("chevrondown")));
-    await act(async () => (await renameOption()).click());
-    await act(async () => await userEvent.clear(inputEl));
-    await act(async () => await userEvent.type(inputEl, `  {enter}`));
+    await userEvent.click(getIcon("chevrondown"));
+    await userEvent.click(await renameOption());
+    await userEvent.clear(inputEl);
+    await userEvent.type(inputEl, `  {enter}`);
     expect(onRename).not.toHaveBeenCalled();
     expect(await screen.findByDisplayValue(oldLabel)).toBeInTheDocument();
   });
@@ -105,15 +105,12 @@ describe("TabButton", () => {
   it("should allow the user to rename via double click", async () => {
     const { onRename } = setup();
 
-    await act(
-      async () =>
-        await userEvent.dblClick(screen.getByTestId(INPUT_WRAPPER_TEST_ID)),
-    );
+    await userEvent.dblClick(screen.getByTestId(INPUT_WRAPPER_TEST_ID));
 
     const newLabel = "A new label";
     const inputEl = screen.getByRole("textbox");
-    await act(async () => await userEvent.clear(inputEl));
-    await act(async () => await userEvent.type(inputEl, `${newLabel}{enter}`));
+    await userEvent.clear(inputEl);
+    await userEvent.type(inputEl, `${newLabel}{enter}`);
 
     expect(onRename).toHaveBeenCalledWith(newLabel);
     expect(await screen.findByDisplayValue(newLabel)).toBeInTheDocument();
@@ -122,15 +119,15 @@ describe("TabButton", () => {
   it("should limit the length to 75 chars", async () => {
     const { onRename } = setup();
 
-    await act(async () => await userEvent.click(getIcon("chevrondown")));
-    await act(async () => (await renameOption()).click());
+    await userEvent.click(getIcon("chevrondown"));
+    await userEvent.click(await renameOption());
 
     const newLabel = "a".repeat(100);
     const expectedLabel = newLabel.slice(0, 75);
 
     const inputEl = await screen.findByRole("textbox");
-    await act(async () => await userEvent.clear(inputEl));
-    await act(async () => await userEvent.type(inputEl, `${newLabel}{enter}`));
+    await userEvent.clear(inputEl);
+    await userEvent.type(inputEl, `${newLabel}{enter}`);
 
     expect(onRename).toHaveBeenCalledWith(expectedLabel);
     expect(await screen.findByDisplayValue(expectedLabel)).toBeInTheDocument();
