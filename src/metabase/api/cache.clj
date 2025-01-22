@@ -1,39 +1,74 @@
 (ns metabase.api.cache
   (:require
-   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.config :as config]
    [metabase.models.cache-config :as cache-config]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [metabase.util.malli.registry :as mr]))
+   [toucan2.core :as t2]))
 
 ;; Data shape
+
+(mr/def ::cache-strategy.base
+  [:map
+   [:type [:enum :nocache :ttl :duration :schedule]]])
+
+(mr/def ::cache-strategy.nocache
+  [:map ; not closed due to a way it's used in tests for clarity
+   [:type [:= :nocache]]])
+
+(mr/def ::cache-strategy.ttl
+  [:map {:closed true}
+   [:type            [:= :ttl]]
+   [:multiplier      ms/PositiveInt]
+   [:min_duration_ms ms/IntGreaterThanOrEqualToZero]])
 
 (mr/def ::cache-strategy.oss
   "Schema for a caching strategy (OSS)"
   [:and
-   [:map
-    [:type [:enum :nocache :ttl]]]
+   ::cache-strategy.base
    [:multi {:dispatch :type}
-    [:nocache  [:map ;; not closed due to a way it's used in tests for clarity
-                [:type keyword?]]]
-    [:ttl      [:map {:closed true}
-                [:type [:= :ttl]]
-                [:multiplier ms/PositiveInt]
-                [:min_duration_ms ms/IntGreaterThanOrEqualToZero]]]]])
+    [:nocache ::cache-strategy.nocache]
+    [:ttl     ::cache-strategy.ttl]]])
+
+(mr/def ::cache-strategy.ee.duration
+  [:map {:closed true}
+   [:type                  [:= :duration]]
+   [:duration              ms/PositiveInt]
+   [:unit                  [:enum "hours" "minutes" "seconds" "days"]]
+   [:refresh_automatically {:optional true} [:maybe :boolean]]])
+
+(mr/def ::cache-strategy.ee.schedule
+  [:map {:closed true}
+   [:type                  [:= :schedule]]
+   [:schedule              u.cron/CronScheduleString]
+   [:refresh_automatically {:optional true} [:maybe :boolean]]])
+
+(mr/def ::cache-strategy.ee
+  "Schema for a caching strategy in EE when we have an premium token with `:cache-granular-controls`."
+  [:and
+   ::cache-strategy.base
+   [:multi {:dispatch :type}
+    [:nocache  ::cache-strategy.nocache]
+    [:ttl      ::cache-strategy.ttl]
+    [:duration ::cache-strategy.ee.duration]
+    [:schedule ::cache-strategy.ee.schedule]]])
 
 (mr/def ::cache-strategy
-  [:multi
-   {:dispatch (fn [_value]
-                (if (premium-features/has-feature? :cache-granular-controls)
-                  :ee
-                  :oss))}
-   [:ee  :metabase-enterprise.cache.strategies/cache-strategy.api]
-   [:oss ::cache-strategy.oss]])
+  (if config/ee-available?
+    [:multi
+     {:dispatch (fn [_value]
+                  (if (premium-features/has-feature? :cache-granular-controls)
+                    :ee
+                    :oss))}
+     [:ee  ::cache-strategy.ee]
+     [:oss ::cache-strategy.oss]]
+    ::cache-strategy.oss))
 
 (defn- assert-valid-models [model ids premium?]
   (cond

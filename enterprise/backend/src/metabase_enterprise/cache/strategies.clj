@@ -1,79 +1,42 @@
 (ns metabase-enterprise.cache.strategies
   (:require
    [java-time.api :as t]
+   [metabase.api.cache]
    [metabase.models.cache-config :as cache-config]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
-   [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(comment metabase.api.cache/keep-me)
+
 ;; Data shape
 
-(mr/def ::cache-strategy.base
-  [:map
-   [:type [:enum :nocache :ttl :duration :schedule]]])
-
-(mr/def ::cache-strategy.nocache
-  [:map ; not closed due to a way it's used in tests for clarity
-   [:type [:= :nocache]]])
-
-(mr/def ::cache-strategy.ttl
-  [:map {:closed true}
-   [:type [:= :ttl]]
-   [:multiplier ms/PositiveInt]
-   [:min_duration_ms ms/IntGreaterThanOrEqualToZero]])
-
-(mr/def ::cache-strategy.duration
-  [:map {:closed true}
-   [:type [:= :duration]]
-   [:duration ms/PositiveInt]
-   [:unit [:enum "hours" "minutes" "seconds" "days"]]
-   [:refresh_automatically {:optional true} [:maybe :boolean]]])
-
-(mr/def ::cache-strategy.schedule
-  [:map {:closed true}
-   [:type [:= :schedule]]
-   [:schedule u.cron/CronScheduleString]
-   [:refresh_automatically {:optional true} [:maybe :boolean]]])
-
-(mr/def ::cache-strategy.api
-  "Schema for a caching strategy used by API endpoints in EE when we have an premium token with
-  `:cache-granular-controls`."
-  [:and
-   ::cache-strategy.base
-   [:multi {:dispatch :type}
-    [:nocache  ::cache-strategy.nocache]
-    [:ttl      ::cache-strategy.ttl]
-    [:duration ::cache-strategy.duration]
-    [:schedule ::cache-strategy.schedule]]])
-
-(mr/def ::cache-strategy.internal
+(mr/def ::cache-strategy
   "Schema for a caching strategy used internally"
   [:and
-   ::cache-strategy.base
+   :metabase.api.cache/cache-strategy.base
    [:multi {:dispatch :type}
-    [:nocache  ::cache-strategy.nocache]
+    [:nocache  :metabase.api.cache/cache-strategy.nocache]
     [:ttl      [:merge
-                ::cache-strategy.ttl
+                :metabase.api.cache/cache-strategy.ttl
                 [:map
                  [:invalidated-at {:optional true} some?]]]]
     [:duration [:merge
-                ::cache-strategy.duration
+                :metabase.api.cache/cache-strategy.duration
                 [:map
                  [:invalidated-at {:optional true} some?]]]]
     [:schedule [:merge
-                ::cache-strategy.schedule
+                :metabase.api.cache/cache-strategy.schedule
                 [:map
                  [:invalidated-at {:optional true} some?]]]]]])
 
 ;;; Querying DB
 
-(defenterprise-schema cache-strategy :- [:maybe ::cache-strategy.internal]
+(defenterprise-schema cache-strategy :- [:maybe ::cache-strategy]
   "Returns the granular cache strategy for a card."
   :feature :cache-granular-controls
   [card dashboard-id]
