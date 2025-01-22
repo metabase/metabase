@@ -9,17 +9,17 @@ const CHANNELS_CONFIG: {
   link: string;
 }[] = [
   {
-    title: t`SMTP`,
+    title: t`Set up SMTP`,
     icon: "mail",
     link: "/admin/settings/email",
   },
   {
-    title: t`Slack`,
+    title: t`Set up Slack`,
     icon: "slack",
     link: "/admin/settings/notifications/slack",
   },
   {
-    title: "a webhook",
+    title: "Add a webhook",
     icon: "webhook",
     link: "/admin/settings/notifications",
   },
@@ -48,7 +48,7 @@ export const ChannelSetupModal = ({
               to={link}
               target="_blank"
             >
-              {t`Set up ${title}`}
+              {title}
             </Button>
           ))}
       </Stack>
