@@ -220,6 +220,8 @@
    (prometheus/counter :metabase-search/index
                        {:description "Number of entries indexed for search"
                         :labels      [:model]})
+   (prometheus/counter :metabase-search/index-error
+                       {:description "Number of errors encountered when indexing for search"})
    (prometheus/counter :metabase-search/index-ms
                        {:description "Total number of ms indexing took"})
    (prometheus/counter :metabase-search/response-ok

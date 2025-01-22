@@ -5,9 +5,12 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.models.search-index-metadata :as search-index-metadata]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]
+   [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -19,6 +22,7 @@
    (org.postgresql.util PSQLException)))
 
 (comment
+  h2/keep-me
   postgres/keep-me)
 
 (set! *warn-on-reflection* true)
@@ -77,14 +81,18 @@
   []
   (keyword (str/replace (str "search_index__" (random-uuid)) #"-" "_")))
 
-(defn- exists? [table-name]
-  (when table-name
-    (t2/exists? :information_schema.tables :table_name (name table-name))))
+(defn- table-name [kw]
+  (cond-> (name kw)
+    (= :h2 (mdb/db-type)) u/upper-case-en))
 
-(defn- drop-table! [table-name]
+(defn- exists? [table]
+  (when table
+    (t2/exists? :information_schema.tables :table_name (table-name table))))
+
+(defn- drop-table! [table]
   (boolean
-   (when (and table-name (exists? table-name))
-     (t2/query (sql.helpers/drop-table table-name)))))
+   (when (and table (exists? table))
+     (t2/query (sql.helpers/drop-table (keyword (table-name table)))))))
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
@@ -118,11 +126,49 @@
         (catch ExceptionInfo _)))
     (log/infof "Dropped %d stale indexes" @dropped)))
 
+(defn- ->db-type [t]
+  (get {:pk :int, :timestamp :timestamp-with-time-zone} t t))
+
+(defn- ->db-column [c]
+  (or (get {:id         :model_id
+            :created-at :model_created_at
+            :updated-at :model_updated_at}
+           c)
+      (keyword (u/->snake_case_en (name c)))))
+
+(def ^:private not-null
+  #{:archived :name})
+
+(def ^:private default
+  {:archived false})
+
+;; If this fails, we'll need to increase the size of :model below
+(assert (>= 32 (transduce (map (comp count name)) max 0 search.config/all-models)))
+
+(def ^:private base-schema
+  (into [[:model [:varchar 32] :not-null]
+         [:display_data :text :not-null]
+         [:legacy_input :text :not-null]
+         ;; useful for tracking the speed and age of the index
+         [:created_at :timestamp-with-time-zone
+          [:default [:raw "CURRENT_TIMESTAMP"]]
+          :not-null]
+         [:updated_at :timestamp-with-time-zone :not-null]]
+        (keep (fn [[k t]]
+                (when t
+                  (into [(->db-column k) (->db-type t)]
+                        (concat
+                         (when (not-null k)
+                           [:not-null])
+                         (when-some [d (default k)]
+                           [[:default d]]))))))
+        search.spec/attr-types))
+
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
   [table-name]
   (-> (sql.helpers/create-table table-name)
-      (sql.helpers/with-columns (specialization/table-schema))
+      (sql.helpers/with-columns (specialization/table-schema base-schema))
       t2/query)
   (let [table-name (name table-name)]
     (doseq [stmt (specialization/post-create-statements table-name table-name)]
@@ -167,7 +213,7 @@
 (defn- document->entry [entity]
   (-> entity
       (select-keys
-       ;; remove attrs that get aliased
+       ;; remove attrs that get explicitly aliased below
        (remove #{:id :created_at :updated_at :native_query}
                (conj search.spec/attr-columns :model :display_data :legacy_input)))
       (update :display_data json/generate-string)
@@ -188,8 +234,10 @@
         ;; TODO we should handle the MySQL and MariaDB flavors here too
         (if (or (instance? PSQLException (ex-cause e))
                 (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
-          ;; Suppress database errors, which are likely due to stale tracking data.
-          (sync-tracking-atoms!)
+          ;; If resetting tracking atoms resolves the issue (which is likely happened because of stale tracking data),
+          ;; suppress the issue - but throw it all the way to the caller if the issue persists
+          (do (sync-tracking-atoms!)
+              (specialization/batch-upsert! table-name entries))
           (throw e))))))
 
 (defn- batch-update!
@@ -265,13 +313,15 @@
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
-  "Create a temporary index table for the duration of the body."
+  "Create a temporary index table for the duration of the body. Uses the existing index if we're already mocking."
   [& body]
-  `(let [table-name# (gen-table-name)]
-     (binding [*mocking-tables* true
-               *indexes*        (atom {:active table-name#})]
-       (try
-         (create-table! table-name#)
-         ~@body
-         (finally
-           (#'drop-table! table-name#))))))
+  `(if @#'*mocking-tables*
+     ~@body
+     (let [table-name# (gen-table-name)]
+       (binding [*mocking-tables* true
+                 *indexes*        (atom {:active table-name#})]
+         (try
+           (create-table! table-name#)
+           ~@body
+           (finally
+             (#'drop-table! table-name#)))))))
