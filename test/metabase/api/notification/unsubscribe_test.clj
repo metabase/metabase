@@ -1,7 +1,7 @@
 (ns metabase.api.notification.unsubscribe-test
   (:require
    [clojure.test :refer :all]
-   [metabase.email.messages :as messages]
+   [metabase.channel.email.messages :as messages]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
