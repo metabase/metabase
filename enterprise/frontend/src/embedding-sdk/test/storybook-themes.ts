@@ -7,7 +7,7 @@ export const darkColors = {
   lighterGrey: "#E3E7E4",
   lightGrey: "#ADABA9",
   darkGrey: "#3B3F3F",
-  background: "#151C20",
+  background: "#161A1D",
 };
 
 export const darkTheme = defineMetabaseTheme({
@@ -53,6 +53,11 @@ export const darkTheme = defineMetabaseTheme({
       value: {
         fontSize: "18px",
         lineHeight: "22px",
+      },
+    },
+    questionEditor: {
+      actionButton: {
+        backgroundColor: "#161A1D",
       },
     },
   },
@@ -124,7 +129,7 @@ const stitchColors = {
   lighterGrey: "#E3E7E4",
   lightGrey: "#ADABA9",
   darkGrey: "#3B3F3F",
-  background: "#151C20",
+  background: "#161A1D",
 };
 
 const stitchTheme: MetabaseTheme = {
@@ -170,6 +175,11 @@ const stitchTheme: MetabaseTheme = {
       value: {
         fontSize: "18px",
         lineHeight: "22px",
+      },
+    },
+    questionEditor: {
+      actionButton: {
+        backgroundColor: "#161A1D",
       },
     },
   },
