@@ -72,7 +72,10 @@
   [id]
   (when-let [base (api.card/get-card id)]
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id base))
-          card-query (lib/query mp (lib.metadata/card mp id))
+          card-metadata (lib.metadata/card mp id)
+          card-query (lib/query mp (cond-> card-metadata
+                                     ;; pivot questions have strange result-columns so we work with the dataset-query
+                                     (#{:question} (:type base)) (get :dataset-query)))
           cols (lib/returned-columns card-query)
           field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
       (-> {:id id
