@@ -1,5 +1,4 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
-import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
 import { color as getColor } from "metabase/lib/colors";
 import { Icons } from "metabase/ui";
 import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
@@ -8,6 +7,8 @@ import {
   setSvgColor,
   svgToDataUri,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
+
+import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
 
 export function echartsContainer() {
   return cy.findByTestId("chart-container");
@@ -136,20 +137,19 @@ export function pieSliceWithColor(color) {
 export function echartsTooltip() {
   // ECharts may keep two dom instances of the tooltip
   return cy.findAllByTestId("echarts-tooltip").should($elements => {
-    // Find visible tooltips within a single command
-    // Using `.filter(":visible")` will fail as the tooltip is positioned as fixed
-    const visibleTooltips = $elements.toArray().filter(element => {
-      const style = window.getComputedStyle(element);
+    console.log(`found ${$elements.length} echarts tooltips`);
 
-      return (
-        style.display !== "none" &&
-        style.visibility !== "hidden" &&
-        style.zIndex >= OVERLAY_Z_INDEX
-      );
-    });
+    // Use a custom function to check if the fixed-position tooltip is visible,
+    // as Cypress's ":visible" or "be.visible" fails to identify a fixed-position tooltip as visible.
+    const visibleTooltips = $elements
+      .toArray()
+      .filter(isFixedPositionElementVisible);
 
     // Assert we have exactly one visible tooltip
-    expect(visibleTooltips).to.have.length(1);
+    expect(visibleTooltips).to.have.length(
+      1,
+      "there must be only one visible echarts tooltip",
+    );
 
     // Return the visible tooltip
     return visibleTooltips[0];
