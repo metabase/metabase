@@ -4,6 +4,7 @@
             [malli.experimental.time.transform :as mett]
             [malli.transform :as mtx]
             [metabase.api.common :as api]
+            [metabase.api.macros :as api.macros]
             [metabase.models.user-key-value :as user-key-value]
             [metabase.models.user-key-value.types :as types]
             [metabase.util.malli.schema :as ms]))
@@ -34,25 +35,22 @@
            (api/check-400 false))
          (throw e))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/namespace/:namespace/key/:key"
+(api.macros/defendpoint :get "/namespace/:namespace/key/:key"
   "Get a value for the user"
-  [namespace key]
-  {key ms/NonBlankString
-   namespace ms/NonBlankString}
+  [{:keys [namespace key]} :- [:map
+                               [:key       ms/NonBlankString]
+                               [:namespace ms/NonBlankString]]]
   (user-key-value/retrieve api/*current-user-id* namespace key))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/namespace/:namespace"
+(api.macros/defendpoint :get "/namespace/:namespace"
   "Returns all KV pairs in a given namespace for the current user"
-  [namespace]
-  {namespace ms/NonBlankString}
+  [{:keys [namespace]} :- [:map
+                           [:namespace ms/NonBlankString]]]
   (user-key-value/retrieve-all api/*current-user-id* namespace))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/namespace/:namespace/key/:key"
+(api.macros/defendpoint :delete "/namespace/:namespace/key/:key"
   "Deletes a KV-pair for the user"
-  [namespace key]
+  [{:keys [namespace key]}]
   (user-key-value/delete! api/*current-user-id* namespace key))
 
 (api/define-routes)
