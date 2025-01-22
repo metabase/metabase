@@ -298,25 +298,24 @@ const getDatasetResponse = ({
   method,
   body,
   params,
+  formData,
 }: DownloadQueryResultsParams) => {
   const requestUrl = getDatasetDownloadUrl(url, params);
 
   if (method === "POST") {
     // BE expects the body to be form-encoded :(
     const formattedBody = new URLSearchParams();
-    if (body != null) {
+    if (body != null && formData) {
       for (const key in body) {
         formattedBody.append(key, JSON.stringify(body[key]));
       }
     }
     return POST(requestUrl, {
-      formData: true,
+      formData,
       fetch: true,
       transformResponse: ({ response }: TransformResponseProps) =>
         checkNotNull(response),
-    })({
-      formData: formattedBody,
-    });
+    })(formData ? { formData: formattedBody } : body);
   } else {
     return GET(requestUrl, {
       fetch: true,
