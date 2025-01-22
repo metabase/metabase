@@ -76,8 +76,12 @@
                                        (for [[payload-type payload-ids] payload-type->ids]
                                          (case payload-type
                                            :notification/card
-                                           (t2/select-fn->fn (fn [x] [payload-type (:id x)]) identity
-                                                             :model/NotificationCard :id [:in payload-ids])
+                                           (let [notification-cards (t2/hydrate
+                                                                     (t2/select :model/NotificationCard
+                                                                                :id [:in payload-ids])
+                                                                     :card)]
+                                             (into {} (for [nc notification-cards]
+                                                        [[:notification/card (:id nc)] nc])))
                                            {[payload-type nil] nil})))]
 
     (for [notification notifications]
@@ -365,6 +369,7 @@
   "Schema for :model/NotificationCard."
   [:map
    [:card_id                         ms/PositiveInt]
+   [:card           {:optional true} [:maybe :map]]
    [:send_condition {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
    [:send_once      {:optional true} :boolean]])
 
