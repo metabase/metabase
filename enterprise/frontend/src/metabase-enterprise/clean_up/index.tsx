@@ -1,8 +1,10 @@
 import { t } from "ttag";
 
+import { ForwardRefLink } from "metabase/core/components/Link";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { Icon, Menu } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { CleanupCollectionModal } from "./CleanupCollectionModal";
@@ -18,11 +20,12 @@ if (hasPremiumFeature("collection_cleanup")) {
     }
 
     return [
-      {
-        title: t`Clear out unused items`,
-        icon: "archive",
-        link: `${Urls.collection(collection)}/cleanup`,
-      },
+      <Menu.Item
+        key="collections-archive"
+        icon={<Icon name="archive" />}
+        component={ForwardRefLink}
+        to={`${Urls.collection(collection)}/cleanup`}
+      >{t`Clear out unused items`}</Menu.Item>,
     ];
   };
 

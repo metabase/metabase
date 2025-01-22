@@ -6,11 +6,16 @@ import {
   isRootCollection,
   isRootPersonalCollection,
 } from "metabase/collections/utils";
-import EntityMenu from "metabase/components/EntityMenu";
 import { useHasDashboardQuestionCandidates } from "metabase/components/MoveQuestionsIntoDashboardsModal/hooks";
+import { ForwardRefLink } from "metabase/core/components/Link";
+import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
+
+// eslint-disable-next-line
+import { Badge, Indicator } from "@mantine/core";
 
 export interface CollectionMenuProps {
   collection: Collection;
@@ -49,6 +54,11 @@ export const CollectionMenu = ({
   const canMove =
     !isRoot && !isPersonal && canWrite && !isInstanceAnalyticsCustom;
 
+  const [hasSeenMenu, { ack: ackHasSeenMenu }] = useUserAcknowledgement(
+    "collection-menu",
+    true,
+  );
+
   if (isAdmin && !isRoot && canWrite) {
     items.push(
       ...PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems(
@@ -59,19 +69,23 @@ export const CollectionMenu = ({
   }
 
   if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
-    items.push({
-      title: t`Edit permissions`,
-      icon: "lock",
-      link: `${url}/permissions`,
-    });
+    items.push(
+      <Menu.Item
+        icon={<Icon name="lock" />}
+        component={ForwardRefLink}
+        to={`${url}/permissions`}
+      >{t`Edit permissions`}</Menu.Item>,
+    );
   }
 
   if (canMove) {
-    items.push({
-      title: t`Move`,
-      icon: "move",
-      link: `${url}/move`,
-    });
+    items.push(
+      <Menu.Item
+        icon={<Icon name="lock" />}
+        component={ForwardRefLink}
+        to={`${url}/move`}
+      >{t`Move`}</Menu.Item>,
+    );
   }
 
   items.push(
@@ -82,19 +96,34 @@ export const CollectionMenu = ({
   );
 
   if (hasDqCandidates) {
-    items.push({
-      title: t`Move questions into their dashboards`,
-      icon: "add_to_dash",
-      link: `${url}/move-questions-dashboard`,
-    });
+    items.push(
+      <Menu.Item
+        icon={<Icon name="add_to_dash" />}
+        component={ForwardRefLink}
+        to={`${url}/move-questions-dashboard`}
+        rightSection={
+          <Badge
+            styles={{
+              inner: {
+                color: "white",
+              },
+            }}
+          >
+            Woooo
+          </Badge>
+        }
+      >{t`Move questions into their dashboards`}</Menu.Item>,
+    );
   }
 
   if (canMove) {
-    items.push({
-      title: t`Move to trash`,
-      icon: "trash",
-      link: `${url}/archive`,
-    });
+    items.push(
+      <Menu.Item
+        icon={<Icon name="trash" />}
+        component={ForwardRefLink}
+        to={`${url}/archive`}
+      >{t`Move to trash`}</Menu.Item>,
+    );
   }
 
   if (items.length === 0) {
@@ -102,11 +131,25 @@ export const CollectionMenu = ({
   }
 
   return (
-    <EntityMenu
-      items={items}
-      triggerIcon="ellipsis"
-      tooltip={t`Move, trash, and more...`}
-      tooltipPlacement="bottom"
-    />
+    <Menu
+      position="bottom-end"
+      onChange={() => {
+        if (!hasSeenMenu) {
+          ackHasSeenMenu();
+        }
+      }}
+    >
+      <Menu.Target>
+        <Indicator size={6} disabled={hasSeenMenu}>
+          <Tooltip label={t`Move, trash, and more...`} position="bottom">
+            <ActionIcon size={32} variant="viewHeader">
+              <Icon name="ellipsis" color="text-dark" />
+            </ActionIcon>
+          </Tooltip>
+        </Indicator>
+      </Menu.Target>
+
+      <Menu.Dropdown>{items}</Menu.Dropdown>
+    </Menu>
   );
 };
