@@ -27,8 +27,9 @@
         (is (nil? (mt/user-http-request :crowberto :delete 204 "cache/"
                                         {:model "root" :model_id 0}))))
       (testing "But no advanced strategies can be used"
-        (is (:errors (mt/user-http-request :crowberto :put 400 "cache/"
-                                           {:model    "root"
-                                            :model_id 0
-                                            :strategy {:type     "schedule"
-                                                       :schedule "0/2 * * * * ?"}})))))))
+        (is (=? {:errors {:strategy string?}}
+                (mt/user-http-request :crowberto :put 400 "cache/"
+                                      {:model    "root"
+                                       :model_id 0
+                                       :strategy {:type     "schedule"
+                                                  :schedule "0/2 * * * * ?"}})))))))

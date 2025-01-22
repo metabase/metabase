@@ -8,26 +8,13 @@
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.util.malli.registry :as mr]))
 
 ;; Data shape
 
-(defn- drop-internal-fields
-  "See `metabase-enterprise.cache.strategies/CacheStrategy`"
-  [schema]
-  (walk/prewalk
-   (fn [x]
-     (if (and (vector? x) (= (first x) :map))
-       (into [] (remove #(:internal (meta %))) x)
-       x))
-   schema))
-
-;; TODO: figure out how to combine `defenterprise` and `defendpoint` - right now OpenAPI only "sees" OSS version of
-;; the schema, so docs for enterprise version won't be correct until we figure out the way to support this
-(defenterprise CacheStrategy
-  "Schema for a caching strategy"
-  metabase-enterprise.cache.strategies
-  []
+(mr/def ::cache-strategy.oss
+  "Schema for a caching strategy (OSS)"
   [:and
    [:map
     [:type [:enum :nocache :ttl]]]
@@ -39,10 +26,14 @@
                 [:multiplier ms/PositiveInt]
                 [:min_duration_ms ms/IntGreaterThanOrEqualToZero]]]]])
 
-(defn CacheStrategyAPI
-  "Schema for a caching strategy for the API"
-  []
-  (drop-internal-fields (CacheStrategy)))
+(mr/def ::cache-strategy
+  [:multi
+   {:dispatch (fn [_value]
+                (if (premium-features/has-feature? :cache-granular-controls)
+                  :ee
+                  :oss))}
+   [:ee  :metabase-enterprise.cache.strategies/cache-strategy.api]
+   [:oss ::cache-strategy.oss]])
 
 (defn- assert-valid-models [model ids premium?]
   (cond
@@ -97,7 +88,7 @@
    {:keys [model model_id] :as config} :- [:map
                                            [:model    cache-config/CachingModel]
                                            [:model_id ms/IntGreaterThanOrEqualToZero]
-                                           [:strategy (CacheStrategyAPI)]]]
+                                           [:strategy ::cache-strategy]]]
   (assert-valid-models model [model_id] (premium-features/enable-cache-granular-controls?))
   (check-cache-access model model_id)
   {:id (cache-config/store! api/*current-user-id* config)})
