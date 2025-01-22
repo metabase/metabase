@@ -11,9 +11,9 @@
 
 (api.macros/defendpoint :put "/namespace/:namespace/key/:key"
   "Upsert a KV-pair for the user"
-  [{nspace :namespace, k :key} :- [:map
-                                   [:key       ms/NonBlankString]
-                                   [:namespace ms/NonBlankString]]
+  [{nmspace :namespace, k :key} :- [:map
+                                    [:key       ms/NonBlankString]
+                                    [:namespace ms/NonBlankString]]
    _query-params
    {v :value
     expires-at :expires_at} :- [:map
@@ -21,7 +21,7 @@
                                 [:expires_at {:optional true} [:maybe :metabase.lib.schema.literal/string.datetime]]]]
   (try (user-key-value/put! api/*current-user-id* (mc/coerce ::types/user-key-value
                                                              {:key k
-                                                              :namespace nspace
+                                                              :namespace nmspace
                                                               :value v
                                                               :expires-at expires-at}
                                                              (mtx/transformer
@@ -36,20 +36,20 @@
 
 (api.macros/defendpoint :get "/namespace/:namespace/key/:key"
   "Get a value for the user"
-  [{:keys [namespace key]} :- [:map
-                               [:key       ms/NonBlankString]
-                               [:namespace ms/NonBlankString]]]
-  (user-key-value/retrieve api/*current-user-id* namespace key))
+  [{nmspace :namespace, k :key} :- [:map
+                                    [:key       ms/NonBlankString]
+                                    [:namespace ms/NonBlankString]]]
+  (user-key-value/retrieve api/*current-user-id* nmspace k))
 
 (api.macros/defendpoint :get "/namespace/:namespace"
   "Returns all KV pairs in a given namespace for the current user"
-  [{:keys [namespace]} :- [:map
-                           [:namespace ms/NonBlankString]]]
-  (user-key-value/retrieve-all api/*current-user-id* namespace))
+  [{nmspace :namespace} :- [:map
+                            [:namespace ms/NonBlankString]]]
+  (user-key-value/retrieve-all api/*current-user-id* nmspace))
 
 (api.macros/defendpoint :delete "/namespace/:namespace/key/:key"
   "Deletes a KV-pair for the user"
-  [{:keys [namespace key]}]
-  (user-key-value/delete! api/*current-user-id* namespace key))
+  [{nmspace :namespace, k :key}]
+  (user-key-value/delete! api/*current-user-id* nmspace k))
 
 (api/define-routes)
