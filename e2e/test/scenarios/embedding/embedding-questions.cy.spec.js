@@ -94,7 +94,7 @@ describe("scenarios > embedding > questions", () => {
       // Question settings: Abbreviated date, day enabled, 24H clock with seconds
       cy.findByText("Tue, Feb 11, 2025, 21:40:27");
       // Question settings: Show mini-bar
-      cy.findAllByTestId("mini-bar");
+      cy.findAllByTestId("mini-bar-container");
 
       // Data model: Subtotal is turned off globally
       cy.findByText("Subtotal").should("not.exist");
@@ -165,7 +165,7 @@ describe("scenarios > embedding > questions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("February 11, 2025, 9:40 PM");
 
-    cy.findAllByTestId("mini-bar").should("not.exist");
+    cy.findAllByTestId("mini-bar-container").should("not.exist");
 
     // Data model: Subtotal is turned off globally
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -196,7 +196,7 @@ describe("scenarios > embedding > questions", () => {
     cy.findByText("€39.72");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tue, Feb 11, 2025, 21:40:27");
-    cy.findAllByTestId("mini-bar");
+    cy.findAllByTestId("mini-bar-container");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Subtotal").should("not.exist");
 

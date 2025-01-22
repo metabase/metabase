@@ -3,6 +3,7 @@
   (:require
    [compojure.core :refer [POST GET PUT DELETE]]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.events :as events]
    [metabase.models.api-key :as api-key]
    [metabase.models.permissions-group :as perms-group]
@@ -50,12 +51,13 @@
 (defn- with-creator [api-key]
   (assoc api-key :creator_id api/*current-user-id*))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Create a new API key (and an associated `User`) with the provided name and group ID."
-  [:as {{:keys [group_id name] :as _body} :body}]
-  {group_id ms/PositiveInt
-   name     ms/NonBlankString}
+  [_route-params
+   _query-params
+   {:keys [group_id name] :as _body} :- [:map
+                                         [:group_id ms/PositiveInt]
+                                         [:name     ms/NonBlankString]]]
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/ApiKey :name name))
               "name" "An API key with this name already exists.")
@@ -89,13 +91,14 @@
   (api/check-superuser)
   (t2/count :model/ApiKey :scope nil))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id"
+(api.macros/defendpoint :put "/:id"
   "Update an API key by changing its group and/or its name"
-  [id :as {{:keys [group_id name] :as _body} :body}]
-  {id       ms/PositiveInt
-   group_id [:maybe ms/PositiveInt]
-   name     [:maybe ms/NonBlankString]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [group_id name] :as _body} :- [:map
+                                         [:group_id {:optional true} [:maybe ms/PositiveInt]]
+                                         [:name     {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-superuser)
   (let [api-key-before (-> (t2/select-one :model/ApiKey :id id)
                            ;; hydrate the group_name for audit logging
@@ -117,11 +120,10 @@
                                                     :user-id         api/*current-user-id*})
       (present-api-key updated-api-key))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id/regenerate"
+(api.macros/defendpoint :put "/:id/regenerate"
   "Regenerate an API Key"
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/check-superuser)
   (let [api-key-before (-> (t2/select-one :model/ApiKey id)
                            (t2/hydrate :group)
@@ -140,19 +142,17 @@
                             :unmasked_key unhashed-key
                             :masked_key (api-key/mask unhashed-key)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Get a list of API keys with the default scope. Non-paginated."
   []
   (api/check-superuser)
   (let [api-keys (t2/hydrate (t2/select :model/ApiKey :scope nil) :group :updated_by)]
     (map present-api-key api-keys)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/:id"
+(api.macros/defendpoint :delete "/:id"
   "Delete an ApiKey"
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/check-superuser)
   (let [api-key (-> (t2/select-one :model/ApiKey id)
                     (t2/hydrate :group)
