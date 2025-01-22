@@ -3,7 +3,7 @@ import {
   bracketMatching,
   syntaxHighlighting,
 } from "@codemirror/language";
-import { EditorView, drawSelection, keymap } from "@codemirror/view";
+import { EditorView, drawSelection, keymap, tooltips } from "@codemirror/view";
 import { type Tag, tags } from "@lezer/highlight";
 import { Prec } from "@uiw/react-codemirror";
 import { getNonce } from "get-nonce";
@@ -15,8 +15,10 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import type * as Lib from "metabase-lib";
 
+import css from "./Editor.module.css";
 import { customExpression } from "./language";
 import { suggestions } from "./suggestions";
+import { useTooltip } from "./tooltip";
 
 type Options = {
   startRule: "expression" | "aggregation" | "boolean";
@@ -27,6 +29,19 @@ type Options = {
   onCommit: (source: string) => void;
   reportTimezone?: string;
 };
+
+function getTooltipParent() {
+  let el = document.getElementById("query-builder-tooltip-parent");
+  if (el) {
+    return el;
+  }
+
+  el = document.createElement("div");
+  el.id = "query-builder-tooltip-parent";
+  el.className = css.tooltips;
+  document.body.append(el);
+  return el;
+}
 
 export function useExtensions(options: Options) {
   const {
@@ -40,8 +55,9 @@ export function useExtensions(options: Options) {
   } = options;
 
   const metadata = useSelector(getMetadata);
+  const [tooltip, content] = useTooltip({ query, metadata, reportTimezone });
 
-  return useMemo(() => {
+  const extensions = useMemo(() => {
     return [
       nonce(),
       fonts(),
@@ -87,6 +103,11 @@ export function useExtensions(options: Options) {
         expressionIndex,
         metadata,
       }),
+      tooltips({
+        position: "fixed",
+        parent: getTooltipParent(),
+      }),
+      tooltip,
     ]
       .flat()
       .filter(isNotNull);
@@ -99,7 +120,10 @@ export function useExtensions(options: Options) {
     onCommit,
     metadata,
     reportTimezone,
+    tooltip,
   ]);
+
+  return { extensions, content };
 }
 
 function nonce() {

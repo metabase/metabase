@@ -54,7 +54,7 @@ export function suggestions(options: SuggestOptions) {
       suggestSegments(options),
       suggestFunctions(options),
       suggestAggregations(options),
-      suggestPopular(options),
+      null && suggestPopular(options),
     ].filter(isNotNull),
     addToOptions: [
       {
@@ -73,7 +73,7 @@ export function suggestions(options: SuggestOptions) {
   });
 }
 
-function tokenAtPos(source: string, pos: number): TokenWithText | null {
+export function tokenAtPos(source: string, pos: number): TokenWithText | null {
   const { tokens } = tokenize(source);
 
   const idx = tokens.findIndex(token => token.start <= pos && token.end >= pos);
@@ -397,6 +397,7 @@ function expressionClauseCompletion(
       label: clause.displayName,
       displayLabel: clause.displayName,
       detail: helpText.description,
+      icon: "function",
     });
   }
 
@@ -404,6 +405,7 @@ function expressionClauseCompletion(
     type,
     label: suggestionText(clause),
     displayLabel: clause.displayName,
+    icon: "function",
   };
 }
 

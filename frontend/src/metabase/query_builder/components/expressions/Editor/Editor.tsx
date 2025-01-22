@@ -48,7 +48,7 @@ export function Editor(props: EditorProps) {
   const { source, onSourceChange, commitExpression, hasChanges } =
     useExpression(props);
 
-  const extensions = useExtensions({
+  const { extensions, content } = useExtensions({
     startRule,
     query,
     stageIndex,
@@ -90,6 +90,7 @@ export function Editor(props: EditorProps) {
         />
       </div>
       {error && hasChanges && <Box className={S.error}>{error.message}</Box>}
+      {content}
     </>
   );
 }
