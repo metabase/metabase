@@ -2,9 +2,9 @@
   "/api/dataset endpoints."
   (:require
    [clojure.string :as str]
-   [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.api.field :as api.field]
+   [metabase.api.macros :as api.macros]
    [metabase.api.query-metadata :as api.query-metadata]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -80,11 +80,12 @@
                                       rff)
             (qp/process-query (update query :info merge info) rff)))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
-  [:as {{:keys [database] :as query} :body}]
-  {database [:maybe :int]}
+  [_route-params
+   _query-params
+   query :- [:map
+             [:database {:optional true} [:maybe :int]]]]
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
@@ -112,7 +113,7 @@
   "Regex for matching valid export formats (e.g., `json`) for queries.
    Inteneded for use in an endpoint definition:
 
-     (api/defendpoint-schema POST [\"/:export-format\", :export-format export-format-regex]"
+     (api.macros/defendpoint :post [\"/:export-format\", :export-format export-format-regex]"
   (re-pattern (str "(" (str/join "|" (map u/qualified-name (qp.streaming/export-formats))) ")")))
 
 (def ^:private column-ref-regex #"^\[.+\]$")
@@ -125,19 +126,21 @@
     json-key
     (keyword json-key)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST ["/:export-format", :export-format export-format-regex]
+(api.macros/defendpoint :post ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
-  [export-format :as {{:keys [query visualization_settings pivot_results format_rows]
-                       :or   {visualization_settings "{}"}} :params}]
-  {query                  ms/JSONString
-   visualization_settings ms/JSONString
-   format_rows            [:maybe ms/BooleanValue]
-   pivot_results          [:maybe ms/BooleanValue]
-   export-format          ExportFormat}
+  [{:keys [export-format]} :- [:map
+                               [:export-format ExportFormat]]
+   {:keys                  [query]
+    format-rows            :format_rows
+    pivot-results          :pivot_results
+    visualization-settings :visualization_settings} :- [:map
+                                                        [:query                  ms/JSONString]
+                                                        [:visualization_settings {:default "{}"}  ms/JSONString]
+                                                        [:format_rows            {:default false} [:maybe ms/BooleanValue]]
+                                                        [:pivot_results          {:default false} [:maybe ms/BooleanValue]]]]
   (let [{:keys [was-pivot] :as query} (json/decode+kw query)
         query                         (dissoc query :was-pivot)
-        viz-settings                  (-> (json/decode visualization_settings viz-setting-key-fn)
+        viz-settings                  (-> (json/decode visualization-settings viz-setting-key-fn)
                                           (update :table.columns mbql.normalize/normalize)
                                           mb.viz/norm->db)
         query                         (-> query
@@ -145,8 +148,8 @@
                                           (dissoc :constraints)
                                           (update :middleware #(-> %
                                                                    (dissoc :add-default-userland-constraints? :js-int-to-string?)
-                                                                   (assoc :format-rows?          (or format_rows false)
-                                                                          :pivot?                (or pivot_results false)
+                                                                   (assoc :format-rows?          (or format-rows false)
+                                                                          :pivot?                (or pivot-results false)
                                                                           :process-viz-settings? true
                                                                           :skip-results-metadata? true))))]
     (run-streaming-query
@@ -157,19 +160,21 @@
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/query_metadata"
+(api.macros/defendpoint :post "/query_metadata"
   "Get all of the required query metadata for an ad-hoc query."
-  [:as {{:keys [database] :as query} :body}]
-  {database ms/PositiveInt}
+  [_route-params
+   _query-params
+   query :- [:map
+             [:database ms/PositiveInt]]]
   (api.query-metadata/batch-fetch-query-metadata [query]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/native"
+(api.macros/defendpoint :post "/native"
   "Fetch a native version of an MBQL query."
-  [:as {{:keys [database pretty] :as query} :body}]
-  {database ms/PositiveInt
-   pretty  [:maybe :boolean]}
+  [_route-params
+   _query-params
+   {:keys [database pretty] :as query} :- [:map
+                                           [:database ms/PositiveInt]
+                                           [:pretty   {:default false} [:maybe :boolean]]]]
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
@@ -178,11 +183,12 @@
       (cond-> compiled
         (not (false? pretty)) (update :query prettify)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/pivot"
+(api.macros/defendpoint :post "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
-  [:as {{:keys [database] :as query} :body}]
-  {database [:maybe ms/PositiveInt]}
+  [_route-params
+   _query-params
+   {:keys [database] :as query} :- [:map
+                                    [:database {:optional true} [:maybe ms/PositiveInt]]]]
   (when-not database
     (throw (Exception. (str (tru "`database` is required for all queries.")))))
   (api/read-check :model/Database database)
@@ -219,21 +225,23 @@
    parameter query
    (fn [] (parameter-field-values field-ids query))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/parameter/values"
+(api.macros/defendpoint :post "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
-  [:as {{:keys [parameter field_ids]} :body}]
-  {parameter ms/Parameter
-   field_ids [:maybe [:sequential ms/PositiveInt]]}
+  [_route-params
+   _query-params
+   {:keys [parameter field_ids]} :- [:map
+                                     [:parameter ms/Parameter]
+                                     [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (parameter-values parameter field_ids nil))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/parameter/search/:query"
+(api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
-  [query :as {{:keys [parameter field_ids]} :body}]
-  {parameter ms/Parameter
-   field_ids [:maybe [:sequential ms/PositiveInt]]
-   query     ms/NonBlankString}
+  [{:keys [query]} :- [:map
+                       [:query ms/NonBlankString]]
+   _query-params
+   {:keys [parameter field_ids]} :- [:map
+                                     [:parameter ms/Parameter]
+                                     [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (parameter-values parameter field_ids query))
 
 (api/define-routes)
