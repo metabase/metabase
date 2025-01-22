@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 
 import { skipToken } from "metabase/api";
-import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper as DefaultLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setRequestError,
