@@ -10,11 +10,10 @@ import { useLocationSync } from "metabase/dashboard/hooks/use-location-sync";
 import type { RefreshPeriod } from "metabase/dashboard/types";
 import type { DashboardUrlHashOptions } from "metabase/dashboard/types/hash-options";
 import { parseHashOptions } from "metabase/lib/browser";
-import { useEmbedFrameOptions } from "metabase/public/hooks";
+import { useEmbedFont, useEmbedFrameOptions } from "metabase/public/hooks";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
 import { useAutoScrollToDashcard } from "./use-auto-scroll-to-dashcard";
-import { useEmbedFont } from "./use-embed-font";
 
 export const useDashboardUrlParams = ({
   location,
@@ -72,9 +71,7 @@ export const useDashboardUrlParams = ({
   useEffect(() => {
     const { font } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
 
-    if (font) {
-      setFont(font);
-    }
+    setFont(font ?? null);
   }, [location.hash, setFont]);
 
   return {

@@ -327,7 +327,9 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.appBar().findByText("Orders in a dashboard");
 
-      H.queryBuilderHeader().button("Summarize").click();
+      H.queryBuilderHeader()
+        .button(/Summarize/)
+        .click();
       H.rightSidebar().findByText("Count").click();
       H.popover()
         .findByText(/Average of/)
@@ -379,12 +381,8 @@ describe("Dashboard > Dashboard Questions", () => {
         .should("exist");
     });
 
-    it("can save a native question to a dashboard", () => {
-      cy.visit("/");
-      H.newButton("SQL query").click();
-
-      H.focusNativeEditor();
-      cy.realType("SELECT COUNT(*) / 2 as half_count FROM ORDERS");
+    it("can save a native question to a dashboard", { tags: "@flaky" }, () => {
+      H.startNewNativeQuestion({ query: "SELECT 123" });
 
       H.queryBuilderHeader().button("Save").click();
       H.modal().within(() => {
@@ -475,7 +473,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.dashboardCards().findAllByText("Orders").should("have.length", 1);
     });
 
-    it("can share a dashboard card via public link", () => {
+    it("can share a dashboard card via public link", { tags: "@flaky" }, () => {
       H.createQuestion(
         {
           name: "Total Orders",

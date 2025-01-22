@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.error :as me]
+   [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
@@ -11,8 +12,18 @@
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
 
+(def search-models
+  "Set of search model string names."
+  #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"})
+
+(def ^:private search-model->toucan-model
+  (into {}
+        (map (fn [search-model]
+               [search-model (-> search-model api/model->db-model :db-model)]))
+        search-models))
+
 (def ^:private SearchModel
-  [:enum "dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"])
+  (into [:enum] search-models))
 
 (def ^:private AttrValue
   "Key must be present, to show it's been explicitly considered.
@@ -30,6 +41,7 @@
    :collection-id       :pk
    :created-at          :timestamp
    :creator-id          :pk
+   :dashboard-id        :int
    :dashboardcard-count :int
    :database-id         :pk
    :id                  :text
@@ -57,6 +69,7 @@
         [:id                                                ;;  in addition to being a filter, this is a key property
          :name
          :official-collection
+         :dashboard-id
          :dashboardcard-count
          :last-viewed-at
          :pinned
@@ -263,16 +276,29 @@
                               (some? (first column))))]
     (qualify-column table column)))
 
-(defmulti spec
+(defmulti spec*
+  "Impl for [[spec]]."
+  {:arglists '([search-model])}
+  identity)
+
+(defn spec
   "Register a metabase model as a search-model.
   Once we're trying up the fulltext search project, we can inline a detailed explanation.
   For now, see its schema, and the existing definitions that use it."
-  (fn [search-model] search-model))
+  [search-model]
+  ;; make sure the model namespace is loaded.
+  (t2/resolve-model (search-model->toucan-model search-model))
+  (spec* search-model))
 
 (defn specifications
   "A mapping from each search-model to its specification."
   []
-  (into {} (for [[s spec-fn] (methods spec)] [s (spec-fn s)])))
+  (into {}
+        (map (fn [[search-model toucan-model]]
+               ;; make sure the model namespace is loaded.
+               (t2/resolve-model toucan-model)
+               [search-model (spec search-model)]))
+        search-model->toucan-model))
 
 (defn validate-spec!
   "Check whether a given specification is valid"
@@ -292,15 +318,16 @@
                    (update :attrs #(merge ~default-attrs %)))]
      (validate-spec! spec#)
      (derive (:model spec#) :hook/search-index)
-     (defmethod spec ~search-model [~'_] spec#)))
+     (defmethod spec* ~search-model [~'_] spec#)))
 
 ;; TODO we should memoize this for production (based on spec values)
 (defn model-hooks
   "Return an inverted map of data dependencies to search models, used for updating them based on underlying models."
   []
-  (merge-hooks
-   (for [[search-model spec-fn] (methods spec)]
-     (search-model-hooks (spec-fn search-model)))))
+  (->> (specifications)
+       vals
+       (map search-model-hooks)
+       merge-hooks))
 
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."

@@ -59,6 +59,7 @@
 
 (defmulti can-run-method
   "Returns whether the query is runnable based on first stage :lib/type"
+  {:arglists '([query card-type])}
   (fn [query _card-type]
     (:lib/type (lib.util/query-stage query 0))))
 
@@ -93,6 +94,7 @@
 
 (defmulti can-save-method
   "Returns whether the query can be saved based on first stage :lib/type."
+  {:arglists '([query card-type])}
   (fn [query _card-type]
     (:lib/type (lib.util/query-stage query 0))))
 

@@ -20,6 +20,7 @@
    [metabase.config :as config]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -240,26 +241,44 @@
    params-type :- ::param-type]
   (get-in args [:params params-type :binding] '_))
 
+(defn- invalid-params-specific-errors [explanation]
+  (-> explanation
+      me/with-spell-checking
+      (me/humanize {:wrap mu/humanize-include-value})))
+
+(defn- invalid-params-errors [schema explanation specific-errors]
+  (or (when (and (map? specific-errors)
+                 (= (mc/type schema) :map))
+        (into {}
+              (let [specific-error-keys (set (keys specific-errors))]
+                (keep (fn [child]
+                        (when (contains? specific-error-keys (first child))
+                          [(first child) (umd/describe (last child))]))))
+              (mc/children schema)))
+      (me/humanize explanation {:wrap #(umd/describe (:schema %))})))
+
 (mu/defn decode-and-validate-params
   "Impl for [[defendpoint]]."
   [params-type :- ::param-type
    schema      :- some?
    params]
-  (let [decoded ((decoder schema) params)]
+  (let [params  (or params {})
+        decoded ((decoder schema) params)]
     (when-not (mr/validate schema decoded)
       (throw (ex-info (format "Invalid %s" (case params-type
                                              :route "route parameters"
                                              :query "query parameters"
                                              :body  "body"))
-                      {:status-code 400
-                       :api/debug   {:params-type params-type
-                                     :schema      (mc/form schema)
-                                     :params      params
-                                     :decoded     decoded}
-                       :error       (-> schema
-                                        (mr/explain decoded)
-                                        me/with-spell-checking
-                                        (me/humanize {:wrap mu/humanize-include-value}))})))
+                      (let [explanation     (mr/explain schema decoded)
+                            specific-errors (invalid-params-specific-errors explanation)
+                            errors          (invalid-params-errors schema explanation specific-errors)]
+                        {:status-code     400
+                         #_:api/debug     #_{:params-type params-type
+                                             :schema      (mc/form schema)
+                                             :params      params
+                                             :decoded     decoded}
+                         :specific-errors specific-errors
+                         :errors          errors}))))
     decoded))
 
 (mu/defn- decode-and-validate-params-form
@@ -431,7 +450,7 @@
   [{:keys [method route], :as _args} base-handler]
   `(compojure/make-route
     ~method
-    (clout/route-compile ~(:path route) ~(:regexes route))
+    (clout/route-compile ~(:path route) ~(:regexes route {}))
     ~base-handler))
 
 (mu/defn defendpoint-openapi-spec

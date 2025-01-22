@@ -10,7 +10,6 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard :as api.dashboard]
-   [metabase.api.pivots :as api.pivots]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
@@ -36,6 +35,7 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -1134,10 +1134,12 @@
       (testing "A plain copy with nothing special"
         (mt/with-temp [:model/Dashboard dashboard {:name        "Test Dashboard"
                                                    :description "A description"
+                                                   :width       "full"
                                                    :creator_id  (mt/user->id :rasta)}]
           (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard)))]
             (is (=? {:name          "Test Dashboard"
                      :description   "A description"
+                     :width         "full"
                      :creator_id    (mt/user->id :rasta)
                      :collection    false
                      :collection_id false}
@@ -4530,11 +4532,11 @@
                          (format "/dashboard/%s/dashcard/%s/card/%s/query/%s" dashboard-id dashcard-id card-id (name export-format))
                          :format_rows apply-formatting?)
                         ((get output-helper export-format)))))))))))
+
 (deftest can-restore
   (let [can-restore? (fn [dash-id user]
                        (:can_restore (mt/user-http-request user :get 200 (str "dashboard/" dash-id))))]
     (testing "I can restore a simply trashed dashboard"
-
       (mt/with-temp [:model/Collection {coll-id :id} {:name "A"}
                      :model/Dashboard {dash-id :id} {:name          "My Dashboard"
                                                      :collection_id coll-id}]

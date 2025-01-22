@@ -50,6 +50,7 @@ const DataSelectorSchemaPicker = ({
         }
         renderItemIcon={() => <Icon name="folder" size={16} />}
         showItemArrows={hasNextStep}
+        maxHeight={Infinity}
       />
     </Box>
   );

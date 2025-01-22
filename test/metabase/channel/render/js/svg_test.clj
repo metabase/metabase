@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.channel.render.js.svg-test
+(ns metabase.channel.render.js.svg-test
   "Testing of the svgs produced by the graal js engine and the static-viz bundle. The model is
 
   query-results -> js engine with bundle -> svg-string -> svg png renderer

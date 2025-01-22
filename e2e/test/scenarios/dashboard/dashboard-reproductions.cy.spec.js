@@ -876,7 +876,9 @@ describe("issue 31766", () => {
 
     cy.log("Update viz settings");
 
-    H.openVizTypeSidebar();
+    cy.findByTestId("view-footer")
+      .findByRole("button", { name: "Visualization" })
+      .click();
     cy.findByTestId("Detail-button").click();
 
     saveUpdatedQuestion();

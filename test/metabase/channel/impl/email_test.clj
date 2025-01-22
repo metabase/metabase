@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
-   [metabase.email :as email]
+   [metabase.channel.email :as email]
    [metabase.test :as mt]))
 
 (deftest bcc-enabled-test

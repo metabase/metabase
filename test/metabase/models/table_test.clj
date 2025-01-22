@@ -6,7 +6,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.models.table :as table]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
