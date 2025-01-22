@@ -1,4 +1,5 @@
 import { push } from "react-router-redux";
+import { useLocation } from "react-use";
 
 import { SettingsSetting } from "metabase/admin/settings/components/SettingsSetting";
 import type { SettingElement } from "metabase/admin/settings/types";
@@ -107,25 +108,32 @@ function SettingsList({
   onChangeSetting,
   reloadSettings,
 }: SettingsListProps) {
+  const { hash } = useLocation();
+
   return (
     <ul>
       {settingElements
         .filter(({ getHidden }) =>
           getHidden ? !getHidden(settingValues, derivedSettingValues) : true,
         )
-        .map((settingElement, index) => (
-          <SettingsSetting
-            key={settingElement.key}
-            setting={settingElement}
-            onChange={(newValue: SettingValue) =>
-              updateSetting(settingElement, newValue)
-            }
-            onChangeSetting={onChangeSetting}
-            reloadSettings={reloadSettings}
-            autoFocus={index === 0}
-            settingValues={settingValues}
-          />
-        ))}
+        .map((settingElement, index) => {
+          const isAnchoredTo = hash === `#${settingElement.key}`;
+
+          return (
+            <SettingsSetting
+              key={settingElement.key}
+              setting={settingElement}
+              onChange={(newValue: SettingValue) =>
+                updateSetting(settingElement, newValue)
+              }
+              onChangeSetting={onChangeSetting}
+              reloadSettings={reloadSettings}
+              autoFocus={hash ? isAnchoredTo : index === 0}
+              autoScrollIntoView={isAnchoredTo}
+              settingValues={settingValues}
+            />
+          );
+        })}
     </ul>
   );
 }
