@@ -1,3 +1,4 @@
+import { QueryStatus } from "@reduxjs/toolkit/query";
 import type { Location } from "history";
 import { useEffect, useState } from "react";
 import { withRouter } from "react-router";
@@ -28,40 +29,42 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
     onClose: handleClose,
   }: MoveQuestionsIntoDashboardsModalProps) => {
     const collectionId = Urls.extractCollectionId(params.slug);
-    const dispatch = useDispatch();
-    const [acknowledgedInfoStep, setAcknowledgedInfoStep] = useState(true);
+    const [acknowledgedInfoStep, setAcknowledgedInfoStep] = useState(false);
 
+    const dispatch = useDispatch();
     const candidatesReq = useListCollectionDashboardQuestionCandidatesQuery(
       collectionId ? collectionId : skipToken,
     );
+    const [bulkMove, bulkMoveReq] =
+      useMoveCollectionDashboardQuestionCandidatesMutation();
 
-    // TODO: handle error and loading state from the update result
-    const [move] = useMoveCollectionDashboardQuestionCandidatesMutation();
-    const handleBulkMoveQuestionIntoDashboards = async () => {
-      if (!collectionId) {
-        throw new Error("arg");
-      }
-
-      //
-      move({
-        collectionId,
-        cardIds: candidatesReq.data?.data.map(card => card.id) ?? [],
-      })
-        .unwrap()
-        .then(() => {
-          handleClose();
-        })
-        .catch(err => {
-          console.error(err);
-        });
-    };
-
+    // redirect to base collection page if there's an invalid collection id
     useEffect(() => {
       if (collectionId === undefined) {
         const redirectPath = pathname.replace("/cleanup-questions", "");
         dispatch(replace(redirectPath));
       }
     }, [dispatch, collectionId, pathname]);
+
+    const handleBulkMoveQuestionIntoDashboards = async () => {
+      if (collectionId) {
+        const cardIds = candidatesReq.data?.data.map(card => card.id) ?? [];
+        try {
+          await bulkMove({ collectionId, cardIds }).unwrap();
+          handleClose();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    };
+
+    // reset error state after 5 seconds
+    useEffect(() => {
+      if (bulkMoveReq.status === QueryStatus.rejected) {
+        const timeout = setTimeout(() => bulkMoveReq.reset(), 5000);
+        return () => clearTimeout(timeout);
+      }
+    }, [bulkMoveReq]);
 
     if (!acknowledgedInfoStep) {
       return (
@@ -76,7 +79,9 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
       <ConfirmMoveDashboardQuestionCandidatesModal
         candidates={candidatesReq.data?.data}
         isLoading={candidatesReq.isLoading}
-        error={candidatesReq.error}
+        fetchError={candidatesReq.error}
+        isMutating={bulkMoveReq.isLoading}
+        mutationError={bulkMoveReq.error}
         onConfirm={handleBulkMoveQuestionIntoDashboards}
         onCancel={handleClose}
       />
