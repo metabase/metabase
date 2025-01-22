@@ -51,10 +51,9 @@ jobs:
 
             const inputChunks = Number(process.env.chunks);
             const regularChunks = inputChunks - specialTests.length;
+
             const regularTests = chunkedFiles.map((files, index) => ({
               name: `e2e-group-${index + 1}`,
-              specs: files.join(","),
-              tags: '',
               runner: index < 5 ? beefyRunner : defaultRunner, // FOR TESTING
             }));
 
