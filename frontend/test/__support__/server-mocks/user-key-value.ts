@@ -10,6 +10,14 @@ export function setupGetUserKeyValueEndpoint(kv: UserKeyValue) {
   );
 }
 
+export function setupNullGetUserKeyValueEndpoints() {
+  return fetchMock.get(
+    `express:/api/user-key-value/namespace/:namespace/key/:key`,
+    { status: 200 },
+    { overwriteRoutes: true },
+  );
+}
+
 export function setupUpdateUserKeyValueEndpoint(kv: UserKeyValue) {
   return fetchMock.put(
     `path:/api/user-key-value/namespace/${kv.namespace}/key/${kv.key}`,

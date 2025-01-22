@@ -1,7 +1,6 @@
 /* istanbul ignore file */
-import fetchMock from "fetch-mock";
-
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupDashboardQuestionCandidatesEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type {
@@ -34,10 +33,7 @@ export const setup = ({
   hasEnterprisePlugins = false,
   dashboardQuestionCandidates = [],
 }: SetupOpts) => {
-  fetchMock.get("express:/api/collection/:id/dashboard-question-candidates", {
-    count: dashboardQuestionCandidates.length,
-    data: dashboardQuestionCandidates,
-  });
+  setupDashboardQuestionCandidatesEndpoint(dashboardQuestionCandidates);
 
   const settings = mockSettings({ "token-features": tokenFeatures });
   const state = createMockState({ settings });
