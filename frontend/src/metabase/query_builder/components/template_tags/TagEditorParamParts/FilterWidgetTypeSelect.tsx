@@ -7,6 +7,8 @@ import CS from "metabase/css/core/index.css";
 import { Select } from "metabase/ui";
 import type { TemplateTag } from "metabase-types/api";
 
+import type { WidgetOption } from "../types";
+
 import {
   ContainerLabel,
   ErrorSpan,
@@ -22,7 +24,7 @@ export function FilterWidgetTypeSelect({
   tag: TemplateTag;
   value: string;
   onChange: (widgetType: string) => void;
-  options: { name?: string; type: string }[];
+  options: WidgetOption[];
 }) {
   const hasOptions = options.length > 0;
   const hasNoWidgetType = tag["widget-type"] === "none" || !tag["widget-type"];
@@ -31,7 +33,7 @@ export function FilterWidgetTypeSelect({
     () =>
       (hasOptions ? options : [{ name: t`None`, type: "none" }]).map(
         option => ({
-          label: option.name,
+          label: option.menuName ?? option.name,
           value: option.type,
         }),
       ),
