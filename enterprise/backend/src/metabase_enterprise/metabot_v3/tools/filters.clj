@@ -155,7 +155,9 @@
       (if-let [card (api.card/get-card report_id)]
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
           [(metabot-v3.tools.u/card-field-id-prefix report_id)
-           (lib/query mp (lib.metadata/card mp report_id))])
+           (lib/query mp (cond-> (lib.metadata/card mp report_id)
+                           ;; pivot questions have strange result-columns so we work with the dataset-query
+                           (#{:question} (:type card)) (get :dataset-query)))])
         (throw (ex-info (str "No report found with report_id " report_id) {:agent-error? true
                                                                            :data_source data-source})))
 
