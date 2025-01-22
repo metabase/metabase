@@ -1,7 +1,6 @@
 (ns metabase.api.public
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
-   [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.snowplow :as snowplow]
@@ -184,16 +183,16 @@
                             [:parameters {:optional true} [:maybe ms/JSONString]]]]
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/card/:uuid/query/:export-format"
+(api.macros/defendpoint :get "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
-  [uuid export-format :as {{:keys [parameters format_rows pivot_results]} :params}]
-  {uuid          ms/UUIDString
-   export-format api.dataset/ExportFormat
-   format_rows   [:maybe :boolean]
-   pivot_results [:maybe :boolean]
-   parameters    [:maybe ms/JSONString]}
+  [{:keys [uuid export-format]} :- [:map
+                                    [:uuid          ms/UUIDString]
+                                    [:export-format api.dataset/ExportFormat]]
+   {:keys [parameters format_rows pivot_results]} :- [:map
+                                                      [:format_rows   {:default false} [:maybe :boolean]]
+                                                      [:pivot_results {:default false} [:maybe :boolean]]
+                                                      [:parameters    {:optional true} [:maybe ms/JSONString]]]]
   (process-query-for-card-with-public-uuid
    uuid
    export-format
@@ -309,18 +308,18 @@
               :parameters    parameters)
       (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
-                       :export-format api.dataset/export-format-regex]
+(api.macros/defendpoint :post ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
+                               :export-format api.dataset/export-format-regex]
   "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the export formats. Does not require auth credentials. Public sharing must be enabled."
-  [uuid card-id dashcard-id parameters export-format :as {{:keys [format_rows pivot_results]} :params}]
-  {uuid          ms/UUIDString
-   dashcard-id   ms/PositiveInt
-   card-id       ms/PositiveInt
-   parameters    [:maybe ms/JSONString]
-   format_rows   [:maybe ms/BooleanValue]
-   pivot_results [:maybe ms/BooleanValue]
-   export-format (into [:enum] api.dataset/export-formats)}
+  [{:keys [uuid dashcard-id card-id export-format]} :- [:map
+                                                        [:uuid          ms/UUIDString]
+                                                        [:dashcard-id   ms/PositiveInt]
+                                                        [:card-id       ms/PositiveInt]
+                                                        [:export-format (into [:enum] api.dataset/export-formats)]]
+   {:keys [parameters format_rows pivot_results]} :- [:map
+                                                      [:parameters    {:optional true} [:maybe ms/JSONString]]
+                                                      [:format_rows   {:default false} [:maybe ms/BooleanValue]]
+                                                      [:pivot_results {:default false} [:maybe ms/BooleanValue]]]]
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
