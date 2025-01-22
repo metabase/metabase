@@ -289,15 +289,16 @@
   in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
   database details."
   [_route-params
-   {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]} :- [:map
-                                                                                                                                [:include                     (mu/with-api-error-message
-                                                                                                                                                               [:maybe [:= "tables"]]
-                                                                                                                                                               (deferred-tru "include must be either empty or the value 'tables'"))]
-                                                                                                                                [:include_analytics           {:default false} [:maybe :boolean]]
-                                                                                                                                [:saved                       {:default false} [:maybe :boolean]]
-                                                                                                                                [:include_editable_data_model {:default false} [:maybe :boolean]]
-                                                                                                                                [:exclude_uneditable_details  {:default false} [:maybe :boolean]]
-                                                                                                                                [:include_only_uploadable     {:default false} [:maybe :boolean]]]]
+   {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]}
+   :- [:map
+       [:include                     (mu/with-api-error-message
+                                      [:maybe [:= "tables"]]
+                                      (deferred-tru "include must be either empty or the value 'tables'"))]
+       [:include_analytics           {:default false} [:maybe :boolean]]
+       [:saved                       {:default false} [:maybe :boolean]]
+       [:include_editable_data_model {:default false} [:maybe :boolean]]
+       [:exclude_uneditable_details  {:default false} [:maybe :boolean]]
+       [:include_only_uploadable     {:default false} [:maybe :boolean]]]]
   (let [include-tables?                 (= include "tables")
         include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
@@ -497,11 +498,12 @@
   and tables, with no additional metadata."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_hidden include_editable_data_model remove_inactive skip_fields]} :- [:map
-                                                                                        [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                        [:remove_inactive             {:default false} [:maybe ms/BooleanValue]]
-                                                                                        [:skip_fields                 {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [include_hidden include_editable_data_model remove_inactive skip_fields]}
+   :- [:map
+       [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+       [:remove_inactive             {:default false} [:maybe ms/BooleanValue]]
+       [:skip_fields                 {:default false} [:maybe ms/BooleanValue]]]]
   (db-metadata id
                include_hidden
                include_editable_data_model
@@ -786,16 +788,17 @@
   "Add a new `Database`."
   [_route-params
    _query-params
-   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]} :- [:map
-                                                                                                                      [:name              ms/NonBlankString]
-                                                                                                                      [:engine            DBEngineString]
-                                                                                                                      [:details           ms/Map]
-                                                                                                                      [:is_full_sync      {:optional true} [:maybe {:default true} ms/BooleanValue]]
-                                                                                                                      [:is_on_demand      {:optional true} [:maybe {:default false} ms/BooleanValue]]
-                                                                                                                      [:schedules         {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
-                                                                                                                      [:auto_run_queries  {:default false} [:maybe :boolean]]
-                                                                                                                      [:cache_ttl         {:optional true} [:maybe ms/PositiveInt]]
-                                                                                                                      [:connection_source {:optional true} [:maybe {:default :admin} [:enum :admin :setup]]]]]
+   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]}
+   :- [:map
+       [:name              ms/NonBlankString]
+       [:engine            DBEngineString]
+       [:details           ms/Map]
+       [:is_full_sync      {:optional true} [:maybe {:default true} ms/BooleanValue]]
+       [:is_on_demand      {:optional true} [:maybe {:default false} ms/BooleanValue]]
+       [:schedules         {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+       [:auto_run_queries  {:default false} [:maybe :boolean]]
+       [:cache_ttl         {:optional true} [:maybe ms/PositiveInt]]
+       [:connection_source {:optional true} [:maybe {:default :admin} [:enum :admin :setup]]]]]
   (api/check-superuser)
   (when cache_ttl
     (api/check (premium-features/enable-cache-granular-controls?)
