@@ -20,6 +20,10 @@ import {
   alertIsValid,
   getAlertTriggerOptions,
 } from "metabase/lib/notifications";
+import {
+  getHasConfiguredAnyChannel,
+  getHasConfiguredEmailChannel,
+} from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { AlertModalSettingsBlock } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/AlertTriggerIcon";
@@ -46,6 +50,8 @@ import type {
   ScheduleType,
   UpdateAlertNotificationRequest,
 } from "metabase-types/api";
+
+import { ChannelSetupModal } from "../ChannelSetupModal";
 
 import S from "./CreateOrEditQuestionAlertModal.module.css";
 
@@ -110,13 +116,17 @@ export const CreateOrEditQuestionAlertModal = ({
   const isEditMode = !!editingNotification;
   const subscription = notification?.subscriptions[0];
 
-  const { data: channelSpec } = useGetChannelInfoQuery();
+  const { data: channelSpec, isLoading: isLoadingChannelInfo } =
+    useGetChannelInfoQuery();
   const { data: hookChannels } = useListChannelsQuery();
 
   const [createNotification] = useCreateNotificationMutation();
   const [updateNotification] = useUpdateNotificationMutation();
   const [sendUnsavedNotification, { isLoading }] =
     useSendUnsavedNotificationMutation();
+
+  const hasConfiguredAnyChannel = getHasConfiguredAnyChannel(channelSpec);
+  const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
 
   const triggerOptions = useMemo(
     () =>
@@ -223,6 +233,14 @@ export const CreateOrEditQuestionAlertModal = ({
       }
     }
   };
+
+  const channelRequirementsMet = isAdmin
+    ? hasConfiguredAnyChannel
+    : hasConfiguredEmailChannel;
+
+  if (!isLoadingChannelInfo && channelSpec && !channelRequirementsMet) {
+    return <ChannelSetupModal isAdmin={isAdmin} onClose={onClose} />;
+  }
 
   if (!notification || !subscription) {
     return null;

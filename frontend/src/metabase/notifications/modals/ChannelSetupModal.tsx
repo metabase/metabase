@@ -1,0 +1,57 @@
+import { Link } from "react-router";
+import { t } from "ttag";
+
+import { Button, Icon, type IconName, Modal, Stack, Text } from "metabase/ui";
+
+const CHANNELS_CONFIG: {
+  title: string;
+  icon: IconName;
+  link: string;
+}[] = [
+  {
+    title: t`SMTP`,
+    icon: "mail",
+    link: "/admin/settings/email",
+  },
+  {
+    title: t`Slack`,
+    icon: "slack",
+    link: "/admin/settings/notifications/slack",
+  },
+  {
+    title: "a webhook",
+    icon: "webhook",
+    link: "/admin/settings/notifications",
+  },
+];
+
+type ChannelSetupContentProps = {
+  isAdmin: boolean;
+  onClose: () => void;
+};
+
+export const ChannelSetupModal = ({
+  isAdmin,
+  onClose,
+}: ChannelSetupContentProps) => {
+  return (
+    <Modal opened title={t`Alerts`} size="sm" onClose={onClose}>
+      <Stack spacing="0.5rem">
+        <Text mb="1rem">{t`To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook first.`}</Text>
+
+        {isAdmin &&
+          CHANNELS_CONFIG.map(({ title, icon, link }) => (
+            <Button
+              key={title}
+              leftIcon={<Icon name={icon} />}
+              component={Link}
+              to={link}
+              target="_blank"
+            >
+              {t`Set up ${title}`}
+            </Button>
+          ))}
+      </Stack>
+    </Modal>
+  );
+};

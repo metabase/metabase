@@ -13,6 +13,7 @@ import {
 import type {
   Alert,
   Channel,
+  ChannelApiResponse,
   ChannelSpec,
   Pulse,
   PulseParameter,
@@ -352,3 +353,20 @@ export const canArchiveLegacyAlert = (item: Alert, user: User): boolean => {
 
   return isCreator && (!isSubscribed || isOnlyRecipient);
 };
+
+export const getHasConfiguredAnyChannel = (
+  formInput: ChannelApiResponse | undefined,
+) =>
+  (formInput?.channels &&
+    _.some(Object.values(formInput.channels), c => c.configured)) ||
+  false;
+
+export const getHasConfiguredEmailChannel = (
+  formInput: ChannelApiResponse | undefined,
+) =>
+  (formInput?.channels &&
+    _.some(
+      Object.values(formInput.channels),
+      c => c.type === "email" && c.configured,
+    )) ||
+  false;
