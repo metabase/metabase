@@ -30,7 +30,6 @@ import type {
   Card,
   Collection,
   Database,
-  Field,
   Settings,
   WritebackAction,
   WritebackQueryAction,
@@ -249,7 +248,6 @@ async function setup({
       <Route path="/model/:slug/detail">
         <IndexRedirect to="usage" />
         <Route path="usage" component={ModelDetailPage} />
-        <Route path="schema" component={ModelDetailPage} />
         <Route path="actions" component={ModelDetailPage}>
           <ModalRoute
             path="new"
@@ -431,22 +429,6 @@ describe("ModelDetailPage", () => {
         expect(
           screen.queryByText(/This model is not used by any questions yet/i),
         ).not.toBeInTheDocument();
-      });
-    });
-
-    describe("schema section", () => {
-      it("displays model schema", async () => {
-        const { model } = await setup({ model: getModel(), tab: "schema" });
-        const fields = model.getResultMetadata();
-
-        await userEvent.click(screen.getByText("Schema"));
-
-        expect(fields.length).toBeGreaterThan(0);
-        expect(screen.getByText(`${fields.length} fields`)).toBeInTheDocument();
-
-        fields.forEach((field: Field) => {
-          expect(screen.getByText(field.display_name)).toBeInTheDocument();
-        });
       });
     });
 
@@ -695,12 +677,6 @@ describe("ModelDetailPage", () => {
         expect(screen.queryByText("Edit definition")).not.toBeInTheDocument();
       });
 
-      it("doesn't show a link to the metadata editor", async () => {
-        await setup({ model: modelCard });
-        await userEvent.click(screen.getByText("Schema"));
-        expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
-      });
-
       it("doesn't allow to create actions", async () => {
         await setupActions({ model: modelCard, actions: [] });
         expect(screen.queryByText("New action")).not.toBeInTheDocument();
@@ -730,16 +706,6 @@ describe("ModelDetailPage", () => {
     });
 
     describe("no data permissions", () => {
-      it("doesn't show model editor links", async () => {
-        await setup({
-          model: getModel(),
-          databases: [],
-          tab: "schema",
-        });
-        expect(screen.queryByText("Edit definition")).not.toBeInTheDocument();
-        expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
-      });
-
       it("doesn't show a new question link", async () => {
         await setup({ model: getModel(), databases: [], tab: "usage" });
         expect(
@@ -962,13 +928,6 @@ describe("ModelDetailPage", () => {
 
       expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
       expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-
-      await userEvent.click(screen.getByText("Schema"));
-      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/schema`);
-      expect(screen.getByRole("tab", { name: "Schema" })).toHaveAttribute(
         "aria-selected",
         "true",
       );

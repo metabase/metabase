@@ -316,16 +316,18 @@ describe("parameters/utils/parameter-values", () => {
 
     it.each([
       { value: "", expectedValue: null },
-      { value: "abc", expectedValue: null },
+      { value: "abc", expectedValue: [] },
       { value: "123", expectedValue: [123] },
       { value: "123abc", expectedValue: [123] },
       { value: ["123"], expectedValue: [123] },
       { value: ["123", "234"], expectedValue: [123, 234] },
-      { value: ["123", "abc"], expectedValue: null },
+      { value: ["123", "abc"], expectedValue: [123] },
       { value: ["123", "234abc"], expectedValue: [123, 234] },
       { value: "123,234", expectedValue: ["123,234"] },
       { value: "123,abc", expectedValue: null },
       { value: "123,234abc", expectedValue: ["123,234"] },
+      { value: 123, expectedValue: [123] },
+      { value: [1, 2, 3], expectedValue: [1, 2, 3] },
     ])(
       "should parse number parameter value $value",
       ({ value, expectedValue }) => {
