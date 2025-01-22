@@ -202,3 +202,7 @@
     {:structured-output (filter-records arguments e)}
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))
+
+(mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/filter-records
+  [_tool-name _context]
+  false)
