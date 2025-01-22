@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.ldap :as api.ldap]
+   [metabase.api.macros :as api.macros]
    [metabase.api.session :as api.session]
    [metabase.config :as config]
    [metabase.events :as events]
@@ -164,8 +165,7 @@
   [clauses]
   (dissoc clauses :order-by :limit :offset))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Fetch a list of `Users` for admins or group managers.
   By default returns only active users for admins and only active users within groups that the group manager is managing for group managers.
 
@@ -181,11 +181,12 @@
   Takes `limit`, `offset` for pagination.
   Takes `query` for filtering on first name, last name, email.
   Also takes `group_id`, which filters on group id."
-  [status query group_id include_deactivated]
-  {status              [:maybe :string]
-   query               [:maybe :string]
-   group_id            [:maybe ms/PositiveInt]
-   include_deactivated [:maybe ms/BooleanValue]}
+  [_route-params
+   {:keys [status query group_id include_deactivated]} :- [:map
+                                                           [:status              {:optional true} [:maybe :string]]
+                                                           [:query               {:optional true} [:maybe :string]]
+                                                           [:group_id            {:optional true} [:maybe ms/PositiveInt]]
+                                                           [:include_deactivated {:default false} [:maybe ms/BooleanValue]]]]
   (or
    api/*is-superuser?*
    (if group_id
@@ -234,8 +235,7 @@
                            :where [:and [:= :permissions_group_membership.user_id user-id]
                                    [:not= :permissions_group_membership.group_id (:id (perms-group/all-users))]]}]})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/recipients"
+(api.macros/defendpoint :get "/recipients"
   "Fetch a list of `Users`. Returns only active users. Meant for non-admins unlike GET /api/user.
 
    - If user-visibility is :all or the user is an admin, include all users.
@@ -329,8 +329,7 @@
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/current"
+(api.macros/defendpoint :get "/current"
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
@@ -341,11 +340,10 @@
       maybe-add-sso-source
       add-custom-homepage-info))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id"
+(api.macros/defendpoint :get "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -357,15 +355,16 @@
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Create a new `User`, return a 400 if the email address is already taken"
-  [:as {{:keys [first_name last_name email user_group_memberships login_attributes] :as body} :body}]
-  {first_name             [:maybe ms/NonBlankString]
-   last_name              [:maybe ms/NonBlankString]
-   email                  ms/Email
-   user_group_memberships [:maybe [:sequential user/UserGroupMembership]]
-   login_attributes       [:maybe user/LoginAttributes]}
+  [_route-params
+   _query-params
+   {:keys [email user_group_memberships] :as body} :- [:map
+                                                       [:first_name             {:optional true} [:maybe ms/NonBlankString]]
+                                                       [:last_name              {:optional true} [:maybe ms/NonBlankString]]
+                                                       [:email                  ms/Email]
+                                                       [:user_group_memberships {:optional true} [:maybe [:sequential user/UserGroupMembership]]]
+                                                       [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]]]
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
               "email" (tru "Email address already in use."))
@@ -408,22 +407,22 @@
    (= (get user name-key) new-name)
    (not sso_source)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id"
+(api.macros/defendpoint :put "/:id"
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of."
-  [id :as {{:keys [email first_name last_name user_group_memberships
-                   is_superuser is_group_manager login_attributes locale] :as body} :body}]
-  {id                     ms/PositiveInt
-   email                  [:maybe ms/Email]
-   first_name             [:maybe ms/NonBlankString]
-   last_name              [:maybe ms/NonBlankString]
-   user_group_memberships [:maybe [:sequential user/UserGroupMembership]]
-   is_superuser           [:maybe :boolean]
-   is_group_manager       [:maybe :boolean]
-   login_attributes       [:maybe user/LoginAttributes]
-   locale                 [:maybe ms/ValidLocale]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [email first_name last_name user_group_memberships is_superuser] :as body} :- [:map
+                                                                                         [:email                  {:optional true} [:maybe ms/Email]]
+                                                                                         [:first_name             {:optional true} [:maybe ms/NonBlankString]]
+                                                                                         [:last_name              {:optional true} [:maybe ms/NonBlankString]]
+                                                                                         [:user_group_memberships {:optional true} [:maybe [:sequential user/UserGroupMembership]]]
+                                                                                         [:is_superuser           {:default false} [:maybe :boolean]]
+                                                                                         [:is_group_manager       {:default false} [:maybe :boolean]]
+                                                                                         [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
+                                                                                         [:locale                 {:optional true} [:maybe ms/ValidLocale]]]]
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -480,11 +479,10 @@
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id/reactivate"
+(api.macros/defendpoint :put "/:id/reactivate"
   "Reactivate user at `:id`"
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-not-internal-user id)
   (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source]
@@ -530,11 +528,10 @@
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/:id"
+(api.macros/defendpoint :delete "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/check-superuser)
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
@@ -548,11 +545,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id/modal/:modal"
+(api.macros/defendpoint :put "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
-  [id modal]
-  {id ms/PositiveInt}
+  [{:keys [id modal]} :- [:map
+                          [:id ms/PositiveInt]]]
   (check-self-or-superuser id)
   (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
