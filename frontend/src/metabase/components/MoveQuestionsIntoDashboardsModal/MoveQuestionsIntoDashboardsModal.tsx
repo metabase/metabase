@@ -3,6 +3,7 @@ import type { Location } from "history";
 import { useEffect } from "react";
 import { withRouter } from "react-router";
 import { replace } from "react-router-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
 import {
@@ -13,6 +14,7 @@ import {
 import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { addUndo } from "metabase/redux/undo";
 
 import { ConfirmMoveDashboardQuestionCandidatesModal } from "./ConfirmMoveDashboardQuestionCandidatesModal";
 import { MoveQuestionsIntoDashboardsInfoModal } from "./MoveQuestionsIntoDashboardsInfoModal";
@@ -30,9 +32,8 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
     onClose: handleClose,
   }: MoveQuestionsIntoDashboardsModalProps) => {
     const collectionId = Urls.extractCollectionId(params.slug);
-    const [ackedInfoStep, ackInfoStep] = useUserAcknowledgement(
-      "dashboard_question_migration_info_modal",
-    );
+    const [ackedInfoStep, { ack: ackInfoStep, isLoading: isAckedInfoLoading }] =
+      useUserAcknowledgement("dashboard_question_migration_info_modal");
 
     const dispatch = useDispatch();
     const candidatesReq = useListCollectionDashboardQuestionCandidatesQuery(
@@ -54,6 +55,11 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
         const cardIds = candidatesReq.data?.data.map(card => card.id) ?? [];
         try {
           await bulkMove({ collectionId, cardIds }).unwrap();
+          dispatch(
+            addUndo({
+              message: t`The questions were successfully moved into their dashboards`,
+            }),
+          );
           handleClose();
         } catch (err) {
           console.error(err);
@@ -68,6 +74,10 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
         return () => clearTimeout(timeout);
       }
     }, [bulkMoveReq]);
+
+    if (isAckedInfoLoading) {
+      return null;
+    }
 
     if (!ackedInfoStep) {
       return (
