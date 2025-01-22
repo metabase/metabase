@@ -11,9 +11,6 @@ import {
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
 import {
-  fireEvent,
-  getIcon,
-  queryIcon,
   renderWithProviders,
   screen,
   waitFor,
@@ -25,6 +22,7 @@ import Models from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { checkNotNull } from "metabase/lib/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,
   Collection,
@@ -49,13 +47,14 @@ import {
 import {
   createNativeModelCard as _createNativeModelCard,
   createStructuredModelCard as _createStructuredModelCard,
+  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
 
-import ModelDetailPage from "./ModelDetailPage";
+import ModelActions from "./ModelActions";
 
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
@@ -233,7 +232,8 @@ async function setup({
   const { history } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
-        <Route path="actions" component={ModelDetailPage}>
+        <IndexRedirect to="actions" />
+        <Route path="actions" component={ModelActions}>
           <ModalRoute
             path="new"
             modal={ActionCreator}
@@ -272,7 +272,7 @@ async function openActionMenu(action: WritebackAction) {
   await userEvent.click(menuButton);
 }
 
-describe("ModelDetailPage", () => {
+describe("ModelActions", () => {
   describe.each([
     { type: "structured", getModel: createStructuredModelCard },
     { type: "native", getModel: createNativeModelCard },
@@ -285,55 +285,20 @@ describe("ModelDetailPage", () => {
       expect(screen.getByText("My Model")).toBeInTheDocument();
     });
 
-    describe("management", () => {
-      it("allows to rename model", async () => {
-        const { model, modelUpdateSpy } = await setup({ model: getModel() });
-
-        const input = screen.getByDisplayValue(model.displayName() as string);
-        await userEvent.clear(input);
-        await userEvent.type(input, "New model name");
-        fireEvent.blur(input);
-
-        await waitFor(() => {
-          expect(modelUpdateSpy).toHaveBeenCalledWith({
-            ...model.card(),
-            name: "New model name",
-          });
-        });
-      });
-
-      it("can be archived", async () => {
-        const { model, modelUpdateSpy } = await setup({ model: getModel() });
-
-        await userEvent.click(getIcon("ellipsis"));
-        await userEvent.click(await screen.findByText("Move to trash"));
-
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
-        await userEvent.click(
-          screen.getByRole("button", { name: "Move to trash" }),
-        );
-
-        await waitFor(() => {
-          expect(modelUpdateSpy).toHaveBeenCalledWith(
-            { id: model.id() },
-            { archived: true },
-          );
-        });
-      });
-    });
-
-    describe("actions section", () => {
+    describe("core actions section", () => {
       it("is shown if actions are enabled for model's database", async () => {
         await setup({
           model: getModel(),
           databases: [TEST_DATABASE_WITH_ACTIONS],
         });
-        expect(screen.getByText("Actions")).toBeInTheDocument();
+        expect(screen.getByTestId("model-action-details")).toBeInTheDocument();
       });
 
       it("isn't shown if actions are disabled for model's database", async () => {
         await setup({ model: getModel() });
-        expect(screen.queryByText("Actions")).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId("model-action-details"),
+        ).not.toBeInTheDocument();
       });
 
       it("is shown if actions are disabled for the model's database but there are existing actions", async () => {
@@ -342,7 +307,7 @@ describe("ModelDetailPage", () => {
 
         await setup({ model, actions: [action] });
 
-        expect(screen.getByText("Actions")).toBeInTheDocument();
+        expect(screen.getByTestId("model-action-details")).toBeInTheDocument();
       });
 
       it("shows empty state if there are no actions", async () => {
@@ -517,25 +482,6 @@ describe("ModelDetailPage", () => {
 
     describe("read-only permissions", () => {
       const modelCard = getModel({ can_write: false });
-
-      it("doesn't allow to rename a model", async () => {
-        const { model } = await setup({ model: modelCard });
-        expect(
-          screen.getByDisplayValue(model.displayName() as string),
-        ).toBeDisabled();
-      });
-
-      it("doesn't show model management actions", async () => {
-        await setup({ model: modelCard });
-        expect(queryIcon("ellipsis")).not.toBeInTheDocument();
-        expect(screen.queryByText("Archive")).not.toBeInTheDocument();
-        expect(screen.queryByText("Move")).not.toBeInTheDocument();
-      });
-
-      it("doesn't show a link to the query editor", async () => {
-        await setup({ model: modelCard });
-        expect(screen.queryByText("Edit definition")).not.toBeInTheDocument();
-      });
 
       it("doesn't allow to create actions", async () => {
         await setupActions({ model: modelCard, actions: [] });
@@ -719,18 +665,6 @@ describe("ModelDetailPage", () => {
         screen.queryByText("Disable basic actions"),
       ).not.toBeInTheDocument();
     });
-
-    describe("no data permissions", () => {
-      it("shows limited model info", async () => {
-        await setup({ model: modelCard, databases: [] });
-
-        expect(screen.queryByText("Relationships")).not.toBeInTheDocument();
-        expect(screen.queryByText("Backing table")).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(TEST_TABLE.display_name),
-        ).not.toBeInTheDocument();
-      });
-    });
   });
 
   describe("native model", () => {
@@ -747,6 +681,16 @@ describe("ModelDetailPage", () => {
   });
 
   describe("navigation", () => {
+    it("redirects to query builder when trying to open a question", async () => {
+      const { model: question, history } = await setup({
+        model: createSavedStructuredCard(),
+      });
+
+      expect(history?.getCurrentLocation().pathname).toBe(
+        ML_Urls.getUrl(question),
+      );
+    });
+
     it("shows 404 when opening an archived model", async () => {
       const { model } = await setup({
         model: createStructuredModelCard({ archived: true }),
