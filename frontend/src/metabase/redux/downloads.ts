@@ -191,7 +191,7 @@ const getDatasetParams = ({
           parameters: result?.json_query?.parameters ?? [],
           ...exportParams,
         },
-        formData: false,
+        formData: true,
       };
     }
     if (resource === "question" && uuid) {
