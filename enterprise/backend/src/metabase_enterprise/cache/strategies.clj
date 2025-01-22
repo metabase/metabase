@@ -26,11 +26,11 @@
                 [:map
                  [:invalidated-at {:optional true} some?]]]]
     [:duration [:merge
-                :metabase.api.cache/cache-strategy.duration
+                :metabase.api.cache/cache-strategy.ee.duration
                 [:map
                  [:invalidated-at {:optional true} some?]]]]
     [:schedule [:merge
-                :metabase.api.cache/cache-strategy.schedule
+                :metabase.api.cache/cache-strategy.ee.schedule
                 [:map
                  [:invalidated-at {:optional true} some?]]]]]])
 
