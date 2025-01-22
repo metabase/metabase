@@ -122,6 +122,7 @@ describe("issue 11435", () => {
     },
   };
   const hoverLineDot = ({ index } = {}) => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().eq(index).realHover();
   };
 
@@ -332,16 +333,19 @@ describe.skip("issue 19373", () => {
     cy.findAllByRole("grid").eq(2).as("tableCells");
 
     // Sanity check before we start asserting on this column
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@columnTitles")
       .findAllByTestId("pivot-table-cell")
       .eq(ROW_TOTALS_INDEX)
       .should("contain", "Row totals");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@rowTitles")
       .findAllByTestId("pivot-table-cell")
       .eq(GRAND_TOTALS_INDEX)
       .should("contain", "Grand totals");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@tableCells")
       .findAllByTestId("pivot-table-cell")
       .eq(ROW_TOTALS_INDEX)

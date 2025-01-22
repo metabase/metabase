@@ -668,6 +668,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly").click();
 
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByText("Corbin Mertz").last().click();
         H.popover().within(() => {
           H.fieldValuesInput().type("Bob");
@@ -675,6 +676,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
         H.popover().contains("Update filter").click();
 
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByText("Text 1").last().click();
         H.popover().findByText("Gizmo").click();
         H.popover().contains("Add filter").click();

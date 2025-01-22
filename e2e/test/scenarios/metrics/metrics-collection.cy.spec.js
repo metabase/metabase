@@ -170,6 +170,7 @@ describe("scenarios > metrics > collection", () => {
     H.getUnpinnedSection()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.undoToastList().last().findByText("Trashed metric").should("be.visible");
 
     openArchive();
@@ -178,6 +179,7 @@ describe("scenarios > metrics > collection", () => {
     H.getUnpinnedSection()
       .findByText(ORDERS_TIMESERIES_METRIC.name)
       .should("not.exist");
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.undoToastList()
       .last()
       .findByText(`${ORDERS_TIMESERIES_METRIC.name} has been restored.`)
@@ -191,6 +193,7 @@ describe("scenarios > metrics > collection", () => {
     H.popover().findByText("Delete permanently").click();
     H.modal().button("Delete permanently").click();
     H.getUnpinnedSection().should("not.exist");
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.undoToastList()
       .last()
       .findByText("This item has been permanently deleted.")
