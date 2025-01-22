@@ -291,9 +291,9 @@
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]}
    :- [:map
-       [:include                     (mu/with-api-error-message
-                                      [:maybe [:= "tables"]]
-                                      (deferred-tru "include must be either empty or the value 'tables'"))]
+       [:include                     {:optional true} (mu/with-api-error-message
+                                                       [:maybe [:= "tables"]]
+                                                       (deferred-tru "include must be either empty or the value 'tables'"))]
        [:include_analytics           {:default false} [:maybe :boolean]]
        [:saved                       {:default false} [:maybe :boolean]]
        [:include_editable_data_model {:default false} [:maybe :boolean]]
@@ -669,7 +669,7 @@
                     [:id ms/PositiveInt]]
    {:keys [query include_dashboard_questions]} :- [:map
                                                    [:query                       ms/NonBlankString]
-                                                   [:include_dashboard_questions ms/MaybeBooleanValue]]]
+                                                   [:include_dashboard_questions {:optional true} ms/BooleanValue]]]
   (api/read-check :model/Database id)
   (try
     (->> (autocomplete-cards id query include_dashboard_questions)
@@ -793,12 +793,12 @@
        [:name              ms/NonBlankString]
        [:engine            DBEngineString]
        [:details           ms/Map]
-       [:is_full_sync      {:optional true} [:maybe {:default true} ms/BooleanValue]]
-       [:is_on_demand      {:optional true} [:maybe {:default false} ms/BooleanValue]]
-       [:schedules         {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
-       [:auto_run_queries  {:default false} [:maybe :boolean]]
-       [:cache_ttl         {:optional true} [:maybe ms/PositiveInt]]
-       [:connection_source {:optional true} [:maybe {:default :admin} [:enum :admin :setup]]]]]
+       [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
+       [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
+       [:schedules         {:optional true}  [:maybe sync.schedules/ExpandedSchedulesMap]]
+       [:auto_run_queries  {:optional true}  [:maybe :boolean]]
+       [:cache_ttl         {:optional true}  [:maybe ms/PositiveInt]]
+       [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]]]
   (api/check-superuser)
   (when cache_ttl
     (api/check (premium-features/enable-cache-granular-controls?)
@@ -845,8 +845,9 @@
   [_route-params
    _query-params
    {{:keys [engine details]} :details} :- [:map
-                                           [:engine  DBEngineString]
-                                           [:details :map]]]
+                                           [:details [:map
+                                                      [:engine  DBEngineString]
+                                                      [:details :map]]]]]
   (api/check-superuser)
   (let [details-or-error (test-connection-details engine details)]
     ;; details that come back without a `:valid` key at all are... valid!
@@ -924,13 +925,13 @@
            auto_run_queries refingerprint cache_ttl settings]} :- [:map
                                                                    [:name               {:optional true} [:maybe ms/NonBlankString]]
                                                                    [:engine             {:optional true} [:maybe DBEngineString]]
-                                                                   [:refingerprint      {:default false} [:maybe :boolean]]
+                                                                   [:refingerprint      {:optional true} [:maybe :boolean]]
                                                                    [:details            {:optional true} [:maybe ms/Map]]
                                                                    [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
                                                                    [:description        {:optional true} [:maybe :string]]
                                                                    [:caveats            {:optional true} [:maybe :string]]
                                                                    [:points_of_interest {:optional true} [:maybe :string]]
-                                                                   [:auto_run_queries   {:default false} [:maybe :boolean]]
+                                                                   [:auto_run_queries   {:optional true} [:maybe :boolean]]
                                                                    [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
                                                                    [:settings           {:optional true} [:maybe ms/Map]]]]
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
