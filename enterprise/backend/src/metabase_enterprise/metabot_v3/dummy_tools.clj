@@ -74,9 +74,8 @@
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id base))
           card-query (lib/query mp (lib.metadata/card mp id))
           cols (lib/returned-columns card-query)
-          external-id (str "card__" id)
           field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
-      (-> {:id external-id
+      (-> {:id id
            :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix)) cols)
            :name (lib/display-name card-query)}
           (m/assoc-some :description (:description base)
@@ -91,7 +90,7 @@
                     (table-details (parse-long table-id) {:include-foreign-key-tables? true})
                     "invalid table_id"))]
     (if (map? details)
-      {:structured-output details}
+      {:structured-output (assoc details :id table-id)}
       {:output (or details "table not found")})))
 
 (comment
@@ -132,21 +131,17 @@
 
 (defn- get-metric-details
   [_tool-id {:keys [metric-id]} _e]
-  (let [details (if-let [[_ card-id] (when (string? metric-id)
-                                       (re-matches #"card__(\d+)" metric-id))]
-                  (metric-details (parse-long card-id))
-                  (if (int? metric-id)
-                    (metric-details metric-id)
-                    "invalid metric_id"))]
+  (let [details (if (int? metric-id)
+                  (metric-details metric-id)
+                  "invalid metric_id")]
     (if (map? details)
       {:structured-output details}
       {:output (or details "metric not found")})))
 
 (defn- get-report-details
   [_tool-id {:keys [report-id]} _e]
-  (let [details (if-let [[_ card-id] (when (string? report-id)
-                                       (re-matches #"card__(\d+)" report-id))]
-                  (let [details (card-details (parse-long card-id))]
+  (let [details (if (int? report-id)
+                  (let [details (card-details report-id)]
                     (some-> details
                             (select-keys [:id :description :name])
                             (assoc :result_columns (:fields details))))
@@ -195,7 +190,7 @@
                :arg-fn (fn [id] {:metric-id id})}
    :question  {:id     :get-report-details
                :fn     get-report-details
-               :arg-fn (fn [id] {:report-id (str "card__" id)})}})
+               :arg-fn (fn [id] {:report-id id})}})
 
 (defn- dummy-get-item-details
   [{:keys [context] :as env}]

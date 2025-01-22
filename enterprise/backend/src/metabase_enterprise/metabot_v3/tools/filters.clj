@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -130,8 +131,17 @@
 
 (defn- base-query
   [data-source e]
-  (let [{:keys [table_id query_id report_id]} data-source]
+  (let [{:keys [table_id query_id report_id]} data-source
+        model-id (lib.util/legacy-string-table-id->card-id table_id)]
     (cond
+      (some? model-id)
+      (if-let [model (api.card/get-card model-id)]
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id model))]
+          [(metabot-v3.tools.u/card-field-id-prefix model-id)
+           (lib/query mp (lib.metadata/card mp model-id))])
+        (throw (ex-info (str "No table found with table_id " table_id) {:agent-error? true
+                                                                        :data_source data-source})))
+
       (some? table_id)
       (let [table_id (cond-> table_id
                        (string? table_id) parse-long)]

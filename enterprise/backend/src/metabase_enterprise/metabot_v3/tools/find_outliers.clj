@@ -23,13 +23,9 @@
   (cond
     metric_id [(metabot-v3.tools.u/card-field-id-prefix metric_id)
                (checked-card-dataset-query metric_id)]
-    report_id (if-let [card-id (if (string? report_id)
-                                 (some-> (re-matches #"card__(\d+)" report_id)
-                                         second
-                                         parse-long)
-                                 report_id)]
-                [(metabot-v3.tools.u/card-field-id-prefix card-id)
-                 (checked-card-dataset-query card-id)]
+    report_id (if (int? report_id)
+                [(metabot-v3.tools.u/card-field-id-prefix report_id)
+                 (checked-card-dataset-query report_id)]
                 (throw (ex-info "Invalid report_id as data_source" {:agent-error? true
                                                                     :data_source data-source})))
     query_id  (if-let [query (metabot-v3.envelope/find-query env query_id)]
