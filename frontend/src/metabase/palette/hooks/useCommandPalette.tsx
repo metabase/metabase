@@ -1,7 +1,6 @@
 import type { Query } from "history";
 import { Priority, useKBar, useRegisterActions } from "kbar";
 import { useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
@@ -273,10 +272,13 @@ export const useCommandPalette = ({
       id: `admin-page-${adminPath.key}`,
       name: `${adminPath.name}`,
       icon: "gear",
-      perform: () => dispatch(push(adminPath.path)),
+      perform: () => {},
       section: "admin",
+      extra: {
+        href: adminPath.path,
+      },
     }));
-  }, [isAdmin, adminPaths, dispatch]);
+  }, [isAdmin, adminPaths]);
 
   const settingsActions = useMemo<PaletteAction[]>(() => {
     if (!canUserAccessSettings) {
@@ -299,16 +301,13 @@ export const useCommandPalette = ({
         id: `admin-settings-${slug}`,
         name: `${t`Settings`} - ${section.name}`,
         icon: "gear",
-        perform: () => dispatch(push(`/admin/settings/${slug}`)),
+        perform: () => {},
         section: "admin",
+        extra: {
+          href: `/admin/settings/${slug}`,
+        },
       }));
-  }, [
-    canUserAccessSettings,
-    isAdmin,
-    settingsSections,
-    settingValues,
-    dispatch,
-  ]);
+  }, [canUserAccessSettings, isAdmin, settingsSections, settingValues]);
 
   useRegisterActions(hasQuery ? [...adminActions, ...settingsActions] : [], [
     adminActions,
