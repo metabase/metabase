@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import Select from "metabase/core/components/Select";
 import Databases from "metabase/entities/databases";
+import type { $TS_FIXME } from "metabase/lib/entities-types";
 import { connect } from "metabase/lib/redux";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { DatabaseId } from "metabase-types/api";
@@ -59,7 +60,7 @@ function mapStateToProps(
 }
 
 const mapDispatchToProps = {
-  fetchDatabaseIDFields: Databases.objectActions.fetchIdFields,
+  fetchDatabaseIDFields: Databases.objectActions.fetchIdFields as $TS_FIXME,
 };
 
 function FKTargetPicker({
