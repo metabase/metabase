@@ -145,7 +145,7 @@
   (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
     (when-not (some? attached-dwh)
       (snowplow/track-event! ::snowplow/simple_event
-                             {:event "sheets_connected" :event_detail "fail"})
+                             {:event "sheets_connected" :event_detail "fail - no dwh"})
       (throw (ex-info "No attached dwh found." {})))
     (if-let [{:keys [status]
               last-gdrive-conn-sync :last-sync-at
@@ -168,7 +168,8 @@
             (assoc :db_id (:id attached-dwh))))
       (do
         (snowplow/track-event! ::snowplow/simple_event
-                               {:event "sheets_connected" :event_detail "fail"})
+                               {:event "sheets_connected"
+                                :event_detail "fail - no drive connection"})
         (throw (ex-info "Google Drive Connection not found." {}))))))
 
 (api.macros/defendpoint :delete "/folder"
