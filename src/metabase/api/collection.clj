@@ -1057,7 +1057,7 @@
 (mr/def ::DashboardQuestionCandidatesResponse
   [:map
    [:data [:sequential ::DashboardQuestionCandidate]]
-   [:count integer?]])
+   [:total integer?]])
 
 (mu/defn- dashboard-question-candidates
   "Implementation for the `dashboard-question-candidates` endpoints.
@@ -1074,9 +1074,7 @@
                                                                  {:where [:and
                                                                           [:= :collection_id collection-id]
                                                                           [:= :dashboard_id nil]]
-                                                                  :order-by [[:id :desc]]}
-                                                                 (when-let [{:keys [limit offset]} pagination-data]
-                                                                   {:limit limit :offset offset})))
+                                                                  :order-by [[:id :desc]]}))
                                          :in_dashboards)]
      (filter
       (fn [card]
@@ -1097,8 +1095,10 @@
 
 (mu/defn- present-dashboard-question-candidates
   [cards]
-  {:data (map present-dashboard-question-candidate cards)
-   :count (count cards)})
+  {:data (map present-dashboard-question-candidate (cond->> cards
+                                                     (request/paged?) (drop (request/offset))
+                                                     (request/paged?) (take (request/limit))))
+   :total (count cards)})
 
 (api.macros/defendpoint :get "/:id/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
   "Find cards in this collection that can be moved into dashboards in this collection.
@@ -1108,18 +1108,14 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check :model/Collection id)
   (present-dashboard-question-candidates
-   (dashboard-question-candidates id (when (request/paged?)
-                                       {:limit (request/limit)
-                                        :offset (request/offset)}))))
+   (dashboard-question-candidates id)))
 
 (api.macros/defendpoint :get "/root/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
   "Find cards in the root collection that can be moved into dashboards in the root collection. (Same as the above
   endpoint, but for the root collection)"
   []
   (present-dashboard-question-candidates
-   (dashboard-question-candidates nil (when (request/paged?)
-                                        {:limit (request/limit)
-                                         :offset (request/offset)}))))
+   (dashboard-question-candidates nil)))
 
 (mr/def ::MoveDashboardQuestionCandidatesResponse
   [:map
