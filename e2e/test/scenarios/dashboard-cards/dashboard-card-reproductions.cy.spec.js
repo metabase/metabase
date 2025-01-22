@@ -1798,7 +1798,6 @@ describe("issue 48878", () => {
     cy.findByTestId("qb-header-info-button").click();
     H.sidesheet().findByText("Actions").click();
 
-    cy.findByRole("tab", { name: "Actions" }).click();
     cy.findByTestId("model-actions-header").findByText("New action").click();
 
     H.modal().within(() => {

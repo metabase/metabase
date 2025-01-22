@@ -158,7 +158,7 @@ function ModelActionDetails({
   const newActionUrl = Urls.newAction(model.card() as Card);
 
   return (
-    <Root>
+    <Root data-testid="model-action-details">
       {canWrite && (
         <ActionsHeader data-testid="model-actions-header">
           <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
