@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.test :as mt]))
 
-
 (deftest create-dashboard-subscription-test
   (mt/with-model-cleanup [:model/Pulse]
     (mt/with-temp [:model/User          {:keys [email] user-id :id} {:email "email@example.com"}
