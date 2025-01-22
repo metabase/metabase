@@ -131,7 +131,7 @@
                              [:= 1 2]))
     (sql.helpers/where qry (when-let [ids (:ids search-context)]
                              [:and
-                              [:in :search_index.model_id ids]
+                              [:in :search_index.model_id (map str ids)]
                               ;; NOTE: we limit id-based search to only a subset of the models
                               ;; TODO this should just become part of the model spec e.g. :search-by-id?
                               [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]))

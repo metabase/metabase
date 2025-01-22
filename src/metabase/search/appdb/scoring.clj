@@ -6,6 +6,7 @@
    [metabase.config :as config]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -56,13 +57,6 @@
       [:inline 0]]
      ceiling]))
 
-(defn idx-rank
-  "Prefer items whose value is earlier in some list."
-  [idx-col len]
-  (if (pos? len)
-    [:/ [:- [:inline (dec len)] idx-col] [:inline (double len)]]
-    [:inline 1]))
-
 (defn- sum-columns [column-names]
   (if (seq column-names)
     (reduce (fn [expr col] [:+ expr col])
@@ -80,22 +74,16 @@
    [[(sum-columns (map (partial weighted-score context) scorers))
      :total_score]]))
 
-;; See https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING
-;;  0 (the default) ignores the document length
-;;  1 divides the rank by 1 + the logarithm of the document length
-;;  2 divides the rank by the document length
-;;  4 divides the rank by the mean harmonic distance between extents (this is implemented only by ts_rank_cd)
-;;  8 divides the rank by the number of unique words in document
-;; 16 divides the rank by 1 + the logarithm of the number of unique words in document
-;; 32 divides the rank by itself + 1
-(def ^:private ts-rank-normalization 0)
-
 ;; TODO move these to the spec definitions
 (def ^:private bookmarked-models [:card :collection :dashboard])
 
+(def ^:private sub-models {:card [:card :metric :dataset]})
+
 (def ^:private bookmark-score-expr
   (let [match-clause (fn [m] [[:and
-                               [:= :search_index.model [:inline m]]
+                               (if-let [sms (sub-models (keyword m))]
+                                 [:in :search_index.model (mapv (fn [k] [:inline (name k)]) sms)]
+                                 [:= :search_index.model [:inline m]])
                                [:!= nil (keyword (str m "_bookmark." m "_id"))]]
                               [:inline 1]])]
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
@@ -112,17 +100,11 @@
               [:= :search_index.model [:inline "metric"]] [:inline "card"]
               :else :search_index.model]]]})
 
-;; TODO this will need to be abstracted for other appdbs
-(defn- view-count-percentile-query [p-value]
-  (let [expr [:raw "percentile_cont(" [:lift p-value] ") WITHIN GROUP (ORDER BY view_count)"]]
-    {:select   [:search_index.model [expr :vcp]]
-     :from     [[(search.index/active-table) :search_index]]
-     :group-by [:search_index.model]
-     :having   [:is-not expr nil]}))
-
 (defn- view-count-percentiles*
   [p-value]
-  (into {} (for [{:keys [model vcp]} (t2/query (view-count-percentile-query p-value))]
+  (into {} (for [{:keys [model vcp]} (t2/query (specialization/view-count-percentile-query
+                                                (search.index/active-table)
+                                                p-value))]
              [(keyword model) vcp])))
 
 (def ^{:private true
@@ -136,7 +118,7 @@
 (defn- view-count-expr [percentile]
   (let [views (view-count-percentiles percentile)
         cases (for [[sm v] views]
-                [[:= :search_index.model [:inline (name sm)]] (max v 1)])]
+                [[:= :search_index.model [:inline (name sm)]] (max (or v 0) 1)])]
     (size :view_count (if (seq cases)
                         (into [:case] cat cases)
                         1))))
@@ -160,7 +142,7 @@
     {:model       [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
-    {:text         [:ts_rank :search_vector :query [:inline ts-rank-normalization]]
+    {:text         (specialization/text-score)
      :view-count   (view-count-expr search.config/view-count-scaling-percentile)
      :pinned       (truthy :pinned)
      :bookmarked   bookmark-score-expr
@@ -191,7 +173,9 @@
         table-name (str model-name "_bookmark")]
     [(keyword table-name)
      [:and
-      [:= :search_index.model [:inline model-name]]
+      (if-let [sms (sub-models model)]
+        [:in :search_index.model (mapv (fn [m] [:inline (name m)]) sms)]
+        [:= :search_index.model [:inline model-name]])
       [:= (keyword (str table-name ".user_id")) user-id]
       [:= :search_index.model_id [:cast (keyword (str table-name "." model-name "_id")) :text]]]]))
 
