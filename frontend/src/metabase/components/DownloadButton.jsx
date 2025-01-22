@@ -49,7 +49,7 @@ const DownloadButton = ({
     let requestOptions = { method: "GET" }; // Default request options
 
     try {
-      if (downloadUrl.includes("/api/card") && params) {
+      if (downloadUrl.includes("api/card") && params) {
         // If URL contains /api/card, use POST and append data in FormData
         const formData = new FormData();
         Object.entries(params).forEach(([key, value]) => {
