@@ -147,13 +147,12 @@
                                      {:channel_type "channel/http"
                                       :channel_id    (:channel_id pc)})))
                                 pcs)]
-         (create-notification! notification subscriptions handlers)
-         (qs/delete-trigger scheduler (send-pulse-trigger-key pulse-id pc)))))))
+         (qs/delete-trigger scheduler (send-pulse-trigger-key pulse-id pc))
+         (create-notification! notification subscriptions handlers))))))
 
 (defn migrate-alerts!
   "Migrate alerts from `pulse` to `notification`."
   []
-  (metabase.util.log/info "Migrating alerts to notifications")
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (run! #(alert->notification! scheduler %)
           (t2/reducible-query {:select [:*]
@@ -163,7 +162,6 @@
 (defn remove-init-send-pulse-trigger!
   "Remove the init-send-pulse-triggers.trigger from the scheduler so that it can run again."
   []
-  (metabase.util.log/info "Removing init-send-pulse-triggers.trigger from the scheduler")
   (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
     (qs/delete-trigger scheduler (triggers/key "metabase.task.send-pulses.init-send-pulse-triggers.trigger"))))
