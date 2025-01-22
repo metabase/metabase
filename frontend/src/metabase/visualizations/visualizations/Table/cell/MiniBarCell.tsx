@@ -6,6 +6,8 @@ import { alpha, color } from "metabase/lib/colors";
 import type { TableCellFormatter } from "metabase/visualizations/types";
 import type { RowValue } from "metabase-types/api";
 
+import S from "./MiniBarCell.module.css";
+
 const BAR_HEIGHT = 8;
 const BAR_WIDTH = 70;
 const BORDER_RADIUS = 3;
@@ -58,7 +60,7 @@ export const MiniBar = ({
         };
 
   return (
-    <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd, CS.relative)}>
+    <div className={S.root}>
       {/* TEXT VALUE */}
       <div
         className={cx(CS.textEllipsis, CS.textBold, CS.textRight, CS.flexFull)}
