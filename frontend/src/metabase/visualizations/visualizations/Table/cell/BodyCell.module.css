@@ -7,7 +7,7 @@
   font-weight: 700;
   align-items: center;
   justify-content: center;
-  padding: 9.25px 12px;
+  padding: 8px 12px;
 }
 
 .content {
@@ -27,7 +27,7 @@
 }
 
 .pill {
-  padding: 0px;
+  padding: 0 12px;
 }
 
 .pill .content {
@@ -51,8 +51,10 @@
 
 .alignLeft {
   text-align: left;
+  justify-content: left;
 }
 
 .alignRight {
   text-align: right;
+  justify-content: right;
 }
