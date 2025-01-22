@@ -40,7 +40,8 @@
                    :creator_id    (mt/user->id :crowberto)
                    :creator       {:email "crowberto@metabase.com"}
                    :payload_type  "notification/card"
-                   :payload       {:card_id (-> notification :payload :card_id)}
+                   :payload       {:card_id (-> notification :payload :card_id)
+                                   :card    {:id (-> notification :payload :card_id)}}
                    :subscriptions [{:notification_id notification-id
                                     :type            "notification-subscription/cron"
                                     :cron_schedule   "0 0 0 * * ?"}
