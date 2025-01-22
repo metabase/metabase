@@ -14,7 +14,10 @@ import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
-import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
+import {
+  diagnose,
+  isErrorWithMessage,
+} from "metabase-lib/v1/expressions/diagnostics";
 import { format } from "metabase-lib/v1/expressions/format";
 import { processSource } from "metabase-lib/v1/expressions/process";
 import type {
@@ -531,7 +534,10 @@ class ExpressionEditorTextfieldInner extends React.Component<
 
         onChange(expression, expressionClause);
       } else {
-        const errorWithMessage = { message: t`Invalid expression` };
+        const error = compiledExpression?.compileError;
+        const errorWithMessage = isErrorWithMessage(error)
+          ? error
+          : { message: t`Invalid expression` };
         this.setState({ errorMessage: errorWithMessage });
         onError(errorWithMessage);
       }
@@ -588,7 +594,7 @@ class ExpressionEditorTextfieldInner extends React.Component<
     if (!source || source.length === 0) {
       return null;
     }
-    const { expression, expressionClause } = processSource({
+    const { expression, expressionClause, compileError } = processSource({
       name,
       source,
       query,
@@ -597,7 +603,7 @@ class ExpressionEditorTextfieldInner extends React.Component<
       expressionIndex,
     });
 
-    return { expression, expressionClause };
+    return { expression, expressionClause, compileError };
   }
 
   diagnoseExpression(): ErrorWithMessage | null {

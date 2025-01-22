@@ -17,7 +17,7 @@ To enable dashboard subscriptions, your administrators will need to have set up 
 
 ## Setting up a dashboard subscription
 
-To set up a subscription to a dashboard, click on the **Subscriptions** icon (mail icon with a plus symbol). Metabase will slide out a sidebar on the right, with an option to set up a subscription via email or Slack:
+To set up a subscription to a dashboard, click on the **Sharing** icon and select **Subscriptions**. Metabase will slide out a sidebar on the right, with an option to set up a subscription via email or Slack:
 
 ![Set up a dashboard subscription with email or slack](./images/email-or-slack.png)
 

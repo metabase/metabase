@@ -723,6 +723,24 @@
                  (lib/remove-clause ten-breakout)
                  lib/order-bys)))))))
 
+(deftest ^:parallel replace-breakout-syncs-extra-fields-to-order-by
+  (testing "issue #52124"
+    (testing "Changing a breakout should sync all fields to the order-by"
+      (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))
+            breakout-col (->> (lib/breakoutable-columns query)
+                              (m/find-first (comp #{"LAST_LOGIN"} :name)))
+            month (lib/with-temporal-bucket breakout-col :month)
+            day (assoc (lib/with-temporal-bucket breakout-col :day)
+                       :metabase.lib.field/original-temporal-unit :month)
+            q2 (-> query
+                   (lib/breakout month))
+            cols (lib/orderable-columns q2)
+            q3 (-> q2
+                   (lib/order-by (first cols))
+                   (lib/replace-clause (first (lib/breakouts q2)) day))]
+        (is (= (get-in q3 [:stages 0 :breakout 0 1 :metabase.lib.field/original-temporal-unit])
+               (get-in q3 [:stages 0 :order-by 0 2 1 :metabase.lib.field/original-temporal-unit])))))))
+
 (deftest ^:parallel rename-join-test
   (let [joined-column (-> (meta/field-metadata :venues :id)
                           (lib/with-join-alias "alias"))
