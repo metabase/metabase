@@ -1,6 +1,7 @@
 (ns metabase.search.appdb.core
   (:require
    [cheshire.core :as json]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
    [metabase.db :as mdb]
@@ -28,19 +29,28 @@
 ;; Make sure the legacy cookies still work.
 (derive :search.engine/fulltext :search.engine/appdb)
 
+(def supported-db?
+  "All the databases which we have implemented fulltext search for."
+  #{:postgres :h2})
+
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (and (or (not config/is-prod?)
            (= "appdb" (some-> (public-settings/search-engine) name)))
-       (= (mdb/db-type) :postgres)))
+       (supported-db? (mdb/db-type))))
 
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
 
+(defn- collapse-id [{:keys [id] :as row}]
+  (assoc row :id (if (number? id) id (parse-long (last (str/split (:id row) #":"))))))
+
 (defn- rehydrate [weights active-scorers index-row]
-  (-> (merge
-       (json/parse-string (:legacy_input index-row) keyword)
-       (select-keys index-row [:pinned]))
+  (-> (json/parse-string (:legacy_input index-row) keyword)
+      collapse-id
       (assoc
+       ;; this relies on the corresponding scorer, which is not great coupling.
+       ;; ideally we would make per-user computed attributes part of the spec itself.
+       :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (mapv (fn [k]
                            ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)
