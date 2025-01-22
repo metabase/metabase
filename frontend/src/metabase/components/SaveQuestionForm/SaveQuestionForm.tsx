@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
 import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
-import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { FormFooter } from "metabase/core/components/FormFooter";
 import FormInput from "metabase/core/components/FormInput";
@@ -12,6 +11,7 @@ import FormSelect from "metabase/core/components/FormSelect";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import { Form, FormSubmitButton } from "metabase/forms";
 import { isNullOrUndefined } from "metabase/lib/types";
+import { Button } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import CS from "./SaveQuestionForm.module.css";
@@ -108,7 +108,11 @@ export const SaveQuestionForm = ({
       )}
       <FormFooter>
         <FormErrorMessage inline />
-        <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+        <Button
+          onClick={onCancel}
+          variant="subtle"
+          c="text-dark"
+        >{t`Cancel`}</Button>
         <FormSubmitButton
           label={t`Save`}
           data-testid="save-question-button"
