@@ -111,7 +111,8 @@ export const useVirtualGrid = ({
     Array.from(rowVirtualizer.elementsCache.values()).forEach(el =>
       rowVirtualizer.measureElement(el),
     );
-  }, [rowVirtualizer]);
+    columnVirtualizer.measure();
+  }, [rowVirtualizer, columnVirtualizer]);
 
   useLayoutEffect(() => {
     measureGrid();

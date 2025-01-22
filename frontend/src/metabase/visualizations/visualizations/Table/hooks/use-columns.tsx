@@ -219,6 +219,7 @@ export const useColumns = ({
             if (variant === "minibar") {
               return (
                 <MiniBar
+                  backgroundColor={backgroundColor}
                   value={value}
                   formatter={columnFormatters[index]}
                   extent={getColumnExtent(data.cols, data.rows, index)}
