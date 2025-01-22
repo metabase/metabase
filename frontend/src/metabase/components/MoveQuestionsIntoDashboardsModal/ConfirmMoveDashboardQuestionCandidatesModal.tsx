@@ -8,7 +8,7 @@ import type { GetCollectionDashboardQuestionCandidatesResult } from "metabase-ty
 
 import S from "./ConfirmMoveDashboardQuestionCandidatesModal.module.css";
 
-interface ConfirmMoveDashboardQuestionCandidatesModalProps {
+export interface ConfirmMoveDashboardQuestionCandidatesModalProps {
   candidates:
     | GetCollectionDashboardQuestionCandidatesResult["data"]
     | undefined;
@@ -97,7 +97,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
             {match({ isLoading, fetchError, rows })
               .with({ isLoading: true }, () => (
                 <Flex justify="center" py="18.25rem">
-                  <Loader size="xl" />
+                  <Loader size="xl" data-testid="loader" />
                 </Flex>
               ))
               .with({ fetchError: P.not(P.nullish) }, ({ fetchError }) => {
