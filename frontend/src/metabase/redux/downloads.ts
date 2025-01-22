@@ -303,7 +303,7 @@ const getDatasetResponse = ({
   const requestUrl = getDatasetDownloadUrl(url, params);
 
   if (method === "POST") {
-    // BE expects the body to be form-encoded :(
+    // BE expects the body to be form-encoded for some legacy endpoints
     const formattedBody = new URLSearchParams();
     if (body != null && formData) {
       for (const key in body) {
