@@ -129,3 +129,13 @@
     :trace Level/INFO  true
     :trace Level/DEBUG true
     :trace Level/TRACE true))
+
+(deftest memory-log-limits-messages
+  (testing "The memory log buffer limits the number of messages and their length"
+    (dotimes [_ 500]
+      (log/info (apply str (repeat 300 "a"))))
+    (log/error (ex-info (apply str (repeat 300 "b")) {}) "exception message")
+    (is (= 250 (count (logger/messages))))
+    (is (= 250 (apply max (map #(count (:msg %)) (logger/messages)))))
+    (is (= 20 (apply max (map #(count (:exception %)) (logger/messages)))))
+    (is (= 250 (apply max (map count (mapcat :exception (logger/messages))))))))
