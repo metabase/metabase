@@ -174,14 +174,14 @@
    _query-params
    {:keys [database pretty] :as query} :- [:map
                                            [:database ms/PositiveInt]
-                                           [:pretty   {:default false} [:maybe :boolean]]]]
+                                           [:pretty   {:default true} [:maybe :boolean]]]]
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
           prettify (partial driver/prettify-native-form driver)
           compiled (qp.compile/compile-with-inline-parameters query)]
       (cond-> compiled
-        (not (false? pretty)) (update :query prettify)))))
+        pretty (update :query prettify)))))
 
 (api.macros/defendpoint :post "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
