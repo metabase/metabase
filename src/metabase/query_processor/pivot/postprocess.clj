@@ -9,6 +9,7 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [clojure.string :as str]
+   [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
    [metabase.query-processor.streaming.common :as common]
    [metabase.util.malli :as mu]
@@ -100,16 +101,28 @@
 (mu/defn init-pivot
   "Initiate the pivot data structure."
   [pivot-spec :- ::pivot-spec]
-  (let [{:keys [pivot-rows pivot-cols pivot-measures]} pivot-spec]
+  (let [{:keys [pivot-measures]} pivot-spec]
     {:config         pivot-spec
      :data           {}
-     :row-paths      (ordered-set/ordered-set)
-     :col-paths      (ordered-set/ordered-set)
+     ;; A nested tree of ordered maps & sets, representing all combinations of row values in the data
+     :row-paths      (ordered-map/ordered-map)
+     ;; A nested tree of ordered maps & sets, representing all combinations of column values in the data
+     :col-paths      (ordered-map/ordered-map)
      :measure-values (zipmap pivot-measures (repeat (sorted-set)))}))
 
-(defn- update-set
-  [m k v]
-  (update m k conj v))
+(defn- assoc-in-path-tree
+  "Assocs a value in a path tree, which should consist of a hierarchy of ordered-maps, with leaf values stored in
+  ordered-sets."
+  [tree ks v]
+  (let [step (fn step [tree [k & ks]]
+               (if ks
+                 (if-let [next-map (get tree k)]
+                   (assoc tree k (step next-map ks))
+                   (assoc tree k (step (ordered-map/ordered-map) ks)))
+                 (if k
+                   (assoc tree k (conj (get tree k (ordered-set/ordered-set)) v))
+                   (conj (if (set? tree) tree (ordered-set/ordered-set)) v))))]
+    (step tree ks)))
 
 (defn- measure->agg-fn
   "Aggregators for the column totals"
@@ -196,8 +209,10 @@
         (update :row-count (fn [v] (if v (inc v) 0)))
         (update :data update-in (concat row-path col-path)
                 #(update-aggregate (or % (zipmap pivot-measures (repeat {}))) measure-vals measures))
-        (update :row-paths conj row-path)
-        (update :col-paths conj col-path)
+        (update :row-paths
+                #(assoc-in-path-tree % (butlast row-path) (last row-path)))
+        (update :col-paths
+                #(assoc-in-path-tree % (butlast col-path) (last col-path)))
         (update :totals (fn [totals]
                           (-> totals
                               (total-fn [[:grand-total]
@@ -337,32 +352,6 @@
      (fmt (get ordered-formatters measure-key)
           (get-in totals [:grand-total measure-key])))))
 
-(defn- sort-pivot-subsections
-  [config section]
-  (let [{:keys [pivot-rows column-sort-order]} config]
-    (reduce
-     (fn [section [idx pivot-row-idx]]
-       (let [sort-spec (get column-sort-order pivot-row-idx :ascending)
-             transform (if (= :descending sort-spec) reverse identity)
-             groups    (group-by #(nth % idx) section)]
-         (mapcat second (transform (sort groups)))))
-     section
-     (reverse (map vector (range) pivot-rows)))))
-
-(defn- sort-column-combos
-  [config column-combos]
-  (let [{:keys [pivot-cols column-sort-order]} config]
-    (if column-sort-order
-      (reduce
-       (fn [section [idx pivot-row-idx]]
-         (let [sort-spec (get column-sort-order pivot-row-idx :ascending)
-               transform (if (= :descending sort-spec) reverse identity)
-               groups    (group-by #(nth % idx) section)]
-           (mapcat second (transform (sort groups)))))
-       column-combos
-       (reverse (map-indexed vector pivot-cols)))
-      column-combos)))
-
 (defn- append-totals-to-subsections
   [pivot section col-combos ordered-formatters]
   (let [{:keys [config
@@ -403,6 +392,42 @@
             false #_row-totals?
             ordered-formatters pivot-rows))])))
 
+(defn sort-path-tree
+  "Takes a tree of row or column paths and returns a new tree with ordered-maps replaced as needed with sorted-maps, and
+  ordered-sets replaced with sorted-sets, based on the provided `sort-orders` config. If no sort order is provided for
+  a particular row or column, it is left as-is."
+  [tree [first-index & indices] sort-orders]
+  (let [sort-order (get sort-orders first-index)
+        compare-fn (case sort-order
+                     :ascending compare
+                     :descending #(compare %2 %1)
+                     nil)]
+    (cond
+      (associative? tree)
+      (into (if compare-fn
+              (sorted-map-by compare-fn)
+              (ordered-map/ordered-map))
+            (for [[k v] tree]
+              [k (sort-path-tree v indices sort-orders)]))
+
+      (set? tree)
+      (if compare-fn
+        (into (sorted-set-by compare-fn) tree)
+        tree)
+
+      :else tree)))
+
+(defn enumerate-paths
+  "Enumerate all paths from the root to a leaf in a tree structure composed of maps and sets."
+  [m]
+  (letfn [(enumerate [prefix m]
+            (if-not (associative? m)
+              (mapv #(conj prefix %) m)
+              (mapcat (fn [[k v]]
+                        (enumerate (conj prefix k) v))
+                      m)))]
+    (enumerate [] m)))
+
 (defn build-pivot-output
   "Arrange and format the aggregated `pivot` data."
   [pivot ordered-formatters]
@@ -414,40 +439,40 @@
         {:keys [pivot-rows
                 pivot-cols
                 pivot-measures
+                ;; `column` here refers to columns in the original data, which can be pivot rows *or* columns
                 column-sort-order
                 column-titles
                 row-totals?
                 col-totals?]}   config
-        sort-fns                (update-vals column-sort-order (fn [direction] (get {:ascending  identity
-                                                                                     :descending reverse} direction)))
         row-formatters          (mapv #(get ordered-formatters %) pivot-rows)
         col-formatters          (mapv #(get ordered-formatters %) pivot-cols)
-        col-paths               (vec (sort-column-combos config col-paths))
+        sorted-row-paths        (sort-path-tree row-paths pivot-rows column-sort-order)
+        sorted-col-paths        (sort-path-tree col-paths pivot-rows column-sort-order)
+        sorted-row-combos       (enumerate-paths sorted-row-paths)
+        sorted-col-combos       (enumerate-paths sorted-col-paths)
         row-totals?             (and row-totals? (boolean (seq pivot-cols)))
-        column-headers          (build-column-headers config col-paths col-formatters)
+        column-headers          (build-column-headers config sorted-col-combos col-formatters)
         headers                 (or (not-empty (build-headers column-headers config))
                                     [(mapv #(get column-titles %) (into (vec pivot-rows) pivot-measures))])]
     (perf/concat
      headers
      (transduce (remove empty?) into []
-                (let [sort-fn (get sort-fns (first pivot-rows) identity)
-                      sections-rows
+                (let [sections-rows
                       (mapv (fn [section-row-combos]
                               (into []
                                     (keep (fn [row-combo]
-                                            (build-row row-combo col-paths pivot-measures data totals
+                                            (build-row row-combo sorted-col-combos pivot-measures data totals
                                                        row-totals? ordered-formatters row-formatters)))
                                     section-row-combos))
-                            (sort-fn (sort-by ffirst (vals (group-by first row-paths)))))]
+                            (partition-by first sorted-row-combos))]
                   (perf/mapv
                    (fn [section-rows]
                      (->>
                       section-rows
-                      (sort-pivot-subsections config)
                       ;; section rows are either enriched with column-totals rows or left as is
                       ((fn [rows]
                          (if (and col-totals? (> (count pivot-rows) 1))
-                           (append-totals-to-subsections pivot rows col-paths ordered-formatters)
+                           (append-totals-to-subsections pivot rows sorted-col-combos ordered-formatters)
                            rows)))
                       ;; then, we apply the row-formatters to the pivot-rows portion of each row,
                       ;; filtering out any rows that begin with "Totals ..."
@@ -462,4 +487,4 @@
                              (into (mapv fmt row-formatters row-part) vals-part)))))))
                    sections-rows)))
      (when col-totals?
-       [(build-grand-totals config col-paths totals row-totals? ordered-formatters)]))))
+       [(build-grand-totals config sorted-col-combos totals row-totals? ordered-formatters)]))))
