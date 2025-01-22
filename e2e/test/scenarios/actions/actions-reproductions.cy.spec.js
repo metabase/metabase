@@ -226,7 +226,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
 describe("issue 51020", () => {
   function setupBasicActionsInModel() {
     H.questionInfoButton().click();
-    H.modal().findByText("See more about this model").click();
+    H.sidesheet().findByText("Actions").click();
     cy.findByRole("tab", { name: "Actions" }).click();
     cy.button(/Create basic actions/).click();
   }
