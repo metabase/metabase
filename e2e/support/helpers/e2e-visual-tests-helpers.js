@@ -1,4 +1,5 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
 import { color as getColor } from "metabase/lib/colors";
 import { Icons } from "metabase/ui";
 import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
@@ -134,17 +135,25 @@ export function pieSliceWithColor(color) {
 
 export function echartsTooltip() {
   // ECharts may keep two dom instances of the tooltip
-  return cy
-    .findAllByTestId("echarts-tooltip")
-    .should("have.length", 1)
-    .should($el => {
-      const element = $el[0];
+  return cy.findAllByTestId("echarts-tooltip").should($elements => {
+    // Find visible tooltips within a single command
+    // Using `.filter(":visible")` will fail as the tooltip is positioned as fixed
+    const visibleTooltips = $elements.toArray().filter(element => {
       const style = window.getComputedStyle(element);
 
-      expect(style.display).not.to.equal("none");
-      expect(style.visibility).not.to.equal("hidden");
-    })
-    .eq(0);
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        style.zIndex >= OVERLAY_Z_INDEX
+      );
+    });
+
+    // Assert we have exactly one visible tooltip
+    expect(visibleTooltips).to.have.length(1);
+
+    // Return the visible tooltip
+    return visibleTooltips[0];
+  });
 }
 
 export function tooltipHeader() {
