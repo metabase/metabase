@@ -1,7 +1,6 @@
 (ns metabase.api.notification-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.channel.email.messages :as messages]
@@ -116,8 +115,8 @@
     (notification.tu/with-channel-fixtures [:channel/email]
       (mt/with-temp [:model/Card {card-id :id} {:name "My Card"}]
         (doseq [[send_condition expected_text] [["has_result" "whenever this question has any results"]
-                                                #_["goal_above" "when this question meets its goal"]
-                                                #_["goal_below" "when this question goes below its goal"]]]
+                                                ["goal_above" "when this question meets its goal"]
+                                                ["goal_below" "when this question goes below its goal"]]]
           (let [notification {:payload_type  "notification/card"
                               :active        true
                               :payload       {:card_id card-id

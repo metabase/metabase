@@ -101,7 +101,9 @@
   [notification-info]
   (case (:payload_type notification-info)
     (:notification/system-event :notification/testing :notification/card)
-    (models.notification/hydrate-notification notification-info)
+    (cond-> notification-info
+      (t2/instance? notification-info)
+      models.notification/hydrate-notification)
     ;; :notification/dashboard is still on pulse, so we expect it to self-contained. see [[metabase.pulse.send]]
     notification-info))
 
