@@ -229,10 +229,11 @@
   "Return parameter values for cards or dashboards that are being edited."
   [_route-params
    _query-params
-   {:keys [parameter field_ids]} :- [:map
-                                     [:parameter ms/Parameter]
-                                     [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
-  (parameter-values parameter field_ids nil))
+   {:keys     [parameter]
+    field-ids :field_ids} :- [:map
+                              [:parameter ms/Parameter]
+                              [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
+  (parameter-values parameter field-ids nil))
 
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
