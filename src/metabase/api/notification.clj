@@ -4,6 +4,7 @@
    [clojure.data :refer [diff]]
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
@@ -157,12 +158,26 @@
       true
       (notification/send-notification! :notification/sync? true))))
 
+(defn- promote-to-t2-instance
+  [notification]
+  (->  (t2/instance :model/Notification notification)
+       (m/update-existing :handlers #(map (fn [x]
+                                            (-> (t2/instance :model/NotificationHandler x)
+                                                (m/update-existing :channel (fn [c] (t2/instance :model/Channel) c))
+                                                (m/update-existing :template (fn [t] (t2/instance :model/ChannelTemplate) t))
+                                                (m/update-existing :recipients (fn [recipients] (map (fn [r] (t2/instance :model/NotificationRecipient r)) recipients)))))
+                                          %))
+       (m/update-existing :subscriptions #(map (fn [x] (t2/instance :model/NotificationSubscription x)) %))))
+
 (api/defendpoint POST "/send"
   "Send an unsaved notification."
   [:as {body :body}]
   {body ::models.notification/FullyHydratedNotification}
   (api/create-check :model/Notification body)
-  (notification/send-notification! body :notification/sync? true))
+  (-> body
+      (assoc :creator_id api/*current-user-id*)
+      promote-to-t2-instance
+      (notification/send-notification! :notification/sync? true)))
 
 (api/defendpoint POST "/:id/unsubscribe"
   "Unsubscribe current user from a notification."

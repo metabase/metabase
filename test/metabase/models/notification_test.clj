@@ -182,7 +182,7 @@
                                                           :email "lucky@metabase.com"}
                                                          {:id    (mt/user->id :rasta)
                                                           :email "rasta@metabase.com"}]}}]
-                      (:recipients (t2/hydrate noti-handler :recipients)))))))))))
+                      (:recipients (t2/hydrate noti-handler [:recipients :recipients-detail])))))))))))
 
 (deftest delete-template-set-null-on-existing-handlers-test
   (testing "if a channel template is deleted, then set null on existing notification_handler"
