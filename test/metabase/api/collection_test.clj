@@ -1521,6 +1521,57 @@
                     keys
                     (into #{}))))))))
 
+(deftest dashboard-question-candidates-can-be-paginated
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+
+                   :model/Card {card-1-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-1-id}
+
+                   :model/Card {card-2-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-2-id}
+
+                   :model/Card {card-3-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-3-id}]
+      (testing "Selecting everything"
+        (is (= #{card-1-id card-2-id card-3-id}
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))
+                    :data
+                    (map :id)
+                    set))))
+      (testing "Selecting the first one"
+        (let [{:keys [data count]}
+              (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                    :limit 1 :offset 0)]
+          (is (= [card-3-id]
+                 (map :id data)))
+          (is (= 1 count))))
+      (testing "The second two"
+        (let [{:keys [data count]}
+              (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                    :limit 2 :offset 1)]
+          (is (= [card-2-id card-1-id]
+                 (map :id data)))
+          (is (= 2 count))))
+      (testing "The first two"
+        (let [{:keys [data count]}
+              (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                    :limit 2 :offset 0)]
+          (is (= [card-3-id card-2-id]
+                 (map :id data)))
+          (is (= 2 count))))
+      (testing "Only limit, no offset"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                         :limit 2)]
+          (is (= [card-3-id card-2-id]
+                 (map :id data)))))
+      (testing "Only offset, no limit"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                         :offset 1)]
+          (is (= [card-2-id card-1-id]
+                 (map :id data))))))))
+
 (deftest dashboard-question-candidates-card-is-in-two-dashboards-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card is in two dashboards"
@@ -1747,6 +1798,56 @@
                                  (map :id)
                                  set)
                             card-id)))))))
+
+(deftest root-dashboard-question-candidates-can-be-paginated
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
+
+                   :model/Card {card-1-id :id} {:collection_id nil}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-1-id}
+
+                   :model/Card {card-2-id :id} {:collection_id nil}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-2-id}
+
+                   :model/Card {card-3-id :id} {:collection_id nil}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-3-id}]
+      (testing "Selecting everything"
+        (is (= #{card-1-id card-2-id card-3-id}
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates"))
+                    :data
+                    (map :id)
+                    set))))
+      (testing "Selecting the first one"
+        (let [{:keys [data count]}
+              (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                    :limit 1 :offset 0)]
+          (is (= [card-3-id]
+                 (map :id data)))
+          (is (= 1 count))))
+      (testing "The second two"
+        (let [{:keys [data count]}
+              (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                    :limit 2 :offset 1)]
+          (is (= [card-2-id card-1-id]
+                 (map :id data)))
+          (is (= 2 count))))
+      (testing "The first two"
+        (let [{:keys [data count]}
+              (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                    :limit 2 :offset 0)]
+          (is (= [card-3-id card-2-id]
+                 (map :id data)))
+          (is (= 2 count))))
+      (testing "Only limit, no offset"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                         :limit 2)]
+          (is (= [card-3-id card-2-id]
+                 (map :id data)))))
+      (testing "Only offset, no limit"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                         :offset 1)]
+          (is (= [card-2-id card-1-id]
+                 (map :id data))))))))
 
 (deftest post-move-dashboard-question-candidates-success
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"

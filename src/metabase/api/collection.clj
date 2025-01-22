@@ -1060,23 +1060,34 @@
    [:count integer?]])
 
 (mu/defn- dashboard-question-candidates
-  "Implementation for the `dashboard-question-candidates` endpoints."
-  [collection-id :- [:maybe ms/PositiveInt]]
-  (api/check-403 api/*is-superuser?*)
-  (let [all-cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:and
-                                                                            [:= :collection_id collection-id]
-                                                                            [:= :dashboard_id nil]]})
-                                            :in_dashboards)]
-    (filter
-     (fn [card]
-       (and
-        ;; we're a good candidate if:
-        ;; - we're only in one dashboard
-        (card/sole-dashboard-id card)
-        ;; - that one dashboard is in the same collection
-        (= (:collection_id card)
-           (-> card :in_dashboards first :collection_id))))
-     all-cards-in-collection)))
+  "Implementation for the `dashboard-question-candidates` endpoints.
+
+  If `pagination-data` is passed, `limit` and `offset` will be used. Otherwise, returns all candidates."
+  ([collection-id] (dashboard-question-candidates collection-id nil))
+  ([collection-id :- [:maybe ms/PositiveInt]
+    pagination-data :- [:maybe
+                        [:map
+                         [:limit ms/Int]
+                         [:offset ms/Int]]]]
+   (api/check-403 api/*is-superuser?*)
+   (let [all-cards-in-collection (t2/hydrate (t2/select :model/Card (merge
+                                                                 {:where [:and
+                                                                          [:= :collection_id collection-id]
+                                                                          [:= :dashboard_id nil]]
+                                                                  :order-by [[:id :desc]]}
+                                                                 (when-let [{:keys [limit offset]} pagination-data]
+                                                                   {:limit limit :offset offset})))
+                                         :in_dashboards)]
+     (filter
+      (fn [card]
+        (and
+         ;; we're a good candidate if:
+         ;; - we're only in one dashboard
+         (card/sole-dashboard-id card)
+         ;; - that one dashboard is in the same collection
+         (= (:collection_id card)
+            (-> card :in_dashboards first :collection_id))))
+      all-cards-in-collection))))
 
 (mu/defn- present-dashboard-question-candidate
   [{:keys [in_dashboards] :as card}]
@@ -1097,14 +1108,18 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/read-check :model/Collection id)
   (present-dashboard-question-candidates
-   (dashboard-question-candidates id)))
+   (dashboard-question-candidates id (when (request/paged?)
+                                       {:limit (request/limit)
+                                        :offset (request/offset)}))))
 
 (api.macros/defendpoint :get "/root/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
   "Find cards in the root collection that can be moved into dashboards in the root collection. (Same as the above
   endpoint, but for the root collection)"
   []
   (present-dashboard-question-candidates
-   (dashboard-question-candidates nil)))
+   (dashboard-question-candidates nil (when (request/paged?)
+                                        {:limit (request/limit)
+                                         :offset (request/offset)}))))
 
 (mr/def ::MoveDashboardQuestionCandidatesResponse
   [:map
