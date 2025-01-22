@@ -87,9 +87,8 @@
    (if (nil? s)
      nil
      (->> (codecs/to-bytes s)
-       (encrypt-bytes secret-key)
-       codec/base64-encode)
-     )))
+          (encrypt-bytes secret-key)
+          codec/base64-encode))))
 
 (defn decrypt-bytes
   "Decrypt bytes `b` using a `secret-key` (a 64-byte byte array), which by default is the hashed value of
@@ -159,7 +158,7 @@
    (decrypt default-secret-key s))
   (^String [secret-key, ^String s]
    (if (nil? s) nil
-    (codecs/bytes->str (decrypt-bytes secret-key (codec/base64-decode s))))))
+       (codecs/bytes->str (decrypt-bytes secret-key (codec/base64-decode s))))))
 
 (defn maybe-encrypt
   "If `MB_ENCRYPTION_SECRET_KEY` is set, return an encrypted version of `s`; otherwise return `s` as-is."

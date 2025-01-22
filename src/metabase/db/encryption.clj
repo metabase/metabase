@@ -74,9 +74,9 @@
   (when (and (not (nil? to-key)) (empty? to-key))
     (throw (ex-info "Cannot encrypt database with an empty key" {})))
   (do-encryption db-type data-source true (fn [maybe-encrypt-fn]
-    (if
-     (nil? to-key) maybe-encrypt-fn
-     (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))))))
+                                            (if
+                                             (nil? to-key) maybe-encrypt-fn
+                                             (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))))))
 
 (defn decrypt-db
   "Decrypts the database using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data"
