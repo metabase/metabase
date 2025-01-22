@@ -184,7 +184,7 @@
   because of the URL length constraints; the new POST endpoint should be used instead. See #51813 for details."
   [uuid parameters]
   {uuid       ms/UUIDString
-   parameters [:maybe [:sequential ms/Parameter]]}
+   parameters [:maybe ms/JSONString]}
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -232,7 +232,7 @@
   (process-query-for-card-with-public-uuid
    uuid
    export-format
-   (json/decode+kw parameters)
+   parameters
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
