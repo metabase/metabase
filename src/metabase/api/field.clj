@@ -71,9 +71,9 @@
   "Get `Field` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_editable_data_model]} :- [:map
-                                             [:include_editable_data_model ms/BooleanValue]]]
-  (get-field id {:include-editable-data-model? include_editable_data_model}))
+   {include-editable-data-model? :include_editable_data_model} :- [:map
+                                                                   [:include_editable_data_model {:default false} ms/BooleanValue]]]
+  (get-field id {:include-editable-data-model? include-editable-data-model?}))
 
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
@@ -146,7 +146,7 @@
                   [:has_field_values   {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]
                   [:settings           {:optional true} [:maybe ms/Map]]
                   [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-                  [:json_unfolding     {:default false} [:maybe :boolean]]]]
+                  [:json_unfolding     {:optional true} [:maybe :boolean]]]]
   (let [field             (t2/hydrate (api/write-check :model/Field id) :dimensions)
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
@@ -209,25 +209,26 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {dimension-type :type, dimension-name :name, human_readable_field_id :human_readable_field_id} :- [:map
-                                                                                                      [:dimension-type          [:enum "internal" "external"]]
-                                                                                                      [:dimension-name          ms/NonBlankString]
-                                                                                                      [:human_readable_field_id {:optional true} [:maybe ms/PositiveInt]]]]
+   {dimension-type :type, dimension-name :name, human-readable-field-id :human_readable_field_id}
+   :- [:map
+       [:type                    [:enum "internal" "external"]]
+       [:name                    ms/NonBlankString]
+       [:human_readable_field_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/write-check :model/Field id)
   (api/check (or (= dimension-type "internal")
                  (and (= dimension-type "external")
-                      human_readable_field_id))
+                      human-readable-field-id))
              [400 "Foreign key based remappings require a human readable field id"])
   (if-let [dimension (t2/select-one :model/Dimension :field_id id)]
     (t2/update! :model/Dimension (u/the-id dimension)
                 {:type                    dimension-type
                  :name                    dimension-name
-                 :human_readable_field_id human_readable_field_id})
+                 :human_readable_field_id human-readable-field-id})
     (t2/insert! :model/Dimension
                 {:field_id                id
                  :type                    dimension-type
                  :name                    dimension-name
-                 :human_readable_field_id human_readable_field_id}))
+                 :human_readable_field_id human-readable-field-id}))
   (t2/select-one :model/Dimension :field_id id))
 
 (api.macros/defendpoint :delete "/:id/dimension"
@@ -294,7 +295,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    {value-pairs :values} :- [:map
-                             [:value-pairs [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]]]]
+                             [:values [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]]]]
   (let [field (api/write-check :model/Field id)]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
