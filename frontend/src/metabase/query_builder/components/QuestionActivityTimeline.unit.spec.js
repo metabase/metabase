@@ -69,6 +69,7 @@ describe("QuestionActivityTimeline", () => {
 
     it("should render revert action buttons", async () => {
       await setup({ question });
+      await waitForLoaderToBeRemoved();
       expect(screen.getByTestId("question-revert-button")).toBeInTheDocument();
     });
   });

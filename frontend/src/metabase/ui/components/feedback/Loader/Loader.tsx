@@ -1,5 +1,6 @@
 import type { LoaderProps } from "@mantine/core";
 import { Loader as MantineLoader, getSize } from "@mantine/core";
+import type { HTMLAttributes } from "react";
 
 const SIZES: Record<string, string> = {
   xs: "1rem",
@@ -10,5 +11,12 @@ const SIZES: Record<string, string> = {
 };
 
 export const Loader = ({ size = "md", ...props }: LoaderProps) => (
-  <MantineLoader {...props} size={getSize({ size, sizes: SIZES })} />
+  <LoaderTestId>
+    <MantineLoader {...props} size={getSize({ size, sizes: SIZES })} />
+  </LoaderTestId>
+);
+
+/** Provides a testid we can use to detect whether the loading indicator is present */
+export const LoaderTestId = (props: HTMLAttributes<HTMLDivElement>) => (
+  <div aria-busy data-testid="loading-indicator" {...props} />
 );

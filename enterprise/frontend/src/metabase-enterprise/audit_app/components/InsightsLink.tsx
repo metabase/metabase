@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
+import { LoadingIndicator } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -26,7 +27,7 @@ export const InsightsLink = ({
     : (question.collection() as Collection);
 
   if (isLoading) {
-    return <div data-testid="loading-indicator" />;
+    return <LoadingIndicator />;
   }
 
   if (!isUserAdmin) {
