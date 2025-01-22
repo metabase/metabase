@@ -46,13 +46,27 @@ const DownloadButton = ({
     e.preventDefault();
     setLoading(true);
     let downloadUrl = url;
-    if (params) {
-      const qs = querystring.stringify(params);
-      downloadUrl += `?${qs}`;
-    }
+    let requestOptions = { method: "GET" }; // Default request options
 
     try {
-      const response = await fetch(downloadUrl);
+      if (downloadUrl.includes("/api/card") && params) {
+        // If URL contains /api/card, use POST and append data in FormData
+        const formData = new FormData();
+        Object.entries(params).forEach(([key, value]) => {
+          formData.append(key, value);
+        });
+
+        requestOptions = {
+          method: "POST",
+          body: formData,
+        };
+      } else if (params) {
+        // If not /api/card, use query parameters for GET request
+        const qs = querystring.stringify(params);
+        downloadUrl += `?${qs}`;
+      }
+
+      const response = await fetch(downloadUrl, requestOptions);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
