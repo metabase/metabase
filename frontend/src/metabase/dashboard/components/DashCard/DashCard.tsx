@@ -17,10 +17,8 @@ import {
 } from "metabase/dashboard/utils";
 import { color } from "metabase/lib/colors";
 import { useSelector, useStore } from "metabase/lib/redux";
-import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -120,7 +118,6 @@ function DashCardInner({
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
   );
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const store = useStore();
   const getHref = useCallback(
     () => getDashcardHref(store.getState(), dashcard.id),
@@ -190,7 +187,6 @@ function DashCardInner({
   );
 
   const isAction = isActionCard(mainCard);
-  const isEmbed = isEmbeddingSdk || isJWT(dashcard.dashboard_id);
 
   const { expectedDuration, isSlow } = useMemo(() => {
     const expectedDuration = Math.max(
@@ -346,7 +342,6 @@ function DashCardInner({
           error={error}
           getHref={navigateToNewCardFromDashboard ? getHref : undefined}
           isAction={isAction}
-          isEmbed={isEmbed}
           isXray={isXray}
           isEditing={isEditing}
           isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}

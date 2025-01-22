@@ -31,6 +31,8 @@ const PublicComponentStylesWrapperInner = styled.div`
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
+  transition: var(--transition-theme-change);
+
   ${aceEditorStyles}
   ${saveDomImageStyles}
 
@@ -64,5 +66,11 @@ export const SCOPED_CSS_RESET = css`
   ${PublicComponentStylesWrapperInner} *:where(button) {
     border: 0;
     background-color: transparent;
+  }
+
+  // fonts.styled.ts has a reset for list padding and margin in the main app, so we need to do it here
+  ${PublicComponentStylesWrapperInner} *:where(ul) {
+    padding: 0;
+    margin: 0;
   }
 `;

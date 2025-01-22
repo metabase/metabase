@@ -26,7 +26,16 @@
       (is (= "840eb7aa2a9935de63366bacbe9d97e978a859e93dc792a0334de60ed52f8e99"
              (query-hash-hex {:query :abc})))
       (is (= (query-hash-hex {:query :def})
-             (query-hash-hex {:query :def}))))))
+             (query-hash-hex {:query :def})))
+      (let [q {:database 1,
+               :type :query,
+               :query {:source-table 8,
+                       :aggregation [[:count]],
+                       :breakout [[:field 58 {:base-type :type/Text}]],
+                       :order-by [[:asc [:aggregation 0]]]},
+               :parameters []}]
+        (is (= (query-hash-hex q)
+               (query-hash-hex q)))))))
 
 (deftest ^:parallel ignore-lib-uuids-test
   (letfn [(query []
@@ -60,7 +69,37 @@
         {:lib/type :type/query, :parameters [2]}
 
         {:lib/type :type/query, :constraints {:max-rows 1000}}
-        {:lib/type :type/query, :constraints nil}))))
+        {:lib/type :type/query, :constraints nil}
+
+        {:database 1,
+         :type :query,
+         :query {:source-table 8,
+                 :aggregation [[:count] [:cum-count]],
+                 :breakout [[:field 58 {:base-type :type/Text}]],
+                 :order-by [[:asc [:aggregation 0]]]},
+         :parameters []}
+        {:database 1,
+         :type :query,
+         :query {:source-table 8,
+                 :aggregation [[:count] [:cum-count]],
+                 :breakout [[:field 58 {:base-type :type/Text}]],
+                 :order-by [[:asc [:aggregation 1]]]},
+         :parameters []}
+
+        {:database 1,
+         :type :query,
+         :query {:source-table 8,
+                 :aggregation [[:count] [:cum-count]],
+                 :breakout [[:field 58 {:base-type :type/Text}]],
+                 :order-by [[:asc [:field 57 {:base-type :type/Text}]]]},
+         :parameters []}
+        {:database 1,
+         :type :query,
+         :query {:source-table 8,
+                 :aggregation [[:count] [:cum-count]],
+                 :breakout [[:field 58 {:base-type :type/Text}]],
+                 :order-by [[:asc [:field 58 {:base-type :type/Text}]]]},
+         :parameters []}))))
 
 (deftest ^:parallel query-hash-test-3
   (testing "qp.util/query-hash"

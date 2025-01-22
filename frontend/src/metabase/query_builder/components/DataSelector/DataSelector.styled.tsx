@@ -49,7 +49,6 @@ export function RawDataBackButton() {
 
 export const DataBucketList = styled(SelectList)`
   width: 300px;
-  padding: ${space(0)} ${space(1)} 12px ${space(1)};
 `;
 
 export const EmptyStateContainer = styled.div`

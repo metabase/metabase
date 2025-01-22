@@ -13,6 +13,7 @@ import { FilterPickerBody } from "./FilterPickerBody";
 import type { ColumnListItem, SegmentListItem } from "./types";
 
 export type FilterPickerProps = {
+  className?: string;
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
@@ -20,18 +21,21 @@ export type FilterPickerProps = {
 
   onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
+  onBack?: () => void;
 } & Pick<
   FilterColumnPickerProps,
   "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
 >;
 
 export function FilterPicker({
+  className,
   query,
   stageIndex,
   filter: initialFilter,
   filterIndex,
   onSelect,
   onClose,
+  onBack,
   withColumnItemIcon,
   withColumnGroupIcon,
   withCustomExpression,
@@ -56,6 +60,11 @@ export function FilterPicker({
   const handleChange = (filter: Lib.Filterable) => {
     onSelect(filter);
     onClose?.();
+  };
+
+  const handleBack = () => {
+    setColumn(undefined);
+    onBack?.();
   };
 
   const handleColumnSelect = (column: Lib.ColumnMetadata) => {
@@ -99,6 +108,7 @@ export function FilterPicker({
   if (!column) {
     return (
       <FilterColumnPicker
+        className={className}
         query={query}
         stageIndex={stageIndex}
         checkItemIsSelected={checkItemIsSelected}
@@ -120,7 +130,7 @@ export function FilterPicker({
       filter={filter}
       isNew={isNewFilter}
       onChange={handleChange}
-      onBack={() => setColumn(undefined)}
+      onBack={handleBack}
     />
   );
 }

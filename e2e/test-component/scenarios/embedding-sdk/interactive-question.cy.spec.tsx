@@ -14,10 +14,12 @@ import {
   createQuestion,
   describeEE,
   popover,
+  tableAllFieldsHiddenImage,
   tableHeaderClick,
   tableInteractive,
 } from "e2e/support/helpers";
 import {
+  METABASE_INSTANCE_URL,
   mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   mountSdkContent,
@@ -25,7 +27,7 @@ import {
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { saveInteractiveQuestionAsNewQuestion } from "e2e/support/helpers/e2e-embedding-sdk-interactive-question-helpers";
-import { Box, Button, Flex, Modal, Popover } from "metabase/ui";
+import { Box, Button, Modal } from "metabase/ui";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -35,18 +37,18 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    createQuestion(
-      {
-        name: "47563",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
-          breakout: [["field", ORDERS.PRODUCT_ID, null]],
-          limit: 2,
-        },
+    createQuestion({
+      name: "47563",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
+        breakout: [["field", ORDERS.PRODUCT_ID, null]],
+        limit: 2,
       },
-      { wrapId: true },
-    );
+    }).then(({ body: question }) => {
+      cy.wrap(question.id).as("questionId");
+      cy.wrap(question.entity_id).as("questionEntityId");
+    });
 
     cy.signOut();
 
@@ -91,15 +93,32 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
-    tableInteractive().findByText("Max of Quantity").should("be.visible");
+    const firstColumnName = "Product ID";
+    const lastColumnName = "Max of Quantity";
+    const columnNames = [firstColumnName, lastColumnName];
 
-    tableHeaderClick("Max of Quantity");
+    columnNames.forEach(columnName => {
+      tableInteractive().findByText(columnName).should("be.visible");
 
-    popover()
-      .findByTestId("click-actions-sort-control-formatting-hide")
-      .click();
+      tableHeaderClick(columnName);
 
-    tableInteractive().findByText("Max of Quantity").should("not.exist");
+      popover()
+        .findByTestId("click-actions-sort-control-formatting-hide")
+        .click();
+
+      const lastColumnName = "Max of Quantity";
+
+      if (columnName !== lastColumnName) {
+        tableInteractive().findByText(columnName).should("not.exist");
+      } else {
+        tableInteractive().should("not.exist");
+
+        tableAllFieldsHiddenImage()
+          .should("be.visible")
+          .should("have.attr", "src")
+          .and("include", METABASE_INSTANCE_URL);
+      }
+    });
   });
 
   it("can save a question to a default collection", () => {
@@ -154,38 +173,16 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     cy.intercept("GET", "/api/card/*").as("getCard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    const TestSuiteComponent = ({ questionId }: { questionId: string }) => {
-      const [isOpen, { close, toggle }] = useDisclosure();
-
-      return (
-        <Box p="lg">
-          <InteractiveQuestion questionId={questionId}>
-            <Box>
-              <Flex justify="space-between" w="100%">
-                <Box>
-                  <InteractiveQuestion.FilterBar />
-                </Box>
-
-                <Popover position="bottom-end" opened={isOpen} onClose={close}>
-                  <Popover.Target>
-                    <Button onClick={toggle}>Filter</Button>
-                  </Popover.Target>
-
-                  <Popover.Dropdown>
-                    <InteractiveQuestion.FilterPicker
-                      onClose={close}
-                      withIcon
-                    />
-                  </Popover.Dropdown>
-                </Popover>
-              </Flex>
-
-              <InteractiveQuestion.QuestionVisualization />
-            </Box>
-          </InteractiveQuestion>
-        </Box>
-      );
-    };
+    const TestSuiteComponent = ({ questionId }: { questionId: string }) => (
+      <Box p="lg">
+        <InteractiveQuestion questionId={questionId}>
+          <Box>
+            <InteractiveQuestion.FilterDropdown />
+            <InteractiveQuestion.QuestionVisualization />
+          </Box>
+        </InteractiveQuestion>
+      </Box>
+    );
 
     cy.get<string>("@questionId").then(questionId => {
       mountSdkContent(<TestSuiteComponent questionId={questionId} />);
@@ -201,9 +198,10 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByText("User ID").click();
       cy.findByPlaceholderText("Enter an ID").type("12");
       cy.findByText("Add filter").click();
-    });
 
-    getSdkRoot().contains("User ID is 12");
+      cy.findByText("User ID is 12").should("be.visible");
+      cy.findByText("Add another filter").should("be.visible");
+    });
   });
 
   it("can create questions via the SaveQuestionForm component", () => {
@@ -283,14 +281,73 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
 
     getSdkRoot().within(() => {
       // Open the default summarization view in the sdk
-      cy.findByText("Summarize").click();
-
-      // Expect the default summarization view to be there.
-      cy.findByTestId("summarize-aggregation-item-list").should("be.visible");
+      cy.findByText("1 summary").click();
     });
+
+    popover().findByText("Add another summary").click();
+
+    // Expect the default summarization view to be there.
+    cy.findByTestId("aggregation-picker").should("be.visible");
 
     cy.on("uncaught:exception", error => {
       expect(error.message.includes("Stage 1 does not exist")).to.be.false;
+    });
+  });
+
+  describe("loading behavior for both entity IDs and number IDs (metabase#49581)", () => {
+    const successTestCases = [
+      {
+        name: "correct entity ID",
+        questionIdAlias: "@questionEntityId",
+      },
+      {
+        name: "correct number ID",
+        questionIdAlias: "@questionId",
+      },
+    ];
+
+    const failureTestCases = [
+      {
+        name: "wrong entity ID",
+        questionId: "VFCGVYPVtLzCtt4teeoW4",
+      },
+      {
+        name: "one too many entity ID character",
+        questionId: "VFCGVYPVtLzCtt4teeoW49",
+      },
+      {
+        name: "wrong number ID",
+        questionId: 9999,
+      },
+    ];
+
+    successTestCases.forEach(({ name, questionIdAlias }) => {
+      it(`should load question content for ${name}`, () => {
+        cy.get(questionIdAlias).then(questionId => {
+          mountInteractiveQuestion({ questionId });
+        });
+
+        getSdkRoot().within(() => {
+          cy.findByText("Product ID").should("be.visible");
+          cy.findByText("Max of Quantity").should("be.visible");
+        });
+      });
+    });
+
+    failureTestCases.forEach(({ name, questionId }) => {
+      it(`should show an error message for ${name}`, () => {
+        mountInteractiveQuestion(
+          { questionId },
+          { shouldAssertCardQuery: false },
+        );
+
+        getSdkRoot().within(() => {
+          const expectedErrorMessage = `Question ${questionId} not found. Make sure you pass the correct ID.`;
+          cy.findByRole("alert").should("have.text", expectedErrorMessage);
+          cy.findByText("Product ID").should("not.exist");
+          cy.findByText("Max of Quantity").should("not.exist");
+        });
+      });
     });
   });
 });

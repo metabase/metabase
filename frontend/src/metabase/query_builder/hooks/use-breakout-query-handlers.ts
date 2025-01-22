@@ -11,32 +11,40 @@ export const useBreakoutQueryHandlers = ({
 }: UpdateQueryHookProps) => {
   const onAddBreakout = useCallback(
     (column: Lib.ColumnMetadata) => {
-      const nextQuery = Lib.breakout(query, stageIndex, column);
-      onQueryChange(nextQuery);
+      if (query) {
+        const nextQuery = Lib.breakout(query, stageIndex, column);
+        onQueryChange(nextQuery);
+      }
     },
     [query, stageIndex, onQueryChange],
   );
 
   const onUpdateBreakout = useCallback(
     (clause: Lib.BreakoutClause, column: Lib.ColumnMetadata) => {
-      const nextQuery = Lib.replaceClause(query, stageIndex, clause, column);
-      onQueryChange(nextQuery);
+      if (query) {
+        const nextQuery = Lib.replaceClause(query, stageIndex, clause, column);
+        onQueryChange(nextQuery);
+      }
     },
     [query, stageIndex, onQueryChange],
   );
 
   const onRemoveBreakout = useCallback(
     (clause: Lib.BreakoutClause) => {
-      const nextQuery = Lib.removeClause(query, stageIndex, clause);
-      onQueryChange(nextQuery);
+      if (query) {
+        const nextQuery = Lib.removeClause(query, stageIndex, clause);
+        onQueryChange(nextQuery);
+      }
     },
     [query, stageIndex, onQueryChange],
   );
 
   const onReplaceBreakouts = useCallback(
     (column: Lib.ColumnMetadata) => {
-      const nextQuery = Lib.replaceBreakouts(query, stageIndex, column);
-      onQueryChange(nextQuery);
+      if (query) {
+        const nextQuery = Lib.replaceBreakouts(query, stageIndex, column);
+        onQueryChange(nextQuery);
+      }
     },
     [query, stageIndex, onQueryChange],
   );

@@ -3,20 +3,24 @@ import type { PropsWithChildren } from "react";
 import { EditorViewControl } from "embedding-sdk/components/private/EditorViewControl";
 import {
   BackButton,
+  Breakout,
+  BreakoutDropdown,
+  ChartTypeDropdown,
   ChartTypeSelector,
   Editor,
   EditorButton,
   Filter,
-  FilterBar,
   FilterButton,
-  FilterPicker,
+  FilterDropdown,
   QuestionResetButton,
   QuestionSettings,
+  QuestionSettingsDropdown,
   QuestionVisualization,
   SaveButton,
   SdkSaveQuestionForm,
   Summarize,
   SummarizeButton,
+  SummarizeDropdown,
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
 import {
@@ -92,14 +96,14 @@ const InteractiveQuestion = withPublicComponentWrapper(
   _InteractiveQuestion,
 ) as typeof _InteractiveQuestion & {
   BackButton: typeof BackButton;
-  FilterBar: typeof FilterBar;
   Filter: typeof Filter;
-  FilterPicker: typeof FilterPicker;
+  FilterDropdown: typeof FilterDropdown;
   FilterButton: typeof FilterButton;
   ResetButton: typeof QuestionResetButton;
   Title: typeof Title;
   Summarize: typeof Summarize;
   SummarizeButton: typeof SummarizeButton;
+  SummarizeDropdown: typeof SummarizeDropdown;
   /** @deprecated Use `InteractiveQuestion.Editor` instead */
   Notebook: typeof Editor;
   Editor: typeof Editor;
@@ -110,19 +114,23 @@ const InteractiveQuestion = withPublicComponentWrapper(
   SaveQuestionForm: typeof SdkSaveQuestionForm;
   SaveButton: typeof SaveButton;
   ChartTypeSelector: typeof ChartTypeSelector;
+  ChartTypeDropdown: typeof ChartTypeDropdown;
   EditorViewControl: typeof EditorViewControl;
   QuestionSettings: typeof QuestionSettings;
+  QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
+  Breakout: typeof Breakout;
+  BreakoutDropdown: typeof BreakoutDropdown;
 };
 
 InteractiveQuestion.BackButton = BackButton;
-InteractiveQuestion.FilterBar = FilterBar;
 InteractiveQuestion.Filter = Filter;
+InteractiveQuestion.FilterDropdown = FilterDropdown;
 InteractiveQuestion.FilterButton = FilterButton;
-InteractiveQuestion.FilterPicker = FilterPicker;
 InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
 InteractiveQuestion.SummarizeButton = SummarizeButton;
+InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
 /** @deprecated Use `InteractiveQuestion.Editor` instead */
 InteractiveQuestion.Notebook = Editor;
 InteractiveQuestion.Editor = Editor;
@@ -135,5 +143,9 @@ InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
 InteractiveQuestion.EditorViewControl = EditorViewControl;
 InteractiveQuestion.QuestionSettings = QuestionSettings;
+InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
+InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
+InteractiveQuestion.Breakout = Breakout;
+InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;
 
 export { InteractiveQuestion };

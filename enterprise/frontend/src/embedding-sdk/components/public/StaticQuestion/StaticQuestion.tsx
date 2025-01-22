@@ -1,7 +1,9 @@
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
+  QuestionNotFoundError,
   SdkError,
   SdkLoader,
   withPublicComponentWrapper,
@@ -10,12 +12,16 @@ import { useLoadStaticQuestion } from "embedding-sdk/hooks/private/use-load-stat
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import CS from "metabase/css/core/index.css";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
-import { getResponseErrorMessage } from "metabase/lib/errors";
+import {
+  getResponseErrorMessage,
+  isResourceNotFoundError,
+} from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import {
   ChartTypeSettings,
-  useChartTypeVisualizations,
+  getSensibleVisualizations,
+  useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Group } from "metabase/ui";
@@ -41,16 +47,16 @@ const StaticQuestionVisualizationSelector = ({
   result,
   onUpdateQuestion,
 }: StaticQuestionVisualizationSelectorProps) => {
-  const {
-    selectedVisualization,
-    updateQuestionVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
-  } = useChartTypeVisualizations({
-    question,
-    result,
-    onUpdateQuestion,
-  });
+  const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
+    () => getSensibleVisualizations({ result }),
+    [result],
+  );
+
+  const { selectedVisualization, updateQuestionVisualization } =
+    useQuestionVisualizationState({
+      question,
+      onUpdateQuestion,
+    });
 
   return (
     <Box w="355px">
@@ -65,7 +71,7 @@ const StaticQuestionVisualizationSelector = ({
 };
 
 const StaticQuestionInner = ({
-  questionId: initId,
+  questionId: initialQuestionId,
   withChartTypeSelector,
   height,
   initialSqlParameters,
@@ -73,7 +79,7 @@ const StaticQuestionInner = ({
   const { isLoading: isValidatingEntityId, id: questionId } =
     useValidatedEntityId({
       type: "card",
-      id: initId,
+      id: initialQuestionId,
     });
 
   const metadata = useSelector(getMetadata);
@@ -82,6 +88,10 @@ const StaticQuestionInner = ({
     useLoadStaticQuestion(questionId, initialSqlParameters);
 
   const isLoading = loading || (!result && !error) || isValidatingEntityId;
+
+  if (!questionId || isResourceNotFoundError(error)) {
+    return <QuestionNotFoundError id={initialQuestionId} />;
+  }
 
   if (error) {
     return (

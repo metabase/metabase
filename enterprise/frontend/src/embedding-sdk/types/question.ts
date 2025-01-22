@@ -17,7 +17,6 @@ export interface LoadSdkQuestionParams {
   options?: QueryParams;
   deserializedCard?: Card;
   cardId?: CardId | null;
-  cancelDeferred?: Deferred;
   initialSqlParameters?: ParameterValues;
 }
 
@@ -26,6 +25,11 @@ export interface NavigateToNewCardParams {
   previousCard: Card;
   objectId: ObjectId;
   cancelDeferred?: Deferred;
+}
+
+export interface QuestionStateParams {
+  question: Question;
+  updateQuestion: (question: Question, opts: { run: boolean }) => void;
 }
 
 export type SdkQuestionTitleProps =

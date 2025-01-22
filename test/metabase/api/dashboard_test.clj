@@ -1150,12 +1150,14 @@
   (mt/with-model-cleanup [:model/Dashboard]
     (testing "POST /api/dashboard/:id/copy"
       (testing "A plain copy with nothing special"
-        (t2.with-temp/with-temp [Dashboard dashboard {:name        "Test Dashboard"
-                                                      :description "A description"
-                                                      :creator_id  (mt/user->id :rasta)}]
+        (mt/with-temp [:model/Dashboard dashboard {:name        "Test Dashboard"
+                                                   :description "A description"
+                                                   :width       "full"
+                                                   :creator_id  (mt/user->id :rasta)}]
           (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard)))]
             (is (=? {:name          "Test Dashboard"
                      :description   "A description"
+                     :width         "full"
                      :creator_id    (mt/user->id :rasta)
                      :collection    false
                      :collection_id false}

@@ -1,8 +1,8 @@
 ---
-title: Pivot table
+title: Pivot tables
 ---
 
-# Pivot table
+# Pivot tables
 
 Pivot tables allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
 
