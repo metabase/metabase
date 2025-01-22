@@ -146,7 +146,6 @@
       (events/publish-event! :event/user-login {:user-id user-id})
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))
-      (snowplow/track-event! ::snowplow/account {:event :new-user-created} user-id)
       ;; return response with session ID and set the cookie as well
       (request/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
