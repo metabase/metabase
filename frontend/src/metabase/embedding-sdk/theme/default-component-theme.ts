@@ -68,7 +68,8 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     toolbar: {
       backgroundColor: "var(--mb-color-background-disabled)",
     },
-
+  },
+  questionEditor: {
     editorButton: {
       backgroundColor: "var(--mb-color-background)",
       activeBackgroundColor: "var(--mb-color-brand)",

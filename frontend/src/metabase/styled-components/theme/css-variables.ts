@@ -20,16 +20,20 @@ const CSS_VARIABLES_TO_SDK_THEME_MAP = {
   "--mb-color-bg-dashboard": "dashboard.backgroundColor",
   "--mb-color-bg-dashboard-card": "dashboard.card.backgroundColor",
 
-  // Interactive Question
+  // Questions
   "--mb-color-bg-question": "question.backgroundColor",
+
+  // Notebook Editor > Action Button
+  "--mb-color-notebook-step-bg": "questionEditor.actionButton.backgroundColor",
 
   // Embedding SDK > Interactive Question > Toolbar (Default Layout)
   "--mb-color-bg-sdk-question-toolbar": "question.toolbar.backgroundColor",
 
-  // Embedding SDK > Interactive Question > Editor Button
-  "--mb-color-bg-sdk-editor-button": "question.editorButton.backgroundColor",
+  // Embedding SDK > Interactive Question > Notebook Editor Button
+  "--mb-color-bg-sdk-editor-button":
+    "questionEditor.editorButton.backgroundColor",
   "--mb-color-bg-sdk-editor-button-active":
-    "question.editorButton.activeBackgroundColor",
+    "questionEditor.editorButton.activeBackgroundColor",
 
   // Embedding SDK > Collection Browser
   "--mb-color-text-collection-browser-expand-button":

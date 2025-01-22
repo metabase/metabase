@@ -110,6 +110,11 @@ const pugTheme: MetabaseTheme = {
         lineHeight: "30px",
       },
     },
+    question: {
+      toolbar: {
+        backgroundColor: "rgba(65, 75, 234, 0.2)",
+      },
+    },
   },
 };
 
