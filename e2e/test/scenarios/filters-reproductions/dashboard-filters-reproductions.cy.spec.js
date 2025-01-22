@@ -4088,7 +4088,7 @@ describe("issue 52484", () => {
     H.sidebar().within(() => {
       cy.findByText("ID").click();
       cy.findByText("Update a dashboard filter").click();
-      cy.findByText("Equal to").click();
+      cy.findByText("Number").click();
     });
     H.popover().findByText("ID").click();
     H.saveDashboard();
