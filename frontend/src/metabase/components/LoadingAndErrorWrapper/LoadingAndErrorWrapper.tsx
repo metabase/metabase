@@ -12,7 +12,7 @@ import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 
-interface LoadingAndErrorWrapperProps {
+export interface LoadingAndErrorWrapperProps {
   loading?: boolean;
   error?: any;
   noBackground?: boolean;
