@@ -34,22 +34,24 @@
         [to-remove to-add]            (data/diff old-group-id->membership-info new-group-id->membership-info)
         to-remove-group-ids           (keys to-remove)
         to-add-group-ids              (keys to-add)]
-    ;; TODO: Should do this check in the API layer
-    (when-not api/*is-superuser?*
-      ;; prevent groups manager from update membership of groups that they're not manager of
-      (when-not (and api/*is-group-manager?*
-                     (set/subset? (set (concat to-remove-group-ids to-add-group-ids))
-                                  (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                                                    :user_id api/*current-user-id* :is_group_manager true)))
-        (throw (ex-info (tru "Not allowed to edit group memberships")
-                        {:status-code 403}))))
-    (t2/with-transaction [_conn]
-      (when (seq to-remove-group-ids)
-        (t2/delete! :model/PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
-      (when (seq to-add-group-ids)
-       ;; do multiple single inserts because insert-many! does not call post-insert! hook
-        (doseq [group-id to-add-group-ids]
-          (t2/insert! :model/PermissionsGroupMembership
-                      {:user_id          user-id
-                       :group_id         group-id
-                       :is_group_manager (:is_group_manager (new-group-id->membership-info group-id))}))))))
+    (when (or (seq to-remove-group-ids)
+              (seq to-add-group-ids))
+      ;; TODO: Should do this check in the API layer
+      (when-not api/*is-superuser?*
+        ;; prevent groups manager from update membership of groups that they're not manager of
+        (when-not (and api/*is-group-manager?*
+                       (set/subset? (set (concat to-remove-group-ids to-add-group-ids))
+                                    (t2/select-fn-set :group_id :model/PermissionsGroupMembership
+                                                      :user_id api/*current-user-id* :is_group_manager true)))
+          (throw (ex-info (tru "Not allowed to edit group memberships")
+                          {:status-code 403}))))
+      (t2/with-transaction [_conn]
+        (when (seq to-remove-group-ids)
+          (t2/delete! :model/PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
+        (when (seq to-add-group-ids)
+          ;; do multiple single inserts because insert-many! does not call post-insert! hook
+          (doseq [group-id to-add-group-ids]
+            (t2/insert! :model/PermissionsGroupMembership
+                        {:user_id          user-id
+                         :group_id         group-id
+                         :is_group_manager (:is_group_manager (new-group-id->membership-info group-id))})))))))
