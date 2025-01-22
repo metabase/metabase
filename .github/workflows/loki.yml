@@ -49,7 +49,7 @@ jobs:
           m2-cache-key: "cljs"
 
       - name: Compile CLJS
-        run: yarn build-pure:cljs
+        run: NODE_ENV=development yarn build-pure:cljs
 
       - name: Build Storybook
         # We won't be able to use Storybook play's `userEvent` with production build

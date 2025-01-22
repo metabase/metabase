@@ -371,7 +371,7 @@
     "build-static-viz:watch": "webpack --config webpack.static-viz.config.js --watch",
     "build-static-viz:watch-wait": "yarn wait:cljs; yarn build-static-viz:watch",
     "build-stats": "yarn && webpack --json > stats.json",
-    "build-storybook": "NODE_ENV=development yarn build:cljs && NODE_OPTIONS=--max-old-space-size=8196 storybook build",
+    "build-storybook": "NODE_OPTIONS=--max-old-space-size=8196 storybook build",
     "build-storybook-embedding-sdk": "NODE_OPTIONS=--max-old-space-size=8196 IS_EMBEDDING_SDK=true storybook build -c .storybook-sdk --quiet",
     "build-watch": "yarn concurrently -n 'cljs,js' 'yarn build-watch:cljs' 'yarn build-watch:js'",
     "build-watch:cljs": "yarn && shadow-cljs watch app",
