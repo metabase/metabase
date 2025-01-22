@@ -70,7 +70,6 @@ describe("ActionCreator > Query Actions", () => {
       expect(makePublic).toBeDisabled();
       expect(makePublic).not.toBeChecked();
       await userEvent.hover(makePublic);
-
       expect(screen.getByRole("tooltip")).toHaveTextContent(
         `To enable creating a shareable link you first need to save your action`,
       );
