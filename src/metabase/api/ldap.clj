@@ -2,8 +2,8 @@
   "/api/ldap endpoints"
   (:require
    [clojure.set :as set]
-   [compojure.core :refer [PUT]]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.integrations.ldap :as ldap]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -98,22 +98,28 @@
       current-password
       new-password)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/settings"
+(api.macros/defendpoint :put "/settings"
   "Update LDAP related settings. You must be a superuser to do this."
-  [:as {settings :body}]
-  {settings :map}
+  [_route-params
+   _query-params
+   settings :- [:map
+                [:ldap-port    {:optional true} [:maybe
+                                                 ;; treat empty string as nil
+                                                 {:decode/api (fn [x]
+                                                                (when-not (= x "")
+                                                                  x))}
+                                                 pos-int?]]
+                [:ldap-enabled {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (let [ldap-settings (-> settings
-                          (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
-                                              (Long/parseLong ldap-port)))
                           (update :ldap-password update-password-if-needed)
                           (dissoc :ldap-enabled))
         ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
       (t2/with-transaction [_conn]
-       ;; We need to update the ldap settings before we update ldap-enabled, as the ldap-enabled setter tests the ldap settings
+       ;; We need to update the ldap settings before we update ldap-enabled, as the ldap-enabled setter tests the ldap
+       ;; settings
         (setting/set-many! ldap-settings)
         (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
       ;; test failed, return result message
