@@ -28,7 +28,7 @@ import type {
 
 import { BodyCell, type BodyCellVariant } from "../cell/BodyCell";
 import { HeaderCell } from "../cell/HeaderCell";
-import { MiniBar } from "../cell/MiniBar";
+import { MiniBar } from "../cell/MiniBarCell";
 import { pickRowsToMeasure } from "../utils";
 
 import "@tanstack/react-table";
@@ -157,6 +157,7 @@ export const useColumns = ({
       const columnWidth = columnWidths[index] ?? 0;
       const measuredColumnWidth = measuredColumnWidths[index] ?? 0;
       const columnSettings = settings.column?.(col) ?? {};
+      const columnName = columnSettings["column_title"];
       const wrap = Boolean(columnSettings["text_wrapping"]);
       const align = columnSettings["text_align"] ?? "left";
       const variant = getBodyCellVariant(col, columnSettings);
@@ -174,9 +175,10 @@ export const useColumns = ({
             index,
             isPivoted,
           );
+
           return (
             <HeaderCell
-              name={col.display_name}
+              name={columnName}
               align={align}
               sort={sortDirection}
               onClick={event => {

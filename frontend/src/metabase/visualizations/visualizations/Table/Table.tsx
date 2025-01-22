@@ -25,13 +25,13 @@ import {
 import {
   type CSSProperties,
   type MouseEvent,
-  type MouseEventHandler,
   type TouchEvent,
   useCallback,
   useRef,
   useState,
 } from "react";
 
+import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import { connect } from "metabase/lib/redux";
 import {
   getIsShowingRawTable,
@@ -40,7 +40,9 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
 import type { OrderByDirection } from "metabase-lib/types";
+import type Question from "metabase-lib/v1/Question";
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 
 import styles from "./Table.module.css";
@@ -55,14 +57,25 @@ interface TableProps extends VisualizationProps {
   getColumnSortDirection: (columnIndex: number) => OrderByDirection | undefined;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   isPivoted?: boolean;
+  hasMetadataPopovers?: boolean;
+  question: Question;
 }
 
 interface DraggableHeaderProps {
   header: Header<RowValues, unknown>;
   isPivoted?: boolean;
+  timezone: string | undefined;
+  hasMetadataPopovers?: boolean;
+  question: Question;
 }
 
-const DraggableHeader = ({ header, isPivoted }: DraggableHeaderProps) => {
+const DraggableHeader = ({
+  header,
+  isPivoted,
+  question,
+  timezone,
+  hasMetadataPopovers,
+}: DraggableHeaderProps) => {
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useSortable({
       id: header.id,
@@ -86,23 +99,44 @@ const DraggableHeader = ({ header, isPivoted }: DraggableHeaderProps) => {
     ...listeners,
   };
 
+  const resizeHandler = header.getResizeHandler();
+
   const handleMouseDown = useCallback(
     (e: MouseEvent<HTMLDivElement> | TouchEvent<HTMLDivElement>) => {
       e.stopPropagation();
-      header.getResizeHandler(e as any);
+      resizeHandler(e);
     },
-    [header],
+    [resizeHandler],
   );
 
+  const column = header.column.columnDef.meta?.column;
+
+  if (!column) {
+    return null;
+  }
+  const query = question?.query();
+  const stageIndex = -1;
+
   return (
-    <div ref={setNodeRef} className={styles.th} style={style} {...dndProps}>
-      {flexRender(header.column.columnDef.header, header.getContext())}
-      <div
-        className={styles.resizer}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleMouseDown}
-      />
-    </div>
+    <QueryColumnInfoPopover
+      position="bottom-start"
+      query={query}
+      stageIndex={-1}
+      column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
+      timezone={timezone}
+      disabled={!hasMetadataPopovers}
+      openDelay={500}
+      showFingerprintInfo
+    >
+      <div ref={setNodeRef} className={styles.th} style={style} {...dndProps}>
+        {flexRender(header.column.columnDef.header, header.getContext())}
+        <div
+          className={styles.resizer}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleMouseDown}
+        />
+      </div>
+    </QueryColumnInfoPopover>
   );
 };
 
@@ -115,8 +149,10 @@ export const _Table = ({
   onUpdateVisualizationSettings,
   isPivoted = false,
   getColumnSortDirection,
+  question,
+  hasMetadataPopovers = true,
 }: TableProps) => {
-  const { rows, cols } = data;
+  const { rows, cols, results_timezone } = data;
   const bodyRef = useRef<HTMLDivElement>(null);
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
     cols.map((_col, index) => index.toString()),
@@ -281,9 +317,12 @@ export const _Table = ({
                         const header = headerGroup.headers[virtualColumn.index];
                         return (
                           <DraggableHeader
+                            timezone={results_timezone}
+                            question={question}
                             key={header.id}
                             header={header}
                             isPivoted={isPivoted}
+                            hasMetadataPopovers={hasMetadataPopovers}
                           />
                         );
                       })}
