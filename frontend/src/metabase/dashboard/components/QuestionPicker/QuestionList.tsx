@@ -7,7 +7,7 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import SelectList from "metabase/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";

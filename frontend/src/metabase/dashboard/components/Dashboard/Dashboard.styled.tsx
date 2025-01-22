@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import cx from "classnames";
 import type { ComponentPropsWithoutRef } from "react";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { isEmbeddingSdk } from "metabase/env";
