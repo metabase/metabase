@@ -175,6 +175,7 @@
       (sql.helpers/with-columns (specialization/table-schema base-schema))
       t2/query)
   (let [table-name (name table-name)]
+    (t2/query (format "CREATE INDEX IF NOT EXISTS %s_model_index ON %s(model_index_id)" table-name table-name))
     (doseq [stmt (specialization/post-create-statements table-name table-name)]
       (t2/query stmt))))
 
