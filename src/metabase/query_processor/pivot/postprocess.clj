@@ -6,7 +6,6 @@
   visually in the same way as in the app."
   (:refer-clojure :exclude [run!])
   (:require
-   [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
