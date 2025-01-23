@@ -1,15 +1,8 @@
 import { skipToken } from "@reduxjs/toolkit/query";
 import type React from "react";
-import {
-  type PropsWithChildren,
-  cloneElement,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import type { RouteProps, WithRouterProps } from "react-router";
+import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
+import type { WithRouterProps } from "react-router";
 
-import { Route } from "metabase/hoc/Title";
 import {
   type BaseEntityId,
   isBaseEntityID,
@@ -35,17 +28,13 @@ type FlatParam = {
 
 type ParamConfigMap = Record<string, ParamConfig>;
 
-export type EntityIdRedirectProps = //WithRouterProps &
-  PropsWithChildren & {
-    paramsToTranslate?: ParamConfigMap;
-    searchParamsToTranslate?: ParamConfigMap;
-    redirect: (path: string) => void;
-    location: Pick<
-      WithRouterProps["location"],
-      "pathname" | "search" | "query"
-    >;
-    params: WithRouterProps["params"];
-  };
+export type EntityIdRedirectProps = PropsWithChildren & {
+  paramsToTranslate?: ParamConfigMap;
+  searchParamsToTranslate?: ParamConfigMap;
+  redirect: (path: string) => void;
+  location: Pick<WithRouterProps["location"], "pathname" | "search" | "query">;
+  params: WithRouterProps["params"];
+};
 
 export const EntityIdRedirect = ({
   paramsToTranslate = {},
@@ -173,41 +162,29 @@ export const EntityIdRedirect = ({
   }
 };
 
-interface EntityIdAwareRouteProps extends RouteProps {
-  paramsToTranslate?: ParamConfigMap;
-  searchParamsToTranslate?: ParamConfigMap;
+export function withEntityIdSupport<P extends WithRouterProps>(
+  Component: React.ComponentType<P>,
+  config: {
+    paramsToTranslate?: ParamConfigMap;
+    searchParamsToTranslate?: ParamConfigMap;
+  },
+) {
+  const WrappedComponent = (props: P) => (
+    <EntityIdRedirect
+      paramsToTranslate={config.paramsToTranslate}
+      searchParamsToTranslate={config.searchParamsToTranslate}
+      redirect={props.router.push}
+      location={props.location}
+      params={props.params}
+    >
+      <Component {...props} />
+    </EntityIdRedirect>
+  );
+
+  WrappedComponent.displayName = `withEntityIdSupport(${Component.displayName || Component.name})`;
+
+  return WrappedComponent;
 }
-
-class _EntityIdAwareRoute extends Route {
-  static createRouteFromReactElement(
-    element: React.ReactElement<EntityIdAwareRouteProps>,
-  ) {
-    const {
-      component: OriginalComponent = props => <>{props.children}</>,
-      ...props
-    } = element.props;
-
-    const WrappedComponent = (routeProps: WithRouterProps) => (
-      <EntityIdRedirect
-        {...props}
-        redirect={routeProps.router.push}
-        location={routeProps.location}
-        params={routeProps.params}
-      >
-        {OriginalComponent && <OriginalComponent {...routeProps} />}
-      </EntityIdRedirect>
-    );
-
-    return super.createRouteFromReactElement(
-      cloneElement(element, {
-        component: WrappedComponent,
-      }),
-    );
-  }
-}
-
-export const EntityIdAwareRoute =
-  _EntityIdAwareRoute as unknown as React.ComponentType<EntityIdAwareRouteProps>;
 
 export const canBeEntityId = (id: string): id is BaseEntityId => {
   return isBaseEntityID(id);
@@ -215,6 +192,5 @@ export const canBeEntityId = (id: string): id is BaseEntityId => {
 
 export const canBeNormalId = (id: string) => {
   const parts = id.split("-");
-
   return !isNaN(parseInt(parts[0]));
 };

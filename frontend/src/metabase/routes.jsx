@@ -52,7 +52,10 @@ import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldL
 import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
+import { withEntityIdSupport } from "metabase/routes-stable-id-aware";
 import SearchApp from "metabase/search/containers/SearchApp";
+import { getSetting } from "metabase/selectors/settings";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -63,9 +66,28 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
-import { EntityIdAwareRoute } from "./routes-stable-id-aware";
-import { getSetting } from "./selectors/settings";
-import { getApplicationName } from "./selectors/whitelabel";
+
+const QueryBuilderWithEntityId = withEntityIdSupport(QueryBuilder, {
+  paramsToTranslate: {
+    slug: { type: "card", required: true },
+    objectId: { type: "card", required: false },
+  },
+});
+
+const CollectionLandingWithEntityId = withEntityIdSupport(CollectionLanding, {
+  paramsToTranslate: {
+    slug: { type: "collection", required: true },
+  },
+});
+
+const DashboardAppWithEntityId = withEntityIdSupport(DashboardAppConnected, {
+  paramsToTranslate: {
+    slug: { type: "dashboard", required: true },
+  },
+  searchParamsToTranslate: {
+    tab: { type: "dashboard-tab", required: false },
+  },
+});
 
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
@@ -151,26 +173,21 @@ export const getRoutes = store => {
             <IndexRoute component={UserCollectionList} />
           </Route>
 
-          <EntityIdAwareRoute
+          <Route
             path="collection/:slug"
-            component={CollectionLanding}
-            paramsToTranslate={{ slug: { type: "collection", required: true } }}
+            component={CollectionLandingWithEntityId}
           >
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
             {PLUGIN_COLLECTIONS.cleanUpRoute}
             {getCollectionTimelineRoutes()}
-          </EntityIdAwareRoute>
+          </Route>
 
-          <EntityIdAwareRoute
+          <Route
             path="dashboard/:slug"
             title={t`Dashboard`}
-            component={DashboardAppConnected}
-            paramsToTranslate={{ slug: { type: "dashboard", required: true } }}
-            searchParamsToTranslate={{
-              tab: { type: "dashboard-tab", required: false },
-            }}
+            component={DashboardAppWithEntityId}
           >
             <ModalRoute
               path="move"
@@ -179,48 +196,51 @@ export const getRoutes = store => {
             />
             <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
             <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
-          </EntityIdAwareRoute>
+          </Route>
 
-          <EntityIdAwareRoute
-            path="/question"
-            paramsToTranslate={{ slug: { type: "card", required: true } }}
-          >
-            <IndexRoute component={QueryBuilder} />
-            <Route path="notebook" component={QueryBuilder} />
-            <Route path=":slug" component={QueryBuilder} />
-            <Route path=":slug/notebook" component={QueryBuilder} />
-            <Route path=":slug/metabot" component={QueryBuilder} />
-            <Route path=":slug/:objectId" component={QueryBuilder} />
-          </EntityIdAwareRoute>
+          <Route path="/question">
+            <IndexRoute component={QueryBuilderWithEntityId} />
+            <Route path="notebook" component={QueryBuilderWithEntityId} />
+            <Route path=":slug" component={QueryBuilderWithEntityId} />
+            <Route path=":slug/notebook" component={QueryBuilderWithEntityId} />
+            <Route path=":slug/metabot" component={QueryBuilderWithEntityId} />
+            <Route
+              path=":slug/:objectId"
+              component={QueryBuilderWithEntityId}
+            />
+          </Route>
 
           {/* MODELS */}
           {getModelRoutes()}
 
           <Route path="/model">
-            <IndexRoute component={QueryBuilder} />
+            <IndexRoute component={QueryBuilderWithEntityId} />
             <Route
               path="new"
               title={t`New Model`}
               component={NewModelOptions}
             />
-            <Route path=":slug" component={QueryBuilder} />
-            <Route path=":slug/notebook" component={QueryBuilder} />
-            <Route path=":slug/query" component={QueryBuilder} />
-            <Route path=":slug/metadata" component={QueryBuilder} />
-            <Route path=":slug/metabot" component={QueryBuilder} />
-            <Route path=":slug/:objectId" component={QueryBuilder} />
-            <Route path="query" component={QueryBuilder} />
-            <Route path="metabot" component={QueryBuilder} />
+            <Route path=":slug" component={QueryBuilderWithEntityId} />
+            <Route path=":slug/notebook" component={QueryBuilderWithEntityId} />
+            <Route path=":slug/query" component={QueryBuilderWithEntityId} />
+            <Route path=":slug/metadata" component={QueryBuilderWithEntityId} />
+            <Route path=":slug/metabot" component={QueryBuilderWithEntityId} />
+            <Route
+              path=":slug/:objectId"
+              component={QueryBuilderWithEntityId}
+            />
+            <Route path="query" component={QueryBuilderWithEntityId} />
+            <Route path="metabot" component={QueryBuilderWithEntityId} />
           </Route>
 
           {/* METRICS V2 */}
           <Route path="/metric">
-            <IndexRoute component={QueryBuilder} />
-            <Route path="notebook" component={QueryBuilder} />
-            <Route path="query" component={QueryBuilder} />
-            <Route path=":slug" component={QueryBuilder} />
-            <Route path=":slug/notebook" component={QueryBuilder} />
-            <Route path=":slug/query" component={QueryBuilder} />
+            <IndexRoute component={QueryBuilderWithEntityId} />
+            <Route path="notebook" component={QueryBuilderWithEntityId} />
+            <Route path="query" component={QueryBuilderWithEntityId} />
+            <Route path=":slug" component={QueryBuilderWithEntityId} />
+            <Route path=":slug/notebook" component={QueryBuilderWithEntityId} />
+            <Route path=":slug/query" component={QueryBuilderWithEntityId} />
           </Route>
 
           <Route path="browse">
