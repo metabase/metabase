@@ -51,7 +51,7 @@
       (not (every? notification.execute/is-card-empty? dashboard_parts))
       true)))
 
-(defmethod notification.send/do-after-notification-sent :notification/dashboard
+(defmethod notification.send/do-after-notification-sent :notification/dashboard-subscription
   [{:keys [id creator_id handlers] :as notification-info} notification-payload]
   ;; clean up all the temp files that we created for this notification
   (try
