@@ -258,7 +258,9 @@
     (testing "File name is slugified"
       (is (=? #"my_file_name_\d+" (@#'upload/unique-table-name driver/*driver* "my file name"))))
     (testing "semicolons are removed"
-      (is (nil? (re-find #";" (@#'upload/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")))))
+      (let [escaped (@#'upload/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")]
+        (is (nil? (re-find #";" escaped)))
+        (is (str/starts-with? escaped "some_text_DROP_TABLE_csv_"))))
     (testing "No collisions"
       (let [n 50
             names (repeatedly n (partial #'upload/unique-table-name driver/*driver* ""))]
