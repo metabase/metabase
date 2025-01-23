@@ -70,8 +70,8 @@
                     (if (encryption/possibly-encrypted-bytes? decrypted-value)
                       (throw (ex-info (str "Can't decrypt " (-> model t2/table-name name) "." (name field) " with MB_ENCRYPTION_SECRET_KEY") {:model model :id id}))
                       (t2/update! :conn conn (t2/table-name model)
-                        {:id id}
-                        {field (encrypt-bytes-fn decrypted-value)}))
+                                  {:id id}
+                                  {field (encrypt-bytes-fn decrypted-value)}))
 
                     :else
                     (throw (ex-info (str "Unknown value type" decrypted-value) {:model model :field field}))))))))))))
