@@ -93,13 +93,11 @@ export const SaveQuestionForm = ({
               collectionPickerModalProps={{
                 models,
                 recentFilter: items =>
-                  items.filter(
-                    item =>
-                      !(
-                        item.model === "collection" ||
-                        item.model === "dashboard"
-                      ) || item.can_write,
-                  ),
+                  items.filter(item => {
+                    // narrow type and make sure it's a dashboard or
+                    // collection that the user can write to
+                    return item.model !== "table" && item.can_write;
+                  }),
               }}
             />
           )}
