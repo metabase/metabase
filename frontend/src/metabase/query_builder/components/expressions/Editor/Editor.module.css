@@ -184,18 +184,6 @@
         flex-shrink: 0;
         display: none;
       }
-
-      ul li[role="option"]:hover {
-        background-color: var(--mb-base-color-ocean-10);
-      }
-
-      ul li[role="option"][aria-selected="true"] {
-        background-color: var(--mb-base-color-ocean-10);
-
-        .cm-completionDetail {
-          display: block;
-        }
-      }
     }
 
     /* Syntax highlighting */
@@ -281,8 +269,10 @@
     padding: 8px 16px;
     display: flex;
     align-items: center;
+    cursor: pointer;
   }
 
+  li:hover,
   li[aria-selected="true"] {
     color: inherit;
     background-color: var(--mb-color-focus);

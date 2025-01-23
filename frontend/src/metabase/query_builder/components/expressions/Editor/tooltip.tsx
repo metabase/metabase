@@ -1,8 +1,10 @@
 import {
   type Completion,
+  acceptCompletion,
   completionStatus,
   currentCompletions,
   selectedCompletionIndex,
+  setSelectedCompletion,
 } from "@codemirror/autocomplete";
 import {
   type EditorState,
@@ -10,7 +12,7 @@ import {
   StateField,
 } from "@codemirror/state";
 import { EditorView, type Tooltip, showTooltip } from "@codemirror/view";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { t } from "ttag";
 
@@ -60,10 +62,13 @@ export function useTooltip({
     return element;
   }, []);
 
+  const view = useRef<EditorView | null>(null);
+
   const extensions = useMemo(
     () => [
       tooltip(element),
       EditorView.updateListener.of(update => {
+        view.current = update.view;
         setState(state => {
           const pos = update.state.selection.main.head;
           const source = update.state.doc.toString();
@@ -95,6 +100,17 @@ export function useTooltip({
     [element],
   );
 
+  const handleCompletionClick = useCallback((index: number) => {
+    if (!view.current) {
+      return;
+    }
+
+    view.current.dispatch({
+      effects: [setSelectedCompletion(index)],
+    });
+    acceptCompletion(view.current);
+  }, []);
+
   return [
     extensions,
     createPortal(
@@ -103,6 +119,7 @@ export function useTooltip({
         query={query}
         metadata={metadata}
         reportTimezone={reportTimezone}
+        onCompletionClick={handleCompletionClick}
       />,
       element,
     ),
@@ -155,6 +172,7 @@ type TooltipProps = {
   query: Lib.Query;
   metadata: Metadata;
   reportTimezone?: string;
+  onCompletionClick: (index: number) => void;
 };
 
 function getDatabase(query: Lib.Query, metadata: Metadata) {
@@ -163,7 +181,7 @@ function getDatabase(query: Lib.Query, metadata: Metadata) {
 }
 
 export function Tooltip(props: TooltipProps) {
-  const { query, metadata, reportTimezone, state } = props;
+  const { query, metadata, reportTimezone, state, onCompletionClick } = props;
   const { completions, selectedCompletion, enclosingFunction } = state;
 
   const database = getDatabase(query, metadata);
@@ -177,6 +195,7 @@ export function Tooltip(props: TooltipProps) {
   }
 
   // TODO: scroll active item into view
+  // TODO: allow using keys after clicking the popover
 
   return (
     <div className={css.tooltip}>
@@ -189,6 +208,7 @@ export function Tooltip(props: TooltipProps) {
                 role="option"
                 aria-selected={selectedCompletion === index}
                 key={index}
+                onClick={() => onCompletionClick(index)}
               >
                 <Icon name={completion.icon} className={css.icon} />
 
