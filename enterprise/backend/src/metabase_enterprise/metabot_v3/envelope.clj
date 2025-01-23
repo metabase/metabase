@@ -8,6 +8,7 @@
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.reactions :as reactions]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]))
 
 (def ^:constant max-round-trips
@@ -78,8 +79,11 @@
   [e]
   (update e :round-trips-remaining (fn [v]
                                      (u/prog1 (dec v)
-                                       (when (neg? <>)
-                                         (throw (ex-info "Error: too many round trips." {:envelope e})))))))
+                                              (when (neg? <>)
+                                                (let [msg (i18n/tru "I can't answer your question.")]
+                                                  (throw (ex-info "Error: too many round trips."
+                                                                  {:envelope e
+                                                                   :assistant-message msg}))))))))
 
 (defn history
   "Gets the history from the envelope."
