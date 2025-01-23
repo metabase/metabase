@@ -771,7 +771,8 @@ class Question {
       return this;
     }
 
-    // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations
+    // If the query is composed (models or metrics) we cannot add filters to the underlying query since that query is used for data source.
+    // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations.
     const queryWithExtraStage =
       !isComposed && this.display() !== "pivot"
         ? Lib.ensureFilterStage(query)
