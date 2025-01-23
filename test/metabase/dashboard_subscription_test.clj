@@ -1,7 +1,9 @@
 (ns metabase.dashboard-subscription-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.channel.core :as channel]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
    [metabase.channel.shared :as channel.shared]
@@ -21,12 +23,14 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.notification.payload.execute :as notification.payload.execute]
+   [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.random :as random]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -1181,3 +1185,23 @@
                  :channel/email
                  first
                  (mt/summarize-multipart-single-email #"My Precious Card" #"Archived Card")))))))
+
+(deftest cleanup-all-temp-files-test
+  (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"
+                                                          :description "How are the birds doing today?"}
+                 :model/Card          {card-id :id} {:name pulse.test-util/card-name
+                                                     :dataset_query (mt/mbql-query orders {:limit 1})}]
+    (with-redefs [notification.temp-storage/temp-dir (delay (let [dir (io/file (System/getProperty "java.io.tmpdir")
+                                                                               (str "metabase-test" (random/random-name)))]
+                                                              (.mkdirs dir)
+                                                              dir))
+                  channel/send!                      (fn [& _args]
+                                                       (testing "sanity check that there are files there to cleanup"
+                                                         (is (not-empty (.listFiles ^java.io.File @@#'notification.temp-storage/temp-dir)))))]
+      (with-dashboard-sub-for-card [{pulse-id :id}
+                                    {:card         card-id
+                                     :creator_id   (mt/user->id :rasta)
+                                     :dashboard    dashboard-id
+                                     :cahnnel-type :email}]
+        (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
+        (is (empty? (.listFiles ^java.io.File @@#'notification.temp-storage/temp-dir)))))))

@@ -1,8 +1,10 @@
 (ns metabase.notification.payload.impl.alert
   (:require
    [metabase.channel.render.core :as channel.render]
+   [metabase.events :as events]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
+   [metabase.notification.send :as notification.send]
    [metabase.util.malli :as mu]
    [metabase.util.ui-logic :as ui-logic]
    [toucan2.core :as t2]))
@@ -49,3 +51,15 @@
       :else
       (let [^String error-text (format "Unrecognized alert with condition '%s'" alert_condition)]
         (throw (IllegalArgumentException. error-text))))))
+
+(defmethod notification.send/do-after-notification-sent :notification/card
+  [{:keys [id creator_id alert handlers] :as notification-info} _notification-payload]
+  (when (:alert_first_only alert)
+    (t2/delete! :model/Pulse (:id alert)))
+  (events/publish-event! :event/alert-send
+                         {:id      id
+                          :user-id creator_id
+                          :object  {:recipients (->> handlers
+                                                     (mapcat :recipients)
+                                                     (map #(or (:user %) (:email %))))
+                                    :filters    (-> notification-info :alert :parameters)}}))
