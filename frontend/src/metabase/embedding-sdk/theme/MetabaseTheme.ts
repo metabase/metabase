@@ -131,9 +131,7 @@ export type MetabaseComponentTheme = {
     questionSettingsButton?: {
       backgroundColor?: string;
     };
-  };
 
-  questionEditor?: {
     editorButton?: {
       iconColor?: string;
       borderColor?: string;
@@ -143,8 +141,11 @@ export type MetabaseComponentTheme = {
       activeBackgroundColor?: string;
     };
 
-    actionButton?: {
-      backgroundColor?: string;
+    editor?: {
+      /** Actions buttons in the question editor */
+      actionButton?: {
+        backgroundColor?: string;
+      };
     };
   };
 

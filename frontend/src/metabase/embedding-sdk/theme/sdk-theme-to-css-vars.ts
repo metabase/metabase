@@ -16,23 +16,21 @@ export const INTERACTIVE_QUESTION_THEME_OPTIONS = {
   // Question Settings Button
   "--mb-color-bg-sdk-question-settings-button":
     "question.questionSettingsButton.backgroundColor",
-};
+} satisfies CssVariableToThemeMap;
 
 // SDK > Interactive Question > Notebook Editor Button
 export const NOTEBOOK_EDITOR_THEME_OPTIONS = {
-  "--mb-color-border-sdk-editor-button":
-    "questionEditor.editorButton.borderColor",
+  "--mb-color-border-sdk-editor-button": "question.editorButton.borderColor",
 
   // Inactive
-  "--mb-color-icon-sdk-editor-button": "questionEditor.editorButton.iconColor",
-  "--mb-color-bg-sdk-editor-button":
-    "questionEditor.editorButton.backgroundColor",
+  "--mb-color-icon-sdk-editor-button": "question.editorButton.iconColor",
+  "--mb-color-bg-sdk-editor-button": "question.editorButton.backgroundColor",
 
   // Active
   "--mb-color-icon-sdk-editor-button-active":
-    "questionEditor.editorButton.activeIconColor",
+    "question.editorButton.activeIconColor",
   "--mb-color-bg-sdk-editor-button-active":
-    "questionEditor.editorButton.activeBackgroundColor",
+    "question.editorButton.activeBackgroundColor",
 } satisfies CssVariableToThemeMap;
 
 // SDK > Collection Browser > Breadcrumbs > Expand Button
@@ -71,7 +69,7 @@ export const CSS_VARIABLES_TO_SDK_THEME_MAP = {
   "--mb-color-bg-question": "question.backgroundColor",
 
   // Notebook Editor > Action Button
-  "--mb-color-notebook-step-bg": "questionEditor.actionButton.backgroundColor",
+  "--mb-color-notebook-step-bg": "question.editor.actionButton.backgroundColor",
 
   // Mappings for SDK elements
   ...INTERACTIVE_QUESTION_THEME_OPTIONS,
