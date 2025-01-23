@@ -27,7 +27,7 @@
 
 .tbody {
   background: var(--mb-color-bg-light);
-  overflow: scroll;
+  overflow-y: auto;
   /* magic numbers:
    * 90dvh as modal has 5dvh padding on top/bottom
    * 189 is sum height of other elements in modal */

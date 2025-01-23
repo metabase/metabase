@@ -1052,7 +1052,39 @@ describe("Dashboard > Dashboard Questions", () => {
           .should("exist")
           .click();
       });
-      cy.findByTestId("move-questions-into-dashboard-modal").should("exist");
+      cy.findByTestId("move-questions-into-dashboard-modal")
+        .should("exist")
+        .within(() => {
+          cy.findByText("Cancel").click();
+        });
+
+      cy.log(
+        "should be immediately responsive to dashcard changes making new candidates",
+      );
+      H.visitCollection(S.FIRST_COLLECTION_ID);
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards").should(
+          "not.exist",
+        );
+      });
+      H.collectionTable().findByText(DASHBOARD_ONE).click();
+      H.editDashboard();
+      H.removeDashboardCard(1); // removes card for QUESTION_THREE
+      H.saveDashboard();
+      H.appBar().findByText("First collection").click(); // navigate via breadcrumbs to avoid page refresh
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards")
+          .should("exist")
+          .click();
+      });
+      cy.findByTestId("move-questions-into-dashboard-modal")
+        .should("exist")
+        .within(() => {
+          cy.findByText(QUESTION_THREE).should("exist");
+          cy.findByText(DASHBOARD_TWO).should("exist");
+        });
     });
 
     it("should not show migration tool to non-admins", () => {
@@ -1094,7 +1126,12 @@ function seedMigrationToolData() {
     query,
     collection_id: S.FIRST_COLLECTION_ID,
   }).then(({ body: { id } }) => {
-    const dc = createMockDashboardCard({ ...baseDc, id: 3, card_id: id });
+    const dc = createMockDashboardCard({
+      ...baseDc,
+      id: 3,
+      card_id: id,
+      col: 8,
+    });
     cy.wrap(dc).as("questionThreeCard");
   });
 

@@ -74,7 +74,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
                   rows.length,
                 )}
           </Modal.Title>
-          <Modal.CloseButton data-testid="move-questions-into-dashboard-modal-close-btn" />
+          <Modal.CloseButton />
         </Modal.Header>
         <Modal.Body p="0" className={S.modalBody}>
           <div className={S.tableHeader}>
@@ -97,7 +97,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
             {match({ isLoading, fetchError, rows })
               .with({ isLoading: true }, () => (
                 <Flex justify="center" py="18.25rem">
-                  <Loader size="xl" data-testid="loader" />
+                  <Loader size="xl" data-testid="loading-indicator" />
                 </Flex>
               ))
               .with({ fetchError: P.not(P.nullish) }, ({ fetchError }) => {

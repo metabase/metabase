@@ -52,7 +52,7 @@ describe("ConfirmMoveDashboardQuestionCandidatesModal", () => {
 
   it("should render loading state if isLoading is true", async () => {
     setup({ isLoading: true });
-    expect(await screen.findByTestId("loader")).toBeInTheDocument();
+    expect(await screen.findByTestId("loading-indicator")).toBeInTheDocument();
   });
 
   it("should list error state if fetchError is present", async () => {
