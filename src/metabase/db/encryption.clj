@@ -52,17 +52,18 @@
                   (cond
                     (string? decrypted-value)
                     (if (encryption/possibly-encrypted-string? decrypted-value)
-                      (throw (ex-info (str "Can''t decrypt " model " " field " with MB_ENCRYPTION_SECRET_KEY") {:model model :id id}))
+                      (throw (ex-info (str "Can't decrypt " (-> model t2/table-name name) "." (name field) " with MB_ENCRYPTION_SECRET_KEY") {:model model :id id}))
                       (t2/update! :conn conn (t2/table-name model)
                                   {:id id}
                                   {field (encrypt-str-fn decrypted-value)}))
 
-                    (bytes? decrypted-value)
-                    (if (encryption/possibly-encrypted-bytes? decrypted-value)
-                      (throw (ex-info (str "Can''t decrypt " model " " field " with MB_ENCRYPTION_SECRET_KEY") {:model model :id id}))
-                      (t2/update! :conn conn (t2/table-name model)
-                                  {:id id}
-                                  {field (encrypt-bytes-fn decrypted-value)}))
+                    (instance? java.sql.Blob decrypted-value)
+                    (let [decrypted-bytes (encryption/maybe-decrypt (.getBytes decrypted-value 1 (.length decrypted-value)))]
+                      (if (encryption/possibly-encrypted-bytes? decrypted-bytes)
+                        (throw (ex-info (str "Can't decrypt " (-> model t2/table-name name) "." (name field) " with MB_ENCRYPTION_SECRET_KEY") {:model model :id id}))
+                        (t2/update! :conn conn (t2/table-name model)
+                          {:id id}
+                          {field (encrypt-bytes-fn decrypted-bytes)})))
 
                     :else
                     (throw (ex-info (str "Unknown value type" decrypted-value) {:model model :field field}))))))))))))
