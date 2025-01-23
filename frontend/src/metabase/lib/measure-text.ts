@@ -5,27 +5,28 @@ import type {
   TextMeasurer,
 } from "metabase/visualizations/shared/types/measure-text";
 
-let canvas: HTMLCanvasElement | null = null;
-
 export const measureText: TextMeasurer = (text: string, style: FontStyle) => {
-  canvas ??= document.createElement("canvas");
-  const context = canvas.getContext("2d");
+  const textElement = document.createElement("span");
+  document.body.appendChild(textElement);
 
-  if (!context) {
-    throw new Error("Could not create canvas context");
-  }
-
-  const fontSize =
+  textElement.style.font = style.family;
+  textElement.style.fontSize =
     typeof style.size === "number" ? `${style.size}px` : style.size;
+  textElement.style.fontWeight = String(style.weight);
+  textElement.style.height = "auto";
+  textElement.style.width = "auto";
+  textElement.style.position = "absolute";
+  textElement.style.whiteSpace = "no-wrap";
+  textElement.innerHTML = text;
 
-  context.font = `${style.weight} ${fontSize} ${style.family}`;
-  const textMetrics = context.measureText(text);
+  const width = Math.ceil(textElement.clientWidth);
+  const height = Math.ceil(textElement.clientHeight);
+
+  document.body.removeChild(textElement);
 
   return {
-    width: textMetrics.width,
-    height:
-      textMetrics.actualBoundingBoxAscent +
-      textMetrics.actualBoundingBoxDescent,
+    width,
+    height,
   };
 };
 
