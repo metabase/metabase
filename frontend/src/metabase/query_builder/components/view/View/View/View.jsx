@@ -24,7 +24,7 @@ import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor"
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import DatasetEditor from "../../../DatasetEditor";
+import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
 import ViewSidebar from "../../ViewSidebar";

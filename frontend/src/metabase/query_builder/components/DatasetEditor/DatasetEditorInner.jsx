@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { merge } from "icepick";
 import PropTypes from "prop-types";
-import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -81,6 +81,7 @@ const propTypes = {
   toggleTemplateTagsEditor: PropTypes.func.isRequired,
   toggleDataReference: PropTypes.func.isRequired,
   toggleSnippetSidebar: PropTypes.func.isRequired,
+  forwardedRef: PropTypes.oneOf([PropTypes.func, PropTypes.object]),
 };
 
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
@@ -180,7 +181,7 @@ function getColumnTabIndex(columnIndex, focusedFieldIndex) {
       : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
 }
 
-const DatasetEditor = forwardRef(function DatasetEditorInner(props, ref) {
+const _DatasetEditorInner = props => {
   const {
     question,
     visualizationSettings,
@@ -508,7 +509,7 @@ const DatasetEditor = forwardRef(function DatasetEditorInner(props, ref) {
           </Tooltip>,
         ]}
       />
-      <Flex className={DatasetEditorS.Root} ref={ref}>
+      <Flex className={DatasetEditorS.Root} ref={props.forwardedRef}>
         <Flex className={DatasetEditorS.MainContainer}>
           <Box
             className={cx(DatasetEditorS.QueryEditorContainer, {
@@ -574,8 +575,13 @@ const DatasetEditor = forwardRef(function DatasetEditorInner(props, ref) {
       </Modal>
     </>
   );
-});
+};
 
-DatasetEditor.propTypes = propTypes;
+_DatasetEditorInner.propTypes = propTypes;
 
-export default connect(mapStateToProps, mapDispatchToProps)(DatasetEditor);
+export const DatasetEditorInner = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+  null,
+  { forwardRef: true },
+)(_DatasetEditorInner);
