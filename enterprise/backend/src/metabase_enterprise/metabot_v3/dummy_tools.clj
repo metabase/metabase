@@ -213,7 +213,7 @@
         query (lib/query mp legacy-query)
         returned-cols (lib/returned-columns query)]
     {:type :query
-     :query-id query-id
+     :query_id query-id
      :query legacy-query
      :result_columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix))
@@ -224,7 +224,7 @@
   (transduce (filter (comp #{"adhoc"} :type))
              (completing (fn [env {:keys [query]}]
                            (let [query-id (u/generate-nano-id)
-                                 arguments {:query-id query-id}
+                                 arguments {:query_id query-id}
                                  result (execute-query query-id (mbql.normalize/normalize query))]
                              (reduce envelope/add-dummy-message
                                      env
