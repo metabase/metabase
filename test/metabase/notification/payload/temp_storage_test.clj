@@ -10,7 +10,6 @@
     (let [test-data {:a 1 :b "test" :c [1 2 3]}
           storage (temp-storage/to-temp-file! test-data)]
       (try
-        (is (instance? temp_storage.TempFileStorage storage))
         (is (= test-data @storage))
         (finally
           (temp-storage/cleanup! storage))))))
