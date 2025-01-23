@@ -451,7 +451,7 @@
                (fn [model]
                  (with-upload-table! [table (card->table model)]
                    (test-names-match table "出色的")
-                   (is (= (ddl.i/format-name driver/*driver* "%e5%87%ba%e8%89%b2%e7%9a%84_20240628000000")
+                   (is (= (ddl.i/format-name driver/*driver* "chu_se_de_20240628000000")
                           (:name table)))))))))
         (testing "The names should be truncated to the right size"
          ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
