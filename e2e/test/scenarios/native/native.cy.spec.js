@@ -328,7 +328,10 @@ describe("scenarios > question > native", () => {
       query: "SELECT COUNT(*) FROM ORDERS",
     });
     H.NativeEditor.focus();
-    cy.realPress(["Meta", "Enter"]);
+
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+    cy.realPress([metaKey, "Enter"]);
 
     cy.wait("@dataset");
 
