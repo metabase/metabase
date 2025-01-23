@@ -7,6 +7,10 @@ on:
       name:
         required: true
         type: string
+      mode:
+        required: false
+        type: string
+        default: e2e
       edition: # oss | ee
         required: false
         type: string
@@ -107,7 +111,7 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
-        if: ${{ !inputs.specs }}
+        if: ${{ !inputs.specs && inputs.mode != 'visual' }}
         env:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
@@ -123,13 +127,18 @@ jobs:
             --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
-        if: ${{ inputs.specs }}
+        if: ${{ inputs.specs && inputs.mode != 'visual' }}
         shell: bash
         run: |
           node e2e/runner/run_cypress_ci.js test \
           --env grepTags="${{inputs.tags}} --@quarantine",grepOmitFiltered=true \
           --spec '${{ inputs.specs }}' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Run EE Cypress tests with mode - ${{ inputs.mode }}
+        if: ${{ inputs.mode == 'visual' }}
+        shell: bash
+        run: yarn test-visual:cypress-run
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results

@@ -19,7 +19,8 @@ export const captureSnapshot = (
     allowPointerEvents: false,
   },
 ) => {
-  const doNotFail = Cypress.env("DO_NOT_FAIL");
+  const isInteractive = Cypress.config("isInteractive");
+  const doNotFail = isInteractive || Cypress.env("DO_NOT_FAIL");
 
   cy.document().then(document => {
     const style = document.createElement("style");

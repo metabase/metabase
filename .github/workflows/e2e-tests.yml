@@ -175,8 +175,7 @@ jobs:
     secrets: inherit
     with:
       name: Visual
-      tags: "@visual"
-      specs: "./e2e/test/scenarios/**/*.cy.spec.*"
+      mode: visual
 
   e2e-tests-result:
     needs:

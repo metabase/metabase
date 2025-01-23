@@ -1,0 +1,17 @@
+diff --git a/node_modules/find-test-names/src/index.js b/node_modules/find-test-names/src/index.js
+index cd15fe6..13e8107 100644
+--- a/node_modules/find-test-names/src/index.js
++++ b/node_modules/find-test-names/src/index.js
+@@ -722,8 +722,10 @@ function getTestNames(source, withStructure, currentFilename) {
+             .filter((decl) => decl.id.type === 'Identifier')
+             .filter(
+               (decl) =>
+-                decl.init.type === 'Literal' ||
+-                decl.init.type === 'ObjectExpression',
++                // https://github.com/bahmutov/find-test-names/pull/136
++                decl.init &&
++                  (decl.init.type === 'Literal' ||
++                  decl.init.type === 'ObjectExpression'),
+             )
+             .forEach((decl) => {
+               if (decl.init.type === 'ObjectExpression') {

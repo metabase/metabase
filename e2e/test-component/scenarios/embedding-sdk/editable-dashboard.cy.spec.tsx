@@ -17,6 +17,11 @@ const setup = (setupFunction: () => void) => {
 
   setupFunction();
 
+  cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+    "dashcardQuery",
+  );
+  cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+
   cy.signOut();
 };
 
@@ -34,11 +39,6 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.wrap(dashboard.id).as("dashboardId");
           cy.wrap(dashboard.entity_id).as("dashboardEntityId");
         });
-
-        cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-        cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-          "dashcardQuery",
-        );
       });
     });
 
@@ -138,17 +138,24 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
           mountSdkContent(<EditableDashboard dashboardId={dashboard_id} />);
         });
 
-        cy.intercept("POST", "/api/card").as("createCard");
+        cy.intercept("POST", "/api/card");
       });
     });
 
     it("editable dashboard UI", () => {
       getSdkRoot().within(() => {
-        H.captureSnapshot("editable dashboard");
+        // Wait for question to load
+        cy.wait("@dashcardQuery");
+
+        H.captureSnapshot("editable dashboard", {
+          allowPointerEvents: true,
+        });
 
         H.editDashboard();
 
-        H.captureSnapshot("editable dashboard editing");
+        H.captureSnapshot("editable dashboard editing", {
+          allowPointerEvents: true,
+        });
       });
     });
   });

@@ -24,6 +24,8 @@ const cypressSplit = require("cypress-split");
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = process.env["CYPRESS_CI"] === "true";
 
+const isVisualTest = process.env["CYPRESS_IS_VISUAL_TEST"] === "true";
+
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
@@ -100,6 +102,11 @@ const defaultConfig = {
       //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
         launchOptions.args.push("--auto-open-devtools-for-tabs");
+
+        if (isVisualTest) {
+          launchOptions.args.push("--disable-gpu");
+          launchOptions.args.push("--force-device-scale-factor=1");
+        }
       }
 
       // Start browsers with prefers-reduced-motion set to "reduce"
@@ -160,6 +167,9 @@ const defaultConfig = {
     config.env.grepFilterSpecs = true;
 
     config.env.IS_ENTERPRISE = isEnterprise;
+
+    config.env.IS_VISUAL_TEST = isVisualTest;
+
     config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
