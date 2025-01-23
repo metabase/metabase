@@ -1,9 +1,12 @@
 (ns metabase.notification.payload.impl.dashboard
   (:require
    [metabase.channel.render.core :as channel.render]
+   [metabase.events :as events]
    [metabase.models.params.shared :as shared.params]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
+   [metabase.notification.payload.temp-storage :as notification.temp-storage]
+   [metabase.notification.send :as notification.send]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -46,3 +49,18 @@
     (if (:skip_if_empty dashboard_subscription)
       (not (every? notification.execute/is-card-empty? dashboard_parts))
       true)))
+
+(defmethod notification.send/do-after-notification-sent :notification/dashboard
+  [{:keys [id creator_id handlers] :as notification-info} notification-payload]
+  ;; clean up all the temp files that we created for this notification
+  (run! #(notification.temp-storage/cleanup! (get-in % [:result :data :rows]))
+        (->> notification-payload :payload :dashboard_parts))
+  (events/publish-event! :event/subscription-send
+                         {:id      id
+                          :user-id creator_id
+                          :object  {:recipients (->> handlers
+                                                     (mapcat :recipients)
+                                                     (map #(or (:user %) (:email %))))
+                                    :filters    (-> notification-info :dashboard_subscription :parameters)}}))
+
+

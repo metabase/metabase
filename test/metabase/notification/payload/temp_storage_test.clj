@@ -5,26 +5,41 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest to-temp-file!-test
-  (testing "basic storage and retrieval works"
-    (let [data {:test "data"}
-          stored (temp-storage/to-temp-file! data)]
-      (is (= data @stored))))
+(deftest basic-write-read-test
+  (testing "basic write and read operations"
+    (let [test-data {:a 1 :b "test" :c [1 2 3]}
+          storage (temp-storage/to-temp-file! test-data)]
+      (try
+        (is (instance? temp_storage.TempFileStorage storage))
+        (is (= test-data @storage))
+        (finally
+          (temp-storage/cleanup! storage))))))
 
-  (testing "can store and retrieve complex data structures"
-    (let [data {:a [1 2 3]
-                :b #{"set" "of" "strings"}
-                :c {:nested "map"}}
-          stored (temp-storage/to-temp-file! data)]
-      (is (= data @stored))))
+(deftest cleanup-test
+  (testing "file is actually deleted after cleanup"
+    (let [storage (temp-storage/to-temp-file! "test-data")
+          file (.file storage)]
+      (is (.exists file))
+      (temp-storage/cleanup! storage)
+      (is (not (.exists file)))
+      (is (nil? @storage)))))
 
-  (testing "file is deleted after specified timeout"
-    (let [data {:test "temporary"}
-          stored (temp-storage/to-temp-file! data 1)]
-      (is (= data @stored))
-      (Thread/sleep 1500)
-      (is (nil? @stored))))
-
+(deftest nil-handling-test
   (testing "can handle nil values"
-    (let [stored (temp-storage/to-temp-file! nil)]
-      (is (nil? @stored)))))
+    (let [storage (temp-storage/to-temp-file! nil)]
+      (try
+        (is (nil? @storage))
+        (finally
+          (temp-storage/cleanup! storage))))))
+
+(deftest equality-test
+  (testing "equality behavior"
+    (let [data {:test "data"}
+          storage1 (temp-storage/to-temp-file! data)
+          storage2 (temp-storage/to-temp-file! data)]
+      (try
+        (is (= storage1 storage1))
+        (is (not= storage1 storage2))
+        (finally
+          (temp-storage/cleanup! storage1)
+          (temp-storage/cleanup! storage2))))))
