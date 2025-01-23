@@ -214,33 +214,30 @@ export const getRoutes = store => {
           {getModelRoutes()}
 
           <Route path="/model">
-            <IndexRoute component={QueryBuilderWithEntityId} />
+            <IndexRoute component={QueryBuilder} />
             <Route
               path="new"
               title={t`New Model`}
               component={NewModelOptions}
             />
-            <Route path=":slug" component={QueryBuilderWithEntityId} />
-            <Route path=":slug/notebook" component={QueryBuilderWithEntityId} />
-            <Route path=":slug/query" component={QueryBuilderWithEntityId} />
-            <Route path=":slug/metadata" component={QueryBuilderWithEntityId} />
-            <Route path=":slug/metabot" component={QueryBuilderWithEntityId} />
-            <Route
-              path=":slug/:objectId"
-              component={QueryBuilderWithEntityId}
-            />
-            <Route path="query" component={QueryBuilderWithEntityId} />
-            <Route path="metabot" component={QueryBuilderWithEntityId} />
+            <Route path=":slug" component={QueryBuilder} />
+            <Route path=":slug/notebook" component={QueryBuilder} />
+            <Route path=":slug/query" component={QueryBuilder} />
+            <Route path=":slug/metadata" component={QueryBuilder} />
+            <Route path=":slug/metabot" component={QueryBuilder} />
+            <Route path=":slug/:objectId" component={QueryBuilder} />
+            <Route path="query" component={QueryBuilder} />
+            <Route path="metabot" component={QueryBuilder} />
           </Route>
 
           {/* METRICS V2 */}
           <Route path="/metric">
-            <IndexRoute component={QueryBuilderWithEntityId} />
-            <Route path="notebook" component={QueryBuilderWithEntityId} />
-            <Route path="query" component={QueryBuilderWithEntityId} />
-            <Route path=":slug" component={QueryBuilderWithEntityId} />
-            <Route path=":slug/notebook" component={QueryBuilderWithEntityId} />
-            <Route path=":slug/query" component={QueryBuilderWithEntityId} />
+            <IndexRoute component={QueryBuilder} />
+            <Route path="notebook" component={QueryBuilder} />
+            <Route path="query" component={QueryBuilder} />
+            <Route path=":slug" component={QueryBuilder} />
+            <Route path=":slug/notebook" component={QueryBuilder} />
+            <Route path=":slug/query" component={QueryBuilder} />
           </Route>
 
           <Route path="browse">
