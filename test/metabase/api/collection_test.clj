@@ -1534,43 +1534,35 @@
 
                    :model/Card {card-3-id :id} {:collection_id coll-id}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-3-id}]
-      (testing "Selecting everything"
-        (is (= #{card-1-id card-2-id card-3-id}
-               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))
-                    :data
-                    (map :id)
-                    set))))
-      (testing "Selecting the first one"
-        (let [{:keys [data total]}
-              (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
-                                    :limit 1 :offset 0)]
+      (let [fetch (fn [& {:keys [limit offset] :or {limit 10 offset 0}}]
+                    (let [resp (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                     :limit limit :offset offset)]
+                      (is (= 3 (:total resp)))
+                      (->> resp :data (map :id))))]
+        (testing "Selecting everything"
+          (is (= [card-3-id card-2-id card-1-id]
+                 (fetch))))
+        (testing "Selecting the first one"
           (is (= [card-3-id]
-                 (map :id data)))
-          (is (= 3 total))))
-      (testing "The second two"
-        (let [{:keys [data total]}
-              (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
-                                    :limit 2 :offset 1)]
+                 (fetch :limit 1))))
+        (testing "The second two"
           (is (= [card-2-id card-1-id]
-                 (map :id data)))
-          (is (= 3 total))))
-      (testing "The first two"
-        (let [{:keys [data total]}
-              (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
-                                    :limit 2 :offset 0)]
+                 (fetch :limit 2 :offset 1))))
+        (testing "The first two"
           (is (= [card-3-id card-2-id]
-                 (map :id data)))
-          (is (= 3 total))))
-      (testing "Only limit, no offset"
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
-                                                   :limit 2)]
-          (is (= [card-3-id card-2-id]
-                 (map :id data)))))
-      (testing "Only offset, no limit"
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
-                                                   :offset 1)]
-          (is (= [card-2-id card-1-id]
-                 (map :id data))))))))
+                 (fetch :limit 2 :offset 0))))
+        (testing "Only limit, no offset"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                     :limit 2)]
+            (is (= [card-3-id card-2-id]
+                   (map :id data)))))
+        (testing "Only offset, no limit"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                     :offset 1)]
+            (is (= [card-2-id card-1-id]
+                   (map :id data)))))
+        (testing "Zero limit"
+          (is (= [] (fetch :limit 0))))))))
 
 (deftest dashboard-question-candidates-card-is-in-two-dashboards-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
@@ -1811,48 +1803,35 @@
 
                    :model/Card {card-3-id :id} {:collection_id nil}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-3-id}]
-      (testing "Selecting everything"
-        (is (= #{card-1-id card-2-id card-3-id}
-               (->> (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates")
-                    :data
-                    (map :id)
-                    set))))
-      (testing "Selecting the first one"
-        (let [{:keys [data total]}
-              (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
-                                    :limit 1 :offset 0)]
+      (let [fetch (fn [& {:keys [limit offset] :or {limit 10 offset 0}}]
+                    (let [resp (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                     :limit limit :offset offset)]
+                      (is (= 3 (:total resp)))
+                      (->> resp :data (map :id))))]
+        (testing "Selecting everything"
+          (is (= [card-3-id card-2-id card-1-id]
+                 (fetch))))
+        (testing "Selecting the first one"
           (is (= [card-3-id]
-                 (map :id data)))
-          (is (= 3 total))))
-      (testing "The second two"
-        (let [{:keys [data total]}
-              (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
-                                    :limit 2 :offset 1)]
+                 (fetch :limit 1))))
+        (testing "The second two"
           (is (= [card-2-id card-1-id]
-                 (map :id data)))
-          (is (= 3 total))))
-      (testing "The first two"
-        (let [{:keys [data total]}
-              (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
-                                    :limit 2 :offset 0)]
+                 (fetch :limit 2 :offset 1))))
+        (testing "The first two"
           (is (= [card-3-id card-2-id]
-                 (map :id data)))
-          (is (= 3 total))))
-      (testing "Only limit, no offset"
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
-                                                   :limit 2)]
-          (is (= [card-3-id card-2-id]
-                 (map :id data)))))
-      (testing "Only offset, no limit"
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
-                                                   :offset 1)]
-          (is (= [card-2-id card-1-id]
-                 (map :id data)))))
-      (testing "Zero limit"
-        (let [{:keys [data total]} (mt/user-http-request :crowberto :get 200 "collection/root/dashboard-question-candidates"
-                                                         :limit 0)]
-          (is (= 3 total))
-          (is (= [] data)))))))
+                 (fetch :limit 2 :offset 0))))
+        (testing "Only limit, no offset"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                     :limit 2)]
+            (is (= [card-3-id card-2-id]
+                   (map :id data)))))
+        (testing "Only offset, no limit"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                     :offset 1)]
+            (is (= [card-2-id card-1-id]
+                   (map :id data)))))
+        (testing "Zero limit"
+          (is (= [] (fetch :limit 0))))))))
 
 (deftest post-move-dashboard-question-candidates-success
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"

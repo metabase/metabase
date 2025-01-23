@@ -1060,32 +1060,24 @@
    [:total integer?]])
 
 (mu/defn- dashboard-question-candidates
-  "Implementation for the `dashboard-question-candidates` endpoints.
-
-  If `pagination-data` is passed, `limit` and `offset` will be used. Otherwise, returns all candidates."
-  ([collection-id] (dashboard-question-candidates collection-id nil))
-  ([collection-id :- [:maybe ms/PositiveInt]
-    pagination-data :- [:maybe
-                        [:map
-                         [:limit ms/Int]
-                         [:offset ms/Int]]]]
-   (api/check-403 api/*is-superuser?*)
-   (let [all-cards-in-collection (t2/hydrate (t2/select :model/Card (merge
-                                                                 {:where [:and
-                                                                          [:= :collection_id collection-id]
-                                                                          [:= :dashboard_id nil]]
-                                                                  :order-by [[:id :desc]]}))
-                                         :in_dashboards)]
-     (filter
-      (fn [card]
-        (and
-         ;; we're a good candidate if:
-         ;; - we're only in one dashboard
-         (card/sole-dashboard-id card)
-         ;; - that one dashboard is in the same collection
-         (= (:collection_id card)
-            (-> card :in_dashboards first :collection_id))))
-      all-cards-in-collection))))
+  "Implementation for the `dashboard-question-candidates` endpoints."
+  [collection-id]
+  (api/check-403 api/*is-superuser?*)
+  (let [all-cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:and
+                                                                            [:= :collection_id collection-id]
+                                                                            [:= :dashboard_id nil]]
+                                                                    :order-by [[:id :desc]]})
+                                            :in_dashboards)]
+    (filter
+     (fn [card]
+       (and
+        ;; we're a good candidate if:
+        ;; - we're only in one dashboard
+        (card/sole-dashboard-id card)
+        ;; - that one dashboard is in the same collection
+        (= (:collection_id card)
+           (-> card :in_dashboards first :collection_id))))
+     all-cards-in-collection)))
 
 (mu/defn- present-dashboard-question-candidate
   [{:keys [in_dashboards] :as card}]
@@ -1095,6 +1087,10 @@
 
 (mu/defn- present-dashboard-question-candidates
   [cards]
+  ;; we're paginating in Clojure rather than in the query itself because the criteria here is quite complicated to
+  ;; express in SQL: we need to join to `report_dashboardcard` AND `dashboardcard_series`, and find cards that have
+  ;; exactly one matching dashboard across both of those joins. I'm sure it's doable, but for now we can just do this
+  ;; in clojure. We're only working one collection at a time here so hopefully this should be relatively performant.
   {:data (map present-dashboard-question-candidate (cond->> cards
                                                      (request/paged?) (drop (request/offset))
                                                      (request/paged?) (take (request/limit))))
