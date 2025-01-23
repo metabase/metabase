@@ -6,7 +6,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.sql Blob)))
 
 (set! *warn-on-reflection* true)
 
@@ -57,13 +58,20 @@
                                   {:id id}
                                   {field (encrypt-str-fn decrypted-value)}))
 
-                    (instance? java.sql.Blob decrypted-value)
-                    (let [decrypted-bytes (encryption/maybe-decrypt (.getBytes decrypted-value 1 (.length decrypted-value)))]
+                    (instance? Blob decrypted-value)
+                    (let [decrypted-bytes (encryption/maybe-decrypt (.getBytes ^Blob decrypted-value 1 (.length ^Blob decrypted-value)))]
                       (if (encryption/possibly-encrypted-bytes? decrypted-bytes)
                         (throw (ex-info (str "Can't decrypt " (-> model t2/table-name name) "." (name field) " with MB_ENCRYPTION_SECRET_KEY") {:model model :id id}))
                         (t2/update! :conn conn (t2/table-name model)
-                          {:id id}
-                          {field (encrypt-bytes-fn decrypted-bytes)})))
+                                    {:id id}
+                                    {field (encrypt-bytes-fn decrypted-bytes)})))
+
+                    (bytes? decrypted-value)
+                    (if (encryption/possibly-encrypted-bytes? decrypted-bytes)
+                      (throw (ex-info (str "Can't decrypt " (-> model t2/table-name name) "." (name field) " with MB_ENCRYPTION_SECRET_KEY") {:model model :id id}))
+                      (t2/update! :conn conn (t2/table-name model)
+                        {:id id}
+                        {field (encrypt-bytes-fn decrypted-bytes)}))
 
                     :else
                     (throw (ex-info (str "Unknown value type" decrypted-value) {:model model :field field}))))))))))))
