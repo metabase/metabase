@@ -26,5 +26,5 @@ export type EmbedDisplayParams = {
   font: EmbedFont;
   theme: DisplayTheme;
   downloadsEnabled: boolean;
-  showFooter: boolean;
+  withFooter: boolean;
 };

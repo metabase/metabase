@@ -27,7 +27,7 @@ export type DashboardDownloadControls = {
 };
 
 export type DashboardFooterControls = {
-  showFooter?: boolean;
+  withFooter?: boolean;
 };
 
 export type DashboardLoaderWrapperProps = {

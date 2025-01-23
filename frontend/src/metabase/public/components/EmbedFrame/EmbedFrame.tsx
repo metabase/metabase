@@ -74,7 +74,7 @@ export type EmbedFrameBaseProps = Partial<{
   children: ReactNode;
   dashboardTabs: ReactNode;
   downloadsEnabled: boolean;
-  showFooter: boolean;
+  withFooter: boolean;
 }>;
 
 type WithRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
@@ -104,7 +104,7 @@ export const EmbedFrame = ({
   theme,
   hide_parameters,
   downloadsEnabled = true,
-  showFooter = true,
+  withFooter = true,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
@@ -138,7 +138,7 @@ export const EmbedFrame = ({
     .join(",");
 
   const isFooterEnabled =
-    showFooter && (hasEmbedBranding || downloadsEnabled || actionButtons);
+    withFooter && (hasEmbedBranding || downloadsEnabled || actionButtons);
 
   const finalName = titled ? name : null;
 

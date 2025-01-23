@@ -49,7 +49,7 @@ const InteractiveDashboardInner = ({
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
-  showFooter = true,
+  withFooter = true,
   hiddenParameters = [],
   drillThroughQuestionHeight,
   plugins,
@@ -71,7 +71,7 @@ const InteractiveDashboardInner = ({
     dashboardId,
     withDownloads,
     withTitle,
-    showFooter,
+    withFooter,
     hiddenParameters,
     initialParameters,
   });
@@ -113,7 +113,7 @@ const InteractiveDashboardInner = ({
             background={displayOptions.background}
             titled={displayOptions.titled}
             cardTitled={withCardTitle}
-            showFooter={displayOptions.showFooter}
+            withFooter={displayOptions.withFooter}
             theme={theme}
             isFullscreen={isFullscreen}
             onFullscreenChange={onFullscreenChange}

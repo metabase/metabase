@@ -32,7 +32,7 @@ export const StaticDashboardInner = ({
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
-  showFooter = true,
+  withFooter = true,
   hiddenParameters = [],
   onLoad,
   onLoadWithoutCards,
@@ -52,7 +52,7 @@ export const StaticDashboardInner = ({
     initialParameters,
     withTitle,
     withDownloads,
-    showFooter,
+    withFooter,
     hiddenParameters,
   });
 
@@ -88,7 +88,7 @@ export const StaticDashboardInner = ({
         isNightMode={false}
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
-        showFooter={displayOptions.showFooter}
+        withFooter={displayOptions.withFooter}
       />
     </Box>
   );

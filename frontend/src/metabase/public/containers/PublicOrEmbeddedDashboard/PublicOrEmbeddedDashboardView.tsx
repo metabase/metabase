@@ -98,7 +98,7 @@ export function PublicOrEmbeddedDashboardView({
   titled,
   theme,
   hideParameters,
-  showFooter,
+  withFooter,
   navigateToNewCardFromDashboard,
   slowCards,
   cardTitled,
@@ -166,7 +166,7 @@ export function PublicOrEmbeddedDashboardView({
       theme={normalizedTheme}
       hide_parameters={hideParameters}
       downloadsEnabled={downloadsEnabled}
-      showFooter={showFooter}
+      withFooter={withFooter}
     >
       <LoadingAndErrorWrapper
         className={cx({
