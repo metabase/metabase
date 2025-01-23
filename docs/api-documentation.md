@@ -17,7 +17,7 @@ clojure -M:ee:doc api-documentation
 
 ## API tutorial
 
-Check out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api.html).
+Check out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api.html/).
 
 ## API keys
 
@@ -29,7 +29,7 @@ For breaking changes, see the API [changelog](./developers-guide/api-changelog.m
 
 ## API endpoints
 
-_* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing)._
+_* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing/)._
 
 
 - [Action](api/action.md)

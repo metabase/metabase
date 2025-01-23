@@ -67,7 +67,7 @@ You can use your JWT to assign Metabase users to custom groups.
    ![Metabase JWT group mappings](./images/jwt-groups.png)
 1. Repeat this for each of the groups you want to map.
 
-Alternatively, you can define the mappings between JWT and Metabase groups using the [environment variable `MB_JWT_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_jwt_group_mappings). It accepts a JSON object where the keys are JWT groups and the values are lists of Metabase groups IDs. For example:
+Alternatively, you can define the mappings between JWT and Metabase groups using the [environment variable `MB_JWT_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md/#mb_jwt_group_mappings). It accepts a JSON object where the keys are JWT groups and the values are lists of Metabase groups IDs. For example:
 
 ```
 MB_JWT_GROUP_MAPPINGS='{"extHR":[7], "extSales":[3,4]}'
@@ -77,7 +77,7 @@ where `extHR`, `extSales` are names of JWT groups and 3,4,7 are IDs of Metabase 
 
 You can find Metabase Group ID in the URL for the group page, like `http://your-metabase-url/admin/people/groups/<ID>`. "All Users" group has ID 1 and "Administrators" group has ID 2.
 
-You can also use the [environment variable `MB_JWT_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_jwt_group_sync) to turn group sync on or off.
+You can also use the [environment variable `MB_JWT_GROUP_SYNC`](../configuring-metabase/environment-variables.md/#mb_jwt_group_sync) to turn group sync on or off.
 
 ```
 MB_JWT_GROUP_SYNC=true
@@ -85,7 +85,7 @@ MB_JWT_GROUP_SYNC=true
 
 ## Creating Metabase accounts with SSO
 
-> Paid plans [charge for each additional account](https://www.metabase.com/docs/latest/cloud/how-billing-works#what-counts-as-a-user-account).
+> Paid plans [charge for each additional account](https://www.metabase.com/docs/latest/cloud/how-billing-works/#what-counts-as-a-user-account).
 
 A new SSO login will automatically create a new Metabase account.
 

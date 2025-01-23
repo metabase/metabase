@@ -38,7 +38,7 @@ The value in the `Previous` column for October 4th is `3`, which is the value of
 
 The `Offset` function returns whatever value is in the offset row.
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Returned by `Offset` |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview/#examples-of-data-types) | Returned by `Offset` |
 | ------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
 | String                                                                                                                         | ✅                   |
 | Number                                                                                                                         | ✅                   |
@@ -64,7 +64,7 @@ Which yields:
 
 ![Year over year order sum of order totals](../../images/year-over-year-sum-totals.png)
 
-With these offsets (the Sums in the "Previous period" column), we can then create [custom columns](../editor.md#creating-custom-columns) to calculate things like the difference between yearly Sums:
+With these offsets (the Sums in the "Previous period" column), we can then create [custom columns](../editor.md/#creating-custom-columns) to calculate things like the difference between yearly Sums:
 
 ```
 [Sum of total] - [Previous period]
@@ -131,4 +131,4 @@ ORDER BY
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions/)

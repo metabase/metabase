@@ -11,7 +11,7 @@ To reset a password for your Metabase instance, see:
 - [Reset a user's password](../people-and-groups/managing.md#resetting-someones-password).
 - [Reset admin password](../people-and-groups/managing.md#resetting-the-admin-password).
 
-To reset password for your Metabase Store account, [contact support](https://www.metabase.com/help-premium).
+To reset password for your Metabase Store account, [contact support](https://www.metabase.com/help-premium/).
 
 ## No access to Metabase login page
 
@@ -24,7 +24,7 @@ If you're not a Metabase admin, you'll have to tag them for help here.
 
 The admin password for `store.metabase.com` (where you can find payment and subscription info) is not necessarily the same as the password for your Metabase instance (where you log in to look at data).
 
-If you've forgotten your Metabase Cloud admin password, you can [contact support](https://www.metabase.com/help-premium) to reset the password.
+If you've forgotten your Metabase Cloud admin password, you can [contact support](https://www.metabase.com/help-premium/) to reset the password.
 
 ## Related topics
 

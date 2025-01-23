@@ -36,7 +36,7 @@ First, search for models that already exist. If you can't find one that meets yo
 - [from scratch](#create-a-model-from-scratch), or
 - [from a saved question](#create-a-model-from-a-saved-question).
 
-Models you create are automatically [pinned to the current collection](../exploration-and-organization/collections.md#pinned-items).
+Models you create are automatically [pinned to the current collection](../exploration-and-organization/collections.md/#pinned-items).
 
 ### Create a model from scratch
 
@@ -186,8 +186,8 @@ See [Model persistence](./model-persistence.md)
 - [Troubleshooting models][troubleshooting-models].
 
 [column-type]: ./field-types.md
-[cte]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-cte
-[measures-dimensions]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/dimensions-and-measures
+[cte]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-cte/
+[measures-dimensions]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/dimensions-and-measures/
 [question]: ../questions/start.md
-[learn-models]: https://www.metabase.com/learn/metabase-basics/getting-started/models
+[learn-models]: https://www.metabase.com/learn/metabase-basics/getting-started/models/
 [troubleshooting-models]: ../troubleshooting-guide/models.md

@@ -9,7 +9,7 @@ redirect_from:
 Keycloak is an open source platform that can be used as a user directory to save user data while acting as the IdP for single sign-on.
 
 1. [Set up SAML in Keycloak](#working-in-the-keycloak-console) (the identity provider).
-2. [Set up SAML in Metabase](./authenticating-with-saml.md#enabling-saml-authentication-in-metabase) (the service provider).
+2. [Set up SAML in Metabase](./authenticating-with-saml.md/#enabling-saml-authentication-in-metabase) (the service provider).
 
 For more information, check out our guide for [authenticating with SAML](./authenticating-with-saml.md).
 
@@ -29,7 +29,7 @@ For more information, check out our guide for [authenticating with SAML](./authe
    - **Home URL**: In your Metabase, go to **Admin settings** > **Authentication** > **SAML**. You'll find your Home URL in the field **URL the IdP should redirect back to**.
    - Click **Save**.
 
-5. (Optional) Disable key signing for SSO client. See [settings for signing SSO requests](https://www.metabase.com/docs/latest/people-and-groups/authenticating-with-saml#settings-for-signing-sso-requests-optional).
+5. (Optional) Disable key signing for SSO client. See [settings for signing SSO requests](https://www.metabase.com/docs/latest/people-and-groups/authenticating-with-saml#settings-for-signing-sso-requests-optional/).
 
    - Click **Keys** tab.
    - **Client signature required:** Off.

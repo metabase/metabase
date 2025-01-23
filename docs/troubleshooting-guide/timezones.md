@@ -44,7 +44,7 @@ Once you think you have identified a problem, drill down to understand exactly w
 
 **Steps to take:**
 
-1. Check the [report timezone setting](../configuring-metabase/localization.md#report-timezone) from **Admin settings** > **Settings** > **Localization**.
+1. Check the [report timezone setting](../configuring-metabase/localization.md/#report-timezone) from **Admin settings** > **Settings** > **Localization**.
 2. If you're using a database that doesn't support the report timezone setting, ensure that Metabase's time zone matches that of the database. Metabase's time zone is the Java Virtual Machine's time zone, typically set via a `-Duser.timezone<..>` parameter or the `JAVA_TIMEZONE` environment variable; exactly how it is set will depend on how you launch Metabase. Note that Metabase's time zone doesn't impact any databases that use a Report Time Zone.
 
 ## Are SQL queries not respecting the Reporting Time Zone setting?

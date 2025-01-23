@@ -40,7 +40,7 @@ podman run -d -p 12345:3000 --name=metabase docker.io/metabase/metabase:latest
 
 ## Pro or Enterprise quick start
 
-Use this quick start if you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally.
+Use this quick start if you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing/) of Metabase, and you want to run Metabase locally.
 
 Assuming you have [Podman](https://podman.io) installed and running, get the latest container image:
 
@@ -74,7 +74,7 @@ podman run -d -p 12345:3000 --name=metabase docker.io/metabase/metabase-enterpri
 
 Metabase ships with an embedded H2 database that uses the file system to store its own application data. Meaning, if you remove the container, you'll lose your Metabase application data (your questions, dashboards, collections, and so on).
 
-If you want to run Metabase in production, you'll need store your application data in a [production-ready database](./migrating-from-h2.md#supported-databases-for-storing-your-metabase-application-data).
+If you want to run Metabase in production, you'll need store your application data in a [production-ready database](./migrating-from-h2.md/#supported-databases-for-storing-your-metabase-application-data).
 
 Once you've provisioned a database, like Postgres, for Metabase to use to store its application data, all you need to do is provide Metabase with the connection information and credentials so Metabase can connect to it.
 

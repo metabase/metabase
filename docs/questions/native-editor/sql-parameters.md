@@ -150,7 +150,7 @@ Make sure your SQL dialect matches the database you've selected. Common issues i
 | BigQuery | Schemas and tables must be quoted with backticks.   | `` FROM `dataset.table` `` |
 | Oracle   | Schemas and tables must be quoted in double quotes. | `FROM schema.table`        |
 
-For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
+For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md/#sql-editor).
 
 ## How to create different types of filter widgets
 
@@ -249,7 +249,7 @@ You can choose:
 - **From another model or question**. If you select this option, you'll need to pick a model or question, then a field from that model or question that Metabase will use to supply the values for that dropdown or search box. For example, if you want the dropdown to list the different plans an account could be on, you could select an "Account" model you created, and select the field "Plan" to power that dropdown. The dropdown would then list all of the distinct plan options that appear in the "Plan" column in the Accounts model.
 - **Custom list**. Enter each item on a line. You can enter any string values you like.
 
-You can also [change a dashboard filter's selectable values](../../dashboards/filters.md#change-a-filters-selectable-values).
+You can also [change a dashboard filter's selectable values](../../dashboards/filters.md/#change-a-filters-selectable-values).
 
 ## Setting a default value in the filter widget
 

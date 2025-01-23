@@ -96,7 +96,7 @@ Currently, you can't change the color or label of the **Other** slice.
 
 ## Limitations and alternatives
 
-Consider using a bar or row chart (or a [stacked bar chart](line-bar-and-area-charts.md#stacked-bar-chart)) or a [pivot table](pivot-table.md) instead of a pie or sunburst chart in the following cases:
+Consider using a bar or row chart (or a [stacked bar chart](line-bar-and-area-charts.md/#stacked-bar-chart)) or a [pivot table](pivot-table.md) instead of a pie or sunburst chart in the following cases:
 
 - Your data has more than three breakouts
 - Your metrics don't add up to 100% (for example, average rating - prefer a gauge chart in that case)

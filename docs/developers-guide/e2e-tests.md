@@ -197,7 +197,7 @@ Tests located in `e2e/test/scenarios/embedding-sdk` are used to run automated ch
 
 Embedding SDK is a library, and not an application. We use Storybook to host public components, and we run tests against it.
 
-In order to run stories used for tests locally, please check [storybook setup docs](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md#storybook)
+In order to run stories used for tests locally, please check [storybook setup docs](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md/#storybook)
 
 ## DB Snapshots
 

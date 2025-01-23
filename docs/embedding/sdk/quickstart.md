@@ -13,7 +13,7 @@ This guide sets up the embedded analytics SDK with a [sample React app](https://
 ## Prerequisites
 
 - [Node.js 20.x LTS or higher](https://nodejs.org/en) (for the sample application).
-- [Metabase version v1.51 or higher](https://www.metabase.com/docs/latest/releases).
+- [Metabase version v1.51 or higher](https://www.metabase.com/docs/latest/releases/).
 
 ## Overview of the quickstart
 
@@ -39,7 +39,7 @@ Let's go.
 
 ## Install Metabase Enterprise Edition
 
-You can run Metabase Pro on a Cloud plan with a [free trial](https://www.metabase.com/pricing).
+You can run Metabase Pro on a Cloud plan with a [free trial](https://www.metabase.com/pricing/).
 
 Or run it locally. Here's a docker one-liner:
 
@@ -59,7 +59,7 @@ If you get stuck, check out our [installation docs](../../installation-and-opera
 
 ## Activate your license
 
-To enable SSO with JWT when self-hosting, you'll need to [activate your license](https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition). Metabase Pro plans on Cloud take care of this for you.
+To enable SSO with JWT when self-hosting, you'll need to [activate your license](https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition/). Metabase Pro plans on Cloud take care of this for you.
 
 ## Enable embedding in Metabase
 

@@ -43,7 +43,7 @@ Now, you can use **Campaign Name** in places where you need clean labels, such a
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `regexextract` |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview/#examples-of-data-types) | Works with `regexextract` |
 | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
 | String                                                                                                                         | ✅                        |
 | Number                                                                                                                         | ❌                        |
@@ -91,7 +91,7 @@ regexextract([URL], "^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/.\n]+)")
 
 ### SQL
 
-When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook_editor), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook_editor/), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
 If our [sample data](#searching-and-cleaning-text) is stored in a PostgreSQL database:
 
@@ -139,4 +139,4 @@ regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions/)

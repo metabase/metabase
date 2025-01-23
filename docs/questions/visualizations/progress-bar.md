@@ -14,7 +14,7 @@ redirect_from:
 
 Progress bars are useful when you want to show the movement of a metric toward a goal, like assessing performance of a KPI, or tracking the percentage of of completion on a project.
 
-Progress bars give you an option to set up an alert whenever the result of a question reaches the goal set in the progress bar settings. See [Progress bar alerts](../alerts.md#progress-bar-alerts).
+Progress bars give you an option to set up an alert whenever the result of a question reaches the goal set in the progress bar settings. See [Progress bar alerts](../alerts.md/#progress-bar-alerts).
 
 ## How to create a progress bar
 
@@ -50,10 +50,10 @@ Selecting "**Style**: Percent" in format options will only change how the result
 
 - Progress bars assume that your objective is to _increase_ a metric. If the objective is to decrease or reduce a metric, consider using the [gauge chart](gauge.md).
 
-- Progress bars don't support breakouts. If you'd like to display progress of a metric towards a goal across a breakout, consider using a [bar or line chart with a goal line](line-bar-and-area-charts.md#goal-lines).
+- Progress bars don't support breakouts. If you'd like to display progress of a metric towards a goal across a breakout, consider using a [bar or line chart with a goal line](line-bar-and-area-charts.md/#goal-lines).
 
 ## Further reading
 
 - [Gauge charts](./gauge.md)
-- [Goal lines on bar and line charts](./line-bar-and-area-charts.md#goal-lines)
-- Tutorial: [Which chart should I use?](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/chart-guide)
+- [Goal lines on bar and line charts](./line-bar-and-area-charts.md/#goal-lines)
+- Tutorial: [Which chart should I use?](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/chart-guide/)

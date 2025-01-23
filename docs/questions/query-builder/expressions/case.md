@@ -132,7 +132,7 @@ This section covers functions and formulas that can be used interchangeably with
 
 ### Coalesce
 
-Using the table from the [Coalesce: Consolidating values](./coalesce.md#consolidating-values-from-different-columns) example:
+Using the table from the [Coalesce: Consolidating values](./coalesce.md/#consolidating-values-from-different-columns) example:
 
 | Notes          | Comments          | `coalesce([Notes], [Comments] "No notes or comments.")` |
 | -------------- | ----------------- | ------------------------------------------------------- |
@@ -242,7 +242,7 @@ case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
      [Has Wings] = FALSE AND [Has Face] = TRUE,  "Superman", "Unknown")
 ```
 
-For example, this [SQL trick to order bar charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-tricks-ordering-charts) could be written using a Metabase `case` expression instead.
+For example, this [SQL trick to order bar charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-tricks-ordering-charts/) could be written using a Metabase `case` expression instead.
 
 ### Spreadsheets
 
@@ -328,9 +328,9 @@ case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
 - [Custom expressions documentation][custom-expressions-doc]
 - [Custom expressions tutorial][custom-expressions-learn]
 
-[aggregate-functions]: ../expressions-list.md#aggregations
+[aggregate-functions]: ../expressions-list.md/#aggregations
 [business-logic]: https://www.metabase.com/learn/grow-your-data-skills/analytics/avoiding-data-jargon#create-specific-language-and-shared-definitions
-[countif]: ../expressions-list.md#countif
+[countif]: ../expressions-list.md/#countif
 [custom-expressions-doc]: ../expressions.md
 [custom-expressions-list]: ../expressions-list.md
 [custom-expressions-learn]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions

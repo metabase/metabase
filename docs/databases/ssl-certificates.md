@@ -73,7 +73,7 @@ You can learn more about [SSL support for PostgreSQL](https://www.postgresql.org
 
 If you're self-hosting Metabase, you can secure the connection to your application database using [environment variables](../configuring-metabase/environment-variables.md).
 
-The environment variable to use is [`MB_DB_CONNECTION_URI`](../configuring-metabase/environment-variables.md#mb_db_connection_uri).
+The environment variable to use is [`MB_DB_CONNECTION_URI`](../configuring-metabase/environment-variables.md/#mb_db_connection_uri).
 
 You'll need to include the full connection string here, including the db host, port, db name and user info, as well as the additional connection parameters to include the certificate. For example,
 

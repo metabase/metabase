@@ -57,6 +57,6 @@ Selecting “Style: Percent” in format options will only change how Metabase f
 
 - Metabase doesn't support setting alerts for when a metric moves from one region of the gauge chart to another. Consider using a [progress bar](./progress-bar.md) to create an alert when your metric reaches a certain value.
 
-- Gauge charts don't support breakouts. Depending on your use case, consider using a [bar chart with a goal line](./line-bar-and-area-charts.md#goal-lines).
+- Gauge charts don't support breakouts. Depending on your use case, consider using a [bar chart with a goal line](./line-bar-and-area-charts.md/#goal-lines).
 
 - Gauge chart ranges can't be set based on results of another query.

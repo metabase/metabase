@@ -66,7 +66,7 @@ For pinned questions, you can also choose whether to display the visualization f
 
 ![Show pinned viz](./images/pinned-show-viz.png)
 
-Pinned items will appear pinned for all people looking at the collection. If you just want to organize _your_ favorite items, you should [bookmark them](./exploration.md#bookmarks) (only you can see your bookmarks).
+Pinned items will appear pinned for all people looking at the collection. If you just want to organize _your_ favorite items, you should [bookmark them](./exploration.md/#bookmarks) (only you can see your bookmarks).
 
 ## Moving items from collection to collection
 
@@ -97,8 +97,8 @@ You can upload data to collections. See [Uploading data](./uploads.md)]
 
 ## Further reading
 
-- [Keeping your analytics organized](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/same-page)
-- [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env#one-collection-per-environment)
+- [Keeping your analytics organized](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/same-page/)
+- [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env#one-collection-per-environment/)
 
 [dashboards]: ../dashboards/introduction.md
 [models]: ../data-modeling/models.md

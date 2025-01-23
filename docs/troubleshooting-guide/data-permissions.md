@@ -108,22 +108,22 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search for [known bugs or limitations][known-issues].
 
 [admin-permissions]: ../permissions/introduction.md
-[block-data-permission]: ../permissions/data.md#blocked-view-data-permission
+[block-data-permission]: ../permissions/data.md/#blocked-view-data-permission
 [cant-see-tables]: ./cant-see-tables.md
 [collection-permissions]: ../permissions/collections.md
-[data-access]: ../permissions/data.md#data-permission-types
+[data-access]: ../permissions/data.md/#data-permission-types
 [data-permissions]: ../permissions/data.md
 [discourse]: https://discourse.metabase.com/
-[groups]: ../people-and-groups/managing.md#groups
-[group-permissions]: ../permissions/introduction.md#key-points-regarding-permissions
+[groups]: ../people-and-groups/managing.md/#groups
+[group-permissions]: ../permissions/introduction.md/#key-points-regarding-permissions
 [known-issues]: ./known-issues.md
 [learn-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
-[native-query-editing]: ../permissions/data.md#query-builder-and-native-create-queries-permission
+[native-query-editing]: ../permissions/data.md/#query-builder-and-native-create-queries-permission
 [pricing]: https://www.metabase.com/pricing
 [proxies]: ./proxies.md
-[sql-access]: ./data-permissions.md#a-user-group-cant-access-the-sql-editor
-[sql-sandboxing]: ./sandboxing.md#is-the-question-written-in-sql
+[sql-access]: ./data-permissions.md/#a-user-group-cant-access-the-sql-editor
+[sql-sandboxing]: ./sandboxing.md/#is-the-question-written-in-sql
 [troubleshooting-data-sandboxing]: ./sandboxing.md
 [troubleshooting-permissions]: ./permissions.md
-[unrestricted]: ../permissions/data.md#can-view-data-permission
+[unrestricted]: ../permissions/data.md/#can-view-data-permission
 [view-edit]: ./cant-view-or-edit.md

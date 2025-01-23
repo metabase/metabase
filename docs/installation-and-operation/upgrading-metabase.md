@@ -26,7 +26,7 @@ If you're running the JVM Jar file directly:
 
 2. Download the latest version of the JAR file:
 
-   - [Metabase Open Source JAR](https://www.metabase.com/start/oss/jar)
+   - [Metabase Open Source JAR](https://www.metabase.com/start/oss/jar/)
    - [Metabase Pro or Enterprise JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar)
 
 3. Use a terminal to access your existing Metabase process and kill it (usually CTRL-C).
@@ -51,7 +51,7 @@ E.g., if you're running Metabase on Debian as a service using Nginx.
 
 2. Download the latest version of the JAR file:
 
-   - [Metabase Open Source JAR](https://www.metabase.com/start/oss/jar)
+   - [Metabase Open Source JAR](https://www.metabase.com/start/oss/jar/)
    - [Metabase Pro or Enterprise JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar)
 
 3. Stop the Metabase service. Aassuming you called your service `metabase.service`), you'll run:
@@ -125,7 +125,7 @@ Check out a list of [Metabase releases](https://github.com/metabase/metabase/rel
 
 ## Upgrading Metabase Cloud
 
-If you're on a [Metabase Cloud](https://www.metabase.com/pricing) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end. How soon we upgrade you depends on the type of release:
+If you're on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end. How soon we upgrade you depends on the type of release:
 
 - Minor releases (e.g., x.47.4 to x.47.5): Usually about a week.
 - Major releases (e.g., x.47.4 to x.48.0): Longer, usually weeks (just to make sure everything goes smoothly).
@@ -134,7 +134,7 @@ Cloud customers can request an early upgrade by emailing support at help@metabas
 
 ## Upgrading Metabase on other platforms
 
-- [Upgrading Azure Web Apps deployments](running-metabase-on-azure.md#additional-configurations)
+- [Upgrading Azure Web Apps deployments](running-metabase-on-azure.md/#additional-configurations)
 
 ## Rolling back an upgrade
 

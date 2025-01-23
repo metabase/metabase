@@ -14,13 +14,13 @@ First, you'll want to make sure your browser is on friendly terms with Metabase:
 1. Create a new dashboard for each group of cards that are related to the same time period or segment.
    - For example, create new dashboards for weekly vs. monthly metrics, or new vs. returning customers.
 2. Move your cards to the new dashboard(s) until each dashboard has 10 or fewer cards.
-3. Use [custom destinations](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) to link related cards on different dashboards.
+3. Use [custom destinations](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations/) to link related cards on different dashboards.
 
 **Explanation**
 
 A dashboard with 50 cards is almost always going to be slower than 5 dashboards with 10 cards. Metabase displays a dashboard by refreshing all of the questions on it (that is, re-executing all of the queries against your database). Your data warehouse may try to run these queries at the same time to return the results faster, however, these queries can actually compete with each other and slow things down (like having too many programs open on your computer at once).
 
-Aside from running faster, a small and focused dashboard is also easier for people to understand without getting overwhelmed. For more tips, check out our article on [BI dashboard best practices](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/bi-dashboard-best-practices).
+Aside from running faster, a small and focused dashboard is also easier for people to understand without getting overwhelmed. For more tips, check out our article on [BI dashboard best practices](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/bi-dashboard-best-practices/).
 
 ## Dashboard used by many people at the same time
 
@@ -38,11 +38,11 @@ Caching takes less effort because it doesn't involve any changes to your schemas
 
 ## Embedded dashboard is slow compared to original dashboard
 
-1. To speed up the embedded dashboard, set up a [locked parameter to pre-filter your data](../embedding/static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters).
+1. To speed up the embedded dashboard, set up a [locked parameter to pre-filter your data](../embedding/static-embedding-parameters.md/#restricting-data-in-a-static-embed-with-locked-parameters).
 
 **Explanation**
 
-One of the easiest ways to make a question or dashboard run faster is to work with a smaller dataset. Your Metabase admin can apply automatic data limitations using things like [SSO](../people-and-groups/start.md#authentication), [data permissions](../permissions/data.md), and [data sandboxing](../permissions/data-sandboxes.md).
+One of the easiest ways to make a question or dashboard run faster is to work with a smaller dataset. Your Metabase admin can apply automatic data limitations using things like [SSO](../people-and-groups/start.md/#authentication), [data permissions](../permissions/data.md), and [data sandboxing](../permissions/data-sandboxes.md).
 
 When someone loads a question or a dashboard in a static embed, however, that question or dashboard will query the full dataset (rather than a smaller dataset limited by permissions). Static, [signed embeds](../embedding/static-embedding.md) don't require people to be logged in, and unauthenticated people viewing the signed embed won't be subject to the permissions and data restrictions set up by your admin.
 
@@ -53,7 +53,7 @@ When someone loads a question or a dashboard in a static embed, however, that qu
    - Narrow down the time frame to the reporting period that you care about.
    - Exclude invalid records, such as: blanks, nulls, or rows with values like "cancelled", "expired", "invalid", and so on.
 3. Remove [joins](../questions/query-builder/join.md) to tables that aren't being used.
-4. If you're aggregating data from the query builder, ask your database admin if there's a pre-aggregated [view](https://www.metabase.com/glossary/view) that you can use instead.
+4. If you're aggregating data from the query builder, ask your database admin if there's a pre-aggregated [view](https://www.metabase.com/glossary/view/) that you can use instead.
 
 **Explanation**
 
@@ -64,7 +64,7 @@ If all of your dashboards are slow, you might be limited by the performance of a
 ## Related problems
 
 - [Error message: your question took too long](./timeout.md).
-- [Questions that use numbers, dates, or times are slower than other questions](./db-performance.md#questions-that-use-number-date-or-timestamp-columns).
+- [Questions that use numbers, dates, or times are slower than other questions](./db-performance.md/#questions-that-use-number-date-or-timestamp-columns).
 - [I can't save my question or dashboard](./proxies.md).
 - [I can't view or edit a question or dashboard](./cant-view-or-edit.md).
 - [My visualizations are wrong](./visualization.md).

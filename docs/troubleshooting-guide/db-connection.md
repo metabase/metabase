@@ -8,7 +8,7 @@ redirect_from:
 
 If you can't connect to your database, you'll need to figure out if the problem is happening with Metabase or your database server.
 
-If your database connection is successful, but the tables aren't showing up in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser), go to [Troubleshooting missing tables](./cant-see-tables.md).
+If your database connection is successful, but the tables aren't showing up in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser/), go to [Troubleshooting missing tables](./cant-see-tables.md).
 
 ## Troubleshooting connections to Metabase
 
@@ -32,7 +32,7 @@ If you don't have access to the Metabase Admin panel, you'll need to ask the per
 
    - If you can access the server from a bastion host or another machine, [check if your Metabase's IP address has access to your database server](#checking-your-server-access).
 
-   - If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist).
+   - If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist/).
 
 3. Make sure that Metabase is using a role with the necessary privileges to connect to your data warehouse. See [Granting database privileges](../databases/users-roles-privileges.md).
 
@@ -80,7 +80,7 @@ To verify that your Metabase's IP address can access the database server:
 
 1. Use the [netcat](https://en.wikipedia.org/wiki/Netcat) command `nc` (or your operating system’s equivalent) to check if you can connect to the host on a given port. Note that different databases use different ports by default.
 
-2. If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist).
+2. If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist/).
 
 3. Check that your database credentials are correct.
 

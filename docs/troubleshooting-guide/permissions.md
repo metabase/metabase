@@ -32,7 +32,7 @@ If you have a different issue, see [related problems](#do-you-have-a-different-p
 
 - [A user group has the wrong access to a table or schema][table-schema-access].
 - [Getting a "permission denied" error message][permission-denied].
-- [Checking someone's access to a table or schema](./data-permissions.md#checking-someones-access-to-a-table-or-schema)
+- [Checking someone's access to a table or schema](./data-permissions.md/#checking-someones-access-to-a-table-or-schema)
 
 ## Do you have a different problem?
 
@@ -48,22 +48,22 @@ If you can’t solve your problem using the troubleshooting guides:
 
 [admin-permissions]: ../permissions/start.md
 [collection-permissions]: ../permissions/collections.md
-[collections-restricted-data]: ./data-permissions.md#a-user-group-can-view-collections-that-contain-restricted-data
+[collections-restricted-data]: ./data-permissions.md/#a-user-group-can-view-collections-that-contain-restricted-data
 [connecting-database]: ../databases/connecting.md
 [data-browser]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser
 [data-model]: ../data-modeling/metadata-editing.md
 [data-permissions]: ../permissions/data.md
 [discourse]: https://discourse.metabase.com/
-[group-permissions]: ../permissions/introduction.md#key-points-regarding-permissions
+[group-permissions]: ../permissions/introduction.md/#key-points-regarding-permissions
 [known-issues]: ./known-issues.md
 [learn-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
-[permission-denied]: ./data-permissions.md#getting-a-permission-denied-error-message
+[permission-denied]: ./data-permissions.md/#getting-a-permission-denied-error-message
 [proxies]: ./proxies.md
 [sandboxing]: ./sandboxing.md
-[setting-collection-permissions]: ../permissions/collections.md#setting-permissions-for-collections
-[sql-access]: ./data-permissions.md#a-user-group-cant-access-the-sql-editor
-[sql-sandboxing]: ./sandboxing.md#is-the-question-written-in-sql
-[table-schema-access]: ./data-permissions.md#a-user-group-has-the-wrong-access-to-a-table-or-schema
+[setting-collection-permissions]: ../permissions/collections.md/#setting-permissions-for-collections
+[sql-access]: ./data-permissions.md/#a-user-group-cant-access-the-sql-editor
+[sql-sandboxing]: ./sandboxing.md/#is-the-question-written-in-sql
+[table-schema-access]: ./data-permissions.md/#a-user-group-has-the-wrong-access-to-a-table-or-schema
 [troubleshooting-data-permissions]: ./data-permissions.md
 [troubleshooting-data-sandboxing]: ./sandboxing.md
 [troubleshooting-viewing-editing]: ./cant-view-or-edit.md

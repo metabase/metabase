@@ -62,7 +62,7 @@ The names of the fields in the Metabase SAML form won't always match the names u
 
 ### URL the IdP should redirect back to
 
-The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../configuring-metabase/settings.md#site-url), with `/auth/sso` at the end.
+The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../configuring-metabase/settings.md/#site-url), with `/auth/sso` at the end.
 
 For example, if your Metabase Site URL is `https://metabase.yourcompany.com`, you'll use
 
@@ -182,7 +182,7 @@ Once you've gotten everything set up in your SAML provider, you'll need to confi
 
 ## Creating Metabase accounts with SSO
 
-> Paid plans [charge for each additional account](https://www.metabase.com/docs/latest/cloud/how-billing-works#what-counts-as-a-user-account).
+> Paid plans [charge for each additional account](https://www.metabase.com/docs/latest/cloud/how-billing-works/#what-counts-as-a-user-account).
 
 A new SSO login will automatically create a new Metabase account.
 

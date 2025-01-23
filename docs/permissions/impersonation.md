@@ -8,7 +8,7 @@ title: Impersonation access
 
 > For now, impersonation access is only available for PostgreSQL, Redshift, and Snowflake.
 
-This page covers the [View data](./data.md#view-data-permissions) permission level called Impersonation.
+This page covers the [View data](./data.md/#view-data-permissions) permission level called Impersonation.
 
 **Impersonation access** allows admins to "outsource" View data permissions to roles in your database. Admins can associate user attributes with database-defined roles and their privileges. If someone is in a group with their View data permission set to Impersonation, the person will be able to view and query data based on the privileges granted to the role specified by their user attribute.
 
@@ -27,9 +27,9 @@ For exactly how to create a new role in your database and grant that role privil
 
 ### In your Metabase, set up impersonation and specify a user attribute
 
-1. **Create a [new group](../people-and-groups/managing.md#groups)**, or select an existing group.
+1. **Create a [new group](../people-and-groups/managing.md/#groups)**, or select an existing group.
 
-2. **Assign a [user attribute](../people-and-groups/managing.md#adding-a-user-attribute) to people in that group.** You'll use this user attribute to associate people in that group with a role that you created in your database. For example, if you created a role named `sales` in your database with access to a subset of tables relevant to the sales team, you would add a user attribute called `db_role` (or whatever you want to call the attribute) and assign the value `sales` to the person's `db_role`. The value of the attribute (`sales` in this case) should match the name of the role in your database. Only some databases enforce case sensitivity, so you might want to make sure the attribute's value and the database's role match exactly.
+2. **Assign a [user attribute](../people-and-groups/managing.md/#adding-a-user-attribute) to people in that group.** You'll use this user attribute to associate people in that group with a role that you created in your database. For example, if you created a role named `sales` in your database with access to a subset of tables relevant to the sales team, you would add a user attribute called `db_role` (or whatever you want to call the attribute) and assign the value `sales` to the person's `db_role`. The value of the attribute (`sales` in this case) should match the name of the role in your database. Only some databases enforce case sensitivity, so you might want to make sure the attribute's value and the database's role match exactly.
 
 3. **Apply the impersonation access to that group.**. Hit Cmd/Ctrl + K to bring up the command palette. Search for **Permissions**. Or go to **Admin settings** > **Permissions** > **Data**.
 
@@ -53,7 +53,7 @@ If instead you want to give a group SQL access to some, but not all, of the sche
 
 Connection impersonation doesn't apply to people in the Metabase admins group, as their more permissive privileges take precedence.
 
-For more about how to set this up, check out [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation).
+For more about how to set this up, check out [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation/).
 
 ## Metabase gives people the most permissive access to data across all of their groups
 
@@ -66,4 +66,4 @@ Red group's more permissive access would override the impersonated access.
 
 ## Further reading
 
-- [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation)
+- [Use Impersonation to get row-level permissions with both GUI and SQL queries](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation/)

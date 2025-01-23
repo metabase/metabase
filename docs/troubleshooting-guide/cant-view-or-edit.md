@@ -10,7 +10,7 @@ title: Can't view or edit
    - Open the link in an incognito browser session, or
    - Open the link in a different browser.
 3. If you aren't the creator of the question, dashboard, or model, check if you have permissions to the collection where the item is saved.
-4. Check the [Trash](../exploration-and-organization/delete-and-restore.md#see-items-in-trash).
+4. Check the [Trash](../exploration-and-organization/delete-and-restore.md/#see-items-in-trash).
 
 ## Can't view cards on a dashboard
 
@@ -18,7 +18,7 @@ title: Can't view or edit
 2. If a saved question is in a collection that you don't have access to, you'll need to ask someone with edit access to the collection to:
    - Grant you permission to the collection.
    - Or, to move the saved question to a collection that you have permissions to.
-3. If the steps above don't solve your problem, ask your Metabase admin if you have [permission to the database that's used by the question](../permissions/data.md#blocked-view-data-permission).
+3. If the steps above don't solve your problem, ask your Metabase admin if you have [permission to the database that's used by the question](../permissions/data.md/#blocked-view-data-permission).
 
 **Explanation**
 
@@ -31,8 +31,8 @@ Someone with edit permissions (your Metabase admin is probably a safe bet) will 
 ## Related problems
 
 - [Error message: your question took too long](./timeout.md).
-- [Error message: permission denied](./data-permissions.md#getting-a-permission-denied-error-message).
-- [I can't view or edit queries from the SQL editor](./data-permissions.md#a-user-group-cant-access-the-sql-editor).
+- [Error message: permission denied](./data-permissions.md/#getting-a-permission-denied-error-message).
+- [I can't view or edit queries from the SQL editor](./data-permissions.md/#a-user-group-cant-access-the-sql-editor).
 - [I can't save my question or dashboard](./proxies.md).
 - [I can't see my tables](./cant-see-tables.md).
 

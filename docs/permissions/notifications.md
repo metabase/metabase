@@ -4,7 +4,7 @@ title: Notification permissions
 
 # Notification permissions
 
-Notifications in Metabase include [alerts](../questions/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
+Notifications in Metabase include [alerts](../questions/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md/#setting-up-a-dashboard-subscription).
 
 ## Who can edit dashboard subscriptions and alerts
 
@@ -18,7 +18,7 @@ What you can do with alerts and dashboard subscriptions depends on whether you'r
 
 Everyone's in the All Users group. Which means that everyone can:
 
-- Create [alerts](../questions/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
+- Create [alerts](../questions/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md/#setting-up-a-dashboard-subscription).
 - Add new recipients to dashboard subscriptions that they created. Non-admins can only add themselves to alerts.
 - Unsubscribe from any alert or subscription in their [Account settings](../people-and-groups/account-settings.md).
 
@@ -40,16 +40,16 @@ People in the admin group can:
 
 Notification **recipients** can see whatever the notification **creator** can see. For example, if:
 
-- Beau creates a subscription to a dashboard saved in their [personal collection](../exploration-and-organization/collections.md#your-personal-collection).
+- Beau creates a subscription to a dashboard saved in their [personal collection](../exploration-and-organization/collections.md/#your-personal-collection).
 - Beau adds Anya to the dashboard subscription.
 - Anya will see the dashboard results in her email, even though she lacks permissions to view that dashboard in Beau's personal collection.
 
 ## More control over email options
 
-On [Enterprise](https://www.metabase.com/product/enterprise) and [Pro](https://www.metabase.com/product/pro) plans, Admins can:
+On [Enterprise](https://www.metabase.com/product/enterprise/) and [Pro](https://www.metabase.com/product/pro/) plans, Admins can:
 
-- Limit email recipients to [approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications).
-- [Limit which recipients Metabase suggests](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts) when people set up a subscription or alert.
+- Limit email recipients to [approved domains for notifications](../configuring-metabase/email.md/#approved-domains-for-notifications).
+- [Limit which recipients Metabase suggests](../configuring-metabase/email.md/#suggest-recipients-on-dashboard-subscriptions-and-alerts) when people set up a subscription or alert.
 
 ## Further reading
 

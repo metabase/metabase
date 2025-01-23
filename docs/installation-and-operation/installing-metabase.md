@@ -10,11 +10,11 @@ Metabase is built and packaged as a Java JAR file and can be run anywhere that J
 
 ## Metabase Cloud (Recommended)
 
-[Metabase Cloud](https://www.metabase.com/cloud) is the easiest way to run Metabase. All you need to do is [sign up for a free trial](https://store.metabase.com/checkout), and you're off to the races.
+[Metabase Cloud](https://www.metabase.com/cloud/) is the easiest way to run Metabase. All you need to do is [sign up for a free trial](https://store.metabase.com/checkout), and you're off to the races.
 
 ## Self-hosting Metabase
 
-For an overview on how to self-host Metabase, check out [how to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
+For an overview on how to self-host Metabase, check out [how to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production/).
 
 ### Running on Docker (Recommended for self-hosting)
 
@@ -26,7 +26,7 @@ If you're self-hosting but don’t use Docker, the JAR is the easiest way to get
 
 ## Air-gapped Metabase
 
-If you're self-hosting because you need an air-gapped environment, check out the [air-gapped edition of Metabase](https://www.metabase.com/product/air-gapping).
+If you're self-hosting because you need an air-gapped environment, check out the [air-gapped edition of Metabase](https://www.metabase.com/product/air-gapping/).
 
 ## Professional services from the Metabase team
 
@@ -38,7 +38,7 @@ If you want help with:
 - Embedding
 - Data modeling
 
-Check out our [professional services](https://www.metabase.com/product/professional-services).
+Check out our [professional services](https://www.metabase.com/product/professional-services/).
 
 ## Upgrading Metabase
 

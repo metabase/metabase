@@ -29,7 +29,7 @@ You can embed a dashboard using the one of the dashboard components:
 | withTitle                    | `boolean`                                       | Whether the dashboard should display a title.                                                                                                                                                                                                                                                                                    |
 | withCardTitle                | `boolean`                                       | Whether the dashboard cards should display a title.                                                                                                                                                                                                                                                                              |
 | withDownloads                | `boolean \| null`                               | Whether to hide the download button.                                                                                                                                                                                                                                                                                             |
-| hiddenParameters             | `string[] \| null`                              | A list of [parameters to hide](../../embedding/public-links.md#appearance-parameters).                                                                                                                                                                                                                                           |
+| hiddenParameters             | `string[] \| null`                              | A list of [parameters to hide](../../embedding/public-links.md/#appearance-parameters).                                                                                                                                                                                                                                           |
 | drillThroughQuestionHeight\* | `number \| null`                                | Height of a question component when drilled from the dashboard to a question level.                                                                                                                                                                                                                                              |
 | questionPlugins\*            | `{ mapQuestionClickActions: Function } \| null` | Additional mapper function to override or add drill-down menu. See the implementing custom actions section for more details.                                                                                                                                                                                                     |
 | onLoad                       | `(dashboard: Dashboard \| null) => void`        | Event handler that triggers after dashboard loads with all visible cards and their content.                                                                                                                                                                                                                                      |
@@ -83,7 +83,7 @@ export default function App() {
 
 When drilling through or clicking on a question card in the dashboard, you will be taken to the question view.
 
-By default, the question is shown in the [default layout](./questions.md#customizing-interactive-questions) for interactive questions.
+By default, the question is shown in the [default layout](./questions.md/#customizing-interactive-questions) for interactive questions.
 
 To customize the question layout, pass a `renderDrillThroughQuestion` prop to the `InteractiveDashboard` component,
 with the custom view as the child component.
@@ -100,7 +100,7 @@ const QuestionView = () => <InteractiveQuestion.Title />;
 
 The questionView prop accepts a React component that will be rendered in the question view, which
 you can build with namespaced components within the `InteractiveQuestion` component.
-See [customizing interactive questions](./questions.md#customizing-interactive-questions) for an example layout.
+See [customizing interactive questions](./questions.md/#customizing-interactive-questions) for an example layout.
 
 ## Dashboard plugins
 

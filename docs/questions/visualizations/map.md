@@ -14,7 +14,7 @@ There are two region maps included with Metabase:
 
 ### World Map
 
-To visualize your results in the format of a map of the world broken out by country, your result must contain a column with two-letter [country codes](https://www.metabase.com/glossary/country_code).
+To visualize your results in the format of a map of the world broken out by country, your result must contain a column with two-letter [country codes](https://www.metabase.com/glossary/country_code/).
 
 ![World region map](../images/world-region-map.png)
 
@@ -38,4 +38,4 @@ Metabase also allows administrators to add [custom maps via GeoJSON files](../..
 
 ## Further reading
 
-- [Visualizing data with maps](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/maps).
+- [Visualizing data with maps](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/maps/).

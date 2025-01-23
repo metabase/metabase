@@ -27,7 +27,7 @@ Selecting **Question** will take you to the [editor in the graphical query build
 
 Selecting **SQL/native code** will open the [native code editor](./native-editor/writing-sql.md).
 
-Even if you know SQL, you should still check out the [graphical query builder](./query-builder/editor.md), as you can use it to build [interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
+Even if you know SQL, you should still check out the [graphical query builder](./query-builder/editor.md), as you can use it to build [interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through/).
 
 ### From an existing question
 
@@ -50,7 +50,7 @@ Questions that live in a dashboard are only visible in that dashboard. These que
 
 ### Saving questions to collections
 
-Questions saved to a collection can be added to multiple dashboards. Moving a question from one collection to another collection won't have any effect on the dashboards the question has been added to. In order to save a question to a collection, you'll need to be in a group with [curate access](../permissions/collections.md#curate-access) to that collection.
+Questions saved to a collection can be added to multiple dashboards. Moving a question from one collection to another collection won't have any effect on the dashboards the question has been added to. In order to save a question to a collection, you'll need to be in a group with [curate access](../permissions/collections.md/#curate-access) to that collection.
 
 ## Moving questions from collections to dashboards (and vice versa)
 
@@ -59,7 +59,7 @@ Whether you can move a question in a collection into a dashboard depends on how 
 You can move the question from a collection into a dashboard if either:
 
 - No other dashboards use that question.
-- The other dashboards that use that question live in collections you have [curate access](../permissions/collections.md#curate-access) to. In this case, Metabase will tell you which other dashboards use that question, and you'll have to decide whether you're okay with removing the question from those dashboards.
+- The other dashboards that use that question live in collections you have [curate access](../permissions/collections.md/#curate-access) to. In this case, Metabase will tell you which other dashboards use that question, and you'll have to decide whether you're okay with removing the question from those dashboards.
 
 ## Info about your question
 
@@ -89,7 +89,7 @@ See [content verification](../exploration-and-organization/content-verification.
 
 ## Bookmark a question
 
-Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Bookmarks](../exploration-and-organization/exploration.md#bookmarks).
+Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Bookmarks](../exploration-and-organization/exploration.md/#bookmarks).
 
 ## Turning a question into a model
 
@@ -99,7 +99,7 @@ You can turn a question into a model to let others know that the results make a 
 
 {% include plans-blockquote.html feature="Caching question results" %}
 
-See [caching per question](../configuring-metabase/caching.md#question-caching-policy).
+See [caching per question](../configuring-metabase/caching.md/#question-caching-policy).
 
 ## Setting up alerts
 

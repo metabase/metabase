@@ -32,15 +32,15 @@ If a question filter is giving you no results or the wrong results:
    - asking your database admin.
 3. Ask your Metabase admin to help you check if:
    - Metabase is [up to date](../databases/sync-scan.md) with your database,
-   - the column is [visible](../data-modeling/metadata-editing.md#column-visibility) in Metabase,
+   - the column is [visible](../data-modeling/metadata-editing.md/#column-visibility) in Metabase,
    - you have the correct [data permissions](../permissions/data.md) to access the column.
 
 ### Special cases
 
 If you're having trouble filtering on a:
 
-- [Custom column](../questions/query-builder/editor.md#custom-columns): check if the custom expression is working as expected. For example, your custom expression might be returning blank values when you expect numbers.
-- [SQL field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type): make sure you're using the correct [field filter syntax](../questions/native-editor/sql-parameters.md#field-filter-syntax), then see [Troubleshooting SQL variables](./sql.md#sql-variables-and-field-filters).
+- [Custom column](../questions/query-builder/editor.md/#custom-columns): check if the custom expression is working as expected. For example, your custom expression might be returning blank values when you expect numbers.
+- [SQL field filter](../questions/native-editor/sql-parameters.md/#the-field-filter-variable-type): make sure you're using the correct [field filter syntax](../questions/native-editor/sql-parameters.md/#field-filter-syntax), then see [Troubleshooting SQL variables](./sql.md/#sql-variables-and-field-filters).
 
 **Explanation**
 
@@ -60,13 +60,13 @@ For example, let's say we want to create a filter named "Select Product ID" link
 
 To debug dashboard and question filters that involve timestamps, UUIDs, or numeric data:
 
-1. Find the [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) of the column that you want to filter on. You can find this info from:
+1. Find the [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview/) of the column that you want to filter on. You can find this info from:
    - the [Data reference](../exploration-and-organization/data-model-reference.md),
    - the [Table Metadata page](../data-modeling/metadata-editing.md) (admins only), or
    - directly from the database.
-2. Cast the column to a data type that matches the desired [filter type](../questions/query-builder/filters.md#filter-types). You can:
-   - [cast strings or numbers to dates](../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page, or
-   - change the data type of the column in your database, and [re-sync](../databases/sync-scan.md#manually-syncing-tables-and-columns) the database schema.
+2. Cast the column to a data type that matches the desired [filter type](../questions/query-builder/filters.md/#filter-types). You can:
+   - [cast strings or numbers to dates](../data-modeling/metadata-editing.md/#casting-to-a-specific-data-type) from the Table Metadata page, or
+   - change the data type of the column in your database, and [re-sync](../databases/sync-scan.md/#manually-syncing-tables-and-columns) the database schema.
 
 If you're not a Metabase admin, you might have to ask your admin to help you with some of these steps.
 
@@ -78,7 +78,7 @@ Timestamps, in particular, are the root of all evil, so please be patient with y
 
 ## Field filters in BigQuery and Oracle
 
-If you are getting an error when using field filters with BigQuery or Oracle, make sure you use the correct syntax for the `FROM` clause. See [Field filters in BigQuery and Oracle](../questions/native-editor/sql-parameters.md#field-filters-in-bigquery-and-oracle).
+If you are getting an error when using field filters with BigQuery or Oracle, make sure you use the correct syntax for the `FROM` clause. See [Field filters in BigQuery and Oracle](../questions/native-editor/sql-parameters.md/#field-filters-in-bigquery-and-oracle).
 
 ## Missing or incorrect filter values
 
@@ -93,14 +93,14 @@ If your filter dropdown menu displays the wrong values for a column:
 
 **Explanation**
 
-Metabase [scans](../databases/sync-scan.md#how-database-scans-work) get the values for your filter dropdown menus by querying and caching the first 1,000 distinct records from a table. You might see outdated filter values if your tables are getting updated more frequently compared to your [scan schedule](../databases/sync-scan.md#scheduling-database-scans).
+Metabase [scans](../databases/sync-scan.md/#how-database-scans-work) get the values for your filter dropdown menus by querying and caching the first 1,000 distinct records from a table. You might see outdated filter values if your tables are getting updated more frequently compared to your [scan schedule](../databases/sync-scan.md/#scheduling-database-scans).
 
 ## Related topics
 
 - [Troubleshooting linked filters](./linked-filters.md)
-- [Troubleshooting SQL variables and field filters](./sql.md#sql-variables-and-field-filters)
+- [Troubleshooting SQL variables and field filters](./sql.md/#sql-variables-and-field-filters)
 - [Troubleshooting dates and times](./timezones.md)
-- [Creating dropdown filters](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter)
+- [Creating dropdown filters](../data-modeling/metadata-editing.md/#changing-a-search-box-filter-to-a-dropdown-filter)
 - [Creating SQL filters](../questions/native-editor/sql-parameters.md)
 
 ## Are you still stuck?

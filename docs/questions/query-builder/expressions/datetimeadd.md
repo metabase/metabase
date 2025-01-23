@@ -67,7 +67,7 @@ Let's say you want to check if today's date falls between a start date and an [e
 datetimeAdd([Opened On], 14, 'day')
 ```
 
-**Still Fresh Today** uses [case](../expressions/case.md) to check if the current date ([now](../expressions/now.md)) is [between](../expressions-list.md#between) the dates in **Opened On** and **Finish By**:
+**Still Fresh Today** uses [case](../expressions/case.md) to check if the current date ([now](../expressions/now.md)) is [between](../expressions-list.md/#between) the dates in **Opened On** and **Finish By**:
 
 ```
 case(between(now, [Opened On], [Finish By]), "Yes", "No")
@@ -75,7 +75,7 @@ case(between(now, [Opened On], [Finish By]), "Yes", "No")
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `datetimeAdd` |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview/#examples-of-data-types) | Works with `datetimeAdd` |
 | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
 | String                                                                                                                         | ❌                       |
 | Number                                                                                                                         | ❌                       |
@@ -83,9 +83,9 @@ case(between(now, [Opened On], [Finish By]), "Yes", "No")
 | Boolean                                                                                                                        | ❌                       |
 | JSON                                                                                                                           | ❌                       |
 
-We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
+We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md/#data-types).
 
-If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page.
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md/#casting-to-a-specific-data-type) from the Table Metadata page.
 
 ## Limitations
 
@@ -121,7 +121,7 @@ datetimeAdd([Opened On], 14, "day")
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder/), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
 If our [coffee sample data](#calculating-an-end-date) is stored in a PostgreSQL database:
 
@@ -169,5 +169,5 @@ datetimeAdd([Opened On], 14, "day")
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
-- [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions/)
+- [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start/)

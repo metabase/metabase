@@ -20,7 +20,7 @@ You can find Trash at the bottom of the left navigation sidebar below all the co
 
 ![Trash](./images/trash.png)
 
-You can think of Trash as a special type of collection. In **Trash**, you can see deleted items from the collections that you have [Curate permissions](../permissions/collections.md#collection-permission-levels) on. You can order deleted items by type (questions, dashboards, etc), time it was deleted, and who deleted it.
+You can think of Trash as a special type of collection. In **Trash**, you can see deleted items from the collections that you have [Curate permissions](../permissions/collections.md/#collection-permission-levels) on. You can order deleted items by type (questions, dashboards, etc), time it was deleted, and who deleted it.
 
 You;'ll be able to see the contents of deleted dashboards, questions, and models in Trash, but you won't be able to modify them.
 
@@ -59,7 +59,7 @@ If the item's original parent collection has been deleted as well, you won't see
 
 ### Cleaning up collections
 
-To move older, unused items in bulk to the trash, check out [cleaning up collections](./collections.md#cleaning-up-collections).
+To move older, unused items in bulk to the trash, check out [cleaning up collections](./collections.md/#cleaning-up-collections).
 
 ## How deleting an item affects related items
 
@@ -117,26 +117,26 @@ To permanently delete an item:
 
 ## Deleting and restoring events and timelines
 
-Events and timelines can be archived and unarchived. See [Archiving Events and timelines](events-and-timelines.md#archiving-timelines).
+Events and timelines can be archived and unarchived. See [Archiving Events and timelines](events-and-timelines.md/#archiving-timelines).
 
-You won't see archived Events and Timelines in Trash. To see archived events and timelines, you need to [access them from the collection's page](events-and-timelines.md#view-archived-events-and-timelines).
+You won't see archived Events and Timelines in Trash. To see archived events and timelines, you need to [access them from the collection's page](events-and-timelines.md/#view-archived-events-and-timelines).
 
 ## Deleting and restoring SQL snippets
 
-SQL snippets can be archived and unarchived. See [Archiving SQL snippets](../questions/native-editor/sql-snippets.md#archiving-snippets).
+SQL snippets can be archived and unarchived. See [Archiving SQL snippets](../questions/native-editor/sql-snippets.md/#archiving-snippets).
 
-You won't see archived SQL snippets in Trash. To see archived SQL Snippets, you need to [access them from the Snippet menu](../questions/native-editor/sql-snippets.md#snippet-menu).
+You won't see archived SQL snippets in Trash. To see archived SQL Snippets, you need to [access them from the Snippet menu](../questions/native-editor/sql-snippets.md/#snippet-menu).
 
 ## Deleting segments
 
-Segments can be retired. See [Retiring Segments](../data-modeling/segments.md#editing-and-retiring-segments).
+Segments can be retired. See [Retiring Segments](../data-modeling/segments.md/#editing-and-retiring-segments).
 
 You won't see retired Segments in Trash.
 
 ## Deleting subscriptions and alerts
 
-See [Deleting a subscription](../dashboards/subscriptions.md#deleting-a-subscription) and [Deleting alerts](../questions/alerts.md#editing-and-deleting-alerts).
+See [Deleting a subscription](../dashboards/subscriptions.md/#deleting-a-subscription) and [Deleting alerts](../questions/alerts.md/#editing-and-deleting-alerts).
 
 ## Deleting databases
 
-See [Deleting databases](../databases/connecting.md#deleting-databases).
+See [Deleting databases](../databases/connecting.md/#deleting-databases).

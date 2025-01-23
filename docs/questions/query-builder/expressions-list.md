@@ -610,7 +610,7 @@ Syntax: `convertTimezone(column, target, source)`.
 
 Example: `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
 
-See the [database limitations](./expressions/converttimezone.md#limitations) for `convertTimezone`.
+See the [database limitations](./expressions/converttimezone.md/#limitations) for `convertTimezone`.
 
 ### [datetimeAdd](./expressions/datetimeadd.md)
 
@@ -632,7 +632,7 @@ Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
 
 Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
 
-See the [database limitations](./expressions/datetimediff.md#limitations) for `datetimediff`.
+See the [database limitations](./expressions/datetimediff.md/#limitations) for `datetimediff`.
 
 ### [datetimeSubtract](./expressions/datetimesubtract.md)
 
@@ -656,11 +656,11 @@ Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
 
 ### dayName
 
-Returns the localized name of a day of the week, given the day's number (1-7). Respects the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
+Returns the localized name of a day of the week, given the day's number (1-7). Respects the [first day of the week setting](../../configuring-metabase/localization.md/#first-day-of-the-week).
 
 Syntax: `dayName(dayNumber)`.
 
-Example: `dayName(1)` would return `Sunday`, unless you change the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
+Example: `dayName(1)` would return `Sunday`, unless you change the [first day of the week setting](../../configuring-metabase/localization.md/#first-day-of-the-week).
 
 Related: [quarterName](#quartername), [monthName](#monthname).
 
@@ -712,7 +712,7 @@ Related: [dayName](#dayname), [quarterName](#quartername).
 
 ### [now](./expressions/now.md)
 
-Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
+Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md/#report-timezone).
 
 Syntax: `now`.
 
@@ -891,6 +891,6 @@ Limitations are noted for each aggregation and function above, and here there ar
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 
-Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions) to learn more.
+Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions/) to learn more.
 
 [expressions]: ./expressions.md

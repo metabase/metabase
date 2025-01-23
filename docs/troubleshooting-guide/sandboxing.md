@@ -168,7 +168,7 @@ The administrator can [create a new group][groups] to capture precisely who's al
 [column-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
 [data-model]: ../data-modeling/metadata-editing.md
 [data-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-permissions
-[groups]: ../people-and-groups/managing.md#groups
+[groups]: ../people-and-groups/managing.md/#groups
 [jwt-auth]: ../people-and-groups/authenticating-with-jwt.md
 [locked-parameters]: https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards#hide-or-lock-parameters-to-restrict-what-data-is-shown
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-permissions
@@ -176,6 +176,6 @@ The administrator can [create a new group][groups] to capture precisely who's al
 [row-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
 [sandboxing-your-data]: ../permissions/data-sandboxes.md
 [static-embedding]: https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards#enable-embedding-in-other-applications
-[sandbox-limitations]: ../permissions/data-sandboxes.md#limitations
+[sandbox-limitations]: ../permissions/data-sandboxes.md/#limitations
 [troubleshooting-permissions]: ./permissions.md
-[unsupported-databases]: ../permissions/data-sandboxes.md#limitations
+[unsupported-databases]: ../permissions/data-sandboxes.md/#limitations

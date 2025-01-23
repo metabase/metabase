@@ -4,7 +4,7 @@ title: Now
 
 # Now
 
-`now` returns the current datetime using your Metabase [report timezone](../../../configuring-metabase/localization.md#report-timezone).
+`now` returns the current datetime using your Metabase [report timezone](../../../configuring-metabase/localization.md/#report-timezone).
 
 ## Creating conditional logic using the current date or time
 
@@ -44,7 +44,7 @@ case(now >= [Start] AND now < [Deadline], "In progress",
 
 ## Data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Returned by `now` |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview/#examples-of-data-types) | Returned by `now` |
 | ------------------------------------------------------------------------------------------------------------------------------ | ----------------- |
 | String                                                                                                                         | ❌                |
 | Number                                                                                                                         | ❌                |
@@ -54,11 +54,11 @@ case(now >= [Start] AND now < [Deadline], "In progress",
 
 `now` returns a `timestamp with time zone` if time zones are supported by your database, otherwise `now` returns a `timestamp without time zone`.
 
-For more info about the way these data types behave in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
+For more info about the way these data types behave in Metabase, see [Timezones](../../../configuring-metabase/timezones.md/#data-types).
 
 ## Limitations
 
-`now` might not actually be _now_ (in your local time) if you don't live in the same timezone as your Metabase [report time zone](../../../configuring-metabase/localization.md#report-timezone).
+`now` might not actually be _now_ (in your local time) if you don't live in the same timezone as your Metabase [report time zone](../../../configuring-metabase/localization.md/#report-timezone).
 
 If you need to compare `now` to a column in a different time zone, use [convertTimezone](./converttimezone.md) to shift both columns into the same time zone. For example:
 
@@ -76,9 +76,9 @@ Different ways to do the same thing, because while you'd love to use custom expr
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder/), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
 
-By default, `now` uses your Metabase's [report time zone](../../../configuring-metabase/localization.md#report-timezone). If your admin hasn't set a report time zone, `now` will use your database's time zone.
+By default, `now` uses your Metabase's [report time zone](../../../configuring-metabase/localization.md/#report-timezone). If your admin hasn't set a report time zone, `now` will use your database's time zone.
 
 Say you're using a Postgres database. If your Metabase report time zone is set to EST, you'll get `now` in EST:
 
@@ -103,5 +103,5 @@ You can use `pd.Timestamp.now()` using the `pandas` module. This will give you a
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
-- [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions/)
+- [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start/)

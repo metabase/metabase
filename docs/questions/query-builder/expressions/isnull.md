@@ -12,7 +12,7 @@ title: Isnull
 isnull(text column)
 ```
 
-You can use `isnull` in [custom filters](../expressions.md#filter-expressions-and-conditionals), or as the condition for conditional aggregations [`CountIf`](../expressions/countif.md) and [`SumIf`](../expressions/sumif.md). To create a custom column using `isnull`, you must combine `isnull` with another function that accepts boolean values, like [`case`](./case.md).
+You can use `isnull` in [custom filters](../expressions.md/#filter-expressions-and-conditionals), or as the condition for conditional aggregations [`CountIf`](../expressions/countif.md) and [`SumIf`](../expressions/sumif.md). To create a custom column using `isnull`, you must combine `isnull` with another function that accepts boolean values, like [`case`](./case.md).
 
 ## How Metabase handles nulls
 

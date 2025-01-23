@@ -104,7 +104,7 @@ You'll be able to edit alerts that you set up. Admins get additional special pri
 
 - Admins can edit and delete any alert. This can't be undone, so be careful!
 - Admins can add or remove recipients on any alert, even ones that they did not create themselves.
-- Admins can remove all alerts created by a Metabase user and unsubscribe that user from all other alerts from the [People menu in Admin settings](../people-and-groups/managing.md#unsubscribe-from-all-subscriptions-and-alerts).
+- Admins can remove all alerts created by a Metabase user and unsubscribe that user from all other alerts from the [People menu in Admin settings](../people-and-groups/managing.md/#unsubscribe-from-all-subscriptions-and-alerts).
 
 ## Avoid changing the name of the alerted channel in Slack
 
@@ -124,7 +124,7 @@ Alerts will continue to work even if the person who set up the alert no longer h
 
 {% include plans-blockquote.html feature="Usage analytics" %}
 
-Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in the **Usage analytics** collection. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md#alerts-model).
+Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in the **Usage analytics** collection. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md/#alerts-model).
 
 ## How permissions work with alerts
 
@@ -132,7 +132,7 @@ See [Notification permissions](../permissions/notifications.md).
 
 ### Sending alerts to private Slack channels
 
-See [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
+See [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md/#sending-alerts-and-subscriptions-to-private-slack-channels).
 
 ## Further reading
 

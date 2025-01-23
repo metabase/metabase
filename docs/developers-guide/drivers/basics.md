@@ -59,7 +59,7 @@ The `deps.edn` file specifies the driver's dependencies.
 
 ### `resources/metabase-plugin.yaml`
 
-Your driver's [manifest](plugins.md#plugin-manifests) includes details about your driver.
+Your driver's [manifest](plugins.md/#plugin-manifests) includes details about your driver.
 
 ### `src/metabase/driver/sqlite.clj`
 

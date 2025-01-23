@@ -40,7 +40,7 @@ Use `+`, `-`, `*` (multiply), `/` (divide) on numeric columns with numeric value
 
 For example, you could create a new column that calculates the difference between the total and subtotal of a order: `= [Total] - [Subtotal]`.
 
-To do math on timestamp columns, you can use [Date functions](expressions-list.md#date-functions) like [dateDiff](./expressions/datetimediff.md).
+To do math on timestamp columns, you can use [Date functions](expressions-list.md/#date-functions) like [dateDiff](./expressions/datetimediff.md).
 
 ## Conditional operators
 
@@ -87,7 +87,7 @@ See a full list of [expressions][expression-list].
 
 For a tutorial on expressions, see [Custom expressions in the query builder][custom-expressions].
 
-[aggregations]: ./expressions-list.md#aggregations
+[aggregations]: ./expressions-list.md/#aggregations
 [custom-expressions]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions
 [expression-list]: ./expressions-list.md
-[functions]: ./expressions-list.md#functions
+[functions]: ./expressions-list.md/#functions

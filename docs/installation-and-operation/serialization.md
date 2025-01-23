@@ -31,8 +31,8 @@ There are two ways to run these `export` and `import` commands:
 
 Check out our guides for:
 
-- [Running multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//multi-env)
-- [Setting up git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//git-based-workflow)
+- [Running multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//multi-env/)
+- [Setting up git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//git-based-workflow/)
 
 > Serialization isn't intended for use cases like duplicating assets or swapping data sources _within_ the same Metabase instance. If you're using serialization for duplicating assets within the same instance, check out [How export works](#how-export-works), [How import works](#how-import-works), and the directions for your use case in [Other uses of serialization](#other-uses-of-serialization)
 
@@ -360,7 +360,7 @@ If you're instead looking to do a one-time migration from the default H2 databas
 
 ### You'll need to manually add license tokens
 
-Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition), or via an [environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
+Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition/), or via an [environment variable](../configuring-metabase/environment-variables.md/#mb_premium_embedding_token).
 
 ### Metabase adds logs to exports and imports
 
@@ -467,7 +467,7 @@ import path & options
 
 ## Serialization via the API
 
-> Just like the CLI serialization commands, these endpoints are only available for [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Just like the CLI serialization commands, these endpoints are only available for [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 You can import and export serialized Metabase data via Metabase's API, which makes serialization possible for [Metabase Cloud](https://www.metabase.com/cloud/) deployments.
 
@@ -744,7 +744,7 @@ A few other changes to call out:
 
 - The exported YAML files have a slightly different structure:
   - Metabase will prefix each file with a 24-character entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
-    You can run a Metabase command to [drop entity IDs](./commands.md#drop-entity-ids) before exporting.
+    You can run a Metabase command to [drop entity IDs](./commands.md/#drop-entity-ids) before exporting.
   - The file tree is slightly different.
 - To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
 
@@ -756,7 +756,7 @@ If you've written scripts to automate serialization, you'll need to:
 
 ## Further reading
 
-- [Serialization tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//serialization).
-- [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//multi-env)
-- [Setting up a git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//git-based-workflow).
+- [Serialization tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//serialization/).
+- [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//multi-env/)
+- [Setting up a git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation//git-based-workflow/).
 - Need help? Contact [support@metabase.com](mailto:support@metabase.com).

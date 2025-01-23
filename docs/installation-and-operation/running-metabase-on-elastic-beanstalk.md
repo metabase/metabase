@@ -16,7 +16,7 @@ If you're running Metabase on Elastic Beanstalk, we recommend you switch to a di
 
 ### Metabase Cloud
 
-We recommend [Metabase Cloud](https://www.metabase.com/pricing) (obviously).
+We recommend [Metabase Cloud](https://www.metabase.com/pricing/) (obviously).
 
 ### Self-hosted setups
 
@@ -26,7 +26,7 @@ At a minimum, make sure you back up your application database regularly (and alw
 
 ### Professional services
 
-If you'd like help with setting up Metabase (or building out your data stack in general), check out the [professional services we offer](https://www.metabase.com/product/professional-services).
+If you'd like help with setting up Metabase (or building out your data stack in general), check out the [professional services we offer](https://www.metabase.com/product/professional-services/).
 
 ## Decouple your RDS database from the Elastic Beanstalk deployment
 

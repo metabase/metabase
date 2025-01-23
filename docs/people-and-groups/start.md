@@ -41,8 +41,8 @@ With [Pro and Enterprise plans](https://www.metabase.com/pricing/), you have mor
 
 - [JWT][jwt]
 - LDAP advanced features
-  - [Group membership filter](./ldap.md#ldap-group-membership-filter)
-  - [Syncing user attributes](./ldap.md#syncing-user-attributes-with-ldap)
+  - [Group membership filter](./ldap.md/#ldap-group-membership-filter)
+  - [Syncing user attributes](./ldap.md/#syncing-user-attributes-with-ldap)
 - [SAML][saml]
   - [Auth0][saml-auth0]
   - [Microsoft Entra ID][azure-ad]
@@ -63,11 +63,11 @@ Metabase supports user provisioning via the SCIM protocol.
 Notes on Metabase's accessibility.
 
 [azure-ad]: ./saml-azure.md
-[google-sign-in]: ./google-and-ldap.md#enabling-google-sign-in
+[google-sign-in]: ./google-and-ldap.md/#enabling-google-sign-in
 [jwt]: ./authenticating-with-jwt.md
-[ldap]: ./google-and-ldap.md#enabling-ldap-authentication
-[ldap-group-membership-filter]: ./google-and-ldap.md#ldap-group-membership-filter
-[ldap-user-attributes]: ./google-and-ldap.md#syncing-user-attributes-with-ldap
+[ldap]: ./google-and-ldap.md/#enabling-ldap-authentication
+[ldap-group-membership-filter]: ./google-and-ldap.md/#ldap-group-membership-filter
+[ldap-user-attributes]: ./google-and-ldap.md/#syncing-user-attributes-with-ldap
 [saml-okta]: ./saml-okta.md
 [saml]: ./authenticating-with-saml.md
 [saml-auth0]: ./saml-auth0.md

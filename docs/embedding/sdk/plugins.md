@@ -45,5 +45,5 @@ To use a plugin on a per-component basis, pass the plugin as a prop to the compo
 
 ## Further reading
 
-- [Interactive question plugins](./questions.md#interactive-question-plugins)
-- [Dashboard plugins](./dashboards.md#dashboard-plugins)
+- [Interactive question plugins](./questions.md/#interactive-question-plugins)
+- [Dashboard plugins](./dashboards.md/#dashboard-plugins)

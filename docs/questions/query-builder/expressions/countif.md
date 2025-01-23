@@ -18,11 +18,11 @@ Example: in the table below, `CountIf([Plan] = "Basic")` would return 3.
 | 4   | Business |
 | 5   | Premium  |
 
-> [Aggregations](../expressions-list.md#aggregations) like `CountIf` should be added to the query builder's [**Summarize** menu](../../query-builder/summarizing-and-grouping.md) > **Custom Expression** (scroll down in the menu if needed).
+> [Aggregations](../expressions-list.md/#aggregations) like `CountIf` should be added to the query builder's [**Summarize** menu](../../query-builder/summarizing-and-grouping.md) > **Custom Expression** (scroll down in the menu if needed).
 
 ## Parameters
 
-`CountIf` accepts a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
+`CountIf` accepts a [function](../expressions-list.md/#functions) or [conditional statement](../expressions.md/#conditional-operators) that returns a boolean value (`true` or `false`).
 
 ## Multiple conditions
 
@@ -111,7 +111,7 @@ To view your conditional counts by plan, set the **Group by** column to "Plan".
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `CountIf` |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types/) | Works with `CountIf` |
 | ------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
 | String                                                                                                                         | ❌                   |
 | Number                                                                                                                         | ❌                   |
@@ -119,7 +119,7 @@ To view your conditional counts by plan, set the **Group by** column to "Plan".
 | Boolean                                                                                                                        | ✅                   |
 | JSON                                                                                                                           | ❌                   |
 
-`CountIf` accepts a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
+`CountIf` accepts a [function](../expressions-list.md/#functions) or [conditional statement](../expressions.md/#conditional-operators) that returns a boolean value (`true` or `false`).
 
 ## Related functions
 
@@ -138,7 +138,7 @@ Different ways to do the same thing, because it's fun to try new things.
 
 ### case
 
-You can combine [`Count`](../expressions-list.md#count) with [`case`](./case.md):
+You can combine [`Count`](../expressions-list.md/#count) with [`case`](./case.md):
 
 ```
 Count(case([Plan] = "Basic", [ID]))
@@ -172,7 +172,7 @@ Count(case([Plan: Source A] = "Basic", [ID: Source A],
 
 ### CumulativeCount
 
-`CountIf` doesn't do running counts. You'll need to combine [CumulativeCount](../expressions-list.md#cumulativecount) with [`case`](./case.md).
+`CountIf` doesn't do running counts. You'll need to combine [CumulativeCount](../expressions-list.md/#cumulativecount) with [`case`](./case.md).
 
 If our sample data is a time series:
 
@@ -201,7 +201,7 @@ You'll also need to set the **Group by** column to "Created Date: Month".
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder/), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
 
 If our [sample data](#multiple-conditions) is stored in a PostgreSQL database, the SQL query:
 
@@ -284,4 +284,4 @@ CountIf([Active Subscription] = false)
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions/)

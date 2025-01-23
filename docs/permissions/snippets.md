@@ -32,7 +32,7 @@ You can create a SQL snippet folder from the **Snippets** menu in the [SQL edito
 
 ### Creating a new SQL snippet
 
-On [some plans](https://www.metabase.com/pricing), when creating a SQL snippet, you'll also see an additional option to add that snippet to an existing folder (the **Folder this should be in** option).
+On [some plans](https://www.metabase.com/pricing/), when creating a SQL snippet, you'll also see an additional option to add that snippet to an existing folder (the **Folder this should be in** option).
 
 ![Add a snippet enterprise modal](./images/enterprise-add-snippet.png)
 
@@ -42,7 +42,7 @@ Note that snippet names must be unique; folders do not affect this requirement.
 
 ## Permissions
 
-Administrators (and only administrators) can set snippet visibility and editability by placing snippets in **folders**, then granting groups one of three permission levels with respect to those folders. If you're familiar with [collection permissions](./collections.md#setting-permissions-for-collections), the functionality is similar. For more on how collection and folder permissions work together, see [how folder permissions work](#how-folder-permissions-work) below.
+Administrators (and only administrators) can set snippet visibility and editability by placing snippets in **folders**, then granting groups one of three permission levels with respect to those folders. If you're familiar with [collection permissions](./collections.md/#setting-permissions-for-collections), the functionality is similar. For more on how collection and folder permissions work together, see [how folder permissions work](#how-folder-permissions-work) below.
 
 ### Changing permissions on a folder
 
@@ -88,4 +88,4 @@ Because of how snippet folder permissions work, we recommend that you consider s
 
 ## Further reading
 
-- [SQL snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-snippets).
+- [SQL snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-snippets/).

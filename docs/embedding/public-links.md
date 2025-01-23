@@ -49,18 +49,18 @@ https://www.example.com/public/question/cf347ce0-90bb-4669-b73b-56c73edd10cb.csv
 
 By default, Metabase will export the results of a question that include any formatting you added (for example, if you formatted a column with floats to display as a percentage (0.42 -> 42%)).
 
-See docs for the [export format endpoint](https://www.metabase.com/docs/latest/api/public#get-apipubliccarduuidqueryexport-format).
+See docs for the [export format endpoint](https://www.metabase.com/docs/latest/api/public#get-apipubliccarduuidqueryexport-format/).
 
 ## Simulating drill-through with public links
 
-Metabase's automatic [drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) won't work on public dashboards because public links don't give people access to your raw data.
+Metabase's automatic [drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through/) won't work on public dashboards because public links don't give people access to your raw data.
 
 You can simulate drill-through on a public dashboard by setting up a [custom click behavior](../dashboards/interactive.md) that sends people from one public link to another public link.
 
 1. Create a second dashboard to act as the destination dashboard.
 2. [Create a public link](#create-a-public-link-for-a-dashboard) for the destination dashboard.
 3. Copy the destination dashboard's public link.
-4. On your primary dashboard, create a [custom destination](../dashboards/interactive.md#custom-destinations) with type "URL".
+4. On your primary dashboard, create a [custom destination](../dashboards/interactive.md/#custom-destinations) with type "URL".
 5. Set the custom destination to the destination dashboard's public link.
 6. Optional: pass a filter value from the primary dashboard to the destination dashboard by adding a query parameter to the end of the destination URL:
 
@@ -100,7 +100,7 @@ If you'd like to create a secure embed that prevents people from changing filter
 
 To toggle appearance settings, add _hash_ parameters to the end of the public link in your iframe's `src` attribute.
 
-See [appearance parameters](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed).
+See [appearance parameters](./static-embedding-parameters.md/#customizing-the-appearance-of-a-static-embed).
 
 ## Filter parameters
 
@@ -186,6 +186,6 @@ Admins can see all publicly shared questions, dashboards, and actions in **Admin
 
 ## Further reading
 
-- [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
+- [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards/).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 - [Embedding introduction](../embedding/start.md).

@@ -4,7 +4,7 @@ title: API keys
 
 # API keys
 
-Metabase can create API keys to authenticate programmatic requests to the API. To set the permissions for an API key, you can assign the key to a [group](./managing.md#groups).
+Metabase can create API keys to authenticate programmatic requests to the API. To set the permissions for an API key, you can assign the key to a [group](./managing.md/#groups).
 
 ## Fair warning about Metabase's API
 
@@ -23,7 +23,7 @@ To create an API key:
 5. Scroll to **API Keys** and click **Manage**.
 6. Click the **Create API Key** button.
 7. Enter a **Key name**. You can have multiple API keys, so give it a name that will help you remember what you're using the key for.
-8. Select a **[Group](./managing.md#groups)**. The key will have the same permissions granted to that group.
+8. Select a **[Group](./managing.md/#groups)**. The key will have the same permissions granted to that group.
 9. Click **Create**.
 10. Copy the generated API key and save it somewhere safe. Metabase won't be able to show you the key again. If you lose the key, you'll need to regenerate a new key.
 
@@ -112,4 +112,4 @@ getGroups().then(groups => console.log("Groups in your Metabase:", groups));
 ## Further reading
 
 - [Metabase API reference](../api-documentation.md).
-- [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).
+- [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api/).

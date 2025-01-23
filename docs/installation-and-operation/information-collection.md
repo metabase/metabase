@@ -8,7 +8,7 @@ redirect_from:
 
 If you're self-hosting Metabase and you've opted in to provide us with anonymous usage data (thank you!), Metabase will phone home some data collected via Snowplow.
 
-**[We only collect anonymous Metabase data; we don't collect any of your data](https://www.metabase.com/security).** We don't collect any usernames, emails, server IPs, database details of any kind, or any personally identifiable information (PII).
+**[We only collect anonymous Metabase data; we don't collect any of your data](https://www.metabase.com/security/).** We don't collect any usernames, emails, server IPs, database details of any kind, or any personally identifiable information (PII).
 
 This anonymous data helps us understand how people are actually using Metabase, which in turn helps us prioritize what to work on next.
 
@@ -43,4 +43,4 @@ If you're in the process of setting up your Metabase, you can also toggle off tr
 
 ## Further reading
 
-Check out our page on [data privacy and security](https://www.metabase.com/security).
+Check out our page on [data privacy and security](https://www.metabase.com/security/).

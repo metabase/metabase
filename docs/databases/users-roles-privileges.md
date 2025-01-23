@@ -138,7 +138,7 @@ GRANT metabase_model_persistence TO metabase;
 
 You can [upload CSVs](../databases/uploads.md) to supported databases. Metabase's database user should have write access (`INSERT`, `UPDATE`, `DELETE`) to the schema where you want to store the uploads.
 
-You'll first need to create a schema to store uploads (or use an existing schema) and tell Metabase that you want to [use that schema to store uploads](./uploads.md#select-the-database-and-schema-that-you-want-to-store-the-data-in).
+You'll first need to create a schema to store uploads (or use an existing schema) and tell Metabase that you want to [use that schema to store uploads](./uploads.md/#select-the-database-and-schema-that-you-want-to-store-the-data-in).
 
 In addition to the [minimum database privileges](#minimum-database-privileges):
 

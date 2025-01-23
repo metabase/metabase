@@ -67,7 +67,7 @@ Say you want to check if the current datetime falls between a [start date](#calc
 datetimeSubtract([Arrive By], 30, "minute")
 ```
 
-**On My Way** uses [case](../expressions/case.md) to check if the current datetime ([now](../expressions/now.md)) is [between](../expressions-list.md#between) the datetimes in **Arrive By** and **Depart At**:
+**On My Way** uses [case](../expressions/case.md) to check if the current datetime ([now](../expressions/now.md)) is [between](../expressions-list.md/#between) the datetimes in **Arrive By** and **Depart At**:
 
 ```
 case(between(now, [Depart At], [Arrive By]), "Yes", "No")
@@ -75,7 +75,7 @@ case(between(now, [Depart At], [Arrive By]), "Yes", "No")
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `datetimeSubtract` |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview/#examples-of-data-types) | Works with `datetimeSubtract` |
 | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------- |
 | String                                                                                                                         | ❌                            |
 | Number                                                                                                                         | ❌                            |
@@ -83,9 +83,9 @@ case(between(now, [Depart At], [Arrive By]), "Yes", "No")
 | Boolean                                                                                                                        | ❌                            |
 | JSON                                                                                                                           | ❌                            |
 
-We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
+We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md/#data-types).
 
-If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page.
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md/#casting-to-a-specific-data-type) from the Table Metadata page.
 
 ## Limitations
 
@@ -121,7 +121,7 @@ datetimeSubtract([Arrive By], 30, "minute")
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder/), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
 If our [events sample data](#calculating-a-start-date) is stored in a PostgreSQL database:
 
@@ -169,5 +169,5 @@ datetimeSubtract([Arrive By], 30, "minute")
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
-- [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions/)
+- [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start/)

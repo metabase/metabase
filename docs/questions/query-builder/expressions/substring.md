@@ -4,7 +4,7 @@ title: Substring
 
 # Substring
 
-`substring` extracts part of some text. This function is useful for cleaning up text (or any value with a [string data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types)) that has a consistent format.
+`substring` extracts part of some text. This function is useful for cleaning up text (or any value with a [string data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview/#examples-of-data-types)) that has a consistent format.
 
 For example, `substring` should work well on strings like SKU numbers, ISO codes, and standardized email addresses.
 
@@ -56,7 +56,7 @@ substring([Mission ID], (1 + length([Mission ID]) - 3), 3)
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `substring` |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview/#examples-of-data-types) | Works with `substring` |
 | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
 | String                                                                                                                         | ✅                     |
 | Number                                                                                                                         | ❌                     |
@@ -100,7 +100,7 @@ substring([Mission ID], 9, 3)
 
 ### SQL
 
-When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook_editor), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [notebook editor](https://www.metabase.com/glossary/notebook_editor/), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
 If our [sample data](#getting-a-substring-from-the-left) is stored in a PostgreSQL database:
 
@@ -149,4 +149,4 @@ substring([Mission ID], 9, 3)
 ## Further reading
 
 - [Custom expressions documentation](../expressions.md)
-- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
+- [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions/)

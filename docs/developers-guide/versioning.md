@@ -4,7 +4,7 @@ title: Metabase release versioning
 
 # Metabase release versioning
 
-We follow our own flavor of the [semantic versioning guidelines](https://semver.org/) in order to distinguish the [open-source version](https://www.metabase.com/product/starter) of Metabase from the paid, source-available version of Metabase (available in the [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans).
+We follow our own flavor of the [semantic versioning guidelines](https://semver.org/) in order to distinguish the [open-source version](https://www.metabase.com/product/starter/) of Metabase from the paid, source-available version of Metabase (available in the [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans).
 
 Semantic versioning typically follows the format: `Major.Minor.Point.Patch`. For example, version `3.15.2` or `3.15.2.1`.
 
@@ -62,4 +62,4 @@ E.g.,
 ## Further reading
 
 - [Metabase releases on Github](https://github.com/metabase/metabase/releases)
-- [Metabase release blog posts](https://www.metabase.com/releases)
+- [Metabase release blog posts](https://www.metabase.com/releases/)

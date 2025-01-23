@@ -171,8 +171,8 @@ coalesce([Notes], [Comments] "No notes or comments.")
 - [Custom expressions documentation][custom-expressions-doc]
 - [Custom expressions tutorial][custom-expressions-learn]
 
-[case-to-coalesce]: ./case.md#coalesce
-[cast-data-type]: ../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type
+[case-to-coalesce]: ./case.md/#coalesce
+[cast-data-type]: ../../../data-modeling/metadata-editing.md/#casting-to-a-specific-data-type
 [custom-expressions-doc]: ../expressions.md
 [custom-expressions-learn]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions
 [data-types]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types

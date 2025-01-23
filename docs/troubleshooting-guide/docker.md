@@ -153,4 +153,4 @@ These steps will help you determine whether this the problem is with the network
 If you're running Metabase from the JAR in any Unix-like operating system, you can see which user is running Metabase by opening a terminal and typing `ps -uA | grep metabase`.
 
 [configuring-application-database]: ../installation-and-operation/configuring-application-database.md
-[persistent-volume]: ../installation-and-operation/running-metabase-on-docker.md#mounting-a-mapped-file-storage-volume
+[persistent-volume]: ../installation-and-operation/running-metabase-on-docker.md/#mounting-a-mapped-file-storage-volume

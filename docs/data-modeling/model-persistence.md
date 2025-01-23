@@ -26,11 +26,11 @@ To turn on model persistence for your Metabase, go to **Admin settings** > **Per
 
 You can set models to refresh based on one of the default frequencies (every 1 hour, 2 hours, etc.), or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own update frequency.
 
-The cron scheduler uses the [Report Timezone](../configuring-metabase/localization.md#report-timezone) if selected. Otherwise the scheduler will use the System Timezone (which defaults to GMT in [Metabase Cloud](https://www.metabase.com/cloud)).
+The cron scheduler uses the [Report Timezone](../configuring-metabase/localization.md/#report-timezone) if selected. Otherwise the scheduler will use the System Timezone (which defaults to GMT in [Metabase Cloud](https://www.metabase.com/cloud/)).
 
 We recommend scheduling your models to refresh on a frequency that makes sense with how often your source tables update with new data.
 
-If someone [changes the query definition of a model](./models.md#edit-a-models-query), any question based on that model will re-run the model's query until the next scheduled model refresh.
+If someone [changes the query definition of a model](./models.md/#edit-a-models-query), any question based on that model will re-run the model's query until the next scheduled model refresh.
 
 ## Turn on model persistence for each database
 
@@ -48,7 +48,7 @@ Once you've turned on model persistence for your Metabase, you'll need to set it
 
 {% include plans-blockquote.html feature="Individual model persistence" %}
 
-You can also toggle persistence on or off for individual models. When viewing a model, click on the **...** in the upper right and select **Edit settings**. Toggle **Persist model data** on (you'll need [Curate access](../permissions/collections.md#curate-access) to the model's collection to do this).
+You can also toggle persistence on or off for individual models. When viewing a model, click on the **...** in the upper right and select **Edit settings**. Toggle **Persist model data** on (you'll need [Curate access](../permissions/collections.md/#curate-access) to the model's collection to do this).
 
 Toggling persistence for individual models is useful for models with data that updates at different frequencies than the schedule you set for other models in that database, or for models that are used more or less than other models in that database.
 

@@ -8,11 +8,11 @@ redirect_from:
 
 There are always going to be sensitive bits of information in your data, and thankfully Metabase provides a rich set of tools to ensure that people on your team only see the data they’re supposed to.
 
-If instead you're wondering about what data Metabase the company can see, check out our page on [data privacy and security](https://www.metabase.com/security).
+If instead you're wondering about what data Metabase the company can see, check out our page on [data privacy and security](https://www.metabase.com/security/).
 
 ## Key points regarding permissions
 
-- Permissions are granted to [groups](../people-and-groups/managing.md#groups), not people.
+- Permissions are granted to [groups](../people-and-groups/managing.md/#groups), not people.
 - People can be in more than one group.
 - If a person is in multiple groups, they will have the _most permissive_ access granted to them across all of their groups. For example, if a person is in three groups, and any one of those groups has Curate access to a collection, then that person will have curate access to that collection.
 
@@ -27,10 +27,10 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 [Data permissions](./data.md) allow you to set permissions on database and their schemas and tables.
 
-- [View data](./data.md#view-data-permissions)
-- [Create queries](./data.md#create-queries-permissions)
-- [Download results](./data.md#download-results-permissions)
-- [Manage database](./data.md#manage-database-permissions)
+- [View data](./data.md/#view-data-permissions)
+- [Create queries](./data.md/#create-queries-permissions)
+- [Download results](./data.md/#download-results-permissions)
+- [Manage database](./data.md/#manage-database-permissions)
 
 ### Collection permissions
 

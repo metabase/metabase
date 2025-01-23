@@ -6,7 +6,7 @@ title: Migrating from legacy permissions
 
 In Metabase 50, we overhauled our data permissions system to make it more expressive and easier to reason about. This page explains what changed and why.
 
-**The TL;DR: we split the old Data access setting into two settings: [View data](./data.md#can-view-data-permission) and [Create Queries](./data.md#create-queries-permissions). Your data permissions may look different, but the access hasn't changed.**
+**The TL;DR: we split the old Data access setting into two settings: [View data](./data.md/#can-view-data-permission) and [Create Queries](./data.md/#create-queries-permissions). Your data permissions may look different, but the access hasn't changed.**
 
 ## How Metabase migrated your permissions
 
@@ -23,14 +23,14 @@ Mixing two axes (querying + viewing) to a single permissions setting could yield
 
 ## What our overhaul of data permissions accomplishes
 
-- Splits [view access](./data.md#view-data-permissions) and [query access](./data.md#create-queries-permissions) into two permission dimensions. This splitting allows admins to, for example, sandbox tables with or without access to the query builder (previously it wasn't possible to configure sandboxing as view only).
+- Splits [view access](./data.md/#view-data-permissions) and [query access](./data.md/#create-queries-permissions) into two permission dimensions. This splitting allows admins to, for example, sandbox tables with or without access to the query builder (previously it wasn't possible to configure sandboxing as view only).
 - Makes permissions easier to reason about. A more restrictive permission never gives more access than a less restrictive one.
 
 ## Migration table from old permissions to new
 
 This table is just if you're interested in Metabase archeologically. Metabase handles the migration for you.
 
-Before, Metabase had **Data access** and **Native query editing**. Now, Metabase has [View data](./data.md#view-data-permissions) and [Create queries](./data.md#create-queries-permissions). Here's how Metabase migrated each pairing to the new system.
+Before, Metabase had **Data access** and **Native query editing**. Now, Metabase has [View data](./data.md/#view-data-permissions) and [Create queries](./data.md/#create-queries-permissions). Here's how Metabase migrated each pairing to the new system.
 
 | **Data access**            | **Native query editing** | **>** | **View data**        | **Create queries**            |
 | -------------------------- | ------------------------ | ----- | -------------------- | ----------------------------- |
@@ -50,10 +50,10 @@ If you see the `No self-service (deprecated)` permission setting in **View data*
 
 For any group that has their **View data** access set to `No self-service (deprecated)`, you'll need to change the **View data** permission to one of the new options:
 
-- [Can view](./data.md#can-view-data-permission)
-- [Impersonated](./data.md#impersonated-view-data-permission)
-- [Sandboxed](./data.md#sandboxed-view-data-permission)
-- [Blocked](./data.md#blocked-view-data-permission)
+- [Can view](./data.md/#can-view-data-permission)
+- [Impersonated](./data.md/#impersonated-view-data-permission)
+- [Sandboxed](./data.md/#sandboxed-view-data-permission)
+- [Blocked](./data.md/#blocked-view-data-permission)
 
 If you take no action, Metabase will change any groups with View data access set to `No self-service (deprecated)` to `Blocked` in a future release. We're defaulting to "Blocked", the least permissive View data access, to prevent any unintended access to data. But this change to Blocked could cause people to lose access to data they previously had access to.
 

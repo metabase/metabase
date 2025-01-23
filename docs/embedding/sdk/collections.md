@@ -52,4 +52,4 @@ With static questions, you set a specific collection as the collection people ca
 1. Set `isSaveEnabled` to true.
 2. Set `saveToCollectionId` to the collection ID you want people to save items to.
 
-For more options, see [Question props](./questions.md#question-props).
+For more options, see [Question props](./questions.md/#question-props).

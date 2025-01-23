@@ -119,7 +119,7 @@ Now click on the huge plus sign next to **Add VNET** and select the VNET that yo
 
 Return to the application configuration page and click on **Settings** -> **Configuration** on the left side of the page. You should see a few Application Settings already configured.
 
-You'll need to add the [environment Variables](../configuring-metabase/environment-variables.md) for connecting Metabase to its [PostgreSQL Application Database](../installation-and-operation/configuring-application-database.md#postgresql). Make sure that you use the full **MB_DB_CONNECTION_URI**.
+You'll need to add the [environment Variables](../configuring-metabase/environment-variables.md) for connecting Metabase to its [PostgreSQL Application Database](../installation-and-operation/configuring-application-database.md/#postgresql). Make sure that you use the full **MB_DB_CONNECTION_URI**.
 
 Also, take into account that the username in Azure PostgreSQL is `user@name_of_your_database_engine` so in this case the entire connection uri would be as follows:
 
@@ -197,4 +197,4 @@ In the example above the connection string would be
 postgresql://10.0.2.4:5432/metabase?user=metabase@metabase-app-database&password=Password1!&ssl=true&sslmode=require
 ```
 
-If you have trouble connecting, refer to the [postgres configuration instructions](../installation-and-operation/configuring-application-database.md#postgresql) as you may run into a problem with an `@` symbol in the username portion of the connection string. Using a combination of `MB_DB_CONNECTION_URI` with separate `MB_DB_USER` and `MB_DB_PASSWORD` fields also works.
+If you have trouble connecting, refer to the [postgres configuration instructions](../installation-and-operation/configuring-application-database.md/#postgresql) as you may run into a problem with an `@` symbol in the username portion of the connection string. Using a combination of `MB_DB_CONNECTION_URI` with separate `MB_DB_USER` and `MB_DB_PASSWORD` fields also works.

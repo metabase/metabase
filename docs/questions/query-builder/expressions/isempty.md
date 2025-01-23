@@ -12,7 +12,7 @@ title: Isempty
 isempty(text column)
 ```
 
-You can use `isempty` in [custom filters](../expressions.md#filter-expressions-and-conditionals), or as the condition for conditional aggregations [`CountIf`](../expressions/countif.md) and [`SumIf`](../expressions/sumif.md). To create a custom column using `isempty`, you must combine `isempty` with another function that accepts boolean values, like [`case`](./case.md).
+You can use `isempty` in [custom filters](../expressions.md/#filter-expressions-and-conditionals), or as the condition for conditional aggregations [`CountIf`](../expressions/countif.md) and [`SumIf`](../expressions/sumif.md). To create a custom column using `isempty`, you must combine `isempty` with another function that accepts boolean values, like [`case`](./case.md).
 
 ## How Metabase handles empty strings and null values
 

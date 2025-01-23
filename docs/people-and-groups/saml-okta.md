@@ -193,11 +193,11 @@ You can create a custom user profile attribute and fill it with the Metabase gro
 
 For common issues, go to [Troubleshooting SAML][troubleshooting-saml].
 
-[enabling-saml-in-metabase]: ./authenticating-with-saml.md#enabling-saml-authentication-in-metabase
+[enabling-saml-in-metabase]: ./authenticating-with-saml.md/#enabling-saml-authentication-in-metabase
 [okta-saml-docs]: https://help.okta.com/oie/en-us/content/topics/apps/apps_app_integration_wizard_saml.htm
 [okta-create-attribute-statement]: https://support.okta.com/help/s/article/How-to-define-and-configure-a-custom-SAML-attribute-statement
 [saml-doc]: ./authenticating-with-saml.md
-[site-url]: ../configuring-metabase/settings.md#site-url
+[site-url]: ../configuring-metabase/settings.md/#site-url
 [troubleshooting-saml]: ../troubleshooting-guide/saml.md
 
 ## Further reading
