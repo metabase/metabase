@@ -1063,8 +1063,20 @@
   "Implementation for the `dashboard-question-candidates` endpoints."
   [collection-id :- [:maybe ms/PositiveInt]]
   (api/check-403 api/*is-superuser?*)
-  (let [cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:= :collection_id collection-id]}) :in_dashboards)]
-    (filter card/sole-dashboard-id cards-in-collection)))
+  (let [all-cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:and
+                                                                            [:= :collection_id collection-id]
+                                                                            [:= :dashboard_id nil]]})
+                                            :in_dashboards)]
+    (filter
+     (fn [card]
+       (and
+        ;; we're a good candidate if:
+        ;; - we're only in one dashboard
+        (card/sole-dashboard-id card)
+        ;; - that one dashboard is in the same collection
+        (= (:collection_id card)
+           (-> card :in_dashboards first :collection_id))))
+     all-cards-in-collection)))
 
 (mu/defn- present-dashboard-question-candidate
   [{:keys [in_dashboards] :as card}]
