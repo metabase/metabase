@@ -458,7 +458,7 @@
       (gen/elements time-units)
       (gen/elements time-units)))))
 
-(defspec ^:parallel date-string->range-spec-test 1000
+(defspec date-string->range-spec-test 1000
   (prop/for-all [[tr tr+from-zero] time-range-generator]
     (with-redefs [t/local-date-time (constantly (t/local-date-time))]
       (= (params.dates/date-string->range tr)
