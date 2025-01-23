@@ -935,7 +935,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("is less than or equal to").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("[data-testid=pivot-table-cell]", "65.09").should(
       "have.css",
       "background-color",
