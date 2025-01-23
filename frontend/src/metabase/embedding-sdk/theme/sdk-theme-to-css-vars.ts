@@ -34,7 +34,12 @@ export const COLLECTION_BROWSER_THEME_OPTIONS = {
     "collectionBrowser.breadcrumbs.expandButton.hoverBackgroundColor",
 } satisfies CssVariableToThemeMap;
 
-/** Maps the CSS variable name to the corresponding theme key in the Embedding SDK theme. */
+/**
+ * Maps the CSS variable name to the corresponding theme key in the Embedding SDK theme.
+ *
+ * In the main app, they will be mapped to the default theme values in [default-component-theme.ts].
+ * In the Embedding SDK, they can be customized via the `theme` prop in MetabaseProvider.
+ **/
 export const CSS_VARIABLES_TO_SDK_THEME_MAP = {
   // Overlays
   "--mb-overlay-z-index": "popover.zIndex",
