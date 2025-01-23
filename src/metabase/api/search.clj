@@ -88,10 +88,16 @@
     (public-settings/experimental-search-weight-overrides!
      (merge-with merge (public-settings/experimental-search-weight-overrides) {context (update-keys overrides u/qualified-name)}))))
 
-;;; TODO -- why the HECC is our GET endpoint used to SET custom weights? Whoever did this, fix it before I throw up --
-;;; Cam
 (api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"
+  [_route-params
+   {:keys [context], :as overrides} :- [:map
+                                        [:context {:default :default} :keyword]
+                                        [:search_engine {:optional true} :any]]]
+  (search.config/weights context))
+
+(api.macros/defendpoint :put "/weights"
+  "Update the current weights being used to rank the search results"
   [_route-params
    {:keys [context], :as overrides} :- [:map
                                         [:context {:default :default} :keyword]
