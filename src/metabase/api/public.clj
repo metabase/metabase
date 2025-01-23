@@ -191,6 +191,7 @@
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]
+   _query-params
    {:keys [parameters]} :- [:map
                             [:parameters {:optional true} [:sequential ms/Parameter]]]]
   (process-query-for-card-with-public-uuid uuid :api parameters))
@@ -224,6 +225,7 @@
   [{:keys [uuid export-format]} :- [:map
                                     [:uuid          ms/UUIDString]
                                     [:export-format api.dataset/ExportFormat]]
+   _query-params
    {:keys [parameters format_rows pivot_results]} :- [:map
                                                       [:format_rows   {:default false} [:maybe :boolean]]
                                                       [:pivot_results {:default false} [:maybe :boolean]]
@@ -690,6 +692,7 @@
    credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]
+   _query-params
    {:keys [parameters]} :- [:map
                             [:parameters {:optional true} [:sequential ms/Parameter]]]]
   (process-query-for-card-with-public-uuid uuid :api parameters
