@@ -118,20 +118,25 @@ export type MetabaseComponentTheme = {
   };
 
   question: {
+    /** Background color for all questions */
     backgroundColor: string;
 
+    /** Toolbar of the default interactive question layout */
     toolbar?: {
       backgroundColor?: string;
     };
 
+    /* <InteractiveQuestion.ChartTypeSelector /> component */
     chartTypeSelector?: {
       backgroundColor?: string;
     };
 
+    /* <InteractiveQuestion.QuestionSettingsDropdown /> component's button */
     questionSettingsButton?: {
       backgroundColor?: string;
     };
 
+    /* <InteractiveQuestion.EditorButton /> component */
     editorButton?: {
       iconColor?: string;
       borderColor?: string;
@@ -141,6 +146,7 @@ export type MetabaseComponentTheme = {
       activeBackgroundColor?: string;
     };
 
+    /* <InteractiveQuestion.Editor /> component */
     editor?: {
       /** Actions buttons in the question editor */
       actionButton?: {
