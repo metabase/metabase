@@ -19,7 +19,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private gsheets-not-connected {:status "not-connected"})
+(def ^:private not-connected {:status "not-connected"})
 
 (defsetting gsheets
   #_"
@@ -42,7 +42,7 @@
   :visibility :public
   :type :json
   :getter (fn [] (or (setting/get-value-of-type :json :gsheets)
-                     (u/prog1 gsheets-not-connected
+                     (u/prog1 not-connected
                        (setting/set-value-of-type! :json :gsheets <>)))))
 
 (mr/def ::gsheets [:map
@@ -155,7 +155,7 @@
     (when-not (some? attached-dwh)
       (snowplow/track-event! ::snowplow/simple_event
                              {:event "sheets_connected" :event_detail "fail - no dwh"})
-      (throw (ex-info "No attached dwh found." {:status-code 404})))
+      (throw (ex-info "No attached dwh found." {})))
     (if-let [{:keys [status]
               last-gdrive-conn-sync :last-sync-at
               :as gdrive-conn} (get-gdrive-connection)]
@@ -164,13 +164,20 @@
                                             :task "sync"
                                             :status :success
                                             {:order-by [[:ended_at :desc]]})]
-        (-> (if (sync-complete? {:status status
-                                 :last-dwh-sync last-dwh-sync
-                                 :last-gdrive-conn-sync last-gdrive-conn-sync})
+        (-> (cond
+              (= "error" status)
+              (do
+                (gsheets! not-connected)
+                (throw (ex-info "Problem syncing google drive folder." {})))
+
+              (sync-complete? {:status status
+                               :last-dwh-sync last-dwh-sync
+                               :last-gdrive-conn-sync last-gdrive-conn-sync})
               (u/prog1 (assoc (gsheets) :status "complete")
                 (gsheets! <>)
                 (snowplow/track-event! ::snowplow/simple_event
                                        {:event "sheets_connected" :event_detail "success"}))
+              :else
               (gsheets))
             (assoc :db_id (:id attached-dwh)
                    :hm/conn gdrive-conn
@@ -181,11 +188,11 @@
                                                     :last-dwh-sync last-dwh-sync
                                                     :last-gdrive-conn-sync last-gdrive-conn-sync}))))
       (do
-        (gsheets! gsheets-not-connected)
+        (gsheets! not-connected)
         (snowplow/track-event! ::snowplow/simple_event
                                {:event "sheets_connected"
                                 :event_detail "fail - no drive connection"})
-        (throw (ex-info "Google Drive Connection not found." {:status-code 404}))))))
+        (throw (ex-info "Google Drive Connection not found." {}))))))
 
 (api.macros/defendpoint :delete "/folder"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
@@ -194,13 +201,13 @@
   (if-let [conn-id (:id (get-gdrive-connection))]
     (let [[status _] (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" conn-id))]
       (if (= status :ok)
-        (u/prog1 gsheets-not-connected
+        (u/prog1 not-connected
           (gsheets! <>)
           (snowplow/track-event! ::snowplow/simple_event {:event "sheets_disconnected"}))
         (throw (ex-info "Unable to disconnect google service account" {:status-code 503}))))
-    (u/prog1 gsheets-not-connected
+    (u/prog1 not-connected
       (gsheets! <>)
-      (throw (ex-info "Unable to find google drive connection." {:status-code 404})))))
+      (throw (ex-info "Unable to find google drive connection." {})))))
 
 (api/define-routes)
 
@@ -228,6 +235,6 @@
         (hm.client/make-request (->config)
                                 :delete
                                 (str "/api/v2/mb/connections/" id)))
-      (gsheets! gsheets-not-connected)
+      (gsheets! not-connected)
       [(:body (second (hm.client/make-request (->config) :get "/api/v2/mb/connections")))
        (gsheets)])))
