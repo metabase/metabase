@@ -15,7 +15,6 @@
                   :dashboard <dashboard-id>}
        :params   <params>}"
   (:require
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.embed.common :as api.embed.common]
@@ -101,8 +100,9 @@
 
      {:resource {:question <card-id>}
       :params   <parameters>}"
-  [{:keys [token]}
-   query-params]
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   query-params :- :map]
   (run-query-for-unsigned-token-async (unsign-and-translate-ids token) :api (api.embed.common/parse-query-params query-params)))
 
 (api.macros/defendpoint :get ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
@@ -110,18 +110,20 @@
   [{:keys [token export-format]} :- [:map
                                      [:token         string?]
                                      [:export-format (into [:enum] api.dataset/export-formats)]]
-   {:keys [format_rows pivot_results & query-params]} :- [:map
-                                                          [:format_rows   {:optional true} [:maybe :boolean]]
-                                                          [:pivot_results {:optional true} [:maybe :boolean]]]]
+   {format-rows? :format_rows
+    pivot?       :pivot_results
+    :as          query-params} :- [:map
+                                   [:format_rows   {:default false} :boolean]
+                                   [:pivot_results {:default false} :boolean]]]
   (run-query-for-unsigned-token-async
    (unsign-and-translate-ids token)
    export-format
-   (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows :pivot_results))
+   (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
-                :format-rows?          (or format_rows false)
-                :pivot?                (or pivot_results false)}))
+                :format-rows?          format-rows?
+                :pivot?                pivot?}))
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
 
