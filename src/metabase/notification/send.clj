@@ -31,7 +31,7 @@
 
 (setting/defsetting notification-thread-pool-size
   "The size of the thread pool used to send notifications."
-  :default    2
+  :default    3
   :export?    false
   :type       :integer
   :visibility :internal)
