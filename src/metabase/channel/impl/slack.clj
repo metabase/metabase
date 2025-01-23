@@ -153,6 +153,6 @@
         dashboard  (:dashboard payload)]
     (for [channel-id channel-ids]
       {:channel-id  channel-id
-       :attachments (remove nil?
-                            (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
-                                      (create-slack-attachment-data (:dashboard_parts payload))]))})))
+       :attachments (doall (remove nil?
+                                   (flatten [(slack-dashboard-header dashboard (:common_name creator) parameters)
+                                             (create-slack-attachment-data (:dashboard_parts payload))])))})))

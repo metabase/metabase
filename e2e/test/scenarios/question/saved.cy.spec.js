@@ -478,6 +478,7 @@ describe(
     const secondWebhookName = "Toucan Hook";
 
     beforeEach(() => {
+      H.resetWebhookTester();
       H.restore();
       cy.signInAsAdmin();
 
@@ -530,6 +531,7 @@ describe(
     });
 
     it("should allow you to test a webhook", () => {
+      cy.intercept("POST", "/api/pulse/test").as("testAlert");
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("sharing-menu-button").click();
       H.popover().findByText("Create alert").click();
@@ -544,13 +546,12 @@ describe(
         H.getAlertChannel(firstWebhookName).button("Send a test").click();
       });
 
-      cy.visit(H.WEBHOOK_TEST_DASHBOARD);
-
-      cy.findByRole("heading", { name: /Requests 1/ }).should("exist");
+      cy.wait("@testAlert");
 
       cy.request(
         `${H.WEBHOOK_TEST_HOST}/api/session/${H.WEBHOOK_TEST_SESSION_ID}/requests`,
       ).then(({ body }) => {
+        expect(body).to.have.length(1);
         const payload = cy.wrap(atob(body[0].content_base64));
 
         payload
