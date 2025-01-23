@@ -38,7 +38,16 @@
   2. We have received a response back from the LLM and need to respond to tool calls (if any)
   3. We don't need to do anything at all."
   [e]
-  (cond
-    (envelope/requires-tool-invocation? e) (recur (invoke-all-tool-calls! e))
-    (envelope/requires-llm-response? e) (recur (request-llm-response e))
-    :else e))
+  (try
+    (loop [e e]
+      (cond
+        (envelope/requires-tool-invocation? e) (recur (invoke-all-tool-calls! e))
+        (envelope/requires-llm-response? e) (recur (request-llm-response e))
+        :else e))
+    (catch Exception ex
+      (let [d (ex-data ex)]
+        (if-let [assistant-message (:assistant-message d)]
+          (envelope/add-message (or (:envelope d) e)
+                                {:role :assistant
+                                 :content assistant-message})
+          (throw ex))))))
