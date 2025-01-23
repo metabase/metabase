@@ -27,18 +27,8 @@
 
 (defn full-history
   "History including the dummy tool invocations"
-  ([e] (full-history e nil))
-  ([e {:keys [stringify-content?] :or {stringify-content? true}}]
-   (map (fn [{:keys [content structured-content] :as msg}]
-          (cond-> msg
-            stringify-content?
-            (->
-             (dissoc :structured-content)
-             (assoc :content (or content
-                                 (when structured-content
-                                   (json/encode structured-content)))))))
-        (concat (:dummy-history e)
-                (:history e)))))
+  [e]
+  (concat (:dummy-history e) (:history e)))
 
 (defn is-tool-call-response?
   "Is this message a response to a tool call?"
@@ -172,7 +162,7 @@
   (->> e
        full-history
        (filter #(and (is-tool-call-response? %)
-                     (is-query? %)))
+                     (-> % :structured-content is-query?)))
        (keep :structured-content)
        (filter #(= (:query-id %) query-id))
        first
