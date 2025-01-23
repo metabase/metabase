@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import type { InputSettingType } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
 
 import { SettingsJWTForm } from "./SettingsJWTForm";
@@ -23,7 +24,7 @@ const elements = [
     description: "Is JWT authentication configured and enabled?",
     originalValue: null,
     display_name: "JWT Authentication",
-    type: "boolean",
+    type: "boolean" as InputSettingType,
   },
   {
     key: "jwt-user-provisioning-enabled?",
@@ -45,7 +46,7 @@ const elements = [
       "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK.",
     originalValue: null,
     display_name: "JWT Identity Provider URI",
-    type: "string",
+    type: "string" as InputSettingType,
     required: true,
     autoFocus: true,
   },
@@ -58,7 +59,7 @@ const elements = [
       "String used to seed the private key used to validate JWT messages. A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended.",
     originalValue: null,
     display_name: "String used by the JWT signing key",
-    type: "text",
+    type: "text" as InputSettingType,
     required: true,
   },
   {
@@ -71,7 +72,7 @@ const elements = [
     default: "email",
     originalValue: null,
     display_name: "Email attribute",
-    type: "string",
+    type: "string" as InputSettingType,
   },
   {
     placeholder: "first_name",
@@ -83,7 +84,7 @@ const elements = [
     default: "first_name",
     originalValue: null,
     display_name: "First name attribute",
-    type: "string",
+    type: "string" as InputSettingType,
   },
   {
     placeholder: "last_name",
@@ -95,7 +96,7 @@ const elements = [
     default: "last_name",
     originalValue: null,
     display_name: "Last name attribute",
-    type: "string",
+    type: "string" as InputSettingType,
   },
   {
     key: "jwt-group-sync",
