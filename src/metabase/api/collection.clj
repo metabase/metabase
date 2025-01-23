@@ -1063,7 +1063,10 @@
   "Implementation for the `dashboard-question-candidates` endpoints."
   [collection-id :- [:maybe ms/PositiveInt]]
   (api/check-403 api/*is-superuser?*)
-  (let [all-cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:= :collection_id collection-id]}) :in_dashboards)]
+  (let [all-cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:and
+                                                                            [:= :collection_id collection-id]
+                                                                            [:= :dashboard_id nil]]})
+                                            :in_dashboards)]
     (filter
      (fn [card]
        (and
@@ -1072,9 +1075,7 @@
         (card/sole-dashboard-id card)
         ;; - that one dashboard is in the same collection
         (= (:collection_id card)
-           (-> card :in_dashboards first :collection_id))
-        ;; - ... and we're not already a DQ in that dashboard
-        (nil? (:dashboard_id card))))
+           (-> card :in_dashboards first :collection_id))))
      all-cards-in-collection)))
 
 (mu/defn- present-dashboard-question-candidate
