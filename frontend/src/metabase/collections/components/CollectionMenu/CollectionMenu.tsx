@@ -11,11 +11,8 @@ import { ForwardRefLink } from "metabase/core/components/Link";
 import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
+import { ActionIcon, Badge, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
-
-// eslint-disable-next-line
-import { Badge, Indicator } from "@mantine/core";
 
 export interface CollectionMenuProps {
   collection: Collection;
@@ -23,6 +20,13 @@ export interface CollectionMenuProps {
   isPersonalCollectionChild: boolean;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
+
+const mergeArrays = (arr: any[][], separator: any) => {
+  const filteredArr = arr.filter(v => v.length > 0);
+  return filteredArr.length === 0
+    ? []
+    : filteredArr.reduce((acc, val) => acc.concat(separator, ...val));
+};
 
 export const CollectionMenu = ({
   collection,
@@ -43,7 +47,6 @@ export const CollectionMenu = ({
     ).data?.total ?? 0;
   const hasDqCandidates = useHasDashboardQuestionCandidates(collection.id);
 
-  const items = [];
   const url = Urls.collection(collection);
   const isRoot = isRootCollection(collection);
   const isPersonal = isRootPersonalCollection(collection);
@@ -59,27 +62,16 @@ export const CollectionMenu = ({
     true,
   );
 
-  if (isAdmin && !isRoot && canWrite) {
-    items.push(
-      ...PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems(
-        collection,
-        onUpdateCollection,
-      ),
-    );
-  }
+  const [hasSeenMoveToDashboard, { ack: ackHasMoveToDashboard }] =
+    useUserAcknowledgement("move-to-dashboard", true);
 
-  if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
-    items.push(
-      <Menu.Item
-        icon={<Icon name="lock" />}
-        component={ForwardRefLink}
-        to={`${url}/permissions`}
-      >{t`Edit permissions`}</Menu.Item>,
-    );
-  }
+  const moveItems = [];
+  const cleanupItems = [];
+  const editItems = [];
+  const trashItems = [];
 
   if (canMove) {
-    items.push(
+    moveItems.push(
       <Menu.Item
         icon={<Icon name="lock" />}
         component={ForwardRefLink}
@@ -88,7 +80,26 @@ export const CollectionMenu = ({
     );
   }
 
-  items.push(
+  if (isAdmin && !isRoot && canWrite) {
+    editItems.push(
+      ...PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems(
+        collection,
+        onUpdateCollection,
+      ),
+    );
+  }
+
+  if (isAdmin && !isPersonal && !isPersonalCollectionChild) {
+    editItems.push(
+      <Menu.Item
+        icon={<Icon name="lock" />}
+        component={ForwardRefLink}
+        to={`${url}/permissions`}
+      >{t`Edit permissions`}</Menu.Item>,
+    );
+  }
+
+  cleanupItems.push(
     ...PLUGIN_COLLECTIONS.getCleanUpMenuItems(
       collection,
       maybeCollectionItemCount,
@@ -96,28 +107,21 @@ export const CollectionMenu = ({
   );
 
   if (hasDqCandidates) {
-    items.push(
+    cleanupItems.push(
       <Menu.Item
         icon={<Icon name="add_to_dash" />}
         component={ForwardRefLink}
         to={`${url}/move-questions-dashboard`}
         rightSection={
-          <Badge
-            styles={{
-              inner: {
-                color: "white",
-              },
-            }}
-          >
-            Woooo
-          </Badge>
+          !hasSeenMoveToDashboard && <Badge variant="light">New</Badge>
         }
+        onClick={() => !hasSeenMoveToDashboard && ackHasMoveToDashboard()}
       >{t`Move questions into their dashboards`}</Menu.Item>,
     );
   }
 
   if (canMove) {
-    items.push(
+    trashItems.push(
       <Menu.Item
         icon={<Icon name="trash" />}
         component={ForwardRefLink}
@@ -125,6 +129,11 @@ export const CollectionMenu = ({
       >{t`Move to trash`}</Menu.Item>,
     );
   }
+
+  const items = mergeArrays(
+    [moveItems, editItems, cleanupItems, trashItems],
+    <Menu.Divider />,
+  );
 
   if (items.length === 0) {
     return null;

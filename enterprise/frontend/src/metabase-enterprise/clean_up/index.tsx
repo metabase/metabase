@@ -15,16 +15,20 @@ if (hasPremiumFeature("collection_cleanup")) {
   PLUGIN_COLLECTIONS.canCleanUp = canCleanUp;
 
   PLUGIN_COLLECTIONS.getCleanUpMenuItems = (collection, itemCount) => {
+    // const [val, { ack }] = useUserAcknowledgement("collection-cleanup");
+
     if (!canCleanUp(collection) || itemCount === 0) {
       return [];
     }
 
     return [
       <Menu.Item
-        key="collections-archive"
+        key="collections-cleanup"
         icon={<Icon name="archive" />}
         component={ForwardRefLink}
         to={`${Urls.collection(collection)}/cleanup`}
+        // rightSection={!val && <Badge>New</Badge>}
+        // onClick={() => !val && ack()}
       >{t`Clear out unused items`}</Menu.Item>,
     ];
   };
