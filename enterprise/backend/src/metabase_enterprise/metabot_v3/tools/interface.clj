@@ -18,10 +18,7 @@
                             (u/->snake_case_en (name x)))
     :decode/api-response  (fn [x]
                             (keyword (u/->kebab-case-en x)))}
-   :keyword
-   [:fn
-    {:error/message "PARSED parameter names should be kebab-case (in JSON files they should use camelCase)"}
-    #(= (u/->kebab-case-en %) %)]])
+   :keyword])
 
 (mr/def ::metadata.parameter
   [:and
