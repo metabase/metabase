@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
@@ -156,7 +156,8 @@ function GoogleSheetsConnectModal({
   const [saveFolderLink, { isLoading: isSavingFolderLink }] =
     useSaveGsheetsFolderLinkMutation();
 
-  const onSave = async () => {
+  const onSave = async (event: FormEvent) => {
+    event.preventDefault();
     setErrorMessage("");
     await saveFolderLink({
       url: folderLink.trim(),
@@ -201,34 +202,39 @@ function GoogleSheetsConnectModal({
           <Text>3. {t`Click on Done`} </Text>
         </Box>
       </Flex>
-      <Box>
-        <Text
-          size="lg"
-          fw="bold"
-        >{t`Paste the sharing link for the folder`}</Text>
-        <TextInput
-          my="sm"
-          disabled={isSavingFolderLink}
-          value={folderLink}
-          onChange={e => setFolderLink(e.target.value)}
-          placeholder="https://drive.google.com/drive/folders/abc123-xyz456"
-        />
-        <Text
-          size="sm"
-          color="secondary"
-        >{t`In Google Drive, right-click on the folder → Share → Copy link`}</Text>
-      </Box>
-      <Flex justify="space-between" align="center" mt="sm">
-        <Text c="error">{errorMessage}</Text>
-        <Button
-          variant="filled"
-          loading={isSavingFolderLink}
-          disabled={folderLink.length < 3}
-          onClick={onSave}
-        >
-          {t`Import Google Sheets`}
-        </Button>
-      </Flex>
+      <form onSubmit={onSave}>
+        <Box>
+          <Text
+            size="lg"
+            fw="bold"
+          >{t`Paste the sharing link for the folder`}</Text>
+          <TextInput
+            my="sm"
+            disabled={isSavingFolderLink}
+            value={folderLink}
+            onChange={e => setFolderLink(e.target.value)}
+            placeholder="https://drive.google.com/drive/folders/abc123-xyz456"
+          />
+          <Text
+            size="sm"
+            color="secondary"
+          >{t`In Google Drive, right-click on the folder → Share → Copy link`}</Text>
+        </Box>
+        <Flex justify="space-between" align="center" mt="sm" gap="md">
+          <Text c="error" lh="1.2rem">
+            {errorMessage}
+          </Text>
+          <Button
+            type="submit"
+            variant="filled"
+            loading={isSavingFolderLink}
+            disabled={folderLink.length < 3}
+            style={{ flexShrink: 0 }}
+          >
+            {t`Import Google Sheets`}
+          </Button>
+        </Flex>
+      </form>
     </ModalWrapper>
   );
 }
