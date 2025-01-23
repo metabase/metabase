@@ -771,24 +771,30 @@ class Question {
       return this;
     }
 
-    const newQuery = this.parameters().reduce((query, parameter) => {
+    // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations
+    const queryWithExtraStage =
+      this.display() !== "pivot" ? Lib.ensureFilterStage(query) : query;
+    const queryWithFilters = this.parameters().reduce((newQuery, parameter) => {
       const stageIndex =
         isDimensionTarget(parameter.target) && !isComposed
           ? getParameterDimensionTargetStageIndex(parameter.target)
           : -1;
       return applyParameter(
-        query,
+        newQuery,
         stageIndex,
         parameter.type,
         parameter.target,
         parameter.value,
       );
-    }, query);
-    const newQuestion = this.setQuery(newQuery)
+    }, queryWithExtraStage);
+    const queryWithFiltersWithoutExtraStage =
+      Lib.dropEmptyStages(queryWithFilters);
+
+    const newQuestion = this.setQuery(queryWithFiltersWithoutExtraStage)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    const hasQueryBeenAltered = query !== newQuery;
+    const hasQueryBeenAltered = queryWithExtraStage !== queryWithFilters;
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
 
     function getParameterDimensionTargetStageIndex(
