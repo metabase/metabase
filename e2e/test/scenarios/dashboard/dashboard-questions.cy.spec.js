@@ -3,6 +3,13 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as S from "e2e/support/cypress_sample_instance_data";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
+const DASHBOARD_ONE = "Dashboard One";
+const DASHBOARD_TWO = "Dashboard Two";
+
+const QUESTION_ONE = "Question One";
+const QUESTION_TWO = "Question Two";
+const QUESTION_THREE = "Question Three";
+
 describe("Dashboard > Dashboard Questions", () => {
   beforeEach(() => {
     H.restore();
@@ -951,71 +958,8 @@ describe("Dashboard > Dashboard Questions", () => {
   describe("migration modal", () => {
     it("should allow users to migrate questions in one dashboard into their respective dashboards", () => {
       cy.signInAsAdmin();
-
-      // SEED DATA
       cy.log("seed data");
-      const query = { "source-table": SAMPLE_DATABASE.ORDERS_ID };
-      const baseDc = { size_x: 8, size_y: 5 };
-
-      const DASHBOARD_ONE = "Dashboard One";
-      const DASHBOARD_TWO = "Dashboard Two";
-
-      const QUESTION_ONE = "Question One";
-      const QUESTION_TWO = "Question Two";
-      const QUESTION_THREE = "Question Three";
-
-      H.createQuestion({
-        name: QUESTION_THREE,
-        query,
-        collection_id: S.FIRST_COLLECTION_ID,
-      }).then(({ body: { id } }) => {
-        const dc = createMockDashboardCard({ ...baseDc, id: 3, card_id: id });
-        cy.wrap(dc).as("questionThreeCard");
-      });
-
-      H.createQuestionAndDashboard({
-        dashboardDetails: {
-          name: DASHBOARD_ONE,
-          collection_id: S.FIRST_COLLECTION_ID,
-        },
-        questionDetails: {
-          name: QUESTION_ONE,
-          query,
-          collection_id: S.FIRST_COLLECTION_ID,
-        },
-      }).then(({ body: { dashboard_id, card_id } }) => {
-        cy.get("@questionThreeCard").then(questionThreeCard => {
-          H.updateDashboardCards({
-            dashboard_id,
-            cards: [
-              createMockDashboardCard({ ...baseDc, id: 1, card_id }),
-              questionThreeCard,
-            ],
-          });
-        });
-      });
-
-      H.createQuestionAndDashboard({
-        dashboardDetails: {
-          name: DASHBOARD_TWO,
-          collection_id: S.FIRST_COLLECTION_ID,
-        },
-        questionDetails: {
-          name: QUESTION_TWO,
-          query,
-          collection_id: S.FIRST_COLLECTION_ID,
-        },
-      }).then(({ body: { dashboard_id, card_id } }) => {
-        cy.get("@questionThreeCard").then(questionThreeCard => {
-          H.updateDashboardCards({
-            dashboard_id,
-            cards: [
-              createMockDashboardCard({ ...baseDc, id: 2, card_id }),
-              questionThreeCard,
-            ],
-          });
-        });
-      });
+      seedMigrationToolData();
 
       cy.log("assert questions are in the collection");
       H.visitCollection(S.FIRST_COLLECTION_ID);
@@ -1040,7 +984,7 @@ describe("Dashboard > Dashboard Questions", () => {
           cy.findByText("Move questions into their dashboards?").should(
             "exist",
           );
-          cy.findByText("Preview what this will do").should("exist").click();
+          cy.findByText("Preview the changes").should("exist").click();
         });
       cy.log("info modal should disappear");
       cy.findByTestId("move-questions-into-dashboard-info-modal").should(
@@ -1110,8 +1054,94 @@ describe("Dashboard > Dashboard Questions", () => {
       });
       cy.findByTestId("move-questions-into-dashboard-modal").should("exist");
     });
+
+    it("should not show migration tool to non-admins", () => {
+      cy.signInAsAdmin();
+      cy.log("seed data");
+      seedMigrationToolData();
+      cy.signIn("normal");
+
+      cy.log("assert questions are in the collection");
+      H.visitCollection(S.FIRST_COLLECTION_ID);
+      H.collectionTable().within(() => {
+        cy.findByText(QUESTION_ONE).should("exist");
+        cy.findByText(QUESTION_TWO).should("exist");
+        cy.findByText(QUESTION_THREE).should("exist");
+      });
+
+      cy.log("user should not be able to engage with the tool");
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards").should(
+          "not.exist",
+        );
+      });
+
+      cy.log("should get redirect if the user navigates to url directly");
+      cy.visit(`/collection/${S.FIRST_COLLECTION_ID}/move-questions-dashboard`);
+      cy.url().should("not.include", "move-questions-dashboard");
+      cy.url().should("include", `/collection/${S.FIRST_COLLECTION_ID}`);
+    });
   });
 });
+
+function seedMigrationToolData() {
+  const query = { "source-table": SAMPLE_DATABASE.ORDERS_ID };
+  const baseDc = { size_x: 8, size_y: 5 };
+
+  H.createQuestion({
+    name: QUESTION_THREE,
+    query,
+    collection_id: S.FIRST_COLLECTION_ID,
+  }).then(({ body: { id } }) => {
+    const dc = createMockDashboardCard({ ...baseDc, id: 3, card_id: id });
+    cy.wrap(dc).as("questionThreeCard");
+  });
+
+  H.createQuestionAndDashboard({
+    dashboardDetails: {
+      name: DASHBOARD_ONE,
+      collection_id: S.FIRST_COLLECTION_ID,
+    },
+    questionDetails: {
+      name: QUESTION_ONE,
+      query,
+      collection_id: S.FIRST_COLLECTION_ID,
+    },
+  }).then(({ body: { dashboard_id, card_id } }) => {
+    cy.get("@questionThreeCard").then(questionThreeCard => {
+      H.updateDashboardCards({
+        dashboard_id,
+        cards: [
+          createMockDashboardCard({ ...baseDc, id: 1, card_id }),
+          questionThreeCard,
+        ],
+      });
+    });
+  });
+
+  H.createQuestionAndDashboard({
+    dashboardDetails: {
+      name: DASHBOARD_TWO,
+      collection_id: S.FIRST_COLLECTION_ID,
+    },
+    questionDetails: {
+      name: QUESTION_TWO,
+      query,
+      collection_id: S.FIRST_COLLECTION_ID,
+    },
+  }).then(({ body: { dashboard_id, card_id } }) => {
+    cy.get("@questionThreeCard").then(questionThreeCard => {
+      H.updateDashboardCards({
+        dashboard_id,
+        cards: [
+          createMockDashboardCard({ ...baseDc, id: 2, card_id }),
+          questionThreeCard,
+        ],
+      });
+    });
+  });
+}
 
 function selectCollectionItem(name) {
   cy.findAllByTestId("collection-entry-name")

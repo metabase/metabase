@@ -12,9 +12,10 @@ import {
   useMoveCollectionDashboardQuestionCandidatesMutation,
 } from "metabase/api";
 import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { ConfirmMoveDashboardQuestionCandidatesModal } from "./ConfirmMoveDashboardQuestionCandidatesModal";
 import { MoveQuestionsIntoDashboardsInfoModal } from "./MoveQuestionsIntoDashboardsInfoModal";
@@ -32,23 +33,25 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
     onClose: handleClose,
   }: MoveQuestionsIntoDashboardsModalProps) => {
     const collectionId = Urls.extractCollectionId(params.slug);
+    const isAdmin = useSelector(getUserIsAdmin);
+
     const [ackedInfoStep, { ack: ackInfoStep, isLoading: isAckedInfoLoading }] =
       useUserAcknowledgement("dashboard_question_migration_info_modal");
 
     const dispatch = useDispatch();
     const candidatesReq = useListCollectionDashboardQuestionCandidatesQuery(
-      collectionId ? collectionId : skipToken,
+      collectionId && isAdmin ? collectionId : skipToken,
     );
     const [bulkMove, bulkMoveReq] =
       useMoveCollectionDashboardQuestionCandidatesMutation();
 
     // redirect to base collection page if there's an invalid collection id
     useEffect(() => {
-      if (collectionId === undefined) {
+      if (collectionId === undefined || !isAdmin) {
         const redirectPath = pathname.replace("/move-questions-dashboard", "");
         dispatch(replace(redirectPath));
       }
-    }, [dispatch, collectionId, pathname]);
+    }, [dispatch, collectionId, pathname, isAdmin]);
 
     const handleBulkMoveQuestionIntoDashboards = async () => {
       if (collectionId) {
