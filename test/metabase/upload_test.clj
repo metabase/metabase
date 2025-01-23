@@ -258,6 +258,10 @@
 
 (deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Blank names"
+      (is (=? #"blank_\d+" (unique-table-name nil)))
+      (is (=? #"blank_\d+" (unique-table-name "")))
+      (is (=? #"blank_\d+" (unique-table-name " ! $ _ "))))
     (testing "File name is slugified"
       (is (=? #"my_file_name_\d+" (unique-table-name "my file name"))))
     (testing "semicolons are removed"

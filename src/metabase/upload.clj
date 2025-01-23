@@ -149,8 +149,7 @@
 (def transliterator (Transliterator/getInstance "Any-Latin; Latin-ASCII"))
 
 (defn- transliterate [s]
-  (if (str/blank? s)
-    "blank"
+  (when-not (str/blank? s)
     (-> (.transliterate ^Transliterator transliterator ^String s)
         (str/replace #"\s+" "_")
         (str/replace #"[^\w]+" "_")
@@ -164,6 +163,7 @@
   ;; Ideally we would add an incrementing count, but it may be cheaper and easier to include some randomness.
   (let [time-format                 "_yyyyMMddHHmmss"
         slugified-name               (transliterate table-name)
+        slugified-name               (if (str/blank? slugified-name) "blank" slugified-name)
         ;; since both the time-format and the slugified-name contain only ASCII characters, we can behave as if
         ;; [[driver/table-name-length-limit]] were defining a length in characters.
         max-length                  (- (min-safe (driver/table-name-length-limit driver)
