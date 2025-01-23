@@ -455,7 +455,7 @@
                           (:name table)))))))))
         (testing "The names should be truncated to the right size"
          ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
-          (let [max-bytes 50]
+          (let [max-bytes 15]
             (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
                           upload/max-bytes (constantly max-bytes)]
               (doseq [^String c ["a" "出"]]
