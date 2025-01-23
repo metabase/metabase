@@ -493,6 +493,7 @@
                        (is-clause? boolean-functions x)  :boolean-expression
                        (is-clause? numeric-functions x)  :numeric-expression
                        (is-clause? datetime-functions x) :datetime-expression
+                       (is-clause? aggregations x)       :aggregation
                        (string? x)                       :string
                        (is-clause? string-functions x)   :string-expression
                        (is-clause? :value x)             :value
@@ -502,6 +503,7 @@
    [:boolean-expression  BooleanExpression]
    [:numeric-expression  NumericExpression]
    [:datetime-expression DatetimeExpression]
+   [:aggregation         Aggregation]
    [:string              :string]
    [:string-expression   StringExpression]
    [:value               value]
