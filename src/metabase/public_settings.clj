@@ -1065,6 +1065,9 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :integer)
 
+;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
+;;; should live in this namespace.
+
 (defsetting search-engine
   (deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
   :visibility :internal
