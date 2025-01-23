@@ -76,8 +76,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     questionSettingsButton: {
       backgroundColor: "var(--mb-color-bg-white)",
     },
-  },
-  questionEditor: {
+
     editorButton: {
       iconColor: "var(--mb-color-text-dark)",
       activeIconColor: "var(--mb-color-text-white)",
@@ -85,6 +84,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
       activeBackgroundColor: "var(--mb-color-brand)",
     },
   },
+
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.px,
