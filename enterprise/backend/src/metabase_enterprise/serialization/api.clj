@@ -265,7 +265,8 @@
                   report
                   callback]} (unpack&import (:tempfile file)
                                             {:size              (:size file)
-                                             :continue-on-error continue_on_error})
+                                             :continue-on-error continue_on_error
+                                             :full-stacktrace   full_stacktrace})
           imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
       (snowplow/track-event! ::snowplow/serialization
                              {:event         :serialization
