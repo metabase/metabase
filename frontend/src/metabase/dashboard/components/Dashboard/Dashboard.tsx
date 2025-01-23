@@ -180,7 +180,6 @@ function Dashboard(props: DashboardProps) {
     addCardToDashboard,
     autoScrollToDashcardId,
     cancelFetchDashboardCardData,
-    closeNavbar,
     dashboard,
     dashboardId,
     editingOnLoad,
@@ -356,26 +355,33 @@ function Dashboard(props: DashboardProps) {
       return null;
     }
 
-    if (!dashboardHasCards && !canWrite) {
-      return (
-        <DashboardEmptyStateWithoutAddPrompt
-          isNightMode={shouldRenderAsNightMode}
-        />
-      );
-    }
     if (!dashboardHasCards) {
-      return (
+      return canWrite ? (
         <DashboardEmptyState
-          dashboard={dashboard}
-          isNightMode={shouldRenderAsNightMode}
           addQuestion={handleAddQuestion}
-          closeNavbar={closeNavbar}
+          isDashboardEmpty={true}
+          isEditing={isEditing}
+          isNightMode={shouldRenderAsNightMode}
+        />
+      ) : (
+        <DashboardEmptyStateWithoutAddPrompt
+          isDashboardEmpty={true}
+          isNightMode={shouldRenderAsNightMode}
         />
       );
     }
+
     if (dashboardHasCards && !tabHasCards) {
-      return (
+      return canWrite ? (
+        <DashboardEmptyState
+          addQuestion={handleAddQuestion}
+          isDashboardEmpty={false}
+          isEditing={isEditing}
+          isNightMode={shouldRenderAsNightMode}
+        />
+      ) : (
         <DashboardEmptyStateWithoutAddPrompt
+          isDashboardEmpty={false}
           isNightMode={shouldRenderAsNightMode}
         />
       );
