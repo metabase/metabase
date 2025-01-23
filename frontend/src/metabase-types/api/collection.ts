@@ -213,8 +213,13 @@ export interface DashboardQuestionCandidate {
   };
 }
 
+export interface GetCollectionDashboardQuestionCandidatesRequest
+  extends PaginationRequest {
+  collectionId: CollectionId;
+}
+
 export interface GetCollectionDashboardQuestionCandidatesResult {
-  count: number;
+  total: number;
   data: DashboardQuestionCandidate[];
 }
 

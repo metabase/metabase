@@ -40,7 +40,7 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
 
     const dispatch = useDispatch();
     const candidatesReq = useListCollectionDashboardQuestionCandidatesQuery(
-      collectionId && isAdmin ? collectionId : skipToken,
+      collectionId && isAdmin ? { collectionId } : skipToken,
     );
     const [bulkMove, bulkMoveReq] =
       useMoveCollectionDashboardQuestionCandidatesMutation();

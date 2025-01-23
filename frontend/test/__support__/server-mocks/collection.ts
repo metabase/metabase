@@ -228,7 +228,7 @@ export function setupDashboardQuestionCandidatesEndpoint(
   dashboardQuestionCandidates: DashboardQuestionCandidate[],
 ) {
   fetchMock.get("express:/api/collection/:id/dashboard-question-candidates", {
-    count: dashboardQuestionCandidates.length,
+    total: dashboardQuestionCandidates.length,
     data: dashboardQuestionCandidates,
   });
 }

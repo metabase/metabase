@@ -1,8 +1,8 @@
 import type {
   Collection,
-  CollectionId,
   CreateCollectionRequest,
   DeleteCollectionRequest,
+  GetCollectionDashboardQuestionCandidatesRequest,
   GetCollectionDashboardQuestionCandidatesResult,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
@@ -115,10 +115,14 @@ export const collectionApi = Api.injectEndpoints({
     }),
     listCollectionDashboardQuestionCandidates: builder.query<
       GetCollectionDashboardQuestionCandidatesResult,
-      CollectionId
+      GetCollectionDashboardQuestionCandidatesRequest
     >({
-      query: id => `/api/collection/${id}/dashboard-question-candidates`,
-      providesTags: (_, __, collectionId) => [
+      query: ({ collectionId, ...params }) => ({
+        method: "GET",
+        url: `/api/collection/${collectionId}/dashboard-question-candidates`,
+        params,
+      }),
+      providesTags: (_, __, { collectionId }) => [
         idTag("dashboard-question-candidates", collectionId),
         idTag("collection", collectionId),
         // HACK: instead of making all dashboard operations aware of dq candidates
