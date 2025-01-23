@@ -17,7 +17,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.permissions.util :as perms-util]
-   [metabase.public-settings :as public-settings]
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
@@ -1638,11 +1637,9 @@
    (weights-url (assoc params :context (name context)))))
 
 (deftest ^:synchronized weights-test
-  (let [base-url           (weights-url)
-        original-weights   (search.config/weights :default)
-        original-overrides (public-settings/experimental-search-weight-overrides)]
-    (try
-      (public-settings/experimental-search-weight-overrides! nil)
+  (let [base-url         (weights-url)
+        original-weights (search.config/weights :default)]
+    (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
       (testing "default weights"
         (is (= original-weights (mt/user-http-request :crowberto :get 200 base-url)))
         (is (mt/user-http-request :rasta :get 403 (weights-url {:recency 4})))
@@ -1651,23 +1648,26 @@
         (is (= (assoc original-weights :recency 4.0 :text 30.0)
                (mt/user-http-request :crowberto :get 200 (weights-url {:text 30}))))
         (is (= (assoc original-weights :recency 4.0 :text 30.0)
-               (mt/user-http-request :crowberto :get 200 base-url))))
+               (mt/user-http-request :crowberto :get 200 base-url)))))))
 
-      (testing "custom context"
-        (let [context          :none-given
-              context-url      (weights-url context {})
-              original-weights (search.config/weights context)]
-          ;; overrides from before will cascade
-          (is (= 30.0 (:text (mt/user-http-request :crowberto :get 200 context-url))))
-          (is (= original-weights (mt/user-http-request :crowberto :get 200 context-url)))
-          (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 5})))
-          (is (= (assoc original-weights :recency 5.0)
-                 (mt/user-http-request :crowberto :get 200 (weights-url context {:recency 5}))))
-          (is (= (assoc original-weights :recency 5.0 :text 40.0)
-                 (mt/user-http-request :crowberto :get 200 (weights-url context {:text 40}))))
-          (is (= (assoc original-weights :recency 5.0 :text 40.0)
-                 (mt/user-http-request :crowberto :get 200 context-url)))))
+(deftest ^:synchronized weights-test-2
+  (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
+    (testing "custom context"
+      (let [context          :none-given
+            context-url      (weights-url context {})
+            original-weights (search.config/weights context)]
+        (is (= original-weights (mt/user-http-request :crowberto :get 200 context-url)))
+        (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 5})))
+        (is (= (assoc original-weights :recency 5.0)
+               (mt/user-http-request :crowberto :get 200 (weights-url context {:recency 5}))))
+        (is (= (assoc original-weights :recency 5.0 :text 40.0)
+               (mt/user-http-request :crowberto :get 200 (weights-url context {:text 40}))))
+        (is (= (assoc original-weights :recency 5.0 :text 40.0)
+               (mt/user-http-request :crowberto :get 200 context-url)))))))
 
+(deftest ^:synchronized weights-test-3
+  (let [base-url (weights-url)]
+    (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
       (testing "all weights (nested)"
         (let [context     :all
               context-url (weights-url context {})
@@ -1682,17 +1682,18 @@
           (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 4})))
           (is (mt/user-http-request :crowberto :get 400 (weights-url context {:recency 4})))
           (is (mt/user-http-request :crowberto :get 400 (weights-url context {:text 30})))
-          (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url)))))
+          (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url))))))))
 
-      (testing "ranker parameters"
-        (let [context :just-for-fun]
-          (is (mt/user-http-request :crowberto :get 200 (weights-url context {:model/dataset 10})))
-          (is (= 10.0 (search.config/scorer-param context :model :dataset)))
-          (is (mt/user-http-request :crowberto :get 200 (weights-url context {:model/dataset 5})))
-          (is (= 5.0 (search.config/scorer-param context :model :dataset)))))
-
-      (finally
-        (public-settings/experimental-search-weight-overrides! original-overrides)))))
+(deftest ^:synchronized weights-test-4
+  (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
+    (testing "ranker parameters"
+      (let [context :just-for-fun]
+        (is (=? {:model/dataset 10.0}
+                (mt/user-http-request :crowberto :get 200 (weights-url context {:model/dataset 10}))))
+        (is (= 10.0 (search.config/scorer-param context :model :dataset)))
+        (is (=? {:model/dataset 5.0}
+                (mt/user-http-request :crowberto :get 200 (weights-url context {:model/dataset 5}))))
+        (is (= 5.0 (search.config/scorer-param context :model :dataset)))))))
 
 (deftest dashboard-questions
   (testing "Dashboard questions get a dashboard_id when searched"

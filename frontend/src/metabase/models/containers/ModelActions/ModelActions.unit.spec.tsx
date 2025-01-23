@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Redirect, Route } from "react-router";
+import { IndexRedirect, Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -11,9 +11,6 @@ import {
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
 import {
-  fireEvent,
-  getIcon,
-  queryIcon,
   renderWithProviders,
   screen,
   waitFor,
@@ -30,7 +27,6 @@ import type {
   Card,
   Collection,
   Database,
-  Field,
   Settings,
   WritebackAction,
   WritebackQueryAction,
@@ -47,12 +43,10 @@ import {
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockTable,
-  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   createNativeModelCard as _createNativeModelCard,
   createStructuredModelCard as _createStructuredModelCard,
-  createSavedNativeCard,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 import {
@@ -60,7 +54,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import ModelDetailPage from "./ModelDetailPage";
+import ModelActions from "./ModelActions";
 
 // eslint-disable-next-line react/display-name
 jest.mock("metabase/actions/containers/ActionCreator", () => () => (
@@ -118,13 +112,6 @@ const TEST_DATABASE = createMockDatabase({
   id: TEST_DATABASE_ID,
   name: "Test Database",
   tables: [TEST_TABLE, TEST_FK_TABLE_1],
-});
-
-const TEST_DATABASE_WITHOUT_NESTED_QUERIES = createMockDatabase({
-  ...TEST_DATABASE,
-  features: TEST_DATABASE.features?.filter(
-    feature => feature !== "nested-queries",
-  ),
 });
 
 const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
@@ -188,7 +175,6 @@ type SetupOpts = {
 
 async function setup({
   model: card,
-  tab = "usage",
   actions = [],
   databases = [TEST_DATABASE],
   collections = [],
@@ -242,15 +228,12 @@ async function setup({
   const name = model.displayName()?.toLowerCase();
   const slug = `${model.id()}-${name}`;
   const baseUrl = `/model/${slug}/detail`;
-  const initialRoute = `${baseUrl}/${tab}`;
 
   const { history } = renderWithProviders(
     <>
       <Route path="/model/:slug/detail">
-        <IndexRedirect to="usage" />
-        <Route path="usage" component={ModelDetailPage} />
-        <Route path="schema" component={ModelDetailPage} />
-        <Route path="actions" component={ModelDetailPage}>
+        <IndexRedirect to="actions" />
+        <Route path="actions" component={ModelActions}>
           <ModalRoute
             path="new"
             modal={ActionCreator}
@@ -262,11 +245,10 @@ async function setup({
             modalProps={{ enableTransition: false }}
           />
         </Route>
-        <Redirect from="*" to="usage" />
       </Route>
       <Route path="/question/:slug" component={() => null} />
     </>,
-    { withRouter: true, initialRoute, storeInitialState },
+    { withRouter: true, initialRoute: baseUrl, storeInitialState },
   );
 
   await waitForLoaderToBeRemoved();
@@ -275,12 +257,10 @@ async function setup({
 }
 
 async function setupActions({
-  tab = "actions",
   databases = [TEST_DATABASE_WITH_ACTIONS],
   ...opts
 }: SetupOpts) {
   return setup({
-    tab,
     databases,
     ...opts,
   });
@@ -292,176 +272,33 @@ async function openActionMenu(action: WritebackAction) {
   await userEvent.click(menuButton);
 }
 
-describe("ModelDetailPage", () => {
+describe("ModelActions", () => {
   describe.each([
     { type: "structured", getModel: createStructuredModelCard },
     { type: "native", getModel: createNativeModelCard },
   ])(`$type model`, ({ getModel }) => {
-    it("renders and shows general info", async () => {
+    it("renders and shows name", async () => {
       await setup({
-        model: getModel({ name: "My Model", description: "Foo Bar" }),
+        model: getModel({ name: "My Model" }),
       });
 
       expect(screen.getByText("My Model")).toBeInTheDocument();
-      expect(screen.getByLabelText("Description")).toHaveTextContent("Foo Bar");
     });
 
-    it("displays model creator", async () => {
-      const creator = createMockUser();
-      await setup({ model: getModel({ creator }) });
-
-      expect(screen.getByLabelText("Created by")).toHaveTextContent(
-        creator.common_name,
-      );
-    });
-
-    describe("management", () => {
-      it("allows to rename model", async () => {
-        const { model, modelUpdateSpy } = await setup({ model: getModel() });
-
-        const input = screen.getByDisplayValue(model.displayName() as string);
-        await userEvent.clear(input);
-        await userEvent.type(input, "New model name");
-        fireEvent.blur(input);
-
-        await waitFor(() => {
-          expect(modelUpdateSpy).toHaveBeenCalledWith({
-            ...model.card(),
-            name: "New model name",
-          });
-        });
-      });
-
-      it("allows to change description", async () => {
-        const { model, modelUpdateSpy } = await setup({ model: getModel() });
-
-        const input = screen.getByPlaceholderText("Add description");
-        await userEvent.type(input, "Foo bar");
-        fireEvent.blur(input);
-
-        await waitFor(() => {
-          expect(modelUpdateSpy).toHaveBeenCalledWith({
-            ...model.card(),
-            description: "Foo bar",
-          });
-        });
-        expect(screen.getByLabelText("Description")).toHaveTextContent(
-          "Foo bar",
-        );
-      });
-
-      it("can be archived", async () => {
-        const { model, modelUpdateSpy } = await setup({ model: getModel() });
-
-        await userEvent.click(getIcon("ellipsis"));
-        await userEvent.click(await screen.findByText("Move to trash"));
-
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
-        await userEvent.click(
-          screen.getByRole("button", { name: "Move to trash" }),
-        );
-
-        await waitFor(() => {
-          expect(modelUpdateSpy).toHaveBeenCalledWith(
-            { id: model.id() },
-            { archived: true },
-          );
-        });
-      });
-    });
-
-    describe("used by section", () => {
-      it("has an empty state", async () => {
-        const { model } = await setup({ model: getModel() });
-
-        expect(
-          screen.getByRole("link", { name: /Create a new question/i }),
-        ).toHaveAttribute("href", ML_Urls.getUrl(model));
-        expect(
-          screen.getByText(/This model is not used by any questions yet/i),
-        ).toBeInTheDocument();
-      });
-
-      it("does not offer creating new questions if database does not support nested queries", async () => {
-        await setup({
-          model: getModel(),
-          databases: [TEST_DATABASE_WITHOUT_NESTED_QUERIES],
-        });
-
-        expect(
-          screen.queryByRole("link", { name: /Create a new question/i }),
-        ).not.toBeInTheDocument();
-      });
-
-      it("does not offer creating new questions if nested queries are disabled", async () => {
-        await setup({
-          model: getModel(),
-          settings: {
-            "enable-nested-queries": false,
-          },
-        });
-
-        expect(
-          screen.queryByRole("link", { name: /Create a new question/i }),
-        ).not.toBeInTheDocument();
-      });
-
-      it("lists questions based on the model", async () => {
-        const { usedByQuestions } = await setup({
-          model: getModel({ name: "My Model" }),
-          usedBy: [
-            createSavedStructuredCard({ id: 5, name: "Q1" }),
-            createSavedNativeCard({ id: 6, name: "Q2" }),
-          ],
-        });
-        const [q1, q2] = usedByQuestions;
-
-        expect(screen.getByRole("link", { name: "Q1" })).toHaveAttribute(
-          "href",
-          ML_Urls.getUrl(q1),
-        );
-        expect(screen.getByRole("link", { name: "Q2" })).toHaveAttribute(
-          "href",
-          ML_Urls.getUrl(q2),
-        );
-
-        expect(
-          screen.queryByText(/Create a new question/i),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(/This model is not used by any questions yet/i),
-        ).not.toBeInTheDocument();
-      });
-    });
-
-    describe("schema section", () => {
-      it("displays model schema", async () => {
-        const { model } = await setup({ model: getModel(), tab: "schema" });
-        const fields = model.getResultMetadata();
-
-        await userEvent.click(screen.getByText("Schema"));
-
-        expect(fields.length).toBeGreaterThan(0);
-        expect(screen.getByText(`${fields.length} fields`)).toBeInTheDocument();
-
-        fields.forEach((field: Field) => {
-          expect(screen.getByText(field.display_name)).toBeInTheDocument();
-        });
-      });
-    });
-
-    describe("actions section", () => {
+    describe("core actions section", () => {
       it("is shown if actions are enabled for model's database", async () => {
         await setup({
           model: getModel(),
           databases: [TEST_DATABASE_WITH_ACTIONS],
         });
-        expect(screen.getByText("Actions")).toBeInTheDocument();
+        expect(screen.getByTestId("model-action-details")).toBeInTheDocument();
       });
 
       it("isn't shown if actions are disabled for model's database", async () => {
         await setup({ model: getModel() });
-        expect(screen.queryByText("Actions")).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId("model-action-details"),
+        ).not.toBeInTheDocument();
       });
 
       it("is shown if actions are disabled for the model's database but there are existing actions", async () => {
@@ -470,32 +307,7 @@ describe("ModelDetailPage", () => {
 
         await setup({ model, actions: [action] });
 
-        expect(screen.getByText("Actions")).toBeInTheDocument();
-      });
-
-      it("redirects to 'Used by' when trying to access actions tab without them enabled", async () => {
-        const { baseUrl, history } = await setup({
-          model: getModel(),
-          tab: "actions",
-        });
-
-        expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
-        expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
-          "aria-selected",
-          "true",
-        );
-      });
-
-      it("does not redirect to another tab if actions are disabled for the model's database but there are existing actions", async () => {
-        const model = getModel();
-        const action = createMockQueryAction({ model_id: model.id });
-
-        await setup({ model, actions: [action], tab: "actions" });
-
-        expect(screen.getByRole("tab", { name: "Actions" })).toHaveAttribute(
-          "aria-selected",
-          "true",
-        );
+        expect(screen.getByTestId("model-action-details")).toBeInTheDocument();
       });
 
       it("shows empty state if there are no actions", async () => {
@@ -671,36 +483,6 @@ describe("ModelDetailPage", () => {
     describe("read-only permissions", () => {
       const modelCard = getModel({ can_write: false });
 
-      it("doesn't allow to rename a model", async () => {
-        const { model } = await setup({ model: modelCard });
-        expect(
-          screen.getByDisplayValue(model.displayName() as string),
-        ).toBeDisabled();
-      });
-
-      it("doesn't allow to change description", async () => {
-        await setup({ model: modelCard });
-        expect(screen.getByPlaceholderText("No description")).toBeDisabled();
-      });
-
-      it("doesn't show model management actions", async () => {
-        await setup({ model: modelCard });
-        expect(queryIcon("ellipsis")).not.toBeInTheDocument();
-        expect(screen.queryByText("Archive")).not.toBeInTheDocument();
-        expect(screen.queryByText("Move")).not.toBeInTheDocument();
-      });
-
-      it("doesn't show a link to the query editor", async () => {
-        await setup({ model: modelCard });
-        expect(screen.queryByText("Edit definition")).not.toBeInTheDocument();
-      });
-
-      it("doesn't show a link to the metadata editor", async () => {
-        await setup({ model: modelCard });
-        await userEvent.click(screen.getByText("Schema"));
-        expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
-      });
-
       it("doesn't allow to create actions", async () => {
         await setupActions({ model: modelCard, actions: [] });
         expect(screen.queryByText("New action")).not.toBeInTheDocument();
@@ -730,16 +512,6 @@ describe("ModelDetailPage", () => {
     });
 
     describe("no data permissions", () => {
-      it("doesn't show model editor links", async () => {
-        await setup({
-          model: getModel(),
-          databases: [],
-          tab: "schema",
-        });
-        expect(screen.queryByText("Edit definition")).not.toBeInTheDocument();
-        expect(screen.queryByText("Edit metadata")).not.toBeInTheDocument();
-      });
-
       it("doesn't show a new question link", async () => {
         await setup({ model: getModel(), databases: [], tab: "usage" });
         expect(
@@ -804,25 +576,6 @@ describe("ModelDetailPage", () => {
 
   describe("structured model", () => {
     const modelCard = createStructuredModelCard();
-
-    it("displays backing table", async () => {
-      await setup({ model: modelCard });
-      expect(screen.getByLabelText("Backing table")).toHaveTextContent(
-        TEST_TABLE.display_name,
-      );
-    });
-
-    it("displays related tables", async () => {
-      const { metadata } = await setup({ model: modelCard });
-      const TABLE_1 = checkNotNull(metadata.table(TEST_FK_TABLE_1_ID));
-
-      const list = within(screen.getByTestId("model-relationships"));
-
-      expect(
-        list.getByRole("link", { name: TABLE_1.displayName() }),
-      ).toHaveAttribute("href", ML_Urls.getUrl(TABLE_1.newQuestion()));
-      expect(list.queryByText("Reviews")).not.toBeInTheDocument();
-    });
 
     it("allows to create implicit actions", async () => {
       const action = createMockQueryAction({ model_id: modelCard.id });
@@ -912,34 +665,10 @@ describe("ModelDetailPage", () => {
         screen.queryByText("Disable basic actions"),
       ).not.toBeInTheDocument();
     });
-
-    describe("no data permissions", () => {
-      it("shows limited model info", async () => {
-        await setup({ model: modelCard, databases: [] });
-
-        expect(screen.queryByText("Relationships")).not.toBeInTheDocument();
-        expect(screen.queryByText("Backing table")).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(TEST_TABLE.display_name),
-        ).not.toBeInTheDocument();
-      });
-    });
   });
 
   describe("native model", () => {
     const modelCard = createNativeModelCard();
-
-    it("doesn't show backing table", async () => {
-      await setup({ model: modelCard });
-      expect(screen.queryByLabelText("Backing table")).not.toBeInTheDocument();
-    });
-
-    it("doesn't show related tables", async () => {
-      await setup({ model: modelCard });
-      expect(
-        screen.queryByTestId("model-relationships"),
-      ).not.toBeInTheDocument();
-    });
 
     it("doesn't allow to create basic actions", async () => {
       await setup({ model: modelCard });
@@ -952,55 +681,6 @@ describe("ModelDetailPage", () => {
   });
 
   describe("navigation", () => {
-    const modelCard = createStructuredModelCard();
-
-    it("navigates between tabs", async () => {
-      const { baseUrl, history } = await setup({
-        model: modelCard,
-        databases: [TEST_DATABASE_WITH_ACTIONS],
-      });
-
-      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
-      expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-
-      await userEvent.click(screen.getByText("Schema"));
-      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/schema`);
-      expect(screen.getByRole("tab", { name: "Schema" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-
-      await userEvent.click(screen.getByText("Actions"));
-      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/actions`);
-      expect(screen.getByRole("tab", { name: "Actions" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-
-      await userEvent.click(screen.getByText("Used by"));
-      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
-      expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-    });
-
-    it("redirects to 'Used by' when opening an unknown tab", async () => {
-      const { baseUrl, history } = await setup({
-        model: modelCard,
-        tab: "foo-bar",
-      });
-
-      expect(history?.getCurrentLocation().pathname).toBe(`${baseUrl}/usage`);
-      expect(screen.getByRole("tab", { name: "Used by" })).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-    });
-
     it("redirects to query builder when trying to open a question", async () => {
       const { model: question, history } = await setup({
         model: createSavedStructuredCard(),

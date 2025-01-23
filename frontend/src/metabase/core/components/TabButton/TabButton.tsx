@@ -234,11 +234,13 @@ export function RenameableTabButton({
   }, [isRenaming]);
 
   const onFinishEditing = () => {
-    if (label.length === 0) {
+    const trimmedLabel = label.trim();
+
+    if (trimmedLabel.length === 0) {
       setLabel(prevLabel);
-    } else if (label !== prevLabel) {
-      setPrevLabel(label);
-      onRename(label);
+    } else if (trimmedLabel !== prevLabel) {
+      setPrevLabel(trimmedLabel);
+      onRename(trimmedLabel);
     }
     setIsRenaming(false);
   };
