@@ -265,23 +265,23 @@
       "spec": "../test/scenarios/dashboard-cards/visualization-options.cy.spec.js"
     },
     {
-      "duration": 16500,
+      "duration": 165000,
       "spec": "../test/scenarios/dashboard-filters-2/dashboard-filters-1-stage.cy.spec.ts"
     },
     {
-      "duration": 171000,
+      "duration": 49000,
       "spec": "../test/scenarios/dashboard-filters-2/dashboard-filters-2-stage-1.cy.spec.ts"
     },
     {
-      "duration": 171000,
+      "duration": 149000,
       "spec": "../test/scenarios/dashboard-filters-2/dashboard-filters-2-stage-2.cy.spec.ts"
     },
     {
-      "duration": 171000,
+      "duration": 179000,
       "spec": "../test/scenarios/dashboard-filters-2/dashboard-filters-2-stage-3.cy.spec.ts"
     },
     {
-      "duration": 171000,
+      "duration": 284000,
       "spec": "../test/scenarios/dashboard-filters-2/dashboard-filters-2-stage-4.cy.spec.ts"
     },
     {
