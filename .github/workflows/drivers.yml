@@ -1128,7 +1128,6 @@ jobs:
       - be-tests-druid-ee
       - be-tests-databricks-ee
       - be-tests-druid-jdbc-ee
-      - be-tests-mysql-mariadb
       - be-tests-mongo-4-4-ee
       - be-tests-mongo-4-4-ssl-ee
       - be-tests-mongo-5-0-ee
