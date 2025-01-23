@@ -73,7 +73,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     editorButton: {
       iconColor: "var(--mb-color-text-dark)",
       activeIconColor: "var(--mb-color-text-white)",
-      backgroundColor: "var(--mb-color-background)",
+      backgroundColor: "var(--mb-color-bg-white)",
       activeBackgroundColor: "var(--mb-color-brand)",
     },
   },

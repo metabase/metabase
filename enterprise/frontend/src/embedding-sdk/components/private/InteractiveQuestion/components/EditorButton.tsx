@@ -22,13 +22,12 @@ export const EditorButton = ({
       <ActionIcon
         data-testid="notebook-button"
         size="lg"
-        color="brand"
-        variant={isOpen ? "filled" : "default"}
         onClick={onClick}
         className={S.editorButton}
         data-active={isOpen}
+        variant="default"
       >
-        <Icon name="notebook" />
+        <Icon name="pencil_lines" />
       </ActionIcon>
     )
   );

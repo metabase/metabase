@@ -1,10 +1,14 @@
-.editorButton {
+.editorButton:not([data-css-specificity-hack="😅"]) {
   color: var(--mb-color-icon-sdk-editor-button);
   background: var(--mb-color-bg-sdk-editor-button);
   border: 1px solid var(--mb-color-border-sdk-editor-button);
-}
 
-.editorButton[data-active="true"] {
-  color: var(--mb-color-icon-sdk-editor-button-active);
-  background: var(--mb-color-bg-sdk-editor-button-active);
+  &:hover {
+    background: var(--mb-color-bg-sdk-editor-button);
+  }
+
+  &[data-active="true"] {
+    color: var(--mb-color-icon-sdk-editor-button-active);
+    background: var(--mb-color-bg-sdk-editor-button-active);
+  }
 }

@@ -64,8 +64,8 @@ export const darkTheme = defineMetabaseTheme({
 });
 
 const pugColors = {
-  primary: "#3F4BF3",
-  secondary: "#3F4BF3",
+  primary: "rgba(63, 75, 243)",
+  secondary: "rgba(63, 75, 243)",
   lighterGrey: "#D1CFC5",
   lightGrey: "#545455",
   darkGrey: "#1B1C21",
@@ -117,7 +117,14 @@ const pugTheme: MetabaseTheme = {
     },
     question: {
       toolbar: {
-        backgroundColor: "rgba(65, 75, 234, 0.2)",
+        backgroundColor: "#D8D9EE",
+      },
+    },
+    questionEditor: {
+      editorButton: {
+        iconColor: pugColors.secondary,
+        borderColor: pugColors.secondary,
+        backgroundColor: "transparent",
       },
     },
   },
@@ -234,7 +241,17 @@ const luminaraTheme: MetabaseTheme = {
     },
     question: {
       toolbar: {
-        backgroundColor: "#F4F3EF",
+        backgroundColor: "rgba(244, 243, 239, 1)",
+      },
+    },
+    questionEditor: {
+      editorButton: {
+        borderColor: "rgb(104, 119, 107)",
+        iconColor: "rgb(104, 119, 107)",
+        backgroundColor: "rgb(244, 243, 239)",
+
+        activeIconColor: "rgb(244, 243, 239)",
+        activeBackgroundColor: "rgb(104, 119, 107)",
       },
     },
     number: {
@@ -318,6 +335,11 @@ const proficiencyTheme: MetabaseTheme = {
     question: {
       toolbar: {
         backgroundColor: "transparent",
+      },
+    },
+    questionEditor: {
+      editorButton: {
+        iconColor: "#2d2d30",
       },
     },
   },
