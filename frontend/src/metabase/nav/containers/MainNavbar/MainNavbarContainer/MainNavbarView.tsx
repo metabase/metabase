@@ -172,7 +172,8 @@ export function MainNavbarView({
    *   - "upload" permissions for the attached DWH
    */
   const canUpload = canCurateRootCollection && canUploadToDatabase;
-  const showUploadCSVButton = hasAttachedDWHFeature && canUpload;
+  // const showUploadCSVButton = hasAttachedDWHFeature && canUpload;
+  const showUploadCSVButton = true; // FIXME for testing
 
   const isAdditionalDatabaseAdded = getHasOwnDatabase(databases);
   const showAddDatabaseButton = isAdmin && !isAdditionalDatabaseAdded;

@@ -36,14 +36,14 @@ export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery();
 
-  if (
-    !gSheetsEnabled ||
-    !gSheetsSetting ||
-    !userIsAdmin ||
-    !serviceAccountEmail
-  ) {
-    return null;
-  }
+  // if (
+  //   !gSheetsEnabled ||
+  //   !gSheetsSetting ||
+  //   !userIsAdmin ||
+  //   !serviceAccountEmail
+  // ) {
+  //   return null;
+  // }
 
   const buttonText = match(status)
     .with("not-connected", () => t`Connect Google Sheets`)
@@ -100,15 +100,15 @@ export function GsheetConnectionModal({
 
   const gSheetsEnabled = useSetting("show-google-sheets-integration");
 
-  if (
-    !gSheetsEnabled ||
-    !gSheetsSetting ||
-    !userIsAdmin ||
-    !serviceAccountEmail
-  ) {
-    console.error("Google Sheets integration is not enabled");
-    return null;
-  }
+  // if (
+  //   !gSheetsEnabled ||
+  //   !gSheetsSetting ||
+  //   !userIsAdmin ||
+  //   !serviceAccountEmail
+  // ) {
+  //   console.error("Google Sheets integration is not enabled");
+  //   return null;
+  // }
 
   const { status, folder_url } = gSheetsSetting;
 
