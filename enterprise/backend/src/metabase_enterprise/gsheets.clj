@@ -174,6 +174,7 @@
               (gsheets))
             (assoc :db_id (:id attached-dwh))))
       (do
+        (gsheets! gsheets-not-connected)
         (snowplow/track-event! ::snowplow/simple_event
                                {:event "sheets_connected"
                                 :event_detail "fail - no drive connection"})
