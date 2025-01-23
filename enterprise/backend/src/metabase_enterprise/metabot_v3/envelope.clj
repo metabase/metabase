@@ -164,7 +164,7 @@
        (filter #(and (is-tool-call-response? %)
                      (-> % :structured-content is-query?)))
        (keep :structured-content)
-       (filter #(= (:query-id %) query-id))
+       (filter #(= (:query_id %) query-id))
        first
        :query))
 
