@@ -517,35 +517,7 @@ describe(
           cy.findByLabelText(TEST_PARAMETER.name).type("1");
           cy.findByLabelText("Current Status").should("not.exist");
 
-        cy.findByLabelText("Current Status").type("active");
-
-        cy.button(SAMPLE_QUERY_ACTION.name).click();
-      });
-
-      verifyScoreValue(22, dialect);
-    });
-
-    it("should allow implicit action execution from the model details page", () => {
-      cy.get("@writableModelId").then(id => {
-        cy.visit(`/model/${id}/detail`);
-        cy.wait("@getModel");
-      });
-
-      createBasicActions();
-
-      openActionEditorFor("Create");
-
-      cy.wait("@getAction").then(({ response }) => {
-        const { parameters, visualization_settings } = response.body;
-        expect(parameters).to.have.length(5);
-        expect(visualization_settings).to.have.property("fields");
-      });
-
-      cy.findAllByTestId("form-field-container")
-        .filter(":contains('Created At')")
-        .within(() => {
-          cy.findByLabelText("Show field").click();
-          cy.findByLabelText("Show field").should("not.be.checked");
+          cy.button(SAMPLE_QUERY_ACTION.name).click();
         });
 
         cy.findByTestId("toast-undo")
@@ -613,10 +585,6 @@ describe(
           cy.wait("@getModel");
         });
 
-        cy.findByRole("tablist").within(() => {
-          cy.findByText("Actions").click();
-        });
-
         createBasicActions();
 
         openActionEditorFor("Create");
@@ -670,17 +638,8 @@ describe(
             model_id: modelId,
           });
 
-      createBasicActions();
-
-      enableSharingFor("Update", { publicUrlAlias: "updatePublicURL" });
-
-      openActionEditorFor("Update");
-
-      cy.findAllByTestId("form-field-container")
-        .filter(":contains('Created At')")
-        .within(() => {
-          cy.findByLabelText("Show field").click();
-          cy.findByLabelText("Show field").should("not.be.checked");
+          cy.visit(`/model/${modelId}/detail/actions`);
+          cy.wait("@getModel");
         });
 
         enableSharingFor(SAMPLE_WRITABLE_QUERY_ACTION.name, {
@@ -734,10 +693,6 @@ describe(
         cy.get("@writableModelId").then(id => {
           cy.visit(`/model/${id}/detail`);
           cy.wait("@getModel");
-        });
-
-        cy.findByRole("tablist").within(() => {
-          cy.findByText("Actions").click();
         });
 
         createBasicActions();
