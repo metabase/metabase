@@ -112,7 +112,8 @@
 (defmulti do-after-notification-sent
   "Performs post-notification actions based on the notification type."
   {:arglists '([notification-info notification-payload])}
-  (comp :payload_type first))
+  (fn [notification-info _notification-payload]
+    (:payload_type notification-info)))
 
 (defmethod do-after-notification-sent :default [_notification-info _notification-payload] nil)
 
