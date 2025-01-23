@@ -127,8 +127,11 @@ export type MetabaseComponentTheme = {
 
   questionEditor?: {
     editorButton?: {
+      iconColor?: string;
+      activeIconColor?: string;
       backgroundColor?: string;
       activeBackgroundColor?: string;
+      borderColor?: string;
     };
 
     actionButton?: {

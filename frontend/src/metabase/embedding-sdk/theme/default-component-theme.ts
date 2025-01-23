@@ -71,6 +71,8 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   },
   questionEditor: {
     editorButton: {
+      iconColor: "var(--mb-color-text-dark)",
+      activeIconColor: "var(--mb-color-text-white)",
       backgroundColor: "var(--mb-color-background)",
       activeBackgroundColor: "var(--mb-color-brand)",
     },

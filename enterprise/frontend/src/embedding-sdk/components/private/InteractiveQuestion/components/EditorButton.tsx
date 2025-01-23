@@ -2,6 +2,8 @@ import { useInteractiveQuestionContext } from "embedding-sdk/components/private/
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import { ActionIcon, Icon } from "metabase/ui";
 
+import S from "./EditorButton.module.css";
+
 export const EditorButton = ({
   isOpen,
   onClick,
@@ -19,16 +21,12 @@ export const EditorButton = ({
     }) && (
       <ActionIcon
         data-testid="notebook-button"
-        bg={
-          isOpen
-            ? "var(--mb-color-bg-sdk-editor-button-active)"
-            : "var(--mb-color-bg-sdk-editor-button)"
-        }
         size="lg"
-        c={isOpen ? "text-white" : "text-dark"}
         color="brand"
         variant={isOpen ? "filled" : "default"}
         onClick={onClick}
+        className={S.editorButton}
+        data-active={isOpen}
       >
         <Icon name="notebook" />
       </ActionIcon>

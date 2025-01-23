@@ -34,6 +34,11 @@ const CSS_VARIABLES_TO_SDK_THEME_MAP = {
     "questionEditor.editorButton.backgroundColor",
   "--mb-color-bg-sdk-editor-button-active":
     "questionEditor.editorButton.activeBackgroundColor",
+  "--mb-color-icon-sdk-editor-button": "questionEditor.editorButton.iconColor",
+  "--mb-color-icon-sdk-editor-button-active":
+    "questionEditor.editorButton.activeIconColor",
+  "--mb-color-border-sdk-editor-button":
+    "questionEditor.editorButton.borderColor",
 
   // Embedding SDK > Collection Browser
   "--mb-color-text-collection-browser-expand-button":
