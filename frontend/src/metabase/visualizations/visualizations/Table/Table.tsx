@@ -118,25 +118,27 @@ const DraggableHeader = ({
   const stageIndex = -1;
 
   return (
-    <QueryColumnInfoPopover
-      position="bottom-start"
-      query={query}
-      stageIndex={-1}
-      column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
-      timezone={timezone}
-      disabled={!hasMetadataPopovers}
-      openDelay={500}
-      showFingerprintInfo
-    >
-      <div ref={setNodeRef} className={styles.th} style={style} {...dndProps}>
-        {flexRender(header.column.columnDef.header, header.getContext())}
-        <div
-          className={styles.resizer}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleMouseDown}
-        />
-      </div>
-    </QueryColumnInfoPopover>
+    <div ref={setNodeRef} className={styles.th} style={style} {...dndProps}>
+      <QueryColumnInfoPopover
+        position="bottom-start"
+        query={query}
+        stageIndex={-1}
+        column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
+        timezone={timezone}
+        disabled={!hasMetadataPopovers}
+        openDelay={500}
+        showFingerprintInfo
+      >
+        <div>
+          {flexRender(header.column.columnDef.header, header.getContext())}
+        </div>
+      </QueryColumnInfoPopover>
+      <div
+        className={styles.resizer}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleMouseDown}
+      />
+    </div>
   );
 };
 
