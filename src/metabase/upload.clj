@@ -146,7 +146,7 @@
                 (t/plus (t/seconds 1))
                 (t/truncate-to :seconds))))))
 
-(def transliterator (Transliterator/getInstance "Any-Latin; Latin-ASCII"))
+(def ^:private transliterator (Transliterator/getInstance "Any-Latin; Latin-ASCII"))
 
 (defn- transliterate [s]
   (when-not (str/blank? s)
