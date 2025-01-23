@@ -15,30 +15,27 @@ export const MoveQuestionsIntoDashboardsInfoModal = ({
   <Modal
     opened
     onClose={onCancel}
-    title={t`Move saved questions into dashboards?`}
+    title={t`Move questions into their dashboards?`}
     size="35rem"
     withCloseButton={false}
     data-testid="move-questions-into-dashboard-info-modal"
   >
     <List spacing="md" mt="1.25rem">
-      <List.Item icon={<Icon name="ai" c="brand" mb="-2px" />} lh="1.5rem">
-        {t`Instead of cluttering up this collection, each saved question will be moved into and stored inside of the dashboard it appears in.`}
-      </List.Item>
       <List.Item
         icon={<Icon name="collection" c="brand" mb="-2px" />}
         lh="1.5rem"
       >
-        {t`We’ll only move questions in this collection that appear in a single dashboard in this collection.`}
+        {t`If a question only appears in a single dashboard in this collection, it'll be moved into that dashboard to declutter the collection.`}
       </List.Item>
       <List.Item icon={<Icon name="group" c="brand" mb="-2px" />} lh="1.5rem">
-        {t`Permissions won’t be changed.`}
+        {t`Permissions won’t change.`}
       </List.Item>
     </List>
 
     <Flex justify="flex-end" gap="md" pt="1rem">
       <Button variant="subtle" onClick={onCancel}>{t`Cancel`}</Button>
       <Button variant="filled" onClick={onConfirm}>
-        {t`Preview what this will do`}
+        {t`Preview the changes`}
       </Button>
     </Flex>
   </Modal>

@@ -19,7 +19,7 @@ if (hasPremiumFeature("collection_cleanup")) {
 
     return [
       {
-        title: t`Get rid of unused items`,
+        title: t`Clear out unused items`,
         icon: "archive",
         link: `${Urls.collection(collection)}/cleanup`,
       },

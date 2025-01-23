@@ -46,7 +46,7 @@ describe("ConfirmMoveDashboardQuestionCandidatesModal", () => {
   it("should render empty state if no dashboard candidates found", async () => {
     setup({ candidates: [] });
     const msg =
-      "There aren't any questions to clean up! Looks like everything is in its place.";
+      "There aren't any questions to move into dashboards. Looks like everything is in its place.";
     expect(await screen.findByText(msg)).toBeInTheDocument();
   });
 
