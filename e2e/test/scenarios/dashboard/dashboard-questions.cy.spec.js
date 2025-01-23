@@ -1028,7 +1028,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.log("user should be able to engage with the tool");
       H.openCollectionMenu();
       H.popover().within(() => {
-        cy.findByText("Move saved questions into dashboards")
+        cy.findByText("Move questions into their dashboards")
           .should("exist")
           .click();
       });
@@ -1037,7 +1037,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.findByTestId("move-questions-into-dashboard-info-modal")
         .should("exist")
         .within(() => {
-          cy.findByText("Move saved questions into dashboards?").should(
+          cy.findByText("Move questions into their dashboards?").should(
             "exist",
           );
           cy.findByText("Preview what this will do").should("exist").click();
@@ -1093,7 +1093,7 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.log("assert option to migrate is no longer available");
       H.openCollectionMenu();
       H.popover().within(() => {
-        cy.findByText("Move saved questions into dashboards").should(
+        cy.findByText("Move questions into their dashboards").should(
           "not.exist",
         );
       });
@@ -1104,7 +1104,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.visitCollection("root");
       H.openCollectionMenu();
       H.popover().within(() => {
-        cy.findByText("Move saved questions into dashboards")
+        cy.findByText("Move questions into their dashboards")
           .should("exist")
           .click();
       });

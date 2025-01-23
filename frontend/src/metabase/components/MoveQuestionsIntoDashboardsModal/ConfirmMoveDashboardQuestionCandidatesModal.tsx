@@ -82,7 +82,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
               <div className={S.column}>
                 <Flex gap="sm" align="center">
                   <Icon name="folder" c="brand" />
-                  {t`Saved Question`}
+                  {t`Question`}
                 </Flex>
               </div>
               <div className={S.column}>
@@ -114,7 +114,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
               .with({ rows: [] }, () => (
                 <Flex justify="center" py="19rem">
                   <Text size="1.25rem" px="md" color="text-light">
-                    {t`There aren't any questions to clean up! Looks like everything is in its place.`}
+                    {t`There aren't any questions to move into dashboards. Looks like everything is in its place.`}
                   </Text>
                 </Flex>
               ))

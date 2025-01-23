@@ -83,7 +83,7 @@ export const CollectionMenu = ({
 
   if (hasDqCandidates) {
     items.push({
-      title: t`Move saved questions into dashboards`,
+      title: t`Move questions into their dashboards`,
       icon: "add_to_dash",
       link: `${url}/move-questions-dashboard`,
     });
