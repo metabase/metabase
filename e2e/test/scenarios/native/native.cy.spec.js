@@ -322,6 +322,21 @@ describe("scenarios > question > native", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/missing required parameters/).should("be.visible");
   });
+
+  it("should run the query when pressing meta+enter", () => {
+    H.startNewNativeQuestion({
+      query: "SELECT COUNT(*) FROM ORDERS",
+    });
+    H.NativeEditor.focus();
+    cy.realPress(["Meta", "Enter"]);
+
+    cy.wait("@dataset");
+
+    cy.findByTestId("query-visualization-root").should("contain", "18,760");
+
+    // make sure a new line was not inserted
+    cy.get(".cm-lineNumbers").should("contain", "1").should("not.contain", "2");
+  });
 });
 
 // causes error in cypress 13
