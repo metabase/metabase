@@ -22,7 +22,7 @@ export const QuestionSettingsDropdown = ({
             <Icon c="inherit" size={16} name="gear" />
           </Center>
         }
-        bg="var(--mb-color-bg-sdk-viz-selector-with-settings)"
+        bg="var(--mb-color-bg-sdk-question-settings-button)"
       />
     </Popover.Target>
     <Popover.Dropdown miw="20rem" mah={height ?? FLEXIBLE_SIZE_DEFAULT_HEIGHT}>

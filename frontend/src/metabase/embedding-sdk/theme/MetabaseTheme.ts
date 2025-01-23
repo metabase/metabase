@@ -127,6 +127,10 @@ export type MetabaseComponentTheme = {
     chartTypeSelector?: {
       backgroundColor?: string;
     };
+
+    questionSettingsButton?: {
+      backgroundColor?: string;
+    };
   };
 
   questionEditor?: {
