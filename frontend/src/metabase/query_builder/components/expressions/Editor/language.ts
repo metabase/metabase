@@ -44,25 +44,30 @@ type LintOptions = {
 };
 
 const lint = (options: LintOptions) =>
-  linter((view: EditorView): Diagnostic[] => {
-    const source = view.state.doc.toString();
-    const error = diagnose({
-      source,
-      ...options,
-    });
-    if (!error || error.pos == null || error.len == null) {
-      return [];
-    }
+  linter(
+    (view: EditorView): Diagnostic[] => {
+      const source = view.state.doc.toString();
+      const error = diagnose({
+        source,
+        ...options,
+      });
+      if (!error || error.pos == null || error.len == null) {
+        return [];
+      }
 
-    return [
-      {
-        from: error.pos,
-        to: error.pos + error.len,
-        severity: "error",
-        message: error.message,
-      },
-    ];
-  });
+      return [
+        {
+          from: error.pos,
+          to: error.pos + error.len,
+          severity: "error",
+          message: error.message,
+        },
+      ];
+    },
+    {
+      tooltipFilter: () => [],
+    },
+  );
 
 export function customExpression(options: LintOptions) {
   return new LanguageSupport(expressionLanguage, [lint(options)]);
