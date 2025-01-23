@@ -104,7 +104,7 @@ To sort the columns **automatically**, click on the **sort** icon at the top rig
 
 ### Field type
 
-To change the [field type](../data-modeling/field-types.md) of a column, click on the **Type** dropdown menu in a column's setting box. You can also use the **Type** dropdown to label a column as an [entity key](https://www.metabase.com/glossary/entity_key) (primary key) or [foreign key](https://www.metabase.com/glossary/foreign_key) in Metabase (with no consequence to your database).
+To change the [field type](../data-modeling/field-types.md) of a column, click on the **Type** dropdown menu in a column's setting box. You can also use the **Type** dropdown to label a column as an [entity key](https://www.metabase.com/glossary/entity_key/) (primary key) or [foreign key](https://www.metabase.com/glossary/foreign_key/) in Metabase (with no consequence to your database).
 
 ### Casting to a specific data type
 
@@ -116,7 +116,7 @@ If you want Metabase to treat a text or number column as a datetime column:
 4. Scroll to **Cast to a specific data type**
 5. Select a casting option.
 
-> Metabase currently supports only casting to a datetime type in **Cast to a specific data type**. If you need to cast to a different type (like float), you can [create a SQL question](../questions/native-editor/writing-sql.md#starting-a-new-sql-query) that casts the data and [save it as a model](./models.md#create-a-model-from-a-saved-question), or create a view directly in your database.
+> Metabase currently supports only casting to a datetime type in **Cast to a specific data type**. If you need to cast to a different type (like float), you can [create a SQL question](../questions/native-editor/writing-sql.md/#starting-a-new-sql-query) that casts the data and [save it as a model](./models.md/#create-a-model-from-a-saved-question), or create a view directly in your database.
 
 **Text to datetime casting options**:
 
@@ -131,7 +131,7 @@ If you want Metabase to treat a text or number column as a datetime column:
 - UNIXNanoSeconds->DateTime
 - UNIXSeconds->DateTime
 
-Casting is different from setting the [field type](./field-types.md). For example, say you have a "Created At" column with a string [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) in your database. You'll need to cast "Created At" to one of the datetime types above if you want to do things like:
+Casting is different from setting the [field type](./field-types.md). For example, say you have a "Created At" column with a string [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview/) in your database. You'll need to cast "Created At" to one of the datetime types above if you want to do things like:
 
 - Create relative date filters, such as "Created At = Last week".
 - Use "Created At" with formulas like [datetimeAdd](../questions/query-builder/expressions/datetimeadd.md).
@@ -158,7 +158,7 @@ The default behavior for the `Is` filter for the field.
 
 ### Changing a search box filter to a dropdown filter
 
-The dropdown filter widget can be finicky, because Metabase needs to run a [scan](../databases/sync-scan.md#how-database-scans-work) to get the list of values for the dropdown menu.
+The dropdown filter widget can be finicky, because Metabase needs to run a [scan](../databases/sync-scan.md/#how-database-scans-work) to get the list of values for the dropdown menu.
 
 1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
@@ -219,7 +219,7 @@ https://www.google.com/search?q=askew
 
 To update the values in your filter dropdown menus, refresh or reset the cached values. **Cache actions** include:
 
-- **Re-scan this table or field** to run a manual scan for new or updated column values. If possible, re-scan the table during off-peak hours, as [scans](../databases/sync-scan.md#how-database-scans-work) can slow down your database.
+- **Re-scan this table or field** to run a manual scan for new or updated column values. If possible, re-scan the table during off-peak hours, as [scans](../databases/sync-scan.md/#how-database-scans-work) can slow down your database.
 - **Discard cached field values** to clear cached values and stop them from showing up in your [filter widgets](#changing-the-filter-widget).
 
 ### Table cache actions
@@ -249,5 +249,5 @@ If Metabase supports JSON unfolding for your database, you can decide whether to
 
 ## Further reading
 
-- [Keeping your analytics organized](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/same-page)
-- [Data modeling tutorials](https://www.metabase.com/learn/metabase-basics/getting-started/models)
+- [Keeping your analytics organized](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/same-page/)
+- [Data modeling tutorials](https://www.metabase.com/learn/metabase-basics/getting-started/models/)

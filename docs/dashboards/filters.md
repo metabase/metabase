@@ -101,7 +101,7 @@ You can choose from:
 
 A flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards. Options include:
 
-- **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be either a question built using the query builder, or a native/SQL question using a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type).
+- **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be either a question built using the query builder, or a native/SQL question using a [field filter](../questions/native-editor/sql-parameters.md/#the-field-filter-variable-type).
 - **Is not**. Exclude one or more specific values.
 - **Contains**. Match values that contain the entered text.
 - **Does not contain**. Filter out values that contain the entered text.
@@ -110,7 +110,7 @@ A flexible filter type that will let you create either a dropdown menu or an inp
 
 ## Connecting a filter or parameter widget to dashboard cards
 
-Dashboard widgets apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though they'll only be displayed when a tab has cards connected to the widget.
+Dashboard widgets apply across all [dashboard tabs](./introduction.md/#dashboard-tabs), though they'll only be displayed when a tab has cards connected to the widget.
 
 For each widget that you add, you'll need to tell Metabase which column the filter should update for each card.
 
@@ -134,7 +134,7 @@ You can't connect a time grouping parameter widget to a card with a SQL question
 
 ## Wiring up dashboard filters to text cards
 
-You can even wire up filters to text cards, but only if [the text card includes a variable](./introduction.md#including-variables-in-text-cards).
+You can even wire up filters to text cards, but only if [the text card includes a variable](./introduction.md/#including-variables-in-text-cards).
 
 ## Requiring a filter or parameter
 
@@ -184,8 +184,8 @@ A list of all of the possible values in a column. People can use checkboxes to s
 
 If you're not seeing the **Dropdown list** option, and your dashboard filter is based on a column from a:
 
-- Table or GUI model: an admin will need to [enable the dropdown widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
-- SQL model: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
+- Table or GUI model: an admin will need to [enable the dropdown widget](../data-modeling/metadata-editing.md/#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
+- SQL model: go to your [model's metadata settings](../data-modeling/models.md/#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
 
 #### Search box
 
@@ -260,7 +260,7 @@ Your active filter will only apply to your view of the dashboard. If someone els
 
 ![Using a filter](./images/use-filter.png)
 
-You can also set up a dashboard question to [update a filter on click](./interactive.md#use-a-chart-to-filter-a-dashboard).
+You can also set up a dashboard question to [update a filter on click](./interactive.md/#use-a-chart-to-filter-a-dashboard).
 
 ## Further reading
 
@@ -268,4 +268,4 @@ You can also set up a dashboard question to [update a filter on click](./interac
 - [Interactive dashboards](./interactive.md)
 - [Dashboard subscriptions](./subscriptions.md)
 - [Charts with multiple series](./multiple-series.md)
-- [Learn dashboards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards)
+- [Learn dashboards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/)

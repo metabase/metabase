@@ -20,13 +20,13 @@ Here are a few ideas for what you can do with actions:
 - Let team members remove redundant data.
 - Create a customer feedback form and embed it on your website.
 
-Actions must be added to a [model](../data-modeling/models.md), but actions only run on the raw tables that back those models (so actions will never edit your [model definition](../data-modeling/models.md#edit-a-models-query)).
+Actions must be added to a [model](../data-modeling/models.md), but actions only run on the raw tables that back those models (so actions will never edit your [model definition](../data-modeling/models.md/#edit-a-models-query)).
 
 ## Enabling actions for a database
 
 For actions to work, you'll first need to do the following two things:
 
-1. **Enable model actions for the database connection**. To enable actions for a database connection, admins should click on the **gear** icon in the upper right and navigate to **Admin settings** > **Databases**, then click on the database you want to create actions for. On the right side of the connection settings form, toggle the **Model actions** option. For actions to work, the database user account (the account you're using to connect to the database) must have [write permissions](../databases/users-roles-privileges.md#privileges-to-enable-actions). And for now, actions are only supported on PostgreSQL and MySQL databases.
+1. **Enable model actions for the database connection**. To enable actions for a database connection, admins should click on the **gear** icon in the upper right and navigate to **Admin settings** > **Databases**, then click on the database you want to create actions for. On the right side of the connection settings form, toggle the **Model actions** option. For actions to work, the database user account (the account you're using to connect to the database) must have [write permissions](../databases/users-roles-privileges.md/#privileges-to-enable-actions). And for now, actions are only supported on PostgreSQL and MySQL databases.
 2. **Create at least one model from that database.** Actions are associated with models, so you'll need to have created (or have access to) at least one model before you can start creating actions.
 
 ## Who can use actions
@@ -45,8 +45,8 @@ There are two types of actions:
 
 There are multiple ways to run actions:
 
-- [From the model details page](../data-modeling/models.md#model-detail-page) by clicking the **run** button.
-- From a [public form](./custom.md#make-public) of an action.
+- [From the model details page](../data-modeling/models.md/#model-detail-page) by clicking the **run** button.
+- From a [public form](./custom.md/#make-public) of an action.
 - From a [button on dashboard](../dashboards/actions.md).
 
 ## Actions change data in tables, which affect models

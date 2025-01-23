@@ -25,7 +25,7 @@ To ensure proper reporting it's important that timezones be set consistently in 
 - Unless you have a special need it's best to set your database reporting time zone to UTC and store all of your date/time related values in UTC.
 - Configure your JVM to use the same timezone you want to use for reporting, which ideally should also match the timezone of your database.
 - Set the Metabase `Report Timezone` to match the timezone you want to see your reports in, again, this should match the rest of the timezone settings you've made.
-- If you want to change your Metabase Cloud timezone, please [contact support](https://www.metabase.com/help-premium).
+- If you want to change your Metabase Cloud timezone, please [contact support](https://www.metabase.com/help-premium/).
 
 ## Data types
 
@@ -39,7 +39,7 @@ You can make your database columns time zone aware by storing them as specific d
 
 The exact data type will depend on your database. Some Metabase features only work with specific data types:
 
-- [Report timezone setting](../configuring-metabase/localization.md#report-timezone)
+- [Report timezone setting](../configuring-metabase/localization.md/#report-timezone)
 - [`converttimezone` custom expression](../questions/query-builder/expressions/converttimezone.md)
 
 ## Common pitfalls

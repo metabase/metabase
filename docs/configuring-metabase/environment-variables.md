@@ -45,7 +45,7 @@ docker run -d -p 3000:3000 -e MB_SITE_NAME="Awesome Company" --name metabase met
 
 ## Environment variables on Metabase Cloud
 
-If you're running Metabase Cloud, you can [contact support](https://www.metabase.com/help/premium) to adjust environment variables for your Metabase.
+If you're running Metabase Cloud, you can [contact support](https://www.metabase.com/help/premium/) to adjust environment variables for your Metabase.
 
 ---
 
@@ -124,7 +124,7 @@ Middleware that enforces validation of the client via the request header X-Metab
 
 ### `MB_APPLICATION_COLORS`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: json
 - Default: `{}`
@@ -160,7 +160,7 @@ To change the chart colors:
 
 ### `MB_APPLICATION_FAVICON_URL`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `app/assets/img/favicon.ico`
@@ -171,7 +171,7 @@ Upload a file to use as the favicon.
 
 ### `MB_APPLICATION_FONT`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `Lato`
@@ -182,7 +182,7 @@ Replace “Lato” as the font family.
 
 ### `MB_APPLICATION_FONT_FILES`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans/.
 
 - Type: json
 - Default: `null`
@@ -212,7 +212,7 @@ See [fonts](../configuring-metabase/fonts.md).
 
 ### `MB_APPLICATION_LOGO_URL`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `app/assets/img/logo.svg`
@@ -225,7 +225,7 @@ Inline styling and inline scripts are not supported.
 
 ### `MB_APPLICATION_NAME`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `Metabase`
@@ -475,7 +475,7 @@ SMTP username.
 
 ### `MB_EMBEDDING_APP_ORIGINS_INTERACTIVE`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -485,7 +485,7 @@ Allow these space delimited origins to embed Metabase interactive.
 
 ### `MB_EMBEDDING_APP_ORIGINS_SDK`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `localhost:*`
@@ -536,7 +536,7 @@ Allow admins to embed Metabase via static embedding?
 
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: boolean
 - Default: `true`
@@ -625,7 +625,7 @@ Whether to log health check requests from session middleware.
 
 ### `MB_HELP_LINK`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: keyword
 - Default: `:metabase`
@@ -635,7 +635,7 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 
 ### `MB_HELP_LINK_CUSTOM_DESTINATION`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `https://www.metabase.com/help/premium`
@@ -675,7 +675,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
 
 ### `MB_JWT_ATTRIBUTE_EMAIL`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `email`
@@ -685,7 +685,7 @@ Key to retrieve the JWT users email address.
 
 ### `MB_JWT_ATTRIBUTE_FIRSTNAME`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `first_name`
@@ -695,7 +695,7 @@ Key to retrieve the JWT users first name.
 
 ### `MB_JWT_ATTRIBUTE_GROUPS`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `groups`
@@ -705,7 +705,7 @@ Key to retrieve the JWT users groups.
 
 ### `MB_JWT_ATTRIBUTE_LASTNAME`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `last_name`
@@ -715,7 +715,7 @@ Key to retrieve the JWT users last name.
 
 ### `MB_JWT_ENABLED`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: boolean
 - Default: `false`
@@ -728,7 +728,7 @@ When set to true, will enable JWT authentication with the options configured in 
 
 ### `MB_JWT_GROUP_MAPPINGS`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: json
 - Default: `{}`
@@ -740,7 +740,7 @@ JSON object containing JWT to Metabase group mappings, where keys are JWT groups
 
 ### `MB_JWT_GROUP_SYNC`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: boolean
 - Default: `false`
@@ -750,7 +750,7 @@ Enable group membership synchronization with JWT.
 
 ### `MB_JWT_IDENTITY_PROVIDER_URI`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -760,7 +760,7 @@ URL for JWT-based login page. Optional if using JWT SSO only with the embedded a
 
 ### `MB_JWT_SHARED_SECRET`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -770,7 +770,7 @@ String used to seed the private key used to validate JWT messages. A hexadecimal
 
 ### `MB_JWT_USER_PROVISIONING_ENABLED`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: boolean
 - Default: `true`
@@ -790,7 +790,7 @@ Enter a URL of the landing page to show the user. This overrides the custom home
 
 ### `MB_LANDING_PAGE_ILLUSTRATION`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `default`
@@ -801,7 +801,7 @@ Options for displaying the illustration on the landing page.
 
 ### `MB_LANDING_PAGE_ILLUSTRATION_CUSTOM`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -957,7 +957,7 @@ don't have one.
 
 ### `MB_LOADING_MESSAGE`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: keyword
 - Default: `:doing-science`
@@ -968,7 +968,7 @@ Choose the message to show while a query is running. Possible values are "doing-
 
 ### `MB_LOGIN_PAGE_ILLUSTRATION`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `default`
@@ -979,7 +979,7 @@ Options for displaying the illustration on the login page.
 
 ### `MB_LOGIN_PAGE_ILLUSTRATION_CUSTOM`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -1045,7 +1045,7 @@ Maximum length of a JSON string before skipping it during sync for JSON unfoldin
 
 ### `MB_NO_DATA_ILLUSTRATION`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `default`
@@ -1056,7 +1056,7 @@ Options for displaying the illustration when there are no results after running 
 
 ### `MB_NO_DATA_ILLUSTRATION_CUSTOM`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -1067,7 +1067,7 @@ The custom illustration for when there are no results after running a question.
 
 ### `MB_NO_OBJECT_ILLUSTRATION`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `default`
@@ -1078,7 +1078,7 @@ Options for displaying the illustration when there are no results after searchin
 
 ### `MB_NO_OBJECT_ILLUSTRATION_CUSTOM`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -1096,7 +1096,7 @@ Indicates whether Metabase is running behind a proxy that sets the source-addres
 
 ### `MB_NOTIFICATION_LINK_BASE_URL`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -1259,7 +1259,7 @@ The randomization factor of the retry delay.
 
 ### `MB_SAML_APPLICATION_NAME`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `Metabase`
@@ -1269,7 +1269,7 @@ This application name will be used for requests to the Identity Provider.
 
 ### `MB_SAML_ATTRIBUTE_EMAIL`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress`
@@ -1279,7 +1279,7 @@ SAML attribute for the user's email address.
 
 ### `MB_SAML_ATTRIBUTE_FIRSTNAME`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname`
@@ -1289,7 +1289,7 @@ SAML attribute for the user's first name.
 
 ### `MB_SAML_ATTRIBUTE_GROUP`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `member_of`
@@ -1299,7 +1299,7 @@ SAML attribute for group syncing.
 
 ### `MB_SAML_ATTRIBUTE_LASTNAME`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname`
@@ -1309,7 +1309,7 @@ SAML attribute for the user's last name.
 
 ### `MB_SAML_ENABLED`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: boolean
 - Default: `false`
@@ -1319,7 +1319,7 @@ Is SAML authentication configured and enabled?
 
 ### `MB_SAML_GROUP_MAPPINGS`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: json
 - Default: `{}`
@@ -1329,7 +1329,7 @@ JSON containing SAML to Metabase group mappings.
 
 ### `MB_SAML_GROUP_SYNC`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: boolean
 - Default: `false`
@@ -1339,7 +1339,7 @@ Enable group membership synchronization with SAML.
 
 ### `MB_SAML_IDENTITY_PROVIDER_CERTIFICATE`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -1350,7 +1350,7 @@ open it in a text editor, then copy and paste the certificates contents here.
 
 ### `MB_SAML_IDENTITY_PROVIDER_ISSUER`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -1361,7 +1361,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 
 ### `MB_SAML_IDENTITY_PROVIDER_URI`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -1372,7 +1372,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
 
 ### `MB_SAML_KEYSTORE_ALIAS`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `metabase`
@@ -1382,7 +1382,7 @@ Alias for the key that Metabase should use for signing SAML requests.
 
 ### `MB_SAML_KEYSTORE_PASSWORD`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `changeit`
@@ -1392,7 +1392,7 @@ Password for opening the keystore.
 
 ### `MB_SAML_KEYSTORE_PATH`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -1402,7 +1402,7 @@ Absolute path to the Keystore file to use for signing SAML requests.
 
 ### `MB_SAML_SLO_ENABLED`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: boolean
 - Default: `false`
@@ -1412,7 +1412,7 @@ Is SAML Single Log Out enabled?
 
 ### `MB_SAML_USER_PROVISIONING_ENABLED`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: boolean
 - Default: `true`
@@ -1533,7 +1533,7 @@ Whether or not to display x-ray suggestions on the homepage. They will also be h
 
 ### `MB_SHOW_METABASE_LINKS`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: boolean
 - Default: `true`
@@ -1543,7 +1543,7 @@ Whether or not to display Metabase links outside admin settings.
 
 ### `MB_SHOW_METABOT`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: boolean
 - Default: `true`
@@ -1658,7 +1658,7 @@ This will affect things like grouping by week or filtering in GUI queries. It wo
 
 ### `MB_SUBSCRIPTION_ALLOWED_DOMAINS`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: string
 - Default: `null`
@@ -1715,7 +1715,7 @@ Upload settings.
 
 ### `MB_USER_VISIBILITY`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.
 
 - Type: keyword
 - Default: `:all`
@@ -1771,7 +1771,7 @@ Limits the number of rows Metabase will display in tables sent with dashboard su
 
 ### `MB_AUDIT_MAX_RETENTION_DAYS`
 
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.<br>
 Type: integer<br>
 Default: 720 (Metabase keeps all rows)<br>
 
@@ -2091,7 +2091,7 @@ Password for Java TrustStore file.
 
 ### `MB_LANDING_PAGE`
 
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.<br>
 Type: string<br>
 Default: `""`
 
@@ -2196,7 +2196,7 @@ Also, this variable controls the geocoding service that Metabase uses to know th
 
 ### `MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`
 
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.<br>
 Type: boolean<br>
 Default: `true`
 
@@ -2211,7 +2211,7 @@ An UUID token used to signify that an instance has permissions to create the ini
 
 ### `MB_SHOW_LIGHTHOUSE_ILLUSTRATION`
 
-Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
+Only available on Metabase [Pro](https://www.metabase.com/product/pro/) and [Enterprise](https://www.metabase.com/product/enterprise/) plans.<br>
 Type: boolean<br>
 Default: `true`<br>
 Since: v44.0

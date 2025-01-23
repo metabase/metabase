@@ -47,18 +47,18 @@ Financial field types tell Metabase to treat the field's values as money. If you
 - **Income**
 - **Price**
 
-See [Currency formatting options](../questions/visualizations/table.md#currency-formatting-options).
+See [Currency formatting options](../questions/visualizations/table.md/#currency-formatting-options).
 
 ## Numeric
 
-Metabase will treat numeric field types as [numbers](../questions/visualizations/table.md#number-formatting-options).
+Metabase will treat numeric field types as [numbers](../questions/visualizations/table.md/#number-formatting-options).
 
 - **Percentage**: Displays the number as a percentage by default.
 - **Quantity**: Displays the number as normal by default.
 - **Score**: Displays the number as normal by default.
 - **Share**: The same as percentage, so prefer "Percentage".
 
-See [Number formatting options](../questions/visualizations/table.md#number-formatting-options).
+See [Number formatting options](../questions/visualizations/table.md/#number-formatting-options).
 
 ## Profile
 
@@ -75,7 +75,7 @@ Fields that deal with people.
 
 Date and time field types tell Metabase the field contains datetime values, so it can use date pickers and display time series (e.g., a line chart).
 
-If your database stores datetimes as a number or string, you can [cast that column to a datetime](./metadata-editing.md#casting-to-a-specific-data-type).
+If your database stores datetimes as a number or string, you can [cast that column to a datetime](./metadata-editing.md/#casting-to-a-specific-data-type).
 
 - **Cancelation date**
 - **Cancelation time**
@@ -95,7 +95,7 @@ If your database stores datetimes as a number or string, you can [cast that colu
 - **UNIX Timestamp (Milliseconds)**
 - **UNIX Timestamp (Seconds)**
 
-See [Date formatting options](../questions/visualizations/table.md#date-formatting-options).
+See [Date formatting options](../questions/visualizations/table.md/#date-formatting-options).
 
 ## Categorical
 
@@ -122,7 +122,7 @@ Metabase can display fields with URLs as images or links.
 
 You can set field types for [models](./models.md), which helps Metabase understand how to work with data in models built using SQL. If you set each column type in a SQL model, people will be able to explore that model using the query builder and drill-through menus.
 
-With records that include integer entity keys, you can also configure text fields in models to [surface individual records in search](./models.md#surface-individual-records-in-search-by-matching-against-this-column).
+With records that include integer entity keys, you can also configure text fields in models to [surface individual records in search](./models.md/#surface-individual-records-in-search-by-matching-against-this-column).
 
 ### X-rays
 
@@ -130,13 +130,13 @@ When you [X-ray](../exploration-and-organization/x-rays.md) a table, model, or e
 
 ### Field Filters
 
-Knowing what field types are and how they work is helpful when using [field filters](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters), as you can only create field filters for [certain field types](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
+Knowing what field types are and how they work is helpful when using [field filters](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters/), as you can only create field filters for [certain field types](../questions/native-editor/sql-parameters.md/#field-filter-compatible-types).
 
 ### Editing types in the Table Metadata page
 
 If you're an administrator, you can edit field types using the [Table Metadata page](./metadata-editing.md) in the Admin Panel.
 
-While data types themselves can't be edited in Metabase, admins can manually [cast certain data types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
+While data types themselves can't be edited in Metabase, admins can manually [cast certain data types](./metadata-editing.md/#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
 
 > Metabase currently supports only casting to a datetime type in Metadata settings.
 
@@ -150,6 +150,6 @@ Metabase currently does not support array types with any database. You'll only b
 
 ## Further Reading
 
-- [Exploring data with Metabase's data browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser).
+- [Exploring data with Metabase's data browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser/).
 - [The Table Metadata page: editing metadata](./metadata-editing.md).
-- [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters).
+- [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters/).

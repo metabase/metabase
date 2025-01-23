@@ -35,7 +35,7 @@ The options you'll see here will depend on the field's type. They're generally t
 
 Currency field formatting settings include all the same options as in the global formatting section, as well as all the options that Number fields have.
 
-See [Currency formatting options](../questions/visualizations/table.md#currency-formatting-options).
+See [Currency formatting options](../questions/visualizations/table.md/#currency-formatting-options).
 
 ## Question-level formatting
 
