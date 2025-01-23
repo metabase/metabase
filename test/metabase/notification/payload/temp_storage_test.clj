@@ -21,7 +21,10 @@
       (is (.exists file))
       (temp-storage/cleanup! storage)
       (is (not (.exists file)))
-      (is (nil? @storage)))))
+      (is (thrown-with-msg?
+           Exception
+           #"File no longer exists"
+           @storage)))))
 
 (deftest nil-handling-test
   (testing "can handle nil values"
