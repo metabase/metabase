@@ -362,6 +362,15 @@ describe("scenarios > question > native", () => {
 
     H.NativeEditor.get().should("have.text", "\tSELECT");
   });
+
+  it("should indent the next line to the same level when entering newline", () => {
+    H.startNewNativeQuestion();
+
+    H.NativeEditor.focus()
+      .type("{tab}SELECT{enter}FOO")
+      .get()
+      .should("have.text", "\tSELECT\tFOO");
+  });
 });
 
 // causes error in cypress 13
