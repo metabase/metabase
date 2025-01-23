@@ -16,7 +16,7 @@
   []
   (when (premium-features/has-feature? :attached-dwh)
     (when-let [dw-db-id (t2/select-one-fn :id :model/Database :is_attached_dwh true)]
-      (when-let [dw-tables (t2/select :model/Table :db_id dw-db-id)]
+      (when-let [dw-tables (t2/select :model/Table :db_id dw-db-id :active true)]
         dw-tables))))
 
 (api.macros/defendpoint :get "/tables"
