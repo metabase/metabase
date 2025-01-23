@@ -773,7 +773,9 @@ class Question {
 
     // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations
     const queryWithExtraStage =
-      this.display() !== "pivot" ? Lib.ensureFilterStage(query) : query;
+      !isComposed && this.display() !== "pivot"
+        ? Lib.ensureFilterStage(query)
+        : query;
     const queryWithFilters = this.parameters().reduce((newQuery, parameter) => {
       const stageIndex =
         isDimensionTarget(parameter.target) && !isComposed
