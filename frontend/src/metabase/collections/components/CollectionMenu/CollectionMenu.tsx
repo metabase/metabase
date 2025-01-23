@@ -85,7 +85,7 @@ export const CollectionMenu = ({
     items.push({
       title: t`Move saved questions into dashboards`,
       icon: "add_to_dash",
-      link: `${url}/cleanup-questions`,
+      link: `${url}/move-questions-dashboard`,
     });
   }
 
