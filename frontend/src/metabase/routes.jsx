@@ -172,7 +172,7 @@ export const getRoutes = store => {
             <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
           </Route>
 
-          <Route path="/question">
+          <Route path="/question" title={t`Question`}>
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
