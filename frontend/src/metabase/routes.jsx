@@ -156,7 +156,7 @@ export const getRoutes = store => {
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
             <ModalRoute
-              path="cleanup-questions"
+              path="move-questions-dashboard"
               modal={MoveQuestionsIntoDashboardsModal}
             />
             {PLUGIN_COLLECTIONS.cleanUpRoute}

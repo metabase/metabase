@@ -45,7 +45,7 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
     // redirect to base collection page if there's an invalid collection id
     useEffect(() => {
       if (collectionId === undefined) {
-        const redirectPath = pathname.replace("/cleanup-questions", "");
+        const redirectPath = pathname.replace("/move-questions-dashboard", "");
         dispatch(replace(redirectPath));
       }
     }, [dispatch, collectionId, pathname]);
