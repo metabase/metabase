@@ -49,7 +49,7 @@
   com.google.guava/guava                    {:mvn/version "33.3.1-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
                                             {:mvn/version "2.1.214"}            ; embedded SQL database
-  com.ibm.icu/icu4j                         {:mvn/version "72.1"}               ; Used to transliterate unicode characters into latin
+  com.ibm.icu/icu4j                         {:mvn/version "71.1"}               ; Used to transliterate unicode characters into latin
   com.mchange/c3p0                          {:mvn/version "0.10.1"}             ; DB connection pool
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
                                             {:mvn/version "1.0.1"}              ; Snowplow analytics
