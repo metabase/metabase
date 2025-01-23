@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 export const visitApiKeySettings = () => {
   cy.visit("/admin/settings/authentication/api-keys");

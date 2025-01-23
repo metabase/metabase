@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 describe("scenarios > question > custom column > typing suggestion", () => {
   beforeEach(() => {
