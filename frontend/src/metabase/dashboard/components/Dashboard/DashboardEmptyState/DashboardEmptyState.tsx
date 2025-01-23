@@ -12,7 +12,7 @@ interface DashboardEmptyStateProps {
 }
 
 const getDefaultTitle = (isDashboardEmpty: boolean) =>
-  isDashboardEmpty ? t`This dashboard is empty` : t`There is nothing here, yet`;
+  isDashboardEmpty ? t`This dashboard is empty` : t`There's nothing here, yet`;
 
 function InlineIcon({ name }: { name: IconName }) {
   return <Icon name={name} style={{ verticalAlign: " middle" }} />;

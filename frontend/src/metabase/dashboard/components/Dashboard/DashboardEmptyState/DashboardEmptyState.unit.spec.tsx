@@ -65,7 +65,7 @@ describe("DashboardEmptyState", () => {
 
     expect(illustration()).toBeInTheDocument();
     assertBodyText({
-      title: "There is nothing here, yet",
+      title: "There's nothing here, yet",
       description:
         "Click on the Edit button to add questions, filters, links, or text.",
     });
@@ -128,7 +128,7 @@ describe("DashboardEmptyStateWithoutAddPrompt", () => {
 
     expect(illustration()).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "There is nothing here, yet" }),
+      screen.getByRole("heading", { name: "There's nothing here, yet" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByTestId("dashboard-empty-state-copy"),
