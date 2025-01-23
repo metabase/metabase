@@ -154,7 +154,8 @@
     (-> (.transliterate ^Transliterator transliterator ^String s)
         (str/replace #"\s+" "_")
         (str/replace #"[^\w]+" "_")
-        (str/replace #"_{2,}" "_"))))
+        (str/replace #"_{2,}" "_")
+        (str/replace #"^_|_$" ""))))
 
 (defn- unique-table-name
   "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplied `table-name` if necessary)."

@@ -253,14 +253,19 @@
                           "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"]
                          additional-row)))))))))
 
+(defn- unique-table-name [s]
+  (#'upload/unique-table-name driver/*driver* s))
+
 (deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "File name is slugified"
-      (is (=? #"my_file_name_\d+" (@#'upload/unique-table-name driver/*driver* "my file name"))))
+      (is (=? #"my_file_name_\d+" (unique-table-name "my file name"))))
     (testing "semicolons are removed"
-      (let [escaped (@#'upload/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")]
+      (let [escaped (unique-table-name "some text; -- DROP TABLE.csv")]
         (is (nil? (re-find #";" escaped)))
-        (is (str/starts-with? escaped "some_text_DROP_TABLE_csv_"))))
+        (is (=? #"some_text_DROP_TABLE_csv_\d+" escaped))))
+    (testing "transliteration"
+      (is (=? #"Geia_sou_Privet_alslam_lykm_Ola_\d+" (unique-table-name "¡Γειά σου! Привет! السلام عليكم! Olá!"))))
     (testing "No collisions"
       (let [n 50
             names (repeatedly n (partial #'upload/unique-table-name driver/*driver* ""))]
