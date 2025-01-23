@@ -320,7 +320,9 @@
 
 (api.macros/defendpoint :get "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
-  [{:keys [token param-key]}]
+  [{:keys [token param-key]} :- [:map
+                                 [:token     string?]
+                                 [:param-key string?]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
         card     (t2/select-one :model/Card :id card-id)]
