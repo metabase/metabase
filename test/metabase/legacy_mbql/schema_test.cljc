@@ -101,7 +101,7 @@
                     {:name "Avg discount", :display-name "Avg discount"}]],
                   :aggregation-idents {0 "ZOn_HshYdSEeteY5ArmS9"}},
                  :parameters []}]
-      (is (not (me/humanize (mr/explain mbql.s/Query query))))
+      (is (not (me/humanize (mc/explain mbql.s/Query query))))
       (is (= query (mbql.s/validate-query query))))))
 
 (deftest ^:parallel aggregation-reference-test
