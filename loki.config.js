@@ -1,6 +1,4 @@
 module.exports = {
-  chromeFlags:
-    "--headless --disable-gpu --hide-scrollbars --force-prefers-reduced-motion",
   diffingEngine: "looks-same",
   storiesFilter: [
     "static-viz",
