@@ -55,9 +55,11 @@ export const darkTheme = defineMetabaseTheme({
         lineHeight: "22px",
       },
     },
-    questionEditor: {
-      actionButton: {
-        backgroundColor: "#161A1D",
+    question: {
+      editor: {
+        actionButton: {
+          backgroundColor: "#161A1D",
+        },
       },
     },
   },
@@ -119,8 +121,7 @@ const pugTheme: MetabaseTheme = {
       toolbar: {
         backgroundColor: "#D8D9EE",
       },
-    },
-    questionEditor: {
+
       editorButton: {
         iconColor: pugColors.secondary,
         borderColor: pugColors.secondary,
@@ -184,9 +185,11 @@ const stitchTheme: MetabaseTheme = {
         lineHeight: "22px",
       },
     },
-    questionEditor: {
-      actionButton: {
-        backgroundColor: "#161A1D",
+    question: {
+      editor: {
+        actionButton: {
+          backgroundColor: "#161A1D",
+        },
       },
     },
   },
@@ -243,8 +246,6 @@ const luminaraTheme: MetabaseTheme = {
       toolbar: {
         backgroundColor: "rgba(244, 243, 239, 1)",
       },
-    },
-    questionEditor: {
       editorButton: {
         borderColor: "rgb(104, 119, 107)",
         iconColor: "rgb(104, 119, 107)",
@@ -254,6 +255,7 @@ const luminaraTheme: MetabaseTheme = {
         activeBackgroundColor: "rgb(104, 119, 107)",
       },
     },
+
     number: {
       value: {
         fontSize: "36px",
@@ -336,8 +338,6 @@ const proficiencyTheme: MetabaseTheme = {
       toolbar: {
         backgroundColor: "transparent",
       },
-    },
-    questionEditor: {
       editorButton: {
         iconColor: "#2d2d30",
       },
