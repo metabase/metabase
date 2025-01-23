@@ -26,6 +26,7 @@
   (eval . (put 'define-premium-feature             'clojure-doc-string-elt 2))
   (eval . (put 'api/defendpoint-schema             'clojure-doc-string-elt 3))
   (eval . (put 'api/defendpoint                    'clojure-doc-string-elt 3))
+  (eval . (put 'api.macros/defendpoint             'clojure-doc-string-elt 3))
   (eval . (put 'api/defendpoint-async              'clojure-doc-string-elt 3))
   (eval . (put 'defsetting                         'clojure-doc-string-elt 2))
   (eval . (put 'setting/defsetting                 'clojure-doc-string-elt 2))
