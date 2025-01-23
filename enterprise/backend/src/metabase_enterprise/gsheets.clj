@@ -94,7 +94,7 @@
                                             [:last-sync-started-at [:maybe :time/zoned-date-time]]
                                             [:created-at :time/zoned-date-time]
                                             [:updated-at :time/zoned-date-time]
-                                             ;; unclear if `hosted-instance-resource-id` or `hosted-instance-id` are relevant
+                                            ;; unclear if `hosted-instance-resource-id` or `hosted-instance-id` are relevant
                                             [:hosted-instance-resource-id :int]
                                             [:hosted-instance-id :string]]]
   "Get the harbormaster gdrive type connection. This is used to verify the status of the folder sync.
@@ -158,7 +158,7 @@
       (throw (ex-info "No attached dwh found." {:status-code 404})))
     (if-let [{:keys [status]
               last-gdrive-conn-sync :last-sync-at
-              :as _gdrive-conn} (get-gdrive-connection)]
+              :as gdrive-conn} (get-gdrive-connection)]
       (let [last-dwh-sync (t2/select-one-fn :ended_at :model/TaskHistory
                                             :db_id (:id (t2/select-one :model/Database :is_attached_dwh true))
                                             :task "sync"
@@ -172,7 +172,14 @@
                 (snowplow/track-event! ::snowplow/simple_event
                                        {:event "sheets_connected" :event_detail "success"}))
               (gsheets))
-            (assoc :db_id (:id attached-dwh))))
+            (assoc :db_id (:id attached-dwh)
+                   :hm/conn gdrive-conn
+                   :mb/sync-info {:status status
+                                  :last-dwh-sync last-dwh-sync
+                                  :last-gdrive-conn-sync last-gdrive-conn-sync}
+                   :mb/sync-status (sync-complete? {:status status
+                                                    :last-dwh-sync last-dwh-sync
+                                                    :last-gdrive-conn-sync last-gdrive-conn-sync}))))
       (do
         (gsheets! gsheets-not-connected)
         (snowplow/track-event! ::snowplow/simple_event
