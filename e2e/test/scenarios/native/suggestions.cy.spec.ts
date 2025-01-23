@@ -28,6 +28,20 @@ describe("scenarios > question > native > suggestions", () => {
     });
   });
 
+  it("should suggest locals", () => {
+    H.startNewNativeQuestion({
+      query:
+        "SELECT date_trunc('month', CREATED_AT) as order_month FROM ORDERS GROUP BY ",
+    });
+    H.NativeEditor.type("order_mo");
+
+    H.NativeEditor.completions().within(() => {
+      H.NativeEditor.completion("order_month")
+        .should("be.visible")
+        .should("contain.text", "local");
+    });
+  });
+
   it("should not show duplicate suggestions", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("acc");
