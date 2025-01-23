@@ -78,3 +78,7 @@
 .tr:hover .td {
   background-color: var(--mb-color-bg-light);
 }
+
+.headerWrapper {
+  margin: 0 0.75em;
+}

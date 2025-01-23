@@ -1,6 +1,10 @@
+import type {
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+} from "@dnd-kit/core";
 import {
   DndContext,
-  type DragEndEvent,
   KeyboardSensor,
   MouseSensor,
   TouchSensor,
@@ -13,25 +17,14 @@ import {
   SortableContext,
   arrayMove,
   horizontalListSortingStrategy,
-  useSortable,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import {
-  type Header,
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import {
-  type CSSProperties,
-  type MouseEvent,
-  type TouchEvent,
-  useCallback,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useRef, useState } from "react";
 
-import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import { connect } from "metabase/lib/redux";
 import {
   getIsShowingRawTable,
@@ -40,10 +33,9 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import * as Lib from "metabase-lib";
 import type { OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
-import type { RowValues, VisualizationSettings } from "metabase-types/api";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import styles from "./Table.module.css";
 import { useTableCellsMeasure } from "./hooks/use-cell-measure";
@@ -61,87 +53,6 @@ interface TableProps extends VisualizationProps {
   question: Question;
 }
 
-interface DraggableHeaderProps {
-  header: Header<RowValues, unknown>;
-  isPivoted?: boolean;
-  timezone: string | undefined;
-  hasMetadataPopovers?: boolean;
-  question: Question;
-}
-
-const DraggableHeader = ({
-  header,
-  isPivoted,
-  question,
-  timezone,
-  hasMetadataPopovers,
-}: DraggableHeaderProps) => {
-  const { attributes, isDragging, listeners, setNodeRef, transform } =
-    useSortable({
-      id: header.id,
-      disabled: isPivoted,
-    });
-
-  const style: CSSProperties = {
-    opacity: isDragging ? 0.8 : 1,
-    position: "relative",
-    transform: isDragging ? CSS.Translate.toString(transform) : undefined,
-    transition: "width transform 0.2s ease-in-out",
-    whiteSpace: "nowrap",
-    width: header.column.getSize(),
-    zIndex: isDragging ? 2 : 0,
-    cursor: isPivoted ? "default" : "grab",
-    outline: "none",
-  };
-
-  const dndProps = {
-    ...attributes,
-    ...listeners,
-  };
-
-  const resizeHandler = header.getResizeHandler();
-
-  const handleMouseDown = useCallback(
-    (e: MouseEvent<HTMLDivElement> | TouchEvent<HTMLDivElement>) => {
-      e.stopPropagation();
-      resizeHandler(e);
-    },
-    [resizeHandler],
-  );
-
-  const column = header.column.columnDef.meta?.column;
-
-  if (!column) {
-    return null;
-  }
-  const query = question?.query();
-  const stageIndex = -1;
-
-  return (
-    <div ref={setNodeRef} className={styles.th} style={style} {...dndProps}>
-      <QueryColumnInfoPopover
-        position="bottom-start"
-        query={query}
-        stageIndex={-1}
-        column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
-        timezone={timezone}
-        disabled={!hasMetadataPopovers}
-        openDelay={500}
-        showFingerprintInfo
-      >
-        <div>
-          {flexRender(header.column.columnDef.header, header.getContext())}
-        </div>
-      </QueryColumnInfoPopover>
-      <div
-        className={styles.resizer}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleMouseDown}
-      />
-    </div>
-  );
-};
-
 export const _Table = ({
   data,
   height,
@@ -154,7 +65,7 @@ export const _Table = ({
   question,
   hasMetadataPopovers = true,
 }: TableProps) => {
-  const { rows, cols, results_timezone } = data;
+  const { rows, cols } = data;
   const bodyRef = useRef<HTMLDivElement>(null);
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
     cols.map((_col, index) => index.toString()),
@@ -174,6 +85,8 @@ export const _Table = ({
     measureHeaderCellDimensions,
     isPivoted,
     getColumnSortDirection,
+    question,
+    hasMetadataPopovers,
   });
 
   const table = useReactTable({
@@ -193,9 +106,21 @@ export const _Table = ({
     useSensor(KeyboardSensor, {}),
   );
 
-  const handleDragStart = useCallback(() => {
+  const handleDragStart = useCallback((_event: DragStartEvent) => {
     if (bodyRef.current) {
       bodyRef.current.style.overflow = "hidden";
+    }
+  }, []);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { active, over } = event;
+    if (active && over && active.id !== over.id) {
+      // Only update UI state for visual feedback during drag
+      setColumnOrder(columnOrder => {
+        const oldIndex = columnOrder.indexOf(active.id as string);
+        const newIndex = columnOrder.indexOf(over.id as string);
+        return arrayMove(columnOrder, oldIndex, newIndex);
+      });
     }
   }, []);
 
@@ -214,29 +139,22 @@ export const _Table = ({
         const oldIndex = parseInt(active.id as string, 10);
         const newIndex = parseInt(over.id as string, 10);
 
-        const columns = settings["table.columns"]?.slice() || [];
+        const columns =
+          settings["table.columns"]?.slice() ||
+          cols.map((col, index) => ({
+            name: col.name,
+            enabled: true,
+            index,
+          }));
+
         columns.splice(newIndex, 0, columns.splice(oldIndex, 1)[0]);
 
-        const settingsUpdate: Partial<VisualizationSettings> = {
+        onUpdateVisualizationSettings({
           "table.columns": columns,
-        };
-
-        const widths = settings["table.column_widths"];
-        if (Array.isArray(widths) && widths.length > 0) {
-          const newWidths = widths.slice();
-          newWidths.splice(newIndex, 0, newWidths.splice(oldIndex, 1)[0]);
-          settingsUpdate["table.column_widths"] = newWidths;
-        }
-        onUpdateVisualizationSettings(settingsUpdate);
-
-        setColumnOrder(columnOrder => {
-          const oldIndex = columnOrder.indexOf(active.id as string);
-          const newIndex = columnOrder.indexOf(over.id as string);
-          return arrayMove(columnOrder, oldIndex, newIndex);
         });
       }
     },
-    [settings, onUpdateVisualizationSettings, isPivoted],
+    [settings, onUpdateVisualizationSettings, isPivoted, cols],
   );
 
   const {
@@ -288,6 +206,7 @@ export const _Table = ({
       collisionDetection={closestCenter}
       modifiers={[restrictToHorizontalAxis]}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <>
@@ -317,15 +236,20 @@ export const _Table = ({
                     >
                       {virtualColumns.map(virtualColumn => {
                         const header = headerGroup.headers[virtualColumn.index];
+                        const headerContent = flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        );
                         return (
-                          <DraggableHeader
-                            timezone={results_timezone}
-                            question={question}
+                          <div
                             key={header.id}
-                            header={header}
-                            isPivoted={isPivoted}
-                            hasMetadataPopovers={hasMetadataPopovers}
-                          />
+                            style={{
+                              width: header.getSize(),
+                              position: "relative",
+                            }}
+                          >
+                            {headerContent}
+                          </div>
                         );
                       })}
                     </SortableContext>

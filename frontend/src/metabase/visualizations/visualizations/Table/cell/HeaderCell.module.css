@@ -12,7 +12,6 @@
 .content {
   display: flex;
   align-items: center;
-  margin: 0 0.75em;
   padding: 0.25rem 0.625em;
   white-space: nowrap;
   text-overflow: ellipsis;
