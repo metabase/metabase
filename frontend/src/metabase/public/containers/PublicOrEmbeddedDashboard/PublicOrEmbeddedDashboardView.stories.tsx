@@ -374,6 +374,9 @@ export function ComponentCompatibility() {
             Dropdown
           </Text>
         }
+        // loki couldn't make a screenshot of the tooltip in correct default position,
+        // so we have to specify it explicitly
+        placement="bottom"
       />
       <PopoverWithTrigger
         isInitiallyOpen
