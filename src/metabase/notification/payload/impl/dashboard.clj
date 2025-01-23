@@ -66,5 +66,3 @@
                                                      (mapcat :recipients)
                                                      (map #(or (:user %) (:email %))))
                                     :filters    (-> notification-info :dashboard_subscription :parameters)}}))
-
-
