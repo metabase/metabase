@@ -1245,6 +1245,7 @@ describe("45252", { tags: "@external" }, () => {
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Tables").click();
       cy.findByText("Writable Postgres12").click();
+      cy.findByText("Public").click();
       cy.findByText("Many Data Types").click();
     });
     H.getNotebookStep("filter")
