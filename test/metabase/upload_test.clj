@@ -269,7 +269,7 @@
         (is (nil? (re-find #";" escaped)))
         (is (=? #"some_text_DROP_TABLE_csv_\d+" escaped))))
     (testing "transliteration"
-      (is (=? #"Geia_sou_Privet_alslam_lykm_Ola_\d+" (unique-table-name "¡Γειά σoυ! Пpивeт! السلام عليكم! Olá!"))))
+      (is (=? #"Geia_sou_Privet_alslam_lykm_Ola_\d+" (unique-table-name "¡Γειά σoυ! Пrивeт! السلام عليكم! Olá!"))))
     (testing "No collisions"
       (let [n 50
             names (repeatedly n (partial #'upload/unique-table-name driver/*driver* ""))]
