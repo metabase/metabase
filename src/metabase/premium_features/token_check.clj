@@ -110,8 +110,10 @@
    [:company       {:optional true} [:string {:min 1}]]])
 
 (def ^:private ^:const token-status-cache-ttl
-  "Amount of time to cache the status of a valid enterprise token before forcing a re-check."
-  (u/hours->ms 12))
+  "Amount of time in ms to cache the status of a valid enterprise token before forcing a re-check."
+  ;; (u/hours->ms 12) TEMP: (gsheets)
+  1000
+  )
 
 (def ^{:arglists '([token base-url site-uuid])} ^:private fetch-token-and-parse-body*
   "Caches successful and 4XX API responses for 24 hours. 5XX errors, timeouts, etc. may be transient and will NOT be
