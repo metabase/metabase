@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { LoaderTestId } from "metabase/ui";
+
 import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper";
 
 export type LoadingAndErrorWrapperProps = {
@@ -56,10 +58,10 @@ export const DelayedLoadingAndErrorWrapper = ({
   if (loading) {
     if (!showWrapper) {
       // Don't show the wrapper yet, but make tests aware that things are loading
-      return <span data-testid="loading-indicator" />;
+      return <LoaderTestId />;
     }
     if (loader) {
-      return loader;
+      return <LoaderTestId>{loader}</LoaderTestId>;
     }
     return (
       <LoadingAndErrorWrapper error={error} loading={loading} {...props}>

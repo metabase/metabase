@@ -1,14 +1,15 @@
 import { useMemo } from "react";
-import _ from "underscore";
 
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { revertToRevision } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
+import { Group, Skeleton, Stack } from "metabase/ui";
+import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type Question from "metabase-lib/v1/Question";
 
 const { getModerationTimelineEvents } = PLUGIN_MODERATION;
@@ -46,16 +47,28 @@ export function QuestionActivityTimeline({
     );
   }, [moderationReviews, revisions, currentUser]);
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
-    <Timeline
-      events={events}
-      data-testid="saved-question-history-list"
-      revert={revision => dispatch(revertToRevision(revision))}
-      canWrite={question.canWrite()}
-    />
+    <DelayedLoadingAndErrorWrapper
+      delay={0}
+      loader={
+        <Stack spacing="xl">
+          <Repeat times={5}>
+            <Group spacing="sm" align="flex-start">
+              <Skeleton radius="100%" w="1rem" h="1rem" />
+              <Skeleton h="1rem" natural />
+            </Group>
+          </Repeat>
+        </Stack>
+      }
+      loading={isLoading}
+      error={error}
+    >
+      <Timeline
+        events={events}
+        data-testid="saved-question-history-list"
+        revert={revision => dispatch(revertToRevision(revision))}
+        canWrite={question.canWrite()}
+      />
+    </DelayedLoadingAndErrorWrapper>
   );
 }

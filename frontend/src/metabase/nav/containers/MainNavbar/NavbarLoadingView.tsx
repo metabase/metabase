@@ -22,7 +22,7 @@ const SectionTitleSkeleton = () => (
 
 export function NavbarLoadingView() {
   return (
-    <div aria-busy data-testid="loading-indicator">
+    <>
       <SidebarSection>
         <NavLinkSkeleton />
       </SidebarSection>
@@ -43,6 +43,6 @@ export function NavbarLoadingView() {
           <NavLinkSkeleton />
         </Repeat>
       </SidebarSection>
-    </div>
+    </>
   );
 }
