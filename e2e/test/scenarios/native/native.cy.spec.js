@@ -337,6 +337,28 @@ describe("scenarios > question > native", () => {
     // make sure a new line was not inserted
     cy.get(".cm-lineNumbers").should("contain", "1").should("not.contain", "2");
   });
+
+  it("should add tab at the end of the query", () => {
+    H.startNewNativeQuestion({
+      query: "SELECT",
+    });
+
+    H.NativeEditor.focus();
+    cy.realPress(["Tab"]);
+
+    H.NativeEditor.get().should("have.text", "SELECT\t");
+  });
+
+  it("should indent the line when pressing tab while selected", () => {
+    H.startNewNativeQuestion({
+      query: "SELECT",
+    });
+
+    H.NativeEditor.focus().type("{selectall}");
+    cy.realPress(["Tab"]);
+
+    H.NativeEditor.get().should("have.text", "\tSELECT");
+  });
 });
 
 // causes error in cypress 13
