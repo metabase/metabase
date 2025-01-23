@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
@@ -33,14 +33,31 @@ export function useBooleanOperatorFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : getDefaultOperator(availableOptions),
-  );
-  const [values, setValues] = useState(() =>
-    filterParts ? filterParts.values : [],
-  );
+  const defaultOperator = useMemo(() => {
+    return filterParts
+      ? filterParts.operator
+      : getDefaultOperator(availableOptions);
+  }, [filterParts, availableOptions]);
+
+  const [operator, setOperator] = useState(defaultOperator);
+
+  const defaultValues = useMemo(() => {
+    return filterParts ? filterParts.values : [];
+  }, [filterParts]);
+
+  const [values, setValues] = useState(defaultValues);
   const { valueCount, isAdvanced } = getOptionByOperator(operator);
-  const [isExpanded] = useState(isAdvanced);
+  const [isExpanded, setIsExpanded] = useState(isAdvanced);
+
+  useEffect(() => {
+    setValues(defaultValues);
+  }, [defaultValues]);
+
+  useEffect(() => {
+    const { isAdvanced } = getOptionByOperator(defaultOperator);
+    setOperator(defaultOperator);
+    setIsExpanded(isAdvanced);
+  }, [defaultOperator]);
 
   return {
     operator,
