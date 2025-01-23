@@ -40,7 +40,10 @@ export const SettingsSetting = props => {
   const [fancyStyle, setFancyStyle] = useState({});
   const thisRef = useRef();
 
-  const { setting, settingValues, errorMessage, autoScrollIntoView } = props;
+  // we don't want to pass down autoScrollIntoView to the widget
+  const { autoScrollIntoView, ...propsToPassDown } = props;
+
+  const { setting, settingValues, errorMessage } = props;
 
   useEffect(() => {
     if (autoScrollIntoView && thisRef.current) {
@@ -76,7 +79,7 @@ export const SettingsSetting = props => {
   const widgetProps = {
     ...setting.getProps?.(setting, settingValues),
     ...setting.props,
-    ...props,
+    ...propsToPassDown,
   };
 
   return (
