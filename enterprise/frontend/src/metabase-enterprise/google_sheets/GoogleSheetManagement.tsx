@@ -1,8 +1,10 @@
 import { type FormEvent, useState } from "react";
+import { useLocation } from "react-use";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { reloadSettings } from "metabase/admin/settings/settings";
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { CopyButton } from "metabase/components/CopyButton";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -26,6 +28,73 @@ import {
 } from "metabase-enterprise/api";
 
 import disconnectIllustration from "./disconnect.svg?component";
+
+export function GsheetConnectButton() {
+  const url = useLocation();
+  const databaseId = /databases\/(\d+)/.exec(url.pathname ?? '')?.[1];
+
+  const { data: databaseInfo } =
+    useGetDatabaseQuery(databaseId ? { id: Number(databaseId) }: skipToken);
+
+  const isDwh = databaseInfo?.is_attached_dwh;
+
+  const [showModal, setShowModal] = useState(false);
+
+  const gSheetsSetting = useSetting("gsheets");
+  const gSheetsEnabled = useSetting("show-google-sheets-integration");
+
+  const userIsAdmin = useSelector(getUserIsAdmin);
+
+  const shouldGetServiceAccount = isDwh && gSheetsEnabled && userIsAdmin;
+
+  const { data: { email: serviceAccountEmail } = {} } =
+    useGetServiceAccountQuery(shouldGetServiceAccount ? undefined : skipToken);
+
+  const { status } = gSheetsSetting;
+
+  if (
+    !gSheetsEnabled ||
+    !gSheetsSetting ||
+    !userIsAdmin ||
+    !serviceAccountEmail ||
+    !isDwh
+  ) {
+    return null;
+  }
+
+  const buttonText = match(status)
+    .with("not-connected", () => t`Connect Google Sheets`)
+    .with("loading", () => t`Google Sheets connecting...`)
+    .with("complete", () => t`Disconnect`)
+    .otherwise(() => t`Google Sheets`);
+
+  return (
+    <Flex align="center" gap="sm">
+      {status === "complete" && (
+        <Flex align="center" gap="xs">
+          <Icon name="google_sheet" />
+          <Text>
+            {t`Connected to Google Sheets`}
+          </Text>
+        </Flex>
+      )}
+      <Text>{" · "}</Text>
+      <Button
+        p={0}
+        variant="subtle"
+        onClick={() => setShowModal(true)}
+        disabled={status === "loading"}
+        leftIcon={status === "complete" ? undefined : <Icon name="google_sheet" />}
+      >
+        {buttonText}
+      </Button>
+      <GsheetConnectionModal
+        isModalOpen={showModal}
+        onClose={() => setShowModal(false)}
+      />
+    </Flex>
+  );
+}
 
 export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
   const gSheetsSetting = useSetting("gsheets");
@@ -58,7 +127,10 @@ export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
     .otherwise(() => null);
 
   return (
-    <Menu.Item onClick={onClick} disabled={status === "loading"}>
+    <Menu.Item
+      onClick={onClick}
+      disabled={status === "loading"}
+    >
       <Flex gap="sm" align="flex-start" justify="space-between" w="100%">
         <Flex>
           <Icon name="google_sheet" mt="xs" mr="sm" />
@@ -284,19 +356,21 @@ function GoogleSheetsDisconnectModal({
               t`Only one folder can be synced with Metabase at a time. Your tables and Google Sheets will remain in place.`
             : t`Your existing tables and Google Sheets will remain in place but they will no longer be updated automatically.`}
         </Text>
-        <Stack mt="sm" w="13rem">
-          <Button
-            fullWidth
-            variant="filled"
-            color="danger"
-            loading={isDeletingFolderLink}
-            onClick={onDelete}
-          >
-            {t`Disconnect`}
-          </Button>
-          <Button fullWidth variant="outline" onClick={onClose}>
-            {t`Keep connected`}
-          </Button>
+        <Stack mt="sm">
+          <Stack w="13rem" mx="auto">
+            <Button
+              fullWidth
+              variant="filled"
+              color="danger"
+              loading={isDeletingFolderLink}
+              onClick={onDelete}
+            >
+              {t`Disconnect`}
+            </Button>
+            <Button fullWidth variant="outline" onClick={onClose}>
+              {t`Keep connected`}
+            </Button>
+          </Stack>
           <Text c="error" ta="center">
             {errorMessage}
           </Text>

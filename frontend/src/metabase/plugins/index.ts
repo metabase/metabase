@@ -563,6 +563,7 @@ export const PLUGIN_UPLOAD_MANAGEMENT = {
   GsheetConnectionModal:
     PluginPlaceholder as ComponentType<GsheetConnectionModalProps>,
   GsheetMenuItem: PluginPlaceholder as ComponentType<{ onClick: () => void }>,
+  GsheetConnectButton: PluginPlaceholder,
 };
 
 export const PLUGIN_IS_EE_BUILD = {
