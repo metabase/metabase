@@ -22,6 +22,7 @@ import type { HelpText } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import css from "./Editor.module.css";
+import { Highlight } from "./Highlight";
 import { tokenAtPos } from "./suggestions";
 
 type State = {
@@ -221,8 +222,6 @@ function Help({ helpText }: { helpText?: HelpText | null }) {
 
   const { description, structure, args, example } = helpText;
 
-  // TODO: highlighting for example
-  // TODO: keep scroll state when rendering
   // TODO: add link to docs
 
   return (
@@ -263,7 +262,9 @@ function Help({ helpText }: { helpText?: HelpText | null }) {
         {example && (
           <>
             <Box className={css.title}>{t`Example`}</Box>
-            <Box className={css.example}>{example}</Box>
+            <Box className={css.example}>
+              <Highlight expression={example} />
+            </Box>
           </>
         )}
       </Box>

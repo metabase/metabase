@@ -6,32 +6,32 @@ import { styleTags, tags as t } from "@lezer/highlight";
 import type * as Lib from "metabase-lib";
 import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 
-import { parser } from "./parser";
+import { parser as baseParser } from "./parser";
 
-const parserWithMetadata = parser.configure({
-  props: [
-    styleTags({
-      Identifier: t.variableName,
-      Boolean: t.bool,
-      String: t.string,
-      Number: t.number,
-      ColumnReference: t.processingInstruction,
-      Escape: t.escape,
-      "CallExpression/Identifier": t.function(t.variableName),
-      And: t.logicOperator,
-      Or: t.logicOperator,
-      Not: t.logicOperator,
-      '+ - "*" "/"': t.arithmeticOperator,
-      '< > =< => = "!-"': t.compareOperator,
-      "( )": t.paren,
-      "[ ]": t.bracket,
-      "{ }": t.brace,
-    }),
-  ],
+export const tags = styleTags({
+  Identifier: t.variableName,
+  Boolean: t.bool,
+  String: t.string,
+  Number: t.number,
+  ColumnReference: t.processingInstruction,
+  Escape: t.escape,
+  "CallExpression/Identifier": t.function(t.variableName),
+  And: t.logicOperator,
+  Or: t.logicOperator,
+  Not: t.logicOperator,
+  '+ - "*" "/"': t.arithmeticOperator,
+  '< > =< => = "!-"': t.compareOperator,
+  "( )": t.paren,
+  "[ ]": t.bracket,
+  "{ }": t.brace,
+});
+
+export const parser = baseParser.configure({
+  props: [tags],
 });
 
 const expressionLanguage = LRLanguage.define({
-  parser: parserWithMetadata,
+  parser,
   languageData: {},
 });
 
