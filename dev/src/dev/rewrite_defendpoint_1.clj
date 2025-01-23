@@ -83,7 +83,7 @@
 
 (defn- schema-should-be-optional? [node]
   (case (n/tag node)
-    :token  (= (n/sexpr node) :any)
+    :token  ('#{:any ms/MaybeBooleanValue} (n/sexpr node))
     :vector (= (n/sexpr (first (n/children node))) :maybe)
     :list   (and (= (n/sexpr (first (n/children node))) 'mu/with)
                  (schema-should-be-optional? (second (n/children node))))
@@ -110,7 +110,7 @@
                             [(n/map-node
                               ;; apparently the old behavior for booleans coerced `nil`, to `false`, so let's replicate
                               ;; that.
-                              (if ('#{[:maybe :boolean] [:maybe ms/BooleanValue]} (n/sexpr schema))
+                              (if (= (n/sexpr schema) [:maybe 'ms/BooleanValue])
                                 [(n/keyword-node :default) (n/whitespace-node " ") (n/token-node 'false)]
                                 [(n/keyword-node :optional) (n/whitespace-node " ") (n/token-node 'true)]))
                              (n/whitespace-node " ")])
