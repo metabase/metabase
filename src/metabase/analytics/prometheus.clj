@@ -220,6 +220,8 @@
    (prometheus/counter :metabase-search/index
                        {:description "Number of entries indexed for search"
                         :labels      [:model]})
+   (prometheus/counter :metabase-search/index-error
+                       {:description "Number of errors encountered when indexing for search"})
    (prometheus/counter :metabase-search/index-ms
                        {:description "Total number of ms indexing took"})
    (prometheus/counter :metabase-search/response-ok
@@ -233,7 +235,8 @@
   [registry-name]
   (log/info "Starting prometheus metrics collector")
   (let [registry (prometheus/collector-registry registry-name)]
-    (apply prometheus/register registry
+    (apply prometheus/register
+           (collector.ring/initialize registry)
            (concat (jvm-collectors)
                    (jetty-collectors)
                    [@c3p0-collector]

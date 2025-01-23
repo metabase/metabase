@@ -6,6 +6,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.ldap :as api.ldap]
+   [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
    [metabase.events :as events]
@@ -300,15 +301,14 @@
             (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/password_reset_token_valid"
+(api.macros/defendpoint :get "/password_reset_token_valid"
   "Check if a password reset token is valid and isn't expired."
-  [token]
-  {token ms/NonBlankString}
+  [_route-params
+   {:keys [token]} :- [:map
+                       [:token ms/NonBlankString]]]
   {:valid (boolean (valid-reset-token->user token))})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/properties"
+(api.macros/defendpoint :get "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
   []
