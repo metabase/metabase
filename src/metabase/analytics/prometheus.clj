@@ -235,7 +235,8 @@
   [registry-name]
   (log/info "Starting prometheus metrics collector")
   (let [registry (prometheus/collector-registry registry-name)]
-    (apply prometheus/register registry
+    (apply prometheus/register
+           (collector.ring/initialize registry)
            (concat (jvm-collectors)
                    (jetty-collectors)
                    [@c3p0-collector]
