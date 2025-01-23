@@ -1,67 +1,9 @@
 import { css } from "@emotion/react";
 import { getIn } from "icepick";
 
-import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/sdk-theme-to-css-vars";
 import type { MantineTheme } from "metabase/ui";
-
-/** Maps the CSS variable name to the corresponding theme key in the Embedding SDK theme. */
-const CSS_VARIABLES_TO_SDK_THEME_MAP = {
-  // Overlays
-  "--mb-overlay-z-index": "popover.zIndex",
-
-  // Tooltips
-  "--mb-color-tooltip-text": "tooltip.textColor",
-  "--mb-color-tooltip-background": "tooltip.backgroundColor",
-  "--mb-color-tooltip-background-focused": "tooltip.focusedBackgroundColor",
-  "--mb-color-tooltip-text-secondary": "tooltip.secondaryTextColor",
-
-  // Dashboards
-  "--mb-color-bg-dashboard": "dashboard.backgroundColor",
-  "--mb-color-bg-dashboard-card": "dashboard.card.backgroundColor",
-
-  // Questions
-  "--mb-color-bg-question": "question.backgroundColor",
-
-  // Notebook Editor > Action Button
-  "--mb-color-notebook-step-bg": "questionEditor.actionButton.backgroundColor",
-
-  // Embedding SDK > Interactive Question > Toolbar (Default Layout)
-  "--mb-color-bg-sdk-question-toolbar": "question.toolbar.backgroundColor",
-
-  // Embedding SDK > Interactive Question > Notebook Editor Button
-  "--mb-color-bg-sdk-editor-button":
-    "questionEditor.editorButton.backgroundColor",
-  "--mb-color-bg-sdk-editor-button-active":
-    "questionEditor.editorButton.activeBackgroundColor",
-  "--mb-color-icon-sdk-editor-button": "questionEditor.editorButton.iconColor",
-  "--mb-color-icon-sdk-editor-button-active":
-    "questionEditor.editorButton.activeIconColor",
-  "--mb-color-border-sdk-editor-button":
-    "questionEditor.editorButton.borderColor",
-
-  // Embedding SDK > Collection Browser
-  "--mb-color-text-collection-browser-expand-button":
-    "collectionBrowser.breadcrumbs.expandButton.textColor",
-  "--mb-color-bg-collection-browser-expand-button":
-    "collectionBrowser.breadcrumbs.expandButton.backgroundColor",
-  "--mb-color-text-collection-browser-expand-button-hover":
-    "collectionBrowser.breadcrumbs.expandButton.hoverTextColor",
-  "--mb-color-bg-collection-browser-expand-button-hover":
-    "collectionBrowser.breadcrumbs.expandButton.hoverBackgroundColor",
-} satisfies Record<string, MetabaseComponentThemeKey>;
-
-// https://www.raygesualdo.com/posts/flattening-object-keys-with-typescript-types/
-type FlattenObjectKeys<
-  T extends Record<string, unknown>,
-  Key = keyof T,
-> = Key extends string
-  ? T[Key] extends Record<string, unknown> | undefined
-    ? `${Key}.${FlattenObjectKeys<Exclude<T[Key], undefined>>}`
-    : `${Key}`
-  : never;
-
-type MetabaseComponentThemeKey = FlattenObjectKeys<MetabaseComponentTheme>;
 
 /**
  * Defines the CSS variables used across Metabase.
