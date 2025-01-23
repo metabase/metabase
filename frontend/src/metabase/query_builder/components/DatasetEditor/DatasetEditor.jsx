@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { merge } from "icepick";
 import PropTypes from "prop-types";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -180,7 +180,7 @@ function getColumnTabIndex(columnIndex, focusedFieldIndex) {
       : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
 }
 
-function DatasetEditor(props) {
+const DatasetEditor = forwardRef(function DatasetEditorInner(props, ref) {
   const {
     question,
     visualizationSettings,
@@ -508,7 +508,7 @@ function DatasetEditor(props) {
           </Tooltip>,
         ]}
       />
-      <Flex className={DatasetEditorS.Root}>
+      <Flex className={DatasetEditorS.Root} ref={ref}>
         <Flex className={DatasetEditorS.MainContainer}>
           <Box
             className={cx(DatasetEditorS.QueryEditorContainer, {
@@ -574,7 +574,7 @@ function DatasetEditor(props) {
       </Modal>
     </>
   );
-}
+});
 
 DatasetEditor.propTypes = propTypes;
 

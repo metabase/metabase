@@ -36,7 +36,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
+import { ExpressionEditorHelpTextContent } from "../ExpressionEditorHelpText";
 import { ExpressionEditorSuggestions } from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
 
@@ -135,6 +135,8 @@ interface ExpressionEditorTextfieldProps {
     expressionClause: Lib.ExpressionClause | null,
   ) => void;
   shortcuts?: SuggestionShortcut[];
+
+  forwardedRef?: React.ForwardedRef<HTMLDivElement>;
 }
 
 interface StateProps {
@@ -217,7 +219,6 @@ class ExpressionEditorTextfieldInner extends React.Component<
 > {
   input = React.createRef<AceEditor>();
   suggestionTarget = React.createRef<HTMLDivElement>();
-  helpTextTarget = React.createRef<HTMLDivElement>();
   popupMenuTarget = React.createRef<HTMLUListElement>();
 
   static defaultProps = {
@@ -767,7 +768,7 @@ class ExpressionEditorTextfieldInner extends React.Component<
   ];
 
   render() {
-    const { width, query, stageIndex } = this.props;
+    const { width, query, stageIndex, forwardedRef } = this.props;
     const {
       source,
       suggestions,
@@ -781,7 +782,7 @@ class ExpressionEditorTextfieldInner extends React.Component<
     return (
       <Popover opened={!!helpText} position="bottom-start">
         <Popover.Target>
-          <Box>
+          <Box ref={forwardedRef}>
             <ExpressionEditorSuggestions
               query={query}
               stageIndex={stageIndex}
@@ -835,14 +836,21 @@ class ExpressionEditorTextfieldInner extends React.Component<
         </Popover.Target>
         {/* similar to overlays,  Mantine keeps overriding the max-width property on the `style` attribute */}
         <Popover.Dropdown maw={`${width}px !important`}>
-          <ExpressionEditorHelpText helpText={helpText} />
+          <ExpressionEditorHelpTextContent helpText={helpText} />
         </Popover.Dropdown>
       </Popover>
     );
   }
 }
 
-export const ExpressionEditorTextfield =
-  ExplicitSize<ExpressionEditorTextfieldProps>()(
-    connect(mapStateToProps)(ExpressionEditorTextfieldInner),
-  );
+const ExpressionEditorTextfieldWithRef = React.forwardRef<
+  HTMLDivElement,
+  ExpressionEditorTextfieldProps & StateProps
+>((props, ref) => (
+  <ExpressionEditorTextfieldInner {...props} forwardedRef={ref} />
+));
+
+export const ExpressionEditorTextfield = _.compose(
+  ExplicitSize<ExpressionEditorTextfieldProps>(),
+  connect(mapStateToProps, null, null, { forwardRef: true }),
+)(ExpressionEditorTextfieldWithRef);

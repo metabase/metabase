@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { Component, createRef } from "react";
+import { Component, type ForwardedRef, createRef, forwardRef } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import _ from "underscore";
 
@@ -104,7 +104,10 @@ interface EntityLoaderProps {
   snippetCollections?: Collection[];
 }
 
-type Props = OwnProps & ExplicitSizeProps & EntityLoaderProps & EditorProps;
+type Props = OwnProps &
+  ExplicitSizeProps &
+  EntityLoaderProps &
+  EditorProps & { forwardedRef: ForwardedRef<HTMLDivElement> };
 
 interface NativeQueryEditorState {
   initialHeight: number;
@@ -348,6 +351,7 @@ export class NativeQueryEditor extends Component<
       <div
         className={S.queryEditor}
         data-testid="native-query-editor-container"
+        ref={this.props.forwardedRef}
       >
         {hasTopBar && (
           <Flex align="center" data-testid="native-query-top-bar">
@@ -450,10 +454,16 @@ export class NativeQueryEditor extends Component<
   }
 }
 
+const NativeQueryEditorRefWrapper = forwardRef<HTMLDivElement, Props>(
+  function _NativeQueryEditorRefWrapper(props, ref) {
+    return <NativeQueryEditor {...props} forwardedRef={ref} />;
+  },
+);
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  ExplicitSize(),
   Databases.loadList({ loadingAndErrorWrapper: false }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
-)(NativeQueryEditor);
+  ExplicitSize(),
+)(NativeQueryEditorRefWrapper);

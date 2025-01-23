@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import PropTypes from "prop-types";
-import { Component } from "react";
+import { Component, forwardRef } from "react";
 import ReactDOM from "react-dom";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -74,12 +74,24 @@ class CardRenderer extends Component {
   }
 
   render() {
-    return <div className={this.props.className} style={this.props.style} />;
+    return (
+      <div
+        className={this.props.className}
+        style={this.props.style}
+        ref={this.props.forwardedRef}
+      />
+    );
   }
 }
+
+const CardRendererWithRef = forwardRef(
+  function _CardRendererWithRef(props, ref) {
+    return <CardRenderer {...props} forwardedRef={ref} />;
+  },
+);
 
 export default ExplicitSize({
   wrapped: true,
   // Avoid using debounce when isDashboard=true because there should not be any initial delay when rendering cards
   refreshMode: props => (props.isDashboard ? "debounceLeading" : "throttle"),
-})(CardRenderer);
+})(CardRendererWithRef);

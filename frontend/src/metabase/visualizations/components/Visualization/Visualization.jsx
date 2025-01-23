@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { PureComponent } from "react";
+import { PureComponent, forwardRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -460,6 +460,7 @@ class Visualization extends PureComponent {
           className={className}
           style={style}
           data-testid="visualization-root"
+          ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
             <VisualizationHeader>
@@ -551,11 +552,20 @@ class Visualization extends PureComponent {
 
 Visualization.defaultProps = defaultProps;
 
+const VisualizationMemoized = memoizeClass("_getQuestionForCardCached")(
+  Visualization,
+);
+
+const VisualizationRefWrapper = forwardRef(
+  function _VisualizationRefWrapper(props, ref) {
+    return <VisualizationMemoized {...props} forwardedRef={ref} />;
+  },
+);
+
 export default _.compose(
   ExplicitSize({
     selector: ".CardVisualization",
     refreshMode: props => (props.isVisible ? "throttle" : "debounceLeading"),
   }),
-  connect(mapStateToProps),
-  memoizeClass("_getQuestionForCardCached"),
-)(Visualization);
+  connect(mapStateToProps, null, null, { forwardRef: true }),
+)(VisualizationRefWrapper);
