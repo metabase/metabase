@@ -55,7 +55,9 @@
 
   clojure.lang.IDeref
   (deref [_]
-    (read-from-file file))
+    (if (.exists file)
+      (read-from-file file)
+      (throw (ex-info "File no longer exists" {:file file}))))
 
   Object
   (toString [_]
