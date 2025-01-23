@@ -11,6 +11,7 @@ import type {
 import {
   createMockCollection,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -35,8 +36,10 @@ export const setup = ({
 }: SetupOpts) => {
   setupDashboardQuestionCandidatesEndpoint(dashboardQuestionCandidates);
 
-  const settings = mockSettings({ "token-features": tokenFeatures });
-  const state = createMockState({ settings });
+  const state = createMockState({
+    settings: mockSettings({ "token-features": tokenFeatures }),
+    currentUser: createMockUser({ is_superuser: isAdmin }),
+  });
 
   const onUpdateCollection = jest.fn();
 

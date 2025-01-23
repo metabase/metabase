@@ -117,6 +117,7 @@ describe("CollectionMenu", () => {
   it("should not show 'Move questions into their dashboards' option if there's no dashboard question candidates", async () => {
     setup({
       collection: createMockCollection({ can_write: true }),
+      isAdmin: true,
     });
 
     await userEvent.click(getIcon("ellipsis"));
@@ -128,18 +129,8 @@ describe("CollectionMenu", () => {
   it("should show 'Move questions into their dashboards' option if there's dashboard question candidates", async () => {
     setup({
       collection: createMockCollection({ can_write: true }),
-      dashboardQuestionCandidates: [
-        {
-          id: 1,
-          name: "Card",
-          description: null,
-          sole_dashboard_info: {
-            id: 1,
-            name: "Dashboard",
-            description: null,
-          },
-        },
-      ],
+      dashboardQuestionCandidates: [dqCandidate],
+      isAdmin: true,
     });
 
     await userEvent.click(getIcon("ellipsis"));
@@ -147,4 +138,28 @@ describe("CollectionMenu", () => {
       await screen.findByText("Move questions into their dashboards"),
     ).toBeInTheDocument();
   });
+
+  it("should not show 'Move questions into their dashboards' option if the user is not an admin", async () => {
+    setup({
+      collection: createMockCollection({ can_write: true }),
+      dashboardQuestionCandidates: [dqCandidate],
+      isAdmin: false,
+    });
+
+    await userEvent.click(getIcon("ellipsis"));
+    expect(
+      screen.queryByText("Move questions into their dashboards"),
+    ).not.toBeInTheDocument();
+  });
 });
+
+const dqCandidate = {
+  id: 1,
+  name: "Card",
+  description: null,
+  sole_dashboard_info: {
+    id: 1,
+    name: "Dashboard",
+    description: null,
+  },
+};

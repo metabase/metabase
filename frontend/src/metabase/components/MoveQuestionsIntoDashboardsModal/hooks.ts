@@ -14,5 +14,6 @@ export const useHasDashboardQuestionCandidates = (
   const dqCandidatesReq = useListCollectionDashboardQuestionCandidatesQuery(
     isAdmin ? { collectionId, limit: 0 } : skipToken,
   );
+
   return (dqCandidatesReq.data?.total ?? 0) > 0;
 };
