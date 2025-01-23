@@ -90,19 +90,29 @@
 (defn- send-notification*
   [subscription-id]
   (let [subscription    (t2/select-one :model/NotificationSubscription subscription-id)
-        notification-id (:notification_id subscription)]
-    (try
-      (log/infof "Sending notification %d for subscription %d" notification-id subscription-id)
-      (task-history/with-task-history {:task         "notification-trigger"
-                                       :task_details {:trigger_type                 :notification-subscription/cron
-                                                      :notification_subscription_id subscription-id
-                                                      :cron_schedule                (:cron_schedule subscription)
-                                                      :notification_ids             [notification-id]}}
-        (notification/send-notification! (t2/select-one :model/Notification notification-id) :notification/sync? true))
-      (log/infof "Sent notification %d for subscription %d" notification-id subscription-id)
-      (catch Exception e
-        (log/errorf e "Failed to send notification %d for subscription %d" notification-id subscription-id)
-        (throw e)))))
+        notification-id (:notification_id subscription)
+        notification (t2/select-one :model/Notification notification-id)]
+    (cond
+      (:active notification)
+      (try
+        (log/infof "Sending notification %d for subscription %d" notification-id subscription-id)
+        (task-history/with-task-history {:task         "notification-trigger"
+                                         :task_details {:trigger_type                 :notification-subscription/cron
+                                                        :notification_subscription_id subscription-id
+                                                        :cron_schedule                (:cron_schedule subscription)
+                                                        :notification_ids             [notification-id]}}
+          (notification/send-notification! notification :notification/sync? true))
+        (log/infof "Sent notification %d for subscription %d" notification-id subscription-id)
+        (catch Exception e
+          (log/errorf e "Failed to send notification %d for subscription %d" notification-id subscription-id)
+          (throw e)))
+
+      (nil? notification)
+      (do
+        (log/warnf "Skipping and deleting trigger for subscription %d because it does not exist." subscription-id)
+        (delete-trigger-for-subscription! subscription-id))
+      (not (:active notification))
+      (log/infof "Skipping notification %d for subscription %d because it is inactive" notification-id subscription-id))))
 
 (jobs/defjob ^{:doc "Triggers that send a notification for a subscription."}
   SendNotification
