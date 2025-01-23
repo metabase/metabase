@@ -393,6 +393,9 @@
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search.core
                                      metabase.search.init
+                                     ;; this is used by `metabase.search.api`... once we move that into this module we
+                                     ;; can remove it as an API namespace
+                                     metabase.search.config
                                      ;; Need to expose this submodule, to break circular dependencies with models.
                                      metabase.search.spec}
     metabase.server                #{metabase.server.core
