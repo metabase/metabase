@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
@@ -34,22 +34,41 @@ export function useStringFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(() =>
-    filterParts
+  const defaultOperator = useMemo(() => {
+    return filterParts
       ? filterParts.operator
-      : getDefaultOperator(query, column, availableOptions),
+      : getDefaultOperator(query, column, availableOptions);
+  }, [filterParts, query, column, availableOptions]);
+
+  const [operator, setOperator] = useState(defaultOperator);
+
+  const defaultValues = useMemo(
+    () => getDefaultValues(operator, filterParts ? filterParts.values : []),
+    [operator, filterParts],
   );
 
-  const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts ? filterParts.values : []),
-  );
+  const [values, setValues] = useState(defaultValues);
 
-  const [options, setOptions] = useState(
-    filterParts ? filterParts.options : { caseSensitive: false },
-  );
+  const defaultOptions = useMemo(() => {
+    return filterParts ? filterParts.options : { caseSensitive: false };
+  }, [filterParts]);
+
+  const [options, setOptions] = useState(defaultOptions);
 
   const { type } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values, options);
+
+  useEffect(() => {
+    setValues(defaultValues);
+  }, [defaultValues]);
+
+  useEffect(() => {
+    setOperator(defaultOperator);
+  }, [defaultOperator]);
+
+  useEffect(() => {
+    setOptions(defaultOptions);
+  }, [defaultOptions]);
 
   return {
     type,
