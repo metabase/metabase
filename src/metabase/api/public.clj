@@ -225,7 +225,6 @@
   [{:keys [uuid export-format]} :- [:map
                                     [:uuid          ms/UUIDString]
                                     [:export-format api.dataset/ExportFormat]]
-   _query-params
    {:keys [parameters format_rows pivot_results]} :- [:map
                                                       [:format_rows   {:default false} [:maybe :boolean]]
                                                       [:pivot_results {:default false} [:maybe :boolean]]
