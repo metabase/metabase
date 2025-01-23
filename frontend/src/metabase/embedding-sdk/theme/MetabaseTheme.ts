@@ -123,15 +123,20 @@ export type MetabaseComponentTheme = {
     toolbar?: {
       backgroundColor?: string;
     };
+
+    chartTypeSelector?: {
+      backgroundColor?: string;
+    };
   };
 
   questionEditor?: {
     editorButton?: {
       iconColor?: string;
-      activeIconColor?: string;
-      backgroundColor?: string;
-      activeBackgroundColor?: string;
       borderColor?: string;
+      backgroundColor?: string;
+
+      activeIconColor?: string;
+      activeBackgroundColor?: string;
     };
 
     actionButton?: {

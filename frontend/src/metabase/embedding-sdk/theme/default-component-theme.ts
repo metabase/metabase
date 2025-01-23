@@ -68,6 +68,10 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     toolbar: {
       backgroundColor: "var(--mb-color-background-disabled)",
     },
+
+    chartTypeSelector: {
+      backgroundColor: "var(--mb-color-bg-white)",
+    },
   },
   questionEditor: {
     editorButton: {

@@ -63,6 +63,10 @@ export const CSS_VARIABLES_TO_SDK_THEME_MAP = {
   // SDK > Interactive Question > Toolbar (Default Layout)
   "--mb-color-bg-sdk-question-toolbar": "question.toolbar.backgroundColor",
 
+  // SDK > Interactive Question > Chart Type Selector
+  "--mb-color-bg-sdk-viz-selector-with-settings":
+    "question.chartTypeSelector.backgroundColor",
+
   // Mappings for SDK elements
   ...NOTEBOOK_EDITOR_THEME_OPTIONS,
   ...COLLECTION_BROWSER_THEME_OPTIONS,
