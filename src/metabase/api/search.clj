@@ -1,20 +1,20 @@
 (ns metabase.api.search
   (:require
    [clojure.string :as str]
-   [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.permissions.util :as perms-util]
    [metabase.public-settings :as public-settings]
-   [metabase.request.core :as request] ;; Allowing search.config to be accessed for developer API to set weights
-   ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
+   [metabase.request.core :as request]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.task :as task]
    [metabase.task.search-index :as task.search-index]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
 
@@ -47,8 +47,7 @@
                 raise)))
    (meta handler)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/re-init"
+(api.macros/defendpoint :post "/re-init"
   "This will blow away any search indexes, re-create, and re-populate them."
   []
   (api/check-superuser)
@@ -56,8 +55,7 @@
     {:message (search/init-index! {:force-reset? true})}
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/force-reindex"
+(api.macros/defendpoint :post "/force-reindex"
   "This will trigger an immediate reindexing, if we are using search index."
   []
   (api/check-superuser)
@@ -69,33 +67,42 @@
 
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
-(defn- set-weights! [context overrides]
+(mu/defn- set-weights!
+  [context   :- :keyword
+   overrides :- [:map-of keyword? double?]]
   (api/check-superuser)
   (when (= context :all)
     (throw (ex-info "Cannot set weights for all context"
                     {:status-code 400})))
   (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
-        rankers         (into #{} (map (fn [k] (keyword (first (str/split (name k) #"/"))))) (keys overrides))
-        unknown-rankers (seq (remove known-ranker? rankers))]
+        rankers         (into #{}
+                              (map (fn [k]
+                                     (if (namespace k)
+                                       (keyword (namespace k))
+                                       k)))
+                              (keys overrides))
+        unknown-rankers (not-empty (remove known-ranker? rankers))]
     (when unknown-rankers
       (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
                       {:status-code 400})))
     (public-settings/experimental-search-weight-overrides!
-     (merge-with merge (public-settings/experimental-search-weight-overrides) {context overrides}))))
+     (merge-with merge (public-settings/experimental-search-weight-overrides) {context (update-keys overrides u/qualified-name)}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/weights"
+;;; TODO -- why the HECC is our GET endpoint used to SET custom weights? Whoever did this, fix it before I throw up --
+;;; Cam
+(api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"
-  [:as {overrides :params}]
+  [_route-params
+   {:keys [context], :as overrides} :- [:map
+                                        [:context {:default :default} :keyword]
+                                        [:search_engine {:optional true} :any]]]
   ;; remove cookie
-  (let [context   (keyword (:context overrides :default))
-        overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
+  (let [overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
     (when (seq overrides)
       (set-weights! context overrides))
     (search.config/weights context)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Search for items in Metabase.
   For the list of supported models, check [[metabase.search.config/all-models]].
 
@@ -117,54 +124,65 @@
   - The `verified` filter supports models and cards.
 
   A search query that has both filters applied will only return models and cards."
-  [q context archived created_at created_by table_db_id models last_edited_at last_edited_by
-   filter_items_in_personal_collection model_ancestors search_engine search_native_query
-   verified ids calculate_available_models include_dashboard_questions]
-  {q                                   [:maybe ms/NonBlankString]
-   context                             [:maybe :keyword]
-   archived                            [:maybe :boolean]
-   table_db_id                         [:maybe ms/PositiveInt]
-   models                              [:maybe (ms/QueryVectorOf search/SearchableModel)]
-   filter_items_in_personal_collection [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
-   created_at                          [:maybe ms/NonBlankString]
-   created_by                          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   last_edited_at                      [:maybe ms/NonBlankString]
-   last_edited_by                      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   model_ancestors                     [:maybe :boolean]
-   search_engine                       [:maybe string?]
-   search_native_query                 [:maybe true?]
-   verified                            [:maybe true?]
-   ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   calculate_available_models          [:maybe true?]
-   include_dashboard_questions         [:maybe :boolean]}
+  [_route-params
+   {:keys [q context archived models verified ids]
+    calculate-available-models          :calculate_available_models
+    created-at                          :created_at
+    created-by                          :created_by
+    filter-items-in-personal-collection :filter_items_in_personal_collection
+    include-dashboard-questions         :include_dashboard_questions
+    last-edited-at                      :last_edited_at
+    last-edited-by                      :last_edited_by
+    model-ancestors                     :model_ancestors
+    search-engine                       :search_engine
+    search-native-query                 :search_native_query
+    table-db-id                         :table_db_id}
+   :- [:map
+       [:q                                   {:optional true} [:maybe ms/NonBlankString]]
+       [:context                             {:optional true} [:maybe :keyword]]
+       [:archived                            {:default false} [:maybe :boolean]]
+       [:table_db_id                         {:optional true} [:maybe ms/PositiveInt]]
+       [:models                              {:optional true} [:maybe (ms/QueryVectorOf search/SearchableModel)]]
+       [:filter_items_in_personal_collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
+       [:created_at                          {:optional true} [:maybe ms/NonBlankString]]
+       [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+       [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
+       [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+       [:model_ancestors                     {:default false} [:maybe :boolean]]
+       [:search_engine                       {:optional true} [:maybe string?]]
+       [:search_native_query                 {:optional true} [:maybe true?]]
+       [:verified                            {:optional true} [:maybe true?]]
+       [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+       [:calculate_available_models          {:optional true} [:maybe true?]]
+       [:include_dashboard_questions         {:default false} [:maybe :boolean]]]]
   (api/check-valid-page-params (request/limit) (request/offset))
   (try
     (u/prog1 (search/search
               (search/search-context
                {:archived                            archived
                 :context                             context
-                :created-at                          created_at
-                :created-by                          (set created_by)
+                :created-at                          created-at
+                :created-by                          (set created-by)
                 :current-user-id                     api/*current-user-id*
                 :is-impersonated-user?               (perms-util/impersonated-user?)
                 :is-sandboxed-user?                  (perms-util/sandboxed-user?)
                 :is-superuser?                       api/*is-superuser?*
                 :current-user-perms                  @api/*current-user-permissions-set*
-                :filter-items-in-personal-collection filter_items_in_personal_collection
-                :last-edited-at                      last_edited_at
-                :last-edited-by                      (set last_edited_by)
+                :filter-items-in-personal-collection filter-items-in-personal-collection
+                :last-edited-at                      last-edited-at
+                :last-edited-by                      (set last-edited-by)
                 :limit                               (request/limit)
-                :model-ancestors?                    model_ancestors
+                :model-ancestors?                    model-ancestors
                 :models                              (not-empty (set models))
                 :offset                              (request/offset)
-                :search-engine                       search_engine
-                :search-native-query                 search_native_query
+                :search-engine                       search-engine
+                :search-native-query                 search-native-query
                 :search-string                       q
-                :table-db-id                         table_db_id
+                :table-db-id                         table-db-id
                 :verified                            verified
                 :ids                                 (set ids)
-                :calculate-available-models?         calculate_available_models
-                :include-dashboard-questions?        include_dashboard_questions}))
+                :calculate-available-models?         calculate-available-models
+                :include-dashboard-questions?        include-dashboard-questions}))
       (prometheus/inc! :metabase-search/response-ok))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]
