@@ -13,6 +13,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { ActionIcon, Badge, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
+import { useWindowEvent } from "@mantine/hooks";
 
 export interface CollectionMenuProps {
   collection: Collection;
@@ -34,17 +35,6 @@ export const CollectionMenu = ({
   isPersonalCollectionChild,
   onUpdateCollection,
 }: CollectionMenuProps): JSX.Element | null => {
-  // only get the count of items in the collection if we need it
-  const maybeCollectionItemCount =
-    useListCollectionItemsQuery(
-      {
-        id: collection.id,
-        limit: 0, // we don't want any of the items, we just want to know how many there are in the collection
-      },
-      {
-        skip: !PLUGIN_COLLECTIONS.canCleanUp(collection),
-      },
-    ).data?.total ?? 0;
   const hasDqCandidates = useHasDashboardQuestionCandidates(collection.id);
 
   const url = Urls.collection(collection);
@@ -57,13 +47,22 @@ export const CollectionMenu = ({
   const canMove =
     !isRoot && !isPersonal && canWrite && !isInstanceAnalyticsCustom;
 
-  const [hasSeenMenu, { ack: ackHasSeenMenu }] = useUserAcknowledgement(
+  const [hasSeenMenu, { ack: ackHasSeenMenu, unack }] = useUserAcknowledgement(
     "collection-menu",
     true,
   );
 
-  const [hasSeenMoveToDashboard, { ack: ackHasMoveToDashboard }] =
-    useUserAcknowledgement("move-to-dashboard", true);
+  const [
+    hasSeenMoveToDashboard,
+    { ack: ackHasMoveToDashboard, unack: _unack },
+  ] = useUserAcknowledgement("move-to-dashboard", true);
+
+  useWindowEvent("keydown", e => {
+    if (e.key === "q" && (e.ctrlKey || e.metaKey)) {
+      unack();
+      _unack();
+    }
+  });
 
   const moveItems = [];
   const cleanupItems = [];
@@ -99,12 +98,10 @@ export const CollectionMenu = ({
     );
   }
 
-  cleanupItems.push(
-    ...PLUGIN_COLLECTIONS.getCleanUpMenuItems(
-      collection,
-      maybeCollectionItemCount,
-    ),
-  );
+  const { menuItems: cleanupMenuItems, showIndicator: showCleanupIndicator } =
+    PLUGIN_COLLECTIONS.getCleanUpMenuItems(collection);
+
+  cleanupItems.push(...cleanupMenuItems);
 
   if (hasDqCandidates) {
     cleanupItems.push(
@@ -139,17 +136,21 @@ export const CollectionMenu = ({
     return null;
   }
 
+  const showIndicator =
+    !hasSeenMenu &&
+    ((!hasSeenMoveToDashboard && hasDqCandidates) || showCleanupIndicator);
+
   return (
     <Menu
       position="bottom-end"
       onChange={() => {
-        if (!hasSeenMenu) {
+        if (!hasSeenMenu && showIndicator) {
           ackHasSeenMenu();
         }
       }}
     >
       <Menu.Target>
-        <Indicator size={6} disabled={hasSeenMenu}>
+        <Indicator size={6} disabled={!showIndicator}>
           <Tooltip label={t`Move, trash, and more...`} position="bottom">
             <ActionIcon size={32} variant="viewHeader">
               <Icon name="ellipsis" color="text-dark" />

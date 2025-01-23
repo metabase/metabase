@@ -316,8 +316,10 @@ export const PLUGIN_COLLECTIONS = {
   canCleanUp: (_collection: Collection) => false as boolean,
   getCleanUpMenuItems: (
     _collection: Collection,
-    _itemCount: number,
-  ): React.ReactNode[] => [],
+  ): { menuItems: JSX.Element[]; showIndicator: boolean } => ({
+    menuItems: [],
+    showIndicator: false,
+  }),
   cleanUpRoute: null as React.ReactElement | null,
   cleanUpAlert: (() => null) as (props: {
     collection: Collection;
