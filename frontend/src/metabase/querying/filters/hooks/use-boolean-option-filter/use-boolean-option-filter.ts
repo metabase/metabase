@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type * as Lib from "metabase-lib";
 
@@ -27,12 +27,13 @@ export function useBooleanOptionFilter({
     [query, stageIndex, column],
   );
 
-  const [optionType, setOptionType] = useState(() =>
-    getOptionType(query, stageIndex, filter),
-  );
+  const defaultOptionType = useMemo(() => {
+    return getOptionType(query, stageIndex, filter);
+  }, [query, stageIndex, filter]);
+  const [optionType, setOptionType] = useState(defaultOptionType);
 
-  const isAdvanced = getOptionByType(optionType).isAdvanced;
-  const [isExpanded, setIsExpanded] = useState(() => isAdvanced);
+  const { isAdvanced } = getOptionByType(optionType);
+  const [isExpanded, setIsExpanded] = useState(isAdvanced);
 
   const visibleOptions = useMemo(
     () =>
@@ -41,6 +42,12 @@ export function useBooleanOptionFilter({
         : availableOptions.filter(option => !option.isAdvanced),
     [availableOptions, isExpanded],
   );
+
+  useEffect(() => {
+    const { isAdvanced } = getOptionByType(defaultOptionType);
+    setOptionType(defaultOptionType);
+    setIsExpanded(isAdvanced);
+  }, [defaultOptionType]);
 
   return {
     optionType,
