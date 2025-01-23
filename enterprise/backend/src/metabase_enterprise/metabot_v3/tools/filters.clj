@@ -207,4 +207,4 @@
 
 (mu/defmethod metabot-v3.tools.interface/*tool-applicable?* :metabot.tool/filter-records
   [_tool-name _context]
-  false)
+  true)
