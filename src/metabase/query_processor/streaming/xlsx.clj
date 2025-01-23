@@ -618,7 +618,13 @@
     (doseq [idx pivot-cols]
       (.addColLabel pivot-table idx))
     (doseq [idx pivot-measures]
-      (.addColumnLabel pivot-table DataConsolidateFunction/SUM #_(get aggregation-functions idx DataConsolidateFunction/SUM) idx))
+      ;; Really this should be doing (get _aggregation-functions idx) in place of the hard coded SUM function
+      ;; But since QP sends us pre-aggregated data we can't use excel's innate aggregation functions
+      (let [col-name (let [name (nth col-names idx)]
+                        (if (not-empty name)
+                           name
+                           (:display_name (get ordered-cols idx))))]
+        (.addColumnLabel pivot-table DataConsolidateFunction/SUM idx col-name)))
     (doseq [[idx sort-setting] column-sort-order]
       (let [setting (case sort-setting
                       :ascending  STFieldSortType/ASCENDING
