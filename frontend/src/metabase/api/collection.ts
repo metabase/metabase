@@ -118,7 +118,14 @@ export const collectionApi = Api.injectEndpoints({
       CollectionId
     >({
       query: id => `/api/collection/${id}/dashboard-question-candidates`,
-      providesTags: (_, __, id) => [idTag("collection", id)],
+      providesTags: (_, __, collectionId) => [
+        idTag("dashboard-question-candidates", collectionId),
+        idTag("collection", collectionId),
+        // HACK: instead of making all dashboard operations aware of dq candidates
+        // rely on the fact that all dashboard mutation operation invalidate the
+        // dashboard list cache tag
+        listTag("dashboard"),
+      ],
     }),
     moveCollectionDashboardQuestionCandidates: builder.mutation<
       MoveCollectionDashboardCandidatesResult,
@@ -131,7 +138,9 @@ export const collectionApi = Api.injectEndpoints({
       }),
       invalidatesTags: (result, error, { collectionId }) =>
         invalidateTags(error, [
+          idTag("dashboard-question-candidates", collectionId),
           idTag("collection", collectionId),
+          listTag("card"),
           ...(result ? result.moved.map(id => idTag("card", id)) : []),
         ]),
     }),
