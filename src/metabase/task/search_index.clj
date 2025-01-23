@@ -129,7 +129,7 @@
                       (simple/schedule
                        (simple/with-interval-in-hours 1)
                        (simple/repeat-forever))))]
-    (task/schedule-task! job trigger)))
+    (force-scheduled-task! job trigger)))
 
 (defmethod task/init! ::SearchIndexUpdate [_]
   (let [job         (jobs/build
