@@ -7,14 +7,6 @@ import {
   moveCompletionSelection,
 } from "@codemirror/autocomplete";
 import { insertTab } from "@codemirror/commands";
-import { json } from "@codemirror/lang-json";
-import {
-  MySQL,
-  PLSQL,
-  PostgreSQL,
-  StandardSQL,
-  sql,
-} from "@codemirror/lang-sql";
 import {
   HighlightStyle,
   foldService,
@@ -43,6 +35,7 @@ import * as Lib from "metabase-lib";
 
 import {
   useCardTagCompletion,
+  useLocalsCompletion,
   useReferencedCardCompletion,
   useSchemaCompletion,
   useSnippetCompletion,
@@ -50,6 +43,7 @@ import {
 import {
   referencedQuestionIds as getReferencedQuestionIds,
   matchTagAtCursor,
+  source,
 } from "./util";
 
 export function useExtensions(query: Lib.Query): Extension[] {
@@ -68,6 +62,7 @@ export function useExtensions(query: Lib.Query): Extension[] {
   const referencedCardCompletion = useReferencedCardCompletion({
     referencedQuestionIds,
   });
+  const localsCompletion = useLocalsCompletion({ engine });
 
   return useMemo(() => {
     return [
@@ -84,6 +79,7 @@ export function useExtensions(query: Lib.Query): Extension[] {
           snippetCompletion,
           cardTagCompletion,
           referencedCardCompletion,
+          localsCompletion,
         ],
       }),
       highlighting(),
@@ -100,6 +96,7 @@ export function useExtensions(query: Lib.Query): Extension[] {
     snippetCompletion,
     cardTagCompletion,
     referencedCardCompletion,
+    localsCompletion,
   ]);
 }
 
@@ -236,54 +233,10 @@ function fonts() {
   });
 }
 
-const engineToDialect = {
-  "bigquery-cloud-sdk": StandardSQL,
-  mysql: MySQL,
-  oracle: PLSQL,
-  postgres: PostgreSQL,
-  // TODO:
-  // "presto-jdbc": "trino",
-  // redshift: "redshift",
-  // snowflake: "snowflake",
-  // sparksql: "spark",
-  // h2: "h2",
-};
-
 type LanguageOptions = {
   engine?: string | null;
   completers?: CompletionSource[];
 };
-
-function source(engine?: string | null) {
-  // TODO: this should be provided by the engine driver through the API
-  switch (engine) {
-    case "mongo":
-    case "druid":
-      return {
-        language: json(),
-      };
-
-    case "bigquery-cloud-sdk":
-    case "mysql":
-    case "oracle":
-    case "postgres":
-    case "presto-jdbc":
-    case "redshift":
-    case "snowflake":
-    case "sparksql":
-    case "h2":
-    default: {
-      const dialect =
-        engineToDialect[engine as keyof typeof engineToDialect] ?? StandardSQL;
-      return {
-        language: sql({
-          dialect,
-          upperCaseKeywords: true,
-        }),
-      };
-    }
-  }
-}
 
 function language({ engine, completers = [] }: LanguageOptions) {
   const { language } = source(engine);

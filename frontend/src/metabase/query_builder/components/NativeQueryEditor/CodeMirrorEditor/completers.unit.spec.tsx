@@ -21,6 +21,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import {
   useCardTagCompletion,
+  useLocalsCompletion,
   useReferencedCardCompletion,
   useSchemaCompletion,
   useSnippetCompletion,
@@ -616,5 +617,65 @@ describe("useReferencedCardCompletion", () => {
       ],
     });
     expect(fetchMock.calls(url)).toHaveLength(1);
+  });
+});
+
+describe("useLocalsCompletion", () => {
+  function setup({ engine = "h2" }: { engine?: string | null } = {}) {
+    const complete = completer(() => useLocalsCompletion({ engine }));
+    return { complete };
+  }
+
+  it("should complete locals from a sql query", async () => {
+    const { complete } = setup({ engine: "postgres" });
+    const results = await complete("SELECT Foo as Bar FROM Baz SORT BY ba|");
+    expect(results).toEqual({
+      from: 35,
+      to: undefined,
+      options: [
+        {
+          label: "Bar",
+          detail: "local",
+        },
+        {
+          label: "Baz",
+          detail: "local",
+        },
+      ],
+    });
+  });
+
+  it("should complete locals from a sql query, inside a word", async () => {
+    const { complete } = setup({ engine: "postgres" });
+    const results = await complete("SELECT Foo as Bar FROM Baz SORT BY b|a");
+    expect(results).toEqual({
+      from: 35,
+      to: 37,
+      options: [
+        {
+          label: "Bar",
+          detail: "local",
+        },
+        {
+          label: "Baz",
+          detail: "local",
+        },
+      ],
+    });
+  });
+
+  it("should not complete locals that come from the dialect", async () => {
+    const { complete } = setup({ engine: "postgres" });
+    const results = await complete(
+      "SELECT count(Foo) as Bar FROM Baz SORT BY co|",
+    );
+    // do not complete "count"
+    expect(results).toBe(null);
+  });
+
+  it("should not complete locals in a non-sql query", async () => {
+    const { complete } = setup({ engine: "mongo" });
+    const results = await complete("{|}");
+    expect(results).toBe(null);
   });
 });

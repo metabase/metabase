@@ -1,5 +1,5 @@
 import type { CompletionContext } from "@codemirror/autocomplete";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import slugg from "slugg";
 import { t } from "ttag";
 
@@ -13,7 +13,11 @@ import { useSetting } from "metabase/common/hooks";
 import { isNotNull } from "metabase/lib/types";
 import type { Card, CardId, DatabaseId, Field } from "metabase-types/api";
 
-import { getCardAutocompleteResultMeta, matchTagAtCursor } from "./util";
+import {
+  getCardAutocompleteResultMeta,
+  matchTagAtCursor,
+  source,
+} from "./util";
 
 // Keep this in sync with the limit in the backend code at
 // `autocomplete-suggestions` in src/metabase/api/database.clj
@@ -293,5 +297,70 @@ export function useReferencedCardCompletion({
       };
     },
     [getCardColumns],
+  );
+}
+
+type LocalsCompletionOptions = {
+  engine?: string | null;
+};
+
+export function useLocalsCompletion({ engine }: LocalsCompletionOptions) {
+  const { language, keywords } = useMemo(() => {
+    const { dialect, language } = source(engine);
+    const keywords = new Set(dialect?.spec.keywords?.split(" ") ?? []);
+    return {
+      dialect,
+      language,
+      keywords,
+    };
+  }, [engine]);
+
+  return useCallback(
+    function completeLocals(context: CompletionContext) {
+      const word = context.matchBefore(/\w+/);
+      if (!word) {
+        return null;
+      }
+
+      const set = new Set<string>();
+      const tree = language.language.parser.parse(context.state.doc.toString());
+      tree.iterate({
+        enter(node) {
+          if (node.type.name === "Identifier") {
+            const value = context.state.doc.sliceString(node.from, node.to);
+            if (!keywords.has(value)) {
+              set.add(value);
+            }
+          }
+        },
+      });
+
+      if (set.size <= 0) {
+        return null;
+      }
+
+      const suffix = matchAfter(context, /\w+/);
+
+      const full = word.text.concat(suffix?.text ?? "");
+
+      const options = Array.from(set)
+        .filter(value => value.toLowerCase().startsWith(full.toLowerCase()))
+        .filter(value => value !== full)
+        .map(value => ({
+          label: value,
+          detail: "local",
+        }));
+
+      if (options.length <= 0) {
+        return null;
+      }
+
+      return {
+        from: word.from,
+        to: suffix?.to,
+        options,
+      };
+    },
+    [language, keywords],
   );
 }
