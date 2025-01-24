@@ -37,7 +37,6 @@ import { Highlight } from "./Highlight";
 import { parser } from "./language";
 import { tokenAtPos } from "./suggestions";
 
-// TODO: Close tooltip on focus
 // TODO: Toggle help description open/close expand
 // TODO: Segments/metrics always shown?
 // TODO: Hide help text when cursor is after the function
@@ -50,6 +49,7 @@ type State = {
     from: number;
     to: number;
   } | null;
+  hasFocus?: boolean;
 };
 
 type TooltipOptions = {
@@ -74,6 +74,7 @@ export function useTooltip({
     completions: [],
     selectedCompletion: null,
     enclosingFunction: null,
+    hasFocus: false,
   });
 
   const element = useMemo(() => {
@@ -90,8 +91,8 @@ export function useTooltip({
         view.current = update.view;
         setState(state => {
           const enclosingFn = enclosingFunction(update.state);
-
           const status = completionStatus(update.state);
+
           if (status === "pending") {
             // use the previous completions, if they exist
             return {
@@ -99,6 +100,7 @@ export function useTooltip({
               completions: state.completions,
               selectedCompletion: state.selectedCompletion,
               enclosingFunction: enclosingFn,
+              hasFocus: update.view.hasFocus,
             };
           }
           return {
@@ -106,6 +108,7 @@ export function useTooltip({
             completions: currentCompletions(update.state),
             selectedCompletion: selectedCompletionIndex(update.state),
             enclosingFunction: enclosingFn,
+            hasFocus: update.view.hasFocus,
           };
         });
       }),
@@ -190,13 +193,18 @@ function getDatabase(query: Lib.Query, metadata: Metadata) {
 
 export function Tooltip(props: TooltipProps) {
   const { query, metadata, reportTimezone, state, onCompletionClick } = props;
-  const { completions, selectedCompletion, enclosingFunction } = state;
+  const { completions, selectedCompletion, enclosingFunction, hasFocus } =
+    state;
 
   const database = getDatabase(query, metadata);
   const helpText =
     enclosingFunction && database
       ? getHelpText(enclosingFunction.name, database, reportTimezone)
       : null;
+
+  if (!hasFocus) {
+    return null;
+  }
 
   if (completions.length === 0 && !helpText) {
     return null;
