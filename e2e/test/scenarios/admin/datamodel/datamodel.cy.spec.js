@@ -283,7 +283,7 @@ describe("scenarios > admin > datamodel > field", () => {
   });
 });
 
-describe("Unfold JSON", () => {
+describe("Unfold JSON", { tags: "@external" }, () => {
   function getUnfoldJsonContent() {
     return cy
       .findByText("Unfold JSON")
