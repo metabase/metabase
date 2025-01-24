@@ -1,12 +1,6 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
-import {
-  Component,
-  type ForwardedRef,
-  type MutableRefObject,
-  createRef,
-  forwardRef,
-} from "react";
+import { Component, type MutableRefObject, createRef, forwardRef } from "react";
 import slugg from "slugg";
 import { t } from "ttag";
 import _ from "underscore";
@@ -82,9 +76,7 @@ type AceEditorProps = EditorProps &
   SizeProps &
   StateProps &
   DispatchProps &
-  SnippetProps & {
-    forwardedRef?: ForwardedRef<HTMLDivElement>;
-  };
+  SnippetProps;
 
 export class AceEditorInner extends Component<AceEditorProps> {
   editor: MutableRefObject<HTMLDivElement | null> = createRef();
@@ -538,16 +530,7 @@ export class AceEditorInner extends Component<AceEditorProps> {
         className={S.editor}
         id={ACE_ELEMENT_ID}
         data-testid="native-query-editor"
-        ref={el => {
-          if (this.props.forwardedRef) {
-            if (typeof this.props.forwardedRef === "function") {
-              this.props.forwardedRef?.(el);
-            } else {
-              this.props.forwardedRef.current = el;
-            }
-          }
-          this.editor.current = el;
-        }}
+        ref={el => (this.editor.current = el)}
       />
     );
   }
@@ -565,16 +548,10 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
   },
 });
 
-const AceEditorRefWrapper = forwardRef<HTMLDivElement, AceEditorProps>(
-  function _AceEditorRefWrapper(props, ref) {
-    return <AceEditorInner {...props} forwardedRef={ref}></AceEditorInner>;
-  },
-);
-
 const ConnectedAceEditor = _.compose(
   ExplicitSize(),
   connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
-)(AceEditorRefWrapper);
+)(AceEditorInner);
 
 export const AceEditor = forwardRef<EditorRef, EditorProps>(
   function AceEditor(props, ref) {
