@@ -350,11 +350,7 @@ function Dashboard(props: DashboardProps) {
     cancelFetchDashboardCardData();
   });
 
-  const renderContent = () => {
-    if (!dashboard) {
-      return null;
-    }
-
+  const renderEmptyStates = () => {
     if (!dashboardHasCards) {
       return canWrite ? (
         <DashboardEmptyState
@@ -386,23 +382,6 @@ function Dashboard(props: DashboardProps) {
         />
       );
     }
-    return (
-      <DashboardGridConnected
-        clickBehaviorSidebarDashcard={props.clickBehaviorSidebarDashcard}
-        isNightMode={shouldRenderAsNightMode}
-        isFullscreen={props.isFullscreen}
-        isEditingParameter={props.isEditingParameter}
-        isEditing={props.isEditing}
-        dashboard={dashboard}
-        slowCards={props.slowCards}
-        navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
-        selectedTabId={selectedTabId}
-        onEditingChange={handleSetEditing}
-        downloadsEnabled={downloadsEnabled}
-        autoScrollToDashcardId={autoScrollToDashcardId}
-        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
-      />
-    );
   };
 
   return (
@@ -418,6 +397,9 @@ function Dashboard(props: DashboardProps) {
         if (!dashboard) {
           return null;
         }
+
+        const isEmpty =
+          !dashboardHasCards || (dashboardHasCards && !tabHasCards);
 
         return (
           <DashboardStyled>
@@ -469,19 +451,43 @@ function Dashboard(props: DashboardProps) {
             </DashboardHeaderContainer>
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
-              <ParametersAndCardsContainer
-                id={DASHBOARD_PDF_EXPORT_ROOT_ID}
-                data-element-id="dashboard-parameters-and-cards"
-                data-testid="dashboard-parameters-and-cards"
-                shouldMakeDashboardHeaderStickyAfterScrolling={
-                  !isFullscreen && (isEditing || isSharing)
-                }
-              >
-                <DashboardParameterPanel isFullscreen={isFullscreen} />
-                <CardsContainer data-element-id="dashboard-cards-container">
-                  {renderContent()}
-                </CardsContainer>
-              </ParametersAndCardsContainer>
+              {isEmpty ? (
+                renderEmptyStates()
+              ) : (
+                <ParametersAndCardsContainer
+                  id={DASHBOARD_PDF_EXPORT_ROOT_ID}
+                  data-element-id="dashboard-parameters-and-cards"
+                  data-testid="dashboard-parameters-and-cards"
+                  shouldMakeDashboardHeaderStickyAfterScrolling={
+                    !isFullscreen && (isEditing || isSharing)
+                  }
+                >
+                  <DashboardParameterPanel isFullscreen={isFullscreen} />
+                  <CardsContainer data-element-id="dashboard-cards-container">
+                    <DashboardGridConnected
+                      clickBehaviorSidebarDashcard={
+                        props.clickBehaviorSidebarDashcard
+                      }
+                      isNightMode={shouldRenderAsNightMode}
+                      isFullscreen={props.isFullscreen}
+                      isEditingParameter={props.isEditingParameter}
+                      isEditing={props.isEditing}
+                      dashboard={dashboard}
+                      slowCards={props.slowCards}
+                      navigateToNewCardFromDashboard={
+                        props.navigateToNewCardFromDashboard
+                      }
+                      selectedTabId={selectedTabId}
+                      onEditingChange={handleSetEditing}
+                      downloadsEnabled={downloadsEnabled}
+                      autoScrollToDashcardId={autoScrollToDashcardId}
+                      reportAutoScrolledToDashcard={
+                        reportAutoScrolledToDashcard
+                      }
+                    />
+                  </CardsContainer>
+                </ParametersAndCardsContainer>
+              )}
 
               <DashboardSidebars
                 dashboard={dashboard}
