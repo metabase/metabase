@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 
-import type { FilterModalResult } from "metabase/querying/filters/hooks/use-filter-modal/types";
+import type { FilterModalResult } from "../../hooks/use-filter-modal";
 
 export type FilterModalContextType = FilterModalResult;
 
