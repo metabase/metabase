@@ -52,7 +52,7 @@
     [:schema {:optional true} [:any {:description "Malli map schema for all the params of this type"}]]]])
 
 (mr/def ::method
-  [:enum :get :post :put :delete])
+  [:enum :get :post :put :delete :patch])
 
 (mr/def ::parsed-args
   [:map
@@ -70,7 +70,7 @@
 (mr/def ::unique-key
   "Unique indentifier for an api endpoint. `(:api/endpoints (meta a-namespace))` is a map of `::unique-key` => `::info`"
   [:tuple
-   #_method [:enum :get :post :put :delete]
+   #_method ::method
    #_route  string?
    #_params [:map-of #_param keyword? #_regex-str string?]])
 
@@ -203,7 +203,7 @@
 
 (s/def ::defendpoint
   (s/cat
-   :method          #{:get :post :put :delete}
+   :method          #{:get :post :put :delete :patch}
    :route           ::defendpoint.route
    :response-schema ::defendpoint.schema-specifier
    :docstr          (s/? string?)
