@@ -78,6 +78,7 @@ describe("scenarios > metrics > dashboard", () => {
     H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/search?*").as("search");
   });
 
   it("should be possible to add metric to a dashboard via context menu (metabase#44220)", () => {
@@ -115,27 +116,32 @@ describe("scenarios > metrics > dashboard", () => {
     );
   });
 
-  it("should be possible to add metrics to a dashboard", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC);
-    H.createQuestion(ORDERS_TIMESERIES_METRIC);
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-    H.openQuestionsSidebar();
-    cy.findByTestId("add-card-sidebar").within(() => {
-      cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      cy.findByPlaceholderText("Search…").type(ORDERS_TIMESERIES_METRIC.name);
-      cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
-      cy.findByText(ORDERS_TIMESERIES_METRIC.name).click();
-    });
-    H.getDashboardCard(1).within(() => {
-      cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
-      cy.findByText("18,760").should("be.visible");
-    });
-    H.getDashboardCard(2).within(() => {
-      cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
-      H.echartsContainer().should("be.visible");
-    });
-  });
+  it(
+    "should be possible to add metrics to a dashboard",
+    { tags: "@flaky" },
+    () => {
+      H.createQuestion(ORDERS_SCALAR_METRIC);
+      H.createQuestion(ORDERS_TIMESERIES_METRIC);
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+      H.editDashboard();
+      H.openQuestionsSidebar();
+      cy.findByTestId("add-card-sidebar").within(() => {
+        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+        cy.findByPlaceholderText("Search…").type(ORDERS_TIMESERIES_METRIC.name);
+        cy.wait("@search");
+        cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_TIMESERIES_METRIC.name).click();
+      });
+      H.getDashboardCard(1).within(() => {
+        cy.findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+        cy.findByText("18,760").should("be.visible");
+      });
+      H.getDashboardCard(2).within(() => {
+        cy.findByText(ORDERS_TIMESERIES_METRIC.name).should("be.visible");
+        H.echartsContainer().should("be.visible");
+      });
+    },
+  );
 
   it("should be able to add a filter and drill thru", () => {
     cy.createDashboardWithQuestions({

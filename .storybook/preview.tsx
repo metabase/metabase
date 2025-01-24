@@ -17,8 +17,7 @@ import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
-export const parameters = {
-  actions: { argTypesRegex: "^on[A-Z].*" },
+const parameters = {
   controls: {
     matchers: {
       color: /(background|color)$/i,
@@ -39,8 +38,8 @@ const globalStyles = css`
   ${baseStyle}
 `;
 
-export const decorators = [
-  renderStory => {
+const decorators = [
+  Story => {
     if (!document.body.classList.contains("mb-wrapper")) {
       document.body.classList.add("mb-wrapper");
     }
@@ -49,7 +48,7 @@ export const decorators = [
         <ThemeProvider>
           <Global styles={globalStyles} />
           <CssVariables />
-          {renderStory()}
+          <Story />
         </ThemeProvider>
       </EmotionCacheProvider>
     );
@@ -81,3 +80,7 @@ function CssVariables() {
 
   return <Global styles={styles} />;
 }
+
+const preview = { parameters, decorators }
+
+export default preview;

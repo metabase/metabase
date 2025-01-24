@@ -42,11 +42,15 @@
                      (list*
                       (api/token-node `let)
                       (api/vector-node (into []
-                                             (mapcat (fn [a-binding]
-                                                       [a-binding (api/token-node nil)]))
-                                             (cons
-                                              (api/token-node '&request)
-                                              bindings)))
+                                             cat
+                                             [(mapcat (fn [a-binding]
+                                                        [a-binding (api/map-node {})])
+                                                      (take 4 bindings))
+                                              (mapcat (fn [a-binding]
+                                                        [a-binding (api/list-node (list
+                                                                                   (api/token-node 'clojure.core/constantly)
+                                                                                   (api/token-node 'nil)))])
+                                                      (drop 4 bindings))]))
                       body))))
                   (with-meta (meta node)))))]
     (update arg :node update-defendpoint)))
