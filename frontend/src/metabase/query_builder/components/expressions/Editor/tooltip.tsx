@@ -39,7 +39,6 @@ import { tokenAtPos } from "./suggestions";
 
 // TODO: Toggle help description open/close expand
 // TODO: Segments/metrics always shown?
-// TODO: Hide help text when cursor is after the function
 
 type State = {
   completions: readonly Completion[];
@@ -355,7 +354,7 @@ function enclosingFunction(state: EditorState) {
     if (
       cursor.name === "CallExpression" &&
       cursor.from <= pos &&
-      cursor.to >= pos
+      cursor.to > pos
     ) {
       const value = state
         .sliceDoc(cursor.from, cursor.to)
