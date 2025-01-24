@@ -1,4 +1,3 @@
-import { startCompletion } from "@codemirror/autocomplete";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
@@ -57,15 +56,6 @@ export function Editor(props: EditorProps) {
     onCommit: commitExpression,
   });
 
-  const handleFocus = useCallback(() => {
-    if (!ref.current?.view) {
-      return;
-    }
-    if (source === "") {
-      startCompletion(ref.current?.view);
-    }
-  }, [source]);
-
   const handleBlur = useCallback(() => {
     commitExpression(source);
   }, [source, commitExpression]);
@@ -82,7 +72,6 @@ export function Editor(props: EditorProps) {
           readOnly={readOnly}
           value={source}
           onChange={onSourceChange}
-          onFocus={handleFocus}
           onBlur={handleBlur}
           height="100%"
           width="100%"
