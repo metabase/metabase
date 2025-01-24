@@ -21,16 +21,13 @@ type ParamConfig = {
   required?: boolean;
 };
 
-export type EntityIdRedirectProps = {
+export type EntityIdRedirectProps = WithRouterProps & {
   parametersToTranslate: ParamConfig[];
-  redirect: (path: string) => void;
-  location: Pick<WithRouterProps["location"], "pathname" | "search" | "query">;
-  params: WithRouterProps["params"];
 };
 
 export const EntityIdRedirect = ({
   parametersToTranslate = [],
-  redirect,
+  router,
   params,
   location,
 }: EntityIdRedirectProps) => {
@@ -105,14 +102,14 @@ export const EntityIdRedirect = ({
       }
 
       if (shouldRedirect) {
-        redirect(url.replace("by-entity-id/", ""));
+        router.push(url.replace("by-entity-id/", ""));
       }
     }
 
     if (!isLoading) {
       handleResults();
     }
-  }, [currentUrl, entity_ids, isError, isLoading, paramsWithValues, redirect]);
+  }, [currentUrl, entity_ids, isError, isLoading, paramsWithValues, router]);
 
   if (isError) {
     throw error;
@@ -132,10 +129,8 @@ export function createEntityIdRedirect(config: {
 }) {
   const Component = (props: WithRouterProps) => (
     <EntityIdRedirect
+      {...props}
       parametersToTranslate={config.parametersToTranslate}
-      redirect={props.router.push}
-      location={props.location}
-      params={props.params}
     />
   );
 
