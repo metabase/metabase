@@ -284,9 +284,72 @@ describe("FilterModal", () => {
 });
 
 describe("FilterModal - issue 48319", () => {
-  const query = createQuery();
+  function setup48319({
+    base_type,
+    effective_type,
+    semantic_type,
+  }: {
+    base_type?: string;
+    effective_type?: string;
+    semantic_type?: string;
+  }) {
+    const tableId = 4;
+
+    const fieldA = createMockField({
+      id: 1000,
+      table_id: tableId,
+      name: "FOO",
+      display_name: "Foo",
+      base_type,
+      effective_type,
+      semantic_type,
+    });
+
+    const fieldB = createMockField({
+      id: 1001,
+      table_id: tableId,
+      name: "BAR",
+      display_name: "Bar",
+      base_type,
+      effective_type,
+      semantic_type,
+    });
+
+    const table = createMockTable({
+      id: tableId,
+      db_id: SAMPLE_DB_ID,
+      name: "TEST_TABLE",
+      display_name: "Test table",
+      schema: "PUBLIC",
+      fields: [fieldA, fieldB],
+    });
+
+    const database = createMockDatabase({
+      id: SAMPLE_DB_ID,
+      name: "Sample Database",
+      tables: [table],
+      is_sample: true,
+    });
+
+    const metadata = createMockMetadata({
+      databases: [database],
+    });
+
+    const query = createQuery({
+      query: {
+        database: database.id,
+        type: "query",
+        query: {
+          "source-table": tableId,
+        },
+      },
+    });
+
+    setup({ query, metadata });
+  }
 
   it("string filters - does not mix up column filter state when changing search query (metabase#48319)", async () => {
+    const query = createQuery();
     setup({ query });
 
     const searchInput = screen.getByPlaceholderText("Search for a column…");
@@ -340,151 +403,52 @@ describe("FilterModal - issue 48319", () => {
   });
 
   it("boolean filters - does not mix up column filter state when changing search query (metabase#48319)", async () => {
-    const ACCOUNTS_ID = 4;
-    const ACCOUNTS_TRIAL_CONVERTED_ID = 56;
-    const ACCOUNTS_ACTIVE_SUBSCRIPTION_ID = 57;
-
-    const database = createMockDatabase({
-      id: SAMPLE_DB_ID,
-      name: "Sample Database",
-      tables: [
-        createMockTable({
-          id: ACCOUNTS_ID,
-          db_id: SAMPLE_DB_ID,
-          name: "ACCOUNTS",
-          display_name: "Accounts",
-          schema: "PUBLIC",
-          fields: [
-            createMockField({
-              id: ACCOUNTS_TRIAL_CONVERTED_ID,
-              table_id: ACCOUNTS_ID,
-              name: "TRIAL_CONVERTED",
-              display_name: "Trial Converted",
-              base_type: "type/Boolean",
-              effective_type: "type/Boolean",
-              semantic_type: "type/Category",
-            }),
-            createMockField({
-              id: ACCOUNTS_ACTIVE_SUBSCRIPTION_ID,
-              table_id: ACCOUNTS_ID,
-              name: "ACTIVE_SUBSCRIPTION",
-              display_name: "Active Subscription",
-              base_type: "type/Boolean",
-              effective_type: "type/Boolean",
-              semantic_type: "type/Category",
-            }),
-          ],
-        }),
-      ],
-      is_sample: true,
-    });
-
-    const metadata = createMockMetadata({
-      databases: [database],
-    });
-
-    setup({
-      query: createQuery({
-        query: {
-          database: database.id,
-          type: "query",
-          query: {
-            "source-table": ACCOUNTS_ID,
-          },
-        },
-      }),
-      metadata,
+    setup48319({
+      base_type: "type/Boolean",
+      effective_type: "type/Boolean",
+      semantic_type: "type/Category",
     });
 
     const searchInput = screen.getByPlaceholderText("Search for a column…");
 
-    await userEvent.type(searchInput, "trial");
+    await userEvent.type(searchInput, "foo");
     await waitFor(() => {
-      expect(screen.queryByText("Active Subscription")).not.toBeInTheDocument();
+      expect(screen.queryByText("Bar")).not.toBeInTheDocument();
     });
     await userEvent.click(screen.getByRole("checkbox", { name: "True" }));
 
     await userEvent.type(
       searchInput,
-      `${"{backspace}".repeat("trial".length)}active`,
+      `${"{backspace}".repeat("foo".length)}bar`,
     );
     await waitFor(() => {
-      expect(screen.getByText("Active Subscription")).toBeInTheDocument();
+      expect(screen.getByText("Bar")).toBeInTheDocument();
     });
     expect(screen.queryByRole("checkbox", { name: "True" })).not.toBeChecked();
     await userEvent.click(screen.getByRole("checkbox", { name: "False" }));
 
     await userEvent.type(
       searchInput,
-      `${"{backspace}".repeat("active".length)}trial`,
+      `${"{backspace}".repeat("bar".length)}foo`,
     );
     await waitFor(() => {
-      expect(screen.getByText("Trial Converted")).toBeInTheDocument();
+      expect(screen.getByText("Foo")).toBeInTheDocument();
     });
     expect(screen.getByRole("checkbox", { name: "True" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
   });
 
   it("time filters - does not mix up column filter state when changing search query (metabase#48319)", async () => {
-    const ACCOUNTS_ID = 4;
-    const ACCOUNTS_TRIAL_CONVERTED_ID = 56;
-    const ACCOUNTS_ACTIVE_SUBSCRIPTION_ID = 57;
-
-    const database = createMockDatabase({
-      id: SAMPLE_DB_ID,
-      name: "Sample Database",
-      tables: [
-        createMockTable({
-          id: ACCOUNTS_ID,
-          db_id: SAMPLE_DB_ID,
-          name: "ACCOUNTS",
-          display_name: "Accounts",
-          schema: "PUBLIC",
-          fields: [
-            createMockField({
-              id: ACCOUNTS_TRIAL_CONVERTED_ID,
-              table_id: ACCOUNTS_ID,
-              name: "TRIAL_CONVERTED",
-              display_name: "Trial Converted",
-              base_type: "type/Time",
-              effective_type: "type/Time",
-            }),
-            createMockField({
-              id: ACCOUNTS_ACTIVE_SUBSCRIPTION_ID,
-              table_id: ACCOUNTS_ID,
-              name: "ACTIVE_SUBSCRIPTION",
-              display_name: "Active Subscription",
-              base_type: "type/Time",
-              effective_type: "type/Time",
-            }),
-          ],
-        }),
-      ],
-      is_sample: true,
-    });
-
-    const metadata = createMockMetadata({
-      databases: [database],
-    });
-
-    setup({
-      query: createQuery({
-        query: {
-          database: database.id,
-          type: "query",
-          query: {
-            "source-table": ACCOUNTS_ID,
-          },
-        },
-      }),
-      metadata,
+    setup48319({
+      base_type: "type/Time",
+      effective_type: "type/Time",
     });
 
     const searchInput = screen.getByPlaceholderText("Search for a column…");
 
-    await userEvent.type(searchInput, "trial");
+    await userEvent.type(searchInput, "foo");
     await waitFor(() => {
-      expect(screen.queryByText("Active Subscription")).not.toBeInTheDocument();
+      expect(screen.queryByText("Bar")).not.toBeInTheDocument();
     });
     await userEvent.clear(screen.getByPlaceholderText("Enter a time"));
     await userEvent.type(
@@ -494,10 +458,10 @@ describe("FilterModal - issue 48319", () => {
 
     await userEvent.type(
       searchInput,
-      `${"{backspace}".repeat("trial".length)}active`,
+      `${"{backspace}".repeat("foo".length)}bar`,
     );
     await waitFor(() => {
-      expect(screen.getByText("Active Subscription")).toBeInTheDocument();
+      expect(screen.getByText("Bar")).toBeInTheDocument();
     });
     expect(screen.getByPlaceholderText("Enter a time")).toHaveValue("00:00");
     await userEvent.type(
@@ -507,10 +471,10 @@ describe("FilterModal - issue 48319", () => {
 
     await userEvent.type(
       searchInput,
-      `${"{backspace}".repeat("active".length)}trial`,
+      `${"{backspace}".repeat("bar".length)}foo`,
     );
     await waitFor(() => {
-      expect(screen.getByText("Trial Converted")).toBeInTheDocument();
+      expect(screen.getByText("Foo")).toBeInTheDocument();
     });
     expect(screen.getByPlaceholderText("Enter a time")).toHaveValue("12:34");
   });
