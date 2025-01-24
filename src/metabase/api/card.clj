@@ -794,7 +794,7 @@
    :middleware  {:process-viz-settings?  true
                  :skip-results-metadata? true
                  :ignore-cached-results? true
-                 :format-rows?           (format-rows?)
+                 :format-rows?           format-rows?
                  :pivot?                 pivot-results?
                  :js-int-to-string?      false}))
 
