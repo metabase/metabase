@@ -561,11 +561,11 @@ describe("scenarios > dashboard", () => {
       "should not allow dashboard editing on small screens",
       { viewportWidth: 480, viewportHeight: 800 },
       () => {
-        cy.icon("pencil").should("not.be.visible");
+        cy.findByLabelText("Edit dashboard").should("not.be.visible");
 
         cy.viewport(660, 800);
 
-        cy.icon("pencil").should("be.visible").click();
+        cy.findByLabelText("Edit dashboard").should("be.visible").click();
         cy.findByTestId("edit-bar").findByText(
           "You're editing this dashboard.",
         );
@@ -767,7 +767,7 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is empty");
     // add previously created question to it
-    cy.icon("pencil").click();
+    cy.findByLabelText("Edit dashboard").click();
     H.openQuestionsSidebar();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
