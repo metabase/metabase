@@ -119,3 +119,5 @@ modules/drivers/*/.lsp/*
 .swc/
 
 *storybook.log
+
+.wireit/
