@@ -345,7 +345,7 @@
 
 (def ^:dynamic *number-of-characters-cell*
   "Total number of characters that a cell can contain, 32767 is the maximum number supported by the cell."
-  ;;See https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3
+  ;; See https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3
   32767)
 
 (defmethod set-cell! String
