@@ -963,7 +963,7 @@
 (mu/defn- from-csv!
   "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
   [{:keys [collection-id filename file]} :- [:map
-                                             [:collection-id pos-int?]
+                                             [:collection-id [:maybe pos-int?]]
                                              [:filename      string?]
                                              [:file          (ms/InstanceOfClass java.io.File)]]]
   (try
