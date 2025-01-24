@@ -1,6 +1,7 @@
 (ns metabase.api.common.internal
-  "Internal functions used by `metabase.api.common`.
-   These are primarily used as the internal implementation of `defendpoint`."
+  "Internal functions used by [[metabase.api.common]].
+   These are primarily used as the internal implementation of legacy [[metabase.api.common/defendpoint]]. Most of this
+  stuff can be removed once we remove the legacy implementation."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -23,10 +24,6 @@
 (set! *warn-on-reflection* true)
 
 (comment streaming-response/keep-me)
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              DOCSTRING GENERATION                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- handle-nonstandard-namespaces
   "HACK to make sure some enterprise endpoints are consistent with the code.
@@ -154,58 +151,6 @@
                     (merge (args-form-symbols args)
                            param->schema)))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          AUTO-PARSING + ROUTE TYPING                                           |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn parse-int
-  "Parse `value` (presumabily a string) as an Integer, or throw a 400 exception. Used to automatically to parse `id`
-  parameters in `defendpoint` functions."
-  [^String value]
-  (try (Integer/parseInt value)
-       (catch NumberFormatException _
-         (throw (ex-info (tru "Not a valid integer: ''{0}''" value) {:status-code 400})))))
-
-(def ^:dynamic *auto-parse-types*
-  "Map of `param-type` -> map with the following keys:
-
-     :route-param-regex Regex pattern that should be used for params in Compojure route forms
-     :parser            Function that should be used to parse args"
-  {:int  {:route-param-regex #"[0-9]+"
-          :parser            'metabase.api.common.internal/parse-int}
-   :uuid {:route-param-regex u/uuid-regex
-          :parser            nil}})
-
-(def ^:private ^:const  auto-parse-arg-name-patterns
-  "Sequence of `[param-pattern parse-type]` pairs. A param with name matching PARAM-PATTERN should be considered to be
-  of AUTO-PARSE-TYPE."
-  [[#"^uuid$"       :uuid]
-   [#"^session_id$" :uuid]
-   [#"^[\w-_]*id$"  :int]])
-
-(defn arg-type
-  "Return a key into `*auto-parse-types*` if `arg` has a matching pattern in `auto-parse-arg-name-patterns`.
-
-    (arg-type :id) -> :int"
-  [arg]
-  (some (fn [[pattern type]]
-          (when (re-find pattern (name arg))
-            type))
-        auto-parse-arg-name-patterns))
-
-;;; ## TYPIFY-ROUTE
-
-(defn route-param-regex
-  "If keyword `arg` has a matching type, return a pair like `[arg route-param-regex]`, where `route-param-regex` is the
-  regex that this param that arg must match.
-
-    (route-param-regex :id) -> [:id #\"[0-9]+\"]"
-  [arg]
-  (some->> (arg-type arg)
-           *auto-parse-types*
-           :route-param-regex
-           (vector arg)))
-
 (defn route-arg-keywords
   "Return a sequence of keywords for URL args in string `route`.
 
@@ -280,33 +225,6 @@
         wildcard  wildcard
         :else     route))))
 
-;;; ## ROUTE ARG AUTO PARSING
-
-(defn let-form-for-arg
-  "Given an `arg-symbol` like `id`, return a pair like `[id (Integer/parseInt id)]` that can be used in a `let` form."
-  [arg-symbol]
-  (when (symbol? arg-symbol)
-    (some-> (arg-type arg-symbol)                                     ; :int
-            *auto-parse-types*                                        ; {:parser ... }
-            :parser                                                   ; Integer/parseInt
-            ((fn [parser] `(when ~arg-symbol (~parser ~arg-symbol)))) ; (when id (Integer/parseInt id))
-            ((partial vector arg-symbol)))))                          ; [id (Integer/parseInt id)]
-
-(defmacro auto-parse
-  "Create a `let` form that applies corresponding parse-fn for any symbols in `args` that are present in
-  `*auto-parse-types*`."
-  {:style/indent 1}
-  [args & body]
-  (let [let-forms (->> args
-                       (mapcat let-form-for-arg)
-                       (filter identity))]
-    `(let [~@let-forms]
-       ~@body)))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          AUTO-COERCION                                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (def defendpoint-transformer
   "Transformer used on values coming over the API via defendpoint."
   (mtx/transformer
@@ -337,10 +255,6 @@
                        (remove nil?))]
     `(let [~@let-forms] ~@body)))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                PARAM VALIDATION                                                |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (defn validate-param
   "Validate a parameter against its respective malli schema, or throw an Exception."
   [field-name value schema]
@@ -359,10 +273,6 @@
   [param->schema]
   (for [[param schema] param->schema]
     `(validate-param '~param ~param ~schema)))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                      MISC. OTHER FNS USED BY DEFENDPOINT                                       |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn route-fn-name
   "Generate a symbol suitable for use as the name of an API endpoint fn. Name is just `method` + `route` with slashes

@@ -6,6 +6,7 @@
 
 (mr/def ::id pos-int?)
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (def ^:private RouteParams
   [:map
    [:id [:string {:api/regex #"[abc]{4}"}]]])

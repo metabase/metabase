@@ -132,7 +132,8 @@
 (mu/defn- auto-route-param-regex :- [:maybe (ms/InstanceOfClass java.util.regex.Pattern)]
   [route-param :- :keyword
    route-params-schema]
-  (when (= (mc/type route-params-schema) :map)
+  (when (and route-params-schema
+             (= (mc/type route-params-schema) :map))
     (some (fn [[k _options v-schema]]
             (when (= k route-param)
               (or
