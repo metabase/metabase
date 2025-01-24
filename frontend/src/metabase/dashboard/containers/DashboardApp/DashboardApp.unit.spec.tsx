@@ -227,7 +227,7 @@ describe("DashboardApp", () => {
     it("should prompt the user to add a question if they have write access", async () => {
       await setup();
 
-      expect(screen.getByText(/add a saved question/i)).toBeInTheDocument();
+      expect(screen.getByText(/add a chart/i)).toBeInTheDocument();
     });
 
     it("should should show an empty state without the 'add a question' prompt if the user lacks write access", async () => {
