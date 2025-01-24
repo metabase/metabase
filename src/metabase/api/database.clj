@@ -534,15 +534,10 @@
                                  :group-by [:name]}]})))
 
 (defn- autocomplete-results [tables fields]
-  (let [table-id->name (into {}
-                             (map (juxt :id :name))
-                             tables)]
-    (concat (for [{:keys [name]} tables]
+  (concat (for [{:keys [name]} tables]
               [name "Table"])
             (for [{:keys [id table_id name database_type]} fields]
-              [name (str (table-id->name table_id)
-                         " "
-                         database_type)]))))
+              [name database_type])))
 
 (defn- autocomplete-suggestions
   "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
