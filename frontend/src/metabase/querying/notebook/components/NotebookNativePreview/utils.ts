@@ -1,30 +1,29 @@
-import * as Lib from "metabase-lib";
+import { formatNativeQuery } from "metabase/lib/engine";
 import type Question from "metabase-lib/v1/Question";
-import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { DatasetQuery, NativeQueryForm } from "metabase-types/api";
+import type { NativeQueryForm } from "metabase-types/api";
 
-export function createDatasetQuery(
+export function createNativeQuestion(
   question: Question,
-  queryText: string,
-  { collection }: NativeQueryForm,
-): DatasetQuery {
-  const query = question.query();
-  const databaseId = Lib.databaseID(query);
-  const extras = collection ? { collection } : {};
+  nativeForm: NativeQueryForm | undefined,
+) {
+  const database = question.database();
+  if (!database || nativeForm) {
+    return question;
+  }
 
-  return {
-    type: "native",
-    native: { query: queryText, "template-tags": {}, ...extras },
-    database: databaseId,
-  };
-}
+  const { query, collection } = nativeForm;
+  const formattedQuery = formatNativeQuery(query, database.engine);
+  if (!formattedQuery) {
+    return question;
+  }
 
-export function createNativeQuery(question: Question, query: string = "") {
-  return new NativeQuery(question, {
+  return question.setDatasetQuery({
     type: "native",
-    database: question.database()?.id ?? null,
     native: {
-      query,
+      query: formattedQuery,
+      "template-tags": {},
+      ...(collection ? { collection } : {}),
     },
+    database: database.id,
   });
 }
