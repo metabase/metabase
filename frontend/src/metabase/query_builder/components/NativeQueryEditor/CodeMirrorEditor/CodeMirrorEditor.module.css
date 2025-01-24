@@ -185,6 +185,7 @@
       border-radius: 2px;
     }
 
+    .cm-token-propertyName,
     .cm-tag {
       color: var(--mb-color-brand);
 
