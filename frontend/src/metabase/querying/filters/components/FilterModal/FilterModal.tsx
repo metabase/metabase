@@ -8,6 +8,7 @@ import S from "./FilterModal.module.css";
 import { FilterModalBody } from "./FilterModalBody";
 import { FilterModalFooter } from "./FilterModalFooter";
 import { FilterModalHeader } from "./FilterModalHeader";
+import { FilterModalProvider } from "./context";
 import { getModalTitle, getModalWidth } from "./utils";
 
 export interface FilterModalProps {
@@ -17,6 +18,8 @@ export interface FilterModalProps {
 }
 
 export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
+  const filterModal = useFilterModal(question, onSubmit);
+
   const {
     query,
     version,
@@ -33,7 +36,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
     handleReset,
     handleSubmit,
     handleSearch,
-  } = useFilterModal(question, onSubmit);
+  } = filterModal;
 
   const onSubmitFilters = () => {
     handleSubmit();
@@ -41,42 +44,44 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
   };
 
   return (
-    <Modal.Root opened size={getModalWidth(groupItems)} onClose={onClose}>
-      <Modal.Overlay />
-      <Modal.Content>
-        <Modal.Header className={S.ModalHeader} p="lg">
-          <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
-          <Flex mx="md" justify="end" style={{ flex: 1 }}>
-            <FilterModalHeader value={searchText} onChange={handleSearch} />
+    <FilterModalProvider value={filterModal}>
+      <Modal.Root opened size={getModalWidth(groupItems)} onClose={onClose}>
+        <Modal.Overlay />
+        <Modal.Content>
+          <Modal.Header className={S.ModalHeader} p="lg">
+            <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
+            <Flex mx="md" justify="end" style={{ flex: 1 }}>
+              <FilterModalHeader value={searchText} onChange={handleSearch} />
+            </Flex>
+            <Modal.CloseButton />
+          </Modal.Header>
+          <Modal.Body className={S.ModalBody} p={0}>
+            <FilterModalBody
+              groupItems={visibleItems}
+              query={query}
+              tab={tab}
+              version={version}
+              searching={isSearching}
+              onChange={handleChange}
+              onInput={handleInput}
+              onTabChange={setTab}
+            />
+          </Modal.Body>
+          <Flex
+            className={S.ModalFooter}
+            p="md"
+            direction="row"
+            justify="space-between"
+          >
+            <FilterModalFooter
+              canRemoveFilters={canRemoveFilters}
+              onClearFilters={handleReset}
+              isChanged={isChanged}
+              onApplyFilters={onSubmitFilters}
+            />
           </Flex>
-          <Modal.CloseButton />
-        </Modal.Header>
-        <Modal.Body className={S.ModalBody} p={0}>
-          <FilterModalBody
-            groupItems={visibleItems}
-            query={query}
-            tab={tab}
-            version={version}
-            searching={isSearching}
-            onChange={handleChange}
-            onInput={handleInput}
-            onTabChange={setTab}
-          />
-        </Modal.Body>
-        <Flex
-          className={S.ModalFooter}
-          p="md"
-          direction="row"
-          justify="space-between"
-        >
-          <FilterModalFooter
-            canRemoveFilters={canRemoveFilters}
-            onClearFilters={handleReset}
-            isChanged={isChanged}
-            onApplyFilters={onSubmitFilters}
-          />
-        </Flex>
-      </Modal.Content>
-    </Modal.Root>
+        </Modal.Content>
+      </Modal.Root>
+    </FilterModalProvider>
   );
 }
