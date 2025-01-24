@@ -13,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -32,9 +33,40 @@
     {:structured-output dashboard}
     {:output "dashboard not found"}))
 
+(defn metric-details
+  "Get metric details as returned by tools."
+  ([id]
+   (when-let [card (api.card/get-card id)]
+     (metric-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)))))
+  ([card metadata-provider]
+   (let [id (:id card)
+         metric-query (lib/query metadata-provider (lib.metadata/card metadata-provider id))
+         breakouts (lib/breakouts metric-query)
+         base-query (lib/remove-all-breakouts metric-query)
+         visible-cols (lib/visible-columns base-query)
+         filterable-cols (lib/filterable-columns base-query)
+         default-temporal-breakout (->> breakouts
+                                        (map #(lib/find-matching-column % visible-cols))
+                                        (m/find-first lib.types.isa/temporal?))
+         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
+     {:id id
+      :name (:name card)
+      :description (:description card)
+      :default_time_dimension_field_id (some-> default-temporal-breakout
+                                               (metabot-v3.tools.u/->result-column visible-cols field-id-prefix)
+                                               :id)
+      :queryable_dimensions (mapv #(metabot-v3.tools.u/->result-column % visible-cols field-id-prefix)
+                                  filterable-cols)})))
+
+(comment
+  (binding [api/*current-user-permissions-set* (delay #{"/"})]
+    (metric-details 135))
+  -)
+
 (defn- convert-metric
-  [db-metric]
-  (select-keys db-metric [:id :name :description]))
+  [db-metric metadata-provider]
+  (-> db-metric (metric-details metadata-provider)
+      (select-keys  [:id :name :description :default_time_dimension_field_id])))
 
 (declare ^:private table-details)
 
@@ -64,7 +96,7 @@
            :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix)) cols)
            :name (lib/display-name table-query)}
           (m/assoc-some :description (:description base)
-                        :metrics (not-empty (mapv convert-metric (lib/available-metrics table-query)))
+                        :metrics (not-empty (mapv #(convert-metric % mp) (lib/available-metrics table-query)))
                         :queryable-foreign-key-tables (when include-foreign-key-tables?
                                                         (not-empty (foreign-key-tables mp cols))))))))
 
@@ -82,7 +114,7 @@
            :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix)) cols)
            :name (lib/display-name card-query)}
           (m/assoc-some :description (:description base)
-                        :metrics (not-empty (mapv convert-metric (lib/available-metrics card-query)))
+                        :metrics (not-empty (mapv #(convert-metric % mp) (lib/available-metrics card-query)))
                         :queryable-foreign-key-tables (not-empty (foreign-key-tables mp cols)))))))
 
 (defn- get-table-details
@@ -102,34 +134,6 @@
             api/*is-superuser?* true]
     (let [id #_"card__137" #_"card__136" "27"]
       (get-table-details :get-table-details {:table-id id} {})))
-  -)
-
-(defn metric-details
-  "Get metric details as returned by tools."
-  [id]
-  (when-let [card (api.card/get-card id)]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
-          metric-query (lib/query mp (lib.metadata/card mp id))
-          breakouts (lib/breakouts metric-query)
-          base-query (lib/remove-all-breakouts metric-query)
-          visible-cols (lib/visible-columns base-query)
-          filterable-cols (lib/filterable-columns base-query)
-          default-temporal-breakout (->> breakouts
-                                         (map #(lib/find-matching-column % visible-cols))
-                                         (m/find-first lib.types.isa/temporal?))
-          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
-      {:id id
-       :name (:name card)
-       :description (:description card)
-       :default-time-dimension-field-id (some-> default-temporal-breakout
-                                                (metabot-v3.tools.u/->result-column visible-cols field-id-prefix)
-                                                :id)
-       :queryable-dimensions (mapv #(metabot-v3.tools.u/->result-column % visible-cols field-id-prefix)
-                                   filterable-cols)})))
-
-(comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})]
-    (metric-details 135))
   -)
 
 (defn- get-metric-details
@@ -195,16 +199,34 @@
                :fn     get-report-details
                :arg-fn (fn [id] {:report-id id})}})
 
+(defn- replace-with-queried-tables
+  [{:keys [query]}]
+  (let [ids (-> query :query mbql.normalize/normalize lib.util/collect-source-tables)
+        card-ids (keep lib.util/legacy-string-table-id->card-id ids)
+        table-ids (filter int? ids)]
+    (concat (map (fn [id]
+                   {:type :table
+                    :id id})
+                 table-ids)
+            (when (seq card-ids)
+              (t2/select [:model/Card :type :id] :id [:in card-ids])))))
+
 (defn- dummy-get-item-details
   [{:keys [context] :as env}]
-  (reduce (fn [env viewed]
-            (if-let [{getter-id :id, getter-fn :fn, :keys [arg-fn]} (some-> viewed :type keyword detail-getters)]
-              (let [arguments (arg-fn (:id viewed))
-                    tool-response (getter-fn getter-id arguments (envelope/context env))]
-                (reduce envelope/add-dummy-message env (dummy-tool-messages getter-id arguments tool-response)))
-              env))
-          env
-          (:user_is_viewing context)))
+  (transduce (comp (mapcat (fn [item]
+                             (if (= (:type item) "adhoc")
+                               (replace-with-queried-tables item)
+                               [item])))
+                   (distinct))
+             (completing
+              (fn [env viewed]
+                (if-let [{getter-id :id, getter-fn :fn, :keys [arg-fn]} (some-> viewed :type keyword detail-getters)]
+                  (let [arguments (arg-fn (:id viewed))
+                        tool-response (getter-fn getter-id arguments (envelope/context env))]
+                    (reduce envelope/add-dummy-message env (dummy-tool-messages getter-id arguments tool-response)))
+                  env)))
+             env
+             (:user_is_viewing context)))
 
 (defn- execute-query
   [query-id legacy-query]
