@@ -263,6 +263,7 @@
 
   ul {
     max-height: 360px;
+    overflow-y: auto;
   }
 
   li {
