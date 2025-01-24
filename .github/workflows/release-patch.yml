@@ -9,7 +9,7 @@ on:
         type: number
         required: true
   schedule:
-    - cron: '15 0 * * 2-6' # every weekday at 7/8:15 pm Eastern Time
+    - cron: '0 21 * * 1-5' # every weekday at 4 pm EST/5 pm EDT
 
 jobs:
   auto-patch-trigger:

@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.sync.util-test
+(ns metabase.sync.util-test
   "Tests for the utility functions shared by all parts of sync, such as the duplicate ops guard."
   (:require
    [clojure.core.async :as a]
@@ -8,14 +8,13 @@
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.models.task-history :as task-history]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,7 +41,7 @@
   (testing "only one sync process be going on at a time"
     ;; describe-database gets called once during a single sync process, and the results are used for syncing tables
     ;; and syncing the _metabase_metadata table.
-    (t2.with-temp/with-temp [:model/Database db {:engine ::concurrent-sync-test}]
+    (mt/with-temp [:model/Database db {:engine ::concurrent-sync-test}]
       (reset! calls-to-describe-database 0)
       ;; start a sync processes in the background. It should take 1000 ms to finish
       (let [f1 (future (sync/sync-database! db))

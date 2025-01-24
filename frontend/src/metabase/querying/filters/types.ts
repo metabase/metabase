@@ -104,4 +104,18 @@ export type MonthYearPickerValue = {
   month: number; // 1-12
 };
 
-export type DateFilterValue = DatePickerValue | MonthYearPickerValue;
+export type QuarterYearPickerValue = {
+  type: "quarter";
+  year: number;
+  quarter: number; // 1-4
+};
+
+export type DateFilterValue =
+  | DatePickerValue
+  | MonthYearPickerValue
+  | QuarterYearPickerValue;
+
+export type DateFilterDisplayOpts = {
+  // whether to include `On` prefix for a single date filter
+  withPrefix?: boolean;
+};

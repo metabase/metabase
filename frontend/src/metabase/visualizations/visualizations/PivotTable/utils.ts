@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
+import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 import { sumArray } from "metabase/lib/arrays";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";

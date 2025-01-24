@@ -15,6 +15,7 @@ const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
+const cypressSplit = require("cypress-split");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = process.env["CYPRESS_CI"] === "true";
@@ -47,6 +48,17 @@ const assetsResolverPlugin = {
     });
   },
 };
+
+// these are special and shouldn't be chunked out arbitrarily
+const specBlacklist = ["/embedding-sdk/", "/cross-version/"];
+
+function getSplittableSpecs(specs) {
+  return specs.filter(spec => {
+    return !specBlacklist.some(blacklistedPath =>
+      spec.includes(blacklistedPath),
+    );
+  });
+}
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
@@ -155,6 +167,10 @@ const defaultConfig = {
     };
 
     require("@cypress/grep/src/plugin")(config);
+
+    if (isCI) {
+      cypressSplit(on, config, getSplittableSpecs);
+    }
 
     return config;
   },

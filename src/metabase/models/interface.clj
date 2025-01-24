@@ -5,7 +5,6 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -16,6 +15,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
+   [metabase.models.resolution]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
@@ -42,6 +42,10 @@
    (toucan2.instance Instance)))
 
 (set! *warn-on-reflection* true)
+
+(comment
+  ;; load this so dynamic model resolution works as expected
+  metabase.models.resolution/keep-me)
 
 (p/import-vars
  [models.dispatch
@@ -404,7 +408,7 @@
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
-  (let [validator (mc/validator u.cron/CronScheduleString)]
+  (let [validator (mr/validator u.cron/CronScheduleString)]
     (partial mu/validate-throw validator)))
 
 (def transform-cron-string

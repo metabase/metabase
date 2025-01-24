@@ -35,6 +35,7 @@ describe("scenarios > question > native", () => {
 
   it("lets you create and run a SQL question", () => {
     H.openNativeEditor();
+    cy.wait(1000); // attempt to decrease flakiness
     cy.realType("select count(*) from orders");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -106,7 +107,7 @@ describe("scenarios > question > native", () => {
     cy.contains('Table "ORD" not found');
   });
 
-  it("should handle template tags", () => {
+  it("should handle template tags", { tags: "@flaky" }, () => {
     H.openNativeEditor();
     cy.realType(
       `select * from PRODUCTS where RATING > ${DOUBLE_LEFT_BRACKET}Stars}}`,
@@ -239,7 +240,7 @@ describe("scenarios > question > native", () => {
         .as("runQuery")
         .click();
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       cy.findByTestId("sidebar-left")
         .as("sidebar")
         .within(() => {

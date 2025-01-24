@@ -6,8 +6,7 @@
    [metabase.query-processor.middleware.visualization-settings
     :as viz-settings]
    [metabase.query-processor.store :as qp.store]
-   [metabase.test :as mt]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [metabase.test :as mt]))
 
 (defn- update-viz-settings
   ([query] (update-viz-settings query true))
@@ -70,13 +69,13 @@
 
 (deftest card-viz-settings-test
   (qp.store/with-metadata-provider (mt/id)
-    (t2.with-temp/with-temp [:model/Field {field-id-1 :id} {:settings {:column_title "Test"}}
-                             :model/Field {field-id-2 :id} {:settings {:decimals 4, :scale 10}}
-                             :model/Field {field-id-3 :id} {:settings {:number_style "percent"}}]
+    (mt/with-temp [:model/Field {field-id-1 :id} {:settings {:column_title "Test"}}
+                   :model/Field {field-id-2 :id} {:settings {:decimals 4, :scale 10}}
+                   :model/Field {field-id-3 :id} {:settings {:number_style "percent"}}]
       (testing "Field settings in the DB are incorporated into visualization settings with a lower
                precedence than card settings"
         (testing "for a saved card"
-          (t2.with-temp/with-temp [:model/Card {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
+          (mt/with-temp [:model/Card {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
             (let [query    (test-query [field-id-1 field-id-2 field-id-3] card-id nil)
                   result   (update-viz-settings query)
                   expected (-> (processed-viz-settings field-id-1 field-id-2)
@@ -95,13 +94,13 @@
 
 (deftest card-viz-settings-test-2
   (qp.store/with-metadata-provider (mt/id)
-    (t2.with-temp/with-temp [:model/Field {field-id-1 :id} {:settings {:column_title "Test"}}
-                             :model/Field {field-id-2 :id} {:settings {:decimals 4, :scale 10}}
-                             :model/Field {field-id-3 :id} {:settings {:number_style "percent"}}]
+    (mt/with-temp [:model/Field {field-id-1 :id} {:settings {:column_title "Test"}}
+                   :model/Field {field-id-2 :id} {:settings {:decimals 4, :scale 10}}
+                   :model/Field {field-id-3 :id} {:settings {:number_style "percent"}}]
       (testing "Field settings in the DB are incorporated into visualization settings with a lower
                precedence than card settings"
         (testing "for a saved card"
-          (t2.with-temp/with-temp [:model/Card {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
+          (mt/with-temp [:model/Card {card-id :id} {:visualization_settings (db-viz-settings field-id-1 field-id-2)}]
             (let [query    (test-query [field-id-1 field-id-2 field-id-3] card-id nil)
                   result   (update-viz-settings query)
                   expected (-> (processed-viz-settings field-id-1 field-id-2)

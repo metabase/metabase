@@ -4,6 +4,7 @@ import type {
   CardQueryMetadata,
   CardQueryRequest,
   CollectionItem,
+  CreateCardFromCsvRequest,
   CreateCardRequest,
   DashboardId,
   Dataset,
@@ -90,6 +91,27 @@ export const cardApi = Api.injectEndpoints({
         }),
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
       }),
+      createCardFromCsv: builder.mutation<Card, CreateCardFromCsvRequest>({
+        query: ({ file, collection_id }) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("collection_id", String(collection_id));
+
+          return {
+            method: "POST",
+            url: "/api/card/from-csv",
+            body: { formData },
+            formData: true,
+            fetch: true,
+          };
+        },
+        invalidatesTags: (_, error) =>
+          invalidateTags(error, [
+            listTag("card"),
+            listTag("schema"),
+            listTag("table"),
+          ]),
+      }),
       updateCard: builder.mutation<Card, UpdateCardRequest>({
         query: ({ id, delete_old_dashcards, ...body }) => ({
           method: "PUT",
@@ -100,12 +122,23 @@ export const cardApi = Api.injectEndpoints({
               : ""),
           body,
         }),
-        invalidatesTags: (_, error, { id }) =>
-          invalidateTags(error, [
+        invalidatesTags: (_, error, payload) => {
+          const tags = [
             listTag("card"),
-            idTag("card", id),
-            idTag("table", `card__${id}`),
-          ]),
+            idTag("card", payload.id),
+            idTag("table", `card__${payload.id}`),
+          ];
+
+          if (payload.dashboard_id != null) {
+            tags.push(idTag("dashboard", payload.dashboard_id));
+          }
+
+          if (payload.collection_id != null) {
+            tags.push(idTag("collection", payload.collection_id));
+          }
+
+          return invalidateTags(error, tags);
+        },
       }),
       deleteCard: builder.mutation<void, CardId>({
         query: id => ({

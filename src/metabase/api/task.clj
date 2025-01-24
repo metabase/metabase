@@ -10,6 +10,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/"
   "Fetch a list of recent tasks stored as Task History"
   []
@@ -19,12 +20,14 @@
    :offset (request/offset)
    :data   (task-history/all (request/limit) (request/offset))})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/:id"
   "Get `TaskHistory` entry with ID."
   [id]
   {id ms/PositiveInt}
   (api/check-404 (api/read-check :model/TaskHistory id)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
   []

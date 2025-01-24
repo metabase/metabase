@@ -9,6 +9,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/tables"
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []
@@ -17,6 +18,7 @@
     (map #(update % :schema str) tables)
     (filterv mi/can-read? tables)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint DELETE "/tables/:id"
   "Delete the uploaded table from the database, optionally archiving cards for which it is the primary source."
   [id archive-cards]
