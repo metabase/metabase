@@ -357,7 +357,7 @@
     "build-embedding-sdk:watch": "yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-embedding-sdk:pure --watch",
     "build-embedding-sdk-cli": "webpack --config webpack.embedding-sdk-cli.config.js",
     "build-embedding-sdk-cli:watch": "yarn build-embedding-sdk-cli --watch",
-    "build-hot": "rm -f target/cljs_dev/cljs.core.js && yarn build:cljs && yarn build-hot:js",
+    "build-hot": "yarn && yarn build-pure:cljs && yarn build-hot:js",
     "build-hot:cljs": "yarn && shadow-cljs watch app",
     "build-hot:js": "yarn clean-dev:js && NODE_OPTIONS=--max-old-space-size=8196 WEBPACK_BUNDLE=hot rspack serve",
     "build-hot:js-wait": "yarn wait:cljs; yarn build-hot:js",
