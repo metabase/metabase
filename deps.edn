@@ -49,6 +49,7 @@
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "6.6.1"}              ; trans dep of commons-codec
   com.h2database/h2                         {:mvn/version "2.1.214"}            ; embedded SQL database
   com.gfredericks/test.chuck                {:mvn/version "0.2.14"}             ; generating strings from regex
+  com.ibm.icu/icu4j                         {:mvn/version "71.1"}               ; Used to transliterate unicode characters into latin
   com.mchange/c3p0                          {:mvn/version "0.10.1"}             ; DB connection pool
   com.snowplowanalytics/snowplow-java-tracker
   {:mvn/version "1.0.1"               ; Snowplow analytics
