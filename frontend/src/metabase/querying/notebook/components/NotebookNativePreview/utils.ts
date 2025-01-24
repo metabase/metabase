@@ -7,23 +7,15 @@ export function createNativeQuestion(
   nativeForm: NativeQueryForm | undefined,
 ) {
   const database = question.database();
-  if (!database || !nativeForm) {
-    return question;
-  }
-
-  const { query, collection } = nativeForm;
-  const formattedQuery = formatNativeQuery(query, database.engine);
-  if (!formattedQuery) {
-    return question;
-  }
+  const query = formatNativeQuery(nativeForm?.query, database?.engine) ?? "";
 
   return question.setDatasetQuery({
     type: "native",
     native: {
-      query: formattedQuery,
+      query,
       "template-tags": {},
-      ...(collection ? { collection } : {}),
+      ...(nativeForm?.collection ? { collection: nativeForm.collection } : {}),
     },
-    database: database.id,
+    database: question.databaseId(),
   });
 }
