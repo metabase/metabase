@@ -251,7 +251,6 @@
        (mt/db)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
-         (.setAutoCommit conn false)
          (doseq [datefirst (range 1 8)]
            (binding [driver.common/*start-of-week* :sunday]
              (let [{:keys [query params]} (qp.compile/compile (mt/mbql-query users

@@ -221,7 +221,7 @@
 ;; TODO -- if we ever allow db-start-of-week to vary based on db localization settings, this should be replaced
 ;; with something using the new system
 ;; Issue: https://github.com/metabase/metabase/issues/39386
-(defn weekday
+(defn- weekday
   "Wrapper around (date-part :weekday ...) to account for potentially varying @@DATEFIRST"
   [expr]
   [:coalesce
