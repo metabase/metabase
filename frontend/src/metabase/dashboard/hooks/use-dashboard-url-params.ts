@@ -1,5 +1,4 @@
 import type { Location } from "history";
-import { useEffect } from "react";
 
 import {
   useDashboardFullscreen,
@@ -8,9 +7,7 @@ import {
 } from "metabase/dashboard/hooks";
 import { useLocationSync } from "metabase/dashboard/hooks/use-location-sync";
 import type { RefreshPeriod } from "metabase/dashboard/types";
-import type { DashboardUrlHashOptions } from "metabase/dashboard/types/hash-options";
-import { parseHashOptions } from "metabase/lib/browser";
-import { useEmbedFont, useEmbedFrameOptions } from "metabase/public/hooks";
+import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
 export const useDashboardUrlParams = ({
@@ -20,7 +17,7 @@ export const useDashboardUrlParams = ({
   location: Location;
   onRefresh: () => Promise<void>;
 }) => {
-  const { font, setFont } = useEmbedFont();
+  useSetEmbedFont({ location });
 
   const {
     background,
@@ -64,12 +61,6 @@ export const useDashboardUrlParams = ({
     location,
   });
 
-  useEffect(() => {
-    const { font } = parseHashOptions(location.hash) as DashboardUrlHashOptions;
-
-    setFont(font ?? null);
-  }, [location.hash, setFont]);
-
   return {
     isFullscreen,
     onFullscreenChange,
@@ -82,8 +73,6 @@ export const useDashboardUrlParams = ({
     background,
     bordered,
     titled,
-    font,
-    setFont,
     theme,
     setTheme,
     hideParameters: hide_parameters,
