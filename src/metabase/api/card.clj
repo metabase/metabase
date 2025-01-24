@@ -412,13 +412,14 @@
   - `exclude_ids` to filter out a list of card ids"
   [{:keys [id]} :- [:map
                     [:id int?]]
-   {:keys [last_cursor query exclude_ids]} :- [:map
-                                               [:last_cursor {:optional true} [:maybe ms/PositiveInt]]
-                                               [:query       {:optional true} [:maybe ms/NonBlankString]]
-                                               [:exclude_ids {:optional true} [:maybe [:fn
-                                                                                       {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
-                                                                                       (fn [ids]
-                                                                                         (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]]]]
+   {:keys [last_cursor query exclude_ids]}
+   :- [:map
+       [:last_cursor {:optional true} [:maybe ms/PositiveInt]]
+       [:query       {:optional true} [:maybe ms/NonBlankString]]
+       [:exclude_ids {:optional true} [:maybe [:fn
+                                               {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
+                                               (fn [ids]
+                                                 (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]]]]
   (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))
         card         (-> (t2/select-one :model/Card :id id) api/check-404 api/read-check)
         card-display (:display card)]
@@ -752,10 +753,11 @@
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]
    _query-params
-   {:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :- [:map
-                                                                                                                    [:ignore_cache       {:optional true} [:maybe :boolean]]
-                                                                                                                    [:collection_preview {:optional true} [:maybe :boolean]]
-                                                                                                                    [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [parameters ignore_cache dashboard_id collection_preview]}
+   :- [:map
+       [:ignore_cache       {:default false} :boolean]
+       [:collection_preview {:optional true} [:maybe :boolean]]
+       [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
   ;;
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
