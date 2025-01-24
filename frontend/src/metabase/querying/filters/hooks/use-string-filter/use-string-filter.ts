@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 
 import * as Lib from "metabase-lib";
 
@@ -58,17 +59,12 @@ export function useStringFilter({
   const { type } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values, options);
 
-  useEffect(() => {
+  const resetRef = useLatest(() => {
     setValues(defaultValues);
-  }, [defaultValues]);
-
-  useEffect(() => {
     setOperator(defaultOperator);
-  }, [defaultOperator]);
-
-  useEffect(() => {
     setOptions(defaultOptions);
-  }, [defaultOptions]);
+  });
+  const reset = useCallback(() => resetRef.current(), [resetRef]);
 
   return {
     type,
@@ -83,6 +79,7 @@ export function useStringFilter({
       values: string[],
       options: Lib.StringFilterOptions,
     ) => getFilterClause(operator, column, values, options),
+    reset,
     setOperator,
     setValues,
     setOptions,

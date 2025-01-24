@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 
 import * as Lib from "metabase-lib";
 
@@ -49,15 +50,13 @@ export function useBooleanOperatorFilter({
   const { valueCount, isAdvanced } = getOptionByOperator(operator);
   const [isExpanded, setIsExpanded] = useState(isAdvanced);
 
-  useEffect(() => {
+  const resetRef = useLatest(() => {
     setValues(defaultValues);
-  }, [defaultValues]);
-
-  useEffect(() => {
     const { isAdvanced } = getOptionByOperator(defaultOperator);
     setOperator(defaultOperator);
     setIsExpanded(isAdvanced);
-  }, [defaultOperator]);
+  });
+  const reset = useCallback(() => resetRef.current(), [resetRef]);
 
   return {
     operator,
@@ -68,6 +67,7 @@ export function useBooleanOperatorFilter({
     getDefaultValues,
     getFilterClause: (operator: Lib.BooleanFilterOperator, values: boolean[]) =>
       getFilterClause(operator, column, values),
+    reset,
     setOperator,
     setValues,
   };
