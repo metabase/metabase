@@ -2,11 +2,10 @@ name: External PR Label
 
 on:
   pull_request:
-    types: [opened]
 
 jobs:
   external-pr-label:
-    if: ${{ github.event.pull_request.head.repo.fork }}
+    # if: ${{ github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
