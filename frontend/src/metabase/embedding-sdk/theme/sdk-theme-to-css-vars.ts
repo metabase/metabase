@@ -48,6 +48,5 @@ export const CSS_VARIABLES_TO_SDK_THEME_MAP = {
   "--mb-color-bg-sdk-question-toolbar": "question.toolbar.backgroundColor",
 
   // Mappings for SDK elements
-  ...INTERACTIVE_QUESTION_THEME_OPTIONS,
   ...COLLECTION_BROWSER_THEME_OPTIONS,
 } satisfies CssVariableToThemeMap;
