@@ -244,10 +244,9 @@
 
   That is, any `:template-tags` values with `:type` other than `:snippet` or `:card`."
   [query :- ::lib.schema/query]
-  (not (every? #{:snippet :card}
-               (some->> (template-tags query)
-                        vals
-                        (map :type)))))
+  (letfn [(variable-tag? [{tag-type :type}]
+            (not (#{:snippet :card} tag-type)))]
+    (boolean (some variable-tag? (vals (template-tags query))))))
 
 (mu/defn has-write-permission :- :boolean
   "Returns whether the database has native write permissions.
