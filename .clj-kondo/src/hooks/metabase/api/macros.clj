@@ -42,7 +42,7 @@
                       (api/token-node `let)
                       (api/vector-node (into []
                                              (mapcat (fn [a-binding]
-                                                       [a-binding (api/token-node nil)]))
+                                                       [a-binding (api/map-node {})]))
                                              bindings))
                       body))))
                   (with-meta (meta node)))))]

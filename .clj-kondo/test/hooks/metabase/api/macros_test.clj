@@ -24,8 +24,8 @@
                 [:map
                  [:name    ms/NonBlankString]
                  [:default {:optional true} [:maybe :boolean]]])
-              (clojure.core/let [_route-params nil
-                                 _query-params nil
+              (clojure.core/let [_route-params {}
+                                 _query-params {}
                                  {:keys [icon], collection-id :collection_id, :as body} nil]
                 (body icon)
                 (body collection-id)))
