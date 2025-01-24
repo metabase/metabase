@@ -136,7 +136,7 @@
     (let [all-ks         (keys (or after before))
           ;; ignore collection_id as part of diff if the dashboard_id has changed
           ;; so that the final diff string doesn't contain two messages about moving
-          ks         (if (not= (:dashboard_id before) (:dashboard_id after))
+          ks         (if (and (= model "Card") (not= (:dashboard_id before) (:dashboard_id after)))
                        (remove #{:collection_id} all-ks)
                        all-ks)
           model-name (model-str->i18n-str model)]
