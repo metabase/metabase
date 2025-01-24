@@ -121,9 +121,9 @@
 (mr/def ::info
   "The info about an individual endpoint that gets stored in the namespace metadata."
   [:map
-   [:core-fn      ::core-fn]
-   [:base-handler ::handler]
-   [:form         ::parsed-args]])
+   [:core-fn ::core-fn]
+   [:handler ::handler]
+   [:form    ::parsed-args]])
 
 ;;;;
 ;;;; spec (only used for macroexpansion)
@@ -503,11 +503,6 @@
     :route (:route-params request)
     :query (some-> (:query-params request) (update-keys keyword))))
 
-(defn- default-raise
-  "Default `raise` function for defendpoint handler functions."
-  [e]
-  (throw e))
-
 (mu/defn- middleware-forms
   "Middleware to apply to base handler. Currently the only option is middleware for handling multipart requests, applied
   if the handler metadata contains
@@ -517,7 +512,7 @@
   (when (:multipart metadata)
     '[ring.middleware.multipart-params/wrap-multipart-params]))
 
-(mu/defn defendpoint-base-handler* :- ::handler
+(mu/defn defendpoint-handler* :- ::handler
   "Generate the a Ring handler (excluding the Clout/Compojure method/route matching stuff) for parsed [[defendpoint]]
   args."
   {:style/indent [:form]}
@@ -526,12 +521,12 @@
    {:keys [async?]} :- [:map
                         [:async? :boolean]]]
   (let [handler (if async?
-                  (fn async-base-handler [request respond raise]
+                  (fn async-handler [request respond raise]
                     (let [route-params (defendpoint-params request :route)
                           query-params (defendpoint-params request :query)
                           body-params  (:body request)]
                       (core-fn respond raise route-params query-params body-params request)))
-                  (fn base-handler [request respond raise]
+                  (fn handler [request respond raise]
                     (try
                       (let [route-params (defendpoint-params request :route)
                             query-params (defendpoint-params request :query)
@@ -546,14 +541,14 @@
      handler
      middleware)))
 
-(defmacro defendpoint-base-handler
+(defmacro defendpoint-handler
   "Generate the a Ring handler (excluding the Clout/Compojure method/route matching stuff) for parsed [[defendpoint]]
   args."
   {:style/indent [:form]}
   [parsed-args core-fn]
   (let [async? (boolean (get-in parsed-args [:params :respond]))]
     `(let [middleware# ~(middleware-forms parsed-args)]
-       (defendpoint-base-handler* middleware# ~core-fn {:async? ~async?}))))
+       (defendpoint-handler* middleware# ~core-fn {:async? ~async?}))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn reset-ns-routes!
@@ -609,7 +604,7 @@
                      (mapv (fn [route]
                              [(clout/route-compile (get-in route [:form :route :path])
                                                    (get-in route [:form :route :regexes] {}))
-                              (:base-handler route)])
+                              (:handler route)])
                            routes)))))
 
 (defn- decode-route-params [route-params]
@@ -643,7 +638,7 @@
    info :- ::info]
   ;; we don't want to modify ns metadata during compilation, this will cause it to contain stuff like
   ;;
-  ;;    #function[metabase.api.macros/fn--61462/defendpoint-base-handler61461--61463/f--61464]
+  ;;    #function[metabase.api.macros/fn--61462/defendpoint-handler61461--61463/f--61464]
   ;;
   ;; that can't get loaded again when you use the uberjar, we'll just recreate this stuff on namespace load.
   (when-not *compile-files*
@@ -685,10 +680,10 @@
   [& args]
   (let [parsed (parse-defendpoint-args args)]
     `(let [core-fn#       (defendpoint-core-fn ~parsed)
-           base-handler#  (defendpoint-base-handler ~parsed core-fn#)
-           info#          {:core-fn      core-fn#
-                           :base-handler base-handler#
-                           :form         ~(quote-parsed-args parsed)}]
+           handler#  (defendpoint-handler ~parsed core-fn#)
+           info#          {:core-fn core-fn#
+                           :handler handler#
+                           :form    ~(quote-parsed-args parsed)}]
        (update-ns-endpoints! *ns* ~(defendpoint-unique-key-form parsed) info#)
        info#)))
 
