@@ -1,37 +1,12 @@
-import {
-  type Dispatch,
-  type SetStateAction,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useMemo, useRef, useState } from "react";
 
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import type { GroupItem } from "../../types";
-
 import { SEARCH_KEY } from "./constants";
+import type { FilterModalResult } from "./types";
 import { getGroupItems, hasFilters, removeFilters } from "./utils/filters";
 import { isSearchActive, searchGroupItems } from "./utils/search";
-
-type FilterModalResult = {
-  query: Lib.Query;
-  version: number;
-  isChanged: boolean;
-  groupItems: GroupItem[];
-  tab: string | null;
-  setTab: Dispatch<SetStateAction<string | null>>;
-  canRemoveFilters: boolean;
-  searchText: string;
-  isSearching: boolean;
-  visibleItems: GroupItem[];
-  handleInput: () => void;
-  handleChange: (query: Lib.Query) => void;
-  handleReset: () => void;
-  handleSubmit: () => void;
-  handleSearch: (searchText: string) => void;
-};
 
 export const useFilterModal = (
   question: Question,
