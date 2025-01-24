@@ -139,10 +139,10 @@
                  (->> (mt/user-http-request :crowberto :get 200 "ee/stale/root"
                                             :is_recursive true)
                       :data
-                      (filter #(contains? #{(u/the-id card-a)
-                                            (u/the-id card-b)
-                                            (u/the-id dashboard-a)
-                                            (u/the-id dashboard-b)}
+                      (filter #(contains? (into #{} [(u/the-id card-a) ; there might be some duplicates here
+                                                     (u/the-id card-b)
+                                                     (u/the-id dashboard-a)
+                                                     (u/the-id dashboard-b)])
                                           (:id %)))
                       (map :name)
                       set))))))))
