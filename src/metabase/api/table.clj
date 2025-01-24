@@ -635,23 +635,39 @@
   uploading a CSV file."
   {:multipart true}
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (let [{:keys [multipart-params]} &request]
-    (update-csv! {:table-id id
-                  :filename (get-in multipart-params ["file" :filename])
-                  :file     (get-in multipart-params ["file" :tempfile])
-                  :action   ::upload/append})))
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   {:keys [multipart-params], :as _request} :- [:map
+                                                [:multipart-params
+                                                 [:map
+                                                  ["file"
+                                                   [:map
+                                                    [:filename :string]
+                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+  (update-csv! {:table-id id
+                :filename (get-in multipart-params ["file" :filename])
+                :file     (get-in multipart-params ["file" :tempfile])
+                :action   ::upload/append}))
 
 (api.macros/defendpoint :post "/:id/replace-csv"
   "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have
   been created by uploading a CSV file."
   {:multipart true}
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (let [{:keys [multipart-params]} &request]
-    (update-csv! {:table-id id
-                  :filename (get-in multipart-params ["file" :filename])
-                  :file     (get-in multipart-params ["file" :tempfile])
-                  :action   ::upload/replace})))
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   {:keys [multipart-params], :as _request} :- [:map
+                                                [:multipart-params
+                                                 [:map
+                                                  ["file"
+                                                   [:map
+                                                    [:filename :string]
+                                                    [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+  (update-csv! {:table-id id
+                :filename (get-in multipart-params ["file" :filename])
+                :file     (get-in multipart-params ["file" :tempfile])
+                :action   ::upload/replace}))
 
 (api/define-routes)
