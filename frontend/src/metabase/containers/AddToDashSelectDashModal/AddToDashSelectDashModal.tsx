@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
 import type { Card, Dashboard } from "metabase-types/api";
