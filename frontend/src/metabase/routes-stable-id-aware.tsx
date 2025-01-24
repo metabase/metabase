@@ -1,6 +1,4 @@
-import { skipToken } from "@reduxjs/toolkit/query";
-import type React from "react";
-import { type PropsWithChildren, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { WithRouterProps } from "react-router";
 
 import {
@@ -28,7 +26,7 @@ type FlatParam = {
 
 type ParamConfigMap = Record<string, ParamConfig>;
 
-export type EntityIdRedirectProps = PropsWithChildren & {
+export type EntityIdRedirectProps = {
   paramsToTranslate?: ParamConfigMap;
   searchParamsToTranslate?: ParamConfigMap;
   redirect: (path: string) => void;
@@ -42,7 +40,6 @@ export const EntityIdRedirect = ({
   redirect,
   params,
   location,
-  children,
 }: EntityIdRedirectProps) => {
   const currentUrl = location.pathname + location.search;
 
@@ -75,20 +72,14 @@ export const EntityIdRedirect = ({
     return map;
   }, [paramsWithValues]);
 
-  const needsTranslation = Object.keys(entityIdsToTranslate).length > 0;
-
-  const [status, setStatus] = useState<
-    "not-found" | "pass-through" | "loading"
-  >(needsTranslation ? "loading" : "pass-through");
+  const [status, setStatus] = useState<"not-found" | "loading">("loading");
 
   const {
     data: entity_ids,
     isError,
     isLoading,
     error,
-  } = useTranslateEntityIdQuery(
-    needsTranslation ? entityIdsToTranslate : skipToken,
-  );
+  } = useTranslateEntityIdQuery(entityIdsToTranslate);
 
   useEffect(() => {
     function handleResults() {
@@ -123,68 +114,44 @@ export const EntityIdRedirect = ({
       }
 
       if (shouldRedirect) {
-        setStatus("pass-through");
         const newUrl = url.replace("by-entity-id/", "");
         redirect(newUrl);
-        return;
       }
-
-      setStatus("pass-through");
     }
 
-    // redux toolkit query doesn't have a "onSuccess" hook,
-    if (isError || (!isLoading && needsTranslation)) {
+    if (!isLoading) {
       handleResults();
     }
-  }, [
-    currentUrl,
-    entity_ids,
-    isError,
-    isLoading,
-    needsTranslation,
-    paramsWithValues,
-    redirect,
-  ]);
+  }, [currentUrl, entity_ids, isError, isLoading, paramsWithValues, redirect]);
 
-  if (status === "pass-through") {
-    return children;
+  if (isError) {
+    throw error;
   }
 
   if (status === "loading") {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  if (!entity_ids) {
-    throw new Error("Error translating entity IDs");
-  }
-
-  if (status === "not-found") {
+  if (status === "not-found" || !entity_ids) {
     return <NotFound />;
   }
 };
 
-export function withEntityIdSupport<P extends WithRouterProps>(
-  Component: React.ComponentType<P>,
-  config: {
-    paramsToTranslate?: ParamConfigMap;
-    searchParamsToTranslate?: ParamConfigMap;
-  },
-) {
-  const WrappedComponent = (props: P) => (
+export function createEntityIdRedirect(config: {
+  paramsToTranslate?: ParamConfigMap;
+  searchParamsToTranslate?: ParamConfigMap;
+}) {
+  const Component = (props: WithRouterProps) => (
     <EntityIdRedirect
       paramsToTranslate={config.paramsToTranslate}
       searchParamsToTranslate={config.searchParamsToTranslate}
       redirect={props.router.push}
       location={props.location}
       params={props.params}
-    >
-      <Component {...props} />
-    </EntityIdRedirect>
+    />
   );
 
-  WrappedComponent.displayName = `withEntityIdSupport(${Component.displayName || Component.name})`;
-
-  return WrappedComponent;
+  return Component;
 }
 
 export const canBeEntityId = (id: string): id is BaseEntityId => {

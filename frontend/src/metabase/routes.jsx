@@ -1,4 +1,3 @@
-import React from "react";
 import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
@@ -64,7 +63,7 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
-import { withEntityIdSupport } from "./routes-stable-id-aware";
+import { createEntityIdRedirect } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
@@ -150,7 +149,7 @@ export const getRoutes = store => {
 
           <Route
             path="collection/by-entity-id/:slug(**)"
-            component={withEntityIdSupport(React.Fragment, {
+            component={createEntityIdRedirect({
               paramsToTranslate: {
                 slug: { type: "collection", required: true },
               },
@@ -171,7 +170,7 @@ export const getRoutes = store => {
 
           <Route
             path="dashboard/by-entity-id/:slug(**)"
-            component={withEntityIdSupport(React.Fragment, {
+            component={createEntityIdRedirect({
               paramsToTranslate: {
                 slug: { type: "dashboard", required: true },
               },
@@ -198,7 +197,7 @@ export const getRoutes = store => {
           <Route path="/question">
             <Route
               path="/question/by-entity-id/:slug(**)"
-              component={withEntityIdSupport(DashboardAppConnected, {
+              component={createEntityIdRedirect({
                 paramsToTranslate: {
                   slug: { type: "card", required: true },
                 },
