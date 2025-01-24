@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { WithRouterProps } from "react-router";
+import { match } from "ts-pattern";
 
 import {
   type BaseEntityId,
@@ -11,62 +12,53 @@ import { NotFound } from "./components/ErrorPages";
 import LoadingAndErrorWrapper from "./components/LoadingAndErrorWrapper";
 
 type ResourceType = "dashboard" | "collection" | "card" | "dashboard-tab";
+type ParamType = "param" | "search";
+
 type ParamConfig = {
-  type: ResourceType;
-  /** A required parameter that is not found will cause the component to render an error, a non-required parameter that is not found will be removed from the url */
-  required: boolean;
+  name: string;
+  type: ParamType;
+  resourceType: ResourceType;
+  required?: boolean;
 };
-
-type FlatParam = {
-  param: string;
-  value: string;
-  type: ResourceType;
-  required: boolean;
-};
-
-type ParamConfigMap = Record<string, ParamConfig>;
 
 export type EntityIdRedirectProps = {
-  paramsToTranslate?: ParamConfigMap;
-  searchParamsToTranslate?: ParamConfigMap;
+  parametersToTranslate: ParamConfig[];
   redirect: (path: string) => void;
   location: Pick<WithRouterProps["location"], "pathname" | "search" | "query">;
   params: WithRouterProps["params"];
 };
 
 export const EntityIdRedirect = ({
-  paramsToTranslate = {},
-  searchParamsToTranslate = {},
+  parametersToTranslate = [],
   redirect,
   params,
   location,
 }: EntityIdRedirectProps) => {
   const currentUrl = location.pathname + location.search;
 
-  const paramsWithValues: FlatParam[] = useMemo(() => {
-    const paramsWithValue = Object.entries(paramsToTranslate).map(
-      ([param, config]) => ({
-        param,
-        value: params[param],
+  const paramsWithValues = useMemo(() => {
+    // add the value from the params or the query
+    return parametersToTranslate.map(config => {
+      const value = match(config.type)
+        .with("param", () => params[config.name])
+        .with("search", () => location.query[config.name])
+        .exhaustive();
+      return {
         ...config,
-      }),
-    );
-    const searchParamWithValue = Object.entries(searchParamsToTranslate).map(
-      ([param, config]) => ({
-        param,
-        value: location.query[param],
-        ...config,
-      }),
-    );
-    return paramsWithValue.concat(searchParamWithValue);
-  }, [paramsToTranslate, searchParamsToTranslate, params, location.query]);
+        required: config.required ?? true,
+        value,
+      };
+    });
+  }, [parametersToTranslate, params, location.query]);
 
   const entityIdsToTranslate = useMemo(() => {
+    // formats the entity ids in the format {resourceType: [entityId1, entityId2]}
+    // as needed by the endpoint
     const map: Record<string, string[]> = {};
-    paramsWithValues.forEach(({ value, type }) => {
+    paramsWithValues.forEach(({ value, resourceType }) => {
       if (isBaseEntityID(value)) {
-        map[type] = map[type] || [];
-        map[type].push(value);
+        map[resourceType] = map[resourceType] || [];
+        map[resourceType].push(value);
       }
     });
     return map;
@@ -93,15 +85,14 @@ export const EntityIdRedirect = ({
           if (mappedEntityId?.id) {
             shouldRedirect = true;
             url = url.replace(value, String(mappedEntityId.id));
-          } else {
-            if (!canBeNormalId(value)) {
-              if (required) {
-                // if it's found and cannot be a normal slug (ie: it starts with a letter)
-                // then we show an error
-                notFound = true;
-              }
+          } else if (!canBeNormalId(value)) {
+            // if it's found and cannot be a normal slug (ie: it doesn't start with a number)
+            if (required) {
+              // if it's required, then we show an error, this is needed because at this time some endpoints
+              // become stuck in infinite loading if they fail to parse the numeric id from the slug
+              notFound = true;
             } else {
-              // if it's not required and it can't be a normal slug, then we remove it from the url
+              // if it's not required then we remove it from the url
               url = url.replace(value, "");
             }
           }
@@ -114,8 +105,7 @@ export const EntityIdRedirect = ({
       }
 
       if (shouldRedirect) {
-        const newUrl = url.replace("by-entity-id/", "");
-        redirect(newUrl);
+        redirect(url.replace("by-entity-id/", ""));
       }
     }
 
@@ -138,13 +128,11 @@ export const EntityIdRedirect = ({
 };
 
 export function createEntityIdRedirect(config: {
-  paramsToTranslate?: ParamConfigMap;
-  searchParamsToTranslate?: ParamConfigMap;
+  parametersToTranslate: ParamConfig[];
 }) {
   const Component = (props: WithRouterProps) => (
     <EntityIdRedirect
-      paramsToTranslate={config.paramsToTranslate}
-      searchParamsToTranslate={config.searchParamsToTranslate}
+      parametersToTranslate={config.parametersToTranslate}
       redirect={props.router.push}
       location={props.location}
       params={props.params}

@@ -150,9 +150,13 @@ export const getRoutes = store => {
           <Route
             path="collection/by-entity-id/:slug(**)"
             component={createEntityIdRedirect({
-              paramsToTranslate: {
-                slug: { type: "collection", required: true },
-              },
+              parametersToTranslate: [
+                {
+                  name: "slug",
+                  resourceType: "collection",
+                  type: "param",
+                },
+              ],
             })}
           />
 
@@ -171,12 +175,19 @@ export const getRoutes = store => {
           <Route
             path="dashboard/by-entity-id/:slug(**)"
             component={createEntityIdRedirect({
-              paramsToTranslate: {
-                slug: { type: "dashboard", required: true },
-              },
-              searchParamsToTranslate: {
-                tab: { type: "dashboard-tab", required: false },
-              },
+              parametersToTranslate: [
+                {
+                  name: "slug",
+                  resourceType: "dashboard",
+                  type: "param",
+                },
+                {
+                  name: "tab",
+                  resourceType: "dashboard-tab",
+                  type: "search",
+                  required: false,
+                },
+              ],
             })}
           />
 
@@ -198,9 +209,13 @@ export const getRoutes = store => {
             <Route
               path="/question/by-entity-id/:slug(**)"
               component={createEntityIdRedirect({
-                paramsToTranslate: {
-                  slug: { type: "card", required: true },
-                },
+                parametersToTranslate: [
+                  {
+                    name: "slug",
+                    resourceType: "card",
+                    type: "param",
+                  },
+                ],
               })}
             />
             <IndexRoute component={QueryBuilder} />
