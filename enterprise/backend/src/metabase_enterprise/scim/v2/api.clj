@@ -396,7 +396,7 @@
                           :Resources    (map mb-group->scim groups)}]
       (scim-response result))))
 
-(api.macros/defendpoint :get "/Groups/:id"
+(api.macros/defendpoint :get ["/Groups/:id" :id #"[^/]+"]
   "Fetch a single group."
   [{:keys [id]} :- [:map
                     [:id ms/NonBlankString]]]
