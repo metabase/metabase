@@ -101,14 +101,14 @@ export interface ShortcutOption {
 export type MonthYearPickerValue = {
   type: "month";
   year: number;
-  // 1-12
+  /** 1-12 */
   month: number;
 };
 
 export type QuarterYearPickerValue = {
   type: "quarter";
   year: number;
-  // 1-4
+  /** 1-4 */
   quarter: number;
 };
 
