@@ -1,37 +1,42 @@
-# Start from the official Cypress image (headless Chrome + Node + Cypress pre-installed)
-FROM cypress/included:13.9.0
+FROM openjdk:11-jdk-slim AS openjdk
 
-# Set environment variables to suppress interactive prompts
+FROM yukinying/chrome-headless-browser-stable:latest
+
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Fix architecture and install OpenJDK
-RUN dpkg --add-architecture amd64 && \
-    apt-get update && apt-get upgrade -y && \
-    # Ensure man directory exists to avoid symbolic link error
-    mkdir -p /usr/share/man/man1 && \
-    apt-get install -y --no-install-recommends \
-        ca-certificates \
-        ca-certificates-java \
-        openjdk-11-jdk \
-        python3 \
-        make \
-        gcc \
-        g++ \
-        chromium
+USER root
 
-RUN apt-get clean && \
+RUN dpkg --add-architecture amd64
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    gnupg && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g yarn && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Set JAVA_HOME environment variable
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    ca-certificates-java \
+    python3 \
+    make \
+    xvfb \
+    gcc \
+    g++ && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=openjdk /usr/local/openjdk-11 /usr/lib/jvm/java-11-openjdk-amd64
+
 ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 ENV PATH=$JAVA_HOME/bin:$PATH
 
-# Set working directory
 WORKDIR /app
 
 COPY . .
 
 RUN yarn --frozen-lockfile
 
-# Default command
 ENTRYPOINT ["/bin/bash"]
