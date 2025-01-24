@@ -1075,7 +1075,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it("should allow using aggregation functions inside expressions in aggregation (metabase#52611)", () => {
     cy.visit("/");
     H.newButton("Question").click();
-    H.entityPickerModal().findByText("Orders").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
     H.addSummaryField({ metric: "Custom Expression" });
     H.enterCustomColumnDetails({
       formula: "case(Sum([Total]) > 10, Sum([Total]), Sum([Subtotal]))",
