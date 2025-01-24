@@ -45,16 +45,16 @@ function isCallingRiskyMethod(node) {
   }
 
   const methodName = node.callee.property.name;
+  // Only consider methods risky if they're in a Cypress chain context
+  const isCypressChain = node.callee.object.type === "CallExpression";
 
-  // Check for last method only
+  // Check for last method
   if (methodName === "last") {
-    return true;
+    return isCypressChain;
   }
 
   // Special handling for eq method
   if (methodName === "eq") {
-    // Only consider eq risky if it's in a Cypress chain context
-    const isCypressChain = node.callee.object.type === "CallExpression";
     if (!isCypressChain) {
       return false;
     }
