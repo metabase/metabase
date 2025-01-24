@@ -8,25 +8,24 @@ import { DefaultFilterEditor } from "../DefaultFilterEditor";
 import { NumberFilterEditor } from "../NumberFilterEditor";
 import { StringFilterEditor } from "../StringFilterEditor";
 import { TimeFilterEditor } from "../TimeFilterEditor";
+import { useFilterModalContext } from "../context";
 
 interface ColumnFilterSectionProps {
-  query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter: Lib.FilterClause | undefined;
   onChange: (filter: Lib.ExpressionClause | undefined) => void;
-  onInput: () => void;
 }
 
 export function ColumnFilterSection({
-  query,
   stageIndex,
   column,
   filter,
   onChange,
-  onInput,
 }: ColumnFilterSectionProps) {
+  const { handleInput: onInput, query } = useFilterModalContext();
   const FilterWidget = getFilterWidget(column);
+
   if (!FilterWidget) {
     return null;
   }

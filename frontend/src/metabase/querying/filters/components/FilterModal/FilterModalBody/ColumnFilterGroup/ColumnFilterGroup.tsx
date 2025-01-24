@@ -13,11 +13,7 @@ export interface ColumnFilterGroupProps {
 }
 
 export function ColumnFilterGroup({ columnItem }: ColumnFilterGroupProps) {
-  const {
-    handleChange: onChange,
-    handleInput: onInput,
-    query,
-  } = useFilterModalContext();
+  const { query } = useFilterModalContext();
   const { column, stageIndex } = columnItem;
   const currentFilters = useMemo(
     () => findColumnFilters(query, stageIndex, column),
@@ -31,11 +27,8 @@ export function ColumnFilterGroup({ columnItem }: ColumnFilterGroupProps) {
       {visibleFilters.map((filter, filterIndex) => (
         <ColumnFilterItem
           key={filterIndex}
-          query={query}
           columnItem={columnItem}
           filter={filter}
-          onChange={onChange}
-          onInput={onInput}
         />
       ))}
     </DelayGroup>
