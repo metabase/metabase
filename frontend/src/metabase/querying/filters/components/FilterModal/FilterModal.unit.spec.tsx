@@ -275,4 +275,40 @@ describe("FilterModal", () => {
       1,
     );
   });
+
+  describe("should not mix up column filter state when changing search query (metabase#48319)", () => {
+    // TODO: assert operator
+    // TODO: assert options (how?)
+    it("works for string filters (metabase#48319)", async () => {
+      setup({ query });
+
+      const searchInput = screen.getByPlaceholderText("Search for a column…");
+      await userEvent.type(searchInput, "category");
+      await waitFor(() => {
+        expect(
+          screen.getByRole("checkbox", { name: "Doohickey" }),
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.getByRole("checkbox", { name: "Doohickey" }),
+      ).not.toBeChecked();
+      await userEvent.click(
+        screen.getByRole("checkbox", { name: "Doohickey" }),
+      );
+      await userEvent.type(
+        searchInput,
+        `${"{backspace}".repeat("category".length)}source`,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("checkbox", { name: "Affiliate" }),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByRole("checkbox", { name: "Doohickey" }),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
