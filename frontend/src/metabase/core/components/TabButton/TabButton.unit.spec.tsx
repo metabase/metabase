@@ -26,6 +26,7 @@ function setup(props?: Partial<RenameableTabButtonProps>) {
       />
     </TabRow>,
   );
+
   return { action, onRename, value };
 }
 
@@ -44,7 +45,10 @@ describe("TabButton", () => {
     const { action, value } = setup();
 
     await userEvent.click(getIcon("chevrondown"));
-    (await screen.findByRole("option", { name: "first item" })).click();
+
+    await userEvent.click(
+      await screen.findByRole("option", { name: "first item" }),
+    );
 
     expect(action).toHaveBeenCalledWith(value);
   });
@@ -63,7 +67,7 @@ describe("TabButton", () => {
     const { onRename } = setup();
 
     await userEvent.click(getIcon("chevrondown"));
-    (await renameOption()).click();
+    await userEvent.click(await renameOption());
 
     const newLabel = "A new label";
     const inputEl = await screen.findByRole("textbox");
@@ -72,6 +76,30 @@ describe("TabButton", () => {
 
     expect(onRename).toHaveBeenCalledWith(newLabel);
     expect(await screen.findByDisplayValue(newLabel)).toBeInTheDocument();
+  });
+
+  it("should ignore an empty tab name and revert to the previous on blur", async () => {
+    const { onRename } = setup();
+
+    await userEvent.click(getIcon("chevrondown"));
+    await userEvent.click(await renameOption());
+
+    const oldLabel = "Tab 1";
+    const inputEl = await screen.findByRole("textbox");
+
+    // Clear the input and press Enter
+    await userEvent.clear(inputEl);
+    await userEvent.type(inputEl, `{enter}`);
+    expect(onRename).not.toHaveBeenCalled();
+    expect(await screen.findByDisplayValue(oldLabel)).toBeInTheDocument();
+
+    // Let's do that one more time but with a name that contains only spaces
+    await userEvent.click(getIcon("chevrondown"));
+    await userEvent.click(await renameOption());
+    await userEvent.clear(inputEl);
+    await userEvent.type(inputEl, `  {enter}`);
+    expect(onRename).not.toHaveBeenCalled();
+    expect(await screen.findByDisplayValue(oldLabel)).toBeInTheDocument();
   });
 
   it("should allow the user to rename via double click", async () => {
@@ -92,7 +120,7 @@ describe("TabButton", () => {
     const { onRename } = setup();
 
     await userEvent.click(getIcon("chevrondown"));
-    (await renameOption()).click();
+    await userEvent.click(await renameOption());
 
     const newLabel = "a".repeat(100);
     const expectedLabel = newLabel.slice(0, 75);

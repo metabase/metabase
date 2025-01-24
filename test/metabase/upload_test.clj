@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -252,12 +253,24 @@
                           "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"]
                          additional-row)))))))))
 
+(defn- unique-table-name [s]
+  (#'upload/unique-table-name driver/*driver* s))
+
 (deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Blank names"
+      (is (=? #"blank_\d+" (unique-table-name nil)))
+      (is (=? #"blank_\d+" (unique-table-name "")))
+      (is (=? #"blank_\d+" (unique-table-name " ! $ _ "))))
     (testing "File name is slugified"
-      (is (=? #"my_file_name_\d+" (@#'upload/unique-table-name driver/*driver* "my file name"))))
+      (is (=? #"my_file_name_\d+" (unique-table-name "my file name"))))
     (testing "semicolons are removed"
-      (is (nil? (re-find #";" (@#'upload/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")))))
+      (let [escaped (unique-table-name "some text; -- DROP TABLE.csv")]
+        (is (nil? (re-find #";" escaped)))
+        (is (=? #"some_text_DROP_TABLE_csv_\d+" escaped))))
+    (testing "transliteration"
+      ;; <skip lint>
+      (is (=? #"Yia_sou_Privet_alslam_lykm_Ola_\d+" (unique-table-name "¡Γειά σου! Привет! السلام عليكم! Olá!"))))
     (testing "No collisions"
       (let [n 50
             names (repeatedly n (partial #'upload/unique-table-name driver/*driver* ""))]
@@ -439,11 +452,11 @@
                (fn [model]
                  (with-upload-table! [table (card->table model)]
                    (test-names-match table "出色的")
-                   (is (= (ddl.i/format-name driver/*driver* "%e5%87%ba%e8%89%b2%e7%9a%84_20240628000000")
+                   (is (= (ddl.i/format-name driver/*driver* "chu_se_de_20240628000000")
                           (:name table)))))))))
         (testing "The names should be truncated to the right size"
          ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
-          (let [max-bytes 50]
+          (let [max-bytes 15]
             (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
                           upload/max-bytes (constantly max-bytes)]
               (doseq [^String c ["a" "出"]]
@@ -1308,7 +1321,19 @@
              #"Unsupported File Type"
              (do-with-uploaded-example-csv!
               {:file (write-empty-gzip (tmp-file "sneaky" ".csv"))}
-              identity)))))))
+              identity))))
+      (testing "Driver error"
+        (let [metrics (atom {})]
+          (with-redefs [driver/create-table! (fn [& _args] (throw (Exception. "Boom")))
+                        prometheus/inc! #(swap! metrics update % (fnil inc 0))]
+            (is (thrown-with-msg?
+                 Exception
+                 #"Boom"
+                 (do-with-uploaded-example-csv!
+                  {:file (tmp-file "file" ".csv")}
+                  identity)))
+            (testing "Prometheus alerted"
+              (is (= 1 (:metabase-csv-upload/failed @metrics))))))))))
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]

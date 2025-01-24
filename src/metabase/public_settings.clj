@@ -1068,11 +1068,14 @@ See [fonts](../configuring-metabase/fonts.md).")
                 (let [limit (setting/get-value-of-type :integer :download-row-limit)]
                   (max limit 1048576))))
 
+;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
+;;; should live in this namespace.
+
 (defsetting search-engine
   (deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
   :visibility :internal
   :export?    false
-  :default    :in-place
+  :default    :appdb
   :type       :keyword)
 
 (defsetting experimental-search-weight-overrides

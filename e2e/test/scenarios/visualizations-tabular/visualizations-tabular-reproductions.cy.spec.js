@@ -232,7 +232,9 @@ describe("issue 18976, 18817", () => {
       { visitQuestion: true },
     );
 
-    cy.findByTestId("qb-header").button("Summarize").click();
+    cy.findByTestId("qb-header")
+      .button(/Summarize/)
+      .click();
     H.rightSidebar()
       .findByLabelText("Source")
       .findByRole("button", { name: "Remove dimension" })
@@ -521,7 +523,10 @@ describe("issue 28304", () => {
     H.leftSidebar().should("not.contain", "[Unknown]");
     H.leftSidebar().should("contain", "Created At");
     H.leftSidebar().should("contain", "Count");
-    cy.findAllByTestId("mini-bar").should("have.length.greaterThan", 0);
+    cy.findAllByTestId("mini-bar-container").should(
+      "have.length.greaterThan",
+      0,
+    );
     H.getDraggableElements().should("have.length", 2);
   });
 });
@@ -652,7 +657,7 @@ describe("issue 37726", { tags: "@flaky" }, () => {
     cy.createQuestion(PIVOT_QUESTION, { visitQuestion: true });
 
     // Now, add in another column to the pivot table
-    cy.button("Summarize").click();
+    cy.button(/Summarize/).click();
 
     cy.findByRole("listitem", { name: "Category" })
       .realHover()

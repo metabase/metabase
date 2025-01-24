@@ -11,6 +11,7 @@ export const getModalOverrides = (): MantineThemeOverride["components"] => ({
   Modal: {
     classNames: {
       overlay: cx(ZIndex.Overlay, Animation.fadeIn),
+      inner: cx(ZIndex.Overlay, Animation.popInFromBottom),
       content: cx(ZIndex.Overlay, Animation.popInFromBottom),
     },
     defaultProps: {

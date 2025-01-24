@@ -14,7 +14,7 @@ describe("command palette", () => {
     cy.signInAsAdmin();
   });
 
-  it("should render a searchable command palette", () => {
+  it("should render a searchable command palette", { tags: "@flaky" }, () => {
     // //Add a description for a check
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       description: "The best question",
@@ -76,13 +76,13 @@ describe("command palette", () => {
       // Check that we are not filtering search results by action name
       H.commandPaletteInput().clear().type("Company");
       cy.findByRole("option", { name: /View and filter/ }).should("exist");
-      cy.findByRole("option", { name: "REVIEWS" }).should(
+      cy.findByRole("option", { name: "Products" }).should(
         "have.attr",
         "aria-selected",
         "true",
       );
-      cy.findByRole("option", { name: "PEOPLE" }).should("exist");
-      cy.findByRole("option", { name: "PRODUCTS" }).should("exist");
+      cy.findByRole("option", { name: "People" }).should("exist");
+      cy.findByRole("option", { name: "Reviews" }).should("exist");
       H.commandPaletteInput().clear();
 
       H.commandPaletteInput().clear().type("New met");

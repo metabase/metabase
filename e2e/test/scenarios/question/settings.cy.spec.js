@@ -329,6 +329,31 @@ describe("scenarios > question > settings", () => {
       cy.findByText("₿ 6.10");
     });
 
+    it("should show all options without text overflowing", () => {
+      const longName =
+        "SuperLongColumnNameSuperLongColumnNameSuperLongColumnNameSuperLongColumnNameSuperLongColumnName";
+      H.createNativeQuestion(
+        {
+          name: "Orders Model",
+          native: {
+            query: `SELECT total as "${longName}" FROM ORDERS`,
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      H.openVizSettingsSidebar();
+
+      H.sidebar()
+        .findByRole("listitem")
+        .within(() => {
+          cy.findByLabelText("ellipsis icon").should("be.visible");
+          cy.findByLabelText("grabber icon").should("be.visible");
+          cy.findByLabelText("eye_outline icon").should("be.visible");
+          cy.findByText(longName).should("be.visible");
+        });
+    });
+
     it.skip("should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)", () => {
       // products joined to orders with breakouts on 3 product columns followed by a custom column
       cy.createQuestion(

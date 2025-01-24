@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 
 import { skipToken } from "metabase/api";
-import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper as DefaultLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setRequestError,
@@ -53,7 +53,7 @@ interface Props<Entity, EntityWrapper> {
   fetchType?: FetchType;
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
-  reload?: boolean;
+  reload?: boolean | ChildrenProps<Entity, EntityWrapper>["reload"]; // reload can be passed as a callback from the outer loader
   requestType?: RequestType;
   selectorName?: "getObject" | "getObjectUnfiltered";
   wrapped?: boolean;
@@ -135,7 +135,7 @@ export function EntityObjectLoader<Entity, EntityWrapper>({
     isFetching,
     refetch,
   } = useGetQuery(entityId != null ? finalQuery : skipToken, {
-    refetchOnMountOrArgChange: reload,
+    refetchOnMountOrArgChange: reload === true,
   });
 
   const queryKey = useMemo(

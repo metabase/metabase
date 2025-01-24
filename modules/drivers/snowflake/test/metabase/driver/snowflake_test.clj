@@ -26,6 +26,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
@@ -65,6 +66,55 @@
            (mt/first-row
             (mt/run-mbql-query venues
               {:aggregation [[:count]]}))))))
+
+(deftest ^:parallel describe-fields-test
+  (mt/test-driver
+    :snowflake
+    (is (=? [{:name "id"
+              :database-type "NUMBER"
+              :database-required false
+              :database-is-auto-increment true
+              :base-type :type/Number
+              :json-unfolding false
+              :database-position 0
+              :pk? true}
+             {:name "name"
+              :database-type "VARCHAR"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Text
+              :json-unfolding false
+              :database-position 1}
+             {:name "category_id"
+              :database-type "NUMBER"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Number
+              :json-unfolding false
+              :database-position 2}
+             {:name "latitude"
+              :database-type "DOUBLE"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Float
+              :json-unfolding false
+              :database-position 3}
+             {:name "longitude"
+              :database-type "DOUBLE"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Float
+              :json-unfolding false
+              :database-position 4}
+             {:name "price"
+              :database-type "NUMBER"
+              :database-required false
+              :database-is-auto-increment false
+              :base-type :type/Number
+              :json-unfolding false
+              :database-position 5}]
+            (sort-by :database-position
+                     (into [] (fetch-metadata/fields-metadata (mt/db) {:table-names ["venues"]})))))))
 
 (deftest ^:parallel quote-name-test
   (is (nil? (#'driver.snowflake/quote-name nil)))
@@ -886,6 +936,21 @@
                       {:field-name "JUST_LTZ"
                        :base-type {:native "timestampltz"}}]
     (rows-for-good-datetimes-in-belize)]])
+
+(deftest ^:parallel sync-datetime-types
+  (mt/test-driver
+    :snowflake
+    (mt/dataset
+      good-datetimes-in-belize
+      (is (= [["id" "NUMBER" :type/Number 0]
+              ["IN_Z_OFFSET" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 1]
+              ["IN_VARIOUS_OFFSETS" "TIMESTAMPTZ" :type/DateTimeWithLocalTZ 2]
+              ["JUST_NTZ" "TIMESTAMPNTZ" :type/DateTime 3]
+              ["JUST_LTZ" "TIMESTAMPLTZ" :type/DateTimeWithTZ 4]]
+             (sort-by last
+                      (into []
+                            (map (juxt :name :database-type :base-type :database-position))
+                            (fetch-metadata/fields-metadata (mt/db)))))))))
 
 ;; The test needs user with no report timezone set and database timezone other than UTC. That's the reason for redefs
 ;; prior to dataset generation.
