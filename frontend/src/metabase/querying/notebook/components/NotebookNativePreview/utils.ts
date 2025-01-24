@@ -1,18 +1,16 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { DatasetQuery } from "metabase-types/api";
+import type { DatasetQuery, NativeQueryForm } from "metabase-types/api";
 
 export function createDatasetQuery(
-  queryText: string,
   question: Question,
+  queryText: string,
+  { collection }: NativeQueryForm,
 ): DatasetQuery {
   const query = question.query();
   const databaseId = Lib.databaseID(query);
-  const tableId = Lib.sourceTableOrCardId(query);
-  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
-  const tableName = table ? Lib.displayInfo(query, -1, table).name : undefined;
-  const extras = tableName ? { collection: tableName } : {};
+  const extras = collection ? { collection } : {};
 
   return {
     type: "native",

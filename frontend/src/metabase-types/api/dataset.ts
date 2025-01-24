@@ -143,6 +143,7 @@ export interface ErrorEmbedDataset {
 export interface NativeQueryForm {
   params: unknown;
   query: string;
+  collection?: string;
 }
 
 export type SingleSeries = {

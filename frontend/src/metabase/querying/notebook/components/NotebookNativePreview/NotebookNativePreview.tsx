@@ -35,27 +35,35 @@ export const NotebookNativePreview = (): JSX.Element => {
   const sourceQuery = question.query();
   const canRun = Lib.canRun(sourceQuery, question.type());
   const payload = Lib.toLegacyQuery(sourceQuery);
-  const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
+  const {
+    data: nativeForm,
+    error,
+    isFetching,
+  } = useGetNativeDatasetQuery(payload);
 
   const showLoader = isFetching;
   const showError = !isFetching && canRun && !!error;
   const showQuery = !isFetching && canRun && !error;
   const showEmptySidebar = !canRun;
 
-  const formattedQuery = formatNativeQuery(data?.query, engine);
+  const formattedQuery = formatNativeQuery(nativeForm?.query, engine);
   const query = createNativeQuery(question, formattedQuery);
 
   const handleConvertClick = useCallback(() => {
-    if (!formattedQuery) {
+    if (!nativeForm || !formattedQuery) {
       return;
     }
 
-    const newDatasetQuery = createDatasetQuery(formattedQuery, question);
+    const newDatasetQuery = createDatasetQuery(
+      question,
+      formattedQuery,
+      nativeForm,
+    );
     const newQuestion = question.setDatasetQuery(newDatasetQuery);
 
     dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }));
     dispatch(setUIControls({ isNativeEditorOpen: true }));
-  }, [question, dispatch, formattedQuery]);
+  }, [question, dispatch, nativeForm, formattedQuery]);
 
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
