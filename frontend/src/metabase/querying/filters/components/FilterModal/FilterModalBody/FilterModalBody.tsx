@@ -8,7 +8,6 @@ type FilterModalBodyProps = {
   groupItems: GroupItem[];
   query: Lib.Query;
   tab: string | null;
-  version: number;
   onChange: (newQuery: Lib.Query) => void;
   onInput: () => void;
   onTabChange: (
@@ -23,14 +22,12 @@ export const FilterModalBody = ({
   onTabChange,
   query,
   tab,
-  version,
 }: FilterModalBodyProps) =>
   groupItems.length > 0 ? (
     <FilterTabContent
       query={query}
       groupItems={groupItems}
       tab={tab}
-      version={version}
       onChange={onChange}
       onInput={onInput}
       onTabChange={onTabChange}

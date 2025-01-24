@@ -22,7 +22,6 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
 
   const {
     query,
-    version,
     isChanged,
     groupItems,
     tab,
@@ -59,7 +58,6 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
               groupItems={visibleItems}
               query={query}
               tab={tab}
-              version={version}
               onChange={handleChange}
               onInput={handleInput}
               onTabChange={setTab}
