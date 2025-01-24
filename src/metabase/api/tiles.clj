@@ -161,7 +161,7 @@
       (assoc-in [:query :fields] [lat-field lon-field])
       (assoc-in [:query :limit] tile-coordinate-limit)))
 
-;; TODO - this can be reworked to be `defendpoint-async` instead
+;; TODO - this can be reworked to be async instead
 ;;
 ;; TODO - this should reduce results from the QP in a streaming fashion instead of requiring them all to be in memory
 ;; at the same time
