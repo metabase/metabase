@@ -6,12 +6,12 @@ import { Icon, TextInput } from "metabase/ui";
 
 const SEARCH_TIMEOUT = 200;
 
-interface Props {
+interface FilterSearchInputProps {
   value: string;
   onChange: (value: string) => void;
 }
 
-export function FilterSearchInput({ value, onChange }: Props) {
+export function FilterSearchInput({ value, onChange }: FilterSearchInputProps) {
   const [inputText, setInputText] = useState("");
 
   useDebounce(
