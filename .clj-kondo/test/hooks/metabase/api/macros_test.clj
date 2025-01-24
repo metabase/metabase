@@ -10,36 +10,6 @@
     (is-valid-node child)))
 
 (deftest ^:parallel defendpoint-test
-<<<<<<< HEAD
-  (let [form '(api.macros/defendpoint :post "/" :- [:map [:collection_id :int]]
-                "Create a new [[Timeline]]."
-                [_route-params
-                 _query-params
-                 {:keys [icon], collection-id :collection_id, :as body} :- [:map
-                                                                            [:name    ms/NonBlankString]
-                                                                            [:default {:optional true} [:maybe :boolean]]]]
-                (body icon)
-                (body collection-id))
-        node (-> form pr-str api/parse-string)]
-    (is (= '(do
-              api.macros/defendpoint
-              :post
-              "/"
-              (do
-                [:map [:collection_id :int]]
-                [:map
-                 [:name    ms/NonBlankString]
-                 [:default {:optional true} [:maybe :boolean]]])
-              (clojure.core/let [_route-params {}
-                                 _query-params {}
-                                 {:keys [icon], collection-id :collection_id, :as body} {}]
-                (body icon)
-                (body collection-id)))
-           (-> {:node node}
-               hooks.metabase.api.macros/defendpoint
-               :node
-               api/sexpr)))))
-=======
   (letfn [(defendpoint [form]
             (let [node (-> form pr-str api/parse-string)]
               (is-valid-node node)
@@ -99,4 +69,3 @@
              (respond :x)
              (catch Throwable e
                (raise e))))))))
->>>>>>> master
