@@ -15,23 +15,23 @@
 
 (deftest assoc-in-path-tree-test
   (testing "Values are correctly assoc'ed into a path tree, maintaining insertion order at every level"
-    (let [base-tree (#'process/assoc-in-path-tree (ordered-map/ordered-map) [:a :b :c] :d)]
+    (let [base-tree (#'process/add-to-path-tree (ordered-map/ordered-map) [:a :b :c :d])]
       ;; Assert on strings because direct map/set comparison doesn't preserve order, but strings do
       (is (= "{:a {:b {:c #{:d}}}}" (str base-tree)))
       (is (= "{:a {:b {:c #{:d :e}}}}"
-             (str (#'process/assoc-in-path-tree base-tree [:a :b :c] :e))))
+             (str (#'process/add-to-path-tree base-tree [:a :b :c :e]))))
       (is (= "{:a {:b {:c #{:d :c}}}}"
-             (str (#'process/assoc-in-path-tree base-tree [:a :b :c] :c))))
+             (str (#'process/add-to-path-tree base-tree [:a :b :c :c]))))
       (is (= "{:a {:b {:c #{:d}}, :e {:f #{:g}}}}"
-             (str (#'process/assoc-in-path-tree base-tree [:a :e :f] :g))))
+             (str (#'process/add-to-path-tree base-tree [:a :e :f :g]))))
       (is (= "{:a {:b {:c #{:d}}, :a {:f #{:g}}}}"
-             (str (#'process/assoc-in-path-tree base-tree [:a :a :f] :g))))))
+             (str (#'process/add-to-path-tree base-tree [:a :a :f :g]))))))
 
   (testing "Assoc'ing a value with no key to an ordered map converts it to a top-level ordered set"
-    (let [new-tree (#'process/assoc-in-path-tree (ordered-map/ordered-map) [] :a)]
+    (let [new-tree (#'process/add-to-path-tree (ordered-map/ordered-map) [:a])]
       (is (= [:a] (seq new-tree))))
 
-    (let [new-tree (#'process/assoc-in-path-tree (ordered-set/ordered-set :b) [] :a)]
+    (let [new-tree (#'process/add-to-path-tree (ordered-set/ordered-set :b) [:a])]
       (is (= [:b :a] (seq new-tree))))))
 
 (deftest sort-path-tree-test

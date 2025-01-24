@@ -109,18 +109,17 @@
      :col-paths      (ordered-map/ordered-map)
      :measure-values (zipmap pivot-measures (repeat (sorted-set)))}))
 
-(defn- assoc-in-path-tree
-  "Assocs a value in a path tree, which should consist of a hierarchy of ordered-maps, with leaf values stored in
+(defn- add-to-path-tree
+  "Assocs a list of values in a path tree, which should consist of a hierarchy of ordered-maps, with leaf values stored in
   ordered-sets."
-  [tree ks v]
-  (let [step (fn step [tree [k & ks]]
-               (if ks
-                 (if-let [next-map (get tree k)]
-                   (assoc tree k (step next-map ks))
-                   (assoc tree k (step (ordered-map/ordered-map) ks)))
-                 (if k
-                   (assoc tree k (conj (get tree k (ordered-set/ordered-set)) v))
-                   (conj (if (set? tree) tree (ordered-set/ordered-set)) v))))]
+  [tree ks]
+  (let [step
+        (fn step [tree [k & ks]]
+          (if ks
+            (let [next-map (or (get tree k) (ordered-map/ordered-map))]
+              (assoc tree k (step next-map ks)))
+            (let [leaf-set (if (set? tree) tree (ordered-set/ordered-set))]
+              (conj leaf-set k))))]
     (step tree ks)))
 
 (defn- measure->agg-fn
@@ -209,9 +208,9 @@
         (update :data update-in (concat row-path col-path)
                 #(update-aggregate (or % (zipmap pivot-measures (repeat {}))) measure-vals measures))
         (update :row-paths
-                #(when (seq row-path) (assoc-in-path-tree % (butlast row-path) (last row-path))))
+                #(when (seq row-path) (add-to-path-tree % row-path)))
         (update :col-paths
-                #(when (seq col-path) (assoc-in-path-tree % (butlast col-path) (last col-path))))
+                #(when (seq col-path) (add-to-path-tree % col-path)))
         (update :totals (fn [totals]
                           (-> totals
                               (total-fn [[:grand-total]
