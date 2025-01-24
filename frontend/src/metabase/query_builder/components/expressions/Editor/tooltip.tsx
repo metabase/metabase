@@ -25,19 +25,26 @@ import { t } from "ttag";
 
 import { Box, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { enclosingFunction } from "metabase-lib/v1/expressions/completer";
-import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
+import {
+  doesFunctionNameExist,
+  getHelpText,
+} from "metabase-lib/v1/expressions/helper-text-strings";
 import type { HelpText } from "metabase-lib/v1/expressions/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import css from "./Editor.module.css";
 import { Highlight } from "./Highlight";
+import { parser } from "./language";
 import { tokenAtPos } from "./suggestions";
 
 type State = {
   completions: readonly Completion[];
   selectedCompletion: number | null;
-  enclosingFunction: string | null;
+  enclosingFunction: {
+    name: string;
+    from: number;
+    to: number;
+  } | null;
 };
 
 type TooltipOptions = {
@@ -77,13 +84,7 @@ export function useTooltip({
       EditorView.updateListener.of(update => {
         view.current = update.view;
         setState(state => {
-          const pos = update.state.selection.main.head;
-          const source = update.state.doc.toString();
-          const token = tokenAtPos(source, pos);
-          const prefix = source.slice(0, pos);
-
-          const name =
-            token && isFunction(token) ? token.text : enclosingFunction(prefix);
+          const enclosingFn = enclosingFunction(update.state);
 
           const status = completionStatus(update.state);
           if (status === "pending") {
@@ -92,14 +93,14 @@ export function useTooltip({
               focus: update.view.hasFocus,
               completions: state.completions,
               selectedCompletion: state.selectedCompletion,
-              enclosingFunction: name,
+              enclosingFunction: enclosingFn,
             };
           }
           return {
             focus: update.view.hasFocus,
             completions: currentCompletions(update.state),
             selectedCompletion: selectedCompletionIndex(update.state),
-            enclosingFunction: name,
+            enclosingFunction: enclosingFn,
           };
         });
       }),
@@ -131,11 +132,6 @@ export function useTooltip({
       element,
     ),
   ];
-}
-
-function isFunction(token: { type: number; text: string }) {
-  // TODO: do not use magic number: 4
-  return token.type === 4 && !token.text.startsWith("[");
 }
 
 export function tooltip(element: HTMLElement) {
@@ -194,7 +190,7 @@ export function Tooltip(props: TooltipProps) {
   const database = getDatabase(query, metadata);
   const helpText =
     enclosingFunction && database
-      ? getHelpText(enclosingFunction, database, reportTimezone)
+      ? getHelpText(enclosingFunction.name, database, reportTimezone)
       : null;
 
   if (completions.length === 0 && !helpText) {
@@ -292,7 +288,11 @@ function Help({ helpText }: { helpText?: HelpText | null }) {
             (
             {args.map(({ name }, index) => (
               <span key={name}>
-                <span className={css.arg}>{name}</span>
+                <span className={css.arg}>
+                  {"<"}
+                  {name}
+                  {">"}
+                </span>
                 {index < args.length - 1 && ", "}
               </span>
             ))}
@@ -329,4 +329,34 @@ function Help({ helpText }: { helpText?: HelpText | null }) {
       </Box>
     </Box>
   );
+}
+
+function enclosingFunction(state: EditorState) {
+  const tree = parser.parse(state.doc.toString());
+  const pos = state.selection.main.head;
+
+  const cursor = tree.cursor();
+  let res = null;
+
+  do {
+    if (
+      cursor.name === "CallExpression" &&
+      cursor.from <= pos &&
+      cursor.to >= pos
+    ) {
+      const value = state
+        .sliceDoc(cursor.from, cursor.to)
+        .replace(/\(.*\)?$/, "");
+
+      if (doesFunctionNameExist(value)) {
+        res = {
+          name: value,
+          from: cursor.from,
+          to: cursor.to,
+        };
+      }
+    }
+  } while (cursor.next());
+
+  return res;
 }
