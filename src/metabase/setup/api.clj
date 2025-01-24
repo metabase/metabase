@@ -100,29 +100,29 @@
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
   returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
   set specific settings from the setup flow."
- [_route-params
-  _query-params
-  {{first-name :first_name, last-name :last_name, :keys [email password]} :user
-   {invited-first-name :first_name
-    invited-last-name  :last_name
-    invited-email      :email} :invite
-   {site-name :site_name
-    site-locale :site_locale} :prefs}
-  :- [:map
-      [:token SetupToken]
-      [:user [:map
-              [:email      ms/Email]
-              [:password   ms/ValidPassword]
-              [:first_name {:optional true} [:maybe ms/NonBlankString]]
-              [:last_name  {:optional true} [:maybe ms/NonBlankString]]]]
-      [:invite {:optional true} [:map
-                                 [:first_name {:optional true} [:maybe ms/NonBlankString]]
-                                 [:last_name  {:optional true} [:maybe ms/NonBlankString]]
-                                 [:email      {:optional true} [:maybe ms/Email]]]]
-      [:prefs [:map
-               [:site_name   ms/NonBlankString]
-               [:site_locale {:optional true} [:maybe ms/ValidLocale]]]]]
-  request]
+  [_route-params
+   _query-params
+   {{first-name :first_name, last-name :last_name, :keys [email password]} :user
+    {invited-first-name :first_name
+     invited-last-name  :last_name
+     invited-email      :email} :invite
+    {site-name :site_name
+     site-locale :site_locale} :prefs}
+   :- [:map
+       [:token SetupToken]
+       [:user [:map
+               [:email      ms/Email]
+               [:password   ms/ValidPassword]
+               [:first_name {:optional true} [:maybe ms/NonBlankString]]
+               [:last_name  {:optional true} [:maybe ms/NonBlankString]]]]
+       [:invite {:optional true} [:map
+                                  [:first_name {:optional true} [:maybe ms/NonBlankString]]
+                                  [:last_name  {:optional true} [:maybe ms/NonBlankString]]
+                                  [:email      {:optional true} [:maybe ms/Email]]]]
+       [:prefs [:map
+                [:site_name   ms/NonBlankString]
+                [:site_locale {:optional true} [:maybe ms/ValidLocale]]]]]
+   request]
   (letfn [(create! []
             (try
               (t2/with-transaction []
