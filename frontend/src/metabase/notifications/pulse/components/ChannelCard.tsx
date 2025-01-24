@@ -2,6 +2,7 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { Flex, Icon, Paper, Text } from "metabase/ui";
+
 export const ChannelCard = ({
   onClick,
   title,
