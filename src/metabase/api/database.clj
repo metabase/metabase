@@ -535,9 +535,9 @@
 
 (defn- autocomplete-results [tables fields]
   (concat (for [{:keys [name]} tables]
-              [name "Table"])
-            (for [{:keys [name database_type]} fields]
-              [name database_type])))
+            [name "Table"])
+          (for [{:keys [name database_type]} fields]
+            [name database_type])))
 
 (defn- autocomplete-suggestions
   "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
