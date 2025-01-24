@@ -118,5 +118,7 @@ modules/drivers/*/.lsp/*
 # swc
 .swc/
 
+*storybook.log
+
 # metabot
 llm-payloads

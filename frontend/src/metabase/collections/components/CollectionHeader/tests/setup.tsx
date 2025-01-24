@@ -1,4 +1,5 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupDashboardQuestionCandidatesEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { Collection, TokenFeatures } from "metabase-types/api";
@@ -37,6 +38,8 @@ export const setup = ({
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
 } & Partial<Omit<CollectionHeaderProps, "collection">> = {}) => {
+  setupDashboardQuestionCandidatesEndpoint([]);
+
   const props = getProps({
     collection: createMockCollection(collection),
     ...otherProps,

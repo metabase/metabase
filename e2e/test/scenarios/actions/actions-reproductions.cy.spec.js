@@ -308,7 +308,7 @@ describe("issue 51020", () => {
     });
   });
 
-  describe("when primary key is not called 'id'", () => {
+  describe("when primary key is not called 'id'", { tags: "@external" }, () => {
     function createTemporaryTable() {
       H.queryWritableDB(
         "CREATE TABLE IF NOT EXISTS foo (foo INT PRIMARY KEY, name VARCHAR)",
