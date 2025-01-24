@@ -134,7 +134,7 @@
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 (def ^:private card-filter-options
   "a valid card filter option."
-  (map name (keys (methods cards-for-filter-option*))))
+  (keys (methods cards-for-filter-option*)))
 
 (defn- db-id-via-table
   [model model-id]
@@ -149,27 +149,26 @@
   `using_segment`, and `archived`. See corresponding implementation functions above for the specific behavior
   of each filter option. :card_index:"
   [_route-params
-   {:keys [f model_id]} :- [:map
-                            [:f        {:optional true} [:maybe (into [:enum] card-filter-options)]]
-                            [:model_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (let [f (or (keyword f) :all)]
-    (when (contains? #{:database :table :using_model :using_metric :using_segment} f)
-      (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
-                                                         (name f)))
-      (case f
-        :database      (api/read-check :model/Database model_id)
-        :table         (api/read-check :model/Database (t2/select-one-fn :db_id :model/Table, :id model_id))
-        :using_model   (api/read-check :model/Card model_id)
-        :using_metric  (api/read-check :model/Database (db-id-via-table :metric model_id))
-        :using_segment (api/read-check :model/Database (db-id-via-table :segment model_id))))
-    (let [cards          (filter mi/can-read? (cards-for-filter-option f model_id))
-          last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
-      (into []
-            (map (fn [{:keys [id] :as card}]
-                   (if-let [edit-info (get last-edit-info id)]
-                     (assoc card :last-edit-info edit-info)
-                     card)))
-            cards))))
+   {:keys [f], model-id :model_id} :- [:map
+                                       [:f        {:default :all}  (into [:enum] card-filter-options)]
+                                       [:model_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (when (contains? #{:database :table :using_model :using_metric :using_segment} f)
+    (api/checkp (integer? model-id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
+                                                       (name f)))
+    (case f
+      :database      (api/read-check :model/Database model-id)
+      :table         (api/read-check :model/Database (t2/select-one-fn :db_id :model/Table, :id model-id))
+      :using_model   (api/read-check :model/Card model-id)
+      :using_metric  (api/read-check :model/Database (db-id-via-table :metric model-id))
+      :using_segment (api/read-check :model/Database (db-id-via-table :segment model-id))))
+  (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
+        last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
+    (into []
+          (map (fn [{:keys [id] :as card}]
+                 (if-let [edit-info (get last-edit-info id)]
+                   (assoc card :last-edit-info edit-info)
+                   card)))
+          cards)))
 
 (defn hydrate-card-details
   "Adds additional information to a `Card` selected with toucan that is needed by the frontend. This should be the same information
@@ -217,12 +216,12 @@
   "Get `Card` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [ignore_view context]} :- [:map
-                                     [:ignore_view {:optional true} [:maybe :boolean]]
-                                     [:context     {:optional true} [:maybe [:enum :collection]]]]]
+   {ignore-view? :ignore_view, :keys [context]} :- [:map
+                                                    [:ignore_view {:optional true} [:maybe :boolean]]
+                                                    [:context     {:optional true} [:maybe [:enum :collection]]]]]
   (let [card (get-card id)]
     (u/prog1 card
-      (when-not ignore_view
+      (when-not ignore-view?
         (events/publish-event! :event/card-read
                                {:object-id (:id <>)
                                 :user-id api/*current-user-id*
@@ -641,10 +640,10 @@
   "Update a `Card`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [delete_old_dashcards]} :- [:map
-                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
+   {delete-old-dashcards? :delete_old_dashcards} :- [:map
+                                                     [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
    body :- CardUpdateSchema]
-  (update-card! id body (boolean delete_old_dashcards)))
+  (update-card! id body (boolean delete-old-dashcards?)))
 
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
