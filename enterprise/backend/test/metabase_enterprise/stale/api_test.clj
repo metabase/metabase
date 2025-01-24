@@ -1,11 +1,12 @@
 (ns metabase-enterprise.stale.api-test
-  (:require  [clojure.test :refer [deftest testing is]]
-             [metabase.analytics.snowplow-test :as snowplow-test]
-             [metabase.models.collection :as collection]
-             [metabase.models.collection-test :refer [with-collection-hierarchy!]]
-             [metabase.stale-test :as stale.test]
-             [metabase.test :as mt]
-             [metabase.util :as u]))
+  (:require
+   [clojure.test :refer [deftest testing is]]
+   [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.models.collection :as collection]
+   [metabase.models.collection-test :refer [with-collection-hierarchy!]]
+   [metabase.stale-test :as stale.test]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 

@@ -126,10 +126,10 @@
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt [:= :root]]]]
    {:keys [before_date is_recursive sort_column sort_direction]} :- [:map
-                                                                     [:before_date    {:optional true} [:maybe :string]]
-                                                                     [:is_recursive   [:boolean {:default false}]]
-                                                                     [:sort_column    {:optional true} [:maybe {:default :name} [:enum :name :last_used_at]]]
-                                                                     [:sort_direction {:optional true} [:maybe {:default :asc} [:enum :asc :desc]]]]]
+                                                                     [:before_date    {:optional true}  [:maybe :string]]
+                                                                     [:is_recursive   {:default false}  :boolean]
+                                                                     [:sort_column    {:default :name}  [:enum :name :last_used_at]]
+                                                                     [:sort_direction {:default :asc}   [:enum :asc :desc]]]]
   (premium-features/assert-has-feature :collection-cleanup (tru "Collection Cleanup"))
   (let [before-date    (if before_date
                          (try (t/local-date "yyyy-MM-dd" before_date)
