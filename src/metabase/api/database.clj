@@ -512,12 +512,44 @@
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
-(defn- autocomplete-tables [db-id search-string limit]
+(defn- autocomplete-tables [db-id]
   (t2/select [:model/Table :id :db_id :schema :name]
-             {:where [:and
-                      [:= :db_id db-id]
-                      [:= :active true]
-                      [:= :visibility_type nil]]}))
+             {:where [:in :id {:select [[[:min :id]]]
+                               :from [:metabase_table]
+                               :where [:and
+                                       [:= :db_id db-id]
+                                       [:= :active true]
+                                       [:= :visibility_type nil]]
+                               :group-by [:name]}]}))
+
+(defn- autocomplete-fields [table-ids]
+  (when (seq table-ids)
+    (t2/select [:model/Field :id :table_id :name :base_type :semantic_type]
+               {:where [:in :id {:select [[[:min :id]]]
+                                 :from [:metabase_field]
+                                 :where [:and
+                                         [:in :table_id table-ids]
+                                         [:= :active true]
+                                         [:not-in :visibility_type ["sensitive" "retired"]]]
+                                 :group-by [:name]}]})))
+
+(defn- autocomplete-results [tables fields]
+  (let [table-id->table (m/index-by :id tables)]
+    (concat (for [{:keys [name]} tables]
+              [name "Table"])
+            (for [{:keys [id table_id name base_type semantic_type]} fields]
+              [name (str (-> table_id table-id->table :name)
+                         " "
+                         base_type
+                         (when semantic_type
+                           (str " " semantic_type)))]))))
+
+(defn- autocomplete-suggestions
+  "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
+  [db-id]
+  (let [tables (filter mi/can-read? (autocomplete-tables db-id))
+        fields (readable-fields-only (autocomplete-fields (map :id tables)))]
+    (autocomplete-results tables fields)))
 
 (defn- autocomplete-cards
   "Returns cards that match the search string in the given database, ordered by id.
@@ -563,32 +595,6 @@
                 :order-by [[:type :asc]
                            [:report_card.id :desc]] ; sort by most recently created after sorting by type
                 :limit    50})))
-
-(defn- autocomplete-fields [table-ids]
-  (when (seq table-ids)
-    (-> (t2/select [:model/Field :id :table_id :name :base_type :semantic_type]
-                   {:where [:and
-                            [:in :id table-ids]
-                            [:= :active true]
-                            [:not-in :visibility_type ["sensitive" "retired"]]]})
-        (t2/hydrate :table))))
-
-(defn- autocomplete-results [tables fields]
-  (concat (for [{table-name :name} tables]
-            [table-name "Table"])
-          (for [{:keys [table_name base_type semantic_type name]} fields]
-            [name (str table_name
-                       " "
-                       base_type
-                       (when semantic_type
-                         (str " " semantic_type)))])))
-
-(defn- autocomplete-suggestions
-  "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
-  [db-id]
-  (let [tables (filter mi/can-read? (autocomplete-tables db-id))
-        fields (filter mi/can-read? (autocomplete-fields (map :id tables)))]
-    (autocomplete-results tables fields)))
 
 (def ^:private autocomplete-matching-options
   "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
