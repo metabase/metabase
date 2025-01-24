@@ -536,7 +536,7 @@
 (defn- autocomplete-results [tables fields]
   (concat (for [{:keys [name]} tables]
               [name "Table"])
-            (for [{:keys [id table_id name database_type]} fields]
+            (for [{:keys [name database_type]} fields]
               [name database_type])))
 
 (defn- autocomplete-suggestions
