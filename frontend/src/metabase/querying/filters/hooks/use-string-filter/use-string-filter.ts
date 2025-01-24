@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 
 import * as Lib from "metabase-lib";
@@ -17,6 +17,7 @@ interface UseStringFilterProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
+  searchText: string;
 }
 
 export function useStringFilter({
@@ -24,6 +25,7 @@ export function useStringFilter({
   stageIndex,
   column,
   filter,
+  searchText,
 }: UseStringFilterProps) {
   const filterParts = useMemo(
     () => (filter ? Lib.stringFilterParts(query, stageIndex, filter) : null),
@@ -64,7 +66,10 @@ export function useStringFilter({
     setOperator(defaultOperator);
     setOptions(defaultOptions);
   });
-  const reset = useCallback(() => resetRef.current(), [resetRef]);
+
+  useEffect(() => {
+    resetRef.current();
+  }, [resetRef, searchText]);
 
   return {
     type,
@@ -79,7 +84,6 @@ export function useStringFilter({
       values: string[],
       options: Lib.StringFilterOptions,
     ) => getFilterClause(operator, column, values, options),
-    reset,
     setOperator,
     setValues,
     setOptions,

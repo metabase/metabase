@@ -61,6 +61,7 @@ describe("useBooleanOptionFilter", () => {
     "ORDERS",
     BOOLEAN_FIELD.name,
   );
+  const searchText = "";
 
   it.each<CreateFilterCase>([
     {
@@ -91,6 +92,7 @@ describe("useBooleanOptionFilter", () => {
           query: defaultQuery,
           stageIndex,
           column,
+          searchText,
         }),
       );
 
@@ -132,6 +134,7 @@ describe("useBooleanOptionFilter", () => {
           stageIndex,
           column,
           filter,
+          searchText,
         }),
       );
 
@@ -162,6 +165,7 @@ describe("useBooleanOptionFilter", () => {
           query: defaultQuery,
           stageIndex,
           column,
+          searchText,
         }),
       );
 

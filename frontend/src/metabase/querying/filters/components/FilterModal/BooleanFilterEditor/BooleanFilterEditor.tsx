@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -30,7 +30,6 @@ export function BooleanFilterEditor({
     isExpanded,
     getDefaultValues,
     getFilterClause,
-    reset,
     setOperator,
     setValues,
   } = useBooleanOperatorFilter({
@@ -38,11 +37,8 @@ export function BooleanFilterEditor({
     stageIndex,
     column,
     filter,
+    searchText,
   });
-
-  useEffect(() => {
-    reset();
-  }, [reset, searchText]);
 
   const handleOperatorChange = (newOperator: Lib.BooleanFilterOperator) => {
     const newValues = getDefaultValues();
