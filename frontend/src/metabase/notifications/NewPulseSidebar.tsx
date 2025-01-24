@@ -1,12 +1,11 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
-import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useSelector } from "metabase/lib/redux";
+import { ChannelCard } from "metabase/notifications/pulse/components/ChannelCard";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, Flex, Icon, Paper, Stack, Text, Title } from "metabase/ui";
+import { Box, Stack, Text, Title } from "metabase/ui";
 
 interface NewPulseSidebarProps {
   emailConfigured: boolean;
@@ -15,36 +14,6 @@ interface NewPulseSidebarProps {
   onNewSlackPulse: () => void;
   onCancel: () => void;
 }
-
-const ChannelCard = ({
-  onClick,
-  title,
-  channel,
-}: {
-  onClick?: () => void;
-  title: string;
-  channel: "email" | "slack";
-}) => {
-  const iconName = channel === "email" ? "mail" : "slack_colorized";
-
-  return (
-    <Paper
-      withBorder
-      radius="md"
-      p="md"
-      shadow="none"
-      onClick={onClick}
-      className={cx(CS.cursorPointer, CS.bgLightHover, CS.textBrandHover)}
-    >
-      <Flex align="center" gap="sm">
-        <Icon name={iconName} c="brand" />
-        <Text weight={700} c="inherit">
-          {title}
-        </Text>
-      </Flex>
-    </Paper>
-  );
-};
 
 export function NewPulseSidebar({
   onCancel,
