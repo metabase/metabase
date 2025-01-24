@@ -1063,10 +1063,10 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :export?    true
   :type       :integer
-  :default    1048576
+  :default    1048575
   :getter     (fn []
                 (let [limit (setting/get-value-of-type :integer :download-row-limit)]
-                  (max limit 1048576))))
+                  (max limit 1048575))))
 
 ;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
 ;;; should live in this namespace.
