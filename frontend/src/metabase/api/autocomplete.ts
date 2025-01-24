@@ -1,3 +1,4 @@
+import { provideAutocompleteSuggestionTags } from "metabase/api/tags";
 import type {
   AutocompleteRequest,
   AutocompleteSuggestion,
@@ -13,10 +14,11 @@ export const autocompleteApi = Api.injectEndpoints({
       AutocompleteSuggestion[],
       AutocompleteRequest
     >({
-      query: ({ databaseId, matchStyle, query }) => ({
+      query: ({ databaseId }) => ({
         method: "GET",
-        url: `/api/database/${databaseId}/autocomplete_suggestions?${matchStyle}=${query}`,
+        url: `/api/database/${databaseId}/autocomplete_suggestions`,
       }),
+      providesTags: () => provideAutocompleteSuggestionTags(),
     }),
     getCardAutocompleteSuggestions: builder.query<
       CardAutocompleteSuggestion[],

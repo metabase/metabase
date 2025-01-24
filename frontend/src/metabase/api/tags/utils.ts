@@ -136,6 +136,10 @@ export function provideApiKeyTags(apiKey: ApiKey): TagDescription<TagType>[] {
   return [idTag("api-key", apiKey.id)];
 }
 
+export function provideAutocompleteSuggestionTags(): TagDescription<TagType>[] {
+  return [listTag("table"), listTag("field")];
+}
+
 export function provideBookmarkListTags(
   bookmarks: Bookmark[],
 ): TagDescription<TagType>[] {

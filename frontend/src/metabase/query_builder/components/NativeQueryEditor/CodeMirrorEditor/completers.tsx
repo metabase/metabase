@@ -4,7 +4,8 @@ import slugg from "slugg";
 import { t } from "ttag";
 
 import {
-  useLazyGetAutocompleteSuggestionsQuery,
+  skipToken,
+  useGetAutocompleteSuggestionsQuery,
   useLazyGetCardAutocompleteSuggestionsQuery,
   useLazyGetCardQuery,
   useListSnippetsQuery,
@@ -18,10 +19,6 @@ import {
   matchTagAtCursor,
   source,
 } from "./util";
-
-// Keep this in sync with the limit in the backend code at
-// `autocomplete-suggestions` in src/metabase/api/database.clj
-const AUTOCOMPLETE_SUGGESTIONS_LIMIT = 50;
 
 type SchemaCompletionOptions = {
   databaseId?: DatabaseId | null;
@@ -47,14 +44,12 @@ function matchAfter(context: CompletionContext, expr: RegExp) {
 export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
   const matchStyle = useSetting("native-query-autocomplete-match-style");
 
-  const [getAutocompleteSuggestions] = useLazyGetAutocompleteSuggestionsQuery();
+  const { data: suggestions = [] } = useGetAutocompleteSuggestionsQuery(
+    matchStyle === "off" || databaseId == null ? skipToken : { databaseId },
+  );
 
   return useCallback(
-    async function (context: CompletionContext) {
-      if (matchStyle === "off" || databaseId == null) {
-        return null;
-      }
-
+    function (context: CompletionContext) {
       const tag = matchTagAtCursor(context.state, {
         allowOpenEnded: true,
         position: context.pos,
@@ -67,55 +62,26 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
       }
 
       const word = context.matchBefore(/\w+/);
+      const suffix = matchAfter(context, /\w+/);
       if (!word) {
         return null;
       }
 
-      const suffix = matchAfter(context, /\w+/);
-
-      // Do not cache this in the rtk-query's cache, since there is no
-      // way to invalidate it. The autocomplete endpoint set caching headers
-      // so the request should be cached in the browser.
-      const shouldCache = false;
-
-      const { data } = await getAutocompleteSuggestions(
-        { databaseId, matchStyle, query: word.text.trim() },
-        shouldCache,
-      );
-      if (!data) {
-        return null;
-      }
-
-      const seen = new Set();
-
-      const deduped = data.filter(([value]) => {
-        if (seen.has(value)) {
-          return false;
-        }
-        seen.add(value);
-        return true;
-      });
-
       return {
         from: word.from,
         to: suffix?.to,
-        options: deduped.map(([value, meta]) => ({
+        options: suggestions.map(([value, meta]) => ({
           label: value,
           detail: meta,
         })),
         validFor(text: string) {
-          if (data.length >= AUTOCOMPLETE_SUGGESTIONS_LIMIT) {
-            // If there are more suggestions than the limit, we want subsequent
-            // edits to fetch more completions because we can't assume that we've seen all
-            // suggestions
-            return false;
-          }
-
-          return text.startsWith(word.text);
+          return matchStyle === "prefix"
+            ? text.startsWith(word.text)
+            : text.includes(word.text);
         },
       };
     },
-    [databaseId, matchStyle, getAutocompleteSuggestions],
+    [suggestions, matchStyle],
   );
 }
 

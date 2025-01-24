@@ -5,8 +5,6 @@ export type AutocompleteMatchStyle = "off" | "prefix" | "substring";
 
 export type AutocompleteRequest = {
   databaseId: DatabaseId;
-  matchStyle: AutocompleteMatchStyle;
-  query: string;
 };
 
 export type AutocompleteSuggestion = [string, string];

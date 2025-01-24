@@ -514,12 +514,10 @@
 
 (defn- autocomplete-tables [db-id search-string limit]
   (t2/select [:model/Table :id :db_id :schema :name]
-             {:where    [:and [:= :db_id db-id]
-                         [:= :active true]
-                         [:like :%lower.name (u/lower-case-en search-string)]
-                         [:= :visibility_type nil]]
-              :order-by [[:%lower.name :asc]]
-              :limit    limit}))
+             {:where [:and
+                      [:= :db_id db-id]
+                      [:= :active true]
+                      [:= :visibility_type nil]]}))
 
 (defn- autocomplete-cards
   "Returns cards that match the search string in the given database, ordered by id.
@@ -566,44 +564,31 @@
                            [:report_card.id :desc]] ; sort by most recently created after sorting by type
                 :limit    50})))
 
-(defn- autocomplete-fields [db-id search-string limit]
-  ;; NOTE: measuring showed that this query performance is improved ~4x when adding trgm index in pgsql and ~10x when
-  ;; adding a index on `lower(metabase_field.name)` for ordering (trgm index having on impact on queries with index).
-  ;; Pgsql now has an index on that (see migration `v49.2023-01-24T12:00:00`) as other dbms do not support indexes on
-  ;; expressions.
-  (t2/select [:model/Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
-             :metabase_field.active          true
-             :%lower.metabase_field/name     [:like (u/lower-case-en search-string)]
-             :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
-             :table.db_id                    db-id
-             {:order-by   [[[:lower :metabase_field.name] :asc]
-                           [[:lower :table.name] :asc]]
-              ;; checking for table.active in join makes query faster when there are a lot of inactive tables
-              :inner-join [[:metabase_table :table] [:and :table.active
-                                                     [:= :table.id :metabase_field.table_id]]]
-              :limit      limit}))
+(defn- autocomplete-fields [table-ids]
+  (when (seq table-ids)
+    (-> (t2/select [:model/Field :id :table_id :name :base_type :semantic_type]
+                   {:where [:and
+                            [:in :id table-ids]
+                            [:= :active true]
+                            [:not-in :visibility_type ["sensitive" "retired"]]]})
+        (t2/hydrate :table))))
 
-(defn- autocomplete-results [tables fields limit]
-  (let [tbl-count   (count tables)
-        fld-count   (count fields)
-        take-tables (min tbl-count (- limit (/ fld-count 2)))
-        take-fields (- limit take-tables)]
-    (concat (for [{table-name :name} (take take-tables tables)]
-              [table-name "Table"])
-            (for [{:keys [table_name base_type semantic_type name]} (take take-fields fields)]
-              [name (str table_name
-                         " "
-                         base_type
-                         (when semantic_type
-                           (str " " semantic_type)))]))))
+(defn- autocomplete-results [tables fields]
+  (concat (for [{table-name :name} tables]
+            [table-name "Table"])
+          (for [{:keys [table_name base_type semantic_type name]} fields]
+            [name (str table_name
+                       " "
+                       base_type
+                       (when semantic_type
+                         (str " " semantic_type)))])))
 
 (defn- autocomplete-suggestions
   "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
-  [db-id match-string]
-  (let [limit  50
-        tables (filter mi/can-read? (autocomplete-tables db-id match-string limit))
-        fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
-    (autocomplete-results tables fields limit)))
+  [db-id]
+  (let [tables (filter mi/can-read? (autocomplete-tables db-id))
+        fields (filter mi/can-read? (autocomplete-fields (map :id tables)))]
+    (autocomplete-results tables fields)))
 
 (def ^:private autocomplete-matching-options
   "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
@@ -630,34 +615,21 @@
                                      :valid-options autocomplete-matching-options}))))))
 
 (api.macros/defendpoint :get "/:id/autocomplete_suggestions"
-  "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
-  `substring` will have priority if both are present.
-
-  This is intended for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
-  and `Fields` in this `Database`.
+  "Return a list of autocomplete suggestions. This is intended for use with the native editor when the User is typing
+  raw SQL. Suggestions include `Tables` and `Fields` in this `Database`.
 
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [prefix substring]} :- [:map
-                                  [:prefix    {:optional true} [:maybe ms/NonBlankString]]
-                                  [:substring {:optional true} [:maybe ms/NonBlankString]]]]
+                    [:id ms/PositiveInt]]]
   (api/read-check :model/Database id)
-  (when (and (str/blank? prefix) (str/blank? substring))
-    (throw (ex-info (tru "Must include prefix or search") {:status-code 400})))
   (try
     {:status  200
-     ;; Presumably user will repeat same prefixes many times writing the query,
-     ;; so let them cache response to make autocomplete feel fast. 60 seconds
-     ;; is not enough to be a nuisance when schema or permissions change. Cache
-     ;; is user-specific since we're checking for permissions.
+     ;; Cache is user-specific since we're checking for permissions.
      :headers {"Cache-Control" "public, max-age=60"
                "Vary"          "Cookie"}
-     :body    (cond
-                substring (autocomplete-suggestions id (str "%" substring "%"))
-                prefix    (autocomplete-suggestions id (str prefix "%")))}
+     :body    (autocomplete-suggestions id)}
     (catch Throwable e
       (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
