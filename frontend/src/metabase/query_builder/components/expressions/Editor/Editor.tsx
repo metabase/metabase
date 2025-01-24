@@ -1,5 +1,5 @@
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Box } from "metabase/ui";
@@ -122,12 +122,6 @@ function useExpression({
     setSource(source);
     setHasChanges(true);
   }, []);
-
-  useEffect(() => {
-    // When the epxression changes externally, update the source
-    // accordingly.
-    setSource(formatExpression(expression));
-  }, [expression, formatExpression]);
 
   const commitExpression = useCallback(
     function (source: string) {
