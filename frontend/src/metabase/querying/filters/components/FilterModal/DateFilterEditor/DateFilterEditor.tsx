@@ -15,6 +15,7 @@ import { Button, Flex, Grid, Icon, Popover } from "metabase/ui";
 
 import { DatePicker } from "../../DatePicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
+import { useFilterModalContext } from "../context";
 import type { FilterEditorProps } from "../types";
 
 import S from "./DateFilterEditor.module.css";
@@ -26,9 +27,9 @@ export function DateFilterEditor({
   stageIndex,
   column,
   filter,
-  isSearching,
   onChange,
 }: FilterEditorProps) {
+  const { isSearching } = useFilterModalContext();
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
