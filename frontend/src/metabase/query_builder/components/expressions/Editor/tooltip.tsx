@@ -246,8 +246,11 @@ function CompletionItem({
   selected: boolean;
 }) {
   const ref = useRef<HTMLLIElement>(null);
-  const handleClick = useCallback(
-    () => onCompletionClick(index),
+  const handleMouseDown = useCallback(
+    (evt: React.MouseEvent<HTMLLIElement>) => {
+      evt.preventDefault();
+      onCompletionClick(index);
+    },
     [index, onCompletionClick],
   );
 
@@ -262,7 +265,12 @@ function CompletionItem({
   }, [selected]);
 
   return (
-    <li role="option" aria-selected={selected} onClick={handleClick} ref={ref}>
+    <li
+      role="option"
+      aria-selected={selected}
+      onMouseDown={handleMouseDown}
+      ref={ref}
+    >
       <Icon name={completion.icon} className={css.icon} />
 
       {completion.displayLabel ?? completion.label}
