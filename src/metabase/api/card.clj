@@ -499,7 +499,7 @@
                             [:type                   {:optional true} [:maybe ::card-type]]
                             [:dataset_query          ms/Map]
                             ;; TODO: Make entity_id a NanoID regex schema?
-                            [:entity_id              {:optional true} [:maybe ms/NonBlankString]] 
+                            [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
                             [:parameters             {:optional true} [:maybe [:sequential ms/Parameter]]]
                             [:parameter_mappings     {:optional true} [:maybe [:sequential ms/ParameterMapping]]]
                             [:description            {:optional true} [:maybe ms/NonBlankString]]
