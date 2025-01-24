@@ -227,7 +227,8 @@
                         (:totals pivot-data)
                         true
                         (repeat 5 identity)
-                        (repeat 2 identity))))
+                        (repeat 2 identity)
+                        pivot-config)))
       (is (= ["Totals for 4" nil 3 4 7]
              (build-column-totals [4]
                                   [[3] [4]]
@@ -235,4 +236,5 @@
                                   (:totals pivot-data)
                                   true
                                   (repeat 5 identity)
-                                  (repeat 2 identity)))))))
+                                  [0 1]
+                                  [2]))))))
