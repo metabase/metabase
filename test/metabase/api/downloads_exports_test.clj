@@ -65,11 +65,16 @@
   "Provides the result of the card download via the card api in `export-format`,
   formatting rows if `format-rows` is true, and pivoting the results if `pivot` is true."
   [{:keys [id] :as _card} {:keys [export-format format-rows pivot]}]
-  (->> (mt/user-http-request :crowberto :post 200
-                             (format "card/%d/query/%s" id (name export-format))
-                             :format_rows   format-rows
-                             :pivot_results pivot)
-       (process-results pivot export-format)))
+  (let [results (mt/user-http-request :crowberto :post 200
+                                      (format "card/%d/query/%s" id (name export-format))
+                                      :format_rows   format-rows
+                                      :pivot_results pivot)]
+    (try
+      (process-results pivot export-format results)
+      (catch Throwable e
+        (throw (ex-info (format "Error processing results: %s" (ex-message e))
+                        {:results results}
+                        e))))))
 
 (defn- unsaved-card-download
   [card {:keys [export-format format-rows pivot]}]

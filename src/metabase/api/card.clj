@@ -787,8 +787,8 @@
     pivot-results? :pivot_results
     format-rows?   :format_rows} :- [:map
                                      [:parameters    {:optional true} [:maybe ms/JSONString]]
-                                     [:format_rows   {:default false} :boolean]
-                                     [:pivot_results {:default false} :boolean]]]
+                                     [:format_rows   {:default false} ms/BooleanValue]
+                                     [:pivot_results {:default false} ms/BooleanValue]]]
   (qp.card/process-query-for-card
    card-id export-format
    :parameters  (json/decode+kw parameters)
