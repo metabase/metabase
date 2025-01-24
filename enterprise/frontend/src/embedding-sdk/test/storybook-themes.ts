@@ -345,13 +345,13 @@ const proficiencyTheme: MetabaseTheme = {
   },
 };
 
-export const storybookThemes: Record<string, MetabaseTheme | undefined> = {
+export const storybookThemes = {
   default: undefined,
   dark: darkTheme,
   pug: pugTheme,
   stitch: stitchTheme,
   luminara: luminaraTheme,
   proficiency: proficiencyTheme,
-};
+} satisfies Record<string, MetabaseTheme | undefined>;
 
 export const storybookThemeOptions = Object.keys(storybookThemes);
