@@ -3,6 +3,7 @@ import { parse } from "url";
 
 import { createMockMetadata } from "__support__/metadata";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
@@ -807,6 +808,7 @@ describe("Question", () => {
         isComposed: false,
       });
 
+      expect(Lib.stageCount(questionWithFilters.query())).toBe(1);
       expect(questionWithFilters.datasetQuery().query.filter).toEqual([
         "starts-with",
         [

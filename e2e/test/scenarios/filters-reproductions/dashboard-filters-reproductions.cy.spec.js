@@ -4164,3 +4164,72 @@ describe("issue 40396", { tags: "@external " }, () => {
     H.getDashboardCard().findAllByText("beta").should("have.length.gte", 1);
   });
 });
+
+describe("issue 52627", () => {
+  const questionDetails = {
+    display: "bar",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["avg", ["field", ORDERS.TOTAL, null]],
+        ["avg", ["field", ORDERS.DISCOUNT, null]],
+      ],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+  };
+
+  const parameterDetails = {
+    name: "Category",
+    slug: "category",
+    id: "b6ed2d71",
+    type: "string/=",
+    sectionId: "string",
+    default: ["Gadget"],
+  };
+
+  const parameterTarget = [
+    "dimension",
+    ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+    { "stage-number": 0 },
+  ];
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should remove an empty query stage after a dashboard drill-thru (metabase#52627)", () => {
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        H.addOrUpdateDashboardCard({
+          dashboard_id,
+          card_id,
+          card: {
+            id,
+            parameter_mappings: [
+              {
+                card_id: card_id,
+                parameter_id: parameterDetails.id,
+                target: parameterTarget,
+              },
+            ],
+          },
+        });
+        H.visitDashboard(dashboard_id);
+      },
+    );
+    H.chartPathWithFillColor("#A989C5").first().click();
+    H.popover().findByText("See this month by week").click();
+    cy.wait("@dataset");
+    cy.findByTestId("qb-filters-panel").findByText(
+      "Product → Category is Gadget",
+    );
+    H.summarize();
+    H.rightSidebar().findByText("Average of Total").should("be.visible");
+  });
+});
