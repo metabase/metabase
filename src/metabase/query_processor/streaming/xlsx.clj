@@ -622,8 +622,8 @@
       ;; But since QP sends us pre-aggregated data we can't use excel's innate aggregation functions
       (let [col-name (let [name (nth col-names idx)]
                         (if (not-empty name)
-                           name
-                           (:display_name (get ordered-cols idx))))]
+                          name
+                          (:display_name (get ordered-cols idx))))]
         (.addColumnLabel pivot-table DataConsolidateFunction/SUM idx col-name)))
     (doseq [[idx sort-setting] column-sort-order]
       (let [setting (case sort-setting
