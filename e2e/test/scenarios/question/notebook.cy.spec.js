@@ -1092,6 +1092,21 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByText("Count").should("be.visible");
     });
   });
+
+  it("should allow using aggregation functions inside expressions in aggregation (metabase#52611)", () => {
+    cy.visit("/");
+    H.newButton("Question").click();
+    H.entityPickerModal().findByText("Orders").click();
+    H.addSummaryField({ metric: "Custom Expression" });
+    H.enterCustomColumnDetails({
+      formula: "case(Sum([Total]) > 10, Sum([Total]), Sum([Subtotal]))",
+      name: "conditional sum",
+    });
+    cy.button("Done").click();
+    H.addSummaryGroupingField({ field: "Total" });
+    H.visualize();
+    H.echartsContainer().should("contain.text", "Total: 8 bins");
+  });
 });
 
 function assertTableRowCount(expectedCount) {
