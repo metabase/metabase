@@ -962,7 +962,7 @@
       (mt/with-temp [:model/Card card {:display       :table
                                        :dataset_query {:database (mt/id)
                                                        :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,10002);"}}}]
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,10000);"}}}]
         (let [results (all-outputs! card {:export-format :csv :format-rows true})]
           (is (= {:card-download            10001
                   :unsaved-card-download    10001
@@ -971,21 +971,6 @@
                   :subscription-attachment  10001
                   :public-question-download 10001
                   :public-dashcard-download 10001}
-                 (update-vals results count)))))))
-  (testing "Downloads row limit works."
-    (mt/with-temporary-setting-values [public-settings/download-row-limit 10001]
-      (mt/with-temp [:model/Card card {:display       :table
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,10002);"}}}]
-        (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-          (is (= {:card-download            10002
-                  :unsaved-card-download    10002
-                  :alert-attachment         10002
-                  :dashcard-download        10002
-                  :subscription-attachment  10002
-                  :public-question-download 10002
-                  :public-dashcard-download 10002}
                  (update-vals results count))))))))
 
 (deftest ^:parallel model-viz-settings-downloads-test

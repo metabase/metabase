@@ -1063,7 +1063,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :export?    true
   :type       :integer
-  :default    nil
+  :default    1048576
   :getter     (fn []
                 (let [limit (setting/get-value-of-type :integer :download-row-limit)]
                   (max limit 1048576))))
