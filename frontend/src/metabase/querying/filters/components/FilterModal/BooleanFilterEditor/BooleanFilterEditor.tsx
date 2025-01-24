@@ -18,11 +18,10 @@ export function BooleanFilterEditor({
   filter,
   onChange,
 }: FilterEditorProps) {
+  const { isSearching } = useFilterModalContext();
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
-
-  const { isSearching } = useFilterModalContext();
 
   const {
     operator,

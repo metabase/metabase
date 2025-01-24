@@ -11,6 +11,7 @@ import type * as Lib from "metabase-lib";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
+import { useFilterModalContext } from "../context";
 import type { FilterEditorProps } from "../types";
 
 export function TimeFilterEditor({
@@ -18,10 +19,10 @@ export function TimeFilterEditor({
   stageIndex,
   column,
   filter,
-  isSearching,
   onChange,
   onInput,
 }: FilterEditorProps) {
+  const { isSearching } = useFilterModalContext();
   const columnIcon = useMemo(() => getColumnIcon(column), [column]);
   const [isFocused, setIsFocused] = useState(false);
 
