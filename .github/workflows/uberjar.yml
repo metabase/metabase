@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - "master"
-      - metabot-v3-second-try
+      - metabot-v3-main
       - feature-visualizer
     paths-ignore:
       # config files
