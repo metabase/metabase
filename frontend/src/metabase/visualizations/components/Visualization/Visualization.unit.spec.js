@@ -4,13 +4,16 @@ import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import registerVisualizations from "metabase/visualizations/register";
-import { createMockCard } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
 
 registerVisualizations();
 
 describe("Visualization", () => {
-  const renderViz = async series => {
-    renderWithProviders(<Visualization rawSeries={series} />);
+  const renderViz = async (series, props = {}) => {
+    await renderWithProviders(<Visualization rawSeries={series} {...props} />);
     // The chart isn't rendered until the next tick. This is due to ExplicitSize
     // not setting the dimensions until after mounting.
     await delay(0);
@@ -20,6 +23,47 @@ describe("Visualization", () => {
     const container = screen.getByTestId("chart-container");
     return container.querySelectorAll(`path[fill="${color}"]`);
   };
+
+  describe("with an error", () => {
+    // https://github.com/metabase/metabase/issues/49348
+    it("should render the error message and the proper title", async () => {
+      await renderViz(
+        [
+          {
+            data: {
+              rows: [
+                ["Doohickey", "Annetta Wyman and Sons", 1],
+                ["Doohickey", "Balistreri-Ankunding", 1],
+                ["Doohickey", "Bernhard-Grady", 1],
+              ],
+              cols: [
+                StringColumn({ name: "CATEGORY" }),
+                StringColumn({ name: "VENDOR" }),
+                NumberColumn({ name: "count" }),
+              ],
+            },
+            card: createMockCard({
+              name: "Products, Count, Grouped by Category and Vendor",
+              display: "bar",
+              visualization_settings: createMockVisualizationSettings({
+                "graph.dimensions": ["CATEGORY", "VENDOR"],
+                "graph.metrics": ["count"],
+              }),
+            }),
+          },
+        ],
+        {
+          showTitle: true,
+          isDashboard: true,
+        },
+      );
+
+      // expect(screen.getByText("Ths is an error message")).toBeInTheDocument();
+      expect(screen.getByTestId("legend-caption-title")).toHaveTextContent(
+        "Products, Count, Grouped by Category and Vendor",
+      );
+    });
+  });
 
   describe("scalar", () => {
     it("should render", async () => {
