@@ -1,10 +1,10 @@
 import { formatNativeQuery } from "metabase/lib/engine";
 import type Question from "metabase-lib/v1/Question";
-import type { NativeQueryForm } from "metabase-types/api";
+import type { NativeDatasetResponse } from "metabase-types/api";
 
 export function createNativeQuestion(
   question: Question,
-  nativeForm: NativeQueryForm | undefined,
+  nativeForm: NativeDatasetResponse | undefined,
 ) {
   const database = question.database();
   const query = formatNativeQuery(nativeForm?.query, database?.engine) ?? "";
