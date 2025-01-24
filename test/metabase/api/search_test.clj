@@ -23,8 +23,11 @@
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (comment
   ;; We need this to ensure the engine hierarchy is registered

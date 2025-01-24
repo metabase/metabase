@@ -128,7 +128,7 @@
                                         :dashboard-parameters parameters})))
             :value value}))))
 
-(defn parse-query-params
+(mu/defn parse-query-params :- :map
   "Parses parameter values from the query string in a backward compatible way.
 
   Before (v50 and below) we passed parameter values as separate query string parameters \"?param1=A&param2=B\". The
@@ -142,7 +142,8 @@
           (json/decode+kw parameters))
         (catch Throwable _
           nil))
-      query-params))
+      query-params
+      {}))
 
 (mu/defn normalize-query-params :- [:map-of :keyword :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our

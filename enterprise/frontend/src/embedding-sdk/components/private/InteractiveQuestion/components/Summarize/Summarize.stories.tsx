@@ -16,7 +16,7 @@ export default {
 };
 
 export const SummarizeDropdownStory = {
-  storyName: "Default",
+  name: "Default",
   render() {
     return (
       <Box p="lg">
