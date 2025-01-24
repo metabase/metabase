@@ -127,7 +127,7 @@
   "Simple echo hander. Fails when you POST with `?fail=true`."
   [_route-params
    {:keys [fail]} :- [:map
-                      [:fail ms/BooleanValue]]
+                      [:fail {:default false} ms/BooleanValue]]
    body]
   (if fail
     {:status 400
