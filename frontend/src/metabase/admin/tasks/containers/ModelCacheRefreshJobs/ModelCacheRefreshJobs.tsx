@@ -7,7 +7,7 @@ import NoResults from "assets/img/no_results.svg";
 import { useListPersistedInfoQuery } from "metabase/api";
 import DateTime from "metabase/components/DateTime";
 import EmptyState from "metabase/components/EmptyState";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
