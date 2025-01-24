@@ -146,7 +146,8 @@
                 (t/plus (t/seconds 1))
                 (t/truncate-to :seconds))))))
 
-(def ^:private transliterator (Transliterator/getInstance "Any-Latin; Latin-ASCII"))
+(def ^:private transliterator
+  (Transliterator/getInstance "Arabic-Latin; Bulgarian-Latin/BGN; Greek-Latin/BGN; Any-Latin; Latin-ASCII"))
 
 (defn- transliterate [s]
   (when-not (str/blank? s)
@@ -162,8 +163,7 @@
   ;; TODO we should not rely on the timestamp to make the filename unique
   ;; Ideally we would add an incrementing count, but it may be cheaper and easier to include some randomness.
   (let [time-format                 "_yyyyMMddHHmmss"
-        slugified-name               (transliterate table-name)
-        slugified-name               (if (str/blank? slugified-name) "blank" slugified-name)
+        slugified-name              (or (u/not-blank (transliterate table-name)) "blank")
         ;; since both the time-format and the slugified-name contain only ASCII characters, we can behave as if
         ;; [[driver/table-name-length-limit]] were defining a length in characters.
         max-length                  (- (min-safe (driver/table-name-length-limit driver)
