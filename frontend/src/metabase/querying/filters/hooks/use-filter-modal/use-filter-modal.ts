@@ -1,4 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -15,7 +21,7 @@ type FilterModalResult = {
   isChanged: boolean;
   groupItems: GroupItem[];
   tab: string | null;
-  setTab: (tab: string | null) => void;
+  setTab: Dispatch<SetStateAction<string | null>>;
   canRemoveFilters: boolean;
   searchText: string;
   isSearching: boolean;
