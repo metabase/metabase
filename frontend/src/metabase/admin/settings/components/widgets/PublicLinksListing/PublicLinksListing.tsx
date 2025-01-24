@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import Confirm from "metabase/components/Confirm";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
