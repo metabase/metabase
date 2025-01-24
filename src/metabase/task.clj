@@ -197,11 +197,12 @@
     (when-let [scheduler (scheduler)]
       (let [job-key          (.getKey ^JobDetail job)
             new-trigger-key  (.getKey ^Trigger new-trigger)
-            triggers         (qs/get-triggers-of-job scheduler job-key)
+            triggers         (try (qs/get-triggers-of-job scheduler job-key) (catch Exception _))
             matching-trigger (first (filter (comp #{new-trigger-key} #(.getKey ^Trigger %)) triggers))
             replaced-trigger (or matching-trigger (first triggers))]
-        (when replaced-trigger
-          (log/debugf "Rescheduling job %s" (.getName job-key))
+        (log/debugf "Rescheduling job %s" (.getName job-key))
+        (if-not replaced-trigger
+          (.scheduleJob scheduler new-trigger)
           (let [replaced-key (.getKey ^Trigger replaced-trigger)]
             (when-not matching-trigger
               (log/warnf "Replacing trigger %s with trigger %s%s"
@@ -211,9 +212,8 @@
                            ;; We probably want more intuitive rescheduling semantics for multi-trigger jobs...
                            ;; Ideally we would pass *all* the new triggers at once, so we can match them up atomically.
                            ;; The current behavior is especially confounding if replacing N triggers with M ones.
-                           (str " (chosen randomly from " (count triggers) " existing ones)")))
-              matching-trigger)
-            (.rescheduleJob scheduler (.getKey ^Trigger matching-trigger) new-trigger)))))
+                           (str " (chosen randomly from " (count triggers) " existing ones)"))))
+            (.rescheduleJob scheduler replaced-key new-trigger)))))
     (catch Throwable e
       (log/error e "Error rescheduling job"))))
 
