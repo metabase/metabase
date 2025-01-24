@@ -1,6 +1,7 @@
 (ns hooks.metabase.api.macros
   (:require
-   [clj-kondo.hooks-api :as api]))
+   [clj-kondo.hooks-api :as api]
+   [hooks.common]))
 
 (defn defendpoint
   [arg]
@@ -42,7 +43,7 @@
                       (api/token-node `let)
                       (api/vector-node (into []
                                              (mapcat (fn [a-binding]
-                                                       [a-binding (api/token-node nil)]))
+                                                       [a-binding (api/map-node {})]))
                                              bindings))
                       body))))
                   (with-meta (meta node)))))]
