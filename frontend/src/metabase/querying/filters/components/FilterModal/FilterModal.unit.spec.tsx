@@ -277,10 +277,9 @@ describe("FilterModal", () => {
   });
 });
 
-describe("issue 48319", () => {
+describe("FilterModal - issue 48319", () => {
   const query = createQuery();
 
-  // TODO: assert operator
   // TODO: assert options (how?)
   it("string filters - does not mix up column filter state when changing search query (metabase#48319)", async () => {
     setup({ query });
@@ -292,8 +291,12 @@ describe("issue 48319", () => {
         screen.getByRole("checkbox", { name: "Doohickey" }),
       ).toBeInTheDocument();
     });
-
     await userEvent.click(screen.getByRole("checkbox", { name: "Doohickey" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Filter operator" }),
+    );
+    await userEvent.click(screen.getByText("Is not"));
+
     await userEvent.type(
       searchInput,
       `${"{backspace}".repeat("category".length)}source`,
@@ -304,6 +307,9 @@ describe("issue 48319", () => {
         screen.getByRole("checkbox", { name: "Affiliate" }),
       ).toBeInTheDocument();
     });
+    expect(
+      screen.getByRole("button", { name: "Filter operator" }),
+    ).toHaveTextContent("is");
     expect(
       screen.queryByRole("checkbox", { name: "Doohickey" }),
     ).not.toBeInTheDocument();
@@ -320,6 +326,9 @@ describe("issue 48319", () => {
       ).toBeInTheDocument();
     });
     expect(screen.getByRole("checkbox", { name: "Doohickey" })).toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "Filter operator" }),
+    ).toHaveTextContent("is not");
     expect(
       screen.queryByRole("checkbox", { name: "Affiliate" }),
     ).not.toBeInTheDocument();
