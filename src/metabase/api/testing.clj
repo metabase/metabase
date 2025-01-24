@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db :as mdb]
+   [metabase.search.core :as search]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -121,6 +122,7 @@
   [name]
   {name ms/NonBlankString}
   (restore-snapshot! name)
+  (search/reindex!)
   nil)
 
 #_{:clj-kondo/ignore [:deprecated-var]}

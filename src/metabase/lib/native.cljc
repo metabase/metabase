@@ -239,6 +239,15 @@
      (lib.metadata/card query card-id))
    (template-tag-card-ids query)))
 
+(mu/defn has-template-tag-variables? :- :boolean
+  "Tests whether `query` has any template-tag variables.
+
+  That is, any `:template-tags` values with `:type` other than `:snippet` or `:card`."
+  [query :- ::lib.schema/query]
+  (letfn [(variable-tag? [{tag-type :type}]
+            (not (#{:snippet :card} tag-type)))]
+    (boolean (some variable-tag? (vals (template-tags query))))))
+
 (mu/defn has-write-permission :- :boolean
   "Returns whether the database has native write permissions.
    This is only filled in by [[metabase.api.database/add-native-perms-info]]

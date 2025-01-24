@@ -135,7 +135,7 @@ describe("issue 9027", () => {
       cy.button("Close").click();
     });
 
-    H.openNativeEditor({ fromCurrentPage: true });
+    H.startNewNativeQuestion();
 
     H.NativeEditor.focus().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -277,9 +277,11 @@ describe("issue 14957", { tags: "@external" }, () => {
   });
 
   it("should save a question before query has been executed (metabase#14957)", () => {
-    H.openNativeEditor({ databaseName: PG_DB_NAME }).type(
-      "select pg_sleep(60)",
-    );
+    H.startNewNativeQuestion().as("editor");
+
+    cy.findByTestId("gui-builder-data").click();
+    cy.findByLabelText(PG_DB_NAME).click();
+    cy.get("@editor").type("select pg_sleep(60)");
     H.saveQuestion("14957", undefined, {
       tab: "Browse",
       path: ["Our analytics"],
@@ -515,41 +517,43 @@ describe("issue 17514", () => {
       });
     });
 
-    it(
-      "should not show the run overlay when we apply dashboard filter on a question with removed column and then click through its title (metabase#17514-1)",
-      { tags: "@flaky" },
-      () => {
-        H.editDashboard();
+    it("should not show the run overlay when we apply dashboard filter on a question with removed column and then click through its title (metabase#17514-1)", () => {
+      H.editDashboard();
 
-        openVisualizationOptions();
+      openVisualizationOptions();
 
-        hideColumn("Products → Ean");
+      hideColumn("Products → Ean");
 
-        closeModal();
+      closeModal();
 
-        H.saveDashboard();
+      H.saveDashboard();
 
-        H.filterWidget().click();
-        setAdHocFilter({ timeBucket: "years" });
+      H.filterWidget().click();
+      setAdHocFilter({ timeBucket: "years" });
 
-        cy.location("search").should("eq", "?date_filter=past30years");
-        cy.wait("@cardQuery");
+      cy.location("search").should("eq", "?date_filter=past30years");
+      cy.wait("@cardQuery");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Previous 30 Years");
+      cy.findByTestId("parameter-value-widget-target")
+        .findByText("Previous 30 Years")
+        .click();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("17514").click();
-        cy.wait("@dataset");
-        cy.findByTextEnsureVisible("Subtotal");
+      cy.findByTestId("parameter-value-dropdown")
+        .findByText("Update filter")
+        .click();
 
-        // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("79.37").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Filter by this value");
-      },
-    );
+      cy.findByTestId("legend-caption").findByText("17514").click();
+      cy.wait("@dataset");
+      cy.findByTextEnsureVisible("Subtotal");
+
+      cy.findByTestId("view-footer")
+        .findByText("Showing first 2,000 rows")
+        .should("be.visible");
+
+      cy.findByTestId("query-builder-main").findByText("79.37").click();
+
+      cy.findByTestId("click-actions-view").findByText("Filter by this value");
+    });
   });
 
   describe("scenario 2", () => {
@@ -823,7 +827,7 @@ describe("issue 18207", () => {
   });
 });
 
-describe("issues 11914, 18978, 18977, 23857", () => {
+describe("issues 11914, 18978, 18977, 23857", { tags: "@flaky" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

@@ -30,8 +30,9 @@ describe("scenarios > question > native", () => {
   });
 
   it("lets you create and run a SQL question", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     H.NativeEditor.type("select count(*) from orders");
+
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("18,760");
@@ -39,8 +40,8 @@ describe("scenarios > question > native", () => {
 
   it("should suggest the currently viewed collection when saving question if the user has not recently visited a dashboard", () => {
     H.visitCollection(THIRD_COLLECTION_ID);
+    H.startNewNativeQuestion({ collection_id: THIRD_COLLECTION_ID });
 
-    H.openNativeEditor({ fromCurrentPage: true });
     H.NativeEditor.type("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
@@ -66,7 +67,7 @@ describe("scenarios > question > native", () => {
 
     cy.visit("/");
 
-    H.openNativeEditor({ fromCurrentPage: true });
+    H.startNewNativeQuestion();
     H.NativeEditor.type("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
@@ -83,16 +84,18 @@ describe("scenarios > question > native", () => {
   });
 
   it("displays an error", { tags: "@flaky" }, () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     H.NativeEditor.type("select * from not_a_table");
+
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
   it("displays an error when running selected text", { tags: "@flaky" }, () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     H.NativeEditor.type("select * from orders");
+
     // move left three
     Cypress._.range(3).forEach(() => cy.realPress("ArrowLeft"));
     // highlight back to the front
@@ -103,8 +106,9 @@ describe("scenarios > question > native", () => {
   });
 
   it("should handle template tags", { tags: "@flaky" }, () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     H.NativeEditor.type("select * from PRODUCTS where RATING > {{Stars}}");
+
     cy.get("input[placeholder*='Stars']").type("3");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -112,8 +116,9 @@ describe("scenarios > question > native", () => {
   });
 
   it("should modify parameters accordingly when tags are modified", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     H.NativeEditor.type("select * from PRODUCTS where CATEGORY = {{cat}}");
+
     cy.findByTestId("sidebar-right")
       .findByText("Always require a value")
       .click();
@@ -140,7 +145,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("can save a question with no rows", { tags: "@flaky" }, () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     H.NativeEditor.type("select * from people where false");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -224,7 +229,7 @@ describe("scenarios > question > native", () => {
     "should be able to add new columns after hiding some (metabase#15393)",
     { tags: "@flaky" },
     () => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion({ display: "table" }).as("editor");
       H.NativeEditor.type("select 1 as visible, 2 as hidden");
       cy.findByTestId("native-query-editor-container")
         .icon("play")
@@ -246,7 +251,7 @@ describe("scenarios > question > native", () => {
   );
 
   it("should recognize template tags and save them as parameters", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     H.NativeEditor.type(
       "select * from PRODUCTS where CATEGORY={{cat}} and RATING >= {{stars}}",
     );
@@ -303,7 +308,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("should allow to preview a fully parameterized query", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     H.NativeEditor.type("select * from PRODUCTS where CATEGORY={{category}}");
     cy.findByPlaceholderText("Category").type("Gadget");
     cy.button("Preview the query").click();
@@ -314,7 +319,7 @@ describe("scenarios > question > native", () => {
   });
 
   it("should show errors when previewing a query", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     H.NativeEditor.type("select * from PRODUCTS where CATEGORY={{category}}");
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
@@ -453,8 +458,9 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       H.restore("mongo-5");
       cy.signInAsNormalUser();
 
-      H.openNativeEditor({ newMenuItemTitle: "Native query" });
-      H.popover().findByText(MONGO_DB_NAME).click();
+      H.startNewNativeQuestion();
+      cy.findByTestId("gui-builder-data").click();
+      cy.findByLabelText(MONGO_DB_NAME).click();
       cy.findByLabelText("Format query").should("not.exist");
 
       cy.findByTestId("native-query-top-bar").findByText(MONGO_DB_NAME).click();
@@ -490,7 +496,7 @@ describe("scenarios > native question > data reference sidebar", () => {
   });
 
   it("should show tables", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     referenceButton().click();
 
     sidebarHeaderTitle().should("have.text", "Sample Database");
@@ -532,7 +538,7 @@ describe("scenarios > native question > data reference sidebar", () => {
       cy.button("Move").click();
     });
 
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     referenceButton().click();
 
     dataReferenceSidebar().within(() => {
@@ -548,7 +554,7 @@ describe("scenarios > native question > data reference sidebar", () => {
 
   describe("metrics", () => {
     it("should not show metrics when they are not defined on the selected table", () => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       referenceButton().click();
       sidebarHeaderTitle().should("have.text", "Sample Database");
 
@@ -561,7 +567,7 @@ describe("scenarios > native question > data reference sidebar", () => {
     it("should show metrics defined on tables", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
 
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       referenceButton().click();
       sidebarHeaderTitle().should("have.text", "Sample Database");
 

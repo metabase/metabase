@@ -523,7 +523,10 @@ describe("issue 28304", () => {
     H.leftSidebar().should("not.contain", "[Unknown]");
     H.leftSidebar().should("contain", "Created At");
     H.leftSidebar().should("contain", "Count");
-    cy.findAllByTestId("mini-bar").should("have.length.greaterThan", 0);
+    cy.findAllByTestId("mini-bar-container").should(
+      "have.length.greaterThan",
+      0,
+    );
     H.getDraggableElements().should("have.length", 2);
   });
 });

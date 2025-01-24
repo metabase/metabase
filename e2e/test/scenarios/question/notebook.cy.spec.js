@@ -710,6 +710,26 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         .should("have.text", name);
     }
 
+    function verifyDragAndDrop() {
+      H.getNotebookStep("expression").within(() => {
+        moveElement({ name: "E1", horizontal: 100, index: 1 });
+      });
+      H.getNotebookStep("filter").within(() => {
+        moveElement({ name: "ID is 2", horizontal: -100, index: 0 });
+      });
+      H.getNotebookStep("summarize").within(() => {
+        cy.findByTestId("aggregate-step").within(() => {
+          moveElement({ name: "Count", vertical: 100, index: 4 });
+        });
+        cy.findByTestId("breakout-step").within(() => {
+          moveElement({ name: "ID", horizontal: 100, index: 1 });
+        });
+      });
+      H.getNotebookStep("sort").within(() => {
+        moveElement({ name: "Average of Total", horizontal: -100, index: 0 });
+      });
+    }
+
     function verifyPopoverDoesNotMoveElement({
       type,
       name,
@@ -728,6 +748,23 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         .findAllByTestId("notebook-cell-item")
         .eq(index)
         .should("have.text", name);
+    }
+
+    function verifyPopoverIsClosedAfterDragAndDrop({
+      type,
+      name,
+      index,
+      horizontal,
+      vertical,
+    }) {
+      H.getNotebookStep(type).within(() => {
+        cy.findByText(name).click();
+      });
+      H.popover().should("be.visible");
+      H.getNotebookStep(type).within(() => {
+        moveElement({ name, horizontal, vertical, index });
+      });
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
     }
 
     const questionDetails = {
@@ -762,27 +799,17 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     };
     cy.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
-    H.getNotebookStep("expression").within(() => {
-      moveElement({ name: "E1", horizontal: 100, index: 1 });
-    });
-    H.getNotebookStep("filter").within(() => {
-      moveElement({ name: "ID is 2", horizontal: -100, index: 0 });
-    });
-    H.getNotebookStep("summarize").within(() => {
-      cy.findByTestId("aggregate-step").within(() => {
-        moveElement({ name: "Count", vertical: 100, index: 4 });
-      });
-      cy.findByTestId("breakout-step").within(() => {
-        moveElement({ name: "ID", horizontal: 100, index: 1 });
-      });
-    });
-    H.getNotebookStep("sort").within(() => {
-      moveElement({ name: "Average of Total", horizontal: -100, index: 0 });
-    });
+    verifyDragAndDrop();
     verifyPopoverDoesNotMoveElement({
       type: "filter",
       name: "ID is 1",
       index: 1,
+      horizontal: -100,
+    });
+    verifyPopoverIsClosedAfterDragAndDrop({
+      type: "filter",
+      name: "ID is 1",
+      index: 0,
       horizontal: -100,
     });
   });
@@ -1090,6 +1117,21 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByText("Created At: Month").should("be.visible");
       cy.findByText("Count").should("be.visible");
     });
+  });
+
+  it("should allow using aggregation functions inside expressions in aggregation (metabase#52611)", () => {
+    cy.visit("/");
+    H.newButton("Question").click();
+    H.entityPickerModal().findByText("Orders").click();
+    H.addSummaryField({ metric: "Custom Expression" });
+    H.enterCustomColumnDetails({
+      formula: "case(Sum([Total]) > 10, Sum([Total]), Sum([Subtotal]))",
+      name: "conditional sum",
+    });
+    cy.button("Done").click();
+    H.addSummaryGroupingField({ field: "Total" });
+    H.visualize();
+    H.echartsContainer().should("contain.text", "Total: 8 bins");
   });
 });
 

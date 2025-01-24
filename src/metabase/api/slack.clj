@@ -3,9 +3,9 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [compojure.core :refer [PUT]]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.integrations.slack :as slack]
    [metabase.util.i18n :refer [tru]]
@@ -68,17 +68,19 @@
                          :emoji true}
                   :url file-url}]}]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/settings"
+(api.macros/defendpoint :put "/settings"
   "Update Slack related settings. You must be a superuser to do this. Also updates the slack-cache.
   There are 3 cases where we alter the slack channel/user cache:
   1. falsy token           -> clear
   2. invalid token         -> clear
   3. truthy, valid token   -> refresh "
-  [:as {{slack-app-token :slack-app-token, slack-files-channel :slack-files-channel, slack-bug-report-channel :slack-bug-report-channel} :body}]
-  {slack-app-token     [:maybe ms/NonBlankString]
-   slack-files-channel    [:maybe ms/NonBlankString]
-   slack-bug-report-channel [:maybe :string]}
+  [_route-params
+   _query-params
+   {:keys [slack-app-token slack-files-channel slack-bug-report-channel]}
+   :- [:map
+       [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
+       [:slack-files-channel      {:optional true} [:maybe ms/NonBlankString]]
+       [:slack-bug-report-channel {:optional true} [:maybe :string]]]]
   (validation/check-has-application-permission :setting)
   (try
     ;; Clear settings if no values are provided
@@ -131,34 +133,32 @@
 (def ^:private slack-manifest
   (delay (slurp (io/resource "slack-manifest.yaml"))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/manifest"
+(api.macros/defendpoint :get "/manifest"
   "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
   []
   (validation/check-has-application-permission :setting)
   @slack-manifest)
 
 ;; Handle bug report submissions to Slack
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/bug-report"
+(api.macros/defendpoint :post "/bug-report"
   "Send diagnostic information to the configured Slack channels."
-  [:as {{:keys [diagnosticInfo]} :body}]
-  {diagnosticInfo map?}
+  [_route-params
+   _query-params
+   {diagnostic-info :diagnosticInfo} :- [:map
+                                         ;; TODO FIXME -- this should not use `camelCase` keys
+                                         [:diagnosticInfo map?]]]
   (try
     (let [files-channel (slack/files-channel)
           bug-report-channel (slack/bug-report-channel)
-          file-content (.getBytes (json/encode diagnosticInfo {:pretty true}))
+          file-content (.getBytes (json/encode diagnostic-info {:pretty true}))
           file-info (slack/upload-file! file-content
                                         "diagnostic-info.json"
                                         files-channel)]
-
-      (let [blocks (create-slack-message-blocks diagnosticInfo file-info)]
-
+      (let [blocks (create-slack-message-blocks diagnostic-info file-info)]
         (slack/post-chat-message!
          bug-report-channel
          nil
          {:blocks blocks})
-
         {:success true
          :file-url (get file-info :permalink_public)}))
     (catch Exception e

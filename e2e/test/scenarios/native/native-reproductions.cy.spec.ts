@@ -50,10 +50,10 @@ describe("issue 16584", () => {
     // - the issue is unrelated to using a date filter, using a text filter works too
     // - the issue is unrelated to whether or not the parameter is required or if default value is set
     // - the space at the end of the query is not needed to reproduce this issue
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     H.NativeEditor.type(
       "SELECT COUNTRY FROM ACCOUNTS WHERE COUNTRY = {{ country }} LIMIT 1",
-    );
+    ).type("{selectAll}");
 
     cy.findByPlaceholderText("Country").type("NL", { delay: 0 });
 
@@ -170,7 +170,7 @@ describe("issue 49454", () => {
   });
 
   it("should be possible to use metrics in native queries (metabase#49454)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     H.NativeEditor.type("select * from {{ #test");
 
     H.NativeEditor.completions().within(() => {

@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
-import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper as DefaultLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { capitalize } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
@@ -66,7 +66,7 @@ interface Props<Entity, EntityWrapper> {
   loadingAndErrorWrapper?: boolean;
   LoadingAndErrorWrapper?: ComponentType<LoadingAndErrorWrapperProps>;
   pageSize?: number;
-  reload?: boolean;
+  reload?: boolean | ChildrenProps<Entity, EntityWrapper>["reload"]; // reload can be passed as a callback from the outer loader
   reloadInterval?: ReloadInterval | ReloadIntervalSelector<Entity>;
   selectorName?: "getList" | "getListUnfiltered";
   wrapped?: boolean;
@@ -224,7 +224,7 @@ export function EntityListLoader<Entity, EntityWrapper>({
     refetch,
   } = entityDefinition.rtk.useListQuery(entityQuery, {
     pollingInterval: reloadInterval,
-    refetchOnMountOrArgChange: reload,
+    refetchOnMountOrArgChange: reload === true,
   });
 
   const queryKey = useMemo(
