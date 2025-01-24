@@ -284,7 +284,7 @@ describe("FilterModal", () => {
 });
 
 describe("FilterModal - issue 48319", () => {
-  function setup48319({
+  function setupCustomColumns({
     base_type,
     effective_type,
     semantic_type,
@@ -403,7 +403,7 @@ describe("FilterModal - issue 48319", () => {
   });
 
   it("boolean filters - does not mix up column filter state when changing search query (metabase#48319)", async () => {
-    setup48319({
+    setupCustomColumns({
       base_type: "type/Boolean",
       effective_type: "type/Boolean",
       semantic_type: "type/Category",
@@ -439,7 +439,7 @@ describe("FilterModal - issue 48319", () => {
   });
 
   it("time filters - does not mix up column filter state when changing search query (metabase#48319)", async () => {
-    setup48319({
+    setupCustomColumns({
       base_type: "type/Time",
       effective_type: "type/Time",
     });
