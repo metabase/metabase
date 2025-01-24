@@ -304,6 +304,17 @@ type LocalsCompletionOptions = {
   engine?: string | null;
 };
 
+function unquote(str: string) {
+  let res = str;
+  if (res[0] === '"' || res[0] === "'") {
+    res = res.slice(1);
+  }
+  if (res[res.length - 1] === '"' || res[res.length - 1] === "'") {
+    res = res.slice(0, -1);
+  }
+  return res;
+}
+
 export function useLocalsCompletion({ engine }: LocalsCompletionOptions) {
   const { language, keywords } = useMemo(() => {
     const { dialect, language } = source(engine);
@@ -330,6 +341,12 @@ export function useLocalsCompletion({ engine }: LocalsCompletionOptions) {
             const value = context.state.doc.sliceString(node.from, node.to);
             if (!keywords.has(value)) {
               set.add(value);
+            }
+          }
+          if (node.type.name === "QuotedIdentifier") {
+            const value = context.state.doc.sliceString(node.from, node.to);
+            if (!keywords.has(value)) {
+              set.add(unquote(value));
             }
           }
         },

@@ -42,6 +42,19 @@ describe("scenarios > question > native > suggestions", () => {
     });
   });
 
+  it("should suggest quoted locals", () => {
+    H.startNewNativeQuestion({
+      query: "SELECT foo as 'QUOTED_local' FROM ORDERS GROUP BY ",
+    });
+    H.NativeEditor.type("QU");
+
+    H.NativeEditor.completions().within(() => {
+      H.NativeEditor.completion("QUOTED_local")
+        .should("be.visible")
+        .should("contain.text", "local");
+    });
+  });
+
   it("should not show duplicate suggestions", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("acc");

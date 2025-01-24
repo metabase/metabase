@@ -673,6 +673,22 @@ describe("useLocalsCompletion", () => {
     expect(results).toBe(null);
   });
 
+  it("should not complete quoted locals that come from the dialect", async () => {
+    const { complete } = setup({ engine: "postgres" });
+    const results = await complete(
+      `SELECT foo as "QUOTED_local" FROM bar WHERE QUO|`,
+    );
+    expect(results).toEqual({
+      from: 44,
+      options: [
+        {
+          label: "QUOTED_local",
+          detail: "local",
+        },
+      ],
+    });
+  });
+
   it("should not complete locals in a non-sql query", async () => {
     const { complete } = setup({ engine: "mongo" });
     const results = await complete("{|}");
