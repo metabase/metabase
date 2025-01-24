@@ -57,6 +57,7 @@ const defaultDatasetEditorProps = {
   toggleDataReference: noop,
   toggleSnippetSidebar: noop,
   toggleTemplateTagsEditor: noop,
+  runDirtyQuestionQuery: noop,
 };
 
 const renderDatasetEditor = (card: Card | UnsavedCard) => {

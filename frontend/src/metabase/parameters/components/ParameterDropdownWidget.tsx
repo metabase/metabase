@@ -133,7 +133,7 @@ export const ParameterDropdownWidget = ({
     );
   }
 
-  if (isFieldWidget(parameter)) {
+  if (parameters && isFieldWidget(parameter)) {
     return (
       <ParameterFieldWidget
         parameter={parameter}
@@ -143,7 +143,7 @@ export const ParameterDropdownWidget = ({
         value={normalizedValue}
         fields={parameter.fields}
         setValue={setValueOrDefault}
-        isEditing={isEditing}
+        isEditing={!!isEditing}
       />
     );
   }

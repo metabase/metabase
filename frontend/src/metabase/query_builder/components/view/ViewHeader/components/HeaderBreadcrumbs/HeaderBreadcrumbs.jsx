@@ -20,7 +20,10 @@ const HeaderBadge = props => (
 HeaderBadge.propTypes = {
   variant: PropTypes.oneOf(["head", "subhead"]),
   children: PropTypes.node,
-  icon: PropTypes.string,
+  icon: PropTypes.shape({
+    name: PropTypes.string,
+    color: PropTypes.string,
+  }),
   to: PropTypes.string,
   inactiveColor: PropTypes.string,
 };
