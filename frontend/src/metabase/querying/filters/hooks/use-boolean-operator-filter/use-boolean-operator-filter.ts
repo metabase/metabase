@@ -34,13 +34,13 @@ export function useBooleanOperatorFilter({
     [query, stageIndex, column],
   );
 
-  const defaultOperator = useMemo(() => {
+  const initialOperator = useMemo(() => {
     return filterParts
       ? filterParts.operator
       : getDefaultOperator(availableOptions);
   }, [filterParts, availableOptions]);
 
-  const [operator, setOperator] = useState(defaultOperator);
+  const [operator, setOperator] = useState(initialOperator);
 
   const defaultValues = useMemo(() => {
     return filterParts ? filterParts.values : [];
@@ -52,10 +52,11 @@ export function useBooleanOperatorFilter({
 
   const resetRef = useLatest(() => {
     setValues(defaultValues);
-    const { isAdvanced } = getOptionByOperator(defaultOperator);
-    setOperator(defaultOperator);
+    const { isAdvanced } = getOptionByOperator(initialOperator);
+    setOperator(initialOperator);
     setIsExpanded(isAdvanced);
   });
+
   const reset = useCallback(() => resetRef.current(), [resetRef]);
 
   return {

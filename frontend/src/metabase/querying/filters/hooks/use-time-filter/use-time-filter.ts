@@ -35,26 +35,27 @@ export function useTimeFilter({
     [query, stageIndex, column],
   );
 
-  const defaultOperator = useMemo(() => {
+  const initialOperator = useMemo(() => {
     return filterParts
       ? filterParts.operator
       : getDefaultOperator(availableOptions);
   }, [availableOptions, filterParts]);
 
-  const [operator, setOperator] = useState(defaultOperator);
+  const [operator, setOperator] = useState(initialOperator);
 
-  const defaultValues = useMemo(() => {
+  const initialValues = useMemo(() => {
     return getDefaultValues(operator, filterParts ? filterParts.values : []);
   }, [operator, filterParts]);
 
-  const [values, setValues] = useState(() => defaultValues);
+  const [values, setValues] = useState(() => initialValues);
   const { valueCount } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values);
 
   const resetRef = useLatest(() => {
-    setValues(defaultValues);
-    setOperator(defaultOperator);
+    setValues(initialValues);
+    setOperator(initialOperator);
   });
+
   const reset = useCallback(() => resetRef.current(), [resetRef]);
 
   return {

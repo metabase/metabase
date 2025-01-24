@@ -35,35 +35,35 @@ export function useStringFilter({
     [query, stageIndex, column],
   );
 
-  const defaultOperator = useMemo(() => {
+  const initialOperator = useMemo(() => {
     return filterParts
       ? filterParts.operator
       : getDefaultOperator(query, column, availableOptions);
   }, [filterParts, query, column, availableOptions]);
 
-  const [operator, setOperator] = useState(defaultOperator);
+  const [operator, setOperator] = useState(initialOperator);
 
-  const defaultValues = useMemo(
+  const initialValues = useMemo(
     () => getDefaultValues(operator, filterParts ? filterParts.values : []),
     [operator, filterParts],
   );
 
-  const [values, setValues] = useState(defaultValues);
+  const [values, setValues] = useState(initialValues);
 
-  const defaultOptions = useMemo(() => {
+  const initialOptions = useMemo(() => {
     return filterParts ? filterParts.options : { caseSensitive: false };
   }, [filterParts]);
 
-  const [options, setOptions] = useState(defaultOptions);
-
+  const [options, setOptions] = useState(initialOptions);
   const { type } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values, options);
 
   const resetRef = useLatest(() => {
-    setValues(defaultValues);
-    setOperator(defaultOperator);
-    setOptions(defaultOptions);
+    setValues(initialValues);
+    setOperator(initialOperator);
+    setOptions(initialOptions);
   });
+
   const reset = useCallback(() => resetRef.current(), [resetRef]);
 
   return {
