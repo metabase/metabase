@@ -77,8 +77,14 @@
 
 (mu/defn- is-crufty-table?
   "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
-  [table-name]
-  (some #(re-find % (u/lower-case-en table-name)) crufty-table-patterns))
+  [table-name database]
+  (let [all-crufty-table-patterns (if-let [more-patterns (-> database :settings :auto-cruft-tables)]
+                                    (concat crufty-table-patterns
+                                            (map (comp re-pattern #(str "(?i)" %))
+                                                 more-patterns))
+                                    crufty-table-patterns)]
+    (some #(re-find % (u/lower-case-en table-name))
+          all-crufty-table-patterns)))
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
@@ -91,9 +97,9 @@
               {:details
                (assoc (:details database) :version (:version db-metadata))}))
 
-(defn- cruft-dependent-columns [table-name]
+(defn- cruft-dependent-columns [table-name database]
   ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
-  (let [is-crufty? (is-crufty-table? table-name)]
+  (let [is-crufty? (is-crufty-table? table-name database)]
     {:initial_sync_status (if is-crufty? "complete" "incomplete")
      :visibility_type     (when is-crufty? :cruft)}))
 
@@ -103,7 +109,7 @@
   [database table]
   (t2/insert-returning-instance!
    :model/Table
-   (merge (cruft-dependent-columns (:name table))
+   (merge (cruft-dependent-columns (:name table) database)
           {:active                  true
            :db_id                   (:id database)
            :schema                  (:schema table)
@@ -121,7 +127,7 @@
                                          :name table-name
                                          :active false)]
     ;; if the table already exists but is marked *inactive*, mark it as *active*
-    (t2/update! :model/Table existing-id (assoc (cruft-dependent-columns (:name table)) :active true))
+    (t2/update! :model/Table existing-id (assoc (cruft-dependent-columns (:name table) database) :active true))
     ;; otherwise create a new Table
     (create-table! database table)))
 
@@ -156,7 +162,8 @@
 (mu/defn- update-table-metadata-if-needed!
   "Update the table metadata if it has changed."
   [table-metadata :- i/DatabaseMetadataTable
-   metabase-table :- (ms/InstanceOf :model/Table)]
+   metabase-table :- (ms/InstanceOf :model/Table)
+   metabase-database :- (ms/InstanceOf :model/Database)]
   (log/infof "Updating table metadata for %s" (sync-util/name-for-logging metabase-table))
   (let [to-update-keys [:description :database_require_filter :estimated_row_count]
         old-table      (select-keys metabase-table to-update-keys)
@@ -169,7 +176,13 @@
                          ;; we only update the description if the initial state is nil
                          ;; because don't want to override the user edited description if it exists
                          (some? (:description old-table))
-                         (dissoc changes :description))]
+                         (dissoc changes :description)
+
+                         true
+                         (merge changes
+                                ;; `cruft-dependent-columns` will return the proper initial_sync_status and
+                                ;; visibility_type for crufty or un-crufty table names:
+                                (cruft-dependent-columns (:name table-metadata) metabase-database)))]
     (doseq [[k v] changes]
       (log/infof "%s of %s changed from %s to %s"
                  k
@@ -181,11 +194,14 @@
 
 (mu/defn- update-tables-metadata-if-needed!
   [table-metadatas :- [:set i/DatabaseMetadataTable]
-   metabase-tables :- [:set (ms/InstanceOf :model/Table)]]
+   metabase-tables :- [:set (ms/InstanceOf :model/Table)]
+   metabase-database :- (ms/InstanceOf :model/Database)]
   (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
         name+schema->metabase-table (m/index-by (juxt :name :schema) metabase-tables)]
     (doseq [name+schema (set/intersection (set (keys name+schema->table-metadata)) (set (keys name+schema->metabase-table)))]
-      (update-table-metadata-if-needed! (name+schema->table-metadata name+schema) (name+schema->metabase-table name+schema)))))
+      (update-table-metadata-if-needed! (name+schema->table-metadata name+schema)
+                                        (name+schema->metabase-table name+schema)
+                                        metabase-database))))
 
 (mu/defn- table-set :- [:set i/DatabaseMetadataTable]
   "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
@@ -238,7 +254,7 @@
 
      (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
        ;; we need to fetch the tables again because we might have retired tables in the previous steps
-       (update-tables-metadata-if-needed! db-tables (db->our-metadata database)))
+       (update-tables-metadata-if-needed! db-tables (db->our-metadata database) database))
 
      {:updated-tables (+ (count new-tables) (count old-tables))
       :total-tables   (count our-metadata)})))
