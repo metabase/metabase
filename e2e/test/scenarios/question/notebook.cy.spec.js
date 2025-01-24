@@ -712,6 +712,26 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         .should("have.text", name);
     }
 
+    function verifyDragAndDrop() {
+      H.getNotebookStep("expression").within(() => {
+        moveElement({ name: "E1", horizontal: 100, index: 1 });
+      });
+      H.getNotebookStep("filter").within(() => {
+        moveElement({ name: "ID is 2", horizontal: -100, index: 0 });
+      });
+      H.getNotebookStep("summarize").within(() => {
+        cy.findByTestId("aggregate-step").within(() => {
+          moveElement({ name: "Count", vertical: 100, index: 4 });
+        });
+        cy.findByTestId("breakout-step").within(() => {
+          moveElement({ name: "ID", horizontal: 100, index: 1 });
+        });
+      });
+      H.getNotebookStep("sort").within(() => {
+        moveElement({ name: "Average of Total", horizontal: -100, index: 0 });
+      });
+    }
+
     function verifyPopoverDoesNotMoveElement({
       type,
       name,
@@ -730,6 +750,23 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         .findAllByTestId("notebook-cell-item")
         .eq(index)
         .should("have.text", name);
+    }
+
+    function verifyPopoverIsClosedAfterDragAndDrop({
+      type,
+      name,
+      index,
+      horizontal,
+      vertical,
+    }) {
+      H.getNotebookStep(type).within(() => {
+        cy.findByText(name).click();
+      });
+      H.popover().should("be.visible");
+      H.getNotebookStep(type).within(() => {
+        moveElement({ name, horizontal, vertical, index });
+      });
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
     }
 
     const questionDetails = {
@@ -764,27 +801,17 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     };
     cy.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
-    H.getNotebookStep("expression").within(() => {
-      moveElement({ name: "E1", horizontal: 100, index: 1 });
-    });
-    H.getNotebookStep("filter").within(() => {
-      moveElement({ name: "ID is 2", horizontal: -100, index: 0 });
-    });
-    H.getNotebookStep("summarize").within(() => {
-      cy.findByTestId("aggregate-step").within(() => {
-        moveElement({ name: "Count", vertical: 100, index: 4 });
-      });
-      cy.findByTestId("breakout-step").within(() => {
-        moveElement({ name: "ID", horizontal: 100, index: 1 });
-      });
-    });
-    H.getNotebookStep("sort").within(() => {
-      moveElement({ name: "Average of Total", horizontal: -100, index: 0 });
-    });
+    verifyDragAndDrop();
     verifyPopoverDoesNotMoveElement({
       type: "filter",
       name: "ID is 1",
       index: 1,
+      horizontal: -100,
+    });
+    verifyPopoverIsClosedAfterDragAndDrop({
+      type: "filter",
+      name: "ID is 1",
+      index: 0,
       horizontal: -100,
     });
   });
