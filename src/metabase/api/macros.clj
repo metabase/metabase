@@ -22,7 +22,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [ring.middleware.multipart-params]))
 
 ;;;;
 ;;;; Malli schema
@@ -97,6 +98,9 @@
   [:function
    [:=> [:cat map?] any?]
    [:=> [:cat map? ::respond-fn ::raise-fn] any?]])
+
+(mr/def ::middleware
+  [:=> [:cat ::handler] ::handler])
 
 (mr/def ::info
   "The info about an individual endpoint that gets stored in the namespace metadata."
@@ -438,22 +442,39 @@
   [e]
   (throw e))
 
+(mu/defn- middleware :- [:maybe [:sequential ::middleware]]
+  "Middleware to apply to base handler. Currently the only option is middleware for handling multipart requests, applied
+  if the handler metadata contains
+
+    {:multipart true}"
+  [{:keys [metadata], :as _args} :- ::parsed-args]
+  (when (:multipart metadata)
+    [ring.middleware.multipart-params/wrap-multipart-params]))
+
 (mu/defn defendpoint-base-handler :- ::handler
   "Generate the a Ring handler (excluding the Clout/Compojure method/route matching stuff) for parsed [[defendpoint]]
   args."
   {:style/indent [:form]}
-  [core-fn :- ::core-fn]
-  (fn base-handler
-    ([request]
-     (base-handler request identity default-raise))
-    ([request respond raise]
-     (try
-       (let [route-params (defendpoint-params request :route)
-             query-params (defendpoint-params request :query)
-             body-params  (defendpoint-params request :body)]
-         (respond (core-fn route-params query-params body-params request)))
-       (catch Throwable e
-         (raise e))))))
+  [parsed-args :- ::args
+   core-fn     :- ::core-fn]
+  (let [handler (fn base-handler
+                  ([request]
+                   (base-handler request identity default-raise))
+                  ([request respond raise]
+                   (try
+                     (let [route-params (defendpoint-params request :route)
+                           query-params (defendpoint-params request :query)
+                           body-params  (defendpoint-params request :body)]
+                       (respond (core-fn route-params query-params body-params request)))
+                     (catch Throwable e
+                       (raise e)))))
+        middleware (middleware parsed-args)]
+    ;; apply all middleware to the base handler
+    (reduce
+     (fn [handler middleware]
+       (middleware handler))
+     handler
+     middleware)))
 
 (defmacro defendpoint-route-handler
   "Generate the Clout/Compojure route (handler) given parsed [[defendpoint]] `args`."
@@ -571,7 +592,7 @@
   [& args]
   (let [parsed (parse-defendpoint-args args)]
     `(let [core-fn#       (defendpoint-core-fn ~parsed)
-           base-handler#  (defendpoint-base-handler core-fn#)
+           base-handler#  (defendpoint-base-handler ~parsed core-fn#)
            route-handler# (defendpoint-route-handler ~parsed base-handler#)
            info#          {:core-fn      core-fn#
                            :base-handler base-handler#
