@@ -91,9 +91,9 @@
 (api.macros/defendpoint :get "/weights"
   "Return the current weights being used to rank the search results"
   [_route-params
-   {:keys [context], :as overrides} :- [:map
-                                        [:context {:default :default} :keyword]
-                                        [:search_engine {:optional true} :any]]]
+   {:keys [context]} :- [:map
+                         [:context {:default :default} :keyword]
+                         [:search_engine {:optional true} :any]]]
   (search.config/weights context))
 
 (api.macros/defendpoint :put "/weights"

@@ -1657,7 +1657,7 @@
             context-url      (weights-url context {})
             original-weights (search.config/weights context)]
         (is (= original-weights (mt/user-http-request :crowberto :get 200 context-url)))
-        (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 5})))
+        (mt/user-http-request :rasta :put 403 (weights-url context {:recency 5}))
         (is (= original-weights
                (mt/user-http-request :crowberto :get 200 (weights-url context {:recency 5}))))
         (is (= (assoc original-weights :recency 5.0)
@@ -1681,9 +1681,9 @@
                  (merge
                   (:default (mt/user-http-request :crowberto :get 200 context-url))
                   (:none-given (mt/user-http-request :crowberto :get 200 context-url)))))
-          (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 4})))
-          (is (mt/user-http-request :crowberto :get 400 (weights-url context {:recency 4})))
-          (is (mt/user-http-request :crowberto :get 400 (weights-url context {:text 30})))
+          (mt/user-http-request :rasta :put 403 (weights-url context {:recency 4}))
+          (mt/user-http-request :crowberto :put 400 (weights-url context {:recency 4}))
+          (mt/user-http-request :crowberto :put 400 (weights-url context {:text 30}))
           (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url))))))))
 
 (deftest ^:synchronized weights-test-4
