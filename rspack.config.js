@@ -323,7 +323,6 @@ if (shouldEnableHotRefresh) {
     // tweak stats to make the output in the console more legible
     devMiddleware: {
       stats: { preset: "errors-warnings", timings: true },
-      writeToDisk: true,
       // if webpack doesn't reload UI after code change in development
       // watchOptions: {
       //     aggregateTimeout: 300,

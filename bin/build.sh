@@ -14,6 +14,8 @@
 
 set -euo pipefail
 
+yarn clean-dev:js
+
 # switch to project root directory if we're not already there
 script_directory=`dirname "${BASH_SOURCE[0]}"`
 cd "$script_directory/.."
