@@ -238,11 +238,6 @@
     (taoensso.nippy/extend-freeze)
     (taoensso.nippy/extend-thaw)]}
 
-  ;; this is temporary until I figure out the right way to do this -- see
-  ;; https://github.com/clj-kondo/clj-kondo/issues/2469 -- Cam
-  :unused-binding
-  {:exclude-patterns ["^&request$"]}
-
   :deprecated-var
   {:exclude
    {metabase.cmd/dump                                                            {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
