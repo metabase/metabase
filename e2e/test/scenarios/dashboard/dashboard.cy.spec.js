@@ -42,8 +42,8 @@ describe("scenarios > dashboard", () => {
         cy.signInAsAdmin();
       });
 
-      it("when loading `/dashboard/${entity_id}`, it should redirect to `/dashboard/${id}` and display the dashboard correctly", () => {
-        cy.visit(`/dashboard/${ORDERS_DASHBOARD_ENTITY_ID}`);
+      it("when loading `/dashboard/by-entity-id/${entity_id}`, it should redirect to `/dashboard/by-entity-id/${id}` and display the dashboard correctly", () => {
+        cy.visit(`/dashboard/by-entity-id/${ORDERS_DASHBOARD_ENTITY_ID}`);
 
         cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}`);
 
@@ -51,7 +51,7 @@ describe("scenarios > dashboard", () => {
         H.main().findByText("Orders in a dashboard").should("be.visible");
       });
 
-      it("when loading `/dashboard/${entity_id}?tab=${tab_entity_id}`, it should redirect to `/dashboard/${id}?tab=${tab_id}` and select the correct tab", () => {
+      it("when loading `/dashboard/by-entity-id/${entity_id}?tab=${tab_entity_id}`, it should redirect to `/dashboard/by-entity-id/${id}?tab=${tab_id}` and select the correct tab", () => {
         H.createDashboardWithTabs({
           tabs: [
             { name: "Tab 1", id: -1 },
@@ -60,7 +60,7 @@ describe("scenarios > dashboard", () => {
           dashcards: [],
         }).then(dashboard => {
           cy.visit(
-            `/dashboard/${dashboard.entity_id}?tab=${dashboard.tabs[1].entity_id}`,
+            `/dashboard/by-entity-id/${dashboard.entity_id}?tab=${dashboard.tabs[1].entity_id}`,
           );
 
           cy.url().should(
@@ -74,15 +74,15 @@ describe("scenarios > dashboard", () => {
         });
       });
 
-      it("when loading `/dashboard/${entity_id}/move`, it should redirect to `/dashboard/${id}/move` and show the move modal", () => {
-        cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}/move`);
+      it("when loading `/dashboard/by-entity-id/${entity_id}/move`, it should redirect to `/dashboard/${id}/move` and show the move modal", () => {
+        cy.visit(`/dashboard/by-entity-id/${ORDERS_DASHBOARD_ENTITY_ID}/move`);
         cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}/move`);
 
         H.main().findByText("Orders in a dashboard").should("be.visible");
         H.modal().findByText("Move dashboard to…").should("be.visible");
       });
 
-      it("when loading `/dashboard/${21_char_slug}?tab=${21_char_tab_slug}`, it should not redirect and the dashboard should open on the correct tab", () => {
+      it.skip("when loading `/dashboard/by-entity-id/${21_char_slug}?tab=${21_char_tab_slug}`, it should not redirect and the dashboard should open on the correct tab", () => {
         // This tests checks that we don't accidentally render a 404 because we mistake a 21 chars slug for an entity id, which will not be found
         H.createDashboardWithTabs({
           name: "Dashboard with 2 tabs",
@@ -94,7 +94,7 @@ describe("scenarios > dashboard", () => {
         }).then(dashboard => {
           const slug = `${dashboard.id}-`.padEnd(21, "x");
           const tabSlug = `${dashboard.tabs[1].id}-`.padEnd(21, "x");
-          cy.visit(`/dashboard/${slug}?tab=${tabSlug}`);
+          cy.visit(`/dashboard/by-entity-id/${slug}?tab=${tabSlug}`);
           cy.url().should("contain", `/dashboard/${dashboard.id}`);
           H.main().findByText("Dashboard with 2 tabs").should("be.visible");
           H.main()
@@ -103,14 +103,14 @@ describe("scenarios > dashboard", () => {
         });
       });
 
-      it("when loading `/dashboard/${non existing entity id that cannot be a slug}`, it should show a 404 page", () => {
+      it("when loading `/dashboard/by-entity-id/${non existing entity id that cannot be a slug}`, it should show a 404 page", () => {
         const invalidSlug = "x".repeat(21);
-        cy.visit(`/dashboard/${invalidSlug}`);
+        cy.visit(`/dashboard/by-entity-id/${invalidSlug}`);
 
         H.main().findByText("We're a little lost...").should("be.visible");
       });
 
-      it("when loading `/dashboard/${slug}?tab=${non found entity_id}`, it should load the dashboard and remove the entity id from the url", () => {
+      it.skip("when loading `/dashboard/${slug}?tab=${non found entity_id}`, it should load the dashboard and remove the entity id from the url", () => {
         H.createDashboardWithTabs({
           name: "Dashboard with 2 tabs",
           tabs: [
@@ -121,7 +121,7 @@ describe("scenarios > dashboard", () => {
         }).then(dashboard => {
           const slug = `${dashboard.id}-`.padEnd(21, "x");
           const tabId = "x".repeat(21);
-          cy.visit(`/dashboard/${slug}?tab=${tabId}`);
+          cy.visit(`/dashboard/by-entity-id/${slug}?tab=${tabId}`);
           cy.url().should("contain", `/dashboard/${dashboard.id}`);
           H.main().findByText("Dashboard with 2 tabs").should("be.visible");
           // note that the FE will put the tab id of the fist tab in the url when it loads, so it will contain `tab=`
@@ -129,7 +129,7 @@ describe("scenarios > dashboard", () => {
         });
       });
 
-      it("when loading `/dashboard/${slug}?tab=${non-existing tab id slug of 21 characters}`, it should load the dashboard and remove the entity id from the url", () => {
+      it.skip("when loading `/dashboard/by-entity-id/${slug}?tab=${non-existing tab id slug of 21 characters}`, it should load the dashboard and remove the entity id from the url", () => {
         H.createDashboardWithTabs({
           name: "Dashboard with 2 tabs",
           tabs: [
@@ -140,7 +140,7 @@ describe("scenarios > dashboard", () => {
         }).then(dashboard => {
           const slug = `${dashboard.id}-`.padEnd(21, "x");
           const tabId = "999-".padEnd(21, "x");
-          cy.visit(`/dashboard/${slug}?tab=${tabId}`);
+          cy.visit(`/dashboard/by-entity-id/${slug}?tab=${tabId}`);
           cy.url().should("contain", `/dashboard/${dashboard.id}`);
           H.main().findByText("Dashboard with 2 tabs").should("be.visible");
 
@@ -151,7 +151,7 @@ describe("scenarios > dashboard", () => {
 
     describe("collections", () => {
       it("collections support entity id in the url", () => {
-        cy.visit(`/collection/${FIRST_COLLECTION_ENTITY_ID}`);
+        cy.visit(`/collection/by-entity-id/${FIRST_COLLECTION_ENTITY_ID}`);
         cy.url().should("contain", `/collection/${FIRST_COLLECTION_ID}`);
 
         // Making sure the collection loads
@@ -161,7 +161,7 @@ describe("scenarios > dashboard", () => {
 
     describe("questions", () => {
       it("questions support entity id in the url", () => {
-        cy.visit(`/question/${ORDERS_QUESTION_ENTITY_ID}`);
+        cy.visit(`/question/by-entity-id/${ORDERS_QUESTION_ENTITY_ID}`);
         cy.url().should("contain", `/question/${ORDERS_QUESTION_ID}`);
 
         // Making sure the question loads

@@ -124,7 +124,8 @@ export const EntityIdRedirect = ({
 
       if (shouldRedirect) {
         setStatus("pass-through");
-        redirect(url);
+        const newUrl = url.replace("by-entity-id/", "");
+        redirect(newUrl);
         return;
       }
 

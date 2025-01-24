@@ -1,3 +1,4 @@
+import React from "react";
 import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
@@ -63,6 +64,7 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
+import { withEntityIdSupport } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
@@ -146,6 +148,15 @@ export const getRoutes = store => {
             component={TrashCollectionLanding}
           />
 
+          <Route
+            path="collection/by-entity-id/:slug(**)"
+            component={withEntityIdSupport(React.Fragment, {
+              paramsToTranslate: {
+                slug: { type: "collection", required: true },
+              },
+            })}
+          />
+
           <Route path="collection/users" component={IsAdmin}>
             <IndexRoute component={UserCollectionList} />
           </Route>
@@ -157,6 +168,18 @@ export const getRoutes = store => {
             {PLUGIN_COLLECTIONS.cleanUpRoute}
             {getCollectionTimelineRoutes()}
           </Route>
+
+          <Route
+            path="dashboard/by-entity-id/:slug(**)"
+            component={withEntityIdSupport(React.Fragment, {
+              paramsToTranslate: {
+                slug: { type: "dashboard", required: true },
+              },
+              searchParamsToTranslate: {
+                tab: { type: "dashboard-tab", required: false },
+              },
+            })}
+          />
 
           <Route
             path="dashboard/:slug"
@@ -173,6 +196,14 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="/question">
+            <Route
+              path="/question/by-entity-id/:slug(**)"
+              component={withEntityIdSupport(DashboardAppConnected, {
+                paramsToTranslate: {
+                  slug: { type: "card", required: true },
+                },
+              })}
+            />
             <IndexRoute component={QueryBuilder} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
