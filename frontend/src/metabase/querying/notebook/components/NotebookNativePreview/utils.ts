@@ -7,7 +7,7 @@ export function createNativeQuestion(
   nativeForm: NativeQueryForm | undefined,
 ) {
   const database = question.database();
-  if (!database || nativeForm) {
+  if (!database || !nativeForm) {
     return question;
   }
 
