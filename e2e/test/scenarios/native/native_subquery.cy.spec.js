@@ -80,9 +80,6 @@ describe("scenarios > question > native subquery", () => {
 
           H.openNativeEditor();
           cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
-
-          cy.wait(200); // This reduces flakiness
-
           H.NativeEditor.focus().type(" {{#people");
 
           // Wait until another explicit autocomplete is triggered

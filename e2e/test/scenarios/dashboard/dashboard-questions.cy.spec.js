@@ -383,10 +383,6 @@ describe("Dashboard > Dashboard Questions", () => {
 
     it("can save a native question to a dashboard", { tags: "@flaky" }, () => {
       H.startNewNativeQuestion({ query: "SELECT 123" });
-
-      // this reduces the flakiness
-      cy.wait(500);
-
       H.queryBuilderHeader().button("Save").click();
       H.modal().within(() => {
         cy.findByLabelText("Name").type("Half Orders");

@@ -1,27 +1,27 @@
 import {
   type CompletionContext,
-  type CompletionResult,
   type CompletionSource,
-  acceptCompletion,
   autocompletion,
-  moveCompletionSelection,
 } from "@codemirror/autocomplete";
-import { insertTab } from "@codemirror/commands";
+import { json } from "@codemirror/lang-json";
+import {
+  MySQL,
+  PLSQL,
+  PostgreSQL,
+  StandardSQL,
+  sql,
+} from "@codemirror/lang-sql";
 import {
   HighlightStyle,
   foldService,
-  indentService,
-  indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
-import { Prec } from "@codemirror/state";
 import {
   Decoration,
   EditorView,
   MatchDecorator,
   ViewPlugin,
   drawSelection,
-  keymap,
 } from "@codemirror/view";
 import { type Tag, tags } from "@lezer/highlight";
 import type { EditorState, Extension } from "@uiw/react-codemirror";
@@ -31,38 +31,33 @@ import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
-import * as Lib from "metabase-lib";
+import type { CardId, DatabaseId } from "metabase-types/api";
 
 import {
   useCardTagCompletion,
-  useLocalsCompletion,
   useReferencedCardCompletion,
   useSchemaCompletion,
   useSnippetCompletion,
 } from "./completers";
-import {
-  referencedQuestionIds as getReferencedQuestionIds,
-  matchTagAtCursor,
-  source,
-} from "./util";
+import { matchTagAtCursor } from "./util";
 
-export function useExtensions(query: Lib.Query): Extension[] {
-  const { databaseId, engine, referencedQuestionIds } = useMemo(
-    () => ({
-      databaseId: Lib.databaseID(query),
-      engine: Lib.engine(query),
-      referencedQuestionIds: getReferencedQuestionIds(query),
-    }),
-    [query],
-  );
+type ExtensionOptions = {
+  engine?: string;
+  databaseId?: DatabaseId;
+  referencedQuestionIds?: CardId[];
+};
 
+export function useExtensions({
+  engine,
+  databaseId,
+  referencedQuestionIds = [],
+}: ExtensionOptions): Extension[] {
   const schemaCompletion = useSchemaCompletion({ databaseId });
   const snippetCompletion = useSnippetCompletion();
   const cardTagCompletion = useCardTagCompletion({ databaseId });
   const referencedCardCompletion = useReferencedCardCompletion({
     referencedQuestionIds,
   });
-  const localsCompletion = useLocalsCompletion({ engine });
 
   return useMemo(() => {
     return [
@@ -79,14 +74,11 @@ export function useExtensions(query: Lib.Query): Extension[] {
           snippetCompletion,
           cardTagCompletion,
           referencedCardCompletion,
-          localsCompletion,
         ],
       }),
       highlighting(),
       tagDecorator(),
       folds(),
-      indentation(),
-      disableCmdEnter(),
     ]
       .flat()
       .filter(isNotNull);
@@ -96,54 +88,7 @@ export function useExtensions(query: Lib.Query): Extension[] {
     snippetCompletion,
     cardTagCompletion,
     referencedCardCompletion,
-    localsCompletion,
   ]);
-}
-
-function disableCmdEnter() {
-  // Stop Cmd+Enter in CodeMirror from inserting a newline
-  // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
-  return Prec.highest(
-    keymap.of([
-      {
-        key: "Mod-Enter",
-        run: () => true,
-      },
-      {
-        key: "Tab",
-        run: acceptCompletion,
-      },
-      {
-        key: "Tab",
-        run: insertTab,
-      },
-      {
-        key: "Mod-j",
-        run: moveCompletionSelection(true),
-      },
-      {
-        key: "Mod-k",
-        run: moveCompletionSelection(false),
-      },
-    ]),
-  );
-}
-
-function indentation() {
-  return [
-    // set indentation to tab
-    indentUnit.of("\t"),
-
-    // persist the indentation from the previous line
-    indentService.of((context, pos) => {
-      const previousLine = context.lineAt(pos, -1);
-      const previousLineText = previousLine.text.replaceAll(
-        "\t",
-        " ".repeat(context.state.tabSize),
-      );
-      return previousLineText.match(/^(\s)*/)?.[0].length ?? 0;
-    }),
-  ];
 }
 
 function nonce() {
@@ -233,26 +178,67 @@ function fonts() {
   });
 }
 
+const engineToDialect = {
+  "bigquery-cloud-sdk": StandardSQL,
+  mysql: MySQL,
+  oracle: PLSQL,
+  postgres: PostgreSQL,
+  // TODO:
+  // "presto-jdbc": "trino",
+  // redshift: "redshift",
+  // snowflake: "snowflake",
+  // sparksql: "spark",
+  // h2: "h2",
+};
+
 type LanguageOptions = {
-  engine?: string | null;
+  engine?: string;
   completers?: CompletionSource[];
 };
 
+function source(engine?: string) {
+  // TODO: this should be provided by the engine driver through the API
+  switch (engine) {
+    case "mongo":
+    case "druid":
+      return {
+        language: json(),
+      };
+
+    case "bigquery-cloud-sdk":
+    case "mysql":
+    case "oracle":
+    case "postgres":
+    case "presto-jdbc":
+    case "redshift":
+    case "snowflake":
+    case "sparksql":
+    case "h2":
+    default: {
+      const dialect =
+        engineToDialect[engine as keyof typeof engineToDialect] ?? StandardSQL;
+      return {
+        language: sql({
+          dialect,
+          upperCaseKeywords: true,
+        }),
+      };
+    }
+  }
+}
+
 function language({ engine, completers = [] }: LanguageOptions) {
   const { language } = source(engine);
+
   if (!language) {
     return [];
   }
 
   // Wraps the language completer so that it does not trigger when we're
   // inside a variable or tag
-  async function completeFromLanguage(
-    context: CompletionContext,
-  ): Promise<CompletionResult | null> {
+  async function completeFromLanguage(context: CompletionContext) {
     const facets = context.state.facet(language.language.data.reader);
-    const complete: CompletionSource | undefined = facets.find(
-      facet => facet.autocomplete,
-    )?.autocomplete;
+    const complete = facets.find(facet => facet.autocomplete)?.autocomplete;
 
     const tag = matchTagAtCursor(context.state, {
       allowOpenEnded: true,
@@ -263,18 +249,7 @@ function language({ engine, completers = [] }: LanguageOptions) {
       return null;
     }
 
-    const result = await complete?.(context);
-    if (!result) {
-      return null;
-    }
-
-    return {
-      ...result,
-      options: result.options.map(option => ({
-        ...option,
-        detail: option.detail ?? "keyword",
-      })),
-    };
+    return complete?.(context);
   }
 
   return [

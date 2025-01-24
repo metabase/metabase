@@ -48,9 +48,6 @@ function nativeEditorType(
     focusNativeEditor();
   }
 
-  const isMac = Cypress.platform === "darwin";
-  const metaKey = isMac ? "Meta" : "Control";
-
   const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
   function type(text: string) {
@@ -78,12 +75,6 @@ function nativeEditorType(
       case "{rightarrow}":
         return cy.realPress(["ArrowRight"]);
 
-      case "{downarrow}":
-        return cy.realPress(["ArrowDown"]);
-
-      case "{uparrow}":
-        return cy.realPress(["ArrowUp"]);
-
       case "{enter}":
         return cy.realPress(["Enter"]);
 
@@ -97,17 +88,6 @@ function nativeEditorType(
 
       case "{backspace}":
         return cy.realPress(["Backspace"]);
-
-      case "{tab}":
-        return cy.realPress(["Tab"]);
-
-      case "{nextcompletion}":
-        cy.wait(50);
-        return cy.realPress([metaKey, "j"]);
-
-      case "{prevcompletion}":
-        cy.wait(50);
-        return cy.realPress([metaKey, "k"]);
 
       case "{{}":
         return cy.realType("{");
@@ -128,7 +108,7 @@ function nativeEditorType(
 
 export const NativeEditor = {
   get: nativeEditor,
-  type(text: string, options: TypeOptions = {}) {
+  type(text: string, options: TypeOptions) {
     nativeEditorType(text, options);
     return NativeEditor;
   },

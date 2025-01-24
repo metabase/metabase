@@ -135,8 +135,7 @@
 
       .cm-completionDetail {
         color: var(--mb-color-text-light);
-        font-style: normal;
-        text-align: right;
+        text-align: end;
         overflow: hidden;
         text-overflow: ellipsis;
       }

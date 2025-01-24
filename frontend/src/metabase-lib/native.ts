@@ -46,7 +46,7 @@ export function withDifferentDatabase(
   return ML.with_different_database(query, databaseId, metadata);
 }
 
-export function engine(query: Query): string | null {
+export function engine(query: Query): string {
   return ML.engine(query);
 }
 
