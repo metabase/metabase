@@ -512,6 +512,30 @@
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
+(def ^:private autocomplete-matching-options
+  "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
+  autocompletions. Large instances with lots of fields might want to use prefix matching or turn off the feature if it
+  causes too many problems."
+  #{:substring :prefix :off})
+
+(defsetting native-query-autocomplete-match-style
+  (deferred-tru
+   (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
+        "Larger instances can have performance issues matching using substring, so can use prefix matching, "
+        " or turn autocompletions off."))
+  :visibility :public
+  :export?    true
+  :type       :keyword
+  :default    :substring
+  :audit      :raw-value
+  :setter     (fn [v]
+                (let [v (cond-> v (string? v) keyword)]
+                  (if (autocomplete-matching-options v)
+                    (setting/set-value-of-type! :keyword :native-query-autocomplete-match-style v)
+                    (throw (ex-info (tru "Invalid `native-query-autocomplete-match-style` option")
+                                    {:option v
+                                     :valid-options autocomplete-matching-options}))))))
+
 (defn- autocomplete-tables [db-id]
   (t2/select [:model/Table :id :db_id :schema :name]
              {:where [:in :id {:select [[[:min :id]]]
@@ -545,6 +569,25 @@
   (let [tables (filter mi/can-read? (autocomplete-tables db-id))
         fields (readable-fields-only (autocomplete-fields (map :id tables)))]
     (autocomplete-results tables fields)))
+
+(api.macros/defendpoint :get "/:id/autocomplete_suggestions"
+  "Return a list of autocomplete suggestions. This is intended for use with the native editor when the User is typing
+  raw SQL. Suggestions include `Tables` and `Fields` in this `Database`.
+
+  Tables are returned in the format `[table_name \"Table\"]`;
+  When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
+  When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/read-check :model/Database id)
+  (try
+    {:status  200
+     ;; Cache is user-specific since we're checking for permissions.
+     :headers {"Cache-Control" "public, max-age=60"
+               "Vary"          "Cookie"}
+     :body    (autocomplete-suggestions id)}
+    (catch Throwable e
+      (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
 (defn- autocomplete-cards
   "Returns cards that match the search string in the given database, ordered by id.
@@ -590,49 +633,6 @@
                 :order-by [[:type :asc]
                            [:report_card.id :desc]] ; sort by most recently created after sorting by type
                 :limit    50})))
-
-(def ^:private autocomplete-matching-options
-  "Valid options for the autocomplete types. Can match on a substring (\"%input%\"), on a prefix (\"input%\"), or reject
-  autocompletions. Large instances with lots of fields might want to use prefix matching or turn off the feature if it
-  causes too many problems."
-  #{:substring :prefix :off})
-
-(defsetting native-query-autocomplete-match-style
-  (deferred-tru
-   (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
-        "Larger instances can have performance issues matching using substring, so can use prefix matching, "
-        " or turn autocompletions off."))
-  :visibility :public
-  :export?    true
-  :type       :keyword
-  :default    :substring
-  :audit      :raw-value
-  :setter     (fn [v]
-                (let [v (cond-> v (string? v) keyword)]
-                  (if (autocomplete-matching-options v)
-                    (setting/set-value-of-type! :keyword :native-query-autocomplete-match-style v)
-                    (throw (ex-info (tru "Invalid `native-query-autocomplete-match-style` option")
-                                    {:option v
-                                     :valid-options autocomplete-matching-options}))))))
-
-(api.macros/defendpoint :get "/:id/autocomplete_suggestions"
-  "Return a list of autocomplete suggestions. This is intended for use with the native editor when the User is typing
-  raw SQL. Suggestions include `Tables` and `Fields` in this `Database`.
-
-  Tables are returned in the format `[table_name \"Table\"]`;
-  When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
-  When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/read-check :model/Database id)
-  (try
-    {:status  200
-     ;; Cache is user-specific since we're checking for permissions.
-     :headers {"Cache-Control" "public, max-age=60"
-               "Vary"          "Cookie"}
-     :body    (autocomplete-suggestions id)}
-    (catch Throwable e
-      (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
 (api.macros/defendpoint :get "/:id/card_autocomplete_suggestions"
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
