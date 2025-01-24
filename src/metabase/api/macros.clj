@@ -442,20 +442,20 @@
   [e]
   (throw e))
 
-(mu/defn- middleware :- [:maybe [:sequential ::middleware]]
+(mu/defn- middleware-forms
   "Middleware to apply to base handler. Currently the only option is middleware for handling multipart requests, applied
   if the handler metadata contains
 
     {:multipart true}"
   [{:keys [metadata], :as _args} :- ::parsed-args]
   (when (:multipart metadata)
-    [ring.middleware.multipart-params/wrap-multipart-params]))
+    '[ring.middleware.multipart-params/wrap-multipart-params]))
 
-(mu/defn defendpoint-base-handler :- ::handler
+(mu/defn defendpoint-base-handler* :- ::handler
   "Generate the a Ring handler (excluding the Clout/Compojure method/route matching stuff) for parsed [[defendpoint]]
   args."
   {:style/indent [:form]}
-  [parsed-args :- ::args
+  [middleware  :- [:maybe [:sequential ::middleware]]
    core-fn     :- ::core-fn]
   (let [handler (fn base-handler
                   ([request]
@@ -467,14 +467,21 @@
                            body-params  (defendpoint-params request :body)]
                        (respond (core-fn route-params query-params body-params request)))
                      (catch Throwable e
-                       (raise e)))))
-        middleware (middleware parsed-args)]
+                       (raise e)))))]
     ;; apply all middleware to the base handler
     (reduce
      (fn [handler middleware]
        (middleware handler))
      handler
      middleware)))
+
+(defmacro defendpoint-base-handler
+  "Generate the a Ring handler (excluding the Clout/Compojure method/route matching stuff) for parsed [[defendpoint]]
+  args."
+  {:style/indent [:form]}
+  [parsed-args core-fn]
+  `(let [middleware# ~(middleware-forms parsed-args)]
+     (defendpoint-base-handler* middleware# ~core-fn)))
 
 (defmacro defendpoint-route-handler
   "Generate the Clout/Compojure route (handler) given parsed [[defendpoint]] `args`."
