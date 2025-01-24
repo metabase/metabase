@@ -3430,7 +3430,7 @@
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
   [& {:as args}]
   (mt/with-current-user (mt/user->id :rasta)
-    (let [ ;; Make the file-name unique so the table names don't collide
+    (let [;; Make the file-name unique so the table names don't collide
           filename (str "example csv file " (random-uuid) ".csv")
           file     (upload-test/csv-file-with
                     ["id, name"
