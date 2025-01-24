@@ -28,6 +28,7 @@ import type {
 import {
   createQuestionPickerItemSelectHandler,
   createShouldShowItem,
+  getRecentItemDatabaseId,
   isMetricItem,
   isModelItem,
   isQuestionItem,
@@ -101,7 +102,7 @@ export const DataPickerModal = ({
     (recentItems: RecentItem[]) => {
       if (databaseId) {
         return recentItems.filter(
-          item => "database_id" in item && item.database_id === databaseId,
+          item => getRecentItemDatabaseId(item) === databaseId,
         );
       }
 
