@@ -1724,6 +1724,24 @@ describe("scenarios > dashboard > entity id support", () => {
       cy.url().should("not.contain", `tab=${nonExistingTabEntityId}`);
     });
   });
+
+  it("when loading `/dashboard/by-entity-id/${entity-id}?tab=${tab-slug of 21 chars}`, it should still load the dashboard correctly", () => {
+    H.createDashboardWithTabs({
+      name: "Dashboard with 2 tabs",
+      tabs: [
+        { name: "Tab 1", id: -1 },
+        { name: "Tab 2", id: -2 },
+      ],
+      dashcards: [],
+    }).then(dashboard => {
+      const tabId = dashboard.tabs[1].id;
+      const tabSlug = `${tabId}`.padEnd(21, "x");
+      cy.visit(`/dashboard/by-entity-id/${dashboard.entity_id}?tab=${tabSlug}`);
+      cy.url().should("contain", `/dashboard/${dashboard.id}`);
+      H.main().findByText("Dashboard with 2 tabs").should("be.visible");
+      cy.url().should("contain", `tab=${tabId}`);
+    });
+  });
 });
 
 function validateIFrame(src, index = 0) {
