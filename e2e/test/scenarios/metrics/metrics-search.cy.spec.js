@@ -23,7 +23,7 @@ describe("scenarios > metrics > search", () => {
 
   it("should be able to search for metrics in global search", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
-    cy.wait(150);
+    cy.wait(300);
     cy.visit("/");
     H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
     H.commandPalette()
@@ -35,7 +35,7 @@ describe("scenarios > metrics > search", () => {
 
   it("should be able to search for metrics on the search page", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC);
-    cy.wait(150);
+    cy.wait(300);
     cy.visit("/");
     H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, true);
     cy.wait("@search");
@@ -61,7 +61,7 @@ describe("scenarios > metrics > search", () => {
       H.visitMetric(card.id);
       cy.wait("@dataset");
     });
-    cy.wait(150);
+    cy.wait(300);
     H.navigationSidebar().findByText("Home").click();
     H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
     H.commandPalette()
