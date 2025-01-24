@@ -206,13 +206,17 @@ describe("Dashboard > Dashboard Questions", () => {
 
       // its in the new dash + url has hash param to auto-scroll
       cy.url().should("include", "/dashboard/");
+
       cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
       H.undoToast().findByText("Orders in a dashboard");
-      H.dashboardCards().findByText("Total Orders").should("be.visible");
+      H.dashboardCards().should("contain", "Total Orders");
 
       // and not in the old dash
       H.visitDashboard("@anotherDashboardId");
-      H.dashboardCards().findByText("Total Orders").should("not.exist");
+      cy.findByRole("heading", { name: "This dashboard is empty" }).should(
+        "be.visible",
+      );
+      // H.dashboardCards().should("not.exist");
     });
 
     it("can bulk move questions into a dashboard", () => {

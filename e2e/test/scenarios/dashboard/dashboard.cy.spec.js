@@ -69,20 +69,18 @@ describe("scenarios > dashboard", () => {
         cy.location("pathname").should("contain", `/dashboard/${body.id}`);
       });
 
+      cy.log("New dashboards are opened in editing mode by default");
       cy.findByTestId("dashboard-empty-state").should(
         "contain",
-        "This dashboard is empty",
+        "Create a new question or browse your collections for an existing one.",
       );
-
-      cy.log("New dashboards are opened in editing mode by default");
       cy.findByTestId("edit-bar").findByText("You're editing this dashboard.");
 
       cy.log(
         "Should create new question from an empty dashboard (metabase#31848)",
       );
-      cy.findByTestId("dashboard-empty-state")
-        .findByRole("link", { name: "ask a new one" })
-        .click();
+      cy.findByTestId("dashboard-empty-state").button("Add a chart").click();
+      cy.findByTestId("new-button-bar").findByText("New Question").click();
 
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Collections").click();
