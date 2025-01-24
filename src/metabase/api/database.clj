@@ -534,11 +534,13 @@
                                  :group-by [:name]}]})))
 
 (defn- autocomplete-results [tables fields]
-  (let [table-id->table (m/index-by :id tables)]
+  (let [table-id->name (into {}
+                             (map (juxt :id :name))
+                             tables)]
     (concat (for [{:keys [name]} tables]
               [name "Table"])
             (for [{:keys [id table_id name base_type semantic_type]} fields]
-              [name (str (-> table_id table-id->table :name)
+              [name (str (table-id->name table_id)
                          " "
                          base_type
                          (when semantic_type
