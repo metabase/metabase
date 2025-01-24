@@ -1604,7 +1604,7 @@ describe("scenarios > dashboard > permissions", () => {
     cy.signIn("nocollection");
     H.visitDashboard(dashboardId);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sorry, you don't have permission to see this card.");
+    cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });
 
