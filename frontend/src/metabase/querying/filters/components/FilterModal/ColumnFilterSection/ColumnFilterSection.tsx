@@ -8,7 +8,6 @@ import { DefaultFilterEditor } from "../DefaultFilterEditor";
 import { NumberFilterEditor } from "../NumberFilterEditor";
 import { StringFilterEditor } from "../StringFilterEditor";
 import { TimeFilterEditor } from "../TimeFilterEditor";
-import { useFilterModalContext } from "../context";
 
 interface ColumnFilterSectionProps {
   stageIndex: number;
@@ -23,7 +22,6 @@ export function ColumnFilterSection({
   filter,
   onChange,
 }: ColumnFilterSectionProps) {
-  const { handleInput: onInput, query } = useFilterModalContext();
   const FilterWidget = getFilterWidget(column);
 
   if (!FilterWidget) {
@@ -32,12 +30,10 @@ export function ColumnFilterSection({
 
   return (
     <FilterWidget
-      query={query}
       stageIndex={stageIndex}
       column={column}
       filter={filter}
       onChange={onChange}
-      onInput={onInput}
     />
   );
 }

@@ -12,13 +12,12 @@ import { useFilterModalContext } from "../context";
 import type { FilterEditorProps } from "../types";
 
 export function BooleanFilterEditor({
-  query,
   stageIndex,
   column,
   filter,
   onChange,
 }: FilterEditorProps) {
-  const { isSearching } = useFilterModalContext();
+  const { isSearching, query } = useFilterModalContext();
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);

@@ -16,14 +16,12 @@ import { useFilterModalContext } from "../context";
 import type { FilterEditorProps } from "../types";
 
 export function StringFilterEditor({
-  query,
   stageIndex,
   column,
   filter,
   onChange,
-  onInput,
 }: FilterEditorProps) {
-  const { isSearching } = useFilterModalContext();
+  const { handleInput: onInput, isSearching, query } = useFilterModalContext();
   const columnIcon = useMemo(() => getColumnIcon(column), [column]);
   const [isFocused, setIsFocused] = useState(false);
 

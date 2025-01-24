@@ -23,13 +23,12 @@ import { SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
 
 export function DateFilterEditor({
-  query,
   stageIndex,
   column,
   filter,
   onChange,
 }: FilterEditorProps) {
-  const { isSearching } = useFilterModalContext();
+  const { isSearching, query } = useFilterModalContext();
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
