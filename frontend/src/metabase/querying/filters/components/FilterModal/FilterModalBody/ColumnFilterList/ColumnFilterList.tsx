@@ -10,7 +10,6 @@ import { sortColumns } from "./utils";
 export interface ColumnFilterListProps {
   query: Lib.Query;
   columnItems: ColumnItem[];
-  isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
   onInput: () => void;
 }
@@ -18,7 +17,6 @@ export interface ColumnFilterListProps {
 export const ColumnFilterList = ({
   query,
   columnItems,
-  isSearching,
   onChange,
   onInput,
 }: ColumnFilterListProps) => {
@@ -31,7 +29,6 @@ export const ColumnFilterList = ({
           key={columnIndex}
           query={query}
           columnItem={columnItem}
-          isSearching={isSearching}
           onChange={onChange}
           onInput={onInput}
         />

@@ -10,7 +10,6 @@ export interface FilterTabContentProps {
   groupItems: GroupItem[];
   tab: string | null;
   version: number;
-  isSearching: boolean;
   onChange: (query: Lib.Query) => void;
   onInput: () => void;
   onTabChange: (tab: string | null) => void;
@@ -21,7 +20,6 @@ export function FilterTabContent({
   groupItems,
   tab,
   version,
-  isSearching,
   onChange,
   onInput,
   onTabChange,
@@ -35,7 +33,6 @@ export function FilterTabContent({
             key={`${groupItem.key}:${version}`}
             query={query}
             groupItem={groupItem}
-            isSearching={isSearching}
             onChange={onChange}
             onInput={onInput}
           />

@@ -8,7 +8,6 @@ export interface ColumnFilterItemProps {
   query: Lib.Query;
   columnItem: ColumnItem;
   filter: Lib.FilterClause | undefined;
-  isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
   onInput: () => void;
 }
@@ -17,7 +16,6 @@ export function ColumnFilterItem({
   query,
   columnItem,
   filter,
-  isSearching,
   onChange,
   onInput,
 }: ColumnFilterItemProps) {
@@ -40,7 +38,6 @@ export function ColumnFilterItem({
         stageIndex={stageIndex}
         column={column}
         filter={filter}
-        isSearching={isSearching}
         onChange={handleChange}
         onInput={onInput}
       />

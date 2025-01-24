@@ -29,7 +29,6 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
     setTab,
     canRemoveFilters,
     searchText,
-    isSearching,
     visibleItems,
     handleInput,
     handleChange,
@@ -61,7 +60,6 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
               query={query}
               tab={tab}
               version={version}
-              searching={isSearching}
               onChange={handleChange}
               onInput={handleInput}
               onTabChange={setTab}

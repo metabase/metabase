@@ -11,7 +11,6 @@ import { findColumnFilters, findVisibleFilters } from "./utils";
 export interface ColumnFilterGroupProps {
   query: Lib.Query;
   columnItem: ColumnItem;
-  isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
   onInput: () => void;
 }
@@ -19,7 +18,6 @@ export interface ColumnFilterGroupProps {
 export function ColumnFilterGroup({
   query,
   columnItem,
-  isSearching,
   onChange,
   onInput,
 }: ColumnFilterGroupProps) {
@@ -39,7 +37,6 @@ export function ColumnFilterGroup({
           query={query}
           columnItem={columnItem}
           filter={filter}
-          isSearching={isSearching}
           onChange={onChange}
           onInput={onInput}
         />

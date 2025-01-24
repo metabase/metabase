@@ -9,7 +9,6 @@ type FilterModalBodyProps = {
   query: Lib.Query;
   tab: string | null;
   version: number;
-  searching: boolean;
   onChange: (newQuery: Lib.Query) => void;
   onInput: () => void;
   onTabChange: (
@@ -23,7 +22,6 @@ export const FilterModalBody = ({
   onInput,
   onTabChange,
   query,
-  searching,
   tab,
   version,
 }: FilterModalBodyProps) =>
@@ -33,7 +31,6 @@ export const FilterModalBody = ({
       groupItems={groupItems}
       tab={tab}
       version={version}
-      isSearching={searching}
       onChange={onChange}
       onInput={onInput}
       onTabChange={onTabChange}

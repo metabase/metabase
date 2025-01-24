@@ -10,7 +10,6 @@ import S from "./FilterTabPanel.module.css";
 export interface FilterTabPanelProps {
   query: Lib.Query;
   groupItem: GroupItem;
-  isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
   onInput: () => void;
 }
@@ -18,7 +17,6 @@ export interface FilterTabPanelProps {
 export function FilterTabPanel({
   query,
   groupItem,
-  isSearching,
   onChange,
   onInput,
 }: FilterTabPanelProps) {
@@ -36,7 +34,6 @@ export function FilterTabPanel({
           <ColumnFilterList
             query={query}
             columnItems={groupItem.columnItems}
-            isSearching={isSearching}
             onChange={onChange}
             onInput={onInput}
           />
