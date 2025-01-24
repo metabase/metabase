@@ -2,12 +2,10 @@ import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useMount } from "react-use";
 
-import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
-import { useEmbedFont } from "metabase/public/hooks/use-embed-font";
-import type { EmbeddingDisplayOptions } from "metabase/public/lib/types";
+import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { setErrorPage } from "metabase/redux/app";
 import { addFields, addParamValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -52,12 +50,7 @@ export const PublicOrEmbeddedQuestion = ({
     {},
   );
 
-  const { setFont } = useEmbedFont();
-  useEffect(() => {
-    const { font } = parseHashOptions(location.hash) as EmbeddingDisplayOptions;
-
-    setFont(font ?? null);
-  }, [location.hash, setFont]);
+  useSetEmbedFont({ location });
 
   const { bordered, hide_parameters, theme, titled, downloadsEnabled, locale } =
     useEmbedFrameOptions({ location });
