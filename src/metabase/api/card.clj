@@ -2,7 +2,6 @@
   "/api/card endpoints."
   (:require
    [clojure.java.io :as io]
-   [compojure.core :refer [POST]]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
@@ -133,8 +132,9 @@
       (t2/hydrate :creator :collection)))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
-(mr/def ::card-filter-option
-  (into [:enum] (sort (keys (methods cards-for-filter-option*)))))
+(def ^:private card-filter-options
+  "a valid card filter option."
+  (map name (keys (methods cards-for-filter-option*))))
 
 (defn- db-id-via-table
   [model model-id]
@@ -149,26 +149,27 @@
   `using_segment`, and `archived`. See corresponding implementation functions above for the specific behavior
   of each filter option. :card_index:"
   [_route-params
-   {:keys [f], model-id :model_id} :- [:map
-                                       [:f        {:default :all}  ::card-filter-option]
-                                       [:model_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (when (contains? #{:database :table :using_model :using_metric :using_segment} f)
-    (api/checkp (integer? model-id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
-                                                       (name f)))
-    (case f
-      :database      (api/read-check :model/Database model-id)
-      :table         (api/read-check :model/Database (t2/select-one-fn :db_id :model/Table, :id model-id))
-      :using_model   (api/read-check :model/Card model-id)
-      :using_metric  (api/read-check :model/Database (db-id-via-table :metric model-id))
-      :using_segment (api/read-check :model/Database (db-id-via-table :segment model-id))))
-  (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
-        last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
-    (into []
-          (map (fn [{:keys [id] :as card}]
-                 (if-let [edit-info (get last-edit-info id)]
-                   (assoc card :last-edit-info edit-info)
-                   card)))
-          cards)))
+   {:keys [f model_id]} :- [:map
+                            [:f        {:optional true} [:maybe (into [:enum] card-filter-options)]]
+                            [:model_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (let [f (or (keyword f) :all)]
+    (when (contains? #{:database :table :using_model :using_metric :using_segment} f)
+      (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
+                                                         (name f)))
+      (case f
+        :database      (api/read-check :model/Database model_id)
+        :table         (api/read-check :model/Database (t2/select-one-fn :db_id :model/Table, :id model_id))
+        :using_model   (api/read-check :model/Card model_id)
+        :using_metric  (api/read-check :model/Database (db-id-via-table :metric model_id))
+        :using_segment (api/read-check :model/Database (db-id-via-table :segment model_id))))
+    (let [cards          (filter mi/can-read? (cards-for-filter-option f model_id))
+          last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
+      (into []
+            (map (fn [{:keys [id] :as card}]
+                   (if-let [edit-info (get last-edit-info id)]
+                     (assoc card :last-edit-info edit-info)
+                     card)))
+            cards))))
 
 (defn hydrate-card-details
   "Adds additional information to a `Card` selected with toucan that is needed by the frontend. This should be the same information
@@ -216,13 +217,12 @@
   "Get `Card` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [context]
-    ignore-view? :ignore_view} :- [:map
-                                   [:ignore_view {:default false} :boolean]
-                                   [:context     {:optional true} [:maybe [:enum :collection]]]]]
+   {:keys [ignore_view context]} :- [:map
+                                     [:ignore_view {:optional true} [:maybe :boolean]]
+                                     [:context     {:optional true} [:maybe [:enum :collection]]]]]
   (let [card (get-card id)]
     (u/prog1 card
-      (when-not ignore-view?
+      (when-not ignore_view
         (events/publish-event! :event/card-read
                                {:object-id (:id <>)
                                 :user-id api/*current-user-id*
@@ -412,16 +412,14 @@
   - `exclude_ids` to filter out a list of card ids"
   [{:keys [id]} :- [:map
                     [:id int?]]
-   {:keys       [query]
-    last-cursor :last_cursor
-    exclude-ids :exclude_ids} :- [:map
-                                  [:last_cursor {:optional true} [:maybe ms/PositiveInt]]
-                                  [:query       {:optional true} [:maybe ms/NonBlankString]]
-                                  [:exclude_ids {:optional true} [:maybe [:fn
-                                                                          {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
-                                                                          (fn [ids]
-                                                                            (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]]]]
-  (let [exclude_ids  (when exclude-ids (api/parse-multi-values-param exclude-ids parse-long))
+   {:keys [last_cursor query exclude_ids]} :- [:map
+                                               [:last_cursor {:optional true} [:maybe ms/PositiveInt]]
+                                               [:query       {:optional true} [:maybe ms/NonBlankString]]
+                                               [:exclude_ids {:optional true} [:maybe [:fn
+                                                                                       {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
+                                                                                       (fn [ids]
+                                                                                         (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]]]]
+  (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))
         card         (-> (t2/select-one :model/Card :id id) api/check-404 api/read-check)
         card-display (:display card)]
     (when-not (supported-series-display-type card-display)
@@ -433,7 +431,7 @@
      card
      {:exclude-ids exclude_ids
       :query       query
-      :last-cursor last-cursor
+      :last-cursor last_cursor
       :page-size   (request/limit)})))
 
 (api.macros/defendpoint :get "/:id/timelines"
@@ -642,10 +640,10 @@
   "Update a `Card`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {delete-old-dashcards? :delete_old_dashcards} :- [:map
-                                                     [:delete_old_dashcards {:default false} :boolean]]
+   {:keys [delete_old_dashcards]} :- [:map
+                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
    body :- CardUpdateSchema]
-  (update-card! id body delete-old-dashcards?))
+  (update-card! id body (boolean delete_old_dashcards)))
 
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for a card."
@@ -741,11 +739,10 @@
   `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
   [_route-params
    _query-params
-   {card-ids      :card_ids
-    collection-id :collection_id} :- [:map
-                                      [:card_ids      [:sequential ms/PositiveInt]]
-                                      [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (move-cards-to-collection! collection-id card-ids)
+   {:keys [card_ids collection_id]} :- [:map
+                                        [:card_ids      [:sequential ms/PositiveInt]]
+                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
@@ -755,13 +752,10 @@
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]
    _query-params
-   {:keys [parameters]
-    ignore-cache?        :ignore_cache
-    dashboard-id         :dashboard_id
-    collection-preview?  :collection_preview} :- [:map
-                                                  [:ignore_cache       {:default false} :boolean]
-                                                  [:collection_preview {:optional true} [:maybe :boolean]]
-                                                  [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :- [:map
+                                                                                                                    [:ignore_cache       {:optional true} [:maybe :boolean]]
+                                                                                                                    [:collection_preview {:optional true} [:maybe :boolean]]
+                                                                                                                    [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
   ;;
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
@@ -770,9 +764,9 @@
   (qp.card/process-query-for-card
    card-id :api
    :parameters   parameters
-   :ignore-cache ignore-cache?
-   :dashboard-id dashboard-id
-   :context      (if collection-preview? :collection :question)
+   :ignore-cache ignore_cache
+   :dashboard-id dashboard_id
+   :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
 
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
@@ -785,10 +779,11 @@
                                        [:export-format (into [:enum] api.dataset/export-formats)]]
    {:keys          [parameters]
     pivot-results? :pivot_results
-    format-rows?   :format_rows} :- [:map
-                                     [:parameters    {:optional true} [:maybe ms/JSONString]]
-                                     [:format_rows   {:default false} ms/BooleanValue]
-                                     [:pivot_results {:default false} ms/BooleanValue]]]
+    format-rows?   :format_rows
+    :as            _query-params} :- [:map
+                                      [:parameters    {:optional true} [:maybe ms/JSONString]]
+                                      [:format_rows   {:default false} ms/BooleanValue]
+                                      [:pivot_results {:default false} ms/BooleanValue]]]
   (qp.card/process-query-for-card
    card-id export-format
    :parameters  (json/decode+kw parameters)
@@ -797,7 +792,7 @@
    :middleware  {:process-viz-settings?  true
                  :skip-results-metadata? true
                  :ignore-cached-results? true
-                 :format-rows?           format-rows?
+                 :format-rows?           (format-rows?)
                  :pivot?                 pivot-results?
                  :js-int-to-string?      false}))
 
@@ -851,13 +846,13 @@
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]
    _query-params
-   {:keys         [parameters]
-    ignore-cache? :ignore_cache} :- [:map
-                                     [:ignore_cache {:default false} :boolean]]]
+   {:keys [parameters ignore_cache]
+    :or   {ignore_cache false}} :- [:map
+                                    [:ignore_cache {:optional true} [:maybe :boolean]]]]
   (qp.card/process-query-for-card card-id :api
                                   :parameters   parameters
                                   :qp           qp.pivot/run-pivot-query
-                                  :ignore-cache ignore-cache?))
+                                  :ignore-cache ignore_cache))
 
 (api.macros/defendpoint :post "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
@@ -960,12 +955,9 @@
                                          [:query     ms/NonBlankString]]]
   (param-values (api/read-check :model/Card card-id) param-key query))
 
-(mu/defn- from-csv!
+(defn-  from-csv!
   "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
-  [{:keys [collection-id filename file]} :- [:map
-                                             [:collection-id [:maybe pos-int?]]
-                                             [:filename      string?]
-                                             [:file          (ms/InstanceOfClass java.io.File)]]]
+  [{:keys [collection-id filename file]}]
   (try
     (let [uploads-db-settings (public-settings/uploads-settings)
           model (upload/create-csv-upload! {:collection-id collection-id
@@ -986,13 +978,29 @@
                              (tru "There was an error uploading the file"))}})
     (finally (io/delete-file file :silently))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint ^:multipart POST "/from-csv"
+;;; TODO -- why the HECC does the endpoint for creating a TABLE live in `/api/card/`?
+(api.macros/defendpoint :post "/from-csv"
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
-  [:as {raw-params :params}]
+  {:multipart true}
+  ;; TODO -- not clear collection_id and file are supposed to come from `:multipart-params`
+  [_route-params
+   _query-params
+   _body
+   {{collection-id "collection_id", file "file"} :multipart-params, :as _request}
+   :- [:map
+       [:multipart-params
+        [:map
+         ["collection_id" [:maybe
+                           {:decode/api (fn [collection-id]
+                                          (when-not (= collection-id "root")
+                                            collection-id))}
+                           pos-int?]]
+         ["file" [:map
+                  [:filename :string]
+                  [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
-  (from-csv! {:collection-id (parse-long (get raw-params "collection_id"))
-              :filename      (get-in raw-params ["file" :filename])
-              :file          (get-in raw-params ["file" :tempfile])}))
+  (from-csv! {:collection-id collection-id
+              :filename      (:filename file)
+              :file          (:tempfile file)}))
 
 (api/define-routes)
