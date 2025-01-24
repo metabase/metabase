@@ -262,7 +262,7 @@
   box-shadow: rgba(0, 0, 0, 0.05) 0 4px 20px 0;
 
   ul {
-    max-height: 360px;
+    max-height: 250px;
     overflow-y: auto;
   }
 
