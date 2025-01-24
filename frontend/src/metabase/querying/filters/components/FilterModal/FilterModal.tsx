@@ -20,13 +20,13 @@ export interface FilterModalProps {
 export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
   const filterModal = useFilterModal(question, onSubmit);
   const {
-    isChanged,
-    groupItems,
     canRemoveFilters,
+    groupItems,
+    isChanged,
     searchText,
     handleReset,
-    handleSubmit,
     handleSearch,
+    handleSubmit,
   } = filterModal;
 
   const onSubmitFilters = () => {
