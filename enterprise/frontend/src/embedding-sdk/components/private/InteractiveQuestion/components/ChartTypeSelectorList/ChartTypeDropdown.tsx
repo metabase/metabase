@@ -67,7 +67,7 @@ export const ChartTypeDropdown = () => {
           px={undefined}
           pr="md"
           rightIcon={<Icon ml="xs" size={10} name="chevrondown" />}
-          bg="var(--mb-color-bg-sdk-chart-type-selector)"
+          bg="bg-white"
         />
       </Menu.Target>
       <Menu.Dropdown h="30rem">

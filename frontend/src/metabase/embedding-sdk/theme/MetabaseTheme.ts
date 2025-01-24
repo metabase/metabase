@@ -126,26 +126,6 @@ export type MetabaseComponentTheme = {
       backgroundColor?: string;
     };
 
-    /* <InteractiveQuestion.ChartTypeSelector /> component */
-    chartTypeSelector?: {
-      backgroundColor?: string;
-    };
-
-    /* <InteractiveQuestion.QuestionSettingsDropdown /> component's button */
-    questionSettingsButton?: {
-      backgroundColor?: string;
-    };
-
-    /* <InteractiveQuestion.EditorButton /> component */
-    editorButton?: {
-      iconColor?: string;
-      borderColor?: string;
-      backgroundColor?: string;
-
-      activeIconColor?: string;
-      activeBackgroundColor?: string;
-    };
-
     /* <InteractiveQuestion.Editor /> component */
     editor?: {
       /** Secondary action buttons in the question editor (e.g. "Custom Column") */

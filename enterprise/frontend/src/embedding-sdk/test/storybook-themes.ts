@@ -124,8 +124,6 @@ const pugTheme: MetabaseTheme = {
 
       editorButton: {
         iconColor: pugColors.secondary,
-        borderColor: pugColors.secondary,
-        backgroundColor: "transparent",
       },
     },
   },
@@ -247,12 +245,7 @@ const luminaraTheme: MetabaseTheme = {
         backgroundColor: "rgba(244, 243, 239, 1)",
       },
       editorButton: {
-        borderColor: "rgb(104, 119, 107)",
         iconColor: "rgb(104, 119, 107)",
-        backgroundColor: "rgb(244, 243, 239)",
-
-        activeIconColor: "rgb(244, 243, 239)",
-        activeBackgroundColor: "rgb(104, 119, 107)",
       },
     },
 

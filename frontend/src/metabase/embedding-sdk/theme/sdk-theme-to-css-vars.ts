@@ -8,14 +8,6 @@ type CssVariableToThemeMap = Record<string, MetabaseComponentThemeKey>;
 export const INTERACTIVE_QUESTION_THEME_OPTIONS = {
   // Toolbar (Default Layout)
   "--mb-color-bg-sdk-question-toolbar": "question.toolbar.backgroundColor",
-
-  // Chart Type Selector
-  "--mb-color-bg-sdk-chart-type-selector":
-    "question.chartTypeSelector.backgroundColor",
-
-  // Question Settings Button
-  "--mb-color-bg-sdk-question-settings-button":
-    "question.questionSettingsButton.backgroundColor",
 } satisfies CssVariableToThemeMap;
 
 // SDK > Interactive Question > Notebook Editor Button

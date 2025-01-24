@@ -60,29 +60,6 @@ const SAMPLE_THEME = {
         lineHeight: "22px",
       },
     },
-    question: {
-      chartTypeSelector: {
-        backgroundColor: "rgb(233, 38, 255)",
-      },
-
-      questionSettingsButton: {
-        backgroundColor: "rgb(233, 38, 255)",
-      },
-
-      toolbar: {
-        backgroundColor: "rgb(59, 63, 63)",
-      },
-
-      editor: {
-        secondaryActionButton: {
-          backgroundColor: "rgb(88, 0, 71)",
-        },
-      },
-
-      editorButton: {
-        backgroundColor: "rgb(0, 15, 88)",
-      },
-    },
   },
 } satisfies MetabaseTheme;
 
