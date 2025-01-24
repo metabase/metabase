@@ -7,14 +7,12 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { FormFooter } from "metabase/core/components/FormFooter";
 import FormInput from "metabase/core/components/FormInput";
 import FormRadio from "metabase/core/components/FormRadio";
-import FormSelect from "metabase/core/components/FormSelect";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import { Form, FormSubmitButton } from "metabase/forms";
 import { isNullOrUndefined } from "metabase/lib/types";
 import { Button } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
-import CS from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
 
 export const SaveQuestionForm = ({
@@ -51,11 +49,6 @@ export const SaveQuestionForm = ({
       : ["collection"];
 
   const showPickerInput = values.saveType === "create" && !saveToDashboard;
-  const showTabSelect =
-    values.saveType === "overwrite" &&
-    saveToDashboard &&
-    saveToDashboard.tabs &&
-    saveToDashboard.tabs.length > 1;
 
   return (
     <Form>
@@ -99,17 +92,6 @@ export const SaveQuestionForm = ({
                     return item.model !== "table" && item.can_write;
                   }),
               }}
-            />
-          )}
-          {showTabSelect && (
-            <FormSelect
-              name="tab_id"
-              title="Which tab should this go on?"
-              containerClassName={CS.dashboardTabSelectContainer}
-              options={saveToDashboard.tabs?.map(tab => ({
-                name: tab.name,
-                value: tab.id,
-              }))}
             />
           )}
         </div>
