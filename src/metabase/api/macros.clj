@@ -129,15 +129,41 @@
             (s/spec (s/cat :path    string?
                            :regexes (s/+ ::defendpoint.route.key-regex-pair))))))
 
+(mu/defn- auto-route-param-regex :- [:maybe (ms/InstanceOfClass java.util.regex.Pattern)]
+  [route-param :- :keyword
+   route-params-schema]
+  (when (= (mc/type route-params-schema) :map)
+    (some (fn [[k _options v-schema]]
+            (when (= k route-param)
+              (or
+               (second (metabase.api.common.internal/->matching-regex v-schema))
+               (:api/regex (mc/properties v-schema)))))
+          (mc/children route-params-schema))))
+
+(mu/defn- auto-route-regexes :- [:maybe [:map-of :keyword (ms/InstanceOfClass java.util.regex.Pattern)]]
+  "Auto-infer regexes for the route based on the route args schema. These are either defined
+  in [[metabase.api.common.internal/->matching-regex]] or defined in the schema itself with the `:api/regex` key."
+  [route :- :string
+   args  :- :map]
+  (when-let [ks (not-empty (metabase.api.common.internal/route-arg-keywords route))]
+    (let [route-params-schema (some-> (get-in args [:params :route :schema])
+                                      #_:clj-kondo/ignore
+                                      eval
+                                      mr/resolve-schema
+                                      mc/schema)]
+      (into {}
+            (keep (fn [k]
+                    (when-let [regex (auto-route-param-regex k route-params-schema)]
+                      [k regex])))
+            ks))))
+
 (mu/defn- parse-route :- ::route
-  [[route-type route]]
+  [[route-type route] :- [:tuple [:enum :path :vector] :any]
+   args               :- :map]
   (case route-type
     :path   (merge
              {:path route}
-             ;; not clear whether auto-parse is desirable or not =(
-             (when-let [regexes (not-empty (into {}
-                                                 (map metabase.api.common.internal/route-param-regex)
-                                                 (metabase.api.common.internal/route-arg-keywords route)))]
+             (when-let [regexes (not-empty (auto-route-regexes route args))]
                {:regexes regexes}))
     :vector (update route :regexes #(into {} (map (juxt :key :regex)) %))))
 
@@ -183,10 +209,15 @@
 (mu/defn- parse-defendpoint-args :- ::parsed-args
   [args :- [:sequential any?]]
   (let [conformed (s/conform ::defendpoint args)]
-    (cond-> conformed
-      true                         (update :route parse-route)
-      true                         (update :params parse-params)
-      (:response-schema conformed) (update :response-schema :schema))))
+    (when (= conformed :clojure.spec.alpha/invalid)
+      (throw (ex-info (format "Unable to parse defendpoint args: %s" (s/explain-str ::defendpoint args))
+                      {:args  args
+                       :error (s/explain-data ::defendpoint args)})))
+    (as-> conformed conformed
+      (update conformed :params parse-params)
+      (update conformed :route parse-route conformed)
+      (cond-> conformed
+        (:response-schema conformed) (update :response-schema :schema)))))
 
 ;;;;
 ;;;; Macro etc.

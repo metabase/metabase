@@ -223,7 +223,7 @@
             (catch Exception _ x)) x))
    form))
 
-(defn- ->matching-regex
+(defn ->matching-regex
   "Note: this is called in a macro context, so it can potentially be passed a symbol that resolves to a schema."
   [schema]
   (let [schema      (try #_:clj-kondo/ignore
