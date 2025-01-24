@@ -177,6 +177,22 @@
                                                     {:lib/uuid (str (random-uuid))}
                                                     [:expression {:lib/uuid (str (random-uuid))} "price + 2"]]]}
                                    {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]}]}
+    nil
+
+    ;; parameters have *legacy* expression refs :sob:
+    {:expressions [[:field
+                    {:base-type :type/BigInteger,
+                     :ident (u/generate-nano-id)
+                     :lib/expression-name "foo_id",
+                     :lib/uuid (str (random-uuid))}
+                    9]],
+     :parameters [{:target [:dimension
+                            [:expression "foo_id" {:base-type :type/BigInteger}]
+                            {:stage-number 0}],
+                   :type :category,
+                   :value "1"}],
+     :source-table 2,
+     :lib/type :mbql.stage/mbql}
     nil))
 
 (defn- valid-join
