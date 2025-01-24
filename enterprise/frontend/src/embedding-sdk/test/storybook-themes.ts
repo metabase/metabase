@@ -57,7 +57,7 @@ export const darkTheme = defineMetabaseTheme({
     },
     question: {
       editor: {
-        actionButton: {
+        secondaryActionButton: {
           backgroundColor: "#161A1D",
         },
       },
@@ -187,7 +187,7 @@ const stitchTheme: MetabaseTheme = {
     },
     question: {
       editor: {
-        actionButton: {
+        secondaryActionButton: {
           backgroundColor: "#161A1D",
         },
       },

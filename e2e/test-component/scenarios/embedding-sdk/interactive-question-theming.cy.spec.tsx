@@ -61,14 +61,26 @@ const SAMPLE_THEME = {
       },
     },
     question: {
+      chartTypeSelector: {
+        backgroundColor: "rgb(233, 38, 255)",
+      },
+
+      questionSettingsButton: {
+        backgroundColor: "rgb(233, 38, 255)",
+      },
+
       toolbar: {
         backgroundColor: "rgb(59, 63, 63)",
       },
 
       editor: {
-        actionButton: {
-          backgroundColor: "rgb(22, 26, 29)",
+        secondaryActionButton: {
+          backgroundColor: "rgb(88, 0, 71)",
         },
+      },
+
+      editorButton: {
+        backgroundColor: "rgb(0, 15, 88)",
       },
     },
   },
@@ -96,9 +108,6 @@ describeEE("scenarios > embedding-sdk > interactive-question > theming", () => {
   });
 
   it("should apply theme values to interactive question's default layout", () => {
-    cy.intercept("GET", "/api/card/*").as("getCard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-
     cy.get<number>("@questionId").then(questionId => {
       mountSdkContent(
         <Box bg="#161A1D">
@@ -108,13 +117,37 @@ describeEE("scenarios > embedding-sdk > interactive-question > theming", () => {
       );
     });
 
+    const questionTheme = SAMPLE_THEME.components.question;
+
+    const testIdToThemeBackgroundColorMap = {
+      "interactive-question-result-toolbar":
+        questionTheme.toolbar.backgroundColor,
+      "chart-type-selector-button":
+        questionTheme.chartTypeSelector.backgroundColor,
+      "question-settings-toolbar-button":
+        questionTheme.questionSettingsButton.backgroundColor,
+      "notebook-button": questionTheme.editorButton.backgroundColor,
+    } satisfies Record<string, string>;
+
     getSdkRoot().within(() => {
       cy.findByText("Product ID").should("be.visible");
 
-      cy.findByTestId("InteractiveQuestionResult-toolbar").should(
+      for (const [testId, backgroundColor] of Object.entries(
+        testIdToThemeBackgroundColorMap,
+      )) {
+        cy.findByTestId(testId).should(
+          "have.css",
+          "background-color",
+          backgroundColor,
+        );
+      }
+
+      cy.findByTestId("notebook-button").click();
+
+      cy.get("[aria-label='Custom column']").should(
         "have.css",
         "background-color",
-        SAMPLE_THEME.components.question.toolbar.backgroundColor,
+        questionTheme.editor.secondaryActionButton.backgroundColor,
       );
     });
   });

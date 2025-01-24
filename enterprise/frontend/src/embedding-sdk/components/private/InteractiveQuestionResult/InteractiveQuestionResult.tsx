@@ -106,7 +106,7 @@ export const InteractiveQuestionResult = ({
           p="sm"
           bg="var(--mb-color-bg-sdk-question-toolbar)"
           style={{ borderRadius: "0.5rem" }}
-          data-testid="InteractiveQuestionResult-toolbar"
+          data-testid="interactive-question-result-toolbar"
         >
           <Group spacing="xs">
             {isEditorOpen ? (

@@ -146,8 +146,8 @@ const theme = defineMetabaseTheme({
 
       // <InteractiveQuestion.Editor /> component
       editor: {
-        // Actions buttons in the question editor
-        actionButton: {
+        // Secondary action buttons in the question editor (e.g. "Custom Column")
+        secondaryActionButton: {
           backgroundColor: "#2E353B",
         },
       },

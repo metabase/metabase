@@ -23,6 +23,7 @@ export const QuestionSettingsDropdown = ({
           </Center>
         }
         bg="var(--mb-color-bg-sdk-question-settings-button)"
+        data-testid="question-settings-toolbar-button"
       />
     </Popover.Target>
     <Popover.Dropdown miw="20rem" mah={height ?? FLEXIBLE_SIZE_DEFAULT_HEIGHT}>
