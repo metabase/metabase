@@ -168,3 +168,8 @@ export default function App() {
     </MetabaseProvider>
   );
 ```
+## Security considerations
+
+We don't recommend using shared Metabase user account and filtering data on the client-side via the SDK. Any end-user of the app has access to their session token and could use it to access Metabase directly via API.
+
+For security best practice, configure permissions in Metabase and ensure that the user only access to data they should.
