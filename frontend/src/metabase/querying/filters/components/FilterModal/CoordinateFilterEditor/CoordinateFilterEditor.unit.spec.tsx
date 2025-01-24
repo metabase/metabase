@@ -4,6 +4,9 @@ import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
+import { FilterModalProvider } from "../context";
+import { createMockFilterModalContext } from "../test-utils";
+
 import { CoordinateFilterEditor } from "./CoordinateFilterEditor";
 
 interface SetupOpts {
@@ -18,15 +21,16 @@ function setup({ query, stageIndex, column, filter }: SetupOpts) {
   const onInput = jest.fn();
 
   renderWithProviders(
-    <CoordinateFilterEditor
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      filter={filter}
-      isSearching={false}
-      onChange={onChange}
-      onInput={onInput}
-    />,
+    <FilterModalProvider value={createMockFilterModalContext()}>
+      <CoordinateFilterEditor
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        onChange={onChange}
+        onInput={onInput}
+      />
+    </FilterModalProvider>,
   );
 
   const getNextFilterName = () => {
