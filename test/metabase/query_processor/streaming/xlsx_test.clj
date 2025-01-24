@@ -779,4 +779,4 @@
   (testing "When the number of characters exceeds *number-of-characters-cell*, the excess part will be truncated."
     (binding [qp.xlsx/*number-of-characters-cell* 5]
       (is (= ["abcde"]
-           (second (xlsx-export [{:id 0, :name "Col"}] {} [["abcdefghijklmnopqrstuvwxyz"]])))))))
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["abcdefghijklmnopqrstuvwxyz"]])))))))
