@@ -821,12 +821,40 @@
                     [(->honeysql driver expr) direction])))
           order-bys)))
 
+(defn- remove-metric-refs-for-window
+  [inner-query]
+  (letfn [(opts [ref] (when (seq ref)
+                        (nth ref 2)))
+          (remove-metric-breakouts
+            [{:keys [breakout] :as inner-query}]
+            (let [new-breakouts
+                  (-> (remove (comp
+                               :metabase.query-processor.middleware.metrics.joined-subquery-expansion/metric-id
+                               opts)
+                              breakout)
+                      vec
+                      not-empty)]
+              (u/assoc-dissoc inner-query :breakout new-breakouts)))
+          (remove-metric-order-bys
+            [{:keys [order-by] :as inner-query}]
+            (let [new-order-bys (-> (remove (comp :metabase.query-processor.middleware.metrics.joined-subquery-expansion/metric-id
+                                                  opts second)
+                                            order-by)
+                                    vec
+                                    not-empty)]
+              (u/assoc-dissoc inner-query :order-by new-order-bys)))]
+    (-> inner-query
+        remove-metric-breakouts
+        remove-metric-order-bys)))
+
 (defn- window-aggregation-over-expr-for-query-with-breakouts
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [breakouts (:breakout inner-query)
-        group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
+  (let [inner-query (remove-metric-refs-for-window inner-query)
+        breakouts (remove #(-> % (nth 2) :metabase.query-processor.middleware.metrics.joined-subquery-expansion/metric-id) 
+                          (:breakout inner-query))
+        group-bys @(def asdf (:group-by (apply-top-level-clause driver :breakout {} @(def iqiq inner-query))))
         finest-temp-breakout (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakouts 2)
         partition-exprs (when (> (count breakouts) 1)
                           (if finest-temp-breakout

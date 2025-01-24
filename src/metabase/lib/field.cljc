@@ -261,9 +261,12 @@
                                     (lib.metadata.calculation/display-name query stage-number table style))))
                               join-alias
                               (lib.join.util/current-join-alias field-metadata)))
-        display-name       (if join-display-name
-                             (str join-display-name " → " field-display-name)
-                             field-display-name)
+        display-name        (or
+                             ;; TODO: Is this the right way?
+                             (:metabase.query-processor.middleware.metrics.joined-subquery-expansion/display-name field-metadata)
+                             (if join-display-name
+                               (str join-display-name " → " field-display-name)
+                               field-display-name))
         temporal-format    #(lib.temporal-bucket/ensure-ends-with-temporal-unit % temporal-unit)
         bin-format         #(lib.binning/ensure-ends-with-binning % binning (:semantic-type field-metadata))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet

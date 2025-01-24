@@ -296,6 +296,10 @@
       (or (:join-alias opts) (:alias join))
       (assoc :source_alias (or (:join-alias opts) (:alias join)))
 
+      ;; TODO: Verify case where query that references metric is joined to "base query" with regards to join alias.
+      (:metabase.query-processor.middleware.metrics.joined-subquery-expansion/display-name opts)
+      (assoc :display_name (:metabase.query-processor.middleware.metrics.joined-subquery-expansion/display-name opts))
+
       join
       (update :display_name display-name-for-joined-field join)
 
