@@ -7,7 +7,7 @@ import { useFilterModal } from "../../hooks/use-filter-modal";
 import S from "./FilterModal.module.css";
 import { FilterModalBody } from "./FilterModalBody";
 import { FilterModalFooter } from "./FilterModalFooter";
-import { FilterModalHeader } from "./FilterModalHeader";
+import { FilterSearchInput } from "./FilterSearchInput";
 import { FilterModalProvider } from "./context";
 import { getModalTitle, getModalWidth } from "./utils";
 
@@ -51,7 +51,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
           <Modal.Header className={S.ModalHeader} p="lg">
             <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
             <Flex mx="md" justify="end" style={{ flex: 1 }}>
-              <FilterModalHeader value={searchText} onChange={handleSearch} />
+              <FilterSearchInput value={searchText} onChange={handleSearch} />
             </Flex>
             <Modal.CloseButton />
           </Modal.Header>
