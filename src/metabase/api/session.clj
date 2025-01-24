@@ -1,6 +1,7 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require
+   [compojure.core :refer [DELETE GET POST]]
    [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -174,19 +175,18 @@
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
-(api.macros/defendpoint :post "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/"
   "Login."
-  [_route-params
-   _query-params
-   {:keys [username password]} :- [:map
-                                   [:username ms/NonBlankString]
-                                   [:password ms/NonBlankString]]]
-  (let [ip-address   (request/ip-address &request)
+  [:as {{:keys [username password]} :body, :as request}]
+  {username ms/NonBlankString
+   password ms/NonBlankString}
+  (let [ip-address   (request/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
-                       (let [{session-uuid :id, :as session} (login username password (request/device-info &request))
+                       (let [{session-uuid :id, :as session} (login username password (request/device-info request))
                              response                        {:id (str session-uuid)}]
-                         (request/set-session-cookies &request response session request-time)))]
+                         (request/set-session-cookies request response session request-time)))]
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
@@ -194,13 +194,13 @@
                                    (login-throttlers :username)   username]
           (do-login))))))
 
-(api.macros/defendpoint :delete "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint DELETE "/"
   "Logout."
   ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
-  []
-  (let [{:keys [metabase-session-id]} &request]
-    (api/check-exists? :model/Session metabase-session-id)
-    (t2/delete! :model/Session :id metabase-session-id))
+  [:as {:keys [metabase-session-id]}]
+  (api/check-exists? :model/Session metabase-session-id)
+  (t2/delete! :model/Session :id metabase-session-id)
   (request/clear-session-cookie api/generic-204-no-content))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
@@ -233,14 +233,13 @@
       (events/publish-event! :event/password-reset-initiated
                              {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
 
-(api.macros/defendpoint :post "/forgot_password"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [_route-params
-   _query-params
-   {:keys [email]} :- [:map
-                       [:email ms/Email]]]
+  [:as {{:keys [email]} :body, :as request}]
+  {email ms/Email}
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
-  (let [request-source (request/ip-address &request)]
+  (let [request-source (request/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
   (throttle-check (forgot-password-throttlers :email) email)
   (forgot-password-impl email)
@@ -278,14 +277,13 @@
   "Throttler for password_reset. There's no good field to mark so use password as a default."
   (throttle/make-throttler :password :attempts-threshold 10))
 
-(api.macros/defendpoint :post "/reset_password"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/reset_password"
   "Reset password with a reset token."
-  [_route-params
-   _query-params
-   {:keys [token password]} :- [:map
-                                [:token    ms/NonBlankString]
-                                [:password ms/ValidPassword]]]
-  (let [request-source (request/ip-address &request)]
+  [:as {{:keys [token password]} :body, :as request}]
+  {token    ms/NonBlankString
+   password ms/ValidPassword}
+  (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (let [reset-token (t2/select-one-fn :reset_token :model/User :id user-id)]
@@ -297,10 +295,10 @@
             ;; Send all the active admins an email :D
             (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User :id user-id)))
           ;; after a successful password update go ahead and offer the client a new session that they can use
-          (let [{session-uuid :id, :as session} (create-session! :password user (request/device-info &request))
+          (let [{session-uuid :id, :as session} (create-session! :password user (request/device-info request))
                 response                        {:success    true
                                                  :session_id (str session-uuid)}]
-            (request/set-session-cookies &request response session (t/zoned-date-time (t/zone-id "GMT"))))))
+            (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
 (api.macros/defendpoint :get "/password_reset_token_valid"
@@ -316,25 +314,24 @@
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
-(api.macros/defendpoint :post "/google_auth"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/google_auth"
   "Login with Google Auth."
-  [_route-params
-   _query-params
-   _body :- [:map
-             [:token ms/NonBlankString]]]
+  [:as {{:keys [token]} :body, :as request}]
+  {token ms/NonBlankString}
   (when-not (google/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google
   (if throttling-disabled?
-    (google/do-google-auth &request)
+    (google/do-google-auth request)
     (http-401-on-error
-      (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address &request)]
-        (let [user (google/do-google-auth &request)
-              {session-uuid :id, :as session} (create-session! :sso user (request/device-info &request))
+      (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
+        (let [user (google/do-google-auth request)
+              {session-uuid :id, :as session} (create-session! :sso user (request/device-info request))
               response {:id (str session-uuid)}
               user (t2/select-one [:model/User :id :is_active], :email (:email user))]
           (if (and user (:is_active user))
-            (request/set-session-cookies &request
+            (request/set-session-cookies request
                                          response
                                          session
                                          (t/zoned-date-time (t/zone-id "GMT")))
