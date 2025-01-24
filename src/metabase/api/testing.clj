@@ -156,7 +156,7 @@
   "Simple echo hander. Fails when you GET with `?fail=true`."
   [_route-params
    {:keys [fail body]} :- [:map
-                           [:fail ms/BooleanValue]
+                           [:fail {:default false} ms/BooleanValue]
                            [:body ms/JSONString]]]
   (if fail
     {:status 400
