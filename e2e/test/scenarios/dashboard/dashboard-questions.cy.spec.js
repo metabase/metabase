@@ -311,7 +311,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.collectionTable().findByText("Test Dashboard").click();
 
       cy.findByTestId("dashboard-empty-state")
-        .findByText("This dashboard is looking empty.")
+        .findByText("This dashboard is empty")
         .should("exist");
 
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);

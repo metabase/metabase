@@ -69,8 +69,9 @@ describe("scenarios > dashboard", () => {
         cy.location("pathname").should("contain", `/dashboard/${body.id}`);
       });
 
-      cy.findByTestId("dashboard-empty-state").findByText(
-        "This dashboard is looking empty.",
+      cy.findByTestId("dashboard-empty-state").should(
+        "contain",
+        "This dashboard is empty",
       );
 
       cy.log("New dashboards are opened in editing mode by default");
@@ -338,8 +339,8 @@ describe("scenarios > dashboard", () => {
 
       it("should save a dashboard after adding a saved question from an empty state (metabase#29450)", () => {
         cy.findByTestId("dashboard-empty-state").within(() => {
-          cy.findByText("This dashboard is looking empty.");
-          cy.findByText("Add a saved question").click();
+          cy.findByText("This dashboard is empty");
+          cy.findByText("Add a chart").click();
         });
 
         H.sidebar().findByText("Orders, Count").click();
@@ -766,7 +767,7 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("dash:11007").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
+    cy.findByText("This dashboard is empty");
     // add previously created question to it
     cy.icon("pencil").click();
     H.openQuestionsSidebar();
