@@ -10,7 +10,7 @@ import {
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
 import { useDatabaseQuery } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/lib/redux";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
