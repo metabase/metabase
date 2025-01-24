@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -31,6 +31,7 @@ export function TimeFilterEditor({
     availableOptions,
     getDefaultValues,
     getFilterClause,
+    reset,
     setOperator,
     setValues,
   } = useTimeFilter({
@@ -38,8 +39,11 @@ export function TimeFilterEditor({
     stageIndex,
     column,
     filter,
-    searchText,
   });
+
+  useEffect(() => {
+    reset();
+  }, [reset, searchText]);
 
   const handleOperatorChange = (newOperator: Lib.TimeFilterOperator) => {
     const newValues = getDefaultValues(newOperator, values);

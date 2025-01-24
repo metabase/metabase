@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 
 import * as Lib from "metabase-lib";
@@ -18,7 +18,6 @@ interface UseTimeFilterProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  searchText: string;
 }
 
 export function useTimeFilter({
@@ -26,7 +25,6 @@ export function useTimeFilter({
   stageIndex,
   column,
   filter,
-  searchText,
 }: UseTimeFilterProps) {
   const filterParts = useMemo(() => {
     return filter ? Lib.timeFilterParts(query, stageIndex, filter) : null;
@@ -57,10 +55,7 @@ export function useTimeFilter({
     setValues(defaultValues);
     setOperator(defaultOperator);
   });
-
-  useEffect(() => {
-    resetRef.current();
-  }, [resetRef, searchText]);
+  const reset = useCallback(() => resetRef.current(), [resetRef]);
 
   return {
     operator,
@@ -71,6 +66,7 @@ export function useTimeFilter({
     getDefaultValues,
     getFilterClause: (operator: Lib.TimeFilterOperator, values: TimeValue[]) =>
       getFilterClause(operator, column, values),
+    reset,
     setOperator,
     setValues,
   };
