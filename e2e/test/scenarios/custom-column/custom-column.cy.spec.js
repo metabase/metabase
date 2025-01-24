@@ -872,145 +872,149 @@ describe("scenarios > question > custom column", () => {
   });
 });
 
-describe("scenarios > question > custom column > data type", () => {
-  function addCustomColumns(columns) {
-    cy.wrap(columns).each((column, index) => {
-      if (index) {
-        H.getNotebookStep("expression").icon("add").click();
-      } else {
-        cy.findByLabelText("Custom column").click();
-      }
+describe(
+  "scenarios > question > custom column > data type",
+  { tags: "@external" },
+  () => {
+    function addCustomColumns(columns) {
+      cy.wrap(columns).each((column, index) => {
+        if (index) {
+          H.getNotebookStep("expression").icon("add").click();
+        } else {
+          cy.findByLabelText("Custom column").click();
+        }
 
-      H.enterCustomColumnDetails(column);
-      cy.button("Done").click({ force: true });
-    });
-  }
+        H.enterCustomColumnDetails(column);
+        cy.button("Done").click({ force: true });
+      });
+    }
 
-  function openCustomColumnInTable(table) {
-    H.openTable({ table, mode: "notebook" });
-    cy.findByText("Custom column").click();
-  }
+    function openCustomColumnInTable(table) {
+      H.openTable({ table, mode: "notebook" });
+      cy.findByText("Custom column").click();
+    }
 
-  beforeEach(() => {
-    H.restore();
-    H.restore("postgres-12");
+    beforeEach(() => {
+      H.restore();
+      H.restore("postgres-12");
 
-    cy.signInAsAdmin();
-  });
-
-  it("should understand string functions (metabase#13217)", () => {
-    openCustomColumnInTable(PRODUCTS_ID);
-
-    H.enterCustomColumnDetails({
-      formula: "concat([Category], [Title])",
-      name: "CategoryTitle",
+      cy.signInAsAdmin();
     });
 
-    cy.button("Done").click();
+    it("should understand string functions (metabase#13217)", () => {
+      openCustomColumnInTable(PRODUCTS_ID);
 
-    H.filter({ mode: "notebook" });
+      H.enterCustomColumnDetails({
+        formula: "concat([Category], [Title])",
+        name: "CategoryTitle",
+      });
 
-    H.popover().within(() => {
-      cy.findByText("CategoryTitle").click();
-      cy.findByPlaceholderText("Enter a number").should("not.exist");
-      cy.findByPlaceholderText("Enter some text").should("be.visible");
+      cy.button("Done").click();
+
+      H.filter({ mode: "notebook" });
+
+      H.popover().within(() => {
+        cy.findByText("CategoryTitle").click();
+        cy.findByPlaceholderText("Enter a number").should("not.exist");
+        cy.findByPlaceholderText("Enter some text").should("be.visible");
+      });
     });
-  });
 
-  it("should understand date functions", () => {
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("Orders").click();
+    it("should understand date functions", () => {
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        cy.findByText("QA Postgres12").click();
+        cy.findByText("Orders").click();
+      });
+
+      addCustomColumns([
+        { name: "Year", formula: "year([Created At])" },
+        { name: "Quarter", formula: "quarter([Created At])" },
+        { name: "Month", formula: "month([Created At])" },
+        { name: "Week", formula: 'week([Created At], "iso")' },
+        { name: "Day", formula: "day([Created At])" },
+        { name: "Weekday", formula: "weekday([Created At])" },
+        { name: "Hour", formula: "hour([Created At])" },
+        { name: "Minute", formula: "minute([Created At])" },
+        { name: "Second", formula: "second([Created At])" },
+        {
+          name: "Datetime Add",
+          formula: 'datetimeAdd([Created At], 1, "month")',
+        },
+        {
+          name: "Datetime Subtract",
+          formula: 'datetimeSubtract([Created At], 1, "month")',
+        },
+        {
+          name: "ConvertTimezone 3 args",
+          formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh", "UTC")',
+        },
+        {
+          name: "ConvertTimezone 2 args",
+          formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh")',
+        },
+      ]);
+
+      H.visualize();
     });
 
-    addCustomColumns([
-      { name: "Year", formula: "year([Created At])" },
-      { name: "Quarter", formula: "quarter([Created At])" },
-      { name: "Month", formula: "month([Created At])" },
-      { name: "Week", formula: 'week([Created At], "iso")' },
-      { name: "Day", formula: "day([Created At])" },
-      { name: "Weekday", formula: "weekday([Created At])" },
-      { name: "Hour", formula: "hour([Created At])" },
-      { name: "Minute", formula: "minute([Created At])" },
-      { name: "Second", formula: "second([Created At])" },
-      {
-        name: "Datetime Add",
-        formula: 'datetimeAdd([Created At], 1, "month")',
-      },
-      {
-        name: "Datetime Subtract",
-        formula: 'datetimeSubtract([Created At], 1, "month")',
-      },
-      {
-        name: "ConvertTimezone 3 args",
-        formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh", "UTC")',
-      },
-      {
-        name: "ConvertTimezone 2 args",
-        formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh")',
-      },
-    ]);
+    it("should relay the type of a date field", () => {
+      openCustomColumnInTable(PEOPLE_ID);
 
-    H.visualize();
-  });
+      H.enterCustomColumnDetails({ formula: "[Birth Date]", name: "DoB" });
+      cy.button("Done").click();
 
-  it("should relay the type of a date field", () => {
-    openCustomColumnInTable(PEOPLE_ID);
-
-    H.enterCustomColumnDetails({ formula: "[Birth Date]", name: "DoB" });
-    cy.button("Done").click();
-
-    H.filter({ mode: "notebook" });
-    H.popover().within(() => {
-      cy.findByText("DoB").click();
-      cy.findByPlaceholderText("Enter a number").should("not.exist");
-      cy.findByText("Relative dates…").click();
-      cy.findByText("Previous").click();
-      cy.findByDisplayValue("days").should("be.visible");
+      H.filter({ mode: "notebook" });
+      H.popover().within(() => {
+        cy.findByText("DoB").click();
+        cy.findByPlaceholderText("Enter a number").should("not.exist");
+        cy.findByText("Relative dates…").click();
+        cy.findByText("Previous").click();
+        cy.findByDisplayValue("days").should("be.visible");
+      });
     });
-  });
 
-  it("should handle CASE (metabase#13122)", () => {
-    openCustomColumnInTable(ORDERS_ID);
+    it("should handle CASE (metabase#13122)", () => {
+      openCustomColumnInTable(ORDERS_ID);
 
-    H.enterCustomColumnDetails({
-      formula: "case([Discount] > 0, [Created At], [Product → Created At])",
-      name: "MiscDate",
+      H.enterCustomColumnDetails({
+        formula: "case([Discount] > 0, [Created At], [Product → Created At])",
+        name: "MiscDate",
+      });
+      cy.button("Done").click();
+
+      H.filter({ mode: "notebook" });
+      H.popover().within(() => {
+        cy.findByText("MiscDate").click();
+        cy.findByPlaceholderText("Enter a number").should("not.exist");
+
+        cy.findByText("Relative dates…").click();
+        cy.findByText("Previous").click();
+        cy.findByDisplayValue("days").should("be.visible");
+      });
     });
-    cy.button("Done").click();
 
-    H.filter({ mode: "notebook" });
-    H.popover().within(() => {
-      cy.findByText("MiscDate").click();
-      cy.findByPlaceholderText("Enter a number").should("not.exist");
+    it("should handle COALESCE", () => {
+      openCustomColumnInTable(ORDERS_ID);
 
-      cy.findByText("Relative dates…").click();
-      cy.findByText("Previous").click();
-      cy.findByDisplayValue("days").should("be.visible");
+      H.enterCustomColumnDetails({
+        formula: "COALESCE([Product → Created At], [Created At])",
+        name: "MiscDate",
+      });
+      cy.button("Done").click();
+
+      H.filter({ mode: "notebook" });
+      H.popover().within(() => {
+        cy.findByText("MiscDate").click();
+        cy.findByPlaceholderText("Enter a number").should("not.exist");
+        cy.findByText("Relative dates…").click();
+        cy.findByText("Previous").click();
+        cy.findByDisplayValue("days").should("be.visible");
+      });
     });
-  });
-
-  it("should handle COALESCE", () => {
-    openCustomColumnInTable(ORDERS_ID);
-
-    H.enterCustomColumnDetails({
-      formula: "COALESCE([Product → Created At], [Created At])",
-      name: "MiscDate",
-    });
-    cy.button("Done").click();
-
-    H.filter({ mode: "notebook" });
-    H.popover().within(() => {
-      cy.findByText("MiscDate").click();
-      cy.findByPlaceholderText("Enter a number").should("not.exist");
-      cy.findByText("Relative dates…").click();
-      cy.findByText("Previous").click();
-      cy.findByDisplayValue("days").should("be.visible");
-    });
-  });
-});
+  },
+);
 
 describe("scenarios > question > custom column > error feedback", () => {
   beforeEach(() => {

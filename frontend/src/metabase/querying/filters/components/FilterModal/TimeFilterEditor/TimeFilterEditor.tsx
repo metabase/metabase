@@ -11,17 +11,16 @@ import type * as Lib from "metabase-lib";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
+import { useFilterModalContext } from "../context";
 import type { FilterEditorProps } from "../types";
 
 export function TimeFilterEditor({
-  query,
   stageIndex,
   column,
   filter,
-  isSearching,
   onChange,
-  onInput,
 }: FilterEditorProps) {
+  const { handleInput: onInput, query } = useFilterModalContext();
   const columnIcon = useMemo(() => getColumnIcon(column), [column]);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -71,11 +70,9 @@ export function TimeFilterEditor({
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle
-            query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
-            isSearching={isSearching}
           >
             <FilterOperatorPicker
               value={operator}

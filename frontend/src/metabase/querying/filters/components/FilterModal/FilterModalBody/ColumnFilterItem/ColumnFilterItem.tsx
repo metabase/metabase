@@ -2,25 +2,19 @@ import type { ColumnItem } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 
 import { ColumnFilterSection } from "../../ColumnFilterSection";
+import { useFilterModalContext } from "../../context";
 import { FilterTabItem } from "../FilterTabItem";
 
 export interface ColumnFilterItemProps {
-  query: Lib.Query;
   columnItem: ColumnItem;
   filter: Lib.FilterClause | undefined;
-  isSearching: boolean;
-  onChange: (newQuery: Lib.Query) => void;
-  onInput: () => void;
 }
 
 export function ColumnFilterItem({
-  query,
   columnItem,
   filter,
-  isSearching,
-  onChange,
-  onInput,
 }: ColumnFilterItemProps) {
+  const { handleChange: onChange, query } = useFilterModalContext();
   const { column, displayName, stageIndex } = columnItem;
 
   const handleChange = (newFilter: Lib.ExpressionClause | undefined) => {
@@ -36,13 +30,10 @@ export function ColumnFilterItem({
   return (
     <FilterTabItem component="li" data-testid={`filter-column-${displayName}`}>
       <ColumnFilterSection
-        query={query}
         stageIndex={stageIndex}
         column={column}
         filter={filter}
-        isSearching={isSearching}
         onChange={handleChange}
-        onInput={onInput}
       />
     </FilterTabItem>
   );

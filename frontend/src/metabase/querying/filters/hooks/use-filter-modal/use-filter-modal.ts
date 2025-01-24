@@ -4,13 +4,14 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { SEARCH_KEY } from "./constants";
+import type { FilterModalResult } from "./types";
 import { getGroupItems, hasFilters, removeFilters } from "./utils/filters";
 import { isSearchActive, searchGroupItems } from "./utils/search";
 
 export const useFilterModal = (
   question: Question,
   onSubmit: (newQuery: Lib.Query) => void,
-) => {
+): FilterModalResult => {
   const [query, setQuery] = useState(() =>
     // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations
     question.display() === "pivot"
