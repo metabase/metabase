@@ -1,4 +1,7 @@
-import type { CompletionContext } from "@codemirror/autocomplete";
+import {
+  type CompletionContext,
+  completeFromList,
+} from "@codemirror/autocomplete";
 import { useCallback, useMemo } from "react";
 import slugg from "slugg";
 import { t } from "ttag";
@@ -380,4 +383,20 @@ export function useLocalsCompletion({ engine }: LocalsCompletionOptions) {
     },
     [language, keywords],
   );
+}
+
+export function useKeywordsCompletion({ engine }: LocalsCompletionOptions) {
+  return useMemo(() => {
+    const { dialect } = source(engine);
+    const completions = dialect?.spec.keywords?.split(" ").map(keyword => ({
+      label: keyword,
+      detail: t`keyword`,
+    }));
+
+    if (!completions) {
+      return () => null;
+    }
+
+    return completeFromList(completions);
+  }, [engine]);
 }

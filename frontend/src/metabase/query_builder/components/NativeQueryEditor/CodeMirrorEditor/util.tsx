@@ -265,10 +265,25 @@ const engineToDialect = {
   // h2: "h2",
 };
 
+const MongoDialect: Dialect = {
+  spec: {
+    keywords: "$set $sample",
+  },
+};
+
 export function source(engine?: string | null): Source {
+  return {
+    dialect: MongoDialect,
+    language: json(),
+  };
   // TODO: this should be provided by the engine driver through the API
   switch (engine) {
     case "mongo":
+      return {
+        dialect: MongoDialect,
+        language: json(),
+      };
+
     case "druid":
       return {
         language: json(),

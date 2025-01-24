@@ -35,6 +35,7 @@ import * as Lib from "metabase-lib";
 
 import {
   useCardTagCompletion,
+  useKeywordsCompletion,
   useLocalsCompletion,
   useReferencedCardCompletion,
   useSchemaCompletion,
@@ -64,6 +65,9 @@ export function useExtensions(query: Lib.Query): Extension[] {
   });
   const localsCompletion = useLocalsCompletion({ engine });
 
+  // TODO use this instead of language completion
+  const keywordsCompletion = useKeywordsCompletion({ engine });
+
   return useMemo(() => {
     return [
       nonce(),
@@ -80,6 +84,7 @@ export function useExtensions(query: Lib.Query): Extension[] {
           cardTagCompletion,
           referencedCardCompletion,
           localsCompletion,
+          keywordsCompletion,
         ],
       }),
       highlighting(),
@@ -97,6 +102,7 @@ export function useExtensions(query: Lib.Query): Extension[] {
     cardTagCompletion,
     referencedCardCompletion,
     localsCompletion,
+    keywordsCompletion,
   ]);
 }
 
