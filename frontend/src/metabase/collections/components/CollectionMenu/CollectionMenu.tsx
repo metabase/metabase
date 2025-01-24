@@ -7,6 +7,7 @@ import {
   isRootPersonalCollection,
 } from "metabase/collections/utils";
 import EntityMenu from "metabase/components/EntityMenu";
+import { useHasDashboardQuestionCandidates } from "metabase/components/MoveQuestionsIntoDashboardsModal/hooks";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
@@ -35,6 +36,7 @@ export const CollectionMenu = ({
         skip: !PLUGIN_COLLECTIONS.canCleanUp(collection),
       },
     ).data?.total ?? 0;
+  const hasDqCandidates = useHasDashboardQuestionCandidates(collection.id);
 
   const items = [];
   const url = Urls.collection(collection);
@@ -78,6 +80,14 @@ export const CollectionMenu = ({
       maybeCollectionItemCount,
     ),
   );
+
+  if (hasDqCandidates) {
+    items.push({
+      title: t`Move questions into their dashboards`,
+      icon: "add_to_dash",
+      link: `${url}/move-questions-dashboard`,
+    });
+  }
 
   if (canMove) {
     items.push({
