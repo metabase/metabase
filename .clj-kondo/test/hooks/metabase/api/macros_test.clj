@@ -26,7 +26,7 @@
                  [:default {:optional true} [:maybe :boolean]]])
               (clojure.core/let [_route-params {}
                                  _query-params {}
-                                 {:keys [icon], collection-id :collection_id, :as body} nil]
+                                 {:keys [icon], collection-id :collection_id, :as body} {}]
                 (body icon)
                 (body collection-id)))
            (-> {:node node}
