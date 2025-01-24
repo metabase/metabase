@@ -17,7 +17,7 @@ export function BooleanFilterEditor({
   filter,
   onChange,
 }: FilterEditorProps) {
-  const { isSearching, query } = useFilterModalContext();
+  const { query } = useFilterModalContext();
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
@@ -58,11 +58,9 @@ export function BooleanFilterEditor({
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle
-            query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
-            isSearching={isSearching}
           >
             {isExpanded && (
               <FilterOperatorPicker

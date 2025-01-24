@@ -22,7 +22,7 @@ export function CoordinateFilterEditor({
   filter,
   onChange,
 }: FilterEditorProps) {
-  const { handleInput: onInput, isSearching, query } = useFilterModalContext();
+  const { handleInput: onInput, query } = useFilterModalContext();
   const columnIcon = useMemo(() => getColumnIcon(column), [column]);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -74,11 +74,9 @@ export function CoordinateFilterEditor({
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle
-            query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
-            isSearching={isSearching}
           >
             <FilterOperatorPicker
               value={operator}

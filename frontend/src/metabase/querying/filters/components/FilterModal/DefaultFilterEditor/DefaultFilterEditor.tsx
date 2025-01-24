@@ -17,7 +17,7 @@ export function DefaultFilterEditor({
   filter,
   onChange,
 }: FilterEditorProps) {
-  const { isSearching, query } = useFilterModalContext();
+  const { query } = useFilterModalContext();
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
@@ -41,11 +41,9 @@ export function DefaultFilterEditor({
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle
-            query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
-            isSearching={isSearching}
           />
         </Grid.Col>
         <Grid.Col span={4}>
