@@ -179,3 +179,29 @@ describe("issue 49454", () => {
     });
   });
 });
+
+describe("issue 48712", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not reset the suggesions when the query is edited (metabase#48712)", () => {
+    H.startNewNativeQuestion();
+
+    H.NativeEditor.type("pro");
+    H.NativeEditor.completion("PRODUCTS").should("be.visible");
+
+    H.NativeEditor.type("{backspace}{backspace}{backspace}");
+    H.NativeEditor.type("select * from pro");
+
+    H.NativeEditor.completion("PRODUCTS").should("be.visible");
+
+    H.NativeEditor.type("{nextcompletion}", { focus: false });
+    H.NativeEditor.completion("PROCEDURE").should("have.attr", "aria-selected");
+
+    // wait for all completions to finish
+    cy.wait(1000);
+    H.NativeEditor.completion("PROCEDURE").should("have.attr", "aria-selected");
+  });
+});

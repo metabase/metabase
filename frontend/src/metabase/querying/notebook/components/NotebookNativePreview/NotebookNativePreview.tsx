@@ -101,7 +101,7 @@ export const NotebookNativePreview = (): JSX.Element => {
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
         )}
-        {showQuery && <Editor query={query} readOnly />}
+        {showQuery && query && <Editor query={query} readOnly />}
       </Flex>
       <Box ta="end" p="1.5rem">
         <Button
