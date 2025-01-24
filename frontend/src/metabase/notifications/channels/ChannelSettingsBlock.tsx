@@ -17,7 +17,7 @@ export const ChannelSettingsBlock = ({
   onRemoveChannel,
 }: ChannelSettingsBlockProps): JSX.Element => {
   return (
-    <Stack spacing="0.75rem" w="100%">
+    <Stack spacing="0.75rem" w="100%" data-testid="channel-block">
       <Group position="apart" align="center">
         <Group spacing="xs" align="center">
           <Icon name={iconName} />
@@ -25,6 +25,7 @@ export const ChannelSettingsBlock = ({
         </Group>
 
         <Button
+          data-testid="remove-channel-button"
           leftIcon={<Icon name="close" />}
           color="text-dark"
           variant="subtle"

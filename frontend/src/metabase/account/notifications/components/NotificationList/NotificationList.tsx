@@ -38,7 +38,7 @@ export const NotificationList = ({
   onArchive,
 }: NotificationListProps): JSX.Element => {
   if (!listItems.length) {
-    return <NotificationEmptyState />;
+    return <NotificationEmptyState>{children}</NotificationEmptyState>;
   }
 
   return (
@@ -75,13 +75,16 @@ export const NotificationList = ({
   );
 };
 
-const NotificationEmptyState = () => {
+const NotificationEmptyState = ({ children }: { children?: ReactNode }) => {
   return (
-    <NotificationSection>
-      <NotificationIcon name="bell" />
-      <NotificationMessage>
-        {t`If you subscribe or are added to dashboard subscriptions or alerts you’ll be able to manage those here.`}
-      </NotificationMessage>
-    </NotificationSection>
+    <>
+      <NotificationSection>
+        <NotificationIcon name="bell" />
+        <NotificationMessage>
+          {t`If you subscribe or are added to dashboard subscriptions or alerts you’ll be able to manage those here.`}
+        </NotificationMessage>
+        {children}
+      </NotificationSection>
+    </>
   );
 };

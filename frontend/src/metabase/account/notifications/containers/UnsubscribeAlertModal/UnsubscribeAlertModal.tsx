@@ -1,15 +1,17 @@
 import { t } from "ttag";
 
+import { navigateToArchive } from "metabase/account/notifications/actions";
 import {
   skipToken,
   useGetNotificationQuery,
   useUnsubscribeFromNotificationMutation,
 } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
 import { addUndo } from "metabase/redux/undo";
-import type { Notification } from "metabase-types/api";
+import { getUser } from "metabase/selectors/user";
+import type { Notification, User } from "metabase-types/api";
 
 import { getAlertId } from "../../selectors";
 
@@ -25,6 +27,7 @@ export const UnsubscribeAlertModal = ({
   onClose,
 }: UnsubscribeAlertModalProps) => {
   const id = getAlertId(params?.alertId);
+  const user = useSelector(getUser);
 
   const dispatch = useDispatch();
 
@@ -50,7 +53,13 @@ export const UnsubscribeAlertModal = ({
     }
 
     dispatch(addUndo({ message: t`Successfully unsubscribed.` }));
-    onClose();
+
+    if (isCreator(alert, user)) {
+      onClose();
+      dispatch(navigateToArchive(alert, "question-notification", true));
+    } else {
+      onClose();
+    }
   };
 
   return (
@@ -67,4 +76,8 @@ export const UnsubscribeAlertModal = ({
       }
     </LoadingAndErrorWrapper>
   );
+};
+
+const isCreator = (item: Notification, user: User | null) => {
+  return user != null && user.id === item.creator?.id;
 };

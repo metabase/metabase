@@ -7,7 +7,7 @@ import { openMenu, setupQuestionSharingMenu } from "./setup";
 
 describe("QuestionSharingMenu > Enterprise", () => {
   it('Should show the "Subscriptions" menu item to non-admins if the user has subscriptions/alerts permissions', async () => {
-    await setupQuestionSharingMenu({
+    setupQuestionSharingMenu({
       canManageSubscriptions: true,
       isEmailSetup: true,
       isEnterprise: true,
@@ -19,7 +19,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
 
   describe("alerts permission disabled", () => {
     it('Should not show the "Subscriptions" menu item to non-admins if the user lacks subscriptions/alerts permissions', async () => {
-      await setupQuestionSharingMenu({
+      setupQuestionSharingMenu({
         canManageSubscriptions: false,
         isEmailSetup: true,
         isEnterprise: true,

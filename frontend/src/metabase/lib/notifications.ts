@@ -40,10 +40,20 @@ export const formatTitle = ({ item, type }: NotificationListItem) => {
   }
 };
 
+const getRecipientIdentity = (recipient: NotificationRecipient) => {
+  if (recipient.type === "notification-recipient/user") {
+    return recipient.user_id;
+  }
+
+  if (recipient.type === "notification-recipient/raw-value") {
+    return recipient.details.value; // email
+  }
+};
+
 export const canArchive = (item: Notification, user: User) => {
   const recipients = item.handlers.flatMap(channel => {
     if (channel.recipients) {
-      return channel.recipients.map(recipient => recipient.id);
+      return channel.recipients.map(getRecipientIdentity);
     } else {
       return [];
     }

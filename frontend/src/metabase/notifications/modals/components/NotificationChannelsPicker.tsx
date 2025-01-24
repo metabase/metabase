@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
 import { getNotificationHandlersGroupedByTypes } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
+import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
 import { EmailChannelEdit } from "metabase/notifications/channels/EmailChannelEdit";
-import { SlackChannelEdit } from "metabase/notifications/channels/SlackChannelEdit";
-import { WebhookChannelEdit } from "metabase/notifications/channels/WebhookChannelEdit";
+import { SlackChannelFieldNew } from "metabase/notifications/channels/SlackChannelFieldNew";
 import {
   type ChannelToAddOption,
   NotificationChannelsAddMenu,
@@ -114,33 +114,45 @@ export const NotificationChannelsPicker = ({
 
   return (
     <Stack spacing="xl" align="start">
-      {channels.email.configured && !!emailHandler && (
-        <EmailChannelEdit
-          channel={emailHandler}
-          users={usersListOptions}
-          invalidRecipientText={getInvalidRecipientText}
-          onChange={newConfig => onChannelChange(emailHandler, newConfig)}
+      {channels.email?.configured && !!emailHandler && (
+        <ChannelSettingsBlock
+          title={t`Email`}
+          iconName="mail"
           onRemoveChannel={() => onRemoveChannel(emailHandler)}
-        />
+        >
+          <EmailChannelEdit
+            channel={emailHandler}
+            users={usersListOptions}
+            invalidRecipientText={getInvalidRecipientText}
+            onChange={newConfig => onChannelChange(emailHandler, newConfig)}
+          />
+        </ChannelSettingsBlock>
       )}
 
-      {channels.slack.configured && !!slackHandler && (
-        <SlackChannelEdit
-          channel={slackHandler}
-          channelSpec={channels.slack}
-          onChange={newConfig => onChannelChange(slackHandler, newConfig)}
+      {channels.slack?.configured && !!slackHandler && (
+        <ChannelSettingsBlock
+          title={t`Slack`}
+          iconName="int"
           onRemoveChannel={() => onRemoveChannel(slackHandler)}
-        />
+        >
+          <SlackChannelFieldNew
+            channel={slackHandler}
+            channelSpec={channels.slack}
+            onChange={newConfig => onChannelChange(slackHandler, newConfig)}
+          />
+        </ChannelSettingsBlock>
       )}
 
       {isAdmin &&
         hookHandlers &&
         hookHandlers.map(channel => (
-          <WebhookChannelEdit
+          <ChannelSettingsBlock
             key={`webhook-${channel.channel_id}`}
-            notificationChannel={
-              notificationChannels.find(({ id }) => id === channel.channel_id)!
+            title={
+              notificationChannels.find(({ id }) => id === channel.channel_id)
+                ?.name || t`Webhook`
             }
+            iconName="webhook"
             onRemoveChannel={() => onRemoveChannel(channel)}
           />
         ))}

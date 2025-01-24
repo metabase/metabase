@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
-import { createMockAlert } from "metabase-types/api/mocks";
+import { createMockNotification } from "metabase-types/api/mocks";
 
 import { openMenu, setupQuestionSharingMenu } from "./setup";
 
@@ -60,7 +60,7 @@ describe("QuestionSharingMenu", () => {
         setupQuestionSharingMenu({
           isAdmin: true,
           isEmailSetup: true,
-          alerts: [createMockAlert()],
+          alerts: [createMockNotification()],
         });
         await openMenu();
         expect(await screen.findByText("Edit alerts")).toBeInTheDocument();
@@ -70,12 +70,12 @@ describe("QuestionSharingMenu", () => {
         setupQuestionSharingMenu({
           isAdmin: true,
           isEmailSetup: true,
-          alerts: [createMockAlert()],
+          alerts: [createMockNotification()],
         });
         await openMenu();
         await userEvent.click(screen.getByText("Edit alerts"));
         expect(
-          await screen.findByTestId("alert-list-popover"),
+          await screen.findByTestId("alert-list-modal"),
         ).toBeInTheDocument();
       });
     });
@@ -95,7 +95,7 @@ describe("QuestionSharingMenu", () => {
         setupQuestionSharingMenu({
           isAdmin: false,
           isEmailSetup: true,
-          alerts: [createMockAlert()],
+          alerts: [createMockNotification()],
         });
         await openMenu();
         expect(screen.getByText("Edit alerts")).toBeInTheDocument();
@@ -105,12 +105,12 @@ describe("QuestionSharingMenu", () => {
         setupQuestionSharingMenu({
           isAdmin: false,
           isEmailSetup: true,
-          alerts: [createMockAlert()],
+          alerts: [createMockNotification()],
         });
         await openMenu();
         await userEvent.click(screen.getByText("Edit alerts"));
         expect(
-          await screen.findByTestId("alert-list-popover"),
+          await screen.findByTestId("alert-list-modal"),
         ).toBeInTheDocument();
       });
     });

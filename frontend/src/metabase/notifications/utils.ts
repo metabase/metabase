@@ -30,7 +30,7 @@ const getDefaultChannelConfig = ({
   currentUserId: UserId;
   isAdmin: boolean;
 }): NotificationHandler[] => {
-  if (channelSpec.channels.email.configured) {
+  if (channelSpec.channels.email?.configured) {
     const handlers: NotificationHandler[] = [
       {
         channel_type: "channel/email",
@@ -47,7 +47,7 @@ const getDefaultChannelConfig = ({
     return handlers;
   }
 
-  if (channelSpec.channels.slack.configured) {
+  if (channelSpec.channels.slack?.configured) {
     const handlers: NotificationHandler[] = [
       {
         channel_type: "channel/slack",
@@ -59,7 +59,7 @@ const getDefaultChannelConfig = ({
   }
 
   if (
-    channelSpec.channels.http.configured &&
+    channelSpec.channels.http?.configured &&
     hookChannels.length > 0 &&
     isAdmin
   ) {

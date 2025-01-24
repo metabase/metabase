@@ -480,6 +480,7 @@ describe(
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
+      H.setupSMTP();
 
       cy.request("POST", "/api/channel", {
         name: firstWebhookName,
@@ -509,31 +510,24 @@ describe(
       cy.findByTestId("sharing-menu-button").click();
       H.popover().findByText("Create an alert").click();
 
-      H.modal()
-        .first()
-        .within(() => {
-          H.toggleAlertChannel("Email");
-          H.toggleAlertChannel(secondWebhookName);
-          cy.button("Done").click();
-        });
-      cy.findByTestId("sharing-menu-button").click();
-      H.popover().findByText("Edit alerts").click();
-      H.modal().within(() => {
-        cy.findByText("You set up an alert").should("exist");
-        cy.findByText("Edit").click();
+      H.modal().findByText("New alert").should("be.visible");
+      H.removeNotificationHandlerChannel("Email");
+      H.addNotificationHandlerChannel(secondWebhookName, {
+        hasNoChannelsAdded: true,
       });
+      H.modal().button("Done").click();
 
+      H.openSharingMenu("Edit alerts");
       H.modal()
-        .first()
-        .within(() => {
-          H.getAlertChannel(secondWebhookName).scrollIntoView();
-          H.getAlertChannel(secondWebhookName)
-            .findByRole("checkbox")
-            .should("be.checked");
-        });
+        .findByText(/Created by you/)
+        .should("be.exist")
+        .click();
+
+      H.modal().findByText(secondWebhookName).should("be.visible");
     });
 
-    it("should allow you to test a webhook", () => {
+    // There is no api to test individual hooks for new Question Alerts
+    it.skip("should allow you to test a webhook", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("sharing-menu-button").click();
       H.popover().findByText("Create an alert").click();

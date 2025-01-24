@@ -386,6 +386,8 @@ function visitAndEnableSharing(object, acceptTerms = true) {
   if (object === "dashboard") {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
   }
+
+  H.openStaticEmbeddingModal({ acceptTerms });
 }
 
 function sidebar() {

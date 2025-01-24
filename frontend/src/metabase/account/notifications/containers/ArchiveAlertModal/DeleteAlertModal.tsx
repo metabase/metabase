@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import { t } from "ttag";
 
 import {
@@ -17,16 +18,20 @@ type DeleteAlertModalProps = {
   params: {
     alertId?: string;
   };
+  location: Location<{ unsubscribed?: boolean }>;
   onClose: () => void;
 };
 
 export const DeleteAlertModal = ({
   params,
+  location,
   onClose,
 }: DeleteAlertModalProps) => {
   const id = getAlertId(params?.alertId);
 
   const dispatch = useDispatch();
+
+  const hasUnsubscribed = location.query?.unsubscribed;
 
   const {
     data: notification,
@@ -61,6 +66,11 @@ export const DeleteAlertModal = ({
       {() =>
         notification ? (
           <DeleteAlertConfirmModal
+            title={
+              hasUnsubscribed
+                ? t`You’re unsubscribed. Delete this alert as well?`
+                : undefined
+            }
             onConfirm={() => handleDelete(notification)}
             onClose={onClose}
           />

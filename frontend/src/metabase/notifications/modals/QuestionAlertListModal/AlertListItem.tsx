@@ -38,7 +38,9 @@ export const AlertListItem = ({
   const subscription = alert.subscriptions[0];
 
   const handleEdit = () => {
-    onEdit(alert);
+    if (canEdit) {
+      onEdit(alert);
+    }
   };
 
   const handleUnsubscribe = (e: MouseEvent) => {

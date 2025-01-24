@@ -33,7 +33,6 @@ export const AlertListModal = ({
   const user = useSelector(getUser);
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
   const isAdmin = user?.is_superuser;
-  const canEditAlert = isAdmin || canManageSubscriptions;
 
   if (!questionAlerts) {
     return null;
@@ -66,16 +65,21 @@ export const AlertListModal = ({
         </Modal.Header>
         <Modal.Body p="2.5rem">
           <Stack spacing="1rem" mb="2rem">
-            {sortedQuestionAlerts.map(alert => (
-              <AlertListItem
-                key={alert.id}
-                alert={alert}
-                canEdit={canEditAlert}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onUnsubscribe={onUnsubscribe}
-              />
-            ))}
+            {sortedQuestionAlerts.map(alert => {
+              const canEditAlert =
+                isAdmin ||
+                (canManageSubscriptions && isCreatedByCurrentUser(alert));
+              return (
+                <AlertListItem
+                  key={alert.id}
+                  alert={alert}
+                  canEdit={canEditAlert}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onUnsubscribe={onUnsubscribe}
+                />
+              );
+            })}
           </Stack>
           <div>
             <Button variant="filled" onClick={onCreate}>{t`New alert`}</Button>

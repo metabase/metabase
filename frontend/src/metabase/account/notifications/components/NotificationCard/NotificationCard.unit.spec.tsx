@@ -165,7 +165,7 @@ describe("NotificationCard", () => {
     expect(onArchive).not.toHaveBeenCalled();
   });
 
-  it("should unsubscribe when user user is the creator and subscribed with another user", () => {
+  it("should unsubscribe when user is the creator and subscribed with another user", () => {
     const creator = createMockUser({ id: 1 });
     const recipient = createMockUser({ id: 2 });
     const alert = getQuestionAlertItem({

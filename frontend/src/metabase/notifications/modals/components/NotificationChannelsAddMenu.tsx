@@ -39,7 +39,7 @@ export const NotificationChannelsAddMenu = ({
     getNotificationHandlersGroupedByTypes(notificationHandlers);
 
   const notAddedHookChannels = useMemo(() => {
-    if (!channelsSpec.http.configured || !isAdmin) {
+    if (!channelsSpec.http?.configured || !isAdmin) {
       return [];
     }
 
@@ -53,14 +53,14 @@ export const NotificationChannelsAddMenu = ({
 
     return notificationChannels.filter(({ id }) => !addedHooksMap[id]);
   }, [
-    channelsSpec.http.configured,
+    channelsSpec.http?.configured,
     hookHandlers,
     isAdmin,
     notificationChannels,
   ]);
 
-  const hasAddedEmail = channelsSpec.email.configured && !!emailHandler;
-  const hasAddedSlack = channelsSpec.slack.configured && !!slackHandler;
+  const hasAddedEmail = channelsSpec.email?.configured && !!emailHandler;
+  const hasAddedSlack = channelsSpec.slack?.configured && !!slackHandler;
   const hasChannelsToAdd =
     !hasAddedEmail || !hasAddedSlack || notAddedHookChannels.length > 0;
   const hasAddedNoChannels = !notificationHandlers.length;
@@ -90,13 +90,13 @@ export const NotificationChannelsAddMenu = ({
         </Button>
       </Menu.Target>
       <Menu.Dropdown>
-        {channelsSpec.email.configured && !emailHandler && (
+        {channelsSpec.email?.configured && !emailHandler && (
           <Menu.Item onClick={() => onAddChannel({ type: "channel/email" })}>
             <ChannelMenuItemContent name={t`Email`} icon="mail" />
           </Menu.Item>
         )}
 
-        {channelsSpec.slack.configured && !slackHandler && (
+        {channelsSpec.slack?.configured && !slackHandler && (
           <Menu.Item onClick={() => onAddChannel({ type: "channel/slack" })}>
             <ChannelMenuItemContent name={t`Slack`} icon="int" />
           </Menu.Item>

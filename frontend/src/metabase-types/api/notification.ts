@@ -33,7 +33,7 @@ type NotificationPayload = NotificationCardPayload; // will be populated with mo
 //#region Handler union type
 export type NotificationRecipientUser = {
   type: "notification-recipient/user";
-  user_id?: number | null;
+  user_id: number;
   permissions_group_id?: number | null;
 
   details: null;

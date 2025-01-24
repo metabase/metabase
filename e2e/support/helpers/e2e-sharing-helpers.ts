@@ -10,11 +10,26 @@ export const openSharingMenu = (menuItemText?: string) => {
   }
 };
 
-export const toggleAlertChannel = (channel: string) => {
-  cy.findByText(channel).parent().find("input").click({ force: true });
+export const removeNotificationHandlerChannel = (channel: string) => {
+  H.modal()
+    .findByText(channel)
+    .closest('[data-testid="channel-block"]')
+    .findByTestId("remove-channel-button")
+    .click();
 };
 
-export const addNotificationHandlerChannel = (channel: string) => {
-  cy.findByText("Add another destination").should("be.visible").click();
+export const addNotificationHandlerChannel = (
+  channel: string,
+  { hasNoChannelsAdded = false }: { hasNoChannelsAdded?: boolean } = {},
+) => {
+  if (hasNoChannelsAdded) {
+    H.modal().findByText("Add a destination").should("be.visible").click();
+  } else {
+    H.modal()
+      .findByText("Add another destination")
+      .should("be.visible")
+      .click();
+  }
+
   H.popover().findByText(channel).click();
 };

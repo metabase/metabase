@@ -110,9 +110,9 @@ export type EmailChannelSpec = ChannelSpec & {
 };
 export interface ChannelApiResponse {
   channels: {
-    email: EmailChannelSpec;
-    slack: SlackChannelSpec;
-    http: ChannelSpec;
+    email?: EmailChannelSpec;
+    slack?: SlackChannelSpec;
+    http?: ChannelSpec;
   };
 }
 

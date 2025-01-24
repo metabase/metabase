@@ -270,6 +270,7 @@ export const CreateOrEditQuestionAlertModal = ({
               <Flex gap="1.5rem">
                 <AlertTriggerIcon />
                 <Select
+                  data-testid="alert-goal-select"
                   data={triggerOptions}
                   value={notification.payload.send_condition}
                   w={276}

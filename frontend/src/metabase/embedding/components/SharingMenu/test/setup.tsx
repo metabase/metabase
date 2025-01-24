@@ -2,18 +2,18 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
-  setupAlertsEndpoints,
   setupNotificationChannelsEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
+import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useSelector } from "metabase/lib/redux";
 import Question from "metabase-lib/v1/Question";
 import type {
-  Alert,
   Card,
   Dashboard,
+  Notification,
   User,
   UserListResult,
 } from "metabase-types/api";
@@ -163,7 +163,7 @@ export function setupQuestionSharingMenu({
 }: {
   question?: Partial<Card>;
   hasPublicLink?: boolean;
-  alerts?: Alert[];
+  alerts?: Notification[];
 } & SettingsProps) {
   const card = createMockCard({
     name: "My Cool Question",
@@ -182,7 +182,7 @@ export function setupQuestionSharingMenu({
     card,
   });
 
-  setupAlertsEndpoints(card, alerts);
+  setupListNotificationEndpoints({ card_id: card.id }, alerts);
   setupUsersEndpoints([state.currentUser] as UserListResult[]);
 
   if (isEnterprise) {

@@ -1,8 +1,5 @@
-import { t } from "ttag";
-
 import type { RecipientPickerValue } from "metabase/lib/pulse";
 import { isNotNull } from "metabase/lib/types";
-import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";
 import type {
   NotificationHandlerEmail,
   NotificationRecipient,
@@ -15,13 +12,11 @@ export const EmailChannelEdit = ({
   channel,
   users,
   invalidRecipientText,
-  onRemoveChannel,
   onChange,
 }: {
   channel: NotificationHandlerEmail;
   users: User[];
   invalidRecipientText: (domains: string) => string;
-  onRemoveChannel: () => void;
   onChange: (newConfig: NotificationHandlerEmail) => void;
 }) => {
   const mappedUsers: RecipientPickerValue[] = channel.recipients
@@ -78,17 +73,11 @@ export const EmailChannelEdit = ({
   };
 
   return (
-    <ChannelSettingsBlock
-      title={t`Email`}
-      iconName="mail"
-      onRemoveChannel={onRemoveChannel}
-    >
-      <RecipientPicker
-        recipients={mappedUsers}
-        users={users}
-        onRecipientsChange={handleRecipientsChange}
-        invalidRecipientText={invalidRecipientText}
-      />
-    </ChannelSettingsBlock>
+    <RecipientPicker
+      recipients={mappedUsers}
+      users={users}
+      onRecipientsChange={handleRecipientsChange}
+      invalidRecipientText={invalidRecipientText}
+    />
   );
 };
