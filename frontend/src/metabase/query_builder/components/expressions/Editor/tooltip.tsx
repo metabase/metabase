@@ -37,6 +37,11 @@ import { Highlight } from "./Highlight";
 import { parser } from "./language";
 import { tokenAtPos } from "./suggestions";
 
+// TODO: Close tooltip on focus
+// TODO: Toggle help description open/close expand
+// TODO: Segments/metrics always shown?
+// TODO: Hide help text when cursor is after the function
+
 type State = {
   completions: readonly Completion[];
   selectedCompletion: number | null;
