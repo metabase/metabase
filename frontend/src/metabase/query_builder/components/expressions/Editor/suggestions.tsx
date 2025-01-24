@@ -371,7 +371,7 @@ function getSnippet(helpText: HelpText) {
   const args = helpText.args
     ?.map(arg => "${" + arg.name.replace("…", "") + "}")
     .join(", ");
-  return `${helpText.name}(${args})`;
+  return `${helpText.structure}(${args})`;
 }
 
 function expressionClauseCompletion(
