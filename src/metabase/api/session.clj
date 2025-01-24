@@ -348,11 +348,10 @@
 (defn- +log-all-request-failures [handler]
   (with-meta
    (fn [request respond raise]
-     (try
-       (handler request respond raise)
-       (catch Throwable e
-         (log/error e "Authentication endpoint error")
-         (throw e))))
+     (letfn [(raise' [e]
+               (log/error e "Authentication endpoint error")
+               (raise e))]
+       (handler request respond raise')))
    (meta handler)))
 
 (api/define-routes +log-all-request-failures)
