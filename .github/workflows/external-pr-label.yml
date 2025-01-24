@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       pull-requests: write
+      issues: write
     steps:
       - name: Add External label
         uses: actions/github-script@v7
