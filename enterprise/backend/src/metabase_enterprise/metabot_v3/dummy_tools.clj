@@ -4,6 +4,7 @@
    [metabase-enterprise.metabot-v3.envelope :as envelope]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters]
+   [metabase-enterprise.metabot-v3.tools.interface :as metabot-v3.tools.interface]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.tools.who-is-your-favorite]
    [metabase.api.card :as api.card]
@@ -248,9 +249,17 @@
                            (let [query-id (u/generate-nano-id)
                                  arguments {:query_id query-id}
                                  result (execute-query query-id (mbql.normalize/normalize query))]
-                             (reduce envelope/add-dummy-message
-                                     env
-                                     (dummy-tool-messages :run-query arguments {:structured-output result})))))
+                             (as-> env $env
+                               (reduce envelope/add-dummy-message
+                                       $env
+                                       (dummy-tool-messages :run-query arguments {:structured-output result}))
+                               (reduce envelope/add-dummy-message
+                                       $env
+                                       (dummy-tool-messages :show-results-to-user arguments
+                                                            (metabot-v3.tools.interface/*invoke-tool*
+                                                             :metabot.tool/show-results-to-user
+                                                             {:query-id query-id}
+                                                             $env)))))))
              env
              (:user_is_viewing context)))
 
