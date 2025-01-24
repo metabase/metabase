@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 
 import * as Lib from "metabase-lib";
@@ -16,7 +16,6 @@ interface UseBooleanOperatorFilterProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
-  searchText: string;
 }
 
 export function useBooleanOperatorFilter({
@@ -24,7 +23,6 @@ export function useBooleanOperatorFilter({
   stageIndex,
   column,
   filter,
-  searchText,
 }: UseBooleanOperatorFilterProps) {
   const filterParts = useMemo(
     () => (filter ? Lib.booleanFilterParts(query, stageIndex, filter) : null),
@@ -58,10 +56,7 @@ export function useBooleanOperatorFilter({
     setOperator(defaultOperator);
     setIsExpanded(isAdvanced);
   });
-
-  useEffect(() => {
-    resetRef.current();
-  }, [resetRef, searchText]);
+  const reset = useCallback(() => resetRef.current(), [resetRef]);
 
   return {
     operator,
@@ -72,6 +67,7 @@ export function useBooleanOperatorFilter({
     getDefaultValues,
     getFilterClause: (operator: Lib.BooleanFilterOperator, values: boolean[]) =>
       getFilterClause(operator, column, values),
+    reset,
     setOperator,
     setValues,
   };

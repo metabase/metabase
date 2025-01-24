@@ -286,6 +286,7 @@ describe("FilterModal", () => {
 describe("FilterModal - issue 48319", () => {
   const query = createQuery();
 
+  // TODO: assert options (how?)
   it("string filters - does not mix up column filter state when changing search query (metabase#48319)", async () => {
     setup({ query });
 

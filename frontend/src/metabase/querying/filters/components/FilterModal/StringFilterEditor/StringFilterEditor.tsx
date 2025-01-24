@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -33,6 +33,7 @@ export function StringFilterEditor({
     options,
     getDefaultValues,
     getFilterClause,
+    reset,
     setOperator,
     setValues,
   } = useStringFilter({
@@ -40,8 +41,11 @@ export function StringFilterEditor({
     stageIndex,
     column,
     filter,
-    searchText,
   });
+
+  useEffect(() => {
+    reset();
+  }, [reset, searchText]);
 
   const handleOperatorChange = (newOperator: Lib.StringFilterOperator) => {
     const newValues = getDefaultValues(newOperator, values);

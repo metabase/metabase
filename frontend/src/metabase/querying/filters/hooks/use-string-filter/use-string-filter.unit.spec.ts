@@ -84,7 +84,6 @@ describe("useStringFilter", () => {
   const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
   const findColumn = columnFinder(defaultQuery, availableColumns);
   const column = findColumn("PRODUCTS", "CATEGORY");
-  const searchText = "";
 
   it.each<CreateFilterCase>([
     {
@@ -120,7 +119,6 @@ describe("useStringFilter", () => {
           query: defaultQuery,
           stageIndex,
           column,
-          searchText,
         }),
       );
 
@@ -177,7 +175,6 @@ describe("useStringFilter", () => {
           stageIndex,
           column,
           filter,
-          searchText,
         }),
       );
 
@@ -221,7 +218,6 @@ describe("useStringFilter", () => {
           query: defaultQuery,
           stageIndex,
           column,
-          searchText,
         }),
       );
 
@@ -244,7 +240,6 @@ describe("useStringFilter", () => {
         query: defaultQuery,
         stageIndex,
         column,
-        searchText,
       }),
     );
 
@@ -302,7 +297,6 @@ describe("useStringFilter", () => {
           query: defaultQuery,
           stageIndex,
           column,
-          searchText,
         }),
       );
 
