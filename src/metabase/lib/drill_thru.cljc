@@ -22,6 +22,7 @@
    [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.native :as lib.native]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
@@ -104,7 +105,8 @@
     context      :- ::lib.schema.drill-thru/context]
    (try
      (into []
-           (when (lib.metadata/editable? query)
+           (when (and (lib.metadata/editable? query)
+                      (not (lib.native/has-template-tag-variables? query)))
              (let [{:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql
                                                  query stage-number (:card-id context))
                    context                      (context-with-dimensions-or-row-dimensions query context)
