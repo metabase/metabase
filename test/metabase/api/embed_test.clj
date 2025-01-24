@@ -545,11 +545,12 @@
    :embedding_params {:date :enabled}})
 
 (deftest csv-reports-count
-  (testing "make sure CSV (etc.) downloads take editable params into account (#6407)"
-    (with-embedding-enabled-and-new-secret-key!
-      (mt/with-temp [:model/Card card (card-with-date-field-filter)]
-        (is (= "count\n107\n"
-               (client/client :get 200 (str (card-query-url card "/csv") "&date=Q1-2014"))))))))
+  (testing "GET /api/embed/card/:token/query/:export-format"
+    (testing "make sure CSV (etc.) downloads take editable params into account (#6407)"
+      (with-embedding-enabled-and-new-secret-key!
+        (mt/with-temp [:model/Card card (card-with-date-field-filter)]
+          (is (= "count\n107\n"
+                 (client/client :get 200 (str (card-query-url card "/csv") "&date=Q1-2014")))))))))
 
 (deftest csv-forward-url-test
   (mt/test-helpers-set-global-values!

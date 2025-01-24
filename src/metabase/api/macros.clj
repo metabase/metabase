@@ -34,7 +34,9 @@
    [:regexes {:optional true} [:map-of :keyword [:or
                                                  (ms/InstanceOfClass java.util.regex.Pattern)
                                                  ;; presumably a symbol naming a regex
-                                                 symbol?]]]])
+                                                 symbol?
+                                                 ;; presumably a form that evaluates to a regex
+                                                 seq?]]]])
 
 (mr/def ::param-type
   [:enum :route :query :body])
