@@ -153,7 +153,7 @@
                                        [:f        {:default :all}  ::card-filter-option]
                                        [:model_id {:optional true} [:maybe ms/PositiveInt]]]]
   (when (contains? #{:database :table :using_model :using_metric :using_segment} f)
-    (api/checkp (integer? model-id) "model-id" (format "model-id is a required parameter when filter mode is '%s'"
+    (api/checkp (integer? model-id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                        (name f)))
     (case f
       :database      (api/read-check :model/Database model-id)
