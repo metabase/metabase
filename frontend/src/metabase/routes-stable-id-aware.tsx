@@ -9,8 +9,7 @@ import {
 
 import { useTranslateEntityIdQuery } from "./api/entity-id";
 import { NotFound } from "./components/ErrorPages";
-import LoadingAndErrorWrapper from "./components/LoadingAndErrorWrapper";
-
+import { LoadingAndErrorWrapper } from "./components/LoadingAndErrorWrapper";
 type ResourceType = "dashboard" | "collection" | "card" | "dashboard-tab";
 type ParamType = "param" | "search";
 
