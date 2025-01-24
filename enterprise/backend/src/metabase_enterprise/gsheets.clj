@@ -246,8 +246,16 @@
   (require '[metabase.sync.sync-metadata :as sync-metadata])
 
   ;; This is what the notify endpoint calls:
-  (let [database (t2/select-one :model/Database :is_attached_dwh true)]
-    (sync-metadata/sync-db-metadata! database))
+  (sync-metadata/sync-db-metadata!
+   (t2/select-one :model/Database :is_attached_dwh true))
+
+
+  ;; testing auto-cruft:
+  (do
+    (t2/update! :model/Database 1 {:settings {:auto-cruft-tables []}})
+    (sync-metadata/sync-db-metadata!
+     (t2/select-one :model/Database :id 1))
+    )
 
   (defn reset-all! []
     (let [statuses (for [{:keys [id]} (get-gdrive-conns)]
