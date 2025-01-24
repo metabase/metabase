@@ -93,7 +93,7 @@ You can add events to collections, and organize those events into timelines. See
 
 ## Uploading data
 
-You can upload data to collections. See [Uploading data](./uploads.md)]
+You can upload data to collections. See [Uploading data](./uploads.md).
 
 ## Further reading
 
