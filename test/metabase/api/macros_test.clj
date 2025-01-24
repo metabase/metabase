@@ -10,12 +10,12 @@
             "Moves a number of Cards to a single collection or dashboard."
             [_route-params
              _query-params]
-            (neat!))
+            (neat))
     '{:method :post
       :route {:path "/move"}
       :docstr "Moves a number of Cards to a single collection or dashboard."
       :params {:route {:binding _route-params}, :query {:binding _query-params}}
-      :body [(neat!)]}
+      :body [(neat)]}
 
     '(:post "/move"
             "Moves a number of Cards to a single collection or dashboard."
@@ -25,7 +25,7 @@
                                               [:card_ids [:sequential ms/PositiveInt]]]
              request :- [:map
                          [:form-params :map]]]
-            (neat!))
+            (neat))
     '{:method :post
       :route {:path "/move"}
       :docstr "Moves a number of Cards to a single collection or dashboard."
@@ -35,7 +35,7 @@
                          :schema [:map [:card_ids [:sequential ms/PositiveInt]]]}
                :request {:binding request
                          :schema [:map [:form-params :map]]}}
-      :body [(neat!)]}
+      :body [(neat)]}
 
     ;; async
     '(:post "/move"
@@ -46,7 +46,7 @@
              respond
              raise]
             (try
-              (respond (wow!))
+              (respond (wow))
               (catch Throwable e
                 (raise e))))
     '{:method :post
@@ -58,5 +58,5 @@
                :respond {:binding respond}
                :raise   {:binding raise}}
       :body [(try
-               (respond (wow!))
+               (respond (wow))
                (catch Throwable e (raise e)))]}))

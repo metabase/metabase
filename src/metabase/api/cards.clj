@@ -44,9 +44,7 @@
    {:keys [card_ids], :as body} :- [:map
                                     [:card_ids      [:sequential ms/PositiveInt]]
                                     [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                    [:dashboard_id  {:optional true} [:maybe ms/PositiveInt]]]
-   &request :- [:map
-                [:form-params :map]]]
+                                    [:dashboard_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (t2/with-transaction [_conn]
     (doseq [card-id card_ids]
       (api.card/update-card! card-id (select-keys body [:collection_id :dashboard_id]) true)))
