@@ -524,7 +524,7 @@
 
 (defn- autocomplete-fields [table-ids]
   (when (seq table-ids)
-    (t2/select [:model/Field :id :table_id :name :base_type :semantic_type]
+    (t2/select [:model/Field :id :table_id :name :base_type]
                {:where [:in :id {:select [[[:min :id]]]
                                  :from [:metabase_field]
                                  :where [:and
@@ -539,12 +539,10 @@
                              tables)]
     (concat (for [{:keys [name]} tables]
               [name "Table"])
-            (for [{:keys [id table_id name base_type semantic_type]} fields]
+            (for [{:keys [id table_id name base_type]} fields]
               [name (str (table-id->name table_id)
                          " "
-                         base_type
-                         (when semantic_type
-                           (str " " semantic_type)))]))))
+                         base_type)]))))
 
 (defn- autocomplete-suggestions
   "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
