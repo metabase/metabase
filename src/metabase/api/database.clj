@@ -537,6 +537,7 @@
                                      :valid-options autocomplete-matching-options}))))))
 
 (defn- autocomplete-tables [db-id]
+  "Return a list of user-visible tables, deduplicating by name."
   (t2/select [:model/Table :id :db_id :schema :name]
              {:where [:in :id {:select [[[:min :id]]]
                                :from [:metabase_table]
@@ -547,6 +548,7 @@
                                :group-by [:name]}]}))
 
 (defn- autocomplete-fields [table-ids]
+  "Return a list of user-visible fields for the provided `table-ids`, deduplicating by name."
   (when (seq table-ids)
     (t2/select [:model/Field :id :table_id :name :database_type]
                {:where [:in :id {:select [[[:min :id]]]
@@ -564,19 +566,17 @@
             [name database_type])))
 
 (defn- autocomplete-suggestions
-  "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
   [db-id]
   (let [tables (filter mi/can-read? (autocomplete-tables db-id))
         fields (readable-fields-only (autocomplete-fields (map :id tables)))]
     (autocomplete-results tables fields)))
 
 (api.macros/defendpoint :get "/:id/autocomplete_suggestions"
-  "Return a list of autocomplete suggestions. This is intended for use with the native editor when the User is typing
-  raw SQL. Suggestions include `Tables` and `Fields` in this `Database`.
+  "Return a list of autocomplete suggestions. This is intended for use with the native query editor when the User is
+  typing raw SQL. Suggestions include `Tables` and `Fields` in this `Database`.
 
   Tables are returned in the format `[table_name \"Table\"]`;
-  When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
-  When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
+  Fields are returned in the format `[field_name database_type]`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Database id)
