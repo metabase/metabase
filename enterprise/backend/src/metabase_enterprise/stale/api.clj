@@ -2,12 +2,12 @@
   "API endpoints for retrieving or archiving stale (unused) items.
   Currently supports Dashboards and Cards."
   (:require
-   [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase-enterprise.stale :as stale]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.collection :as api.collection]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
@@ -117,19 +117,19 @@
        annotate-dashboard-with-collection-info
        present-collections))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id"
+(api.macros/defendpoint :get "/:id"
   "A flexible endpoint that returns stale entities, in the same shape as collections/items, with the following options:
   - `before_date` - only return entities that were last edited before this date (default: 6 months ago)
   - `is_recursive` - if true, return entities from all children of the collection, not just the direct children (default: false)
   - `sort_column` - the column to sort by (default: name)
   - `sort_direction` - the direction to sort by (default: asc)"
-  [id before_date is_recursive sort_column sort_direction]
-  {id             [:or ms/PositiveInt [:= :root]]
-   before_date    [:maybe :string]
-   is_recursive   [:boolean {:default false}]
-   sort_column    [:maybe {:default :name} [:enum :name :last_used_at]]
-   sort_direction [:maybe {:default :asc} [:enum :asc :desc]]}
+  [{:keys [id]} :- [:map
+                    [:id [:or ms/PositiveInt [:= :root]]]]
+   {:keys [before_date is_recursive sort_column sort_direction]} :- [:map
+                                                                     [:before_date    {:optional true} [:maybe :string]]
+                                                                     [:is_recursive   [:boolean {:default false}]]
+                                                                     [:sort_column    {:optional true} [:maybe {:default :name} [:enum :name :last_used_at]]]
+                                                                     [:sort_direction {:optional true} [:maybe {:default :asc} [:enum :asc :desc]]]]]
   (premium-features/assert-has-feature :collection-cleanup (tru "Collection Cleanup"))
   (let [before-date    (if before_date
                          (try (t/local-date "yyyy-MM-dd" before_date)
