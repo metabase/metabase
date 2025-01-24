@@ -42,7 +42,7 @@
             [:table_id             ms/PositiveInt]
             [:card_id              {:optional true} [:maybe ms/PositiveInt]]
             [:group_id             ms/PositiveInt]
-            [:attribute_remappings AttributeRemappings]]]
+            [:attribute_remappings {:optional true} AttributeRemappings]]]
   (first (t2/insert-returning-instances!
           :model/GroupTableAccessPolicy
           (select-keys body [:table_id :card_id :group_id :attribute_remappings]))))
@@ -56,7 +56,7 @@
    _query-params
    body :- [:map
             [:card_id              {:optional true} [:maybe ms/PositiveInt]]
-            [:attribute_remappings AttributeRemappings]]]
+            [:attribute_remappings {:optional true} AttributeRemappings]]]
   (api/check-404 (t2/select-one :model/GroupTableAccessPolicy :id id))
   ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
   ;; This allows existing values to be "cleared" by being set to nil
