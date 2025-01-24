@@ -12,6 +12,9 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { FilterModalProvider } from "../context";
+import { createMockFilterModalContext } from "../test-utils";
+
 import { DefaultFilterEditor } from "./DefaultFilterEditor";
 
 interface SetupOpts {
@@ -26,15 +29,16 @@ function setup({ query, stageIndex, column, filter }: SetupOpts) {
   const onInput = jest.fn();
 
   renderWithProviders(
-    <DefaultFilterEditor
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      filter={filter}
-      isSearching={false}
-      onChange={onChange}
-      onInput={onInput}
-    />,
+    <FilterModalProvider value={createMockFilterModalContext()}>
+      <DefaultFilterEditor
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        onChange={onChange}
+        onInput={onInput}
+      />
+    </FilterModalProvider>,
   );
 
   const getNextFilterName = () => {
