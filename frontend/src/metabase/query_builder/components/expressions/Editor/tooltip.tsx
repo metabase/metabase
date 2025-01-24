@@ -12,7 +12,14 @@ import {
   StateField,
 } from "@codemirror/state";
 import { EditorView, type Tooltip, showTooltip } from "@codemirror/view";
-import { Fragment, useCallback, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { t } from "ttag";
 
@@ -194,7 +201,6 @@ export function Tooltip(props: TooltipProps) {
     return null;
   }
 
-  // TODO: scroll active item into view
   // TODO: allow using keys after clicking the popover
 
   return (
@@ -204,22 +210,55 @@ export function Tooltip(props: TooltipProps) {
         <>
           <ul role="listbox">
             {completions.map((completion, index) => (
-              <li
-                role="option"
-                aria-selected={selectedCompletion === index}
+              <CompletionItem
+                completion={completion}
+                index={index}
                 key={index}
-                onClick={() => onCompletionClick(index)}
-              >
-                <Icon name={completion.icon} className={css.icon} />
-
-                {completion.displayLabel ?? completion.label}
-              </li>
+                selected={selectedCompletion === index}
+                onCompletionClick={onCompletionClick}
+              />
             ))}
           </ul>
           <Footer />
         </>
       )}
     </div>
+  );
+}
+
+function CompletionItem({
+  completion,
+  selected,
+  onCompletionClick,
+  index,
+}: {
+  completion: Completion;
+  index: number;
+  onCompletionClick: (index: number) => void;
+  selected: boolean;
+}) {
+  const ref = useRef<HTMLLIElement>(null);
+  const handleClick = useCallback(
+    () => onCompletionClick(index),
+    [index, onCompletionClick],
+  );
+
+  useEffect(() => {
+    if (!selected || !ref.current) {
+      return;
+    }
+
+    ref.current.scrollIntoView({
+      block: "nearest",
+    });
+  }, [selected]);
+
+  return (
+    <li role="option" aria-selected={selected} onClick={handleClick} ref={ref}>
+      <Icon name={completion.icon} className={css.icon} />
+
+      {completion.displayLabel ?? completion.label}
+    </li>
   );
 }
 
