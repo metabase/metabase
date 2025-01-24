@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 
 import * as Lib from "metabase-lib";
 
@@ -17,6 +18,7 @@ interface UseTimeFilterProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
+  searchText: string;
 }
 
 export function useTimeFilter({
@@ -24,6 +26,7 @@ export function useTimeFilter({
   stageIndex,
   column,
   filter,
+  searchText,
 }: UseTimeFilterProps) {
   const filterParts = useMemo(() => {
     return filter ? Lib.timeFilterParts(query, stageIndex, filter) : null;
@@ -34,14 +37,30 @@ export function useTimeFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : getDefaultOperator(availableOptions),
-  );
-  const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts ? filterParts.values : []),
-  );
+  const defaultOperator = useMemo(() => {
+    return filterParts
+      ? filterParts.operator
+      : getDefaultOperator(availableOptions);
+  }, [availableOptions, filterParts]);
+
+  const [operator, setOperator] = useState(defaultOperator);
+
+  const defaultValues = useMemo(() => {
+    return getDefaultValues(operator, filterParts ? filterParts.values : []);
+  }, [operator, filterParts]);
+
+  const [values, setValues] = useState(() => defaultValues);
   const { valueCount } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values);
+
+  const resetRef = useLatest(() => {
+    setValues(defaultValues);
+    setOperator(defaultOperator);
+  });
+
+  useEffect(() => {
+    resetRef.current();
+  }, [resetRef, searchText]);
 
   return {
     operator,

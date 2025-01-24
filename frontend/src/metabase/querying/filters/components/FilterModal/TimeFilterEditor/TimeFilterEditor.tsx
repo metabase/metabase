@@ -20,7 +20,7 @@ export function TimeFilterEditor({
   filter,
   onChange,
 }: FilterEditorProps) {
-  const { handleInput: onInput, query } = useFilterModalContext();
+  const { handleInput: onInput, query, searchText } = useFilterModalContext();
   const columnIcon = useMemo(() => getColumnIcon(column), [column]);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -38,6 +38,7 @@ export function TimeFilterEditor({
     stageIndex,
     column,
     filter,
+    searchText,
   });
 
   const handleOperatorChange = (newOperator: Lib.TimeFilterOperator) => {
