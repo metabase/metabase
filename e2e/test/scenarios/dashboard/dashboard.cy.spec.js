@@ -96,8 +96,7 @@ describe("scenarios > dashboard", () => {
       cy.findByTestId("save-question-modal").within(modal => {
         cy.findByLabelText("Name").clear().type(newQuestionName);
         cy.findByLabelText("Where do you want to save this?").should(
-          "contain.text",
-          dashboardName,
+          "not.exist",
         );
         cy.findByText("Save").click();
       });

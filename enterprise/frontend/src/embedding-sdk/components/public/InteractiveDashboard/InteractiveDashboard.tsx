@@ -20,7 +20,6 @@ import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
-import { useEmbedFont } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 
@@ -84,7 +83,6 @@ const InteractiveDashboardInner = ({
   });
 
   const { theme } = useEmbedTheme();
-  const { font } = useEmbedFont();
 
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
@@ -117,7 +115,6 @@ const InteractiveDashboardInner = ({
             refreshPeriod={refreshPeriod}
             onRefreshPeriodChange={onRefreshPeriodChange}
             setRefreshElapsedHook={setRefreshElapsedHook}
-            font={font}
             bordered={displayOptions.bordered}
             navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
             onLoad={onLoad}
