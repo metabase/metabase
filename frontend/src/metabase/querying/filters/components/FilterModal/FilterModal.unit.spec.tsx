@@ -18,10 +18,16 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { createMockCard, createMockField } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDatabase,
+  createMockField,
+  createMockTable,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_FIELD_VALUES,
+  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -331,5 +337,91 @@ describe("FilterModal - issue 48319", () => {
     expect(
       screen.queryByRole("checkbox", { name: "Affiliate" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("boolean filters - does not mix up column filter state when changing search query (metabase#48319)", async () => {
+    const ACCOUNTS_ID = 4;
+    const ACCOUNTS_TRIAL_CONVERTED_ID = 56;
+    const ACCOUNTS_ACTIVE_SUBSCRIPTION_ID = 57;
+
+    const database = createMockDatabase({
+      id: SAMPLE_DB_ID,
+      name: "Sample Database",
+      tables: [
+        createMockTable({
+          id: ACCOUNTS_ID,
+          db_id: SAMPLE_DB_ID,
+          name: "ACCOUNTS",
+          display_name: "Accounts",
+          schema: "PUBLIC",
+          fields: [
+            createMockField({
+              id: ACCOUNTS_TRIAL_CONVERTED_ID,
+              table_id: ACCOUNTS_ID,
+              name: "TRIAL_CONVERTED",
+              display_name: "Trial Converted",
+              base_type: "type/Boolean",
+              effective_type: "type/Boolean",
+              semantic_type: "type/Category",
+            }),
+            createMockField({
+              id: ACCOUNTS_ACTIVE_SUBSCRIPTION_ID,
+              table_id: ACCOUNTS_ID,
+              name: "ACTIVE_SUBSCRIPTION",
+              display_name: "Active Subscription",
+              base_type: "type/Boolean",
+              effective_type: "type/Boolean",
+              semantic_type: "type/Category",
+            }),
+          ],
+        }),
+      ],
+      is_sample: true,
+    });
+
+    const metadata = createMockMetadata({
+      databases: [database],
+    });
+
+    setup({
+      query: createQuery({
+        query: {
+          database: database.id,
+          type: "query",
+          query: {
+            "source-table": ACCOUNTS_ID,
+          },
+        },
+      }),
+      metadata,
+    });
+
+    const searchInput = screen.getByPlaceholderText("Search for a column…");
+
+    await userEvent.type(searchInput, "trial");
+    await waitFor(() => {
+      expect(screen.queryByText("Active Subscription")).not.toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByRole("checkbox", { name: "True" }));
+
+    await userEvent.type(
+      searchInput,
+      `${"{backspace}".repeat("trial".length)}active`,
+    );
+    await waitFor(() => {
+      expect(screen.getByText("Active Subscription")).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("checkbox", { name: "True" })).not.toBeChecked();
+    await userEvent.click(screen.getByRole("checkbox", { name: "False" }));
+
+    await userEvent.type(
+      searchInput,
+      `${"{backspace}".repeat("active".length)}trial`,
+    );
+    await waitFor(() => {
+      expect(screen.getByText("Trial Converted")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("checkbox", { name: "True" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
   });
 });
