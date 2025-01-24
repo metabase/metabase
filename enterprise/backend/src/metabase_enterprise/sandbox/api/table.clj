@@ -94,10 +94,11 @@
   information."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]} :- [:map
-                                                                                            [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
-                                                                                            [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
-                                                                                            [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
+   :- [:map
+       [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
+       [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
   (fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                   :include-hidden-fields?       include_hidden_fields
                                   :include-editable-data-model? include_editable_data_model}))
