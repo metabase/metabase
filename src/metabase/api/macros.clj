@@ -428,14 +428,13 @@
      (defendpoint-core-fn* ~parsed-args)))
 
 (mu/defn- defendpoint-params :- [:maybe [:map-of keyword? any?]]
-  "Fetch parameters of a certain type (`:route`, `:query`, or `:body`) from a `request`."
+  "Fetch `:route` or `:query` parameters from a `request`."
   {:style/indent [:form]}
   [request     :- :map
-   params-type :- ::param-type]
+   params-type :- [:enum :route :query]]
   (case params-type
     :route (:route-params request)
-    :query (some-> (:query-params request) (update-keys keyword))
-    :body  (:body request)))
+    :query (some-> (:query-params request) (update-keys keyword))))
 
 (defn- default-raise
   "Default `raise` function for defendpoint handler functions."
@@ -464,7 +463,7 @@
                    (try
                      (let [route-params (defendpoint-params request :route)
                            query-params (defendpoint-params request :query)
-                           body-params  (defendpoint-params request :body)]
+                           body-params  (:body request)]
                        (respond (core-fn route-params query-params body-params request)))
                      (catch Throwable e
                        (raise e)))))]

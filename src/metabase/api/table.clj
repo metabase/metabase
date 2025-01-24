@@ -599,13 +599,15 @@
                     [:id ms/PositiveInt]]]
   (-> (t2/select-one :model/Table :id id) api/read-check xrays/related))
 
-(api.macros/defendpoint :put "/:id/fields/order"
+(api.macros/defendpoint :put "/:id/fields/order" :- [:map
+                                                     [:success [:= true]]]
   "Reorder fields"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   field_order :- [:sequential ms/PositiveInt]]
-  (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field_order)))
+   field-order :- [:sequential ms/PositiveInt]]
+  (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order))
+  {:success true})
 
 (mu/defn- update-csv!
   "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
