@@ -4,17 +4,17 @@ import type { NativeDatasetResponse } from "metabase-types/api";
 
 export function createNativeQuestion(
   question: Question,
-  nativeForm: NativeDatasetResponse | undefined,
+  response: NativeDatasetResponse | undefined,
 ) {
   const database = question.database();
-  const query = formatNativeQuery(nativeForm?.query, database?.engine) ?? "";
+  const query = formatNativeQuery(response?.query, database?.engine) ?? "";
 
   return question.setDatasetQuery({
     type: "native",
     native: {
       query,
       "template-tags": {},
-      ...(nativeForm?.collection ? { collection: nativeForm.collection } : {}),
+      ...(response?.collection ? { collection: response.collection } : {}),
     },
     database: question.databaseId(),
   });
