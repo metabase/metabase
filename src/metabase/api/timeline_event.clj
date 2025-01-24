@@ -1,9 +1,9 @@
 (ns metabase.api.timeline-event
   "/api/timeline-event endpoints."
   (:require
-   [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.models.collection :as collection]
    [metabase.models.timeline-event :as timeline-event]
    [metabase.util :as u]
@@ -12,20 +12,22 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Create a new [[TimelineEvent]]."
-  [:as {{:keys [name description timestamp time_matters timezone icon timeline_id source question_id archived] :as body} :body}]
-  {name         ms/NonBlankString
-   description  [:maybe :string]
-   timestamp    ms/TemporalString
-   time_matters [:maybe :boolean]
-   timezone     :string
-   icon         [:maybe timeline-event/Icon]
-   timeline_id  ms/PositiveInt
-   source       [:maybe timeline-event/Source]
-   question_id  [:maybe ms/PositiveInt]
-   archived     [:maybe :boolean]}
+  [_route-params
+   _query-params
+   {:keys [timestamp time_matters icon timeline_id source question_id] :as body}
+   :- [:map
+       [:name         ms/NonBlankString]
+       [:description  {:optional true} [:maybe :string]]
+       [:timestamp    ms/TemporalString]
+       [:time_matters {:optional true} [:maybe :boolean]]
+       [:timezone     :string]
+       [:icon         {:optional true} [:maybe timeline-event/Icon]]
+       [:timeline_id  ms/PositiveInt]
+       [:source       {:optional true} [:maybe timeline-event/Source]]
+       [:question_id  {:optional true} [:maybe ms/PositiveInt]]
+       [:archived     {:optional true} [:maybe :boolean]]]]
   ;; deliberately not using api/check-404 so we can have a useful error message.
   (let [timeline (t2/select-one :model/Timeline :id timeline_id)]
     (when-not timeline
@@ -49,27 +51,27 @@
                                (boolean question_id) (assoc :question_id question_id)))
       (first (t2/insert-returning-instances! :model/TimelineEvent tl-event)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id"
+(api.macros/defendpoint :get "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/read-check :model/TimelineEvent id))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id"
+(api.macros/defendpoint :put "/:id"
   "Update a [[TimelineEvent]]."
-  [id :as {{:keys [name description timestamp time_matters timezone icon timeline_id archived]
-            :as   timeline-event-updates} :body}]
-  {id           ms/PositiveInt
-   name         [:maybe ms/NonBlankString]
-   description  [:maybe :string]
-   timestamp    [:maybe ms/TemporalString]
-   time_matters [:maybe :boolean]
-   timezone     [:maybe :string]
-   icon         [:maybe timeline-event/Icon]
-   timeline_id  [:maybe ms/PositiveInt]
-   archived     [:maybe :boolean]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [timestamp]
+    :as   timeline-event-updates} :- [:map
+                                      [:name         {:optional true} [:maybe ms/NonBlankString]]
+                                      [:description  {:optional true} [:maybe :string]]
+                                      [:timestamp    {:optional true} [:maybe ms/TemporalString]]
+                                      [:time_matters {:optional true} [:maybe :boolean]]
+                                      [:timezone     {:optional true} [:maybe :string]]
+                                      [:icon         {:optional true} [:maybe timeline-event/Icon]]
+                                      [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
+                                      [:archived     {:optional true} [:maybe :boolean]]]]
   (let [existing (api/write-check :model/TimelineEvent id)
         timeline-event-updates (cond-> timeline-event-updates
                                  (boolean timestamp) (update :timestamp u.date/parse))]
@@ -81,11 +83,10 @@
                                     :non-nil #{:name}))
     (t2/select-one :model/TimelineEvent :id id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/:id"
+(api.macros/defendpoint :delete "/:id"
   "Delete a [[TimelineEvent]]."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/write-check :model/TimelineEvent id)
   (t2/delete! :model/TimelineEvent :id id)
   api/generic-204-no-content)

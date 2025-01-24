@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.collection :as api.collection]
+   [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection-test :as collection-test]
@@ -1494,6 +1495,473 @@
                           remove-non-personal-collections
                           mt/boolean-ids-and-timestamps)))))))
 
+(deftest dashboard-question-candidates-simple-test
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (testing "Card is in single dashboard"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                     :model/Card {card-id :id} {:collection_id coll-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (= #{card-id}
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))
+                    :data
+                    (map :id)
+                    (into #{}))))
+        (is (= #{:id :name :description :sole_dashboard_info}
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))
+                    :data
+                    first
+                    keys
+                    (into #{}))))
+        (is (= #{:id :name :description}
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))
+                    :data
+                    first
+                    :sole_dashboard_info
+                    keys
+                    (into #{}))))))))
+
+(deftest dashboard-question-candidates-can-be-paginated
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+
+                   :model/Card {card-1-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-1-id}
+
+                   :model/Card {card-2-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-2-id}
+
+                   :model/Card {card-3-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-3-id}]
+      (let [fetch (fn [& {:keys [limit offset] :or {limit 10 offset 0}}]
+                    (let [resp (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                     :limit limit :offset offset)]
+                      (is (= 3 (:total resp)))
+                      (->> resp :data (map :id))))]
+        (testing "Selecting everything"
+          (is (= [card-3-id card-2-id card-1-id]
+                 (fetch))))
+        (testing "Selecting the first one"
+          (is (= [card-3-id]
+                 (fetch :limit 1))))
+        (testing "The second two"
+          (is (= [card-2-id card-1-id]
+                 (fetch :limit 2 :offset 1))))
+        (testing "The first two"
+          (is (= [card-3-id card-2-id]
+                 (fetch :limit 2 :offset 0))))
+        (testing "Only limit, no offset"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                     :limit 2)]
+            (is (= [card-3-id card-2-id]
+                   (map :id data)))))
+        (testing "Only offset, no limit"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                     :offset 1)]
+            (is (= [card-2-id card-1-id]
+                   (map :id data)))))
+        (testing "Zero limit"
+          (is (= [] (fetch :limit 0))))))))
+
+(deftest dashboard-question-candidates-card-is-in-two-dashboards-test
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (testing "Card is in two dashboards"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash1-id :id} {:collection_id coll-id}
+                     :model/Dashboard {dash2-id :id} {:collection_id coll-id}
+                     :model/Card {card-id :id} {:collection_id coll-id}
+                     :model/DashboardCard _ {:dashboard_id dash1-id :card_id card-id}
+                     :model/DashboardCard _ {:dashboard_id dash2-id :card_id card-id}]
+        (is (= #{}  ; Card should not be automovable when in multiple dashboards
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))
+                    :data
+                    (map :id)
+                    (into #{}))))))))
+
+(deftest dashboard-question-candidates-card-not-in-any-dashboards-test
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (testing "Card is not in any dashboards"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card _ {:collection_id coll-id}]
+        (is (= #{}  ; Card should not be automovable when not in any dashboard
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))
+                    :data
+                    (map :id)
+                    (into #{}))))))))
+
+(deftest get-dashboard-question-candidates-only-works-for-admins-test
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (testing "Non-admin request (using `:rasta` instead of `:crowberto`)"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                     :model/Card {card-id :id} {:collection_id coll-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (str "collection/" coll-id "/dashboard-question-candidates"))))))))
+
+(deftest dashboard-question-candidates-excludes-archived-cards-test
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (testing "Card in archived dashboard"
+      ;; Note that this should never happen - the card should be archived with the dashboard it's in. But just in case:
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll-id :archived true}
+                     :model/Card {card-id :id} {:collection_id coll-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (= #{}
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))
+                    :data
+                    (map :id)
+                    (into #{}))))))))
+
+(deftest get-dashboard-question-candidates-excludes-cards-in-different-collections-from-dashboard
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (testing "Card in different collection from dashboard"
+      (mt/with-temp [:model/Collection {coll1-id :id} {}
+                     :model/Collection {coll2-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll1-id}
+                     :model/Card {card-id :id} {:collection_id coll2-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (= #{}  ; Card should not be automovable when in different collection
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll1-id "/dashboard-question-candidates"))
+                    :data
+                    (map :id)
+                    (into #{}))))))))
+
+(deftest get-dashboard-question-candidates-filters-by-collection
+  (testing "Multiple cards in collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card1-id :id} {:collection_id coll-id}
+                   :model/Card _ {:collection_id coll-id}
+                   :model/Card _ {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card1-id}]
+      (is (= #{card1-id}  ; Only card1 should be automovable
+             (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))
+                  :data
+                  (map :id)
+                  (into #{})))))))
+
+(deftest get-dashboard-question-candidates-nonexistent-collection
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (testing "Returns 404 for non-existent collection"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 "collection/99999999/dashboard-question-candidates"))))))
+
+(deftest get-dashboard-question-candidates-excludes-archived-cards
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (testing "Archived cards are not included in candidates"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                     :model/Card {card-id :id} {:collection_id coll-id :archived true}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (= #{}  ; Archived card should not be automovable
+               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))
+                    :data
+                    (map :id)
+                    (into #{}))))))))
+
+(deftest get-dashboard-question-candidates-excludes-existing-dashboard-questions
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (testing "Existing DQs are excluded"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                     :model/Card {card-id :id} {:dashboard_id dash-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (= {:data [] :total 0}
+               (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))))))))
+
+(deftest get-root-dashboard-question-candidates-single-dashboard-card
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (testing "Card is in single dashboard"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
+                     :model/Card {card-id :id} {:collection_id nil :name "Test Card"}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             "collection/root/dashboard-question-candidates")]
+          (is (contains? (->> response :data (map :id) set) card-id))
+          (is (= #{:id :name :description :sole_dashboard_info}
+                 (->> response
+                      :data
+                      (filter #(= (:id %) card-id))
+                      first
+                      keys
+                      set)))
+          (is (= #{:id :name :description}
+                 (->> response
+                      :data
+                      (filter #(= (:id %) card-id))
+                      first
+                      :sole_dashboard_info
+                      keys
+                      set))))))))
+
+(deftest get-root-dashboard-question-candidates-multi-dashboard-card
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (testing "Card is in two dashboards"
+      (mt/with-temp [:model/Dashboard {dash1-id :id} {:collection_id nil}
+                     :model/Dashboard {dash2-id :id} {:collection_id nil}
+                     :model/Card {card-id :id} {:collection_id nil :name "Multi-Dashboard Card"}
+                     :model/DashboardCard _ {:dashboard_id dash1-id :card_id card-id}
+                     :model/DashboardCard _ {:dashboard_id dash2-id :card_id card-id}]
+        (is (not (contains? (->> (mt/user-http-request :crowberto :get 200
+                                                       "collection/root/dashboard-question-candidates")
+                                 :data
+                                 (map :id)
+                                 set)
+                            card-id)))))))
+
+(deftest get-root-dashboard-question-candidates-no-dashboard-card
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (testing "Card is not in any dashboards"
+      (mt/with-temp [:model/Card {card-id :id} {:collection_id nil :name "No Dashboard Card"}]
+        (is (not (contains? (->> (mt/user-http-request :crowberto :get 200
+                                                       "collection/root/dashboard-question-candidates")
+                                 :data
+                                 (map :id)
+                                 set)
+                            card-id)))))))
+
+(deftest get-root-dashboard-question-candidates-non-admin
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (testing "Non-admin request (using `:rasta` instead of `:crowberto`)"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "collection/root/dashboard-question-candidates"))))))
+
+(deftest get-root-dashboard-question-candidates-archived-dashboard
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (testing "Card in archived dashboard"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil :archived true}
+                     :model/Card {card-id :id} {:collection_id nil :name "Archived Dashboard Card"}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (not (contains? (->> (mt/user-http-request :crowberto :get 200
+                                                       "collection/root/dashboard-question-candidates")
+                                 :data
+                                 (map :id)
+                                 set)
+                            card-id)))))))
+
+(deftest get-root-dashboard-question-candidates-different-collection
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (testing "Card in different collection from dashboard"
+      (mt/with-temp [:model/Collection {other-coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id nil}
+                     :model/Card {card-id :id} {:collection_id other-coll-id :name "Different Collection Card"}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (not (contains? (->> (mt/user-http-request :crowberto :get 200
+                                                       "collection/root/dashboard-question-candidates")
+                                 :data
+                                 (map :id)
+                                 set)
+                            card-id)))))))
+
+(deftest get-root-dashboard-question-candidates-multiple-cards
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (testing "Multiple cards in collection"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
+                     :model/Card {card1-id :id} {:collection_id nil :name "Dashboard Card"}
+                     :model/Card {card2-id :id} {:collection_id nil :name "Other Card 1"}
+                     :model/Card {card3-id :id} {:collection_id nil :name "Other Card 2"}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card1-id}]
+        (let [response-ids (->> (mt/user-http-request :crowberto :get 200
+                                                      "collection/root/dashboard-question-candidates")
+                                :data
+                                (map :id)
+                                set)]
+          (is (contains? response-ids card1-id))
+          (is (not (contains? response-ids card2-id)))
+          (is (not (contains? response-ids card3-id))))))))
+
+(deftest get-root-dashboard-question-candidates-nonexistent
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (testing "Non-existent collection"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 "collection/99999999/dashboard-question-candidates"))))))
+
+(deftest get-root-dashboard-question-candidates-archived-card
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (testing "Archived card"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
+                     :model/Card {card-id :id} {:collection_id nil :name "Archived Card" :archived true}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (not (contains? (->> (mt/user-http-request :crowberto :get 200
+                                                       "collection/root/dashboard-question-candidates")
+                                 :data
+                                 (map :id)
+                                 set)
+                            card-id)))))))
+
+(deftest root-dashboard-question-candidates-can-be-paginated
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
+
+                   :model/Card {card-1-id :id} {:collection_id nil}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-1-id}
+
+                   :model/Card {card-2-id :id} {:collection_id nil}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-2-id}
+
+                   :model/Card {card-3-id :id} {:collection_id nil}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-3-id}]
+      (let [fetch (fn [& {:keys [limit offset] :or {limit 10 offset 0}}]
+                    (let [resp (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                     :limit limit :offset offset)]
+                      (is (= 3 (:total resp)))
+                      (->> resp :data (map :id))))]
+        (testing "Selecting everything"
+          (is (= [card-3-id card-2-id card-1-id]
+                 (fetch))))
+        (testing "Selecting the first one"
+          (is (= [card-3-id]
+                 (fetch :limit 1))))
+        (testing "The second two"
+          (is (= [card-2-id card-1-id]
+                 (fetch :limit 2 :offset 1))))
+        (testing "The first two"
+          (is (= [card-3-id card-2-id]
+                 (fetch :limit 2 :offset 0))))
+        (testing "Only limit, no offset"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                     :limit 2)]
+            (is (= [card-3-id card-2-id]
+                   (map :id data)))))
+        (testing "Only offset, no limit"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                     :offset 1)]
+            (is (= [card-2-id card-1-id]
+                   (map :id data)))))
+        (testing "Zero limit"
+          (is (= [] (fetch :limit 0))))))))
+
+(deftest post-move-dashboard-question-candidates-success
+  (testing "POST /api/collection/:id/move-dashboard-question-candidates"
+    (testing "Successfully move card to dashboard"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                     :model/Card {card-id :id} {:collection_id coll-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))
+        (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
+        (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
+
+(deftest post-move-dashboard-question-candidates-root-collection
+  (testing "POST /api/collection/:id/move-dashboard-question-candidates"
+    (testing "Move card from root collection"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
+                     :model/Card {card-id :id} {:collection_id nil}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (mt/user-http-request :crowberto :post 200 "collection/root/move-dashboard-question-candidates")
+        (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
+
+(deftest post-move-dashboard-question-candidates-non-admin
+  (testing "POST /api/collection/:id/move-dashboard-question-candidates"
+    (testing "Non-admin request (using `:rasta` instead of `:crowberto`)"
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 (format "collection/%d/move-dashboard-question-candidates" coll-id))))))))
+
+(deftest post-move-dashboard-question-candidates-multiple-dashboards
+  (testing "POST /api/collection/:id/move-dashboard-question-candidates"
+    (testing "Card in multiple dashboards should not be moved"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash1-id :id} {:collection_id coll-id}
+                     :model/Dashboard {dash2-id :id} {:collection_id coll-id}
+                     :model/Card {card-id :id} {:collection_id coll-id}
+                     :model/DashboardCard _ {:dashboard_id dash1-id :card_id card-id}
+                     :model/DashboardCard _ {:dashboard_id dash2-id :card_id card-id}]
+        (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
+        (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
+
+(deftest post-move-dashboard-question-candidates-nonexistent
+  (testing "POST /api/collection/:id/move-dashboard-question-candidates"
+    (testing "Non-existent collection"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 "collection/99999999/move-dashboard-question-candidates"))))))
+
+(deftest post-move-dashboard-question-candidates-archived-card
+  (testing "POST /api/collection/:id/move-dashboard-question-candidates"
+    (testing "Archived card should not be moved"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                     :model/Card {card-id :id} {:collection_id coll-id :archived true}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
+        (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
+
+(deftest post-move-dashboard-question-candidates-archived-dashboard
+  (testing "POST /api/collection/:id/move-dashboard-question-candidates"
+    (testing "Card in archived dashboard should not be moved"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll-id :archived true}
+                     :model/Card {card-id :id} {:collection_id coll-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
+        (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
+
+(deftest post-move-dashboard-question-candidates-different-collection
+  (testing "POST /api/collection/:id/move-dashboard-question-candidates"
+    (testing "Card in different collection from dashboard should not be moved"
+      (mt/with-temp [:model/Collection {coll1-id :id} {}
+                     :model/Collection {coll2-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll1-id}
+                     :model/Card {card-id :id} {:collection_id coll2-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll2-id))
+        (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
+
+(deftest post-move-dashboard-question-candidates-specific-cards
+  (testing "POST /api/collection/:id/move-dashboard-question-candidates"
+    (testing "It's possible to specify a specific set of card_ids to move"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash1-id :id} {:collection_id coll-id}
+                     :model/Card {card1-id :id} {:collection_id coll-id}
+                     :model/Card {card2-id :id} {:collection_id coll-id}
+                     :model/Card {card3-id :id} {:collection_id coll-id}
+                     :model/DashboardCard _ {:dashboard_id dash1-id :card_id card1-id}
+                     :model/DashboardCard _ {:dashboard_id dash1-id :card_id card2-id}
+                     :model/DashboardCard _ {:dashboard_id dash1-id :card_id card3-id}]
+        (testing "initially no cards should have dashboard_id set"
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card card1-id)))
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card card2-id)))
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card card3-id))))
+
+        (testing "move only card1 and card2"
+          (mt/user-http-request :crowberto :post 200
+                                (format "collection/%d/move-dashboard-question-candidates" coll-id)
+                                {:card_ids #{card1-id card2-id}}))
+
+        (testing "verify only specified cards were moved"
+          (is (= dash1-id (t2/select-one-fn :dashboard_id :model/Card card1-id)))
+          (is (= dash1-id (t2/select-one-fn :dashboard_id :model/Card card2-id)))
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card card3-id))))))))
+
+(deftest move-dashboard-question-candidates-is-atomic-test
+  (testing "POST /api/collection/:id/move-dashboard-question-candidates is atomic"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card1-id :id} {:collection_id coll-id}
+                   :model/Card {card2-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card1-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card2-id}]
+      ;; Initially no cards should have dashboard_id set
+      (is (nil? (t2/select-one-fn :dashboard_id :model/Card card1-id)))
+      (is (nil? (t2/select-one-fn :dashboard_id :model/Card card2-id)))
+
+      ;; Mock card/update-card! to fail on the second call
+      (mt/with-dynamic-fn-redefs [card/update-card!
+                                  (let [call-count (atom 0)]
+                                    (fn [& args]
+                                      (swap! call-count inc)
+                                      (when (= @call-count 2)
+                                        (throw (ex-info "Simulated failure" {})))
+                                      (apply (mt/dynamic-value card/update-card!) args)))]
+        (mt/user-http-request :crowberto :post 500
+                              (format "collection/%d/move-dashboard-question-candidates" coll-id)))
+
+        ;; Verify neither card was moved (operation rolled back)
+      (is (nil? (t2/select-one-fn :dashboard_id :model/Card card1-id)))
+      (is (nil? (t2/select-one-fn :dashboard_id :model/Card card2-id))))))
+
 (deftest fetch-root-items-limit-and-offset-test
   (testing "GET /api/collection/root/items"
     (with-some-children-of-collection! nil
@@ -1515,7 +1983,8 @@
       (with-some-children-of-collection! nil
         ;; `:total` should be at least 4 items based on `with-some-children-of-collection`. Might be a bit more if
         ;; other stuff was created
-        (is (<= 4 (:total (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1"))))))))
+        (is (=? {:total #(>= % 4)}
+                (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1")))))))
 
 (deftest fetch-root-items-permissions-test
   (testing "GET /api/collection/root/items"
@@ -1525,7 +1994,11 @@
              (with-some-children-of-collection! nil
                (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                    remove-non-personal-collections
-                   mt/boolean-ids-and-timestamps))))
+                   mt/boolean-ids-and-timestamps)))))))
+
+(deftest fetch-root-items-permissions-test-2
+  (testing "GET /api/collection/root/items"
+    (testing "we don't let you see stuff you wouldn't otherwise be allowed to see"
       (testing "...but if they have read perms for the Root Collection they should get to see them"
         (with-some-children-of-collection! nil
           (mt/with-temp [:model/PermissionsGroup           group {}

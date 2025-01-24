@@ -81,7 +81,7 @@
                     :model    "Pulse"
                     :model_id (:id pulse)
                     :details  {:recipients [(dissoc (mt/fetch-user :rasta) :last_login :is_qbnewb :is_superuser :date_joined)]
-                               :filters    nil}}
+                               :filters    []}}
                    (mt/latest-audit-log-entry :subscription-send (:id pulse))))))))))
 
 (deftest alert-send-event-test

@@ -272,6 +272,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: be-check
+      # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
       - name: Check namespaces
         run: clojure -M:ee:drivers:check
 

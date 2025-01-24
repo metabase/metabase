@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/env";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import {
@@ -150,7 +151,8 @@ export function formatValueRaw(
     options.view_as !== "image" &&
     options.click_behavior &&
     clickBehaviorIsValid(options.click_behavior) &&
-    options.jsx
+    options.jsx &&
+    !isEmbeddingSdk // (metabase#51099) do not show as link in sdk
   ) {
     // Style this like a link if we're in a jsx context.
     // It's not actually a link since we handle the click differently for dashboard and question targets.
@@ -164,7 +166,8 @@ export function formatValueRaw(
     );
   } else if (
     options.click_behavior &&
-    options.click_behavior.linkTextTemplate
+    options.click_behavior.linkTextTemplate &&
+    !isEmbeddingSdk // (metabase#51099) do not show custom link text in sdk
   ) {
     return renderLinkTextForClick(
       options.click_behavior.linkTextTemplate,

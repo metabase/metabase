@@ -92,7 +92,7 @@
 ;; Dataset can be destroyed using `tx/destroy-db` to remove the data from Databricks instance.
 ;; [[*allow-database-deletion*]] must be bound to true. Then `t2/delete!` can be used to remove the reference from
 ;; application database.
-(def ^:private ^:dynamic *allow-database-creation*
+(def ^:dynamic *allow-database-creation*
   "Same approach is used in Databricks driver as in Athena. Dataset creation is disabled by default. Datasets are
   preloaded in Databricks instance that tests run against. If you need to create new database on the instance,
   run your test with this var bound to true."
@@ -163,11 +163,19 @@
                                            (rest sql-args))}
                           e)))))))
 
-;; With jdbc driver version 2.6.40 test data load fails due to ~statment using more parameters than driver's able to
-;; handle. `chunk-size` 25 works with 2.6.40, but dataset loading is really slow.
+;; 2.6.40 jdbc driver version statement param limit 256. Following implementation ensures test dataset loading won't
+;; exceed that. Orders table takes ~20 minutes to load.
+;; Example:
+;; orders table has 12 columns in field def, id and a buffer is added
+;; 256 / (12 + 2) = 18
+;; so we can insert 18 rows at a time while staying under the param limit.
 (defmethod load-data/chunk-size :databricks
-  [_driver _dbdef _tabledef]
-  200)
+  [_driver _dbdef tabledef]
+  (let [databricks-jdbc-param-limit-per-statement 256
+        reserve 2 ; eg. for id and one more col
+        col-count (-> tabledef :field-definitions count)]
+    (quot databricks-jdbc-param-limit-per-statement
+          (+ reserve col-count))))
 
 (defmethod load-data/row-xform :databricks
   [_driver _dbdef tabledef]

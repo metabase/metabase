@@ -1,9 +1,9 @@
 (ns metabase.api.activity
   (:require
    [clojure.string :as str]
-   [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id*]]
+   [metabase.api.macros :as api.macros]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.recent-views :as recent-views]
@@ -108,29 +108,30 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint ^:deprecated GET "/recent_views"
+(api.macros/defendpoint :get "/recent_views"
   "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
   recently. Return a maximum of 20 model of each, if they've looked at at least 20."
+  {:deprecated true}
   []
   {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/recents"
+(api.macros/defendpoint :get "/recents"
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
   Allows for filtering by context: views or selections"
-  [:as {{:keys [context]} :params}]
-  {context (ms/QueryVectorOf [:enum :selections :views])}
+  [_route-params
+   {:keys [context]} :- [:map
+                         [:context (ms/QueryVectorOf [:enum :selections :views])]]]
   (when-not (seq context) (throw (ex-info "context is required." {})))
   (recent-views/get-recents *current-user-id* context))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/recents"
+(api.macros/defendpoint :post "/recents"
   "Adds a model to the list of recently selected items."
-  [:as {{:keys [model model_id context]} :body}]
-  {model (into [:enum] recent-views/rv-models)
-   model_id ms/PositiveInt
-   context [:enum :selection]}
+  [_route-params
+   _query-params
+   {:keys [model model_id context]} :- [:map
+                                        [:model    (into [:enum] recent-views/rv-models)]
+                                        [:model_id ms/PositiveInt]
+                                        [:context  [:enum :selection]]]]
   (let [model-id model_id
         model-type (recent-views/rv-model->model model)]
     (when-not (t2/exists? model-type :id model-id)
@@ -138,8 +139,7 @@
     (api/read-check (t2/select-one model-type :id model-id))
     (recent-views/update-users-recent-views! *current-user-id* model-type model-id context)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/most_recently_viewed_dashboard"
+(api.macros/defendpoint :get "/most_recently_viewed_dashboard"
   "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
    in the last 24 hours."
   []
@@ -235,8 +235,7 @@
                    (assoc :timestamp (:max_ts % ""))
                    recent-views/fill-recent-view-info)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/popular_items"
+(api.macros/defendpoint :get "/popular_items"
   "Get the list of 5 popular things on the instance. Query takes 8 and limits to 5 so that if it finds anything
   archived, deleted, etc it can usually still get 5. "
   []

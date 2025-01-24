@@ -4041,3 +4041,120 @@ describe("issue 48351", () => {
     H.assertTabSelected("Tab 2");
   });
 });
+
+describe("issue 52484", () => {
+  const questionDetails = {
+    native: {
+      query: "SELECT ID, RATING FROM PRODUCTS [[WHERE RATING = {{rating}}]]",
+      "template-tags": {
+        rating: {
+          id: "56708d23-6f01-42b7-98ed-f930295d31b9",
+          name: "rating",
+          type: "number",
+          "display-name": "Rating",
+        },
+      },
+    },
+    parameters: [
+      {
+        id: "56708d23-6f01-42b7-98ed-f930295d31b9",
+        name: "Rating",
+        slug: "rating",
+        type: "number/=",
+        target: ["dimension", ["template-tag", "rating"]],
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use click behaviors with numeric columns that are not database fields (metabase#52484)", () => {
+    H.createNativeQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+      },
+    );
+
+    cy.log("setup a dashboard with a click behavior");
+    H.editDashboard();
+    H.setFilter("Number", "Equal to");
+    H.selectDashboardFilter(H.getDashboardCard(), "Rating");
+    H.dashboardParametersDoneButton().click();
+    H.showDashboardCardActions();
+    cy.findByLabelText("Click behavior").click();
+    H.sidebar().within(() => {
+      cy.findByText("ID").click();
+      cy.findByText("Update a dashboard filter").click();
+      cy.findByText("Number").click();
+    });
+    H.popover().findByText("ID").click();
+    H.saveDashboard();
+
+    cy.log("update a dashboard filter by clicking on a ID column value");
+    H.getDashboardCard().findByText("2").click();
+    H.filterWidget().findByDisplayValue("2").should("be.visible");
+
+    cy.log("verify query results for the new filter");
+    H.getDashboardCard().within(() => {
+      cy.findByText("27").should("be.visible");
+      cy.findByText("123").should("be.visible");
+    });
+  });
+});
+
+describe("issue 40396", { tags: "@external " }, () => {
+  const tableName = "many_data_types";
+
+  beforeEach(() => {
+    H.resetTestTable({ type: "postgres", table: tableName });
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+  });
+
+  it("should be possible to use dashboard filters with native enum fields (metabase#40396)", () => {
+    cy.log("create a dashboard with a question with a type/Enum field");
+    cy.request("GET", "/api/table").then(({ body: tables }) => {
+      const table = tables.find(table => table.name === tableName);
+      cy.request("GET", `/api/table/${table.id}/query_metadata`).then(
+        ({ body: metadata }) => {
+          const field = metadata.fields.find(field => field.name === "enum");
+          cy.request("PUT", `/api/field/${field.id}`, {
+            semantic_type: "type/Enum",
+          });
+
+          H.createQuestionAndDashboard({
+            questionDetails: {
+              database: table.db_id,
+              query: { "source-table": table.id },
+            },
+          }).then(({ body: { dashboard_id } }) => {
+            H.visitDashboard(dashboard_id);
+            cy.wait("@dashcardQuery");
+          });
+        },
+      );
+    });
+
+    cy.log("verify that a enum field can be mapped to a parameter");
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Enum");
+    H.saveDashboard();
+
+    cy.log("verify that filtering on a enum field works");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("beta").click();
+      cy.button("Add filter").click();
+    });
+    cy.wait("@dashcardQuery");
+    H.getDashboardCard().findAllByText("beta").should("have.length.gte", 1);
+  });
+});
