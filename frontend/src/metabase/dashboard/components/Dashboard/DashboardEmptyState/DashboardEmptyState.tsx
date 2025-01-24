@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { jt, t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
-import CS from "metabase/css/core/index.css";
 import { Button, Icon, type IconName, Stack, Text, Title } from "metabase/ui";
 
 interface DashboardEmptyStateProps {
@@ -28,10 +27,10 @@ function EmptyStateWrapper({
 }) {
   return (
     <Stack
-      className={CS.flex1}
       align="center"
       color={isNightMode ? "text-white" : "inherit"}
       data-testid="dashboard-empty-state"
+      h="100%"
       justify="center"
       spacing="lg"
     >

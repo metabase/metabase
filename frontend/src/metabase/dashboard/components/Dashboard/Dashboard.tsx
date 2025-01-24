@@ -451,18 +451,19 @@ function Dashboard(props: DashboardProps) {
             </DashboardHeaderContainer>
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
-              {isEmpty ? (
-                renderEmptyStates()
-              ) : (
-                <ParametersAndCardsContainer
-                  id={DASHBOARD_PDF_EXPORT_ROOT_ID}
-                  data-element-id="dashboard-parameters-and-cards"
-                  data-testid="dashboard-parameters-and-cards"
-                  shouldMakeDashboardHeaderStickyAfterScrolling={
-                    !isFullscreen && (isEditing || isSharing)
-                  }
-                >
-                  <DashboardParameterPanel isFullscreen={isFullscreen} />
+              <ParametersAndCardsContainer
+                id={DASHBOARD_PDF_EXPORT_ROOT_ID}
+                data-element-id="dashboard-parameters-and-cards"
+                data-testid="dashboard-parameters-and-cards"
+                isEmpty={isEmpty}
+                shouldMakeDashboardHeaderStickyAfterScrolling={
+                  !isFullscreen && (isEditing || isSharing)
+                }
+              >
+                <DashboardParameterPanel isFullscreen={isFullscreen} />
+                {isEmpty ? (
+                  renderEmptyStates()
+                ) : (
                   <CardsContainer data-element-id="dashboard-cards-container">
                     <DashboardGridConnected
                       clickBehaviorSidebarDashcard={
@@ -486,8 +487,8 @@ function Dashboard(props: DashboardProps) {
                       }
                     />
                   </CardsContainer>
-                </ParametersAndCardsContainer>
-              )}
+                )}
+              </ParametersAndCardsContainer>
 
               <DashboardSidebars
                 dashboard={dashboard}
