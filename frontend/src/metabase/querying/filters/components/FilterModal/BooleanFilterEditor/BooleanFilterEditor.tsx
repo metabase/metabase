@@ -8,6 +8,7 @@ import type * as Lib from "metabase-lib";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
+import { useFilterModalContext } from "../context";
 import type { FilterEditorProps } from "../types";
 
 export function BooleanFilterEditor({
@@ -15,12 +16,13 @@ export function BooleanFilterEditor({
   stageIndex,
   column,
   filter,
-  isSearching,
   onChange,
 }: FilterEditorProps) {
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
+
+  const { isSearching } = useFilterModalContext();
 
   const {
     operator,

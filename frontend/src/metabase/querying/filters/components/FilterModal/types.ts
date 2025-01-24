@@ -5,7 +5,6 @@ export interface FilterEditorProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter: Lib.FilterClause | undefined;
-  isSearching: boolean;
   onChange: (filter: Lib.ExpressionClause | undefined) => void;
   onInput: () => void;
 }
