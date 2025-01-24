@@ -52,8 +52,9 @@
   "Get `Table` with ID."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_editable_data_model]} :- [:map
-                                             [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
+   {:keys [include_editable_data_model]}
+   :- [:map
+       [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
   (let [api-perm-check-fn (if include_editable_data_model
                             api/write-check
                             api/read-check)]
