@@ -1,4 +1,4 @@
-import { within } from "@storybook/testing-library";
+import { within } from "@storybook/test";
 import { Fragment } from "react";
 
 import { Group, Icon, Stack } from "metabase/ui";

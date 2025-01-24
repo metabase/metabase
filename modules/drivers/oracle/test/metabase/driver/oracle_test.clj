@@ -563,3 +563,27 @@
         (is (=? {:effective_type :type/DateTime}
                 (m/find-first (comp #{"created_at"} :name)
                               (mt/cols (qp/process-query query)))))))))
+
+(deftest date-filter-variable
+  (testing "Date filter variables work against date-times"
+    (mt/test-driver
+      :oracle
+      (mt/dataset
+        date-cols-with-datetime-values
+        (doseq [widget-type [:date/single :date/all-options]]
+          (let [query (mt/native-query
+                        {:query "SELECT *
+                               FROM \"mb_test\".\"date_cols_with_datetime_values_dates_with_time\"
+                               WHERE {{date_filter}}"
+                         :template-tags {"date_filter"
+                                         {:name         "date_filter"
+                                          :display-name "Date Filter"
+                                          :type         :dimension
+                                          :dimension    [:field (mt/id :date_cols_with_datetime_values_dates_with_time :date_with_time) nil]
+                                          :widget-type  widget-type}}})
+                query-with-params (assoc query :parameters [{:type   widget-type
+                                                             :target [:dimension [:template-tag "date_filter"]]
+                                                             :value  "2024-11-06"}])]
+            (is (= [[2M "2024-11-06T13:13:13Z"]]
+                   (mt/rows
+                    (qp/process-query query-with-params))))))))))

@@ -4104,3 +4104,57 @@ describe("issue 52484", () => {
     });
   });
 });
+
+describe("issue 40396", { tags: "@external " }, () => {
+  const tableName = "many_data_types";
+
+  beforeEach(() => {
+    H.resetTestTable({ type: "postgres", table: tableName });
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+  });
+
+  it("should be possible to use dashboard filters with native enum fields (metabase#40396)", () => {
+    cy.log("create a dashboard with a question with a type/Enum field");
+    cy.request("GET", "/api/table").then(({ body: tables }) => {
+      const table = tables.find(table => table.name === tableName);
+      cy.request("GET", `/api/table/${table.id}/query_metadata`).then(
+        ({ body: metadata }) => {
+          const field = metadata.fields.find(field => field.name === "enum");
+          cy.request("PUT", `/api/field/${field.id}`, {
+            semantic_type: "type/Enum",
+          });
+
+          H.createQuestionAndDashboard({
+            questionDetails: {
+              database: table.db_id,
+              query: { "source-table": table.id },
+            },
+          }).then(({ body: { dashboard_id } }) => {
+            H.visitDashboard(dashboard_id);
+            cy.wait("@dashcardQuery");
+          });
+        },
+      );
+    });
+
+    cy.log("verify that a enum field can be mapped to a parameter");
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Enum");
+    H.saveDashboard();
+
+    cy.log("verify that filtering on a enum field works");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("beta").click();
+      cy.button("Add filter").click();
+    });
+    cy.wait("@dashcardQuery");
+    H.getDashboardCard().findAllByText("beta").should("have.length.gte", 1);
+  });
+});
