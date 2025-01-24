@@ -1,6 +1,5 @@
 import type { GroupItem } from "metabase/querying/filters/types";
 import { Tabs } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import { ColumnFilterList } from "../ColumnFilterList";
 import { SegmentFilterItem } from "../SegmentFilterItem";
@@ -8,35 +7,18 @@ import { SegmentFilterItem } from "../SegmentFilterItem";
 import S from "./FilterTabPanel.module.css";
 
 export interface FilterTabPanelProps {
-  query: Lib.Query;
   groupItem: GroupItem;
-  onChange: (newQuery: Lib.Query) => void;
-  onInput: () => void;
 }
 
-export function FilterTabPanel({
-  query,
-  groupItem,
-  onChange,
-  onInput,
-}: FilterTabPanelProps) {
+export function FilterTabPanel({ groupItem }: FilterTabPanelProps) {
   return (
     <Tabs.Panel className={S.TabPanelRoot} value={groupItem.key}>
       <ul>
         {groupItem.segmentItems.length > 0 && (
-          <SegmentFilterItem
-            query={query}
-            segmentItems={groupItem.segmentItems}
-            onChange={onChange}
-          />
+          <SegmentFilterItem segmentItems={groupItem.segmentItems} />
         )}
         {groupItem.columnItems.length > 0 && (
-          <ColumnFilterList
-            query={query}
-            columnItems={groupItem.columnItems}
-            onChange={onChange}
-            onInput={onInput}
-          />
+          <ColumnFilterList columnItems={groupItem.columnItems} />
         )}
       </ul>
     </Tabs.Panel>

@@ -19,18 +19,11 @@ export interface FilterModalProps {
 
 export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
   const filterModal = useFilterModal(question, onSubmit);
-
   const {
-    query,
     isChanged,
     groupItems,
-    tab,
-    setTab,
     canRemoveFilters,
     searchText,
-    visibleItems,
-    handleInput,
-    handleChange,
     handleReset,
     handleSubmit,
     handleSearch,
@@ -54,14 +47,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
             <Modal.CloseButton />
           </Modal.Header>
           <Modal.Body className={S.ModalBody} p={0}>
-            <FilterModalBody
-              groupItems={visibleItems}
-              query={query}
-              tab={tab}
-              onChange={handleChange}
-              onInput={handleInput}
-              onTabChange={setTab}
-            />
+            <FilterModalBody />
           </Modal.Body>
           <Flex
             className={S.ModalFooter}

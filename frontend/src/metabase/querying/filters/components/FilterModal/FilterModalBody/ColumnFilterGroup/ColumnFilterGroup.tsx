@@ -2,25 +2,22 @@ import { useMemo, useState } from "react";
 
 import type { ColumnItem } from "metabase/querying/filters/types";
 import { DelayGroup } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
+import { useFilterModalContext } from "../../context";
 import { ColumnFilterItem } from "../ColumnFilterItem";
 
 import { findColumnFilters, findVisibleFilters } from "./utils";
 
 export interface ColumnFilterGroupProps {
-  query: Lib.Query;
   columnItem: ColumnItem;
-  onChange: (newQuery: Lib.Query) => void;
-  onInput: () => void;
 }
 
-export function ColumnFilterGroup({
-  query,
-  columnItem,
-  onChange,
-  onInput,
-}: ColumnFilterGroupProps) {
+export function ColumnFilterGroup({ columnItem }: ColumnFilterGroupProps) {
+  const {
+    handleChange: onChange,
+    handleInput: onInput,
+    query,
+  } = useFilterModalContext();
   const { column, stageIndex } = columnItem;
   const currentFilters = useMemo(
     () => findColumnFilters(query, stageIndex, column),
