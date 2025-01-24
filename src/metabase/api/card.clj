@@ -2,13 +2,13 @@
   "/api/card endpoints."
   (:require
    [clojure.java.io :as io]
+   [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
-   [metabase.api.macros :as api.macros]
    [metabase.api.query-metadata :as api.query-metadata]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
@@ -143,15 +143,15 @@
                                          :join [[model :m] [:= :t.id :m.table_id]]
                                          :where [:= :m.id model-id]}))
 
-(api.macros/defendpoint :get "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_metric`,
   `using_segment`, and `archived`. See corresponding implementation functions above for the specific behavior
   of each filter option. :card_index:"
-  [_route-params
-   {:keys [f model_id]} :- [:map
-                            [:f        {:optional true} [:maybe (into [:enum] card-filter-options)]]
-                            [:model_id {:optional true} [:maybe ms/PositiveInt]]]]
+  [f model_id]
+  {f        [:maybe (into [:enum] card-filter-options)]
+   model_id [:maybe ms/PositiveInt]}
   (let [f (or (keyword f) :all)]
     (when (contains? #{:database :table :using_model :using_metric :using_segment} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
@@ -213,13 +213,13 @@
         collection.root/hydrate-root-collection
         (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
 
-(api.macros/defendpoint :get "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/:id"
   "Get `Card` with ID."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [ignore_view context]} :- [:map
-                                     [:ignore_view {:optional true} [:maybe :boolean]]
-                                     [:context     {:optional true} [:maybe [:enum :collection]]]]]
+  [id ignore_view context]
+  {id ms/PositiveInt
+   ignore_view [:maybe :boolean]
+   context [:maybe [:enum :collection]]}
   (let [card (get-card id)]
     (u/prog1 card
       (when-not ignore_view
@@ -234,10 +234,11 @@
     (doseq [dashboard dashboards]
       (api/write-check dashboard))))
 
-(api.macros/defendpoint :get "/:id/dashboards"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/:id/dashboards"
   "Get a list of `{:name ... :id ...}` pairs for all the dashboards this card appears in."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [id]
+  {id ms/PositiveInt}
   (let [card (get-card id)
         dashboards (:in_dashboards (t2/hydrate card :in_dashboards))]
     (doseq [dashboard dashboards]
@@ -404,21 +405,21 @@
                                 new-cards)
        new-cards))))
 
-(api.macros/defendpoint :get "/:id/series"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/:id/series"
   "Fetches a list of compatible series with the card with id `card_id`.
 
   - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.
   - `query` to search card by name.
   - `exclude_ids` to filter out a list of card ids"
-  [{:keys [id]} :- [:map
-                    [:id int?]]
-   {:keys [last_cursor query exclude_ids]} :- [:map
-                                               [:last_cursor {:optional true} [:maybe ms/PositiveInt]]
-                                               [:query       {:optional true} [:maybe ms/NonBlankString]]
-                                               [:exclude_ids {:optional true} [:maybe [:fn
-                                                                                       {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
-                                                                                       (fn [ids]
-                                                                                         (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]]]]
+  [id last_cursor query exclude_ids]
+  {id          int?
+   last_cursor [:maybe ms/PositiveInt]
+   query       [:maybe ms/NonBlankString]
+   exclude_ids [:maybe [:fn
+                        {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
+                        (fn [ids]
+                          (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]}
   (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))
         card         (-> (t2/select-one :model/Card :id id) api/check-404 api/read-check)
         card-display (:display card)]
@@ -434,14 +435,14 @@
       :last-cursor last_cursor
       :page-size   (request/limit)})))
 
-(api.macros/defendpoint :get "/:id/timelines"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [include start end]} :- [:map
-                                   [:include {:optional true} [:maybe [:= "events"]]]
-                                   [:start   {:optional true} [:maybe ms/TemporalString]]
-                                   [:end     {:optional true} [:maybe ms/TemporalString]]]]
+  [id include start end]
+  {id      ms/PositiveInt
+   include [:maybe [:= "events"]]
+   start   [:maybe ms/TemporalString]
+   end     [:maybe ms/TemporalString]}
   (let [{:keys [collection_id] :as _card} (api/read-check :model/Card id)]
     ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
     ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
@@ -487,43 +488,41 @@
                       {:type        card-type
                        :status-code 400})))))
 
-(api.macros/defendpoint :post "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/"
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
-  [_route-params
-   _query-params
-   {collection-id :collection_id
-    query         :dataset_query
-    card-type     :type
-    :as           body} :- [:map
-                            [:name                   ms/NonBlankString]
-                            [:type                   {:optional true} [:maybe ::card-type]]
-                            [:dataset_query          ms/Map]
-                            [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
-                            [:parameters             {:optional true} [:maybe [:sequential ms/Parameter]]]
-                            [:parameter_mappings     {:optional true} [:maybe [:sequential ms/ParameterMapping]]]
-                            [:description            {:optional true} [:maybe ms/NonBlankString]]
-                            [:display                ms/NonBlankString]
-                            [:visualization_settings ms/Map]
-                            [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
-                            [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
-                            [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
-                            [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-                            [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]]]
-  (check-if-card-can-be-saved query card-type)
+  [:as {{:keys [collection_id collection_position dashboard_id dataset_query description display entity_id
+                name parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
+  {name                   ms/NonBlankString
+   type                   [:maybe ::card-type]
+   dataset_query          ms/Map
+   entity_id              [:maybe ms/NonBlankString] ;; TODO: Make that a NanoID regex schema?
+   parameters             [:maybe [:sequential ms/Parameter]]
+   parameter_mappings     [:maybe [:sequential ms/ParameterMapping]]
+   description            [:maybe ms/NonBlankString]
+   display                ms/NonBlankString
+   visualization_settings ms/Map
+   collection_id          [:maybe ms/PositiveInt]
+   collection_position    [:maybe ms/PositiveInt]
+   result_metadata        [:maybe analyze/ResultsMetadata]
+   cache_ttl              [:maybe ms/PositiveInt]
+   dashboard_id           [:maybe ms/PositiveInt]}
+  (check-if-card-can-be-saved dataset_query type)
   ;; check that we have permissions to run the query that we're trying to save
-  (check-permissions-for-query query)
+  (check-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
-  (collection/check-write-perms-for-collection collection-id)
+  (collection/check-write-perms-for-collection collection_id)
   (let [body (cond-> body
                (string? (:type body)) (update :type keyword))]
     (-> (card/create-card! body @api/*current-user*)
         hydrate-card-details
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
-(api.macros/defendpoint :post "/:id/copy"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [id]
+  {id [:maybe ms/PositiveInt]}
   (let [orig-card (api/read-check :model/Card id)
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
@@ -636,27 +635,29 @@
         (card.metadata/save-metadata-async! metadata-future card))
       card)))
 
-(api.macros/defendpoint :put "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint PUT "/:id"
   "Update a `Card`."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [delete_old_dashcards]} :- [:map
-                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
-   body :- CardUpdateSchema]
+  [id delete_old_dashcards :as {body :body}]
+  {id ms/PositiveInt
+   delete_old_dashcards [:maybe :boolean]
+   body CardUpdateSchema}
   (update-card! id body (boolean delete_old_dashcards)))
 
-(api.macros/defendpoint :get "/:id/query_metadata"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/:id/query_metadata"
   "Get all of the required query metadata for a card."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [id]
+  {id ms/PositiveInt}
   (api.query-metadata/batch-fetch-card-metadata [(get-card id)]))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
-(api.macros/defendpoint :delete "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint DELETE "/:id"
   "Hard delete a Card. To soft delete, use `PUT /api/card/:id`"
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+  [id]
+  {id ms/PositiveInt}
   (let [card (api/write-check :model/Card id)]
     (t2/delete! :model/Card :id id)
     (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
@@ -734,28 +735,26 @@
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
 
-(api.macros/defendpoint :post "/collections"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/collections"
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with
   `collection_id`, or remove them from any Collections by passing a `null` `collection_id`."
-  [_route-params
-   _query-params
-   {:keys [card_ids collection_id]} :- [:map
-                                        [:card_ids      [:sequential ms/PositiveInt]]
-                                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
+  [:as {{:keys [card_ids collection_id]} :body}]
+  {card_ids      [:sequential ms/PositiveInt]
+   collection_id [:maybe ms/PositiveInt]}
   (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
-(api.macros/defendpoint :post "/:card-id/query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]
-   _query-params
-   {:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :- [:map
-                                                                                                                    [:ignore_cache       {:optional true} [:maybe :boolean]]
-                                                                                                                    [:collection_preview {:optional true} [:maybe :boolean]]
-                                                                                                                    [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
+  [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
+  {card-id            ms/PositiveInt
+   ignore_cache       [:maybe :boolean]
+   collection_preview [:maybe :boolean]
+   dashboard_id       [:maybe ms/PositiveInt]}
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
   ;;
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
@@ -769,21 +768,18 @@
    :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
 
-(api.macros/defendpoint :post "/:card-id/query/:export-format"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [{:keys [card-id export-format]} :- [:map
-                                       [:card-id       ms/PositiveInt]
-                                       [:export-format (into [:enum] api.dataset/export-formats)]]
-   {:keys          [parameters]
-    pivot-results? :pivot_results
-    format-rows?   :format_rows
-    :as            _query-params} :- [:map
-                                      [:parameters    {:optional true} [:maybe ms/JSONString]]
-                                      [:format_rows   {:default false} ms/BooleanValue]
-                                      [:pivot_results {:default false} ms/BooleanValue]]]
+  [card-id export-format :as {{:keys [parameters pivot_results format_rows]} :params}]
+  {card-id       ms/PositiveInt
+   parameters    [:maybe ms/JSONString]
+   format_rows   [:maybe ms/BooleanValue]
+   pivot_results [:maybe ms/BooleanValue]
+   export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/process-query-for-card
    card-id export-format
    :parameters  (json/decode+kw parameters)
@@ -792,18 +788,19 @@
    :middleware  {:process-viz-settings?  true
                  :skip-results-metadata? true
                  :ignore-cached-results? true
-                 :format-rows?           (format-rows?)
-                 :pivot?                 pivot-results?
+                 :format-rows?           (or format_rows false)
+                 :pivot?                 (or pivot_results false)
                  :js-int-to-string?      false}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
-(api.macros/defendpoint :post "/:card-id/public_link"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/:card-id/public_link"
   "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+  [card-id]
+  {card-id ms/PositiveInt}
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
@@ -814,10 +811,11 @@
                              {:public_uuid       <>
                               :made_public_by_id api/*current-user-id*})))}))
 
-(api.macros/defendpoint :delete "/:card-id/public_link"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+  [card-id]
+  {card-id ms/PositiveInt}
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
@@ -826,14 +824,16 @@
                :made_public_by_id nil})
   {:status 204, :body nil})
 
-(api.macros/defendpoint :get "/public"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/public"
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (t2/select [:model/Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
-(api.macros/defendpoint :get "/embeddable"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/embeddable"
   "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
   and a signed JWT."
   []
@@ -841,24 +841,24 @@
   (validation/check-embedding-enabled)
   (t2/select [:model/Card :name :id], :enable_embedding true, :archived false))
 
-(api.macros/defendpoint :post "/pivot/:card-id/query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/pivot/:card-id/query"
   "Run the query associated with a Card."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]
-   _query-params
-   {:keys [parameters ignore_cache]
-    :or   {ignore_cache false}} :- [:map
-                                    [:ignore_cache {:optional true} [:maybe :boolean]]]]
+  [card-id :as {{:keys [parameters ignore_cache]
+                 :or   {ignore_cache false}} :body}]
+  {card-id      ms/PositiveInt
+   ignore_cache [:maybe :boolean]}
   (qp.card/process-query-for-card card-id :api
                                   :parameters   parameters
                                   :qp           qp.pivot/run-pivot-query
                                   :ignore-cache ignore_cache))
 
-(api.macros/defendpoint :post "/:card-id/persist"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
   query in place of the model's query."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+  [card-id]
+  {card-id ms/PositiveInt}
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [{:keys [database_id] :as card} (t2/select-one :model/Card :id card-id)]
     (let [database (t2/select-one :model/Database :id database_id)]
@@ -877,10 +877,11 @@
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
       api/generic-204-no-content)))
 
-(api.macros/defendpoint :post "/:card-id/refresh"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/:card-id/refresh"
   "Refresh the persisted model caching `card-id`."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+  [card-id]
+  {card-id ms/PositiveInt}
   (api/let-404 [card           (t2/select-one :model/Card :id card-id)
                 persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
     (when (not (card/model? card))
@@ -891,11 +892,12 @@
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
-(api.macros/defendpoint :post "/:card-id/unpersist"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint POST "/:card-id/unpersist"
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."
-  [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+  [card-id]
+  {card-id ms/PositiveInt}
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [_card (t2/select-one :model/Card :id card-id)]
     (api/let-404 [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
@@ -932,30 +934,32 @@
                        {:status-code 400})))
      (custom-values/parameter->values param query (fn [] (mapping->field-values card param query))))))
 
-(api.macros/defendpoint :get "/:card-id/params/:param-key/values"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/:card-id/params/:param-key/values"
   "Fetch possible values of the parameter whose ID is `:param-key`.
 
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/card/1/params/abc/values"
-  [{:keys [card-id param-key]} :- [:map
-                                   [:card-id   ms/PositiveInt]
-                                   [:param-key ms/NonBlankString]]]
+  [card-id param-key]
+  {card-id   ms/PositiveInt
+   param-key ms/NonBlankString}
   (param-values (api/read-check :model/Card card-id) param-key))
 
-(api.macros/defendpoint :get "/:card-id/params/:param-key/search/:query"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint GET "/:card-id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
 
     ;; fetch values for Card 1 parameter 'abc' that contain 'Orange';
      GET /api/card/1/params/abc/search/Orange
 
   Currently limited to first 1000 results."
-  [{:keys [card-id param-key query]} :- [:map
-                                         [:card-id   ms/PositiveInt]
-                                         [:param-key ms/NonBlankString]
-                                         [:query     ms/NonBlankString]]]
+  [card-id param-key query]
+  {card-id   ms/PositiveInt
+   param-key ms/NonBlankString
+   query     ms/NonBlankString}
   (param-values (api/read-check :model/Card card-id) param-key query))
 
-(defn-  from-csv!
+(defn- from-csv!
   "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
   [{:keys [collection-id filename file]}]
   (try
@@ -978,29 +982,13 @@
                              (tru "There was an error uploading the file"))}})
     (finally (io/delete-file file :silently))))
 
-;;; TODO -- why the HECC does the endpoint for creating a TABLE live in `/api/card/`?
-(api.macros/defendpoint :post "/from-csv"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint ^:multipart POST "/from-csv"
   "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
-  {:multipart true}
-  ;; TODO -- not clear collection_id and file are supposed to come from `:multipart-params`
-  [_route-params
-   _query-params
-   _body
-   {{collection-id "collection_id", file "file"} :multipart-params, :as _request}
-   :- [:map
-       [:multipart-params
-        [:map
-         ["collection_id" [:maybe
-                           {:decode/api (fn [collection-id]
-                                          (when-not (= collection-id "root")
-                                            collection-id))}
-                           pos-int?]]
-         ["file" [:map
-                  [:filename :string]
-                  [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
+  [:as {raw-params :params}]
   ;; parse-long returns nil with "root" as the collection ID, which is what we want anyway
-  (from-csv! {:collection-id collection-id
-              :filename      (:filename file)
-              :file          (:tempfile file)}))
+  (from-csv! {:collection-id (parse-long (get raw-params "collection_id"))
+              :filename      (get-in raw-params ["file" :filename])
+              :file          (get-in raw-params ["file" :tempfile])}))
 
 (api/define-routes)
