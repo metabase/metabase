@@ -5,26 +5,6 @@ import type { MetabaseComponentTheme } from "./MetabaseTheme";
 type MetabaseComponentThemeKey = FlattenObjectKeys<MetabaseComponentTheme>;
 type CssVariableToThemeMap = Record<string, MetabaseComponentThemeKey>;
 
-export const INTERACTIVE_QUESTION_THEME_OPTIONS = {
-  // Toolbar (Default Layout)
-  "--mb-color-bg-sdk-question-toolbar": "question.toolbar.backgroundColor",
-} satisfies CssVariableToThemeMap;
-
-// SDK > Interactive Question > Notebook Editor Button
-export const NOTEBOOK_EDITOR_THEME_OPTIONS = {
-  "--mb-color-border-sdk-editor-button": "question.editorButton.borderColor",
-
-  // Inactive
-  "--mb-color-icon-sdk-editor-button": "question.editorButton.iconColor",
-  "--mb-color-bg-sdk-editor-button": "question.editorButton.backgroundColor",
-
-  // Active
-  "--mb-color-icon-sdk-editor-button-active":
-    "question.editorButton.activeIconColor",
-  "--mb-color-bg-sdk-editor-button-active":
-    "question.editorButton.activeBackgroundColor",
-} satisfies CssVariableToThemeMap;
-
 // SDK > Collection Browser > Breadcrumbs > Expand Button
 export const COLLECTION_BROWSER_THEME_OPTIONS = {
   "--mb-color-text-collection-browser-expand-button":
@@ -64,8 +44,10 @@ export const CSS_VARIABLES_TO_SDK_THEME_MAP = {
   "--mb-color-notebook-step-bg":
     "question.editor.secondaryActionButton.backgroundColor",
 
+  // Toolbar (Default Layout)
+  "--mb-color-bg-sdk-question-toolbar": "question.toolbar.backgroundColor",
+
   // Mappings for SDK elements
   ...INTERACTIVE_QUESTION_THEME_OPTIONS,
-  ...NOTEBOOK_EDITOR_THEME_OPTIONS,
   ...COLLECTION_BROWSER_THEME_OPTIONS,
 } satisfies CssVariableToThemeMap;
