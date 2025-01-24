@@ -20,6 +20,7 @@
    [metabase.api.common.internal]
    [metabase.config :as config]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
    [metabase.util.malli.registry :as mr]
@@ -150,7 +151,7 @@
             (s/spec (s/cat :path    string?
                            :regexes (s/+ ::defendpoint.route.key-regex-pair))))))
 
-(mu/defn- auto-route-param-regex :- [:maybe (ms/InstanceOfClass java.util.regex.Pattern)]
+(mu/defn- infer-route-param-regex :- [:maybe (ms/InstanceOfClass java.util.regex.Pattern)]
   [route-param :- :keyword
    route-params-schema]
   (when (and route-params-schema
@@ -158,13 +159,14 @@
     (some (fn [[k _options v-schema]]
             (when (= k route-param)
               (or
-               (second (metabase.api.common.internal/->matching-regex v-schema))
-               (:api/regex (mc/properties v-schema)))))
+               (:api/regex (mc/properties v-schema))
+               (second (metabase.api.common.internal/->matching-regex v-schema)))))
           (mc/children route-params-schema))))
 
-(mu/defn- auto-route-regexes :- [:maybe [:map-of :keyword (ms/InstanceOfClass java.util.regex.Pattern)]]
-  "Auto-infer regexes for the route based on the route args schema. These are either defined
-  in [[metabase.api.common.internal/->matching-regex]] or defined in the schema itself with the `:api/regex` key."
+(mu/defn- inferred-route-regexes :- [:maybe [:map-of :keyword (ms/InstanceOfClass java.util.regex.Pattern)]]
+  "Auto-infer regexes for the route based on the route args schema. These are either defined by the `:api/regex`
+  property in the schema itself (see [[metabase.api.macros-test/RouteParams]] for an example of this), or if one is not
+  specified, in [[metabase.api.common.internal/->matching-regex]]."
   [route :- :string
    args  :- :map]
   (when-let [ks (not-empty (metabase.api.common.internal/route-arg-keywords route))]
@@ -173,11 +175,21 @@
                                       eval
                                       mr/resolve-schema
                                       mc/schema)]
-      (into {}
-            (keep (fn [k]
-                    (when-let [regex (auto-route-param-regex k route-params-schema)]
-                      [k regex])))
-            ks))))
+      (into
+       {}
+       (keep (fn [k]
+               (or (when-let [regex (infer-route-param-regex k route-params-schema)]
+                     [k regex])
+                   ;; in dev (REPL usage) warn if we didn't infer a regex for a route param so people can consider
+                   ;; adding one.
+                   (when config/is-dev?
+                     (log/warnf (str "Warning: no regex explicitly specified or inferred for %s %s %s route param %s,"
+                                     " add an :api/regex key to its schema or explicitly specify route regexes.")
+                                (ns-name *ns*)
+                                (:method args)
+                                (pr-str route)
+                                k)))))
+       ks))))
 
 (mu/defn- parse-route :- ::route
   [[route-type route] :- [:tuple [:enum :path :vector] :any]
@@ -185,7 +197,7 @@
   (case route-type
     :path   (merge
              {:path route}
-             (when-let [regexes (not-empty (auto-route-regexes route args))]
+             (when-let [regexes (not-empty (inferred-route-regexes route args))]
                {:regexes regexes}))
     :vector (update route :regexes #(into {} (map (juxt :key :regex)) %))))
 
