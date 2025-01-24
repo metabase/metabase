@@ -6,6 +6,7 @@ import {
   StandardSQL,
   sql,
 } from "@codemirror/lang-sql";
+import type { LanguageSupport } from "@codemirror/language";
 import type { EditorState } from "@codemirror/state";
 import { t } from "ttag";
 
@@ -240,6 +241,17 @@ export function referencedQuestionIds(query: Lib.Query): CardId[] {
     .filter(isNotNull);
 }
 
+type Dialect = {
+  spec: {
+    keywords?: string;
+  };
+};
+
+type Source = {
+  dialect?: Dialect;
+  language: LanguageSupport;
+};
+
 const engineToDialect = {
   "bigquery-cloud-sdk": StandardSQL,
   mysql: MySQL,
@@ -253,7 +265,7 @@ const engineToDialect = {
   // h2: "h2",
 };
 
-export function source(engine?: string | null) {
+export function source(engine?: string | null): Source {
   // TODO: this should be provided by the engine driver through the API
   switch (engine) {
     case "mongo":
