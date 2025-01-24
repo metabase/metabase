@@ -4,9 +4,9 @@ import { FilterTabContent } from "./FilterTabContent";
 import { FilterTabEmptyState } from "./FilterTabEmptyState";
 
 export const FilterModalBody = () => {
-  const { groupItems } = useFilterModalContext();
+  const { visibleItems } = useFilterModalContext();
 
-  if (groupItems.length === 0) {
+  if (visibleItems.length === 0) {
     return <FilterTabEmptyState />;
   }
 
