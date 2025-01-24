@@ -1614,7 +1614,7 @@ describe("scenarios > dashboard > entity id support", () => {
     cy.signInAsAdmin();
   });
 
-  it("when loading `/dashboard/by-entity-id/${entity_id}`, it should redirect to `/dashboard/by-entity-id/${id}` and display the dashboard correctly", () => {
+  it("when loading `/dashboard/by-entity-id/${entity_id}`, it should redirect to `/dashboard/${id}` and display the dashboard correctly", () => {
     cy.visit(`/dashboard/by-entity-id/${ORDERS_DASHBOARD_ENTITY_ID}`);
 
     cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}`);
