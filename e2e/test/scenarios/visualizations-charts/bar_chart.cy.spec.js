@@ -178,7 +178,9 @@ describe("scenarios > visualizations > bar chart", () => {
 
       H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
 
-      H.queryBuilderHeader().button("Filter").click();
+      H.queryBuilderHeader()
+        .button(/Filter/)
+        .click();
       H.modal().within(() => {
         cy.findByText("Product").click();
         cy.findByTestId("filter-column-Category")

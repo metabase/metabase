@@ -201,8 +201,11 @@
                (->> (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))
                     (map (fn [{:keys [name base-type]}]
                            {:name      (u/lower-case-en name)
-                            :base-type (if (or (isa? base-type :type/Integer)
-                                               (isa? base-type :type/Decimal)) ; H2 DBs returns the ID as BigInt, Oracle as Decimal;
+                            :base-type (if (or
+                                             ; H2 DBs returns the ID as BigInt, Oracle as Decimal, snowflake number
+                                            (isa? base-type :type/Integer)
+                                            (isa? base-type :type/Decimal)
+                                            (and (not (isa? base-type :type/Float)) (isa? base-type :type/Number)))
                                          :type/Integer
                                          base-type)}))
                     set)))))))
