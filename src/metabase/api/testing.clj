@@ -3,11 +3,11 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [compojure.core :refer [POST]]
    [java-time.api :as t]
    [java-time.clock]
    [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.search.core :as search]
@@ -44,12 +44,11 @@
     (jdbc/query {:datasource (mdb/app-db)} ["SCRIPT TO ?" path]))
   :ok)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/snapshot/:name"
+(api.macros/defendpoint :post "/snapshot/:name"
   "Snapshot the database for testing purposes."
-  [name]
-  {name ms/NonBlankString}
-  (save-snapshot! name)
+  [{snapshot-name :name} :- [:map
+                             [:name ms/NonBlankString]]]
+  (save-snapshot! snapshot-name)
   nil)
 
 ;;;; RESTORE
@@ -116,32 +115,33 @@
           (mdb/migrate! (mdb/app-db) :up)))))
   :ok)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/restore/:name"
+(api.macros/defendpoint :post "/restore/:name"
   "Restore a database snapshot for testing purposes."
-  [name]
-  {name ms/NonBlankString}
-  (restore-snapshot! name)
+  [{snapshot-name :name} :- [:map
+                             [:name ms/NonBlankString]]]
+  (restore-snapshot! snapshot-name)
   (search/reindex!)
   nil)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/echo"
-  "Simple echo hander. Fails when you POST {\"fail\": true}."
-  [fail :as {:keys [body]}]
-  {fail ms/BooleanValue}
+(api.macros/defendpoint :post "/echo"
+  "Simple echo hander. Fails when you POST with `?fail=true`."
+  [_route-params
+   {:keys [fail]} :- [:map
+                      [:fail ms/BooleanValue]]
+   body]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
     {:status 200
      :body body}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/set-time"
+(api.macros/defendpoint :post "/set-time"
   "Make java-time see world at exact time."
-  [:as {{:keys [time add-ms]} :body}]
-  {time   [:maybe ms/TemporalString]
-   add-ms [:maybe ms/Int]}
+  [_route-params
+   _query-params
+   {:keys [time add-ms]} :- [:map
+                             [:time   {:optional true} [:maybe ms/TemporalString]]
+                             [:add-ms {:optional true} [:maybe ms/Int]]]]
   (let [clock (when-let [time' (cond
                                  time   (u.date/parse time)
                                  add-ms (t/plus (t/zoned-date-time)
@@ -152,25 +152,26 @@
     {:result (if clock :set :reset)
      :time   (t/instant)}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/echo"
-  "Simple echo hander. Fails when you GET {\"fail\": true}."
-  [fail body]
-  {fail ms/BooleanValue
-   body ms/JSONString}
+(api.macros/defendpoint :get "/echo"
+  "Simple echo hander. Fails when you GET with `?fail=true`."
+  [_route-params
+   {:keys [fail body]} :- [:map
+                           [:fail ms/BooleanValue]
+                           [:body ms/JSONString]]]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
     {:status 200
      :body (json/decode+kw body)}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/mark-stale"
+(api.macros/defendpoint :post "/mark-stale"
   "Mark the card or dashboard as stale"
-  [:as {{:keys [id model date-str]} :body}]
-  {id             ms/PositiveInt
-   model          :string
-   date-str       [:maybe :string]}
+  [_route-params
+   _query-params
+   {:keys [id model date-str]} :- [:map
+                                   [:id       ms/PositiveInt]
+                                   [:model    :string]
+                                   [:date-str {:optional true} [:maybe :string]]]]
   (let [date (if date-str
                (try (t/local-date "yyyy-MM-dd" date-str)
                     (catch Exception _
@@ -183,8 +184,7 @@
       "card"      (t2/update! :model/Card :id id {:last_used_at date})
       "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/stats"
+(api.macros/defendpoint :post "/stats"
   "Triggers a send of instance usage stats"
   []
   (stats/phone-home-stats!)
