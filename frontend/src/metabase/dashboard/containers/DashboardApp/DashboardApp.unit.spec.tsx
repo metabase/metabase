@@ -230,12 +230,13 @@ describe("DashboardApp", () => {
       expect(screen.getByText(/add a chart/i)).toBeInTheDocument();
     });
 
-    it("should should show an empty state without the 'add a question' prompt if the user lacks write access", async () => {
+    it("should show an empty state without the 'add a question' prompt if the user lacks write access", async () => {
       await setup({ dashboard: { can_write: false } });
 
+      expect(screen.getByText("This dashboard is empty")).toBeInTheDocument();
       expect(
-        screen.getByText(/there's nothing here, yet./i),
-      ).toBeInTheDocument();
+        screen.queryByRole("button", { name: "Add a chart" }),
+      ).not.toBeInTheDocument();
     });
   });
 
