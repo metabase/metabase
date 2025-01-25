@@ -187,17 +187,18 @@
       #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
          :clj  (log/warn (ambiguous-match-error a-ref columns)))))
 
-(mu/defn- disambiguate-matches-find-match-with-same-source-field-join-alias :- [:maybe ::lib.schema.metadata/column]
-  "If there are multiple matching columns and `a-ref` has a `source-field-join-alias`, check if only one column has that
-   same alias."
+(mu/defn- disambiguate-matches-find-match-with-same-source-field-name :- [:maybe ::lib.schema.metadata/column]
+  "If there are multiple matching columns and `a-ref` has a `source-field-name`, check if only one column has that
+   same name."
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
-  (or (when-let [join-alias (:source-field-join-alias a-ref)]
-        (let [matching-columns (filter #(= (:fk-join-alias %) join-alias)
-                                       columns)]
-          (when (= (count matching-columns) 1)
-            (first matching-columns))))
-      (disambiguate-matches-dislike-field-refs-to-expressions a-ref columns)))
+  (let [{:keys [source-field-name]} (lib.options/options a-ref)]
+    (or (when source-field-name
+          (let [matching-columns (filter #(= (:fk-field-name %) source-field-name)
+                                         columns)]
+            (when (= (count matching-columns) 1)
+              (first matching-columns))))
+        (disambiguate-matches-dislike-field-refs-to-expressions a-ref columns))))
 
 (mu/defn- disambiguate-matches-find-match-with-same-binning :- [:maybe ::lib.schema.metadata/column]
   "If there are multiple matching columns and `a-ref` has a binning value, check if only one column has that same
@@ -209,7 +210,7 @@
                                        columns)]
           (when (= (count matching-columns) 1)
             (first matching-columns))))
-      (disambiguate-matches-find-match-with-same-source-field-join-alias a-ref columns)))
+      (disambiguate-matches-find-match-with-same-source-field-name a-ref columns)))
 
 (mu/defn- disambiguate-matches-find-match-with-same-temporal-bucket :- [:maybe ::lib.schema.metadata/column]
   "If there are multiple matching columns and `a-ref` has a temporal bucket, check if only one column has that same
