@@ -469,7 +469,7 @@
                                                               (:fk-field-id metadata))]
                                    {:source-field source-field-id})
                                  (when-let [source-field-name (when-not inherited-column?
-                                                              (:fk-field-name metadata))]
+                                                                (:fk-field-name metadata))]
                                    {:source-field-name source-field-name}))
         id-or-name        ((if inherited-column?
                              (some-fn :lib/desired-column-alias :name)
