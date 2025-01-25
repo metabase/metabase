@@ -10,9 +10,7 @@ import type { ErrorPayload } from "./types";
 interface DownloadDiagnosticModalProps {
   errorInfo: ErrorPayload;
   onClose: () => void;
-  onSubmit: (
-    values: Partial<Record<keyof Omit<ErrorPayload, "description">, boolean>>,
-  ) => void;
+  onSubmit: (values: Partial<Record<keyof ErrorPayload, boolean>>) => void;
   canIncludeQueryData: boolean;
   applicationName: string;
   hiddenValues: Record<
