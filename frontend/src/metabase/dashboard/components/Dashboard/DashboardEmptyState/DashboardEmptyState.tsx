@@ -34,7 +34,7 @@ function EmptyStateWrapper({
       justify="center"
       spacing="lg"
     >
-      <img src={EmptyDashboardBot} alt="Empty dashboard illustration" />
+      <img src={EmptyDashboardBot} alt={t`Empty dashboard illustration`} />
       {children}
     </Stack>
   );
