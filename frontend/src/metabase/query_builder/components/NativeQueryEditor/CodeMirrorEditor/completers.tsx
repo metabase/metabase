@@ -181,18 +181,10 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
         return null;
       }
 
-      // Do not cache this in the rtk-query's cache, since there is no
-      // way to invalidate it. The autocomplete endpoint set caching headers
-      // so the request should be cached in the browser.
-      const shouldCache = false;
-
-      const { data } = await listCardAutocompleteSuggestions(
-        {
-          databaseId,
-          query,
-        },
-        shouldCache,
-      );
+      const { data } = await listCardAutocompleteSuggestions({
+        databaseId,
+        query,
+      });
       if (!data) {
         return null;
       }

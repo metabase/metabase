@@ -25,7 +25,8 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  provideAutocompleteSuggestionTags,
+  provideAutocompleteSuggestionListTags,
+  provideCardAutocompleteSuggestionListTags,
   provideDatabaseListTags,
   provideDatabaseTags,
   tag,
@@ -207,7 +208,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${databaseId}/autocomplete_suggestions`,
         params,
       }),
-      providesTags: () => provideAutocompleteSuggestionTags(),
+      providesTags: () => provideAutocompleteSuggestionListTags(),
     }),
     listCardAutocompleteSuggestions: builder.query<
       CardAutocompleteSuggestion[],
@@ -218,6 +219,7 @@ export const databaseApi = Api.injectEndpoints({
         url: `/api/database/${databaseId}/card_autocomplete_suggestions`,
         params,
       }),
+      providesTags: () => provideCardAutocompleteSuggestionListTags(),
     }),
   }),
 });
