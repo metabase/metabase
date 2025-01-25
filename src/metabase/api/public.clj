@@ -190,8 +190,8 @@
                                     [:uuid          ms/UUIDString]
                                     [:export-format api.dataset/ExportFormat]]
    {:keys [parameters format_rows pivot_results]} :- [:map
-                                                      [:format_rows   {:default false} [:maybe :boolean]]
-                                                      [:pivot_results {:default false} [:maybe :boolean]]
+                                                      [:format_rows   {:default false} :boolean]
+                                                      [:pivot_results {:default false} :boolean]
                                                       [:parameters    {:optional true} [:maybe ms/JSONString]]]]
   (process-query-for-card-with-public-uuid
    uuid
@@ -200,8 +200,8 @@
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
-                :format-rows?          (or format_rows false)
-                :pivot?                (or pivot_results false)}))
+                :format-rows?          format_rows
+                :pivot?                pivot_results}))
 
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
@@ -317,10 +317,10 @@
                                                         [:dashcard-id   ms/PositiveInt]
                                                         [:card-id       ms/PositiveInt]
                                                         [:export-format (into [:enum] api.dataset/export-formats)]]
-   {:keys [parameters format_rows pivot_results]} :- [:map
+   {:keys [format_rows pivot_results parameters]} :- [:map
                                                       [:parameters    {:optional true} [:maybe ms/JSONString]]
-                                                      [:format_rows   {:default false} [:maybe ms/BooleanValue]]
-                                                      [:pivot_results {:default false} [:maybe ms/BooleanValue]]]]
+                                                      [:format_rows   {:default false} ms/BooleanValue]
+                                                      [:pivot_results {:default false} ms/BooleanValue]]]
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid, :archived false))]
@@ -332,8 +332,8 @@
               :parameters    parameters
               :constraints   nil
               :middleware    {:process-viz-settings? true
-                              :format-rows?          (or format_rows false)
-                              :pivot?                (or pivot_results false)}))))
+                              :format-rows?          format_rows
+                              :pivot?                pivot_results}))))
 
 (api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
@@ -384,19 +384,22 @@
 (api.macros/defendpoint :get "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
   [_route-params
-   {:keys [url maxheight maxwidth]} :- [:map
-                                        [:url       ms/NonBlankString]
-                                        [:maxheight {:optional true} [:maybe ms/IntString]]
-                                        [:maxwidth  {:optional true} [:maybe ms/IntString]]]]
-  ;; the format param is not used by the API, but is required as part of the oEmbed spec: http://oembed.com/#section2
-  ;; just return an error if `format` is specified and it's anything other than `json`.
-  (let [height (if maxheight (Integer/parseInt maxheight) default-embed-max-height)
-        width  (if maxwidth  (Integer/parseInt maxwidth)  default-embed-max-width)]
-    {:version "1.0"
-     :type    "rich"
-     :width   width
-     :height  height
-     :html    (embed/iframe url width height)}))
+   {:keys [url maxheight maxwidth]}
+   :- [:map
+       [:url       ms/NonBlankString]
+       [:format    {:optional true} [:maybe
+                                     {:description (str "The format param is not used by the API, but is required as"
+                                                        " part of the oEmbed spec: http://oembed.com/#section2 just"
+                                                        " return an error if `format` is specified and it's anything"
+                                                        " other than `json`.")}
+                                     [:enum "json"]]]
+       [:maxheight {:default default-embed-max-height} pos-int?]
+       [:maxwidth  {:default default-embed-max-width}  pos-int?]]]
+  {:version "1.0"
+   :type    "rich"
+   :width   maxwidth
+   :height  maxheight
+   :html    (embed/iframe url maxwidth maxheight)})
 
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
@@ -616,7 +619,7 @@
   [{:keys [uuid param-key]} :- [:map
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
-   constraint-param-key->value :- [:map-of string? any?]]
+   constraint-param-key->value]
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
@@ -628,7 +631,7 @@
                                       [:uuid      ms/UUIDString]
                                       [:param-key ms/NonBlankString]
                                       [:query     ms/NonBlankString]]
-   constraint-param-key->value :- [:map-of string? any?]]
+   constraint-param-key->value]
   (let [dashboard (dashboard-with-uuid uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
