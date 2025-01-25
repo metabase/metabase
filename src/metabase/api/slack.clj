@@ -26,13 +26,18 @@
   [diagnostic-info file-info]
   (let [version-info (get-in diagnostic-info [:bugReportDetails :metabase-info :version])
         description (get diagnostic-info :description)
+        reporterEmail (get-in diagnostic-info [:reporter :email])
+        reporterName (get-in diagnostic-info [:reporter :name])
         file-url (if (string? file-info)
                    file-info
                    (:url file-info))]
     [{:type "rich_text"
       :elements [{:type "rich_text_section"
                   :elements [{:type "text"
-                              :text "New bug report"}
+                              :text "New bug report from "}
+                             {:type "link"
+                              :url (str "mailto:" reporterEmail)
+                              :text reporterName}
                              {:type "text"
                               :text "\n\nDescription:\n"
                               :style {:bold true}}
