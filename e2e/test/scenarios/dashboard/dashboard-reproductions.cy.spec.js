@@ -278,7 +278,7 @@ describe("issue 13736", () => {
   });
 });
 
-describe("issue 16559", () => {
+describe("issue 16559", { tags: "@flaky" }, () => {
   const dashboardDetails = {
     name: "16559 Dashboard",
   };

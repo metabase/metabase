@@ -175,7 +175,7 @@
                    (mt/user-http-request :crowberto :get 404 (format "mt/gtap/%s" id))))))))))
 
 (deftest update-gtap-test
-  (testing "PUT /api/mt/gtap"
+  (testing "PUT /api/mt/gtap/:id"
     (mt/with-temp [:model/Table            {table-id :id} {}
                    :model/PermissionsGroup {group-id :id} {}
                    :model/Card             {card-id :id}  {}]
