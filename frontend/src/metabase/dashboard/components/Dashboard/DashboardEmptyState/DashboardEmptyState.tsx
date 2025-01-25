@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { jt, t } from "ttag";
+import { c, jt, t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import { Button, Icon, type IconName, Stack, Text, Title } from "metabase/ui";
@@ -59,8 +59,12 @@ export function DashboardEmptyState({
 
           <Text align="center" data-testid="dashboard-empty-state-copy">
             {isEditing
-              ? jt`Add link or text cards. You can arrange cards manually, or start with some default layouts by adding ${(<InlineIcon key="section-icon" name="section" />)} ${(<b key="section">{t`a section`}</b>)}.`
-              : jt`Click on the ${(<InlineIcon key="pencil-icon" name="pencil" />)} ${(<b key="edit">{t`Edit`}</b>)} button to add questions, filters, links, or text.`}
+              ? jt`Add link or text cards. You can arrange cards manually, or start with some default layouts by adding ${(<InlineIcon key="section-icon" name="section" />)} ${(
+                  <b key="section">{c(
+                    "Context for languages with declension: 'start [populating a dashboard] with some default layouts by adding >>a section<<",
+                  ).t`a section`}</b>
+                )}.`
+              : jt`Click on the ${(<InlineIcon key="pencil-icon" name="pencil" />)} ${(<b key="edit">{c("The name of a button").t`Edit`}</b>)} button to add questions, filters, links, or text.`}
           </Text>
         </Stack>
         <Button
