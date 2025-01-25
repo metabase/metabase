@@ -216,7 +216,6 @@ describe("Dashboard > Dashboard Questions", () => {
       cy.findByRole("heading", { name: "This dashboard is empty" }).should(
         "be.visible",
       );
-      // H.dashboardCards().should("not.exist");
     });
 
     it("can bulk move questions into a dashboard", () => {
