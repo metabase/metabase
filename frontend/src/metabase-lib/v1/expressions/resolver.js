@@ -70,6 +70,10 @@ const isCompatible = (expectedType, inferredType) => {
   if (expectedType === "number" && inferredType === "aggregation") {
     return true;
   }
+  if (expectedType === "expression" && inferredType === "aggregation") {
+    return true;
+  }
+
   return false;
 };
 
