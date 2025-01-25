@@ -4,10 +4,9 @@ import slugg from "slugg";
 import { t } from "ttag";
 
 import {
-  skipToken,
-  useGetAutocompleteSuggestionsQuery,
-  useLazyGetCardAutocompleteSuggestionsQuery,
   useLazyGetCardQuery,
+  useLazyListAutocompleteSuggestionsQuery,
+  useLazyListCardAutocompleteSuggestionsQuery,
   useListSnippetsQuery,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
@@ -19,6 +18,10 @@ import {
   matchTagAtCursor,
   source,
 } from "./util";
+
+// Keep this in sync with the limit in the backend code at
+// `autocomplete-suggestions` in src/metabase/api/database.clj
+const AUTOCOMPLETE_SUGGESTIONS_LIMIT = 50;
 
 type SchemaCompletionOptions = {
   databaseId?: DatabaseId | null;
@@ -44,12 +47,15 @@ function matchAfter(context: CompletionContext, expr: RegExp) {
 export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
   const matchStyle = useSetting("native-query-autocomplete-match-style");
 
-  const { data: suggestions = [] } = useGetAutocompleteSuggestionsQuery(
-    matchStyle === "off" || databaseId == null ? skipToken : { databaseId },
-  );
+  const [listAutocompleteSuggestions] =
+    useLazyListAutocompleteSuggestionsQuery();
 
   return useCallback(
-    function (context: CompletionContext) {
+    async function (context: CompletionContext) {
+      if (matchStyle === "off" || databaseId == null) {
+        return null;
+      }
+
       const tag = matchTagAtCursor(context.state, {
         allowOpenEnded: true,
         position: context.pos,
@@ -62,26 +68,50 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
       }
 
       const word = context.matchBefore(/\w+/);
-      const suffix = matchAfter(context, /\w+/);
       if (!word) {
         return null;
       }
 
+      const suffix = matchAfter(context, /\w+/);
+
+      const { data } = await listAutocompleteSuggestions({
+        databaseId,
+        [matchStyle]: word.text.trim(),
+      });
+      if (!data) {
+        return null;
+      }
+
+      const seen = new Set();
+
+      const deduped = data.filter(([value]) => {
+        if (seen.has(value)) {
+          return false;
+        }
+        seen.add(value);
+        return true;
+      });
+
       return {
         from: word.from,
         to: suffix?.to,
-        options: suggestions.map(([value, meta]) => ({
+        options: deduped.map(([value, meta]) => ({
           label: value,
           detail: meta,
         })),
         validFor(text: string) {
-          return matchStyle === "prefix"
-            ? text.startsWith(word.text)
-            : text.includes(word.text);
+          if (data.length >= AUTOCOMPLETE_SUGGESTIONS_LIMIT) {
+            // If there are more suggestions than the limit, we want subsequent
+            // edits to fetch more completions because we can't assume that we've seen all
+            // suggestions
+            return false;
+          }
+
+          return text.startsWith(word.text);
         },
       };
     },
-    [suggestions, matchStyle],
+    [databaseId, matchStyle, listAutocompleteSuggestions],
   );
 }
 
@@ -130,8 +160,8 @@ type CardTagCompletionOptions = {
 
 // Completes card names when inside a card tag
 export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
-  const [getCardAutocompleteSuggestions] =
-    useLazyGetCardAutocompleteSuggestionsQuery();
+  const [listCardAutocompleteSuggestions] =
+    useLazyListCardAutocompleteSuggestionsQuery();
   return useCallback(
     async function completeCardTags(context: CompletionContext) {
       if (databaseId == null) {
@@ -156,7 +186,7 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
       // so the request should be cached in the browser.
       const shouldCache = false;
 
-      const { data } = await getCardAutocompleteSuggestions(
+      const { data } = await listCardAutocompleteSuggestions(
         {
           databaseId,
           query,
@@ -189,7 +219,7 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
         },
       };
     },
-    [databaseId, getCardAutocompleteSuggestions],
+    [databaseId, listCardAutocompleteSuggestions],
   );
 }
 

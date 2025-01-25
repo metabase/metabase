@@ -1,4 +1,8 @@
 import type {
+  AutocompleteRequest,
+  AutocompleteSuggestion,
+  CardAutocompleteRequest,
+  CardAutocompleteSuggestion,
   CreateDatabaseRequest,
   Database,
   DatabaseId,
@@ -21,6 +25,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideAutocompleteSuggestionTags,
   provideDatabaseListTags,
   provideDatabaseTags,
   tag,
@@ -193,6 +198,27 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("database")]),
     }),
+    listAutocompleteSuggestions: builder.query<
+      AutocompleteSuggestion[],
+      AutocompleteRequest
+    >({
+      query: ({ databaseId, ...params }) => ({
+        method: "GET",
+        url: `/api/database/${databaseId}/autocomplete_suggestions`,
+        params,
+      }),
+      providesTags: () => provideAutocompleteSuggestionTags(),
+    }),
+    listCardAutocompleteSuggestions: builder.query<
+      CardAutocompleteSuggestion[],
+      CardAutocompleteRequest
+    >({
+      query: ({ databaseId, ...params }) => ({
+        method: "GET",
+        url: `/api/database/${databaseId}/card_autocomplete_suggestions`,
+        params,
+      }),
+    }),
   }),
 });
 
@@ -211,4 +237,8 @@ export const {
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
+  useListAutocompleteSuggestionsQuery,
+  useLazyListAutocompleteSuggestionsQuery,
+  useListCardAutocompleteSuggestionsQuery,
+  useLazyListCardAutocompleteSuggestionsQuery,
 } = databaseApi;
