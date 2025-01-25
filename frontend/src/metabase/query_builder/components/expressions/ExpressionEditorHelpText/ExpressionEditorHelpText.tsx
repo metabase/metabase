@@ -88,6 +88,7 @@ export const ExpressionEditorHelpText = ({
 
         <Box
           className={ExpressionEditorHelpTextS.BlockSubtitleText}
+          data-testid="argument-example"
         >{t`Example`}</Box>
         <Box
           className={cx(
