@@ -83,10 +83,10 @@ async function runContainer(options) {
       Tty: true,
       Cmd: ["-c", command, ...after],
       HostConfig: {
-        NetworkMode: "host",
         Binds: CONTAINER_BOUND_DIRECTORIES.map(
           directory => `${cwd}/${directory}:${WORKING_DIRECTORY}/${directory}`,
         ),
+        ExtraHosts: ["host.docker.internal:host-gateway"],
       },
       WorkingDir: WORKING_DIRECTORY,
       Env: Object.entries(env).map(([key, value]) => `${key}=${value}`),

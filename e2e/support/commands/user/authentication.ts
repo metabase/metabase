@@ -48,12 +48,19 @@ Cypress.Commands.add(
     user = "admin",
     { setupCache, skipCache } = { setupCache: false, skipCache: false },
   ) => {
+    const baseUrl = Cypress.config("baseUrl");
+    // We must set cookies to a proper domain, respecting `baseUrl` config
+    const domain = baseUrl ? new URL(baseUrl).hostname : undefined;
+
     if (!skipCache && !setupCache && loginCache[user]) {
       const { sessionId, deviceId } = loginCache[user];
       cy.log("Using cached login token for user", user);
-      cy.setCookie("metabase.SESSION", sessionId, { httpOnly: true });
-      cy.setCookie("metabase.TIMEOUT", "alive");
-      cy.setCookie("metabase.DEVICE", deviceId ?? "", { httpOnly: true });
+      cy.setCookie("metabase.SESSION", sessionId, { httpOnly: true, domain });
+      cy.setCookie("metabase.TIMEOUT", "alive", { domain });
+      cy.setCookie("metabase.DEVICE", deviceId ?? "", {
+        httpOnly: true,
+        domain,
+      });
       return;
     }
 

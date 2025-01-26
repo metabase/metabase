@@ -4,6 +4,7 @@ import path from "node:path";
 import getCompareSnapshotsPlugin from "cypress-image-diff-js/plugin";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
+import { BASE_URL } from "e2e/runner/cypress-runner-utils";
 import { OnWrapper } from "e2e/support/utils/on-wrapper";
 
 import * as ciTasks from "./ci_tasks";
@@ -20,6 +21,8 @@ const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 const cypressSplit = require("cypress-split");
+
+const e2eHost = BASE_URL;
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = process.env["CYPRESS_CI"] === "true";
@@ -161,6 +164,8 @@ const defaultConfig = {
       config.excludeSpecPattern = "e2e/snapshot-creators/qa-db.cy.snap.js";
     }
 
+    config.env.E2E_HOST = e2eHost;
+
     // `grepIntegrationFolder` needs to point to the root!
     // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
     config.env.grepIntegrationFolder = "../../";
@@ -168,6 +173,7 @@ const defaultConfig = {
 
     config.env.IS_ENTERPRISE = isEnterprise;
 
+    config.env.isCI = isCI;
     config.env.IS_VISUAL_TEST = isVisualTest;
 
     config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;

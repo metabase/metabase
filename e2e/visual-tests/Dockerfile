@@ -1,5 +1,3 @@
-FROM openjdk:11-jdk-slim AS openjdk
-
 FROM yukinying/chrome-headless-browser-stable:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -18,8 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    ca-certificates-java \
     python3 \
     make \
     xvfb \
@@ -27,11 +23,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
-COPY --from=openjdk /usr/local/openjdk-11 /usr/lib/jvm/java-11-openjdk-amd64
-
-ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
-ENV PATH=$JAVA_HOME/bin:$PATH
 
 WORKDIR /app
 

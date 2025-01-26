@@ -8,7 +8,8 @@ import type { JSX } from "react";
 import { USERS } from "e2e/support/cypress_data";
 import { signInAsAdminAndEnableEmbeddingSdkForE2e } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
-export const METABASE_INSTANCE_URL = "http://localhost:4000";
+export const METABASE_INSTANCE_URL =
+  Cypress.env("E2E_HOST") ?? "http://localhost:4000";
 
 export const AUTH_PROVIDER_URL = "http://auth-provider/sso";
 
