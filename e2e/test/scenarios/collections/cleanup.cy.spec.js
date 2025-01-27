@@ -54,7 +54,6 @@ describe("scenarios > collections > clean up", () => {
         collectionMenu().click();
         H.popover().within(() => {
           cy.findByText("Clear out unused items").should("exist");
-          cy.findByText("Recommended").should("exist");
         });
 
         cy.log("should not show in custom analytics collections");
@@ -75,6 +74,34 @@ describe("scenarios > collections > clean up", () => {
             cy.findByText("Clear out unused items").should("not.exist");
           });
         });
+
+        cy.log(
+          "should not recommend the option when there are stale items int he collection",
+        );
+        H.createCollection({ name: "collection with stale items" }).then(
+          ({ body: { id } }) => {
+            // make sure that it has one stale item
+            bulkCreateQuestions(1, { collection_id: id }).then(([question]) => {
+              makeItemsStale(
+                [question.id],
+                "card",
+                dayjs()
+                  .startOf("day")
+                  .subtract(6, "months")
+                  .format("YYYY-MM-DD"),
+              );
+
+              // assert we don't show clean up option
+              H.visitCollection(id);
+              collectionMenu().click();
+              H.popover().within(() => {
+                cy.findByRole("menuitem", {
+                  name: /Clear out unused items/,
+                }).should("contain.text", "Recommended");
+              });
+            });
+          },
+        );
 
         cy.log("should not show in sample collections");
         H.createCollection({ name: "Fake sample collection" }).then(
