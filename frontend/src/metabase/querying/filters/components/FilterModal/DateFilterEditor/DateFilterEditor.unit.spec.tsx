@@ -4,6 +4,9 @@ import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
+import { FilterModalProvider } from "../context";
+import { createMockFilterModalContext } from "../test-utils";
+
 import { DateFilterEditor } from "./DateFilterEditor";
 
 interface SetupOpts {
@@ -18,15 +21,16 @@ function setup({ query, stageIndex, column, filter }: SetupOpts) {
   const onInput = jest.fn();
 
   renderWithProviders(
-    <DateFilterEditor
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      filter={filter}
-      isSearching={false}
-      onChange={onChange}
-      onInput={onInput}
-    />,
+    <FilterModalProvider
+      value={createMockFilterModalContext({ query, onInput })}
+    >
+      <DateFilterEditor
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        onChange={onChange}
+      />
+    </FilterModalProvider>,
   );
 
   const getNextFilterName = () => {
