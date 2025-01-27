@@ -318,6 +318,7 @@
     "stylelint-config-standard": "^36.0.0",
     "swc-loader": "^0.2.6",
     "terser-webpack-plugin": "^5.3.9",
+    "ts-morph": "^25.0.0",
     "tsx": "^4.19.2",
     "webpack": "^5.94.0",
     "webpack-bundle-analyzer": "^4.10.1",

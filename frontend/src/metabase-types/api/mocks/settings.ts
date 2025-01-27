@@ -130,6 +130,7 @@ export const createMockTokenFeatures = (
   upload_management: false,
   query_reference_validation: false,
   serialization: false,
+  cache_preemptive: false,
   metabot_v3: false,
   ...opts,
 });

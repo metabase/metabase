@@ -410,6 +410,10 @@ export type SidebarCacheFormProps = {
   onClose: () => void;
 } & GroupProps;
 
+export type PreemptiveCachingSwitchProps = {
+  handleSwitchToggle: () => void;
+};
+
 export const PLUGIN_CACHING = {
   isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
@@ -428,6 +432,8 @@ export const PLUGIN_CACHING = {
   DashboardAndQuestionCachingTab: PluginPlaceholder as any,
   StrategyEditorForQuestionsAndDashboards: PluginPlaceholder as any,
   getTabMetadata: getPerformanceTabMetadata,
+  PreemptiveCachingSwitch:
+    PluginPlaceholder as ComponentType<PreemptiveCachingSwitchProps>,
 };
 
 export const PLUGIN_REDUCERS: {

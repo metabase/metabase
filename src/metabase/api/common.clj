@@ -414,17 +414,6 @@
                                                 (wrap-response-if-needed
                                                  (do ~@body))))))))
 
-(defmacro defendpoint-async
-  "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
-  {:arglists '([method route docstr? args schemas-map? & body])}
-  [& defendpoint-args]
-  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
-    `(defendpoint* ~(assoc defendpoint-args
-                           :args []
-                           :body `((fn ~args
-                                     ~@(validate-params arg->schema)
-                                     ~@body))))))
-
 (defn- pass-thru-handler
   ([_request] nil)
   ([_request respond _raise] (respond nil)))
@@ -439,14 +428,10 @@
     ;; for dev, fetch the handler from the metadata on every request so we get nice live reloading if the endpoints in a
     ;; namespace change.
     (if config/is-dev?
-      (fn
-        ([request]
-         (when-let [handler (handler-fn)]
-           (handler request)))
-        ([request respond raise]
-         (if-let [handler (handler-fn)]
-           (handler request respond raise)
-           (respond nil))))
+      (fn [request respond raise]
+        (if-let [handler (handler-fn)]
+          (handler request respond raise)
+          (respond nil)))
       ;; For prod, fetching the handler on each request gives us nothing since it shouldn't change; fetch it once and if
       ;; it's not defined just use the [[pass-thru-handler]] above instead.
       (or (handler-fn) pass-thru-handler))))

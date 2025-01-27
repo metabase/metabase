@@ -1,7 +1,6 @@
 (ns metabase.api.user
   "/api/user endpoints"
   (:require
-   [compojure.core :refer [PUT]]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
@@ -516,12 +515,14 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id/password"
+(api.macros/defendpoint :put "/:id/password"
   "Update a user's password."
-  [id :as {{:keys [password old_password]} :body, :as request}]
-  {id       ms/PositiveInt
-   password ms/ValidPassword}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [password old_password]} :- [:map
+                                       [:password ms/ValidPassword]]
+   request]
   (check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],
                                     :id id,

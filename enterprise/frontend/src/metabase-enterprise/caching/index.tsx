@@ -4,6 +4,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { DashboardAndQuestionCachingTab } from "./components/DashboardAndQuestionCachingTab";
 import { GranularControlsExplanation } from "./components/GranularControlsExplanation";
 import { InvalidateNowButton } from "./components/InvalidateNowButton";
+import { PreemptiveCachingSwitch } from "./components/PreemptiveCachingSwitch";
 import { SidebarCacheForm } from "./components/SidebarCacheForm";
 import { SidebarCacheSection } from "./components/SidebarCacheSection";
 import { StrategyEditorForQuestionsAndDashboards } from "./components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards";
@@ -35,4 +36,8 @@ if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards =
     StrategyEditorForQuestionsAndDashboards;
   PLUGIN_CACHING.getTabMetadata = getEnterprisePerformanceTabMetadata;
+}
+
+if (hasPremiumFeature("cache_preemptive")) {
+  PLUGIN_CACHING.PreemptiveCachingSwitch = PreemptiveCachingSwitch;
 }
