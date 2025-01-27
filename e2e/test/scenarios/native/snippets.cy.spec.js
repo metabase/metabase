@@ -38,7 +38,7 @@ describe("scenarios > question > snippets", () => {
     });
 
     cy.log("SQL editor should get updated automatically");
-    cy.get("@editor").should("contain", "select {{snippet: stuff-snippet}}");
+    H.NativeEditor.get().should("contain", "select {{snippet: stuff-snippet}}");
 
     cy.log("Run the query and check the value");
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -81,7 +81,7 @@ describe("scenarios > question > snippets", () => {
     });
 
     // SQL editor should get updated automatically
-    cy.get("@editor").contains("select {{snippet: Math}}");
+    H.NativeEditor.get().contains("select {{snippet: Math}}");
 
     // Run the query and check the new value
     cy.findByTestId("native-query-editor-container").icon("play").click();

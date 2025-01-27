@@ -973,7 +973,7 @@ describe("issue 29786", { tags: "@external" }, () => {
       });
 
       // type a space to trigger fields
-      cy.focused().type(" ");
+      H.NativeEditor.type(" ");
 
       cy.findByTestId("tag-editor-variable-f1")
         .findByTestId("variable-type-select")
