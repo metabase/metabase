@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { useGetNativeDatasetQuery } from "metabase/api";
 import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
 import { color } from "metabase/lib/colors";
-import { formatNativeQuery, getEngineNativeType } from "metabase/lib/engine";
+import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
@@ -13,8 +13,9 @@ import { NativeQueryEditorRoot } from "metabase/query_builder/components/NativeQ
 import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
-import { createDatasetQuery } from "./utils";
+import { createNativeQuestion } from "./utils";
 
 const TITLE = {
   sql: t`SQL for this question`,
@@ -30,7 +31,8 @@ export const NotebookNativePreview = (): JSX.Element => {
   const dispatch = useDispatch();
   const question = checkNotNull(useSelector(getQuestion));
 
-  const engine = question.database()?.engine;
+  const database = question.database();
+  const engine = database?.engine;
   const engineType = getEngineNativeType(engine);
 
   const sourceQuery = question.query();
@@ -43,19 +45,13 @@ export const NotebookNativePreview = (): JSX.Element => {
   const showQuery = !isFetching && canRun && !error;
   const showEmptySidebar = !canRun;
 
-  const formattedQuery = formatNativeQuery(data?.query, engine);
+  const newQuestion = createNativeQuestion(question, data);
+  const newQuery = newQuestion.legacyQuery() as NativeQuery;
 
   const handleConvertClick = useCallback(() => {
-    if (!formattedQuery) {
-      return;
-    }
-
-    const newDatasetQuery = createDatasetQuery(formattedQuery, question);
-    const newQuestion = question.setDatasetQuery(newDatasetQuery);
-
     dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }));
     dispatch(setUIControls({ isNativeEditorOpen: true }));
-  }, [question, dispatch, formattedQuery]);
+  }, [newQuestion, dispatch]);
 
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
@@ -98,7 +94,7 @@ export const NotebookNativePreview = (): JSX.Element => {
         {showQuery && (
           <NativeQueryEditorRoot style={{ height: "100%", flex: 1 }}>
             <AceEditor
-              value={formattedQuery}
+              value={newQuery.queryText()}
               mode={engineType}
               readOnly
               height="100%"

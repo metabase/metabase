@@ -1,5 +1,3 @@
-import { onlyOn } from "@cypress/skip-test";
-
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -254,7 +252,7 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
 });
 
 describe(
-  "converting question to a native query (metabase#15946, metabase#32121, metabase#38181)",
+  "converting question to a native query (metabase#15946, metabase#32121, metabase#38181, metabase#40557)",
   { tags: "@mongo" },
   () => {
     const MONGO_DB_NAME = "QA Mongo";
@@ -310,18 +308,12 @@ describe(
         cy.button("Convert this question to a native query").click();
       });
 
-      // FIXME: Remove `onlyOn` wrapper block once the issue #40557 is fixed
-      onlyOn(false, () => {
-        cy.log(
-          "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
-        );
-        cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
-        cy.findByTestId("selected-table").should("have.text", "Products");
-        cy.get("[data-testid=cell-data]").should(
-          "contain",
-          "Small Marble Shoes",
-        );
-      });
+      cy.log(
+        "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
+      );
+      cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
+      cy.findByTestId("selected-table").should("have.text", "Products");
+      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
     });
 
     it.skip("should work for a nested GUI question (metabase#40557)", () => {
