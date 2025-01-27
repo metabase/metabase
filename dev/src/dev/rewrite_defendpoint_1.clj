@@ -509,11 +509,3 @@
         (with-open [w (java.io.FileWriter. filename)]
           (print-root w))
         (print-root *out*)))))
-
-(comment
-  #_{:clj-kondo/ignore [:unresolved-namespace]}
-  (defn- files []
-    (->> (metabase.util.files/files-seq (metabase.util.files/get-path "src/metabase/api/"))
-         (map str)
-         (filter #(str/ends-with? % ".clj"))
-         sort)))
