@@ -31,7 +31,7 @@ function setup({ query, stageIndex, column, filter, fieldValues }: SetupOpts) {
 
   renderWithProviders(
     <FilterModalProvider
-      value={createMockFilterModalContext({ handleInput: onInput, query })}
+      value={createMockFilterModalContext({ query, onInput })}
     >
       <NumberFilterEditor
         stageIndex={stageIndex}

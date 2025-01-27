@@ -5,10 +5,10 @@ import { FilterTabList } from "../FilterTabList";
 import { FilterTabPanel } from "../FilterTabPanel";
 
 export function FilterTabContent() {
-  const { setTab, tab, version, visibleItems } = useFilterModalContext();
+  const { tab, version, visibleItems, onTabChange } = useFilterModalContext();
 
   return (
-    <Tabs value={tab} onTabChange={setTab} orientation="vertical" h="100%">
+    <Tabs value={tab} onTabChange={onTabChange} orientation="vertical" h="100%">
       <Flex direction="row" w="100%">
         {visibleItems.length > 1 && <FilterTabList groupItems={visibleItems} />}
         {visibleItems.map(groupItem => (

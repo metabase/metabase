@@ -20,7 +20,7 @@ export function TimeFilterEditor({
   filter,
   onChange,
 }: FilterEditorProps) {
-  const { handleInput: onInput, query } = useFilterModalContext();
+  const { query, onInput } = useFilterModalContext();
   const columnIcon = useMemo(() => getColumnIcon(column), [column]);
   const [isFocused, setIsFocused] = useState(false);
 

@@ -11,11 +11,11 @@ export interface SegmentFilterItemProps {
 }
 
 export function SegmentFilterItem({ segmentItems }: SegmentFilterItemProps) {
-  const { handleChange: onChange, query } = useFilterModalContext();
+  const { query, onQueryChange } = useFilterModalContext();
 
   const handleChange = (newSegmentItems: SegmentItem[]) => {
     const newQuery = removeSegmentFilters(query, segmentItems);
-    onChange(addSegmentFilters(newQuery, newSegmentItems));
+    onQueryChange(addSegmentFilters(newQuery, newSegmentItems));
   };
 
   return (

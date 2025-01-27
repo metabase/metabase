@@ -14,16 +14,16 @@ export function ColumnFilterItem({
   columnItem,
   filter,
 }: ColumnFilterItemProps) {
-  const { handleChange: onChange, query } = useFilterModalContext();
+  const { query, onQueryChange } = useFilterModalContext();
   const { column, displayName, stageIndex } = columnItem;
 
   const handleChange = (newFilter: Lib.ExpressionClause | undefined) => {
     if (filter && newFilter) {
-      onChange(Lib.replaceClause(query, stageIndex, filter, newFilter));
+      onQueryChange(Lib.replaceClause(query, stageIndex, filter, newFilter));
     } else if (newFilter) {
-      onChange(Lib.filter(query, stageIndex, newFilter));
+      onQueryChange(Lib.filter(query, stageIndex, newFilter));
     } else if (filter) {
-      onChange(Lib.removeClause(query, stageIndex, filter));
+      onQueryChange(Lib.removeClause(query, stageIndex, filter));
     }
   };
 

@@ -17,20 +17,24 @@ export interface FilterModalProps {
   onClose: () => void;
 }
 
-export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
-  const filterModal = useFilterModal(question, onSubmit);
+export function FilterModal({
+  question,
+  onSubmit: onSubmitProp,
+  onClose,
+}: FilterModalProps) {
+  const filterModal = useFilterModal(question, onSubmitProp);
   const {
     canRemoveFilters,
     groupItems,
     isChanged,
     searchText,
-    handleReset,
-    handleSearch,
-    handleSubmit,
+    onReset,
+    onSearchTextChange,
+    onSubmit,
   } = filterModal;
 
   const onSubmitFilters = () => {
-    handleSubmit();
+    onSubmit();
     onClose();
   };
 
@@ -42,7 +46,10 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
           <Modal.Header className={S.ModalHeader} p="lg">
             <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
             <Flex mx="md" justify="end" style={{ flex: 1 }}>
-              <FilterSearchInput value={searchText} onChange={handleSearch} />
+              <FilterSearchInput
+                value={searchText}
+                onChange={onSearchTextChange}
+              />
             </Flex>
             <Modal.CloseButton />
           </Modal.Header>
@@ -57,7 +64,7 @@ export function FilterModal({ question, onSubmit, onClose }: FilterModalProps) {
           >
             <FilterModalFooter
               canRemoveFilters={canRemoveFilters}
-              onClearFilters={handleReset}
+              onClearFilters={onReset}
               isChanged={isChanged}
               onApplyFilters={onSubmitFilters}
             />
