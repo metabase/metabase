@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -22,7 +22,7 @@ export function NumberFilterEditor({
   filter,
   onChange,
 }: FilterEditorProps) {
-  const { query, onInput } = useFilterModalContext();
+  const { query, searchText, onInput } = useFilterModalContext();
   const columnIcon = useMemo(() => getColumnIcon(column), [column]);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -34,6 +34,7 @@ export function NumberFilterEditor({
     hasMultipleValues,
     getDefaultValues,
     getFilterClause,
+    reset,
     setOperator,
     setValues,
   } = useNumberFilter({
@@ -42,6 +43,10 @@ export function NumberFilterEditor({
     column,
     filter,
   });
+
+  useEffect(() => {
+    reset();
+  }, [reset, searchText]);
 
   const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
     const newValues = getDefaultValues(newOperator, values);

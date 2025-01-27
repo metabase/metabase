@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 
 import * as Lib from "metabase-lib";
 
@@ -35,18 +36,29 @@ export function useNumberFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(() =>
-    filterParts
+  const initialOperator = useMemo(() => {
+    return filterParts
       ? filterParts.operator
-      : getDefaultOperator(query, column, availableOptions),
-  );
+      : getDefaultOperator(query, column, availableOptions);
+  }, [filterParts, query, column, availableOptions]);
 
-  const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts ? filterParts.values : []),
-  );
+  const [operator, setOperator] = useState(initialOperator);
+
+  const initialValues = useMemo(() => {
+    return getDefaultValues(operator, filterParts ? filterParts.values : []);
+  }, [operator, filterParts]);
+
+  const [values, setValues] = useState(() => initialValues);
 
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values);
+
+  const resetRef = useLatest(() => {
+    setValues(initialValues);
+    setOperator(initialOperator);
+  });
+
+  const reset = useCallback(() => resetRef.current(), [resetRef]);
 
   return {
     operator,
@@ -60,6 +72,7 @@ export function useNumberFilter({
       operator: Lib.NumberFilterOperator,
       values: NumberValue[],
     ) => getFilterClause(operator, column, values),
+    reset,
     setOperator,
     setValues,
   };

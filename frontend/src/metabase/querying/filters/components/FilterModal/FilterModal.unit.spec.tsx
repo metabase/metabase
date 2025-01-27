@@ -568,4 +568,49 @@ describe("FilterModal - issue 48319", () => {
       screen.getByRole("checkbox", { name: "Not empty" }),
     ).not.toBeChecked();
   });
+
+  it("number filters - does not mix up column filter state when changing search query (metabase#48319)", async () => {
+    setup({ query: createQuery() });
+
+    const searchInput = screen.getByPlaceholderText("Search for a column…");
+    await userEvent.type(searchInput, "tax");
+    await waitFor(() => {
+      expect(screen.queryByText("Subtotal")).not.toBeInTheDocument();
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Filter operator" }),
+    );
+    await userEvent.click(screen.getByText("Less than"));
+    await userEvent.type(screen.getByPlaceholderText("Enter a number"), "45");
+
+    await userEvent.type(
+      searchInput,
+      `${"{backspace}".repeat("tax".length)}subtotal`,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Subtotal")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("button", { name: "Filter operator" }),
+    ).toHaveTextContent("between");
+
+    expect(
+      screen.queryByPlaceholderText("Enter a number"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.type(
+      searchInput,
+      `${"{backspace}".repeat("subtotal".length)}tax`,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Tax")).toBeInTheDocument();
+    });
+    expect(screen.getByPlaceholderText("Enter a number")).toHaveValue("45");
+    expect(
+      screen.getByRole("button", { name: "Filter operator" }),
+    ).toHaveTextContent("less than");
+  });
 });
