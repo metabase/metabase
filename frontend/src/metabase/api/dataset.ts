@@ -2,7 +2,7 @@ import type {
   CardQueryMetadata,
   Dataset,
   DatasetQuery,
-  NativeQueryForm,
+  NativeDatasetResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -26,7 +26,7 @@ export const datasetApi = Api.injectEndpoints({
       providesTags: metadata =>
         metadata ? provideAdhocQueryMetadataTags(metadata) : [],
     }),
-    getNativeDataset: builder.query<NativeQueryForm, DatasetQuery>({
+    getNativeDataset: builder.query<NativeDatasetResponse, DatasetQuery>({
       query: body => ({
         method: "POST",
         url: "/api/dataset/native",
