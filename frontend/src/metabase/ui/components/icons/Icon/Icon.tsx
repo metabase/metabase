@@ -10,7 +10,6 @@ import type { IconName } from "./icons";
 import { Icons } from "./icons";
 
 const defaultSize = 16;
-const multiline = true;
 
 export type IconProps = SVGAttributes<SVGSVGElement> &
   BoxProps & {
@@ -42,9 +41,9 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
 
   return tooltip ? (
     <Tooltip
-      style={{ whiteSpace: multiline ? "unset" : "nowrap" }}
+      style={{ whiteSpace: "unset" }}
       label={tooltip}
-      data-testid={`${multiline ? "wrapped-" : ""}tooltip`}
+      data-testid="wrapped-tooltip"
     >
       {icon}
     </Tooltip>
