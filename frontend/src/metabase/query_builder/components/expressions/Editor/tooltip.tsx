@@ -362,15 +362,19 @@ function enclosingFunction(state: EditorState) {
     if (
       cursor.name === "CallExpression" &&
       cursor.from <= pos &&
-      cursor.to > pos
+      cursor.to >= pos
     ) {
-      const value = state
-        .sliceDoc(cursor.from, cursor.to)
-        .replace(/\(.*\)?$/, "");
+      const value = state.sliceDoc(cursor.from, cursor.to);
+      const name = value.replace(/\(.*\)?$/, "");
 
-      if (doesFunctionNameExist(value)) {
+      if (value.endsWith(")") && cursor.to === pos) {
+        // do not show help when cursor is placed after closing )
+        break;
+      }
+
+      if (doesFunctionNameExist(name)) {
         res = {
-          name: value,
+          name,
           from: cursor.from,
           to: cursor.to,
         };
