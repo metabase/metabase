@@ -7,7 +7,10 @@ const cwd = path.resolve(__dirname, "../../");
 const docker = new Docker();
 let container;
 
-const IMAGE_NAME = "cypress-runner:latest";
+const IMAGE_BASE_NAME = "metabase/cypress-runner";
+const IMAGE_TAG = "latest";
+const IMAGE_NAME = `${IMAGE_BASE_NAME}:${IMAGE_TAG}`;
+
 const WORKING_DIRECTORY = "/app";
 // List of directories from a host machine that container can read/write to
 const CONTAINER_BOUND_DIRECTORIES = [
@@ -63,7 +66,7 @@ async function buildImage() {
     await runCommand(command, args, {
       onClose: code => {
         if (code === 0) {
-          return "Docker image built successfully: cypress-runner";
+          return `Docker image built successfully: ${IMAGE_NAME}`;
         } else {
           return `Docker build failed with exit code ${code}`;
         }
@@ -79,7 +82,7 @@ async function runContainer(options) {
 
   try {
     container = await docker.createContainer({
-      Image: "cypress-runner",
+      Image: IMAGE_BASE_NAME,
       Tty: true,
       Cmd: ["-c", command, ...after],
       HostConfig: {
