@@ -340,7 +340,7 @@
                   (let [results (mt/user-http-request user :post 200
                                                       (format "card/%d/query/%s" (u/the-id card) (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      :format_rows true)]
+                                                      {:format_rows true})]
                     ((-> assertions export-format) results))
 
                   :dashboard
