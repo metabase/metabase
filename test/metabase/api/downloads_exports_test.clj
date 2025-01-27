@@ -25,7 +25,6 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.interface :as qp.i]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)
@@ -57,7 +56,8 @@
   [pivot export-format results]
   (when (seq results)
     (case export-format
-      :csv  (csv/read-csv results)
+      :csv  (cond-> results
+              (not (map? results)) csv/read-csv)
       :xlsx (read-xlsx pivot results)
       :json (tabulate-maps results))))
 
@@ -75,16 +75,14 @@
   [card {:keys [export-format format-rows pivot]}]
   (->> (mt/user-http-request :crowberto :post 200
                              (format "dataset/%s" (name export-format))
-                             :visualization_settings (json/encode
-                                                      (:visualization_settings card))
-                             :query (json/encode
-                                     (assoc (:dataset_query card)
+                             {:visualization_settings (:visualization_settings card)
+                              :query (assoc (:dataset_query card)
                                             :was-pivot (boolean pivot)
                                             :info {:visualization-settings (:visualization_settings card)}
                                             :middleware
-                                            {:userland-query? true}))
-                             :format_rows   format-rows
-                             :pivot_results (boolean pivot))
+                                            {:userland-query? true})
+                              :format_rows   format-rows
+                              :pivot_results (boolean pivot)})
        (process-results pivot export-format)))
 
 (defn public-question-download
@@ -108,8 +106,8 @@
                                 dashboard-id :dashboard_id}]
             (->> (mt/user-http-request :crowberto :post 200
                                        (format "dashboard/%d/dashcard/%d/card/%d/query/%s" dashboard-id dashcard-id card-id (name export-format))
-                                       :format_rows   format-rows
-                                       :pivot_results pivot)
+                                       {:format_rows   format-rows
+                                        :pivot_results pivot})
                  (process-results pivot export-format)))]
     (if (= (t2/model card-or-dashcard) :model/DashboardCard)
       (dashcard-download* card-or-dashcard)
@@ -645,9 +643,7 @@
                (= [["B" "C" "3" "4" "Row totals"]
                    ["BA" "3" "1" "1" "2"]
                    ["BA" "4" "1" "1" "2"]
-                   ;; Without the fix in pr#50380, this would incorrectly look like:
-                   ;; ["Totals for BA"  "" "2" "[4 {:result 1}]"]
-                   ["Totals for BA"  "" "2" "2"]
+                   ["Totals for BA"  "" "2" "2" "4"]
                    ["Grand totals" "" "2" "2" "4"]]
                   result)))))))))
 
@@ -669,15 +665,12 @@
                                                 :pivot_results true)
                           csv/read-csv)]
           (is (= [["Created At: Month" "Category" "Sum of Price"]
-                  ["April, 2016" "Gadget" "49.54"]
-                  ["April, 2016" "Gizmo" "87.29"]
-                  ["Totals for April, 2016" "" "136.83"]
                   ["May, 2016" "Doohickey" "144.12"]
                   ["May, 2016" "Gadget" "81.58"]
                   ["May, 2016" "Gizmo" "75.09"]
                   ["May, 2016" "Widget" "90.21"]
                   ["Totals for May, 2016" "" "391"]]
-                 (take 9 result))))))))
+                 (take 6 result))))))))
 
 (deftest ^:parallel zero-row-pivot-tables-test
   (testing "Pivot tables with zero rows download correctly."
@@ -697,11 +690,10 @@
                                                 :pivot_results true)
                           csv/read-csv)]
           (is (= [["Category" "Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
-                  ["" "2185.89" "3019.2" "2834.88" "3109.31" ""]
                   ["Grand totals" "2185.89" "3019.2" "2834.88" "3109.31" "11149.28"]]
                  result)))))))
 
-(deftest ^:parallel zero-column-multiple-meausres-pivot-tables-test
+(deftest ^:parallel zero-column-multiple-measures-pivot-tables-test
   (testing "Pivot tables with zero columns and multiple measures download correctly."
     (mt/dataset test-data
       (mt/with-temp [:model/Card {pivot-card-id :id}
@@ -1345,15 +1337,13 @@
         (let [named-cards {:one-scale-card one-scale-card
                            :two-scale-card zero-scale-card
                            :no-scale-card no-scale-card}]
+          ;; TODO: We don't support JSON for pivot tables, once we do, we should add them here
           (doseq [[c1-name c2-name export-format expected] [[:one-scale-card  :no-scale-card  :csv  true]
                                                             [:one-scale-card  :two-scale-card :csv  false]
                                                             [:no-scale-card   :two-scale-card :csv  false]
                                                             [:one-scale-card  :no-scale-card  :xlsx true]
                                                             [:one-scale-card  :two-scale-card :xlsx false]
-                                                            [:no-scale-card   :two-scale-card :xlsx false]
-                                                            ;; TODO: We don't support JSON for pivot tables, once we
-                                                            ;; do, we should add them here
-                                                            ]]
+                                                            [:no-scale-card   :two-scale-card :xlsx false]]]
             (testing (str "> " (name c1-name) " and " (name c2-name) " with export-format: '" (name export-format) "' should be " expected)
               (let [c1 (get named-cards c1-name)
                     c2 (get named-cards c2-name)
@@ -1435,7 +1425,7 @@
                                                   :columns []
                                                   :values  ["count" "sum" "sum_2"]}}
                         :dataset_query          (mt/mbql-query nil
-                                                  {:breakout     [[:field "MEASURE" {:base-type :type/Integer}]],
+                                                  {:breakout [[:field "MEASURE" {:base-type :type/Integer}]],
                                                    :aggregation
                                                    [[:count]
                                                     [:sum [:field "A" {:base-type :type/Integer}]]

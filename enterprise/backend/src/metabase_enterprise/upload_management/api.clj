@@ -19,6 +19,7 @@
       (when-let [dw-tables (t2/select :model/Table :db_id dw-db-id :active true)]
         dw-tables))))
 
+
 (api.macros/defendpoint :get "/tables"
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []
@@ -32,8 +33,8 @@
   "Delete the uploaded table from the database, optionally archiving cards for which it is the primary source."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [archive-cards]} :- [:map [:archive-cards {:default false} ms/BooleanValue]]
-   {}]
+   {:keys [archive-cards]} :- [:map
+                               [:archive-cards {:optional true} [:maybe {:default false} ms/BooleanValue]]]]
   (try
     ;; To be idempotent, we do not check whether the table has already been deactivated.
     (let [table  (api/check-404 (t2/select-one :model/Table id))

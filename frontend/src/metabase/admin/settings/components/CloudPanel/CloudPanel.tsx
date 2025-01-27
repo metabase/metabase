@@ -6,7 +6,7 @@ import {
   useGetCloudMigrationQuery,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { Box, Text } from "metabase/ui";

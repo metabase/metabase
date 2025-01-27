@@ -8,16 +8,20 @@
    [metabase.test :as mt]
    [metabase.util.log :as log]))
 
-(deftest password-check-test
+(deftest ^:parallel password-check-test
   (testing "POST /api/util/password_check"
     (testing "Test for required params"
       (is (=? {:errors {:password "password is too common."}}
-              (mt/client :post 400 "util/password_check" {}))))
+              (mt/client :post 400 "util/password_check" {}))))))
 
+(deftest ^:parallel password-check-test-2
+  (testing "POST /api/util/password_check"
     (testing "Test complexity check"
       (is (=? {:errors {:password "password is too common."}}
-              (mt/client :post 400 "util/password_check" {:password "blah"}))))
+              (mt/client :post 400 "util/password_check" {:password "blah"}))))))
 
+(deftest ^:parallel password-check-test-3
+  (testing "POST /api/util/password_check"
     (testing "Should be a valid password"
       (is (= {:valid true}
              (mt/client :post 200 "util/password_check" {:password "something123"}))))))
@@ -32,28 +36,31 @@
           (is (some (comp #(re-find (re-pattern message) %) :msg) logs)
               "Recent message not found in `util/logs`"))))))
 
-(deftest permissions-test
+(deftest ^:parallel permissions-test
   (testing "/util/logs"
     (testing "Requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "util/logs"))))
     (testing "Call successful for superusers"
-      (mt/user-http-request :crowberto :get 200 "util/logs")))
+      (mt/user-http-request :crowberto :get 200 "util/logs"))))
 
+(deftest ^:parallel permissions-test-2
   (testing "/util/bug_report_details"
     (testing "Requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "util/bug_report_details"))))
     (testing "Call successful for superusers"
-      (is (map? (mt/user-http-request :crowberto :get 200 "util/bug_report_details")))))
+      (is (map? (mt/user-http-request :crowberto :get 200 "util/bug_report_details"))))))
 
+(deftest ^:parallel permissions-test-3
   (testing "/util/stats"
     (testing "Requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "util/stats"))))
     (testing "Call successful for superusers"
-      (is (map? (mt/user-http-request :crowberto :get 200 "util/stats")))))
+      (is (map? (mt/user-http-request :crowberto :get 200 "util/stats"))))))
 
+(deftest ^:parallel permissions-test-4
   (testing "/diagnostic_info/connection_pool_info"
     (testing "Requires superuser"
       (is (= "You don't have permissions to do that."
@@ -61,15 +68,17 @@
     (testing "Call successful for superusers"
       (is (map? (mt/user-http-request :crowberto :get 200 "util/diagnostic_info/connection_pool_info"))))))
 
-(deftest product-feedback-tests
+(deftest ^:parallel product-feedback-test
   (testing "requires non-blank source"
     (let [payload  {:comments "foo"
                     :email    "foo"}
           response (mt/user-http-request :crowberto :post 400 "util/product-feedback" payload)]
       (testing (str "without " :source)
         (is (= {:errors          {:source "value must be a non-blank string."},
-                :specific-errors {:source ["should be a string, received: nil" "non-blank string, received: nil"]}}
-               response)))))
+                :specific-errors {:source ["missing required key, received: nil"]}}
+               response))))))
+
+(deftest product-feedback-test-2
   (testing "fires the proxy in background"
     (let [sent? (promise)]
       (with-redefs [api.util/send-feedback! (fn [comments source email]
@@ -82,7 +91,7 @@
                                :source   "Analytics Inc"})
         (is (true? (deref sent? 2000 ::timedout)))))))
 
-(deftest entity-id-translation-test
+(deftest ^:parallel entity-id-translation-test
   (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
     (is (= {card-eid {:id card-id :type "card" :status "ok"}}
            (-> (mt/user-http-request :crowberto :post 200

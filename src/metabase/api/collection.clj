@@ -1057,14 +1057,27 @@
 (mr/def ::DashboardQuestionCandidatesResponse
   [:map
    [:data [:sequential ::DashboardQuestionCandidate]]
-   [:count integer?]])
+   [:total integer?]])
 
 (mu/defn- dashboard-question-candidates
   "Implementation for the `dashboard-question-candidates` endpoints."
-  [collection-id :- [:maybe ms/PositiveInt]]
+  [collection-id]
   (api/check-403 api/*is-superuser?*)
-  (let [cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:= :collection_id collection-id]}) :in_dashboards)]
-    (filter card/sole-dashboard-id cards-in-collection)))
+  (let [all-cards-in-collection (t2/hydrate (t2/select :model/Card {:where [:and
+                                                                            [:= :collection_id collection-id]
+                                                                            [:= :dashboard_id nil]]
+                                                                    :order-by [[:id :desc]]})
+                                            :in_dashboards)]
+    (filter
+     (fn [card]
+       (and
+        ;; we're a good candidate if:
+        ;; - we're only in one dashboard
+        (card/sole-dashboard-id card)
+        ;; - that one dashboard is in the same collection
+        (= (:collection_id card)
+           (-> card :in_dashboards first :collection_id))))
+     all-cards-in-collection)))
 
 (mu/defn- present-dashboard-question-candidate
   [{:keys [in_dashboards] :as card}]
@@ -1074,8 +1087,14 @@
 
 (mu/defn- present-dashboard-question-candidates
   [cards]
-  {:data (map present-dashboard-question-candidate cards)
-   :count (count cards)})
+  ;; we're paginating in Clojure rather than in the query itself because the criteria here is quite complicated to
+  ;; express in SQL: we need to join to `report_dashboardcard` AND `dashboardcard_series`, and find cards that have
+  ;; exactly one matching dashboard across both of those joins. I'm sure it's doable, but for now we can just do this
+  ;; in clojure. We're only working one collection at a time here so hopefully this should be relatively performant.
+  {:data (map present-dashboard-question-candidate (cond->> cards
+                                                     (request/paged?) (drop (request/offset))
+                                                     (request/paged?) (take (request/limit))))
+   :total (count cards)})
 
 (api.macros/defendpoint :get "/:id/dashboard-question-candidates" :- ::DashboardQuestionCandidatesResponse
   "Find cards in this collection that can be moved into dashboards in this collection.

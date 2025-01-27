@@ -5,7 +5,7 @@ import { useDebounce } from "react-use";
 import { t } from "ttag";
 
 import { useSearchQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
