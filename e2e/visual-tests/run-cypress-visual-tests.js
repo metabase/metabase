@@ -16,6 +16,7 @@ const baseEnv = {
   CYPRESS_IS_VISUAL_TEST: "true",
   CYPRESS_ALL_FEATURES_TOKEN: process.env.CYPRESS_ALL_FEATURES_TOKEN,
   CYPRESS_NO_FEATURES_TOKEN: process.env.CYPRESS_NO_FEATURES_TOKEN,
+  CYPRESS_RUN_BINARY: "/opt/cypress/Cypress/Cypress",
 };
 const embeddingSdkEnv = {
   CYPRESS_IS_EMBEDDING_SDK: "true",

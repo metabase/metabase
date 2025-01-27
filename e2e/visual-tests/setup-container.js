@@ -11,15 +11,14 @@ const IMAGE_BASE_NAME = "metabase/cypress-runner";
 const IMAGE_TAG = "latest";
 const IMAGE_NAME = `${IMAGE_BASE_NAME}:${IMAGE_TAG}`;
 
+const BUILD_ARGS = [
+  `BINARY_ARCHITECTURE=${process.platform === "darwin" ? "arm64" : "x64"}`,
+]
+  .map(arg => ["--build-arg", arg])
+  .flat();
+
 const WORKING_DIRECTORY = "/app";
-// List of directories from a host machine that container can read/write to
-const CONTAINER_BOUND_DIRECTORIES = [
-  "cypress",
-  "e2e",
-  "frontend",
-  "resources",
-  "target",
-];
+const CONTAINER_BOUND_DIRECTORIES = ["/"];
 
 const SUCCESS_EXIT_CODE = 0;
 const ERROR_EXIT_CODE = 1;
@@ -57,7 +56,15 @@ async function buildImage() {
   const dockerfilePath = path.resolve(__dirname, "Dockerfile");
 
   const command = "docker";
-  const args = ["build", "-t", IMAGE_NAME, "-f", dockerfilePath, cwd];
+  const args = [
+    "build",
+    ...BUILD_ARGS,
+    "-t",
+    IMAGE_NAME,
+    "-f",
+    dockerfilePath,
+    cwd,
+  ];
 
   console.log("Building Docker image...");
   console.log(`Command: docker ${args.join(" ")}`);
