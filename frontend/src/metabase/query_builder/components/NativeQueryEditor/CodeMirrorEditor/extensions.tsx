@@ -1,5 +1,4 @@
 import {
-  type CompletionSource,
   acceptCompletion,
   autocompletion,
   moveCompletionSelection,
@@ -73,9 +72,12 @@ export function useExtensions(query: Lib.Query): Extension[] {
         cursorBlinkRate: 1000,
         drawRangeCursor: false,
       }),
-      language({
-        engine,
-        completers: [
+      language({ engine }),
+      autocompletion({
+        closeOnBlur: false,
+        activateOnTyping: true,
+        activateOnTypingDelay: 200,
+        override: [
           schemaCompletion,
           snippetCompletion,
           cardTagCompletion,
@@ -238,24 +240,15 @@ function fonts() {
 
 type LanguageOptions = {
   engine?: string | null;
-  completers?: CompletionSource[];
 };
 
-function language({ engine, completers = [] }: LanguageOptions) {
+function language({ engine }: LanguageOptions) {
   const { language } = source(engine);
   if (!language) {
     return [];
   }
 
-  return [
-    language,
-    autocompletion({
-      closeOnBlur: false,
-      activateOnTyping: true,
-      activateOnTypingDelay: 200,
-      override: completers,
-    }),
-  ];
+  return language;
 }
 
 const metabaseStyle = HighlightStyle.define(
