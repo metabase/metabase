@@ -389,6 +389,8 @@ Object.assign(SmartScalar, {
           maxComparisons: MAX_COMPARISONS,
           comparableColumns: getColumnsForComparison(cols, vizSettings),
           options: getComparisonOptions(series, vizSettings),
+          series,
+          settings: vizSettings,
         };
       },
       readDependencies: ["scalar.field"],

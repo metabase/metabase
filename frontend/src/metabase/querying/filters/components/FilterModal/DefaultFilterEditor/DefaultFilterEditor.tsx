@@ -8,16 +8,16 @@ import {
 import { Checkbox, Grid, Group } from "metabase/ui";
 
 import { FilterTitle, HoverParent } from "../FilterTitle";
+import { useFilterModalContext } from "../context";
 import type { FilterEditorProps } from "../types";
 
 export function DefaultFilterEditor({
-  query,
   stageIndex,
   column,
   filter,
-  isSearching,
   onChange,
 }: FilterEditorProps) {
+  const { query } = useFilterModalContext();
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
@@ -41,11 +41,9 @@ export function DefaultFilterEditor({
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle
-            query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
-            isSearching={isSearching}
           />
         </Grid.Col>
         <Grid.Col span={4}>
