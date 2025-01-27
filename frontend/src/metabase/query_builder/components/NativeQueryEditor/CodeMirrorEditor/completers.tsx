@@ -381,17 +381,13 @@ export function useLocalsCompletion({ engine }: LocalsCompletionOptions) {
 
 export function useKeywordsCompletion({ engine }: LocalsCompletionOptions) {
   return useMemo(() => {
-    const { dialect } = source(engine);
+    const { keywords } = source(engine);
 
-    const keywords =
-      dialect?.spec?.keywords?.split(" ") ??
-      Object.keys(dialect?.dialect?.words ?? {});
-
-    if (!keywords || keywords.length <= 0) {
+    if (!keywords || keywords.words.length <= 0) {
       return () => null;
     }
 
-    const completions = keywords.map(keyword => ({
+    const completions = keywords.words.map(keyword => ({
       label: keyword,
       detail: t`keyword`,
     }));

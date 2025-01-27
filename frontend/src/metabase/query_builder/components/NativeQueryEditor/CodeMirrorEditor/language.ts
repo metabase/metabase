@@ -18,8 +18,12 @@ type Dialect = {
 };
 
 type Source = {
-  dialect?: Dialect;
   language: LanguageSupport;
+  dialect?: Dialect;
+  keywords?: {
+    words: string[];
+    caseSensitive?: boolean;
+  };
 };
 
 const engineToDialect = {
@@ -35,10 +39,9 @@ const engineToDialect = {
   // h2: "h2",
 };
 
-const MongoDialect: Dialect = {
-  spec: {
-    keywords: "$set $sample",
-  },
+const mongoKeywords = {
+  caseSensitive: true,
+  words: [],
 };
 
 export function source(engine?: string | null): Source {
@@ -46,7 +49,7 @@ export function source(engine?: string | null): Source {
   switch (engine) {
     case "mongo":
       return {
-        dialect: MongoDialect,
+        keywords: mongoKeywords,
         language: json(),
       };
 
@@ -67,12 +70,22 @@ export function source(engine?: string | null): Source {
     default: {
       const dialect =
         engineToDialect[engine as keyof typeof engineToDialect] ?? StandardSQL;
+
+      const words =
+        dialect?.spec?.keywords?.split(" ") ??
+        // @ts-expect-error: SQLDialect.dialect is an internal that is exposed
+        Object.keys(dialect?.dialect?.words ?? {});
+
       return {
-        dialect,
         language: sql({
           dialect,
           upperCaseKeywords: true,
         }),
+        dialect,
+        keywords: {
+          caseSensitive: false,
+          words: words.map(word => word.toUpperCase()),
+        },
       };
     }
   }
