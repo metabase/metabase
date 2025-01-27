@@ -10,6 +10,7 @@ export const TAG_TYPES = [
   "cloud-migration",
   "collection",
   "dashboard",
+  "dashboard-question-candidates",
   "database",
   "field",
   "field-values",

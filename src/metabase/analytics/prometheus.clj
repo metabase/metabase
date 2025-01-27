@@ -235,7 +235,8 @@
   [registry-name]
   (log/info "Starting prometheus metrics collector")
   (let [registry (prometheus/collector-registry registry-name)]
-    (apply prometheus/register registry
+    (apply prometheus/register
+           (collector.ring/initialize registry)
            (concat (jvm-collectors)
                    (jetty-collectors)
                    [@c3p0-collector]
@@ -259,10 +260,10 @@
 (defn setup!
   "Start the prometheus metric collector and web-server."
   []
-  (let [port (prometheus-server-port)]
-    (when-not port
-      (log/info "Running prometheus metrics without a webserver."))
-    (when-not system
+  (when-not system
+    (let [port (prometheus-server-port)]
+      (when-not port
+        (log/info "Running prometheus metrics without a webserver"))
       (locking #'system
         (when-not system
           (let [sys (make-prometheus-system port "metabase-registry")]
@@ -282,18 +283,18 @@
                (log/warn e "Error stopping prometheus web-server")))))))
 
 (defn inc!
-  "Call iapetos.core/inc on the metric in the global registry,
-   if it has already been initialized and the metric is registered."
+  "Call iapetos.core/inc on the metric in the global registry.
+   Inits registry if it's not been initialized yet."
   ([metric] (inc! metric nil 1))
   ([metric labels-or-amount]
    (if (seq? labels-or-amount)
      (inc! metric labels-or-amount 1)
      (inc! metric nil labels-or-amount)))
   ([metric labels amount]
-   (when-let [registry (some-> system .-registry)]
-     (when (metric registry)
-       (prometheus/inc registry metric labels amount)))))
+   (when-not system
+     (setup!))
+   (prometheus/inc (:registry system) metric labels amount)))
 
 (comment
   (require 'iapetos.export)
-  (spit "metrics" (iapetos.export/text-format (.registry system))))
+  (spit "metrics" (iapetos.export/text-format (:registry system))))

@@ -10,14 +10,14 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest auth-tests
+(deftest ^:parallel auth-tests
   (testing "Authentication"
     (is (= (get request/response-unauthentic :body)
            (client/client :get 401 "/timeline-event")))
     (is (= (get request/response-unauthentic :body)
            (client/client :get 401 "/timeline-event/1")))))
 
-(deftest get-timeline-event-test
+(deftest ^:parallel get-timeline-event-test
   (testing "GET /api/timeline-event/:id"
     (mt/with-temp [:model/Collection    collection {:name "Important Data"}
                    :model/Timeline      timeline   {:name          "Important Events"
