@@ -15,7 +15,6 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.literal :as lib.schema.literal]
-   [metabase.models :refer [Field]]
    [metabase.models.setting :as setting]
    [metabase.models.table :as table]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -175,15 +174,15 @@
   "Returns a transducer for computing metadata about the fields in `db`."
   [driver db]
   (map (fn [col]
-         (let [base-type      (database-type->base-type-or-warn driver (:database-type col))
-               semantic-type  (calculated-semantic-type driver (:name col) (:database-type col))
-               json?          (isa? base-type :type/JSON)]
+         (let [base-type (database-type->base-type-or-warn driver (:database-type col))
+               semantic-type (calculated-semantic-type driver (:name col) (:database-type col))
+               json? (isa? base-type :type/JSON)
+               database-position (some-> (:database-position col) int)]
            (merge
             (u/select-non-nil-keys col [:table-name
                                         :pk?
                                         :name
                                         :database-type
-                                        :database-position
                                         :field-comment
                                         :database-required
                                         :database-is-auto-increment])
@@ -191,6 +190,8 @@
              :base-type         base-type
              ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
              :json-unfolding    json?}
+            (when database-position
+              {:database-position database-position})
             (when semantic-type
               {:semantic-type semantic-type})
             (when (and json? (driver/database-supports? driver :nested-field-columns db))
@@ -583,7 +584,7 @@
         json-fields  (filter #(isa? (:base-type %) :type/JSON) table-fields)]
     (if-not (seq json-fields)
       #{}
-      (let [existing-fields-by-name (m/index-by :name (t2/select Field :table_id (u/the-id table)))
+      (let [existing-fields-by-name (m/index-by :name (t2/select :model/Field :table_id (u/the-id table)))
             should-not-unfold?      (fn [field]
                                       (when-let [existing-field (existing-fields-by-name (:name field))]
                                         (false? (:json_unfolding existing-field))))]

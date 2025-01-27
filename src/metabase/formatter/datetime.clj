@@ -117,13 +117,19 @@
 
 (defmulti format-timestring
   "Reformat a temporal literal string to the desired format based on column `:unit`, if provided, then on the column type.
-The type is the highest present of semantic, effective, or base type. This is currently expected to be one of:
-- `:type/Time` - The hour, minute, second, etc. portion of a day, not anchored to a date
-- `:type/Date` - A date without hour and minute information
-- `:type/DateTime` - A full date plus hour, minute, seconds, etc.
-If neither a unit nor a temporal type is provided, just bottom out by assuming a date.
-"
-  (fn [_timezone-id _temporal-str col _viz-settings] (col-type col)))
+
+  The type is the highest present of semantic, effective, or base type. This is currently expected to be one of:
+
+  - `:type/Time` - The hour, minute, second, etc. portion of a day, not anchored to a date
+
+  - `:type/Date` - A date without hour and minute information
+
+  - `:type/DateTime` - A full date plus hour, minute, seconds, etc.
+
+  If neither a unit nor a temporal type is provided, just bottom out by assuming a date. "
+  {:arglists '([timezone-id temporal-str col viz-settings])}
+  (fn [_timezone-id _temporal-str col _viz-settings]
+    (col-type col)))
 
 (defmethod format-timestring :minute [timezone-id temporal-str _col {:keys [date-style time-style] :as viz-settings}]
   (reformat-temporal-str timezone-id temporal-str

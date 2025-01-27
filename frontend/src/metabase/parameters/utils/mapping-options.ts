@@ -5,7 +5,7 @@ import { tag_names } from "cljs/metabase.models.params.shared";
 import { isActionDashCard } from "metabase/actions/utils";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
-import { getGroupName } from "metabase/querying/filters/utils";
+import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
@@ -133,13 +133,16 @@ export function getParameterMappingOptions(
   if (dashcard && isVirtualDashCard(dashcard)) {
     if (["heading", "text"].includes(card.display)) {
       const tagNames = tag_names(dashcard.visualization_settings.text || "");
-      return tagNames ? tagNames.map(buildTextTagOption) : [];
+      return tagNames?.map(buildTextTagOption) ?? [];
     } else if (card.display === "iframe") {
       const iframeAttributes = getAllowedIframeAttributes(
         dashcard.visualization_settings.iframe,
       );
       const tagNames = tag_names(iframeAttributes?.src || "");
-      return tagNames ? tagNames.map(buildTextTagOption) : [];
+      return tagNames?.map(buildTextTagOption) ?? [];
+    } else if (card.display === "link") {
+      const tagNames = tag_names(dashcard.visualization_settings.link?.url);
+      return tagNames?.map(buildTextTagOption) ?? [];
     }
   }
 

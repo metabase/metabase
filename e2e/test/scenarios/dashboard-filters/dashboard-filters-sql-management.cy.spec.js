@@ -48,7 +48,7 @@ describe("scenarios > dashboard > filters > SQL > management", () => {
       H.editDashboard();
 
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .contains("Equal to")
+        .contains("Number")
         .click();
 
       H.sidebar().findByText("Filter operator").next().click();

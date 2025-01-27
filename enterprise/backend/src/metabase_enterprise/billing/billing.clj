@@ -4,10 +4,10 @@
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.api.macros :as api.macros]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n]
@@ -35,8 +35,7 @@
    :ttl/threshold (u/minutes->ms 5)))
 
 (defn- valid-thru []
-  (some->> (premium-features/premium-embedding-token)
-           premium-features/fetch-token-status
+  (some->> (premium-features/token-status)
            :valid-thru
            u.date.parse/parse
            (t/format "MMMM d, YYYY")))
@@ -54,7 +53,7 @@
                {:name "Token expiration date" :value (valid-thru) :format "string" :display "value"}
                {:name "Plan" :value "Enterprise Airgap" :format "string" :display "value"}]}))
 
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,
    using the embedding token and signed in user's email to fetch the billing information."
   []

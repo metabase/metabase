@@ -4,15 +4,15 @@
   But if something weird happens with concurrency, /cancel will
   cancel all of them. "
   (:require
-   [compojure.core :refer [GET POST PUT]]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.models.cloud-migration :as cloud-migration]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [toucan2.core :as t2]))
 
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Initiate a new cloud migration."
-  [_]
+  []
   (api/check-superuser)
   (cond
     (premium-features/is-hosted?)
@@ -33,15 +33,15 @@
           400 {:status 400 :body "Cannot migrate this Metabase version."}
           {:status 500})))))
 
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Get the latest cloud migration, if any."
-  [_]
+  []
   (api/check-superuser)
   (t2/select-one :model/CloudMigration {:order-by [[:created_at :desc]]}))
 
-(api/defendpoint PUT "/cancel"
+(api.macros/defendpoint :put "/cancel"
   "Cancel any ongoing cloud migrations, if any."
-  [_]
+  []
   (api/check-superuser)
   (cloud-migration/read-only-mode! false)
   (t2/update! :model/CloudMigration {:state [:not-in cloud-migration/terminal-states]} {:state :cancelled}))

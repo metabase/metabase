@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.embed-test :as embed-test]
-   [metabase.models :refer [Card Dashboard DashboardCard]]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -16,8 +15,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.pipeline :as t2.pipeline]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)))
@@ -320,11 +318,11 @@
       (mt/with-temporary-setting-values [enable-public-sharing true
                                          enable-embedding-static true]
         (embed-test/with-new-secret-key!
-          (t2.with-temp/with-temp [Card          card      (if viz-settings
-                                                             (assoc card-defaults :visualization_settings viz-settings)
-                                                             card-defaults)
-                                   Dashboard     dashboard {:name "Test Dashboard"}
-                                   DashboardCard dashcard  {:card_id (u/the-id card) :dashboard_id (u/the-id dashboard)}]
+          (mt/with-temp [:model/Card          card      (if viz-settings
+                                                          (assoc card-defaults :visualization_settings viz-settings)
+                                                          card-defaults)
+                         :model/Dashboard     dashboard {:name "Test Dashboard"}
+                         :model/DashboardCard dashcard  {:card_id (u/the-id card) :dashboard_id (u/the-id dashboard)}]
             (doseq [export-format (keys assertions)
                     endpoint      (or endpoints [:dataset :card :dashboard :public :embed])]
               (testing endpoint

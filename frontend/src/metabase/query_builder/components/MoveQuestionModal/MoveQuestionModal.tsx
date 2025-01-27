@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
-import { useUpdateCardMutation } from "metabase/api";
+import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
 import type { MoveDestination } from "metabase/collections/types";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -69,7 +69,7 @@ export const MoveQuestionModal = ({
       ...update,
     })
       .unwrap()
-      .then(updatedCard => {
+      .then(async updatedCard => {
         // HACK: entity framework would previously keep the qb in sync
         // with changing where the question lived
         dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
@@ -91,14 +91,26 @@ export const MoveQuestionModal = ({
         );
 
         if (destination.model === "dashboard") {
-          dispatch(
-            push(
-              Urls.dashboard(
-                { id: destination.id, name: "" },
-                { editMode: true },
-              ),
-            ),
+          const dashboard = await dispatch(
+            getDashboard.initiate({ id: destination.id }),
+          )
+            .unwrap()
+            .catch(() => undefined); // we can fallback to navigation w/o this info
+          const dashcard = dashboard?.dashcards.find(
+            c => c.card_id === question.id(),
           );
+
+          if (!dashboard || !dashcard) {
+            console.warn(
+              "Could not fetch dashcard position on dashboard, falling back to navigation without auto-scrolling",
+            );
+          }
+
+          const url = Urls.dashboard(
+            { id: destination.id, name: "", ...dashboard },
+            { editMode: true, scrollToDashcard: dashcard?.id },
+          );
+          dispatch(push(url));
         }
 
         onClose();
@@ -146,9 +158,18 @@ export const MoveQuestionModal = ({
           onClose={onClose}
           title={
             <Title fz="1.25rem" lh={1.5}>
-              {t`Do you still want this question to appear in`}{" "}
-              <Icon name="dashboard" style={{ marginBottom: -2 }} size={20} />{" "}
-              <Dashboards.Name id={question.dashboardId()} />
+              {c(
+                "{0} is the dashboard name the question currently has dashcards in",
+              ).jt`Do you still want this question to appear in ${(
+                <>
+                  <Icon
+                    name="dashboard"
+                    style={{ marginBottom: -2 }}
+                    size={20}
+                  />{" "}
+                  <Dashboards.Name id={question.dashboardId()} />
+                </>
+              )}?`}
             </Title>
           }
           message={

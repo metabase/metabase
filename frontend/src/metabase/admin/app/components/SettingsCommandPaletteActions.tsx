@@ -1,6 +1,5 @@
 import { type Action, useKBar, useRegisterActions } from "kbar";
 import { useMemo } from "react";
-import { push } from "react-router-redux";
 import { useMount } from "react-use";
 
 import { getSections } from "metabase/admin/settings/selectors";
@@ -45,20 +44,16 @@ export const SettingsCommandPaletteActions = () => {
             name: s.display_name || "",
             section: "admin",
             id: `admin-setting-${s.key}`,
-            perform: () => {
-              dispatch(
-                push({
-                  pathname: path,
-                  hash: `#${s.key}`,
-                }),
-              );
-            },
+            perform: () => {},
             icon: "gear",
+            extra: {
+              href: `${path}#${s.key}`,
+            },
           })),
       ];
       return acc;
     }, []);
-  }, [sections, dispatch]);
+  }, [sections]);
 
   useRegisterActions(hasQuery ? adminSettingsActions : [], [hasQuery]);
 

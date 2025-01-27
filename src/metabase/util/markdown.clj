@@ -228,6 +228,7 @@
   * All headers are just rendered as bold text.
   * Ordered and unordered lists are printed in plain text.
   * Inline images are rendered as text that links to the image source, e.g. <image.png|[Image: alt-text]>."
+  {:arglists '([ast-map])}
   :tag)
 
 (defn ^:private resolved-content
@@ -410,6 +411,7 @@
 (defmulti process-markdown
   "Converts a markdown string from a virtual card into a form that can be sent to a channel
   (Slack's markup language, or HTML for email)."
+  {:arglists '([markdown channel-type])}
   (fn [_markdown channel-type] channel-type))
 
 (defmethod process-markdown :slack

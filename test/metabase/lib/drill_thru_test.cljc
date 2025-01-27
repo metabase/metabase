@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
-   [malli.core :as mc]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -12,12 +11,10 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
-
-(defn by-name [cols column-name]
-  (first (filter #(= (:name %) column-name) cols)))
 
 (def ^:private orders-query
   (lib/query meta/metadata-provider (meta/table-metadata :orders)))
@@ -109,21 +106,12 @@
          :drill-thru/pivot
          (log/warn "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)")
 
-         ;; Expected to throw - not intended that drill-thru should be called directly for these drills.
-         :drill-thru/compare-aggregations
-         (testing (str "\ndrill =\n" (u/pprint-to-str drill)
-                       "throws when [drill-thru] called")
-           (is (thrown-with-msg?
-                #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
-                #"Do not call drill-thru for "
-                (apply lib/drill-thru query -1 nil drill args))))
-
          (testing (str "\nquery =\n" (u/pprint-to-str query)
                        "\ndrill =\n" (u/pprint-to-str drill)
                        "\nargs =\n" (u/pprint-to-str args))
            (try
              (let [query' (apply lib/drill-thru query -1 nil drill args)]
-               (is (not (me/humanize (mc/validate ::lib.schema/query query'))))
+               (is (not (me/humanize (mr/explain ::lib.schema/query query'))))
                (when (< (inc depth) test-drill-applications-max-depth)
                  (testing (str "\n\nDEPTH = " (inc depth) "\n\nquery =\n" (u/pprint-to-str query'))
                    (test-drill-applications query' context (inc depth)))))
@@ -221,7 +209,7 @@
                   :type         :drill-thru/column-extract
                   :query        orders-query
                   :stage-number -1
-                  :extractions  (partial mc/validate [:sequential [:map [:tag keyword?]]])}]
+                  :extractions  (partial mr/validate [:sequential [:map [:tag keyword?]]])}]
                 (lib/available-drill-thrus orders-query -1 context)))
         (test-drill-applications orders-query context)))))
 
@@ -520,9 +508,7 @@
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
                    {:type   :drill-thru/sort
-                    :column {:name "count"}}
-                   {:type   :drill-thru/compare-aggregations
-                    :aggregation [:count {}]}]
+                    :column {:name "count"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))
     (testing "Drills for max(discount) aggregation"
@@ -538,9 +524,7 @@
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
                    {:type   :drill-thru/sort
-                    :column {:display-name "Max of Discount"}}
-                   {:type   :drill-thru/compare-aggregations
-                    :aggregation [:max {} [:field {} (meta/id :orders :discount)]]}]
+                    :column {:display-name "Max of Discount"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))))
 
@@ -553,7 +537,7 @@
                                              (meta/field-metadata :orders :created-at)
                                              :month)))
             columns      (lib/returned-columns query)
-            sum          (by-name columns "sum")
+            sum          (lib.drill-thru.tu/column-by-name columns "sum")
             sum-dim      {:column     sum
                           :column-ref (lib/ref sum)
                           :value      42295.12}
@@ -658,7 +642,9 @@
                    :many-pks? false}]}))
 
 (deftest ^:parallel available-drill-thrus-test-3
-  (lib.drill-thru.tu/test-available-drill-thrus
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-available-drill-thrus
+   "unaggregated cell click on numeric column"
    {:click-type  :cell
     :query-type  :unaggregated
     :column-name "SUBTOTAL"
@@ -668,7 +654,14 @@
                   {:type :drill-thru/quick-filter, :operators [{:name "<"}
                                                                {:name ">"}
                                                                {:name "="}
-                                                               {:name "≠"}]}]}))
+                                                               {:name "≠"}]}]}
+
+   "drill thrus are disabled for native queries with template-tag variables"
+   {:custom-native #(lib/with-native-query % "SELECT * FROM orders WHERE product_id = {{mytag}}")
+    :native-drills #{}}
+
+   "snippets and card tags are allowed"
+   {:custom-native #(lib/with-native-query % "SELECT * FROM {{#123-mycard}} WHERE {{snippet:mysnip}}")}))
 
 (deftest ^:parallel available-drill-thrus-test-4
   (lib.drill-thru.tu/test-available-drill-thrus
@@ -693,14 +686,23 @@
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
 
 (deftest ^:parallel available-drill-thrus-test-6
-  (lib.drill-thru.tu/test-available-drill-thrus
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-available-drill-thrus
+   "unaggregated header click on fk column"
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "PRODUCT_ID"
     :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
                   {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
-                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
+                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}
+
+   "drill thrus are disabled for native queries with template-tag variables"
+   {:custom-native #(lib/with-native-query % "SELECT * FROM orders WHERE product_id = {{mytag}}")
+    :native-drills #{}}
+
+   "snippets and card tags are allowed"
+   {:custom-native #(lib/with-native-query % "SELECT * FROM {{#123-mycard}} WHERE {{snippet:mysnip}}")}))
 
 (deftest ^:parallel available-drill-thrus-test-7
   (lib.drill-thru.tu/test-available-drill-thrus
@@ -723,7 +725,7 @@
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}
                   {:type        :drill-thru/column-extract
-                   :extractions (partial mc/validate [:sequential [:map
+                   :extractions (partial mr/validate [:sequential [:map
                                                                    [:tag          keyword?]
                                                                    [:display-name string?]]])}]}))
 
@@ -731,7 +733,9 @@
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "
                 "fk-details should not get returned for non-fk column (#34441) "
                 "underlying-records should only get shown once for aggregated query (#34439)"))
-  (lib.drill-thru.tu/test-available-drill-thrus
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-available-drill-thrus
+   "aggregated cell click on count column"
    {:click-type  :cell
     :query-type  :aggregated
     :column-name "count"
@@ -750,7 +754,15 @@
                    :type         :drill-thru/zoom-in.timeseries}]
     ;; Underlying records and automatic insights are not supported for native.
     ;; zoom-in.timeseries can't be because we don't know what unit (if any) it's currently bucketed by.
-    :native-drills #{:drill-thru/quick-filter}}))
+    :native-drills #{:drill-thru/quick-filter}}
+
+   "drill thrus are disabled for native queries with template-tag variables"
+   {:custom-native #(lib/with-native-query %
+                      "SELECT COUNT(*) FROM orders GROUP BY product_id HAVING product_id > {{mytag}}")
+    :native-drills #{}}
+
+   "snippets and card tags are allowed"
+   {:custom-native #(lib/with-native-query % "SELECT COUNT(*) FROM {{#123-mycard}} GROUP BY {{snippet:mysnip}}")}))
 
 (deftest ^:parallel available-drill-thrus-test-10
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "

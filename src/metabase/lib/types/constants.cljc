@@ -37,13 +37,14 @@
 (def type-hierarchies
   "A front-end specific type hierarchy used by [[metabase.lib.types.isa/field-type?]].
   It is not meant to be used directly."
-  {::temporal    {:effective-type [:type/Temporal]
-                  :semantic-type  [:type/Temporal]}
+  {::temporal    {:effective-type [:type/Temporal]}
+   ;; Checks for both effective and semantic types. This hack is required to
+   ;; support numbers stored as strings in MySQL until there is a proper
+   ;; coercion strategy. See #44431.
    ::number      {:effective-type [:type/Number]
                   :semantic-type  [:type/Number]}
    ::integer     {:effective-type [:type/Integer]}
-   ::string      {:effective-type [:type/Text]
-                  :semantic-type  [:type/Text :type/Category]}
+   ::string      {:effective-type [:type/Text]}
    ::string_like {:effective-type [:type/TextLike]}
    ::boolean     {:effective-type [:type/Boolean]}
    ::coordinate  {:semantic-type [:type/Coordinate]}
@@ -56,10 +57,8 @@
    ::structured  {:effective-type [:type/Structured]}
    ::summable    {:include [::number]
                   :exclude [::entity ::location ::temporal]}
-   ::scope       {:include [::number ::temporal ::category ::entity ::string]
+   ::scope       {:include [::number ::temporal ::category ::entity ::string ::boolean]
                   :exclude [::location]}
-   ::category    {:effective-type [:type/Boolean]
-                  :semantic-type  [:type/Category]
-                  :include        [::location]}
+   ::category    {:semantic-type  [:type/Category]}
    ;; NOTE: this is defunct right now.  see definition of metabase.lib.types.isa/dimension?.
    ::dimension   {:include [::temporal ::category ::entity]}})

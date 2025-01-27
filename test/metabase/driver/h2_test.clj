@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase.actions.error :as actions.error]
    [metabase.config :as config]
-   [metabase.core :as mbc]
+   [metabase.core.core :as mbc]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
@@ -14,14 +14,12 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -114,7 +112,7 @@
 
 (deftest disallow-admin-accounts-test
   (testing "Check that we're not allowed to run SQL against an H2 database with a non-admin account"
-    (t2.with-temp/with-temp [Database db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
+    (mt/with-temp [:model/Database db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
@@ -275,7 +273,9 @@
       "table orders"
       "call 1 + 1"
       ;; Note this passes the check, but will fail on execution
-      "update venues set name = 'bill'; some query that can't be parsed;"))
+      "update venues set name = 'bill'; some query that can't be parsed;")))
+
+(deftest ^:parallel check-read-only-test-2
   (testing "not read only statements should fail"
     (are [query] (thrown?
                   clojure.lang.ExceptionInfo
@@ -306,7 +306,11 @@
             (is (=? {:message "Error executing Action: DDL commands are not allowed to be used with H2."}
                     (mt/user-http-request :crowberto
                                           :post 500
-                                          (format "action/%s/execute" action-id)))))))
+                                          (format "action/%s/execute" action-id))))))))))
+
+(deftest disallowed-commands-in-action-test-2
+  (mt/test-driver :h2
+    (mt/with-actions-test-data-and-actions-enabled
       (testing "Should be able to execute query actions with allowed commands"
         (let [sql "update categories set name = 'stomp' where id = 1; update categories set name = 'stomp' where id = 2;"]
           (mt/with-actions [{:keys [action-id]} {:type :query
@@ -342,7 +346,7 @@
                   (is (= #{:classname :subprotocol :subname :datasource}
                          (set (keys spec))))))))
           (finally
-            (t2/delete! Database :is_audit true)
+            (t2/delete! :model/Database :is_audit true)
             (when original-audit-db (mbc/ensure-audit-db-installed!))))))))
 
 ;; API tests are in [[metabase.api.action-test]]

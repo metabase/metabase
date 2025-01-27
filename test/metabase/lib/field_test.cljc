@@ -1026,16 +1026,9 @@
                      sorted-fields)
                 (-> field-query
                     (lib/remove-field -1 created-at)
-                    fields-of))))))
-  (testing "custom expressions are ignored"
-    (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                          (lib/expression "custom" (lib/* 3 2)))
-          expr-column (->> (lib/returned-columns query)
-                           (remove :id)
-                           first)]
-      ;; :fields gets populated, but the expression should not be there
-      (is (empty? (filter (comp string? last)
-                          (lib/fields (lib/remove-field query -1 expr-column)))))))
+                    fields-of)))))))
+
+(deftest ^:parallel remove-field-tests-2
   (testing "single join"
     (let [query  (as-> (meta/table-metadata :orders) <>
                    (lib/query meta/metadata-provider <>)
@@ -1100,6 +1093,116 @@
             (is (=? join-fields-query
                     (lib/remove-field join-fields-query -1 (nth join-columns 6)))))))))
 
+  (testing "removing implicit join fields"
+    (let [query            (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          viz-columns      (lib/visible-columns query)
+          table-columns    (lib/fieldable-columns query -1)
+          implicit-columns (filter #(= (:lib/source %) :source/implicitly-joinable) viz-columns)
+          implied-query    (-> query
+                               (lib/add-field -1 (first implicit-columns))
+                               (lib/add-field -1 (second implicit-columns)))
+          table-fields     (map clean-ref table-columns)
+          implied1         (clean-ref (first implicit-columns))
+          implied2         (clean-ref (second implicit-columns))]
+      (is (= (map #(dissoc % :selected?) table-columns)
+             (lib/returned-columns query)))
+
+      (testing "attaching implicitly joined fields should alter the query"
+        (is (not= query implied-query))
+        (is (nil? (lib.equality/find-matching-ref (first implicit-columns)
+                                                  (map lib/ref (lib/returned-columns query))))))
+
+      (testing "with no :fields set does nothing"
+        (is (=? query
+                (lib/remove-field query -1 (first implicit-columns))))
+        (is (=? query
+                (lib/remove-field query -1 (second implicit-columns)))))
+
+      (testing "with explicit :fields list"
+        (is (=? (sorted-fields (conj table-fields implied2))
+                (-> implied-query
+                    (lib/remove-field -1 (first implicit-columns))
+                    fields-of)))
+        (is (=? (sorted-fields (conj table-fields implied1))
+                (-> implied-query
+                    (lib/remove-field -1 (second implicit-columns))
+                    fields-of))))
+      (testing "drops the :fields clause when it becomes the defaults"
+        (is (= query
+               (-> implied-query
+                   (lib/remove-field -1 (first implicit-columns))
+                   (lib/remove-field -1 (second implicit-columns)))))
+        (is (= query
+               (-> implied-query
+                   (lib/remove-field -1 (second implicit-columns))
+                   (lib/remove-field -1 (first implicit-columns)))))))))
+
+(deftest ^:parallel remove-field-tests-3
+  (testing "single join"
+    (let [query  (as-> (meta/table-metadata :orders) <>
+                   (lib/query meta/metadata-provider <>)
+                   (lib/join <> -1 (->> (meta/table-metadata :people)
+                                        (lib/suggested-join-conditions <> -1)
+                                        (lib/join-clause (meta/table-metadata :people)))))
+          all-columns   (lib/returned-columns query)
+          table-columns (lib/fieldable-columns query -1)
+          join-columns  (filter #(= (:lib/source %) :source/joins) all-columns)]
+      ;; Orders has 9 columns, People has 13, for 22 total.
+      (is (= 22 (count all-columns)))
+      (is (= 9  (count table-columns)))
+      (is (= 13 (count join-columns)))
+      (testing "top-level :fields with only some included"
+        (let [field-query (->> table-columns
+                               (take 4)
+                               (lib/with-fields query -1))]
+          (testing "properly removes a top-level field"
+            (is (=? (->> (concat (rest (take 4 table-columns))
+                                 join-columns)
+                         (map lib/ref)
+                         (map #(lib.options/update-options % dissoc :lib/uuid))
+                         sorted-fields)
+                    (->> (lib/remove-field field-query -1 (first table-columns))
+                         lib/returned-columns
+                         (map lib/ref)
+                         sorted-fields))))
+          (testing "does nothing if field not listed"
+            (is (=? field-query
+                    (lib/remove-field field-query -1 (nth table-columns 6)))))))
+
+      (testing "with :fields :all"
+        (let [created-at (first (filter (comp #{"CREATED_AT"} :name) join-columns))]
+          (testing "fills in the :fields list and removes the field"
+            (is (=? (->> (concat table-columns
+                                 join-columns)
+                         (remove (comp #{(meta/id :people :created-at)} :id))
+                         (map lib/ref)
+                         (map #(lib.options/update-options % dissoc :lib/uuid))
+                         sorted-fields)
+                    (->> (lib/remove-field query -1 created-at)
+                         lib/returned-columns
+                         (map lib/ref)
+                         sorted-fields))))))
+
+      (testing "with :fields list"
+        (let [join-fields-query (lib.util/update-query-stage
+                                 query -1
+                                 update-in [:joins 0]
+                                 lib/with-join-fields (map lib/ref (take 4 join-columns)))]
+          (testing ":all fills in the :fields list and removes the field"
+            (is (=? (->> (concat table-columns
+                                 (rest (take 4 join-columns)))
+                         (map lib/ref)
+                         (map #(lib.options/update-options % dissoc :lib/uuid))
+                         sorted-fields)
+                    (->> (lib/remove-field join-fields-query -1 (first join-columns))
+                         lib/returned-columns
+                         (map lib/ref)
+                         sorted-fields))))
+          (testing "does nothing if the join field is already selected"
+            (is (=? join-fields-query
+                    (lib/remove-field join-fields-query -1 (nth join-columns 6))))))))))
+
+(deftest ^:parallel remove-field-tests-4
   (testing "removing implicit join fields"
     (let [query            (lib/query meta/metadata-provider (meta/table-metadata :orders))
           viz-columns      (lib/visible-columns query)

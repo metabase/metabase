@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import BaseLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper as BaseLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 

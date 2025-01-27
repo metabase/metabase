@@ -54,6 +54,7 @@ export const setupStrategyEditorForDatabases = ({
         type: "duration",
         duration: 1,
         unit: CacheDurationUnit.Hours,
+        refresh_automatically: false,
       },
     }),
   ];

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/components/Schedule/Schedule";
 import type { FormTextInputProps } from "metabase/forms";
 import {
@@ -33,6 +33,7 @@ import type {
   CacheStrategy,
   CacheStrategyType,
   CacheableModel,
+  DurationStrategy,
   ScheduleSettings,
   ScheduleStrategy,
 } from "metabase-types/api";
@@ -207,6 +208,15 @@ const StrategyFormBody = ({
 
   const headingId = "strategy-form-heading";
 
+  const handleSwitchToggle = useCallback(() => {
+    if (values.type === "duration" || values.type === "schedule") {
+      const newValue = !(values as DurationStrategy | ScheduleStrategy)
+        .refresh_automatically;
+      setFieldValue("refresh_automatically", newValue);
+      setStatus("idle");
+    }
+  }, [values, setFieldValue, setStatus]);
+
   return (
     <FormWrapper>
       <StyledForm
@@ -265,10 +275,22 @@ const StrategyFormBody = ({
                   />
                 </Field>
                 <input type="hidden" name="unit" />
+                {["question", "dashboard"].includes(targetModel) && (
+                  <PLUGIN_CACHING.PreemptiveCachingSwitch
+                    handleSwitchToggle={handleSwitchToggle}
+                  />
+                )}
               </>
             )}
             {selectedStrategyType === "schedule" && (
-              <ScheduleStrategyFormFields />
+              <>
+                <ScheduleStrategyFormFields />
+                {["question", "dashboard"].includes(targetModel) && (
+                  <PLUGIN_CACHING.PreemptiveCachingSwitch
+                    handleSwitchToggle={handleSwitchToggle}
+                  />
+                )}
+              </>
             )}
           </Stack>
         </FormBox>
@@ -386,14 +408,16 @@ const ScheduleStrategyFormFields = () => {
     );
   }
   return (
-    <Schedule
-      schedule={schedule}
-      scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
-      onScheduleChange={onScheduleChange}
-      verb={c("A verb in the imperative mood").t`Invalidate`}
-      timezone={timezone}
-      aria-label={t`Describe how often the cache should be invalidated`}
-    />
+    <>
+      <Schedule
+        schedule={schedule}
+        scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
+        onScheduleChange={onScheduleChange}
+        verb={c("A verb in the imperative mood").t`Invalidate`}
+        timezone={timezone}
+        aria-label={t`Describe how often the cache should be invalidated`}
+      />
+    </>
   );
 };
 

@@ -373,8 +373,7 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
     });
 
     it("should change a boolean filter", () => {
@@ -383,8 +382,7 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
 
       H.filter();
 
@@ -403,8 +401,7 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
 
       H.filter();
 
@@ -435,8 +432,12 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("can add a date shortcut filter from the popover", () => {
       H.filterField("Created At").findByLabelText("More options").click();
-      H.popover().contains("Last 3 months").findByText("Last 3 months").click();
+      H.popover()
+        .contains("Previous 3 months")
+        .findByText("Previous 3 months")
+        .click();
       H.modal().findByText("Previous 3 Months").should("be.visible");
+
       applyFilters();
 
       cy.findByTestId("qb-filters-panel")
@@ -452,7 +453,7 @@ describe("scenarios > filters > bulk filtering", () => {
         });
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Specific dates...").click();
+      cy.findByText("Specific dates…").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Before").click();
 
@@ -533,8 +534,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("131.68").should("be.visible"); // total for order id 17
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

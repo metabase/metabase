@@ -16,7 +16,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
   describe("required tag", () => {
     beforeEach(() => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE {{filter}}",
       );
@@ -65,7 +65,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.toggleRequired();
       H.filterWidget().click();
       H.popover().within(() => {
-        H.removeMultiAutocompleteValue(0);
+        H.removeFieldValuesValue(0);
         cy.findByText("Set to default").click();
       });
       H.filterWidget()
@@ -78,7 +78,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.toggleRequired();
       H.filterWidget().click();
       H.popover().within(() => {
-        H.multiAutocompleteInput().type("10,");
+        H.fieldValuesInput().type("10,");
         cy.findByText("Update filter").click();
       });
       H.filterWidget().icon("revert").click();
@@ -90,7 +90,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
   context("ID filter", () => {
     beforeEach(() => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion({ display: "table" });
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE {{filter}}",
       );
@@ -128,7 +128,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
   context("None", () => {
     beforeEach(() => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion({ display: "table" });
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM people WHERE {{filter}}",
       );

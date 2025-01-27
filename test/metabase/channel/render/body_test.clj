@@ -9,8 +9,8 @@
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
    [metabase.formatter :as formatter]
-   [metabase.models :refer [Card]]
    [metabase.notification.payload.execute :as notification.execute]
+   [metabase.public-settings :as public-settings]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -475,7 +475,7 @@
                             {:key "February", :name "February", :enabled true}
                             {:key "January", :name "January", :enabled true}],
                            :funnel.order_dimension "CREATED_AT"}}]
-        (mt/with-temp [Card {card-id :id} funnel-card]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
           (let [doc        (render.tu/render-card-as-hickory! card-id)
                 pulse-body (hik.s/select
                             (hik.s/class "pulse-body")
@@ -647,9 +647,9 @@
                  {(format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/DateTime\"}]]" (mt/id :reviews :created_at))
                   {:pivot_table.column_sort_order "ascending"}}}]
         (mt/dataset test-data
-          (mt/with-temp [Card                 {card-id :id} {:display                :pivot
-                                                             :dataset_query          q
-                                                             :visualization_settings viz}]
+          (mt/with-temp [:model/Card                 {card-id :id} {:display                :pivot
+                                                                    :dataset_query          q
+                                                                    :visualization_settings viz}]
             (testing "the render succeeds with unknown column settings keys"
               (is (seq (render.tu/render-card-as-hickory! card-id))))))))))
 
@@ -990,3 +990,26 @@
                                    first)]
             (testing "Renders with at least one category name visible"
               (is (= "Doohickey" category-text)))))))))
+
+(deftest render-correct-day-of-week-test
+  (testing "The static-viz bar chart renders with the correct start of the week."
+    (mt/with-temporary-setting-values [public-settings/start-of-week "monday"]
+      (mt/dataset test-data
+        (let [q    (mt/mbql-query products
+                     {:aggregation [[:sum $price]]
+                      :breakout    [$category
+                                    !day-of-week.created_at]})
+              card {:name                   "bar-test"
+                    :display                :bar
+                    :dataset_query          q
+                    :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                             :graph.metrics ["sum"]}}]
+          (mt/with-temp [:model/Card {card-id :id} card]
+            (let [doc            (render.tu/render-card-as-hickory! card-id)
+                  first-day-text (->> (hik.s/select (hik.s/tag :text) doc)
+                                      (map (fn [el] (-> el :content first)))
+                                      (take-last 7)
+                                      (map str/trim)
+                                      first)]
+              (testing "Renders with correct day of week first"
+                (is (= "Monday" first-day-text))))))))))

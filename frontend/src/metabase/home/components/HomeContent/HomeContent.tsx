@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { useListPopularItemsQuery, useListRecentsQuery } from "metabase/api";
 import { useDatabaseListQuery, useSetting } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { getUser } from "metabase/selectors/user";

@@ -352,7 +352,7 @@ describe("issue 20963", () => {
   it("should allow converting questions with static snippets to models (metabase#20963)", () => {
     cy.visit("/");
 
-    H.openNativeEditor();
+    H.startNewNativeQuestion().as("editor");
 
     // Creat a snippet
     cy.icon("snippet").click();
@@ -1031,7 +1031,6 @@ describe("issue 29378", () => {
     H.createAction(ACTION_DETAILS);
 
     cy.visit(`/model/${ORDERS_QUESTION_ID}/detail`);
-    cy.findByRole("tab", { name: "Actions" }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1039,14 +1038,12 @@ describe("issue 29378", () => {
       "be.visible",
     );
 
-    cy.findByRole("tab", { name: "Used by" }).click();
     H.commandPaletteSearch(ACTION_DETAILS.name, false);
     H.commandPalette()
       .findByRole("option", { name: ACTION_DETAILS.name })
       .should("exist");
     H.closeCommandPalette();
 
-    cy.findByRole("tab", { name: "Actions" }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1521,7 +1518,7 @@ describe("issue 32483", () => {
 
 describe("issue 32963", () => {
   function assertLineChart() {
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     H.leftSidebar().within(() => {
       cy.findByTestId("Line-container").should(
         "have.attr",
@@ -1550,7 +1547,9 @@ describe("issue 32963", () => {
   });
 
   it("should pick sensible display for model based questions (metabase#32963)", () => {
-    cy.findByTestId("qb-header").button("Summarize").click();
+    cy.findByTestId("qb-header")
+      .button(/Summarize/)
+      .click();
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     H.rightSidebar().within(() => {
