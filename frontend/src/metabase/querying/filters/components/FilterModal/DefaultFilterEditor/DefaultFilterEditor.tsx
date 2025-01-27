@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import {
@@ -17,18 +17,22 @@ export function DefaultFilterEditor({
   filter,
   onChange,
 }: FilterEditorProps) {
-  const { query } = useFilterModalContext();
+  const { query, searchText } = useFilterModalContext();
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
 
-  const { operator, availableOptions, getFilterClause, setOperator } =
+  const { operator, availableOptions, getFilterClause, reset, setOperator } =
     useDefaultFilter({
       query,
       stageIndex,
       column,
       filter,
     });
+
+  useEffect(() => {
+    reset();
+  }, [reset, searchText]);
 
   const handleOperatorChange = (option: OperatorOption, isChecked: boolean) => {
     const newOperator = isChecked ? option.operator : undefined;

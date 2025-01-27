@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 
 import * as Lib from "metabase-lib";
 
@@ -33,17 +34,26 @@ export function useDefaultFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(
-    filterParts
+  const initialOperator = useMemo(() => {
+    return filterParts
       ? filterParts.operator
-      : getDefaultOperator(availableOptions, hasInitialOperator),
-  );
+      : getDefaultOperator(availableOptions, hasInitialOperator);
+  }, [filterParts, hasInitialOperator, availableOptions]);
+
+  const [operator, setOperator] = useState(initialOperator);
+
+  const resetRef = useLatest(() => {
+    setOperator(initialOperator);
+  });
+
+  const reset = useCallback(() => resetRef.current(), [resetRef]);
 
   return {
     operator,
     availableOptions,
     getFilterClause: (operator: Lib.DefaultFilterOperator | undefined) =>
       getFilterClause(operator, column),
+    reset,
     setOperator,
   };
 }

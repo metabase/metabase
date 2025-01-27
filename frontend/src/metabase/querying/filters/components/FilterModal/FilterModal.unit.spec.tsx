@@ -522,4 +522,50 @@ describe("FilterModal - issue 48319", () => {
       screen.getByRole("button", { name: "Filter operator" }),
     ).toHaveTextContent("less than");
   });
+
+  it("default filters - does not mix up column filter state when changing search query (metabase#48319)", async () => {
+    setupCustomColumns({
+      base_type: "type/Exotic",
+      effective_type: "type/Exotic",
+      semantic_type: "type/Exotic",
+    });
+
+    const searchInput = screen.getByPlaceholderText("Search for a column…");
+    await userEvent.type(searchInput, "foo");
+
+    await waitFor(() => {
+      expect(screen.queryByText("Bar")).not.toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Is empty" }));
+    expect(screen.getByRole("checkbox", { name: "Is empty" })).toBeChecked();
+
+    await userEvent.type(
+      searchInput,
+      `${"{backspace}".repeat("foo".length)}bar`,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Bar")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole("checkbox", { name: "Is empty" }),
+    ).not.toBeChecked();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Not empty" }));
+    expect(screen.getByRole("checkbox", { name: "Not empty" })).toBeChecked();
+
+    await userEvent.type(
+      searchInput,
+      `${"{backspace}".repeat("bar".length)}foo`,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Foo")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("checkbox", { name: "Is empty" })).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Not empty" }),
+    ).not.toBeChecked();
+  });
 });
