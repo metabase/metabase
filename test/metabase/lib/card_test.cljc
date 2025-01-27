@@ -20,7 +20,7 @@
 
 (deftest ^:parallel source-card-infer-metadata-test
   (testing "We should be able to calculate metadata for a Saved Question missing results_metadata"
-    (let [query lib.tu/query-with-source-card]
+    (let [query (lib.tu/query-with-source-card)]
       (is (=? [{:id                       (meta/id :checkins :user-id)
                 :name                     "USER_ID"
                 :lib/source               :source/card
@@ -55,11 +55,11 @@
                   (lib/display-info query col))))))))
 
 (deftest ^:parallel card-source-query-metadata-test
-  (doseq [metadata [(:venues lib.tu/mock-cards)
+  (doseq [metadata [(:venues (lib.tu/mock-cards))
                     ;; in some cases [the FE unit tests are broken] the FE is transforming the metadata like this, not
                     ;; sure why but handle it anyway
                     ;; (#29739)
-                    (set/rename-keys (:venues lib.tu/mock-cards) {:result-metadata :fields})]]
+                    (set/rename-keys (:venues (lib.tu/mock-cards)) {:result-metadata :fields})]]
     (testing (str "metadata = \n" (u/pprint-to-str metadata))
       (let [query {:lib/type     :mbql/query
                    :lib/metadata (lib.tu/mock-metadata-provider
@@ -67,7 +67,7 @@
                    :database     (meta/id)
                    :stages       [{:lib/type    :mbql.stage/mbql
                                    :source-card (:id metadata)}]}]
-        (is (=? (for [col (get-in lib.tu/mock-cards [:venues :result-metadata])]
+        (is (=? (for [col (get-in (lib.tu/mock-cards) [:venues :result-metadata])]
                   (-> col
                       (assoc :lib/source :source/card)
                       (dissoc :fk-target-field-id)))
@@ -75,7 +75,7 @@
 
 (deftest ^:parallel card-results-metadata-merge-metadata-provider-metadata-test
   (testing "Merge metadata from the metadata provider into result-metadata (#30046)"
-    (let [query lib.tu/query-with-source-card-with-result-metadata]
+    (let [query (lib.tu/query-with-source-card-with-result-metadata)]
       (is (=? [{:lib/type                 :metadata/column
                 :id                       (meta/id :checkins :user-id)
                 :table-id                 (meta/id :checkins)
@@ -101,11 +101,11 @@
     (let [venues-query (lib/query
                         (lib.tu/mock-metadata-provider
                          meta/metadata-provider
-                         {:cards [(assoc (:orders lib.tu/mock-cards) :dataset-query lib.tu/venues-query)]})
-                        (:orders lib.tu/mock-cards))]
+                         {:cards [(assoc (:orders (lib.tu/mock-cards)) :dataset-query (lib.tu/venues-query))]})
+                        (:orders (lib.tu/mock-cards)))]
       (is (=? (->> (cols-of :orders)
                    sort-cols)
-              (sort-cols (get-in lib.tu/mock-cards [:orders :result-metadata]))))
+              (sort-cols (get-in (lib.tu/mock-cards) [:orders :result-metadata]))))
 
       (is (=? (->> (concat (from :source/card (cols-of :orders))
                            (from :source/implicitly-joinable (cols-of :people))
@@ -213,8 +213,8 @@
 
 (deftest ^:parallel display-name-of-joined-cards-is-clean-test
   (testing "We get proper field names rather than ids (#27323)"
-    (let [query (lib/query lib.tu/metadata-provider-with-mock-cards (:products lib.tu/mock-cards))
-          people-card (:people lib.tu/mock-cards)
+    (let [query (lib/query (lib.tu/metadata-provider-with-mock-cards) (:products (lib.tu/mock-cards)))
+          people-card (:people (lib.tu/mock-cards))
           lhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-lhs-columns query 0 people-card nil nil))
           rhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-rhs-columns query 0 people-card nil nil))
           join-clause (lib/join-clause people-card [(lib/= lhs rhs)])

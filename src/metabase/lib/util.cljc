@@ -350,10 +350,10 @@
 
 (defn native-stage?
   "Is this query stage a native stage?"
-  [query stage-number]
-  (-> (query-stage query stage-number)
-      :lib/type
-      (= :mbql.stage/native)))
+  ([stage]
+   (= (:lib/type stage) :mbql.stage/native))
+  ([query stage-number]
+   (native-stage? (query-stage query stage-number))))
 
 (mu/defn ensure-mbql-final-stage :- ::lib.schema/query
   "Convert query to a pMBQL (pipeline) query, and make sure the final stage is an `:mbql` one."

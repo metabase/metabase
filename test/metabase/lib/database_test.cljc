@@ -9,9 +9,9 @@
 (deftest ^:parallel database-id-test
   (testing "Normal query with a source Table"
     (is (= (meta/id)
-           (lib/database-id lib.tu/venues-query))))
+           (lib/database-id (lib.tu/venues-query)))))
   (testing "Query with source Card"
-    (let [query lib.tu/query-with-source-card]
+    (let [query (lib.tu/query-with-source-card)]
       (testing "and normal Database ID"
         (is (= (meta/id)
                (lib/database-id query))))

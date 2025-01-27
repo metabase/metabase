@@ -20,7 +20,7 @@
           (lib.metadata/field meta/metadata-provider (meta/id :venues :category-id)))))
 
 (deftest ^:parallel stage-metadata-test
-  (let [query (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))]
+  (let [query (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues (lib.tu/mock-cards)))]
     (is (=? {:columns [{:name "ID"}
                        {:name "NAME"}
                        {:name "CATEGORY_ID"}
@@ -30,7 +30,7 @@
             (lib.metadata/stage query -1)))))
 
 (deftest ^:parallel stage-column-metadata-test
-  (let [query (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues lib.tu/mock-cards))]
+  (let [query (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider (:venues (lib.tu/mock-cards)))]
     (are [x] (=? {:lib/type       :metadata/column
                   :display-name   "Category ID"
                   :name           "CATEGORY_ID"
@@ -44,8 +44,8 @@
 (deftest ^:parallel display-name-from-name-test
   (testing "Use the 'simple humanization' logic to calculate a display name for a Field that doesn't have one"
     (is (= "Venue ID"
-           (lib/display-name lib.tu/venues-query -1 {:lib/type :metadata/column
-                                                     :name     "venue_id"})))))
+           (lib/display-name (lib.tu/venues-query) -1 {:lib/type :metadata/column
+                                                       :name     "venue_id"})))))
 
 (deftest ^:parallel table-or-card-test
   (are [id expected] (=? expected
@@ -65,7 +65,7 @@
      ;; now.
      :cljs
      ;; `Integer/MAX_VALUE`, but I don't know what the Cljs way to do this
-     (is (nil? (lib.metadata/table-or-card lib.tu/metadata-provider-with-card 2147483647)))))
+     (is (nil? (lib.metadata/table-or-card lib.tu/metadata-provider-with-card js/Number.MAX_SAFE_INT)))))
 
 (deftest ^:parallel bulk-metadata-preserve-order-test
   (testing "bulk-metadata should return things in the same order as the IDs passed in"
@@ -78,7 +78,7 @@
       ["PEOPLE" "ORDERS" "VENUES"])))
 
 (deftest ^:parallel editable?-test
-  (let [query          lib.tu/query-with-join
+  (let [query          (lib.tu/query-with-join)
         metadata       ^SimpleGraphMetadataProvider (:lib/metadata query)
         metadata-graph (.-metadata-graph metadata)
         restricted-metadata-graph (update metadata-graph :tables #(into [] (remove (comp #{"CATEGORIES"} :name)) %))

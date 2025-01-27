@@ -17,7 +17,7 @@
 (def ^:private second-metric-id 101)
 
 (def ^:private metric-definition
-  (-> lib.tu/venues-query
+  (-> (lib.tu/venues-query)
       (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
       (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
       lib.convert/->legacy-MBQL))
@@ -54,7 +54,7 @@
   (lib.tu/mock-metadata-provider meta/metadata-provider multiple-metrics-db))
 
 (def ^:private metadata-provider-with-cards
-  (lib.tu/mock-metadata-provider lib.tu/metadata-provider-with-mock-cards metrics-db))
+  (lib.tu/mock-metadata-provider (lib.tu/metadata-provider-with-mock-cards) metrics-db))
 
 (def ^:private metric-clause
   [:metric {:lib/uuid (str (random-uuid))} metric-id])
@@ -68,7 +68,7 @@
 
 (deftest ^:parallel uses-metric?-test
   (is (lib/uses-metric? query-with-metric metric-id))
-  (is (not (lib/uses-metric? lib.tu/venues-query metric-id))))
+  (is (not (lib/uses-metric? (lib.tu/venues-query) metric-id))))
 
 (deftest ^:parallel query-suggested-name-test
   (is (= "Venues, Sum of Cans"
@@ -135,7 +135,7 @@
 
 (deftest ^:parallel display-info-unselected-metric-test
   (testing "Include `:selected false` in display info for Metrics not in aggregations"
-    (are [metric] (not (:selected (lib/display-info lib.tu/venues-query metric)))
+    (are [metric] (not (:selected (lib/display-info (lib.tu/venues-query) metric)))
       metric-clause
       metric-metadata)))
 
@@ -269,6 +269,6 @@
       (is (nil? (lib.metric/available-metrics query)))))
   (testing "query based on a card -- don't return Metrics"
     (doseq [card-key [:venues :venues/native]]
-      (let [query (lib/query metadata-provider-with-cards (card-key lib.tu/mock-cards))]
+      (let [query (lib/query metadata-provider-with-cards (card-key (lib.tu/mock-cards)))]
         (is (not (lib/uses-metric? query metric-id)))
         (is (nil? (lib.metric/available-metrics (lib/append-stage query))))))))
