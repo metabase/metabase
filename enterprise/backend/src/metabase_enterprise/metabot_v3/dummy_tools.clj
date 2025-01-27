@@ -53,10 +53,11 @@
      {:id id
       :name (:name card)
       :description (:description card)
-      :default_time_dimension_field_id (some-> default-temporal-breakout
-                                               (metabot-v3.tools.u/->result-column visible-cols field-id-prefix)
-                                               :id)
-      :queryable_dimensions (mapv #(metabot-v3.tools.u/->result-column % visible-cols field-id-prefix)
+      :default_time_dimension_field_id (when default-temporal-breakout
+                                         (-> (metabot-v3.tools.u/->result-column
+                                              metric-query default-temporal-breakout visible-cols field-id-prefix)
+                                             :field_id))
+      :queryable_dimensions (mapv #(metabot-v3.tools.u/->result-column metric-query % visible-cols field-id-prefix)
                                   filterable-cols)})))
 
 (comment
@@ -94,7 +95,7 @@
           cols (lib/returned-columns table-query)
           field-id-prefix (metabot-v3.tools.u/table-field-id-prefix id)]
       (-> {:id id
-           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix)) cols)
+           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
            :name (lib/display-name table-query)}
           (m/assoc-some :description (:description base)
                         :metrics (not-empty (mapv #(convert-metric % mp) (lib/available-metrics table-query)))
@@ -112,7 +113,7 @@
           cols (lib/returned-columns card-query)
           field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
       (-> {:id id
-           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix)) cols)
+           :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) cols)
            :name (lib/display-name card-query)}
           (m/assoc-some :description (:description base)
                         :metrics (not-empty (mapv #(convert-metric % mp) (lib/available-metrics card-query)))
@@ -239,7 +240,7 @@
      :query_id query-id
      :query legacy-query
      :result_columns (into []
-                           (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 field-id-prefix))
+                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 field-id-prefix))
                            returned-cols)}))
 
 (defn- dummy-run-query
