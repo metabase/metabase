@@ -23,7 +23,6 @@ describe("scenarios > collections > clean up", () => {
 
     it("feature should not be available in OSS", () => {
       H.visitCollection(FIRST_COLLECTION_ID);
-      cleanUpAlert().should("not.exist");
       collectionMenu().click();
       H.popover().within(() => {
         cy.findByText("Clear out unused items").should("not.exist");
@@ -55,6 +54,7 @@ describe("scenarios > collections > clean up", () => {
         collectionMenu().click();
         H.popover().within(() => {
           cy.findByText("Clear out unused items").should("exist");
+          cy.findByText("Recommended").should("exist");
         });
 
         cy.log("should not show in custom analytics collections");
@@ -103,7 +103,6 @@ describe("scenarios > collections > clean up", () => {
               H.popover().within(() => {
                 cy.findByText("Clear out unused items").should("not.exist");
               });
-              cleanUpAlert().should("not.exist");
             });
           },
         );
@@ -135,7 +134,6 @@ describe("scenarios > collections > clean up", () => {
 
           cy.log("should be able to navigate to clean up modal");
           H.visitCollection(seedData.collection.id);
-          cleanUpAlert().should("exist");
           selectCleanThingsUpCollectionAction();
           cy.url().should("include", "cleanup");
 
@@ -277,7 +275,6 @@ describe("scenarios > collections > clean up", () => {
             "should not longer show alert if user has used the clean up feature",
           );
           closeCleanUpModal();
-          cleanUpAlert().should("not.exist");
 
           // Ensure that stale items in Our Analytics are maked with a null collection id
           H.expectGoodSnowplowEvent(
@@ -330,80 +327,6 @@ describe("scenarios > collections > clean up", () => {
         errorState().should("exist");
       });
     });
-
-    H.describeEE("clean up collection alert", () => {
-      beforeEach(() => {
-        cy.signInAsAdmin();
-        H.setTokenFeatures("all");
-      });
-
-      it("should show admins a dismissible clean up alert if there's something to clean up in a collection", () => {
-        cy.log("should not show alert if there's nothing stale");
-        cy.intercept("GET", "/api/ee/stale/*").as("staleItems");
-        H.visitCollection(FIRST_COLLECTION_ID);
-
-        // seed slightly stale content
-        cy.createQuestion({
-          name: "Not stale enough",
-          collection_id: FIRST_COLLECTION_ID,
-          query: { "source-table": STATIC_ORDERS_ID },
-        }).then(req => {
-          makeItemsStale(
-            [req.body.id],
-            "card",
-            dayjs().startOf("day").subtract(2, "months").format("YYYY-MM-DD"),
-          );
-
-          cy.log("should not be shown with 2 month stale content");
-          cy.reload();
-          cleanUpAlert().should("not.exist");
-        });
-
-        // seed stale enough content
-        cy.createQuestion({
-          name: "Stale enough",
-          collection_id: FIRST_COLLECTION_ID,
-          query: { "source-table": STATIC_ORDERS_ID },
-        }).then(req => {
-          makeItemsStale(
-            [req.body.id],
-            "card",
-            dayjs().startOf("day").subtract(3, "months").format("YYYY-MM-DD"),
-          );
-
-          cy.log("should be shown with 3 month stale content");
-          cy.reload();
-          cleanUpAlert()
-            .should("exist")
-            .findByText(/Keep your collections tidy/)
-            .click();
-          cy.url().should("include", "cleanup");
-          closeCleanUpModal();
-
-          cy.log("should be able to dismiss the banner");
-          cleanUpAlert().findByRole("button").click();
-          cleanUpAlert().should("not.exist");
-
-          cy.log("dismissing banner should persist on page refresh");
-          cy.reload();
-          H.collectionTable().within(() => {
-            cy.findByText("Second collection").should("exist");
-          });
-          cleanUpAlert().should("not.exist");
-        });
-      });
-
-      it("should not show non-admins a clean up alert if there's something to clean up in a collection", () => {
-        cy.signOut();
-        cy.signInAsNormalUser();
-        cy.intercept("GET", "/api/ee/stale/*").as("staleItems");
-        H.visitCollection(FIRST_COLLECTION_ID);
-        H.collectionTable().within(() => {
-          cy.findByText("Second collection").should("exist");
-        });
-        cleanUpAlert().should("not.exist");
-      });
-    });
   });
 });
 
@@ -412,7 +335,7 @@ const collectionMenu = () => H.getCollectionActions().icon("ellipsis");
 const cleanUpModal = () => cy.findAllByTestId("cleanup-collection-modal");
 const closeCleanUpModal = () =>
   cy.findAllByTestId("cleanup-collection-modal-close-btn").click();
-const cleanUpAlert = () => cy.findByTestId("cleanup-alert");
+
 const recursiveFilter = () =>
   cy.findByText(/Include items in sub-collections/).should("exist");
 const dateFilter = () => cy.findByTestId("cleanup-date-filter");

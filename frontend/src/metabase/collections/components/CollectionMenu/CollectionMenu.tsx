@@ -65,7 +65,7 @@ export const CollectionMenu = ({
     moveItems.push(
       <Menu.Item
         key="collection-move"
-        icon={<Icon name="lock" />}
+        icon={<Icon name="move" />}
         component={ForwardRefLink}
         to={`${url}/move`}
       >{t`Move`}</Menu.Item>,
