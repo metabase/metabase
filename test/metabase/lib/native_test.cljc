@@ -351,3 +351,44 @@
                {:id            2
                 :dataset-query {}}]
               (lib/template-tags-referenced-cards query))))))
+
+(deftest ^:parallel not-has-template-tag-variables?-test
+  (are [query] (not (lib.native/has-template-tag-variables? query))
+    (lib/query meta/metadata-provider (meta/table-metadata :venues))
+    (lib/native-query meta/metadata-provider "select * from venues where id = 1")
+    (lib/native-query meta/metadata-provider "select * from venues {{snippet:a snippet}}")
+    (lib/native-query meta/metadata-provider "select * from {{#123-some-card}}")))
+
+(deftest ^:parallel has-template-tag-variables?-test
+  (are [query] (lib.native/has-template-tag-variables? query)
+    ;; text variable
+    (lib/native-query meta/metadata-provider "select * from venues where name = {{mytag}}")
+
+    ;; number variable
+    (-> (lib/native-query meta/metadata-provider "select * from venues where category_id = {{mytag}}")
+        (lib/with-template-tags {"mytag"
+                                 {:default "1"
+                                  :display-name "My Tag"
+                                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                  :name "mytag"
+                                  :type :number}}))
+
+    ;; date variable
+    (-> (lib/native-query meta/metadata-provider "select * from orders where created_at = {{mytag}}")
+        (lib/with-template-tags {"mytag"
+                                 {:default nil
+                                  :display-name "My Tag"
+                                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                  :name "mytag"
+                                  :type :date}}))
+
+    ;; field filter
+    (-> (lib/native-query meta/metadata-provider "select * from venues where {{mytag}}")
+        (lib/with-template-tags {"mytag"
+                                 {:default nil
+                                  :dimension [:field {:lib/uuid (str (random-uuid))} 1]
+                                  :display-name "My Tag"
+                                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"
+                                  :name "mytag"
+                                  :type :dimension
+                                  :widget-type :date/range}}))))

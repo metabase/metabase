@@ -8,14 +8,14 @@ import type { IconName } from "metabase/ui";
 import { Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
+import { useFilterModalContext } from "../context";
+
 import { FilterColumnName } from "./FilterColumnName";
 
 type FilterTitleProps = {
   children?: ReactNode;
   column: Lib.ColumnMetadata;
   columnIcon: IconName;
-  isSearching: boolean;
-  query: Lib.Query;
   stageIndex: number;
 };
 
@@ -25,10 +25,10 @@ export function FilterTitle({
   children,
   column,
   columnIcon,
-  isSearching,
-  query,
   stageIndex,
 }: FilterTitleProps) {
+  const { query } = useFilterModalContext();
+
   return (
     <Flex h="100%" align="center" gap="sm" pl="md">
       <QueryColumnInfoIcon
@@ -38,12 +38,7 @@ export function FilterTitle({
         icon={columnIcon}
         position="left"
       />
-      <FilterColumnName
-        query={query}
-        stageIndex={stageIndex}
-        column={column}
-        isSearching={isSearching}
-      />
+      <FilterColumnName stageIndex={stageIndex} column={column} />
       {children}
     </Flex>
   );
