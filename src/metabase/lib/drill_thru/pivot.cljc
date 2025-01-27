@@ -148,7 +148,6 @@
   (select-keys drill-thru [:many-pks? :object-id :type]))
 
 ;; Note that pivot drills have specific public functions for accessing the nested pivoting options.
-;; Therefore the [[drill-thru-info-method]] is just the default `{:type :drill-thru/pivot}`.
 
 (mu/defn pivot-types :- [:sequential ::lib.schema.drill-thru/pivot-types]
   "A helper for the FE. Returns the set of pivot types (category, location, time) that apply to this drill-thru."

@@ -596,11 +596,12 @@ export type FilterDrillDetails = {
   column: ColumnMetadata;
 };
 
+export type PivotType = "category" | "location" | "time";
+
 export type PivotDrillDetails = {
+  pivotTypes: PivotType[];
   stageIndex: number;
 };
-
-export type PivotType = "category" | "location" | "time";
 
 export interface ClickObjectDimension {
   value: RowValue;
