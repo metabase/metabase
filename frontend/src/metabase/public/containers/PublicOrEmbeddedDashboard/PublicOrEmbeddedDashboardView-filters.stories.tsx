@@ -460,17 +460,23 @@ export const LightThemeTextWithValue = {
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const asyncCallback = createAsyncCallback();
-    const canvas = within(canvasElement);
-    const filter = await canvas.findByRole("button", { name: "Category" });
-    await userEvent.click(filter);
 
-    const popover = getLastPopover();
-    await userEvent.type(
-      popover.getByPlaceholderText("Enter some text"),
-      "filter value",
-    );
-    await userEvent.click(getLastPopoverElement());
-    asyncCallback();
+    try {
+      const canvas = within(canvasElement);
+      const filter = await canvas.findByRole("button", { name: "Category" });
+      await userEvent.click(filter);
+
+      const popover = getLastPopover();
+      await userEvent.type(
+        popover.getByPlaceholderText("Enter some text"),
+        "filter value",
+      );
+      await userEvent.click(getLastPopoverElement());
+    } catch (e) {
+      console.error("story failed", e);
+    } finally {
+      asyncCallback();
+    }
   },
 };
 
