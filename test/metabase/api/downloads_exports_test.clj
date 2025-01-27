@@ -24,7 +24,6 @@
    [metabase.pulse.core :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)
@@ -56,7 +55,8 @@
   [pivot export-format results]
   (when (seq results)
     (case export-format
-      :csv  (csv/read-csv results)
+      :csv  (cond-> results
+              (not (map? results)) csv/read-csv)
       :xlsx (read-xlsx pivot results)
       :json (tabulate-maps results))))
 
@@ -74,16 +74,14 @@
   [card {:keys [export-format format-rows pivot]}]
   (->> (mt/user-http-request :crowberto :post 200
                              (format "dataset/%s" (name export-format))
-                             :visualization_settings (json/encode
-                                                      (:visualization_settings card))
-                             :query (json/encode
-                                     (assoc (:dataset_query card)
+                             {:visualization_settings (:visualization_settings card)
+                              :query (assoc (:dataset_query card)
                                             :was-pivot (boolean pivot)
                                             :info {:visualization-settings (:visualization_settings card)}
                                             :middleware
-                                            {:userland-query? true}))
-                             :format_rows   format-rows
-                             :pivot_results (boolean pivot))
+                                            {:userland-query? true})
+                              :format_rows   format-rows
+                              :pivot_results (boolean pivot)})
        (process-results pivot export-format)))
 
 (defn public-question-download
@@ -107,8 +105,8 @@
                                 dashboard-id :dashboard_id}]
             (->> (mt/user-http-request :crowberto :post 200
                                        (format "dashboard/%d/dashcard/%d/card/%d/query/%s" dashboard-id dashcard-id card-id (name export-format))
-                                       :format_rows   format-rows
-                                       :pivot_results pivot)
+                                       {:format_rows   format-rows
+                                        :pivot_results pivot})
                  (process-results pivot export-format)))]
     (if (= (t2/model card-or-dashcard) :model/DashboardCard)
       (dashcard-download* card-or-dashcard)
