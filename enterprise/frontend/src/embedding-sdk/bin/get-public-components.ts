@@ -87,6 +87,10 @@ function isJsxElement(node?: Node) {
   if (!node) {
     return false;
   }
-  const kind = node.getKind();
-  return kind >= SyntaxKind.JsxElement && kind <= SyntaxKind.JsxClosingFragment;
+
+  return [
+    SyntaxKind.JsxSelfClosingElement,
+    SyntaxKind.JsxOpeningElement,
+    SyntaxKind.JsxClosingElement,
+  ].includes(node.getKind());
 }
