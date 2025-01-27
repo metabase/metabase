@@ -77,7 +77,7 @@
    handler
    middleware))
 
-(def ^{:arglists '([request] [request respond raise])} app
+(def ^{:arglists '([request respond raise])} app
   "The primary entry point to the Ring HTTP server."
   (apply-middleware routes/routes))
 
