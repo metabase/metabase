@@ -10,6 +10,7 @@
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.db :as mdb]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -124,8 +125,9 @@
     (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                         :type     :query
                         :query    source-query}
-          preprocessed (request/as-admin
-                         ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))]
+          preprocessed (binding [lib.convert/*clean-query* false]
+                         (request/as-admin
+                           ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query)))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
       (throw (ex-info (tru "Error preprocessing source query when applying GTAP: {0}" (ex-message e))

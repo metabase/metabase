@@ -224,12 +224,6 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
 });
 
 describe("issue 51020", () => {
-  function setupBasicActionsInModel() {
-    H.questionInfoButton().click();
-    H.sidesheet().findByText("Actions").click();
-    cy.button(/Create basic actions/).click();
-  }
-
   function setupDashboard({ questionName, modelName, columnName }) {
     H.newButton("Dashboard").click();
     H.modal().findByLabelText("Name").type("Dash");
@@ -403,3 +397,64 @@ describe("issue 51020", () => {
     });
   });
 });
+
+describe("issue 32840", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    H.createQuestion(
+      {
+        type: "model",
+        name: "Products model",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+      },
+      {
+        wrapId: true,
+        idAlias: "modelId",
+      },
+    );
+
+    cy.get("@modelId").then(modelId => {
+      H.createAction({
+        type: "implicit",
+        kind: "row/update",
+        name: "Update",
+        model_id: modelId,
+      });
+      H.visitModel(modelId);
+    });
+
+    cy.intercept("POST", "/api/action/*/execute").as("executeAction");
+  });
+
+  it("uses correct timestamp when executing implicit update action (metabase#32840)", () => {
+    cy.findAllByTestId("cell-data").eq(8).click();
+    H.modal().within(() => {
+      cy.findByText("July 19, 2023, 7:44 PM").should("be.visible");
+      cy.findByTestId("actions-menu").click();
+    });
+    H.popover().findByText("Update").should("be.visible").click();
+    H.modal()
+      .eq(1)
+      .within(() => {
+        cy.findByPlaceholderText("Created At").should(
+          "have.value",
+          "2023-07-19T19:44:56",
+        );
+        cy.button("Update").scrollIntoView().click();
+      });
+    cy.wait("@executeAction");
+    H.modal().findByText("July 19, 2023, 7:44 PM").should("be.visible");
+  });
+});
+
+function setupBasicActionsInModel() {
+  H.questionInfoButton().click();
+  H.sidesheet().findByText("Actions").click();
+  cy.button(/Create basic actions/).click();
+}
