@@ -4,13 +4,14 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { SEARCH_KEY } from "./constants";
+import type { FilterModalResult } from "./types";
 import { getGroupItems, hasFilters, removeFilters } from "./utils/filters";
 import { isSearchActive, searchGroupItems } from "./utils/search";
 
 export const useFilterModal = (
   question: Question,
-  onSubmit: (newQuery: Lib.Query) => void,
-) => {
+  onSubmitProp: (newQuery: Lib.Query) => void,
+): FilterModalResult => {
   const [query, setQuery] = useState(() =>
     // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations
     question.display() === "pivot"
@@ -31,30 +32,30 @@ export const useFilterModal = (
     [groupItems, searchText, isSearching],
   );
 
-  const handleInput = () => {
+  const onInput = () => {
     if (!isChanged) {
       setIsChanged(true);
     }
   };
 
-  const handleChange = (newQuery: Lib.Query) => {
+  const onQueryChange = (newQuery: Lib.Query) => {
     setQuery(newQuery);
     setIsChanged(true);
     // for handleSubmit to see the latest query if it is called in the same tick
     queryRef.current = newQuery;
   };
 
-  const handleReset = () => {
-    handleChange(removeFilters(query));
+  const onReset = () => {
+    onQueryChange(removeFilters(query));
     // to reset internal state of filter components
     setVersion(version + 1);
   };
 
-  const handleSubmit = () => {
-    onSubmit(Lib.dropEmptyStages(queryRef.current));
+  const onSubmit = () => {
+    onSubmitProp(Lib.dropEmptyStages(queryRef.current));
   };
 
-  const handleSearch = (searchText: string) => {
+  const onSearchTextChange = (searchText: string) => {
     setTab(isSearchActive(searchText) ? SEARCH_KEY : groupItems[0]?.key);
     setSearchText(searchText);
   };
@@ -65,15 +66,15 @@ export const useFilterModal = (
     isChanged,
     groupItems,
     tab,
-    setTab,
     canRemoveFilters,
     searchText,
     isSearching,
     visibleItems,
-    handleInput,
-    handleChange,
-    handleReset,
-    handleSubmit,
-    handleSearch,
+    onInput,
+    onQueryChange,
+    onReset,
+    onSearchTextChange,
+    onSubmit,
+    onTabChange: setTab,
   };
 };

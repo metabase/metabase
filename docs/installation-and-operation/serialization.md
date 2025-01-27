@@ -333,7 +333,7 @@ Metabase relies on [Entity IDs](#metabase-uses-entity-ids-to-identify-and-refere
 
   In particular, this means that if you export a question, then make a change in an exported YAML file — like rename a question by directly editing the `name` field — and then import the edited file back, Metabase will try to apply the changes you made to the YAML.
 
-- If you import an item with blank `entity_id` (and blank `serdes/meta → id`), Metabase will create a new item.
+- If you import an item with a blank `entity_id`, Metabase will create a new item. Any `serdes/meta → id` will be ignored in this case.
 
 - All items and data sources referenced in YAML must either exist in the target Metabase already, or be included in the import.
 
