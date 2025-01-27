@@ -3682,8 +3682,9 @@
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
     (mt/test-helpers-set-global-values!
       (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
-        (doseq [export-format [:csv :json :xlsx]]
-          (testing (format "Export format = %s" export-format)
+        (doseq [export-format       [:csv :json :xlsx]
+                json-encode-params? [true false]]
+          (testing (format "Export format = %s JSON encode params? = %s" export-format json-encode-params?)
             (let [url (format "%s/%s" (dashboard-card-query-url dashboard-id card-id dashcard-id) (name export-format))]
               (is (= (streaming.test-util/process-query-basic-streaming
                       export-format
@@ -3691,9 +3692,10 @@
                      (parse-export-format-results
                       (mt/user-real-request :rasta :post 200 url
                                             {:request-options {:as :byte-array}}
-                                            :format_rows true
-                                            :parameters (json/encode [{:id    "_PRICE_"
-                                                                       :value 4}]))
+                                            {:format_rows true
+                                             :parameters (cond-> [{:id    "_PRICE_"
+                                                                   :value 4}]
+                                                           json-encode-params? json/encode)})
                       export-format))))))))))
 
 (defn- dashcard-pivot-query-endpoint [dashboard-id card-id dashcard-id]
@@ -4536,7 +4538,7 @@
                    (->> (mt/user-http-request
                          :crowberto :post 200
                          (format "/dashboard/%s/dashcard/%s/card/%s/query/%s" dashboard-id dashcard-id card-id (name export-format))
-                         :format_rows apply-formatting?)
+                         {:format_rows apply-formatting?})
                         ((get output-helper export-format)))))))))))
 
 (deftest can-restore
