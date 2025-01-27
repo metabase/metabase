@@ -204,14 +204,36 @@ describe("CollectionMenu", () => {
       ).toHaveLength(0);
 
       expect(
+        await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
+      ).toBeInTheDocument();
+      expect(
         screen.queryByRole("menuitem", { name: /Clear out unused items/ }),
-      ).not.toBeInTheDocument();
+      ).not.toHaveTextContent("Recommended");
     });
 
     it("should not make a request for stale items if the user cannot clean up the collection", async () => {
       setupPremium({
         collection: createMockCollection({ type: "trash" }),
         isAdmin: false,
+      });
+
+      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(fetchMock.calls("path:/api/collection/1/items")).toHaveLength(0);
+      expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(0);
+
+      expect(
+        screen.queryByRole("menuitem", { name: /Clear out unused items/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shound not show the clean up collection option if there are no items in the collection", async () => {
+      setupPremium({
+        collection: createMockCollection({ can_write: true }),
+        isAdmin: true,
+        numberOfCollectionItems: 0,
+        numberOfStaleItems: 0,
       });
 
       expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();

@@ -1,4 +1,5 @@
 /* istanbul ignore file */
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -32,6 +33,7 @@ export interface SetupOpts {
   dashboardQuestionCandidates?: DashboardQuestionCandidate[];
   moveToDashboard?: boolean;
   collectionMenu?: boolean;
+  numberOfCollectionItems?: number;
   numberOfStaleItems?: number;
 }
 
@@ -44,8 +46,14 @@ export const setup = ({
   dashboardQuestionCandidates = [],
   moveToDashboard = false,
   collectionMenu = false,
+  numberOfCollectionItems = 10,
   numberOfStaleItems = 0,
 }: SetupOpts) => {
+  // We need a mock to get the total number of items in a collection, but we don't need to
+  // access the data - only the total
+  fetchMock.get(`path:/api/collection/${collection.id}/items`, {
+    total: numberOfCollectionItems,
+  });
   setupDashboardQuestionCandidatesEndpoint(dashboardQuestionCandidates);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
