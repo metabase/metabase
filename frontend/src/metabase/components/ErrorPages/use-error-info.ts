@@ -95,6 +95,10 @@ export const useErrorInfo = (
     const browserInfo = getBrowserInfo();
 
     const payload: ErrorPayload = {
+      reporter: {
+        name: `${currentUser.first_name} ${currentUser.last_name}`,
+        email: currentUser.email,
+      },
       url: location,
       entityInfo,
       entityName: entity,
