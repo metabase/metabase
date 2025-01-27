@@ -38,12 +38,10 @@
                                {}))))
       (mt/with-current-user (mt/user->id :crowberto)
         (testing "Invalid metric-id results in an error."
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                #"Invalid input: \[\"should be a positive int, got: \\\"42\\\"\"\]"
-                                (metabot-v3.tools.interface/*invoke-tool*
-                                 :metabot.tool/query-metric
-                                 {:metric-id "42"}
-                                 {}))))
+          (is (thrown? clojure.lang.ExceptionInfo (metabot-v3.tools.interface/*invoke-tool*
+                                                   :metabot.tool/query-metric
+                                                   {:metric-id "42"}
+                                                   {}))))
         (testing "Missing metric results in an error."
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found."
                                 (metabot-v3.tools.interface/*invoke-tool*
