@@ -42,9 +42,9 @@
                                       (time.coerce/from-long (.getTimeMillis event)))
    :level        (.getLevel event)
    :fqns         (.getLoggerName event)
-   :msg          (elide-string (str (.getMessage event)) 250)
+   :msg          (elide-string (str (.getMessage event)) 4000)
    :exception    (when-let [throwable (.getThrown event)]
-                   (take 20 (map #(elide-string (str %) 250) (seq (ExceptionUtils/getStackFrames throwable)))))
+                   (take 20 (map #(elide-string (str %) 500) (seq (ExceptionUtils/getStackFrames throwable)))))
    :process_uuid config/local-process-uuid})
 
 (defn- metabase-appender ^Appender []
