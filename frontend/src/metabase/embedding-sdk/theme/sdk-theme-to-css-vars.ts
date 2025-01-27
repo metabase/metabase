@@ -40,10 +40,6 @@ export const CSS_VARIABLES_TO_SDK_THEME_MAP = {
   // Questions
   "--mb-color-bg-question": "question.backgroundColor",
 
-  // Notebook Editor > Action Button
-  "--mb-color-notebook-step-bg":
-    "question.editor.secondaryActionButton.backgroundColor",
-
   // Toolbar (Default Layout)
   "--mb-color-bg-sdk-question-toolbar": "question.toolbar.backgroundColor",
 

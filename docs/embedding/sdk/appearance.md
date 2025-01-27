@@ -120,37 +120,6 @@ const theme = defineMetabaseTheme({
       toolbar: {
         backgroundColor: "#F3F5F7",
       },
-
-      // <InteractiveQuestion.ChartTypeSelector /> component
-      chartTypeSelector: {
-        backgroundColor: "#fff",
-      },
-
-      // <InteractiveQuestion.QuestionSettingsDropdown /> component's button
-      questionSettingsButton: {
-        backgroundColor: "#fff",
-      },
-
-      // <InteractiveQuestion.EditorButton /> component
-      editorButton: {
-        borderColor: "#2E353B",
-
-        // Inactive states
-        iconColor: "#2E353B",
-        backgroundColor: "#F3F5F7",
-
-        // Active states
-        activeIconColor: "#F3F5F7",
-        activeBackgroundColor: "#2E353B",
-      },
-
-      // <InteractiveQuestion.Editor /> component
-      editor: {
-        // Secondary action buttons in the question editor (e.g. "Custom Column")
-        secondaryActionButton: {
-          backgroundColor: "#2E353B",
-        },
-      },
     },
 
     // Tooltips

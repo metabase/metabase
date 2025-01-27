@@ -125,14 +125,6 @@ export type MetabaseComponentTheme = {
     toolbar?: {
       backgroundColor?: string;
     };
-
-    /* <InteractiveQuestion.Editor /> component */
-    editor?: {
-      /** Secondary action buttons in the question editor (e.g. "Custom Column") */
-      secondaryActionButton?: {
-        backgroundColor?: string;
-      };
-    };
   };
 
   /** Data tables **/

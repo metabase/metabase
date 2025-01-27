@@ -13,11 +13,7 @@
     background-color: var(--mb-color-notebook-step-bg);
 
     &:hover {
-      background-color: color-mix(
-        in srgb,
-        var(--mb-color-notebook-step-bg),
-        black 10%
-      );
+      background-color: var(--mb-color-notebook-step-bg-hover);
     }
   }
 

@@ -55,13 +55,6 @@ export const darkTheme = defineMetabaseTheme({
         lineHeight: "22px",
       },
     },
-    question: {
-      editor: {
-        secondaryActionButton: {
-          backgroundColor: "#161A1D",
-        },
-      },
-    },
   },
 });
 
@@ -181,13 +174,6 @@ const stitchTheme: MetabaseTheme = {
       value: {
         fontSize: "18px",
         lineHeight: "22px",
-      },
-    },
-    question: {
-      editor: {
-        secondaryActionButton: {
-          backgroundColor: "#161A1D",
-        },
       },
     },
   },
