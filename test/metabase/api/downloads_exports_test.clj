@@ -106,8 +106,8 @@
                                 dashboard-id :dashboard_id}]
             (->> (mt/user-http-request :crowberto :post 200
                                        (format "dashboard/%d/dashcard/%d/card/%d/query/%s" dashboard-id dashcard-id card-id (name export-format))
-                                       :format_rows   format-rows
-                                       :pivot_results pivot)
+                                       {:format_rows   format-rows
+                                        :pivot_results pivot})
                  (process-results pivot export-format)))]
     (if (= (t2/model card-or-dashcard) :model/DashboardCard)
       (dashcard-download* card-or-dashcard)

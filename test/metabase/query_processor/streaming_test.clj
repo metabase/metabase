@@ -351,7 +351,7 @@
                                                               (u/the-id card)
                                                               (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      :format_rows true)]
+                                                      {:format_rows true})]
                     ((-> assertions export-format) results))
 
                   :public
@@ -387,7 +387,6 @@
                  :type     :query
                  :query    {:source-table (mt/id :venues)
                             :limit        2}}
-
     :assertions {:csv  (fn [results]
                          (is (string? results))
                           ;; CSVs round decimals to 2 digits without viz-settings
