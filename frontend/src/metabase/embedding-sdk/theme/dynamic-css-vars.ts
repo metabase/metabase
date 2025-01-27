@@ -42,7 +42,7 @@ export const THEME_DEPENDENT_CSS_VARS: Record<
   },
   "--mb-color-background-hover": {
     source: { dark: "bg-white" },
-    darkenBy: 0.1,
+    lightenBy: 0.5,
   },
 };
 
