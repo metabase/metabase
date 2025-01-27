@@ -6,7 +6,7 @@ import { parser } from "./language";
 const highlighter = {
   style(tags: Tag[]) {
     // render the tokens just like codemirror does
-    return tags.map(tag => `cm-token-${tag.name}`).join(" ");
+    return tags.map(tag => `cm-token-${tag.toString()}`).join(" ");
   },
 };
 
