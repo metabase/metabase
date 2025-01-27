@@ -84,7 +84,7 @@
                          :field-definitions [{:field-name "foo", :base-type :type/Text}]
                          :rows              [["bar"]]}]}))
 
-(doseq [driver [:redshift :snowflake :oracle]]
+(doseq [driver [:redshift :snowflake :vertica]]
   (defmethod driver/database-supports? [driver :test/details-name-is-db]
     [_driver _feature _database]
     true))
