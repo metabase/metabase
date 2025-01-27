@@ -84,20 +84,25 @@
                          :field-definitions [{:field-name "foo", :base-type :type/Text}]
                          :rows              [["bar"]]}]}))
 
+(defmulti bad-connection-details
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
 (doseq [driver [:redshift :snowflake :vertica]]
-  (defmethod driver/database-supports? [driver :test/details-name-is-db]
-    [_driver _feature _database]
-    true))
+  (defmethod bad-connection-details driver
+    [_driver]
+    :db))
 
 (doseq [driver [:oracle]]
-  (defmethod driver/database-supports? [driver :test/details-name-is-service-name]
-    [_driver _feature _database]
-    true))
+  (defmethod bad-connection-details driver
+    [_driver]
+    :service-name))
 
 (doseq [driver [:presto-jdbc]]
-  (defmethod driver/database-supports? [driver :test/details-name-is-catalog]
-    [_driver _feature _database]
-    true))
+  (defmethod bad-connection-details driver
+    [_driver]
+    :catalog))
 
 (doseq [driver [:redshift :snowflake :vertica :presto-jdbc :oracle]]
   (defmethod driver/database-supports? [driver :test/cannot-destroy-db]
@@ -121,15 +126,9 @@
             (testing "after deleting a database, can-connect? should return false or throw an exception"
               (let [;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
                     ;; so fake it by changing the database details
-                    details (cond
-                              (driver/database-supports? driver/*driver* :test/details-name-is-db (mt/db))
-                              (assoc details :db (mt/random-name))
-                              (driver/database-supports? driver/*driver* :test/details-name-is-service-name (mt/db))
-                              (assoc details :service-name (mt/random-name))
-                              (driver/database-supports? driver/*driver* :test/details-name-is-catalog (mt/db))
-                              (assoc details :catalog (mt/random-name))
+                    details (if (driver/database-supports? driver/*driver* :test/cannot-destroy-db (mt/db))
+                              (assoc details (bad-connection-details driver/*driver*) (mt/random-name))
                               ;; otherwise destroy the db and use the original details
-                              :else
                               (do
                                 (tx/destroy-db! driver/*driver* dbdef)
                                 details))]
@@ -172,13 +171,7 @@
               ;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
               ;; so fake it by changing the database details
               (let [details     (:details (mt/db))
-                    new-details (cond
-                                  (driver/database-supports? driver/*driver* :test/details-name-is-db (mt/db))
-                                  (assoc details :db (mt/random-name))
-                                  (driver/database-supports? driver/*driver* :test/details-name-is-service-name (mt/db))
-                                  (assoc details :service-name (mt/random-name))
-                                  (driver/database-supports? driver/*driver* :test/details-name-is-catalog (mt/db))
-                                  (assoc details :catalog (mt/random-name)))]
+                    new-details (assoc details (bad-connection-details driver/*driver*) (mt/random-name))]
                 (t2/update! :model/Database (u/the-id db) {:details new-details}))
               ;; otherwise destroy the db and use the original details
               (tx/destroy-db! driver/*driver* dbdef))

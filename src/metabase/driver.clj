@@ -719,9 +719,6 @@
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
     :test/dynamic-dataset-loading
     :test/creates-db-on-connect
-    :test/details-name-is-db
-    :test/details-name-is-service-name
-    :test/details-name-is-catalog
     :test/cannot-destroy-db})
 
 (defmulti database-supports?
