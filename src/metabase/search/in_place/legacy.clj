@@ -129,6 +129,10 @@
       maybe-aliased-col
       (search.config/column-with-model-alias model maybe-aliased-col)
 
+      ;; Return false for items that cannot be bookmarked, rather than nil. This simplifies cross-engine compatibility.
+      (= search-col :bookmark)
+      [[:inline false] search-col]
+
       ;; This entity is missing the column, project a null for that column value. For Postgres and H2, cast it to the
       ;; correct type, e.g.,
       ;;

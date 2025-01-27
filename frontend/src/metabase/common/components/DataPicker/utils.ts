@@ -7,6 +7,7 @@ import type {
   CollectionItemModel,
   Database,
   DatabaseId,
+  RecentItem,
   SchemaName,
   Table,
   TableId,
@@ -212,3 +213,11 @@ export const createQuestionPickerItemSelectHandler = (
     onItemSelect(item);
   };
 };
+
+export function getRecentItemDatabaseId(item: RecentItem) {
+  if (item.model === "table") {
+    return item.database.id;
+  } else {
+    return item.database_id;
+  }
+}

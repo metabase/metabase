@@ -4,7 +4,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import { UpsellHosting } from "metabase/admin/upsells";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";

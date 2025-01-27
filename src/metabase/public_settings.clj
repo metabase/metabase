@@ -896,6 +896,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :attached_dwh                   (premium-features/has-attached-dwh?)
                       :audit_app                      (premium-features/enable-audit-app?)
                       :cache_granular_controls        (premium-features/enable-cache-granular-controls?)
+                      :cache_preemptive               (premium-features/enable-preemptive-caching?)
                       :collection_cleanup             (premium-features/enable-collection-cleanup?)
                       :database_auth_providers        (premium-features/enable-database-auth-providers?)
                       :config_text_file               (premium-features/enable-config-text-file?)
@@ -1064,11 +1065,14 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :integer)
 
+;;; TODO -- move the search-related settings into the `:search` module. Only settings used across the entire application
+;;; should live in this namespace.
+
 (defsetting search-engine
   (deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
   :visibility :internal
   :export?    false
-  :default    :in-place
+  :default    :appdb
   :type       :keyword)
 
 (defsetting experimental-search-weight-overrides

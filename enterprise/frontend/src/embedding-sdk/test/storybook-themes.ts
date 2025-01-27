@@ -20,7 +20,7 @@ export const darkTheme = defineMetabaseTheme({
     filter: darkColors.filter,
     "text-primary": darkColors.lighterGrey,
     "text-secondary": darkColors.lighterGrey,
-    "text-tertiary": darkColors.lighterGrey,
+    "text-tertiary": darkColors.lightGrey,
     border: darkColors.darkGrey,
     background: darkColors.background,
     "background-secondary": darkColors.darkGrey,
@@ -132,7 +132,7 @@ const stitchTheme: MetabaseTheme = {
     filter: stitchColors.filter,
     "text-primary": stitchColors.lighterGrey,
     "text-secondary": stitchColors.lighterGrey,
-    "text-tertiary": stitchColors.lighterGrey,
+    "text-tertiary": stitchColors.lightGrey,
     border: stitchColors.darkGrey,
     background: stitchColors.background,
     "background-secondary": stitchColors.darkGrey,
@@ -195,7 +195,7 @@ const luminaraTheme: MetabaseTheme = {
     background: luminaraColors.background,
     "background-secondary": luminaraColors.background,
     "background-hover": luminaraColors.background,
-    "background-disabled": luminaraColors.green2,
+    "background-disabled": "#d6d6d6",
     charts: [
       luminaraColors.viz1,
       "#E09862",
@@ -226,12 +226,85 @@ const luminaraTheme: MetabaseTheme = {
   },
 };
 
+const proficiencyColors = {
+  primary: "rgba(106, 87, 201, 1)",
+  lighterGrey: "#D1CFC5",
+  lightGrey: "rgba(0, 0, 0, 0.7)",
+  darkGrey: "#1B1C21",
+  background: "#FCFDFD",
+  positive: "rgba(0, 143, 93, 1)",
+  negative: "rgba(234, 56, 41, 1)",
+};
+
+const proficiencyTheme: MetabaseTheme = {
+  // fontFamily: "Figtree", // we don't have it in storybook
+  fontSize: "14px",
+  colors: {
+    brand: proficiencyColors.primary,
+    filter: proficiencyColors.primary,
+    "text-primary": proficiencyColors.lightGrey,
+    "text-secondary": proficiencyColors.lightGrey,
+    "text-tertiary": "rgba(0, 0, 0, 0.4)",
+    border: "rgba(0, 0, 0, 0.12)",
+    background: proficiencyColors.background,
+    "background-hover": "#fCFDFD",
+    "background-disabled": "rgba(0, 0, 0, 0.1)",
+    charts: [
+      proficiencyColors.primary,
+      "rgba(37, 90, 157, 1)",
+      "rgba(182, 89, 166, 1)",
+      proficiencyColors.primary,
+      "rgba(238, 92, 127, 1)",
+      "rgba(240, 115, 76, 1)",
+      "rgba(243, 161, 26, 1)",
+      "rgba(182, 89, 166, 1)",
+    ],
+    positive: proficiencyColors.positive,
+    negative: proficiencyColors.negative,
+  },
+  components: {
+    tooltip: {
+      /** Tooltip text color. */
+      textColor: proficiencyColors.darkGrey,
+
+      /** Secondary text color shown in the tooltip, e.g. for tooltip headers and percentage changes. */
+      secondaryTextColor: proficiencyColors.darkGrey,
+
+      /** Tooltip background color. */
+      backgroundColor: proficiencyColors.background,
+
+      /** Tooltip background color for focused rows. */
+      focusedBackgroundColor: proficiencyColors.lighterGrey,
+    },
+    cartesian: {
+      padding: "6px 16px",
+    },
+    dashboard: {
+      backgroundColor: "transparent",
+      card: {
+        backgroundColor: "#FFFFFF",
+        border: "1px solid rgba(0, 0, 0, 0.12)",
+      },
+    },
+    number: {
+      value: {
+        fontSize: "24px",
+        lineHeight: "30px",
+      },
+    },
+    popover: {
+      zIndex: 201,
+    },
+  },
+};
+
 export const storybookThemes: Record<string, MetabaseTheme | undefined> = {
   default: undefined,
   dark: darkTheme,
   pug: pugTheme,
   stitch: stitchTheme,
   luminara: luminaraTheme,
+  proficiency: proficiencyTheme,
 };
 
 export const storybookThemeOptions = Object.keys(storybookThemes);

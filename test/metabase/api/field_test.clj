@@ -78,8 +78,8 @@
 (deftest ^:parallel get-field-test-2
   (testing "GET /api/field/:id"
     (testing "target should be hydrated"
-      (is (= (mt/id :categories :id)
-             (:id (:target (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id))))))))))
+      (is (=? {:target {:id (mt/id :categories :id)}}
+              (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id))))))))
 
 (deftest ^:parallel get-field-summary-test
   (testing "GET /api/field/:id/summary"
@@ -162,7 +162,10 @@
                       :json_unfolding     true
                       :fk_target_field_id nil
                       :nfc_path           nil}
-                     (simple-field-details (t2/select-one :model/Field :id field-id)))))))))
+                     (simple-field-details (t2/select-one :model/Field :id field-id)))))))))))
+
+(deftest update-field-test-2
+  (testing "PUT /api/field/:id"
     (testing "updating coercion strategies"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
         (testing "When valid, updates coercion strategy and effective type"
@@ -174,14 +177,22 @@
           (is (= ["type/Text" nil]
                  ((juxt :effective_type :coercion_strategy)
                   (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
-                                        {:coercion_strategy nil}))))))
+                                        {:coercion_strategy nil})))))))))
+
+(deftest update-field-test-2b
+  (testing "PUT /api/field/:id"
+    (testing "updating coercion strategies"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
         (testing "When not a valid strategy does not change the coercion or effective type"
           (is (= ["type/Text" nil]
                  ((juxt :effective_type :coercion_strategy)
                   (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
                                         ;; unix is an integer->Temporal conversion
-                                        {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime}))))))
+                                        {:coercion_strategy :Coercion/UNIXMicroSeconds->DateTime})))))))))
+
+(deftest update-field-test-2c
+  (testing "PUT /api/field/:id"
+    (testing "updating coercion strategies"
       (testing "Refingerprints field when updated"
         (with-redefs [sync.concurrent/submit-task! (fn [task] (task))]
           (mt/dataset integer-coerceable
@@ -198,8 +209,10 @@
               (set-strategy! :Coercion/UNIXSeconds->DateTime)
               (let [field (t2/select-one :model/Field :id field-id)]
                 (is (= :type/Instant (:effective_type field)))
-                (is (contains? (get-in field [:fingerprint :type]) :type/DateTime))))))))
+                (is (contains? (get-in field [:fingerprint :type]) :type/DateTime))))))))))
 
+(deftest update-field-test-3
+  (testing "PUT /api/field/:id"
     (testing "A field can only be updated by a superuser"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
         (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})))))
@@ -348,8 +361,11 @@
                    (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id) {:values [], :field_id true}))))
           (testing "after updating values"
             (is (= {:values [], :field_id true, :has_more_values false}
-                   (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))) []))
+                   (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))) [])))))
 
+(deftest remove-field-values-test-2
+  (testing "POST /api/field/:id/values"
+    (mt/with-temp [:model/Field {field-id :id} list-field]
       (testing "should be able to unset just the human-readable values"
         (mt/with-temp [:model/FieldValues _ {:values                (range 1 5)
                                              :field_id              field-id
@@ -362,8 +378,10 @@
                    (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id) {:values [[1] [2] [3] [4]]}))))
           (testing "after updating values"
             (is (= {:values [[1] [2] [3] [4]], :field_id true, :has_more_values false}
-                   (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))))))
+                   (mt/boolean-ids-and-timestamps (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))))))))
 
+(deftest remove-field-values-test-3
+  (testing "POST /api/field/:id/values"
     (testing "attempting to updated values should throw when human readable values are present but not for every value"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test", :base_type :type/Integer, :has_field_values "list"}]
         (is (= "If remapped values are specified, they must be specified for all field values"
@@ -442,20 +460,21 @@
     (mt/with-temp [:model/Field {field-id-1 :id} {:name "Field Test 1"}
                    :model/Field {field-id-2 :id} {:name "Field Test 2"}]
       (testing "before creation"
-        (is (= nil
-               (dimension-for-field field-id-1))))
-      (create-dimension-via-API! field-id-1
-                                 {:name "some dimension name", :type "external" :human_readable_field_id field-id-2})
+        (is (nil? (dimension-for-field field-id-1))))
+      (is (=? {:id       pos-int?
+               :field_id pos-int?}
+              (create-dimension-via-API! field-id-1
+                                         {:name "some dimension name", :type "external" :human_readable_field_id field-id-2})))
       (testing "after creation"
-        (is (= {:id                      true
-                :entity_id               true
-                :created_at              true
-                :updated_at              true
-                :type                    :external
-                :name                    "some dimension name"
-                :human_readable_field_id true
-                :field_id                true}
-               (mt/boolean-ids-and-timestamps (dimension-for-field field-id-1))))))))
+        (is (=? {:id                      pos-int?
+                 :entity_id               string?
+                 :created_at              java.time.temporal.Temporal
+                 :updated_at              java.time.temporal.Temporal
+                 :type                    :external
+                 :name                    "some dimension name"
+                 :human_readable_field_id pos-int?
+                 :field_id                pos-int?}
+                (dimension-for-field field-id-1)))))))
 
 (deftest create-dimension-validation-test
   (testing "POST /api/field/:id/dimension"
@@ -464,8 +483,10 @@
         (is (= "Foreign key based remappings require a human readable field id"
                (create-dimension-via-API! field-id
                                           {:name "some dimension name", :type "external"}
-                                          :expected-status-code 400)))))
+                                          :expected-status-code 400)))))))
 
+(deftest ^:parallel create-dimension-validation-test-2
+  (testing "POST /api/field/:id/dimension"
     (testing "Non-admin users can't update dimension"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test 1"}]
         (is (= "You don't have permissions to do that."
