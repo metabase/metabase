@@ -4,7 +4,7 @@ import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
 import { NotFound } from "metabase/components/ErrorPages";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import LogoIcon from "metabase/components/LogoIcon";
 import {
   CheckmarkIcon,
