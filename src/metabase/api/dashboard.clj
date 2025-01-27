@@ -1382,16 +1382,22 @@
    _query-params
    {:keys          [parameters]
     format-rows?   :format_rows
-    pivot-results? :pivot_results} :- [:map
-                                       [:parameters    {:optional true} [:maybe [:sequential ParameterWithID]]]
-                                       [:format_rows   {:default false} ms/BooleanValue]
-                                       [:pivot_results {:default false} ms/BooleanValue]]]
+    pivot-results? :pivot_results}
+   :- [:map
+       [:parameters    {:optional true} [:maybe [:or
+                                                 [:sequential ParameterWithID]
+                                                 ;; support <form> encoded params for backwards compatibility... see
+                                                 ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
+                                                 ms/JSONString]]]
+       [:format_rows   {:default false} ms/BooleanValue]
+       [:pivot_results {:default false} ms/BooleanValue]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
             {:dashboard-id  dashboard-id
              :card-id       card-id
              :dashcard-id   dashcard-id
              :export-format export-format
-             :parameters    parameters
+             :parameters    (cond-> parameters
+                              (string? parameters) json/decode+kw)
              :context       (api.dataset/export-format->context export-format)
              :constraints   nil
              ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
