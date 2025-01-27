@@ -37,17 +37,6 @@
                                 :group-by []}
                                {}))))
       (mt/with-current-user (mt/user->id :crowberto)
-        (testing "Invalid metric-id results in an error."
-          (is (thrown? clojure.lang.ExceptionInfo (metabot-v3.tools.interface/*invoke-tool*
-                                                   :metabot.tool/query-metric
-                                                   {:metric-id "42"}
-                                                   {}))))
-        (testing "Missing metric results in an error."
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found."
-                                (metabot-v3.tools.interface/*invoke-tool*
-                                 :metabot.tool/query-metric
-                                 {:metric-id Long/MAX_VALUE}
-                                 {}))))
         (let [metric-id (:id metric)
               metric-details (metabot-v3.dummy-tools/metric-details metric-id)
               ->field-id #(u/prog1 (-> metric-details :queryable_dimensions (name->dimension %) :field_id)
@@ -112,4 +101,15 @@
                      {:metric-id metric-id
                       :group-by [{:field_id (->field-id "Created At")
                                   :field_granularity "week"}]}
-                     {})))))))))
+                     {})))))
+        (testing "Missing metric results in an error."
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found."
+                                (metabot-v3.tools.interface/*invoke-tool*
+                                 :metabot.tool/query-metric
+                                 {:metric-id Long/MAX_VALUE}
+                                 {}))))
+        (testing "Invalid metric-id results in an error."
+          (is (thrown? clojure.lang.ExceptionInfo (metabot-v3.tools.interface/*invoke-tool*
+                                                   :metabot.tool/query-metric
+                                                   {:metric-id "42"}
+                                                   {}))))))))
