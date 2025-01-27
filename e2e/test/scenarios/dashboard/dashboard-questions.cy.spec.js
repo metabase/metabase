@@ -1,6 +1,14 @@
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as S from "e2e/support/cypress_sample_instance_data";
+import { createMockDashboardCard } from "metabase-types/api/mocks";
+
+const DASHBOARD_ONE = "Dashboard One";
+const DASHBOARD_TWO = "Dashboard Two";
+
+const QUESTION_ONE = "Question One";
+const QUESTION_TWO = "Question Two";
+const QUESTION_THREE = "Question Three";
 
 describe("Dashboard > Dashboard Questions", () => {
   beforeEach(() => {
@@ -949,7 +957,231 @@ describe("Dashboard > Dashboard Questions", () => {
         .should("be.visible");
     });
   });
+
+  describe("migration modal", () => {
+    it("should allow users to migrate questions in one dashboard into their respective dashboards", () => {
+      cy.signInAsAdmin();
+      cy.log("seed data");
+      seedMigrationToolData();
+
+      cy.log("assert questions are in the collection");
+      H.visitCollection(S.FIRST_COLLECTION_ID);
+      H.collectionTable().within(() => {
+        cy.findByText(QUESTION_ONE).should("exist");
+        cy.findByText(QUESTION_TWO).should("exist");
+        cy.findByText(QUESTION_THREE).should("exist");
+      });
+
+      cy.log("user should be able to engage with the tool");
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards")
+          .should("exist")
+          .click();
+      });
+
+      cy.log("info modal should appear on first visit");
+      cy.findByTestId("move-questions-into-dashboard-info-modal")
+        .should("exist")
+        .within(() => {
+          cy.findByText("Move questions into their dashboards?").should(
+            "exist",
+          );
+          cy.findByText("Preview the changes").should("exist").click();
+        });
+      cy.log("info modal should disappear");
+      cy.findByTestId("move-questions-into-dashboard-info-modal").should(
+        "not.exist",
+      );
+
+      cy.log("assert migration modal appears");
+      cy.findByTestId("move-questions-into-dashboard-modal")
+        .should("exist")
+        .within(() => {
+          cy.log("assert migration tool shows expected data");
+          cy.findByText(QUESTION_ONE).should("exist");
+          cy.findByText(DASHBOARD_ONE).should("exist");
+          cy.findByText(QUESTION_TWO).should("exist");
+          cy.findByText(DASHBOARD_TWO).should("exist");
+          cy.findByText(QUESTION_THREE).should("not.exist");
+
+          cy.log("migrate the dashboard question candidates");
+          cy.findByText("Move these questions").click();
+        });
+      cy.findByTestId("move-questions-into-dashboard-modal").should(
+        "not.exist",
+      );
+      H.undoToast().should("exist");
+
+      cy.log("assert questions have been migrated out of the collection");
+      H.collectionTable().within(() => {
+        cy.findByText(QUESTION_ONE).should("not.exist");
+        cy.findByText(QUESTION_TWO).should("not.exist");
+        cy.findByText(QUESTION_THREE).should("exist");
+      });
+
+      cy.log("assert questions have been migrated into their dashboards");
+      H.collectionTable().findByText(DASHBOARD_ONE).click();
+      H.dashboardCards().within(() => {
+        cy.findByText(QUESTION_ONE).should("exist");
+        cy.findByText(QUESTION_TWO).should("not.exist");
+        cy.findByText(QUESTION_THREE).should("exist");
+      });
+      cy.go("back");
+
+      H.collectionTable().findByText(DASHBOARD_TWO).click();
+      H.dashboardCards().within(() => {
+        cy.findByText(QUESTION_ONE).should("not.exist");
+        cy.findByText(QUESTION_TWO).should("exist");
+        cy.findByText(QUESTION_THREE).should("exist");
+      });
+      cy.go("back");
+
+      cy.log("assert option to migrate is no longer available");
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards").should(
+          "not.exist",
+        );
+      });
+
+      cy.log(
+        "should not show the info modal if user has acknowledged it previously",
+      );
+      H.visitCollection("root");
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards")
+          .should("exist")
+          .click();
+      });
+      cy.findByTestId("move-questions-into-dashboard-modal")
+        .should("exist")
+        .within(() => {
+          cy.findByText("Cancel").click();
+        });
+
+      cy.log(
+        "should be immediately responsive to dashcard changes making new candidates",
+      );
+      H.visitCollection(S.FIRST_COLLECTION_ID);
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards").should(
+          "not.exist",
+        );
+      });
+      H.collectionTable().findByText(DASHBOARD_ONE).click();
+      H.editDashboard();
+      H.removeDashboardCard(1); // removes card for QUESTION_THREE
+      H.saveDashboard();
+      H.appBar().findByText("First collection").click(); // navigate via breadcrumbs to avoid page refresh
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards")
+          .should("exist")
+          .click();
+      });
+      cy.findByTestId("move-questions-into-dashboard-modal")
+        .should("exist")
+        .within(() => {
+          cy.findByText(QUESTION_THREE).should("exist");
+          cy.findByText(DASHBOARD_TWO).should("exist");
+        });
+    });
+
+    it("should not show migration tool to non-admins", () => {
+      cy.signInAsAdmin();
+      cy.log("seed data");
+      seedMigrationToolData();
+      cy.signIn("normal");
+
+      cy.log("assert questions are in the collection");
+      H.visitCollection(S.FIRST_COLLECTION_ID);
+      H.collectionTable().within(() => {
+        cy.findByText(QUESTION_ONE).should("exist");
+        cy.findByText(QUESTION_TWO).should("exist");
+        cy.findByText(QUESTION_THREE).should("exist");
+      });
+
+      cy.log("user should not be able to engage with the tool");
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Move questions into their dashboards").should(
+          "not.exist",
+        );
+      });
+
+      cy.log("should get redirect if the user navigates to url directly");
+      cy.visit(`/collection/${S.FIRST_COLLECTION_ID}/move-questions-dashboard`);
+      cy.url().should("not.include", "move-questions-dashboard");
+      cy.url().should("include", `/collection/${S.FIRST_COLLECTION_ID}`);
+    });
+  });
 });
+
+function seedMigrationToolData() {
+  const query = { "source-table": SAMPLE_DATABASE.ORDERS_ID };
+  const baseDc = { size_x: 8, size_y: 5 };
+
+  H.createQuestion({
+    name: QUESTION_THREE,
+    query,
+    collection_id: S.FIRST_COLLECTION_ID,
+  }).then(({ body: { id } }) => {
+    const dc = createMockDashboardCard({
+      ...baseDc,
+      id: 3,
+      card_id: id,
+      col: 8,
+    });
+    cy.wrap(dc).as("questionThreeCard");
+  });
+
+  H.createQuestionAndDashboard({
+    dashboardDetails: {
+      name: DASHBOARD_ONE,
+      collection_id: S.FIRST_COLLECTION_ID,
+    },
+    questionDetails: {
+      name: QUESTION_ONE,
+      query,
+      collection_id: S.FIRST_COLLECTION_ID,
+    },
+  }).then(({ body: { dashboard_id, card_id } }) => {
+    cy.get("@questionThreeCard").then(questionThreeCard => {
+      H.updateDashboardCards({
+        dashboard_id,
+        cards: [
+          createMockDashboardCard({ ...baseDc, id: 1, card_id }),
+          questionThreeCard,
+        ],
+      });
+    });
+  });
+
+  H.createQuestionAndDashboard({
+    dashboardDetails: {
+      name: DASHBOARD_TWO,
+      collection_id: S.FIRST_COLLECTION_ID,
+    },
+    questionDetails: {
+      name: QUESTION_TWO,
+      query,
+      collection_id: S.FIRST_COLLECTION_ID,
+    },
+  }).then(({ body: { dashboard_id, card_id } }) => {
+    cy.get("@questionThreeCard").then(questionThreeCard => {
+      H.updateDashboardCards({
+        dashboard_id,
+        cards: [
+          createMockDashboardCard({ ...baseDc, id: 2, card_id }),
+          questionThreeCard,
+        ],
+      });
+    });
+  });
+}
 
 function selectCollectionItem(name) {
   cy.findAllByTestId("collection-entry-name")
