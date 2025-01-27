@@ -3,12 +3,13 @@ import type { IconName, IconProps } from "metabase/ui";
 import type {
   CollectionEssentials,
   Dashboard,
+  DashboardId,
   PaginationRequest,
   PaginationResponse,
   VisualizationDisplay,
 } from "metabase-types/api";
 
-import type { CardType } from "./card";
+import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
@@ -199,4 +200,34 @@ export interface ListCollectionsTreeRequest {
 
 export interface DeleteCollectionRequest {
   id: RegularCollectionId;
+}
+
+export interface DashboardQuestionCandidate {
+  id: CardId;
+  name: string;
+  description: string | null;
+  sole_dashboard_info: {
+    id: DashboardId;
+    name: string;
+    description: string | null;
+  };
+}
+
+export interface GetCollectionDashboardQuestionCandidatesRequest
+  extends PaginationRequest {
+  collectionId: CollectionId;
+}
+
+export interface GetCollectionDashboardQuestionCandidatesResult {
+  total: number;
+  data: DashboardQuestionCandidate[];
+}
+
+export interface MoveCollectionDashboardCandidatesRequest {
+  collectionId: CollectionId;
+  cardIds: CardId[];
+}
+
+export interface MoveCollectionDashboardCandidatesResult {
+  moved: CardId[];
 }

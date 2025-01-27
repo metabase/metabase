@@ -1,5 +1,5 @@
 import { act, render, screen } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 
 describe("LoadingAndErrorWrapper", () => {
   describe("Loading", () => {
@@ -24,19 +24,6 @@ describe("LoadingAndErrorWrapper", () => {
       expect(() =>
         render(<LoadingAndErrorWrapper loading={false} noWrapper />),
       ).not.toThrow();
-    });
-
-    it("should display a given scene during loading", () => {
-      const Scene = () => <div>Fun load animation</div>;
-
-      render(
-        <LoadingAndErrorWrapper
-          loading={true}
-          error={null}
-          loadingScenes={[<Scene key="0" />]}
-        />,
-      );
-      expect(screen.getByText("Fun load animation")).toBeInTheDocument();
     });
 
     describe("cycling", () => {

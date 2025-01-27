@@ -2,8 +2,8 @@
   "`/api/tiles` endpoints."
   (:require
    [clojure.set :as set]
-   [compojure.core :refer [GET]]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.query-processor :as qp]
@@ -161,23 +161,23 @@
       (assoc-in [:query :fields] [lat-field lon-field])
       (assoc-in [:query :limit] tile-coordinate-limit)))
 
-;; TODO - this can be reworked to be `defendpoint-async` instead
+;; TODO - this can be reworked to be async instead
 ;;
 ;; TODO - this should reduce results from the QP in a streaming fashion instead of requiring them all to be in memory
 ;; at the same time
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:zoom/:x/:y/:lat-field/:lon-field"
+(api.macros/defendpoint :get "/:zoom/:x/:y/:lat-field/:lon-field"
   "This endpoints provides an image with the appropriate pins rendered given a MBQL `query` (passed as a GET query
   string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the
   appropriate ones. It's expected that to render a full map view several calls will be made to this endpoint in
   parallel."
-  [zoom x y lat-field lon-field query]
-  {zoom        ms/Int
-   x           ms/Int
-   y           ms/Int
-   lat-field   :string
-   lon-field   :string
-   query       ms/JSONString}
+  [{:keys [zoom x y lat-field lon-field]} :- [:map
+                                              [:zoom      ms/Int]
+                                              [:x         ms/Int]
+                                              [:y         ms/Int]
+                                              [:lat-field :string]
+                                              [:lon-field :string]]
+   {:keys [query]} :- [:map
+                       [:query ms/JSONString]]]
   (let [lat-field-ref (field-ref lat-field)
         lon-field-ref (field-ref lon-field)
 

@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
-import DefaultLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper as DefaultLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { capitalize } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
