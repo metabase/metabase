@@ -1,4 +1,5 @@
-const { H } = cy;
+// eslint-disable-next-line no-direct-helper-import
+import { H } from "e2e/support";
 
 export const visitApiKeySettings = () => {
   cy.visit("/admin/settings/authentication/api-keys");

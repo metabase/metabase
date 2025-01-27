@@ -1,4 +1,4 @@
-const { H } = cy
+const { H } = cy;
 
 import * as QSHelpers from "./shared/dashboard-filters-query-stages";
 

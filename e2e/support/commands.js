@@ -1,3 +1,5 @@
+// this is the only place we allow direct helper import
+// eslint-disable-next-line no-direct-helper-import
 import { H } from "e2e/support";
 
 import "./commands/ui/button";
