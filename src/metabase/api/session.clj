@@ -1,7 +1,6 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require
-   [compojure.core :refer [DELETE GET POST]]
    [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -175,12 +174,14 @@
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Login."
-  [:as {{:keys [username password]} :body, :as request}]
-  {username ms/NonBlankString
-   password ms/NonBlankString}
+  [_route-params
+   _query-params
+   {:keys [username password]} :- [:map
+                                   [:username ms/NonBlankString]
+                                   [:password ms/NonBlankString]]
+   request]
   (let [ip-address   (request/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
@@ -194,11 +195,10 @@
                                    (login-throttlers :username)   username]
           (do-login))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/"
+(api.macros/defendpoint :delete "/"
   "Logout."
   ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
-  [:as {:keys [metabase-session-id]}]
+  [_route-params _query-params _body {:keys [metabase-session-id], :as _request}]
   (api/check-exists? :model/Session metabase-session-id)
   (t2/delete! :model/Session :id metabase-session-id)
   (request/clear-session-cookie api/generic-204-no-content))
@@ -233,11 +233,13 @@
       (events/publish-event! :event/password-reset-initiated
                              {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/forgot_password"
+(api.macros/defendpoint :post "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {{:keys [email]} :body, :as request}]
-  {email ms/Email}
+  [_route-params
+   _query-params
+   {:keys [email]} :- [:map
+                       [:email ms/Email]]
+   request]
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (let [request-source (request/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
@@ -277,12 +279,14 @@
   "Throttler for password_reset. There's no good field to mark so use password as a default."
   (throttle/make-throttler :password :attempts-threshold 10))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/reset_password"
+(api.macros/defendpoint :post "/reset_password"
   "Reset password with a reset token."
-  [:as {{:keys [token password]} :body, :as request}]
-  {token    ms/NonBlankString
-   password ms/ValidPassword}
+  [_route-params
+   _query-params
+   {:keys [token password]} :- [:map
+                                [:token    ms/NonBlankString]
+                                [:password ms/ValidPassword]]
+   request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
@@ -314,11 +318,13 @@
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/google_auth"
+(api.macros/defendpoint :post "/google_auth"
   "Login with Google Auth."
-  [:as {{:keys [token]} :body, :as request}]
-  {token ms/NonBlankString}
+  [_route-params
+   _query-params
+   _body :- [:map
+             [:token ms/NonBlankString]]
+   request]
   (when-not (google/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google
@@ -342,11 +348,10 @@
 (defn- +log-all-request-failures [handler]
   (with-meta
    (fn [request respond raise]
-     (try
-       (handler request respond raise)
-       (catch Throwable e
-         (log/error e "Authentication endpoint error")
-         (throw e))))
+     (letfn [(raise' [e]
+               (log/error e "Authentication endpoint error")
+               (raise e))]
+       (handler request respond raise')))
    (meta handler)))
 
 (api/define-routes +log-all-request-failures)

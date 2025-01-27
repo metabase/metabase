@@ -414,17 +414,6 @@
                                                 (wrap-response-if-needed
                                                  (do ~@body))))))))
 
-(defmacro defendpoint-async
-  "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
-  {:arglists '([method route docstr? args schemas-map? & body])}
-  [& defendpoint-args]
-  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
-    `(defendpoint* ~(assoc defendpoint-args
-                           :args []
-                           :body `((fn ~args
-                                     ~@(validate-params arg->schema)
-                                     ~@body))))))
-
 (defn- pass-thru-handler
   ([_request] nil)
   ([_request respond _raise] (respond nil)))
