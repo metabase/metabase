@@ -6,57 +6,79 @@ import {
   SyntaxKind,
 } from "ts-morph";
 
+import { isNotNull } from "metabase/lib/types";
+
 import type { ComponentDefinition } from "./generate-nextjs-compat";
 
 export function getPublicComponents() {
   const project = new Project();
-  const sourceFile = project.addSourceFileAtPath(
+  const sdkPublicIndexSourceFile = project.addSourceFileAtPath(
     "enterprise/frontend/src/embedding-sdk/components/public/index.ts",
   );
   project.addSourceFilesAtPaths(
     "enterprise/frontend/src/embedding-sdk/components/public/**/*{.ts,.tsx}",
   );
 
-  const components: ComponentDefinition[] = [];
+  const componentForNextJsCompatList: ComponentDefinition[] = [];
 
-  sourceFile.forEachDescendant(node => {
+  sdkPublicIndexSourceFile.forEachDescendant(node => {
     switch (node.getKind()) {
       case SyntaxKind.ExportSpecifier: {
         if (!isType(node as ExportSpecifier) && isReactComponent(node)) {
-          const component: ComponentDefinition = {
+          const componentForNextJsCompat: ComponentDefinition = {
             mainComponent: node.getText(),
             subComponents: [],
           };
-          components.push(component);
+          componentForNextJsCompatList.push(componentForNextJsCompat);
 
-          const references = (
-            node.getFirstChild() as Identifier
-          ).findReferencesAsNodes();
-          references.forEach(reference => {
-            if (
-              reference.getParent()?.getKind() ===
-                SyntaxKind.PropertyAccessExpression &&
-              !isJsxElement(reference.getParent()?.getParent())
-            ) {
-              const subComponent = reference
-                .getParent()
-                ?.getLastChild()
-                ?.getText();
-              component.subComponents.push(subComponent as string);
-            }
-          });
+          componentForNextJsCompat.subComponents = findSubComponents(
+            node as ExportSpecifier,
+          );
         }
         break;
       }
     }
   });
-  return components;
+
+  return componentForNextJsCompatList;
+}
+
+function findSubComponents(node: ExportSpecifier) {
+  const sdkComponentReferences = (
+    node.getFirstChild() as Identifier
+  ).findReferencesAsNodes();
+
+  return sdkComponentReferences
+    .map(reference => {
+      if (
+        // Find all `InteractiveQuestion.Xxx` references.
+        reference.getParent()?.getKind() ===
+          SyntaxKind.PropertyAccessExpression &&
+        // Don't include `<InteractiveQuestion.Filter />` in a reference, since they're duplicates.
+        !isJsxElement(reference.getParent()?.getParent())
+      ) {
+        /**
+         * [     reference    ]            -> Identifier
+         * [     reference.parent       ]  -> PropertyAccessExpression
+         *                     [lastChild] -> Identifier
+         * InteractiveQuestion.BackButton = BackButton;
+         */
+        const subComponent = reference.getParent()?.getLastChild()?.getText();
+        return subComponent;
+      }
+    })
+    .filter(isNotNull);
 }
 
 function isReactComponent(node: Node) {
   return node.getText().match(/^[A-Z]/);
 }
 
+/**
+ *
+ * @returns {boolean} Whether the export node is a type
+ * e.g. `export type { Foo } from './Foo'` or `export { type Foo } from './Foo'`
+ */
 function isType(node: ExportSpecifier) {
   return node.isTypeOnly() || node.getParent()?.getParent().isTypeOnly();
 }
