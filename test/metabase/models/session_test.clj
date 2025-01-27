@@ -109,3 +109,23 @@
                          :model/LoginHistory _ {:user_id user-id, :device_id (str (random-uuid))}]
             (is (= {}
                    @mt/inbox))))))))
+
+(deftest email-depending-on-embedded
+  (let [email-sent (atom false)]
+    (with-redefs [session/maybe-send-login-from-new-device-email
+                  (fn [_] (reset! email-sent true))]
+      (testing "don't send email if an embedded login"
+        (mt/with-temp [:model/User {user-id :id}]
+          (session/create-session! :sso {:id user-id :last_login nil} {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+                                                                       :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
+                                                                       :embedded           true
+                                                                       :ip_address         "0:0:0:0:0:0:0:1"})
+          (is (false? @email-sent))))
+      (testing "do send email if not an embedded login"
+        (reset! email-sent false)
+        (mt/with-temp [:model/User {user-id :id}]
+          (session/create-session! :sso {:id user-id :last_login nil} {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
+                                                                       :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
+                                                                       :embedded           false
+                                                                       :ip_address         "0:0:0:0:0:0:0:1"})
+          (is (true? @email-sent)))))))
