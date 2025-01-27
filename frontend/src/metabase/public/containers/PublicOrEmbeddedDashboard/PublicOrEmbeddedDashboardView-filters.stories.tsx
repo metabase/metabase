@@ -1,7 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/test";
+import { userEvent, waitFor, within } from "@storybook/test";
 import { type ComponentProps, useEffect } from "react";
 
 import { getStore } from "__support__/entities-store";
@@ -466,7 +466,7 @@ export const LightThemeTextWithValue = {
       const filter = await canvas.findByRole("button", { name: "Category" });
       await userEvent.click(filter);
 
-      const popover = getLastPopover();
+      const popover = await waitFor(() => getLastPopover());
       await userEvent.type(
         popover.getByPlaceholderText("Enter some text"),
         "filter value",
