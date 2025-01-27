@@ -3682,20 +3682,24 @@
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
     (mt/test-helpers-set-global-values!
       (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
-        (doseq [export-format       [:csv :json :xlsx]
-                json-encode-params? [true false]]
-          (testing (format "Export format = %s JSON encode params? = %s" export-format json-encode-params?)
-            (let [url (format "%s/%s" (dashboard-card-query-url dashboard-id card-id dashcard-id) (name export-format))]
+        (doseq [export-format [:csv :json :xlsx]
+                body-type     [:json :form-encoded]]
+          (testing (format "Export format = %s JSON body type = %s" export-format body-type)
+            (let [url (format "%s/%s" (dashboard-card-query-url dashboard-id card-id dashcard-id) (name export-format))
+                  params [{:id    "_PRICE_"
+                           :value 4}]]
               (is (= (streaming.test-util/process-query-basic-streaming
                       export-format
                       (mt/mbql-query venues {:filter [:= $price 4]}))
                      (parse-export-format-results
                       (mt/user-real-request :rasta :post 200 url
-                                            {:request-options {:as :byte-array}}
+                                            {:request-options {:as      :byte-array
+                                                               :headers {"content-type" (case body-type
+                                                                                          :json         "application/json"
+                                                                                          :form-encoded "application/x-www-form-urlencoded")}}}
                                             {:format_rows true
-                                             :parameters (cond-> [{:id    "_PRICE_"
-                                                                   :value 4}]
-                                                           json-encode-params? json/encode)})
+                                             :parameters  (cond-> params
+                                                            (= body-type :form-encoded) json/encode)})
                       export-format))))))))))
 
 (defn- dashcard-pivot-query-endpoint [dashboard-id card-id dashcard-id]
