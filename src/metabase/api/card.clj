@@ -779,16 +779,25 @@
   [{:keys [card-id export-format]} :- [:map
                                        [:card-id       ms/PositiveInt]
                                        [:export-format (into [:enum] api.dataset/export-formats)]]
+   _query-params
    {:keys          [parameters]
     pivot-results? :pivot_results
     format-rows?   :format_rows
-    :as            _query-params} :- [:map
-                                      [:parameters    {:optional true} [:maybe ms/JSONString]]
-                                      [:format_rows   {:default false} ms/BooleanValue]
-                                      [:pivot_results {:default false} ms/BooleanValue]]]
+    :as            _body}
+   :- [:map
+       [:parameters    {:optional true} [:maybe
+                                         [:or
+                                          [:sequential ms/Parameter]
+                                          ;; support JSON-encoded parameters for backwards compatibility when with this
+                                          ;; was still submitted with a `<form>`... see
+                                          ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
+                                          ms/JSONString]]]
+       [:format_rows   {:default false} ms/BooleanValue]
+       [:pivot_results {:default false} ms/BooleanValue]]]
   (qp.card/process-query-for-card
    card-id export-format
-   :parameters  (json/decode+kw parameters)
+   :parameters  (cond-> parameters
+                  (string? parameters) json/decode+kw)
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
    :middleware  {:process-viz-settings?  true
