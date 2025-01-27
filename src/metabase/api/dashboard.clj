@@ -1379,16 +1379,19 @@
                                                                 [:dashcard-id   ms/PositiveInt]
                                                                 [:card-id       ms/PositiveInt]
                                                                 [:export-format api.dataset/ExportFormat]]
-   {:keys [parameters format_rows pivot_results]} :- [:map
-                                                      [:parameters    {:optional true} [:maybe ms/JSONString]]
-                                                      [:format_rows   {:default false} [:maybe ms/BooleanValue]]
-                                                      [:pivot_results {:default false} [:maybe ms/BooleanValue]]]]
+   _query-params
+   {:keys          [parameters]
+    format-rows?   :format_rows
+    pivot-results? :pivot_results} :- [:map
+                                       [:parameters    {:optional true} [:maybe [:sequential ParameterWithID]]]
+                                       [:format_rows   {:default false} ms/BooleanValue]
+                                       [:pivot_results {:default false} ms/BooleanValue]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
             {:dashboard-id  dashboard-id
              :card-id       card-id
              :dashcard-id   dashcard-id
              :export-format export-format
-             :parameters    (json/decode+kw parameters)
+             :parameters    parameters
              :context       (api.dataset/export-format->context export-format)
              :constraints   nil
              ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
@@ -1397,8 +1400,8 @@
              :middleware    {:process-viz-settings?  true
                              :skip-results-metadata? true
                              :ignore-cached-results? true
-                             :format-rows?           (or format_rows false)
-                             :pivot?                 (or pivot_results false)
+                             :format-rows?           format-rows?
+                             :pivot?                 pivot-results?
                              :js-int-to-string?      false}}))
 
 (api.macros/defendpoint :post "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
