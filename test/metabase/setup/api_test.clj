@@ -2,6 +2,7 @@
   "Tests for /api/setup endpoints."
   (:require
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
@@ -212,49 +213,57 @@
       (testing "missing"
         (is (=? {:errors {:token "Token does not match the setup token."}}
                 (setup! dissoc :token))))
-
       (testing "incorrect"
         (is (=? {:errors {:token "Token does not match the setup token."}}
-                (setup! assoc :token "foobar")))))
+                (setup! assoc :token "foobar")))))))
 
+(deftest setup-validation-test-2
+  (testing "POST /api/setup validation"
     (testing "site name"
-      (is (=? {:errors {:site_name "value must be a non-blank string."}}
-              (setup! m/dissoc-in [:prefs :site_name]))))
+      ;; TODO -- it seems like this should be `{:specific-errors {:prefs {:site_name ...}}}` but defendpoint validation
+      ;; is not currently that advanced.
+      (is (=? {:specific-errors {:prefs ["missing required key, received: nil"]},
+               :errors {:prefs #(str/starts-with? % "map where {:site_name -> <value must be a non-blank string.>")}}
+              (setup! m/dissoc-in [:prefs :site_name]))))))
 
+(deftest setup-validation-test-3
+  (testing "POST /api/setup validation"
     (testing "site locale"
       (testing "invalid format"
-        (is (=? {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
+        (is (=? {:specific-errors {:prefs {:site_locale ["valid locale, received: \"eng-USA\""]}}
+                 :errors {:prefs #(str/includes? % ":site_locale (optional) -> <nullable String must be a valid two-letter ISO language or language-country code e.g. en or en_US.>")}}
                 (setup! assoc-in [:prefs :site_locale] "eng-USA"))))
       (testing "non-existent locale"
-        (is (=? {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
-                (setup! assoc-in [:prefs :site_locale] "en-EN")))))
+        (is (=? {:specific-errors {:prefs {:site_locale ["valid locale, received: \"en-EN\""]}}
+                 :errors {:prefs #(str/includes? % ":site_locale (optional) -> <nullable String must be a valid two-letter ISO language or language-country code e.g. en or en_US.>")}}
+                (setup! assoc-in [:prefs :site_locale] "en-EN")))))))
 
+(deftest setup-validation-test-4
+  (testing "POST /api/setup validation"
     (testing "user"
       (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
         (testing "first name may be nil"
           (is (:id (setup! 200 m/dissoc-in [:user :first_name])))
           (is (:id (setup! 200 assoc-in [:user :first_name] nil))))
-
         (testing "last name may be nil"
           (is (:id (setup! 200 m/dissoc-in [:user :last_name])))
           (is (:id (setup! 200 assoc-in [:user :last_name] nil)))))
-
       (testing "email"
         (testing "missing"
-          (is (=? {:errors {:email "value must be a valid email address."}}
+          (is (=? {:errors          {:user #(str/includes? % ":email -> <value must be a valid email address.>")}
+                   :specific-errors {:user {:email ["missing required key, received: nil"]}}}
                   (setup! m/dissoc-in [:user :email]))))
-
         (testing "invalid"
-          (is (=? {:errors {:email "value must be a valid email address."}}
+          (is (=? {:errors          {:user #(str/includes? % ":email -> <value must be a valid email address.>")}
+                   :specific-errors {:user {:email ["valid email address, received: \"anything\""]}}}
                   (setup! assoc-in [:user :email] "anything")))))
-
       (testing "password"
         (testing "missing"
-          (is (=? {:errors {:password "password is too common."}}
+          (is (=? {:specific-errors {:user {:password ["missing required key, received: nil"]}}
+                   :errors          {:user #(str/includes? % ":password -> <password is too common.>")}}
                   (setup! m/dissoc-in [:user :password]))))
-
         (testing "invalid"
-          (is (=? {:errors {:password "password is too common."}}
+          (is (=? {:specific-errors {:user {:password ["valid password that is not too common, received: \"anything\""]}}}
                   (setup! assoc-in [:user :password] "anything"))))))))
 
 (deftest setup-with-empty-cache-test
