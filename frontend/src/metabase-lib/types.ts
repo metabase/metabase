@@ -596,6 +596,10 @@ export type FilterDrillDetails = {
   column: ColumnMetadata;
 };
 
+export type PivotDrillDetails = {
+  stageIndex: number;
+};
+
 export type PivotType = "category" | "location" | "time";
 
 export interface ClickObjectDimension {

@@ -7,6 +7,7 @@ import type {
   ColumnMetadata,
   DrillThru,
   FilterDrillDetails,
+  PivotDrillDetails,
   PivotType,
   Query,
 } from "./types";
@@ -52,6 +53,10 @@ export function combineColumnDrillDetails(
   drillThru: DrillThru,
 ): FilterDrillDetails {
   return ML.combine_column_drill_details(drillThru);
+}
+
+export function pivotDrillDetails(drillThru: DrillThru): PivotDrillDetails {
+  return ML.pivot_drill_details(drillThru);
 }
 
 export function pivotTypes(drillThru: DrillThru): PivotType[] {
