@@ -99,3 +99,11 @@
                                      argvec)]]
             `([~@argvec]
               (defop-create ~(keyword op-name) ~arglist-expr))))))
+
+(def ^:dynamic *use-new-refs*
+  "Dynamically controls whether functions which use metadata are calling the `foo:new-refs` or `foo:old-refs` variants.
+
+  **This must be a clean break!** Old code calls old code only; new code calls new code only.
+
+  Defaults to false (ie. `foo:old-refs`) while the `foo:new-refs` code is under development."
+  false)

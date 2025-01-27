@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -248,24 +249,28 @@
       (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :metric? true}
              (lib/display-info query (assoc card :type :metric)))))))
 
-(deftest ^:parallel ->card-metadata-column-test
+(deftest ^:parallel card-metadata-columns-test
   (testing ":effective-type is set for columns coming from an aggregation in a card (#47184)"
-    (let [col {:lib/type :metadata/column
-               :base-type :type/Integer
-               :semantic-type :type/Quantity
-               :name "count"
-               :lib/source :source/aggregations}
-          card-id 176
-          card {:type :model}
-          field nil
-          expected-col {:lib/type :metadata/column
-                        :base-type :type/Integer
-                        :effective-type :type/Integer
-                        :semantic-type :type/Quantity
-                        :name "count"
-                        :lib/card-id 176
-                        :lib/source :source/card
-                        :lib/source-column-alias "count"
-                        :fk-target-field-id nil}]
-      (is (=? expected-col
-              (#'lib.card/->card-metadata-column col card-id card field))))))
+    (let [mp   (lib.tu/metadata-provider-with-card-from-query
+                meta/metadata-provider
+                176
+                (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count)))
+                {:type :model})
+          card (lib.metadata/card mp 176)]
+
+      (is (=? [(if (lib.metadata.overhaul/old-refs?)
+                 {:lib/type :metadata/column
+                  :base-type :type/Integer
+                  :effective-type :type/Integer
+                  :semantic-type :type/Quantity
+                  :name "count"
+                  :lib/card-id 176
+                  :lib/source :source/card
+                  :lib/source-column-alias "count"
+                  :fk-target-field-id nil}
+                 {:lib/type ::lib.metadata.overhaul/column
+                  :column/type :type/Integer
+                  :column/semantic-type :type/Quantity
+                  :column/card-id 176})]
+              (lib.card/card-metadata-columns mp card))))))

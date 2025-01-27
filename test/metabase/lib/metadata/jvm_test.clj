@@ -9,6 +9,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.table :as table]
@@ -205,15 +206,21 @@
 
 (deftest ^:synchronized all-methods-call-go-through-invocation-tracker-first-test
   (binding [lib.metadata.invocation-tracker/*to-track-metadata-types* #{:metadata/column}]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (let [mp         (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          ;; Generating both sets of metadata doubles the number of calls made!
+          multiplier (case lib.metadata.overhaul/*overhaul-selector*
+                       (:old-wins :new-wins) 2
+                       1)]
       (testing "sanity check"
         (is (empty? (lib.metadata/invoked-ids mp :metadata/column))))
       (testing "getting card should invoke the tracker"
         (is (some? (lib.metadata/field mp (mt/id :orders :id))))
-        (is (= [(mt/id :orders :id)] (lib.metadata/invoked-ids mp :metadata/column))))
+        (is (= (repeat multiplier (mt/id :orders :id))
+               (lib.metadata/invoked-ids mp :metadata/column))))
       (testing "2nd call, card shoudld should be cached by now, but invocation still keeping track of ids"
         (is (some? (lib.metadata/field mp (mt/id :orders :id))))
-        (is (= [(mt/id :orders :id) (mt/id :orders :id)] (lib.metadata/invoked-ids mp :metadata/column)))))))
+        (is (= (repeat (* 2 multiplier) (mt/id :orders :id))
+               (lib.metadata/invoked-ids mp :metadata/column)))))))
 
 (deftest ^:parallel tables-present-test
   (testing "`tables` function returns visible tables (the call includes app db call)"

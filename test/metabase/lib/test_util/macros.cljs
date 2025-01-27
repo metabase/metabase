@@ -1,5 +1,6 @@
 (ns metabase.lib.test-util.macros
   (:require
+   metabase.lib.metadata.overhaul
    metabase.lib.test-util.macros.impl
    metabase.test.data.mbql-query-impl)
   (:require-macros [metabase.lib.test-util.macros]))

@@ -10,6 +10,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -159,6 +160,47 @@
                                  (select-keys [:base-type :effective-type]))))))))
     x))
 
+(defonce ^{:arglists '([metadata-providerable card])
+           :doc "Volatile container for [[metabase.lib.card/card-metadata-columns]], to break a circular require.
+
+                This gets set at load time by [[metabase.lib.card]]."}
+  card-metadata-columns*
+  (volatile! (fn [& _args]
+               (throw (ex-info "metabase.lib.card never loaded?" {})))))
+
+(defn column-map-for-initial-source:new-refs
+  "Returns a map of ident to column metadata, for the *source* of the given **initial** stage.
+
+  - MBQL stage with `:source-table`: the Fields of that table.
+  - MBQL stage with `:source-card`:  the returned columns of that card.
+  - Native stage: based on its `:lib/source-metadata` from executing the query.
+
+  Do not call this directly - the value of `:lib.columns/source` on a query stage caches this with [[delay]]."
+  [metadata-providerable stage]
+  (let [cols (cond
+               (:source-table stage)
+               (or (lib.metadata/fields metadata-providerable (:source-table stage))
+                   (throw (ex-info "Failed to look up fields of :source-table" {:stage stage})))
+
+               (:source-card stage)
+               (or (when-let [card (lib.metadata/card metadata-providerable (:source-card stage))]
+                     (@card-metadata-columns* metadata-providerable card))
+                   (throw (ex-info "Failed to look up columns of :source-card" {:stage stage})))
+
+               (lib.util/native-stage? stage)
+               (throw (ex-info "Implement me: source cols for initial native stage" {:stage stage})))]
+    (m/index-by :column/ident cols)))
+
+(defn- populate-first-stage:new-refs [metadata-providerable stage]
+  (assoc stage :lib.columns/source
+         (delay (column-map-for-initial-source:new-refs metadata-providerable stage))))
+
+(defn- populate-stages [metadata-providerable stages]
+  (if (lib.metadata.overhaul/old-refs?)
+    stages
+    (into [(populate-first-stage:new-refs metadata-providerable (first stages))]
+          (rest stages))))
+
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
   ([metadata-providerable stages]
@@ -170,7 +212,7 @@
    {:lib/type     :mbql/query
     :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
     :database     database-id
-    :stages       stages}))
+    :stages       (populate-stages metadata-providerable stages)}))
 
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]
@@ -427,6 +469,16 @@
   (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
     (apply f q n args)))
 
+(defn- discard-join-columns [join-clause]
+  (dissoc join-clause :lib.columns/joined))
+
+(defn- discard-columns [stage]
+  (-> stage
+      (dissoc :lib.columns/source         :lib.columns/expressions
+              :lib.columns/aggregation    :lib.columns/breakout
+              :lib.columns/implicit-joins :lib.columns/synthetic)
+      (update :joins #(map discard-join-columns %))))
+
 (defn serializable
   "Given a query, ensure it doesn't have any keys or structures that aren't safe for serialization.
 
@@ -434,6 +486,7 @@
   [a-query]
   (-> a-query
       (dissoc a-query :lib/metadata)
+      (update :stages #(map discard-columns %))
       lib.cache/discard-query-cache))
 
 (defn- stage-seq* [query-fragment]

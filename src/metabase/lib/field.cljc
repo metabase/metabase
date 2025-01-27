@@ -12,6 +12,7 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -272,6 +273,49 @@
       (and temporal-unit (not= display-name (temporal-format humanized-name))) (temporal-format display-name)
       (and binning       (not= display-name (bin-format humanized-name)))      (bin-format display-name)
       :else                                                                    display-name)))
+
+(defmethod lib.metadata.calculation/display-name-method ::lib.metadata.overhaul/column
+  [query stage-number {field-display-name  :column/display-name
+                       field-name          :field/name
+                       implicit-join-fk    :column/implicit-join-fk
+                       :as                 field-metadata} style]
+  (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
+        ;; TODO: Handle nested fields.
+        field-display-name (or field-display-name
+                               (if (string? field-name)
+                                 humanized-name
+                                 "(unnamed)"))
+        join-display-name  (when (and (= style :long)
+                                      ;; don't prepend a join display name if `:display-name` already contains one!
+                                      ;; Legacy result metadata might include it for joined Fields, don't want to add
+                                      ;; it twice. Otherwise we'll end up with display names like
+                                      ;;
+                                      ;;    Products → Products → Category
+                                      (not (str/includes? field-display-name " → ")))
+                             (or
+                              (when implicit-join-fk
+                                ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
+                                ;; "ID" dropped instead.
+                                ;; This is very intentional: one table might have several FKs to one foreign table, each with different
+                                ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
+                                ;; See #30109 for more details.
+                                (if-let [fk-col (lib.metadata.overhaul/lookup-ident implicit-join-fk)]
+                                  (-> (lib.metadata.calculation/display-name query stage-number fk-col)
+                                      lib.util/strip-id)
+                                  ;; TODO: The old-refs version of this has a fallback case here that uses the name
+                                  ;; of *this* field's table. (Not the foreign table?) Not sure when this comes up, if
+                                  ;; it ever does anymore.
+                                  (throw (ex-info "implicit-join-fk is set but we can't find the ident"
+                                                  {:column field-metadata}))))
+                              (lib.join.util/join-ident->alias query (:column/join-ident field-metadata))))
+        display-name       (if join-display-name
+                             (str join-display-name " → " field-display-name)
+                             field-display-name)
+        ;; TODO: Handle temporal bucketing of columns.
+        #_#_temporal-format    #(lib.temporal-bucket/ensure-ends-with-temporal-unit % temporal-unit)
+        ;; TODO: Handle binning of columns.
+        #_#_bin-format         #(lib.binning/ensure-ends-with-binning % binning (:semantic-type field-metadata))]
+    display-name))
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query

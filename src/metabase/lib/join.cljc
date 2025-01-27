@@ -16,6 +16,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
+   [metabase.lib.metadata.overhaul :as-alias lib.metadata.overhaul]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -153,6 +154,10 @@
     :metadata/column
     (u/assoc-dissoc field-or-join ::join-alias join-alias)
 
+    ::lib.metadata.overhaul/column
+    (throw (ex-info "Can't happen: with-join-alias is too raw; we can't convert a random column into one from a join it didn't come from!"
+                    {}))
+
     :mbql/join
     (with-join-alias-update-join field-or-join join-alias)
 
@@ -288,7 +293,9 @@
                                                              :include-implicitly-joinable? false})))
         (:joins (lib.util/query-stage query stage-number))))
 
-(mu/defn all-joins-expected-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
+(mu/defn all-joins-expected-columns :- [:or
+                                        lib.metadata.calculation/ColumnsWithUniqueAliases
+                                        [:maybe [:sequential {:min 1} ::lib.metadata.overhaul/column]]]
   "Convenience for calling [[lib.metadata.calculation/returned-columns-method]] on all the joins in a query stage."
   [query        :- ::lib.schema/query
    stage-number :- :int

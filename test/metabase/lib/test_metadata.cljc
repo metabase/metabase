@@ -7,6 +7,8 @@
   will not be reflected here, for example if we add new information to the metadata. We'll have to manually update
   these things if that happens and Metabase lib is meant to consume it."
   (:require
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.overhaul :as lib.metadata.overhaul]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
    [metabase.util.malli :as mu]))
@@ -3111,15 +3113,30 @@
   [table-name :- :keyword]
   (dissoc (table-metadata-method table-name) :fields :metrics :segments))
 
-(mu/defn field-metadata :- ::lib.schema.metadata/column
+(mu/defn field-metadata:old-refs :- ::lib.schema.metadata/column
   "Get Field metadata for one of the `test-data` Fields in the test metadata, e.g. `:venues` `:name`. This is here so
   you can test things that should consume Field metadata."
   [table-name :- :keyword
    field-name :- :keyword]
   (field-metadata-method table-name field-name))
 
+(mu/defn field-metadata:new-refs :- ::lib.metadata.overhaul/field
+  "Get Field metadata for one of the `test-data` Fields in the test metadata, e.g. `:venues` `:name`. This is here so
+  you can test things that should consume Field metadata."
+  [table-name :- :keyword
+   field-name :- :keyword]
+  (lib.metadata/field metadata-provider (id table-name field-name)))
+
+(defn field-metadata
+  "Get Field metadata for one of the `test-data` Fields in the test metadata, e.g. `:venues` `:name`. This is here so
+  you can test things that should consume Field metadata."
+  [table-name field-name]
+  ((lib.metadata.overhaul/old-new field-metadata:old-refs field-metadata:new-refs)
+   table-name field-name))
+
 (mu/defn ident :- :string
   "Convenience to get the `:ident` string for a given field, by its table and field keys."
   [table-name :- :keyword
    field-name :- :keyword]
-  (:ident (field-metadata table-name field-name)))
+  ((lib.metadata.overhaul/old-new :ident :column/ident)
+   (field-metadata table-name field-name)))

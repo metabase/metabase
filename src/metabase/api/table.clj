@@ -12,6 +12,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.models.table :as table]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
@@ -335,13 +336,15 @@
       (update :fields (fn [fields]
                         (mapv #(assoc-field-dimension-options % db) fields)))))
 
+(defn- format-field-for-response [{:keys [values] :as field}]
+  (let [eid (serdes/backfill-entity-id field)]
+    (-> field
+        (m/assoc-some :ident eid)
+        (cond-> (seq values) (update :values field-values/field-values->pairs)))))
+
 (defn- format-fields-for-response [resp]
   (update resp :fields
-          (fn [fields]
-            (for [{:keys [values] :as field} fields]
-              (if (seq values)
-                (update field :values field-values/field-values->pairs)
-                field)))))
+          #(map format-field-for-response %)))
 
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
