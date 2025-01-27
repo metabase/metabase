@@ -106,7 +106,7 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found."
                                 (metabot-v3.tools.interface/*invoke-tool*
                                  :metabot.tool/query-metric
-                                 {:metric-id Long/MAX_VALUE}
+                                 {:metric-id Integer/MAX_VALUE}
                                  {}))))
         (testing "Invalid metric-id results in an error."
           (is (thrown? clojure.lang.ExceptionInfo (metabot-v3.tools.interface/*invoke-tool*
