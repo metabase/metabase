@@ -1,10 +1,10 @@
 import type * as React from "react";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 import AutocompleteInput from "metabase/core/components/AutocompleteInput";
 
 interface ChartSettingLinkUrlInputProps {
-  value: string;
+  value: string | undefined | null;
   onChange: (value: string) => void;
   id?: string;
   options?: string[];
@@ -31,7 +31,11 @@ const ChartSettingLinkUrlInput = ({
   options,
   ...props
 }: ChartSettingLinkUrlInputProps) => {
-  const [value, setValue] = useState(initialValue);
+  const [value, setValue] = useState(initialValue ?? "");
+
+  useLayoutEffect(() => {
+    setValue(initialValue ?? "");
+  }, [initialValue]);
 
   const handleSuggestionClick = (suggestion: string) => {
     const match = value.match(linkVariablePattern);
