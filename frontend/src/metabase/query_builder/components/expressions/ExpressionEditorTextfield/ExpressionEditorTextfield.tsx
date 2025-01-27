@@ -36,7 +36,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { ExpressionEditorHelpTextContent } from "../ExpressionEditorHelpText";
+import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
 import { ExpressionEditorSuggestions } from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
 
@@ -836,7 +836,7 @@ class ExpressionEditorTextfieldInner extends React.Component<
         </Popover.Target>
         {/* similar to overlays,  Mantine keeps overriding the max-width property on the `style` attribute */}
         <Popover.Dropdown maw={`${width}px !important`}>
-          <ExpressionEditorHelpTextContent helpText={helpText} />
+          <ExpressionEditorHelpText helpText={helpText} />
         </Popover.Dropdown>
       </Popover>
     );
