@@ -317,8 +317,14 @@
                                                         [:dashcard-id   ms/PositiveInt]
                                                         [:card-id       ms/PositiveInt]
                                                         [:export-format (into [:enum] api.dataset/export-formats)]]
+   _query-parameters
    {:keys [format_rows pivot_results parameters]} :- [:map
-                                                      [:parameters    {:optional true} [:maybe ms/JSONString]]
+                                                      [:parameters    {:optional true} [:maybe
+                                                                                        {:decode/api
+                                                                                         (fn [x]
+                                                                                           (cond-> x
+                                                                                             (string? x) json/decode+kw))}
+                                                                                        :map]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]]]
   (validation/check-public-sharing-enabled)
