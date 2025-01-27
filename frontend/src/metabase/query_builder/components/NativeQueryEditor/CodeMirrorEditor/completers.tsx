@@ -13,11 +13,8 @@ import { useSetting } from "metabase/common/hooks";
 import { isNotNull } from "metabase/lib/types";
 import type { Card, CardId, DatabaseId, Field } from "metabase-types/api";
 
-import {
-  getCardAutocompleteResultMeta,
-  matchTagAtCursor,
-  source,
-} from "./util";
+import { source } from "./language";
+import { getCardAutocompleteResultMeta, matchTagAtCursor } from "./util";
 
 // Keep this in sync with the limit in the backend code at
 // `autocomplete-suggestions` in src/metabase/api/database.clj

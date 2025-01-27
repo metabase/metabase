@@ -38,10 +38,8 @@ import {
   useSchemaCompletion,
   useSnippetCompletion,
 } from "./completers";
-import {
-  referencedQuestionIds as getReferencedQuestionIds,
-  source,
-} from "./util";
+import { language } from "./language";
+import { referencedQuestionIds as getReferencedQuestionIds } from "./util";
 
 export function useExtensions(query: Lib.Query): Extension[] {
   const { databaseId, engine, referencedQuestionIds } = useMemo(
@@ -236,19 +234,6 @@ function fonts() {
     "&": shared,
     ".cm-content": shared,
   });
-}
-
-type LanguageOptions = {
-  engine?: string | null;
-};
-
-function language({ engine }: LanguageOptions) {
-  const { language } = source(engine);
-  if (!language) {
-    return [];
-  }
-
-  return language;
 }
 
 const metabaseStyle = HighlightStyle.define(
