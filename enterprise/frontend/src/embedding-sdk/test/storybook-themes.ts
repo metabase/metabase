@@ -15,8 +15,6 @@ export const darkTheme = defineMetabaseTheme({
   fontSize: "14px",
   colors: {
     brand: darkColors.primary,
-    "brand-hover": darkColors.darkGrey,
-    "brand-hover-light": darkColors.darkGrey,
     filter: darkColors.filter,
     "text-primary": darkColors.lighterGrey,
     "text-secondary": darkColors.lighterGrey,
@@ -132,8 +130,6 @@ const stitchTheme: MetabaseTheme = {
   fontSize: "14px",
   colors: {
     brand: stitchColors.primary,
-    "brand-hover": stitchColors.darkGrey,
-    "brand-hover-light": stitchColors.darkGrey,
     filter: stitchColors.filter,
     "text-primary": stitchColors.lighterGrey,
     "text-secondary": stitchColors.lighterGrey,
@@ -189,8 +185,6 @@ const luminaraTheme: MetabaseTheme = {
   fontSize: "14px",
   colors: {
     brand: luminaraColors.primary,
-    "brand-hover": "#fff",
-    "brand-hover-light": "#fff",
     filter: luminaraColors.viz1,
     summarize: "#BE54C0",
     "text-primary": luminaraColors.green3,

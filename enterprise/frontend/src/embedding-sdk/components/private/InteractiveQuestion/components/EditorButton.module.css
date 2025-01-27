@@ -9,5 +9,9 @@
   &[data-active="true"] {
     color: var(--mb-color-text-white);
     background: var(--mb-color-brand);
+
+    &:hover {
+      background: var(--mb-color-brand-lighter);
+    }
   }
 }
