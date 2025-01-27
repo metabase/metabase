@@ -130,17 +130,25 @@
   "Execute a query and download the result data as a file in the specified format."
   [{:keys [export-format]} :- [:map
                                [:export-format ExportFormat]]
-   {:keys                  [query]
-    format-rows            :format_rows
-    pivot-results          :pivot_results
-    visualization-settings :visualization_settings} :- [:map
-                                                        [:query                  ms/JSONString]
-                                                        [:visualization_settings {:default "{}"}  ms/JSONString]
-                                                        [:format_rows            {:default false} [:maybe ms/BooleanValue]]
-                                                        [:pivot_results          {:default false} [:maybe ms/BooleanValue]]]]
-  (let [{:keys [was-pivot] :as query} (json/decode+kw query)
-        query                         (dissoc query :was-pivot)
-        viz-settings                  (-> (json/decode visualization-settings viz-setting-key-fn)
+   _query-params
+   {{:keys [was-pivot] :as query} :query
+    format-rows                   :format_rows
+    pivot-results                 :pivot_results
+    visualization-settings        :visualization_settings}
+   ;; Support JSON-encoded query and viz settings for backwards compatability for when downloads used to be triggered by
+   ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
+   :- [:map
+       [:query                  [:map
+                                 {:decode/api (fn [x]
+                                                (cond-> x
+                                                  (string? x) json/decode+kw))}]]
+       [:visualization_settings {:default {}} [:map
+                                               {:decode/api (fn [x]
+                                                              (cond-> x
+                                                                (string? x) (json/decode viz-setting-key-fn)))}]]
+       [:format_rows            {:default false} ms/BooleanValue]
+       [:pivot_results          {:default false} ms/BooleanValue]]]
+  (let [viz-settings                  (-> visualization-settings
                                           (update :table.columns mbql.normalize/normalize)
                                           mb.viz/norm->db)
         query                         (-> query
