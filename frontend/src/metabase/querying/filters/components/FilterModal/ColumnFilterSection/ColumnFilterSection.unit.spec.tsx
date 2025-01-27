@@ -8,6 +8,9 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 
+import { FilterModalProvider } from "../context";
+import { createMockFilterModalContext } from "../test-utils";
+
 import { ColumnFilterSection } from "./ColumnFilterSection";
 
 const TABLE = createMockTable({
@@ -109,26 +112,18 @@ type SetupOpts = {
   isSearching?: boolean;
 };
 
-function setup({
-  query,
-  stageIndex,
-  column,
-  filter,
-  isSearching = false,
-}: SetupOpts) {
+function setup({ query, stageIndex, column, filter }: SetupOpts) {
   const onChange = jest.fn();
-  const onInput = jest.fn();
 
   renderWithProviders(
-    <ColumnFilterSection
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      filter={filter}
-      isSearching={isSearching}
-      onChange={onChange}
-      onInput={onInput}
-    />,
+    <FilterModalProvider value={createMockFilterModalContext({ query })}>
+      <ColumnFilterSection
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        onChange={onChange}
+      />
+    </FilterModalProvider>,
   );
 
   return { onChange };

@@ -2,8 +2,8 @@
   "Unauthenticated `/api/pulse/unsubscribe` endpoints to allow non-logged-in people to unsubscribe from
   Alerts/DashboardNotifications."
   (:require
-   [compojure.core :refer [POST]]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
    [metabase.events :as events]
@@ -26,13 +26,15 @@
                     {:type        type
                      :status-code 400}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
-  [:as {{:keys [email hash pulse-id]} :body, :as request}]
-  {pulse-id ms/PositiveInt
-   email    :string
-   hash     :string}
+  [_route-params
+   _query-params
+   {:keys [email hash pulse-id]} :- [:map
+                                     [:pulse-id ms/PositiveInt]
+                                     [:email    :string]
+                                     [:hash     :string]]
+   request]
   (check-hash pulse-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
     (api/let-404 [pulse-channel (t2/select-one :model/PulseChannel :pulse_id pulse-id :channel_type "email")]
@@ -45,13 +47,15 @@
       (events/publish-event! :event/subscription-unsubscribe {:object {:email email}})
       {:status :success :title (:name (models.pulse/retrieve-notification pulse-id :archived false))})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/undo"
+(api.macros/defendpoint :post "/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
-  [:as {{:keys [email hash pulse-id]} :body, :as request}]
-  {pulse-id ms/PositiveInt
-   email    :string
-   hash     :string}
+  [_route-params
+   _query-params
+   {:keys [email hash pulse-id]} :- [:map
+                                     [:pulse-id ms/PositiveInt]
+                                     [:email    :string]
+                                     [:hash     :string]]
+   request]
   (check-hash pulse-id email hash (request/ip-address request))
   (t2/with-transaction [_conn]
     (api/let-404 [pulse-channel (t2/select-one :model/PulseChannel :pulse_id pulse-id :channel_type "email")]

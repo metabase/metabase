@@ -1,5 +1,4 @@
 import type { StoryFn } from "@storybook/react";
-import { useRef } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
@@ -15,7 +14,6 @@ export default {
 };
 
 const Template: StoryFn<typeof ExpressionEditorHelpText> = () => {
-  const target = useRef(null);
   const database = createMockDatabase();
   const metadata = createMockMetadata({ databases: [database] });
 
@@ -25,8 +23,6 @@ const Template: StoryFn<typeof ExpressionEditorHelpText> = () => {
       checkNotNull(metadata.database(database.id)),
       "UTC",
     ),
-    width: 397,
-    target,
   };
 
   return <ExpressionEditorHelpText {...props} />;
