@@ -81,7 +81,7 @@ H.describeEE("scenarios > admin > permissions > application", () => {
         H.setupSMTP();
         cy.signInAsNormalUser();
 
-        cy.log("Create a dashboard subscription");
+        cy.log("Set up a dashboard subscription");
         H.visitDashboard(ORDERS_DASHBOARD_ID);
         H.openSharingMenu(/subscriptions/i);
         H.sidebar().findByText("Email this dashboard").should("exist");
