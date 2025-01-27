@@ -74,6 +74,8 @@
 ;;   created and want the delete endpoint to basically reset us to a blank slate. If there are multiple gdrive
 ;;   connections, we will delete all of them.
 
+(set! *warn-on-reflection* true)
+
 (def ^:private not-connected {:status "not-connected"})
 
 (defsetting gsheets
@@ -149,6 +151,8 @@
   "Is this connection a gdrive connection?"
   [{:keys [type] :as _conn}] (= "gdrive" type))
 
+(def ^:private status-order {"active" 0 "syncing" 1 "initializing" 2 "error" 3})
+
 (mu/defn- get-gdrive-conns :- [:sequential ::gdrive-conn]
   "Get the harbormaster gdrive type connection."
   []
@@ -161,8 +165,14 @@
                                   (m/update-existing :last-sync-started-at u.date/parse)
                                   (m/update-existing :created-at u.date/parse)
                                   (m/update-existing :updated-at u.date/parse))))
-               ;; newest first:
-               (sort-by :created-at #(t/after? (t/instant %1) (t/instant %2))))
+               ;; First sorted by active > syncing > intiializing > error, Then oldest first:
+               (sort-by (fn [{:keys [status created-at]}]
+                          [(get status-order status Integer/MAX_VALUE)
+                           ;; Convert created-at to millis, treat nil as the oldest
+                           (if created-at (t/instant created-at) (Instant/ofEpochSecond 0))])
+                        (fn [[status1 time1] [status2 time2]]
+                          (or (compare status1 status2)
+                              (compare time2 time1))))) ;; Descending order for timestamps
       [])))
 
 (mu/defn- get-gdrive-conn :- [:maybe ::gdrive-conn]
@@ -220,42 +230,40 @@
                     {:order-by [[:ended_at :desc]]}))
 
 (defn- handle-get-folder [attached-dwh]
-  (if-let [{:keys [status]
-            last-gdrive-conn-sync :last-sync-at
-            :as gdrive-conn} (get-gdrive-conn)]
-    (let [last-dwh-sync (get-last-dwh-sync-time)]
-      (-> (cond
-            (sync-complete? {:status status
-                             :last-dwh-sync last-dwh-sync
-                             :last-gdrive-conn-sync last-gdrive-conn-sync})
-            (u/prog1 (assoc (gsheets) :status "complete")
-              (gsheets! <>)
-              (snowplow/track-event! ::snowplow/simple_event
-                                     {:event "sheets_connected" :event_detail "success"}))
+  (let [gdrive-conns (get-gdrive-conns)] ;; TEMP: (gsheets): use get-gdrive-conn instead <--  ---v
+    (if-let [{:keys [status] last-gdrive-conn-sync :last-sync-at :as gdrive-conn} (first gdrive-conns)]
+      (let [last-dwh-sync (get-last-dwh-sync-time)]
+        (-> (cond
+              (sync-complete? {:status status :last-dwh-sync last-dwh-sync :last-gdrive-conn-sync last-gdrive-conn-sync})
+              (u/prog1 (assoc (gsheets) :status "complete")
+                (gsheets! <>)
+                (snowplow/track-event! ::snowplow/simple_event
+                                       {:event "sheets_connected" :event_detail "success"}))
 
-            (= "error" status)
-            (do
-              (gsheets! not-connected)
-              (throw (ex-info "Problem syncing google drive folder." {})))
+              (= "error" status)
+              (do (gsheets! not-connected)
+                  (throw (ex-info "Problem syncing google drive folder." {})))
 
-            :else
-            (gsheets))
-          (assoc :db_id (:id attached-dwh)
-                 ;; TEMP (gsheets)
-                 ;; here is some debugging info to make sure we have it straight:
-                 :hm/conn gdrive-conn
-                 :mb/sync-info {:status status
-                                :last-dwh-sync last-dwh-sync
-                                :last-gdrive-conn-sync last-gdrive-conn-sync}
-                 :mb/sync-status (sync-complete? {:status status
-                                                  :last-dwh-sync last-dwh-sync
-                                                  :last-gdrive-conn-sync last-gdrive-conn-sync}))))
-    (do
-      (gsheets! not-connected)
-      (snowplow/track-event! ::snowplow/simple_event
-                             {:event "sheets_connected"
-                              :event_detail "fail - no drive connection"})
-      (throw (ex-info "Google Drive Connection not found." {})))))
+              :else
+              (gsheets))
+            (assoc :db_id (:id attached-dwh)
+                   ;; TEMP (gsheets)
+                   ;; here is some debugging info to make sure we have it straight:
+                   :hm/conn gdrive-conn
+                   :hm/gdrive-conns gdrive-conns
+                   :hm/gdrive-conns-status (frequencies (map :status gdrive-conns))
+                   :mb/sync-info {:status status
+                                  :last-dwh-sync last-dwh-sync
+                                  :last-gdrive-conn-sync last-gdrive-conn-sync}
+                   :mb/sync-status (sync-complete? {:status status
+                                                    :last-dwh-sync last-dwh-sync
+                                                    :last-gdrive-conn-sync last-gdrive-conn-sync}))))
+      (do
+        (gsheets! not-connected)
+        (snowplow/track-event! ::snowplow/simple_event
+                               {:event "sheets_connected"
+                                :event_detail "fail - no drive connection"})
+        (throw (ex-info "Google Drive Connection not found." {}))))))
 
 (api.macros/defendpoint :get "/folder" :- ::gsheets
   "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to
@@ -302,11 +310,13 @@
                     :status :success
                     {:order-by [[:ended_at :desc]]})
 
-  (require '[metabase.sync.sync-metadata :as sync-metadata])
+   ;; This is what the notify endpoint calls:
+   ;; Do a sync on the attached dwh:
+  (do
+    (require '[metabase.sync.sync-metadata :as sync-metadata])
 
-  ;; This is what the notify endpoint calls:
-  (sync-metadata/sync-db-metadata!
-   (t2/select-one :model/Database :is_attached_dwh true))
+    (sync-metadata/sync-db-metadata!
+     (t2/select-one :model/Database :is_attached_dwh true)))
 
 
   (t2/update! :model/Database 1 {:is_attached_dwh true})
