@@ -85,24 +85,24 @@
                          :rows              [["bar"]]}]}))
 
 (doseq [driver [:redshift :snowflake :oracle]]
-        (defmethod driver/database-supports? [driver :test/details-name-is-db]
-          [_driver _feature _database]
-          true))
+  (defmethod driver/database-supports? [driver :test/details-name-is-db]
+    [_driver _feature _database]
+    true))
 
 (doseq [driver [:oracle]]
-        (defmethod driver/database-supports? [driver :test/details-name-is-service-name]
-          [_driver _feature _database]
-          true))
+  (defmethod driver/database-supports? [driver :test/details-name-is-service-name]
+    [_driver _feature _database]
+    true))
 
 (doseq [driver [:presto-jdbc]]
-        (defmethod driver/database-supports? [driver :test/details-name-is-catalog]
-          [_driver _feature _database]
-          true))
+  (defmethod driver/database-supports? [driver :test/details-name-is-catalog]
+    [_driver _feature _database]
+    true))
 
 (doseq [driver [:redshift :snowflake :vertica :presto-jdbc :oracle]]
-        (defmethod driver/database-supports? [driver :test/cannot-destroy-db]
-          [_driver _feature _database]
-          true))
+  (defmethod driver/database-supports? [driver :test/cannot-destroy-db]
+    [_driver _feature _database]
+    true))
 
 (deftest can-connect-with-destroy-db-test
   (testing "driver/can-connect? should fail or throw after destroying a database"
