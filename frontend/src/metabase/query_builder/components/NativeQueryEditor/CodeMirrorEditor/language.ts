@@ -41,7 +41,7 @@ const engineToDialect = {
 
 const mongoKeywords = {
   caseSensitive: true,
-  words: [],
+  words: ["$filter"],
 };
 
 export function source(engine?: string | null): Source {

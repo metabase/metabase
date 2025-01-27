@@ -21,6 +21,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import {
   useCardTagCompletion,
+  useKeywordsCompletion,
   useLocalsCompletion,
   useReferencedCardCompletion,
   useSchemaCompletion,
@@ -693,5 +694,116 @@ describe("useLocalsCompletion", () => {
     const { complete } = setup({ engine: "mongo" });
     const results = await complete("{|}");
     expect(results).toBe(null);
+  });
+});
+
+describe("useKeywordsCompletion", () => {
+  function setup({
+    engine = "sql",
+  }: {
+    engine?: string;
+  } = {}) {
+    const complete = completer(() => useKeywordsCompletion({ engine }));
+    return { complete };
+  }
+
+  describe("sql", () => {
+    it("should complete sql keywords", async () => {
+      const { complete } = setup({ engine: "sql" });
+      const results = await complete("SEL|");
+      expect(results).toEqual({
+        from: 0,
+        to: undefined,
+        options: [
+          {
+            detail: "keyword",
+            label: "SELECT",
+          },
+        ],
+      });
+    });
+
+    it("should complete sql keywords, inside a word", async () => {
+      const { complete } = setup({ engine: "sql" });
+      const results = await complete("SEL|E");
+      expect(results).toEqual({
+        from: 0,
+        to: 4,
+        options: [
+          {
+            detail: "keyword",
+            label: "SELECT",
+          },
+        ],
+      });
+    });
+
+    it("should not complete keywords inside of tags or snippets", async () => {
+      const queries = [
+        // none of these should trigger a call
+        "SELECT {{ #foo|",
+        "SELECT {{ #foo| }}",
+        "SELECT {{ snippet: Fo|",
+        "SELECT {{ snippet: Fo| }}",
+        "SELECT {{ Fo|",
+        "SELECT {{ Fo| }}",
+      ];
+      const { complete } = setup();
+
+      for (const query of queries) {
+        const result = await complete(query);
+        expect(result).toBe(null);
+      }
+    });
+  });
+
+  describe("mongo", () => {
+    it("should complete mongo keywords", async () => {
+      const { complete } = setup({ engine: "mongo" });
+      const results = await complete(`{ "$filt|`);
+      expect(results).toEqual({
+        from: 3,
+        to: undefined,
+        options: [
+          {
+            detail: "keyword",
+            label: "$filter",
+          },
+        ],
+      });
+    });
+
+    it("should complete mongo keywords, inside word", async () => {
+      const { complete } = setup({ engine: "mongo" });
+      const results = await complete(`{ "$fil|t`);
+      expect(results).toEqual({
+        from: 3,
+        to: 8,
+        options: [
+          {
+            detail: "keyword",
+            label: "$filter",
+          },
+        ],
+      });
+    });
+
+    it("should not complete keywords inside of tags or snippets", async () => {
+      const queries = [
+        // none of these should trigger a call
+        `{ "$filter": {{ #$fil|`,
+        `{ "$filter": {{ #$fil| }}`,
+        `{ "$filter": {{ snippet: $fil|`,
+        `{ "$filter": {{ snippet: $fil| }}`,
+        `{ "$filter": {{ $fil|`,
+        `{ "$filter": {{ $fil| }}`,
+      ];
+      const { complete } = setup();
+
+      for (const query of queries) {
+        const result = await complete(query);
+        expect(result).toBe(null);
+      }
+    });
   });
 });

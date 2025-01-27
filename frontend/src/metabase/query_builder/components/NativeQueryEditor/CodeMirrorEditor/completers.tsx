@@ -406,19 +406,28 @@ export function useKeywordsCompletion({ engine }: LocalsCompletionOptions) {
         return null;
       }
 
-      const word = context.matchBefore(/\w+/);
+      const word = context.matchBefore(/\$?\w+/);
       if (!word) {
         return null;
       }
 
       const suffix = matchAfter(context, /\w+/);
 
+      const options = completions.filter(option => {
+        if (keywords.caseSensitive) {
+          return option.label.startsWith(word.text);
+        }
+        return option.label.toLowerCase().startsWith(word.text.toLowerCase());
+      });
+
+      if (options.length <= 0) {
+        return null;
+      }
+
       return {
         from: word.from,
         to: suffix?.to,
-        options: completions.filter(option =>
-          option.label.toLowerCase().startsWith(word.text.toLowerCase()),
-        ),
+        options,
       };
     };
   }, [engine]);
