@@ -245,6 +245,9 @@ type Dialect = {
   spec: {
     keywords?: string;
   };
+  dialect?: {
+    words?: Record<string, any>;
+  };
 };
 
 type Source = {
