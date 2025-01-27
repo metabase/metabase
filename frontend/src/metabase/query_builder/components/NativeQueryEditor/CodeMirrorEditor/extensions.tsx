@@ -1,6 +1,4 @@
 import {
-  type CompletionContext,
-  type CompletionResult,
   type CompletionSource,
   acceptCompletion,
   autocompletion,
@@ -43,7 +41,6 @@ import {
 } from "./completers";
 import {
   referencedQuestionIds as getReferencedQuestionIds,
-  matchTagAtCursor,
   source,
 } from "./util";
 
@@ -250,46 +247,13 @@ function language({ engine, completers = [] }: LanguageOptions) {
     return [];
   }
 
-  // Wraps the language completer so that it does not trigger when we're
-  // inside a variable or tag
-  async function completeFromLanguage(
-    context: CompletionContext,
-  ): Promise<CompletionResult | null> {
-    const facets = context.state.facet(language.language.data.reader);
-    const complete: CompletionSource | undefined = facets.find(
-      facet => facet.autocomplete,
-    )?.autocomplete;
-
-    const tag = matchTagAtCursor(context.state, {
-      allowOpenEnded: true,
-      position: context.pos,
-    });
-
-    if (tag) {
-      return null;
-    }
-
-    const result = await complete?.(context);
-    if (!result) {
-      return null;
-    }
-
-    return {
-      ...result,
-      options: result.options.map(option => ({
-        ...option,
-        detail: option.detail ?? "keyword",
-      })),
-    };
-  }
-
   return [
     language,
     autocompletion({
       closeOnBlur: false,
       activateOnTyping: true,
       activateOnTypingDelay: 200,
-      override: [completeFromLanguage, ...completers],
+      override: completers,
     }),
   ];
 }

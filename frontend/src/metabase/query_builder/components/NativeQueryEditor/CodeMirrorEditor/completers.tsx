@@ -1,7 +1,4 @@
-import {
-  type CompletionContext,
-  completeFromList,
-} from "@codemirror/autocomplete";
+import type { CompletionContext } from "@codemirror/autocomplete";
 import { useCallback, useMemo } from "react";
 import slugg from "slugg";
 import { t } from "ttag";
@@ -406,6 +403,30 @@ export function useKeywordsCompletion({ engine }: LocalsCompletionOptions) {
       return () => null;
     }
 
-    return completeFromList(completions);
+    return function (context: CompletionContext) {
+      const tag = matchTagAtCursor(context.state, {
+        allowOpenEnded: true,
+        position: context.pos,
+      });
+
+      if (tag) {
+        return null;
+      }
+
+      const word = context.matchBefore(/\w+/);
+      if (!word) {
+        return null;
+      }
+
+      const suffix = matchAfter(context, /\w+/);
+
+      return {
+        from: word.from,
+        to: suffix?.to,
+        options: completions.filter(option =>
+          option.label.toLowerCase().startsWith(word.text.toLowerCase()),
+        ),
+      };
+    };
   }, [engine]);
 }
