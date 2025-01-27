@@ -24,5 +24,5 @@
              (premium-features/has-feature? :etl-connections)
              ;; Need to know the store-api-url to make requests to HM
              (some? (setting/get-value-of-type :string :store-api-url))
-             ;; Need [[api-key]] to makerequests to HM
+             ;; Need [[api-key]] to make requests to HM
              (some? (api-key)))))

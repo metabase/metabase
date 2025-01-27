@@ -95,9 +95,7 @@
   [{:keys [type] :as _conn}] (= "gdrive" type))
 
 (mu/defn- get-gdrive-conns :- [:sequential ::gdrive-conn]
-  "Get the harbormaster gdrive type connection. This is used to verify the status of the folder sync.
-
-  We should expect 0 or 1 gdrive accounts at this time."
+  "Get the harbormaster gdrive type connection."
   []
   (let [[status {:keys [body]
                  :as _response}] (hm.client/make-request (->config) :get "/api/v2/mb/connections")]
@@ -108,12 +106,12 @@
                                   (m/update-existing :last-sync-started-at u.date/parse)
                                   (m/update-existing :created-at u.date/parse)
                                   (m/update-existing :updated-at u.date/parse))))
-               ;; the first one is the most recent
+               ;; newest first:
                (sort-by :created-at #(t/after? (t/instant %1) (t/instant %2))))
       [])))
 
 (mu/defn- get-gdrive-conn :- [:maybe ::gdrive-conn]
-  "Get the harbormaster gdrive type connection. This is used to verify the status of the folder sync."
+  "Get the most recent harbormaster gdrive type connection. This is used to verify the status of the folder sync."
   []
   (first (get-gdrive-conns)))
 
@@ -124,7 +122,7 @@
 
 (mu/defn- delete-conn :- [:tuple [:enum :ok :error] :map]
   "Delete (presumably a gdrive) connection on HM."
-  [conn-id :- :int]
+  [conn-id]
   (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" conn-id)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -159,21 +157,19 @@
        ;; We finished a sync of the dwh from metabase After the HM conn was synced:
        (t/after? (t/instant last-dwh-sync) (t/instant last-gdrive-conn-sync))))
 
+(defn- get-last-dwh-sync-time []
+  (t2/select-one-fn :ended_at :model/TaskHistory
+                    :db_id (t2/select-one-fn :id [:model/Database :id] :is_attached_dwh true)
+                    :task "sync"
+                    :status :success
+                    {:order-by [[:ended_at :desc]]}))
+
 (defn- handle-get-folder [attached-dwh]
   (if-let [{:keys [status]
             last-gdrive-conn-sync :last-sync-at
             :as gdrive-conn} (get-gdrive-conn)]
-    (let [last-dwh-sync (t2/select-one-fn :ended_at :model/TaskHistory
-                                          :db_id (:id (t2/select-one :model/Database :is_attached_dwh true))
-                                          :task "sync"
-                                          :status :success
-                                          {:order-by [[:ended_at :desc]]})]
+    (let [last-dwh-sync (get-last-dwh-sync-time)]
       (-> (cond
-            (= "error" status)
-            (do
-              (gsheets! not-connected)
-              (throw (ex-info "Problem syncing google drive folder." {})))
-
             (sync-complete? {:status status
                              :last-dwh-sync last-dwh-sync
                              :last-gdrive-conn-sync last-gdrive-conn-sync})
@@ -181,9 +177,16 @@
               (gsheets! <>)
               (snowplow/track-event! ::snowplow/simple_event
                                      {:event "sheets_connected" :event_detail "success"}))
+
+            (= "error" status)
+            (do
+              (gsheets! not-connected)
+              (throw (ex-info "Problem syncing google drive folder." {})))
+
             :else
             (gsheets))
           (assoc :db_id (:id attached-dwh)
+                 ;; TEMP (gsheets)
                  :hm/conn gdrive-conn
                  :mb/sync-info {:status status
                                 :last-dwh-sync last-dwh-sync
@@ -217,22 +220,22 @@
   (api/check-superuser)
   (let [conn-ids (map :id (get-gdrive-conns))]
     (if (seq conn-ids)
-      (let [status+conn-id+resps (for [conn-id conn-ids]
+      (let [conn-id+status+resps (for [conn-id conn-ids]
                                    (let [[status resp] (delete-conn conn-id)]
                                      [conn-id status resp]))]
-        (if (every? #{:ok} (map second status+conn-id+resps))
+        (if (every? #{:ok} (map second conn-id+status+resps))
           (u/prog1 not-connected
             (gsheets! <>)
             (snowplow/track-event! ::snowplow/simple_event {:event "sheets_disconnected"}))
           (throw (ex-info "Unable to disconnect google service account" {:status-code 503
-                                                                         :status-info status+conn-id+resps}))))
+                                                                         :status-info conn-id+status+resps}))))
       (u/prog1 not-connected
         (gsheets! <>)
         (throw (ex-info "Unable to find google drive connection." {}))))))
 
 (api/define-routes)
 
-(comment
+(comment ;; TEMP (gsheets)
 
   ;; trigger gdrive scan resync on HM
   (hm.client/make-request (->config) :put (format "/api/v2/mb/connections/%s/sync" (:id (get-gdrive-conn))))
@@ -250,21 +253,21 @@
    (t2/select-one :model/Database :is_attached_dwh true))
 
 
+  (t2/update! :model/Database 1 {:is_attached_dwh true})
+
   ;; testing auto-cruft:
   (do
-    (t2/update! :model/Database 1 {:settings {:auto-cruft-tables []}})
-    (sync-metadata/sync-db-metadata!
-     (t2/select-one :model/Database :id 1))
+    (t2/update! :model/Database 1 {:settings {:auto-cruft-tables ["X"]}})
+    (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :id 1))
+
+    (t2/select-fn-vec :visibility_type :model/Table :db_id 1)
+
+
+
     )
 
   (defn reset-all! []
     (let [statuses (for [{:keys [id]} (get-gdrive-conns)]
                      ;; (println "deleting" id)
                      (first (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" id))))]
-      statuses)
-
-    (gsheets! not-connected)
-
-    ;; verify reset:
-    [(:body (second (hm.client/make-request (->config) :get "/api/v2/mb/connections")))
-     (gsheets)]))
+      [statuses (gsheets! not-connected)])))
