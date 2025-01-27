@@ -187,6 +187,7 @@
             (gsheets))
           (assoc :db_id (:id attached-dwh)
                  ;; TEMP (gsheets)
+                 ;; here is some debugging info to make sure we have it straight:
                  :hm/conn gdrive-conn
                  :mb/sync-info {:status status
                                 :last-dwh-sync last-dwh-sync
