@@ -99,7 +99,7 @@ function newNativeCardHash(
  * @param {object} [config]
  * @param {number} [config.database]
  * @param {string} config.query
- * @param {number} config.collection_id
+ * @param {number} [config.collection_id]
  * @param {string} [config.display]
  */
 export function startNewNativeQuestion(config) {
