@@ -1,0 +1,7 @@
+.PrimaryToolbarButton {
+  background-color: var(--mb-color-background);
+
+  &:hover {
+    background-color: var(--mb-color-sdk-toolbar-button-bg-hover) !important;
+  }
+}

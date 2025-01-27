@@ -9,19 +9,26 @@ import type { SemanticColorKey } from "./embedding-color-palette";
 type SourceColorKey = ColorName | SemanticColorKey;
 
 type DynamicCssVarColorDefinition = {
-  source: SourceColorKey;
+  /**
+   * The color to use as a source for generating the CSS variable.
+   * If the value is an object, it will use the light color for light themes and the dark color for dark themes.
+   **/
+  source: SourceColorKey | { light: SourceColorKey; dark: SourceColorKey };
 
-  /** Darkens the color in light mode */
-  darkenBy: number;
+  /** For light themes, darken the color by this percentage */
+  darkenBy?: number;
 
-  /** Lightens the color in dark mode */
-  lightenBy: number;
+  /** For dark themes, lighten the color by this percentage */
+  lightenBy?: number;
 };
 
 /**
  * These CSS variables are dynamically generated based on the theme.
  */
-export const THEME_DEPENDENT_CSS_VARS = {
+export const THEME_DEPENDENT_CSS_VARS: Record<
+  string,
+  DynamicCssVarColorDefinition
+> = {
   "--mb-color-notebook-step-bg": {
     source: "bg-white",
     darkenBy: 0.02,
@@ -32,7 +39,11 @@ export const THEME_DEPENDENT_CSS_VARS = {
     darkenBy: 0.06,
     lightenBy: 0.4,
   },
-} satisfies Record<string, DynamicCssVarColorDefinition>;
+  "--mb-color-sdk-toolbar-button-bg-hover": {
+    source: { light: "brand", dark: "bg-white" },
+    lightenBy: 0.4,
+  },
+};
 
 const isColorDefined = (color: string) =>
   color && color !== "transparent" && color !== "unset";
@@ -65,14 +76,28 @@ export function getDynamicCssVariables(theme: MantineTheme) {
   const isDarkTheme = getIsDarkThemeFromPalette(theme);
 
   const mappings = Object.entries(THEME_DEPENDENT_CSS_VARS)
-    .map(([cssVar, { source: sourceColorKey, lightenBy, darkenBy }]) => {
-      const sourceColor = theme.fn.themeColor(sourceColorKey);
+    .map(([cssVar, { source, lightenBy, darkenBy }]) => {
+      let sourceColor = "";
 
-      const finalColor = isDarkTheme
-        ? lighten(sourceColor, lightenBy)
-        : darken(sourceColor, darkenBy);
+      if (typeof source === "string") {
+        // use same source for light and dark themes
+        sourceColor = theme.fn.themeColor(source);
+      } else {
+        // use different source colors for light and dark themes
+        sourceColor = isDarkTheme
+          ? theme.fn.themeColor(source.dark)
+          : theme.fn.themeColor(source.light);
+      }
 
-      return [cssVar, finalColor];
+      let mappedColor = sourceColor;
+
+      if (isDarkTheme && lightenBy) {
+        mappedColor = lighten(sourceColor, lightenBy);
+      } else if (!isDarkTheme && darkenBy) {
+        mappedColor = darken(sourceColor, darkenBy);
+      }
+
+      return [cssVar, mappedColor];
     })
     .map(([cssVar, value]) => (value ? `${cssVar}: ${value};` : ""));
 
