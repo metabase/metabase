@@ -4104,3 +4104,126 @@ describe("issue 52484", () => {
     });
   });
 });
+
+describe("issue 40396", { tags: "@external " }, () => {
+  const tableName = "many_data_types";
+
+  beforeEach(() => {
+    H.resetTestTable({ type: "postgres", table: tableName });
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+  });
+
+  it("should be possible to use dashboard filters with native enum fields (metabase#40396)", () => {
+    cy.log("create a dashboard with a question with a type/Enum field");
+    cy.request("GET", "/api/table").then(({ body: tables }) => {
+      const table = tables.find(table => table.name === tableName);
+      cy.request("GET", `/api/table/${table.id}/query_metadata`).then(
+        ({ body: metadata }) => {
+          const field = metadata.fields.find(field => field.name === "enum");
+          cy.request("PUT", `/api/field/${field.id}`, {
+            semantic_type: "type/Enum",
+          });
+
+          H.createQuestionAndDashboard({
+            questionDetails: {
+              database: table.db_id,
+              query: { "source-table": table.id },
+            },
+          }).then(({ body: { dashboard_id } }) => {
+            H.visitDashboard(dashboard_id);
+            cy.wait("@dashcardQuery");
+          });
+        },
+      );
+    });
+
+    cy.log("verify that a enum field can be mapped to a parameter");
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Enum");
+    H.saveDashboard();
+
+    cy.log("verify that filtering on a enum field works");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("beta").click();
+      cy.button("Add filter").click();
+    });
+    cy.wait("@dashcardQuery");
+    H.getDashboardCard().findAllByText("beta").should("have.length.gte", 1);
+  });
+});
+
+describe("issue 52627", () => {
+  const questionDetails = {
+    display: "bar",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["avg", ["field", ORDERS.TOTAL, null]],
+        ["avg", ["field", ORDERS.DISCOUNT, null]],
+      ],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+  };
+
+  const parameterDetails = {
+    name: "Category",
+    slug: "category",
+    id: "b6ed2d71",
+    type: "string/=",
+    sectionId: "string",
+    default: ["Gadget"],
+  };
+
+  const parameterTarget = [
+    "dimension",
+    ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+    { "stage-number": 0 },
+  ];
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should remove an empty query stage after a dashboard drill-thru (metabase#52627)", () => {
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        H.addOrUpdateDashboardCard({
+          dashboard_id,
+          card_id,
+          card: {
+            id,
+            parameter_mappings: [
+              {
+                card_id: card_id,
+                parameter_id: parameterDetails.id,
+                target: parameterTarget,
+              },
+            ],
+          },
+        });
+        H.visitDashboard(dashboard_id);
+      },
+    );
+    H.chartPathWithFillColor("#A989C5").first().click();
+    H.popover().findByText("See this month by week").click();
+    cy.wait("@dataset");
+    cy.findByTestId("qb-filters-panel").findByText(
+      "Product → Category is Gadget",
+    );
+    H.summarize();
+    H.rightSidebar().findByText("Average of Total").should("be.visible");
+  });
+});
