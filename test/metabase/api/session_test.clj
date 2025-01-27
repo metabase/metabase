@@ -67,15 +67,22 @@
         (is (get-in response [:cookies session-cookie :expires])))
       (let [body (assoc (mt/user->credentials :rasta) :remember false)
             response (mt/client-real-response :post 200 "session" body)]
-        (is (nil? (get-in response [:cookies session-cookie :expires]))))))
-  (testing "failure should log an error(#14317)"
+        (is (nil? (get-in response [:cookies session-cookie :expires])))))))
+
+(deftest login-failure-logging-test
+  (reset-throttlers!)
+  (testing "POST /api/session failure should log an error (#14317)"
     (mt/with-temp [:model/User user]
       (mt/with-log-messages-for-level [messages :error]
-        (mt/client :post 400 "session" {:email (:email user), :password "wooo"})
+        (is (=? {:specific-errors {:username ["missing required key, received: nil"]}}
+                (mt/client :post 400 "session" {:email (:email user), :password "wooo"})))
         (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
-                (->> (messages)
-                     ;; geojson can throw errors and we want the authentication error
-                     (m/find-first #(= (:message %) "Authentication endpoint error")))))))))
+                (or (->> (messages)
+                         ;; geojson can throw errors and we want the authentication error
+                         ;;
+                         ;; TODO -- huh? geojson???? -- Cam
+                         (m/find-first #(= (:message %) "Authentication endpoint error")))
+                    ["no matching message:" (messages)])))))))
 
 (deftest login-validation-test
   (reset-throttlers!)

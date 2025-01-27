@@ -49,6 +49,7 @@ export const BugReportModal = ({
       <FormProvider
         initialValues={{
           ...hiddenValues,
+          reporter: true,
           queryResults: false,
           entityInfo: true,
           frontendErrors: true,
@@ -61,10 +62,12 @@ export const BugReportModal = ({
       >
         {formik => (
           <Form>
-            <Text py="md">
-              {t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
-            </Text>
-            <FormTextArea name="description" autoFocus />
+            <Text py="md">{t`Could you provide us with a little context?`}</Text>
+            <FormTextArea
+              name="description"
+              autoFocus
+              placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
+            />
             <Box
               bg={color("accent-gray-light")}
               p="lg"
