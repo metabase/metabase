@@ -74,7 +74,7 @@
 (defmulti create-session!
   "Generate a new Session for a User. `session-type` is currently either `:password` (for email + password login) or
   `:sso` (for other login types). Returns the newly generated Session."
-  [session-type user device-info]
+  {:arglists '([session-type user device-info])}
   (fn [session-type & _]
     session-type))
 
