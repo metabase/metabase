@@ -72,9 +72,6 @@
 
 (defn- add-breakout
   [query {:keys [column field_granularity]}]
-  (when (and field_granularity
-             (not (lib.types.isa/temporal? column)))
-    (throw (ex-info "field_granularity can only be specified for date fields" {:agent-error? true})))
   (let [expr (cond-> column
                (and field_granularity
                     (lib.types.isa/temporal? column))
