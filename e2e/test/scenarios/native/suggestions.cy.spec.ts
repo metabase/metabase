@@ -66,3 +66,43 @@ describe("scenarios > question > native > suggestions", () => {
     });
   });
 });
+
+describe(
+  "scenarios > question > native > suggestions",
+  { tags: "@mongo" },
+  () => {
+    beforeEach(() => {
+      H.restore("mongo-5");
+      cy.signInAsAdmin();
+    });
+
+    it("should suggest keywords", () => {
+      H.startNewNativeQuestion({ database: 2, query: "" });
+
+      H.NativeEditor.type('[{ "$grou');
+      H.NativeEditor.completions().within(() => {
+        H.NativeEditor.completion("$group")
+          .should("be.visible")
+          .should("have.length", 1)
+          .should("contain.text", "keyword");
+      });
+    });
+
+    it("should suggest tables and fields from the schema", () => {
+      H.startNewNativeQuestion({ database: 2, query: "" });
+
+      H.NativeEditor.type('[{ "$group": { "pr');
+      H.NativeEditor.completions().within(() => {
+        H.NativeEditor.completion("price")
+          .should("be.visible")
+          .should("contain.text", "products :type/Float");
+        H.NativeEditor.completion("product_id")
+          .should("be.visible")
+          .should("contain.text", "orders :type/Integer");
+        H.NativeEditor.completion("products")
+          .should("be.visible")
+          .should("contain.text", "Table");
+      });
+    });
+  },
+);
