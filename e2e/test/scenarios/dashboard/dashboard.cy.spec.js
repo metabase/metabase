@@ -1613,8 +1613,8 @@ describe("scenarios > dashboard > entity id support", () => {
     cy.signInAsAdmin();
   });
 
-  it("when loading `/dashboard/by-entity-id/${entity_id}`, it should redirect to `/dashboard/${id}` and display the dashboard correctly", () => {
-    cy.visit(`/dashboard/by-entity-id/${ORDERS_DASHBOARD_ENTITY_ID}`);
+  it("when loading `/dashboard/entity/${entity_id}`, it should redirect to `/dashboard/${id}` and display the dashboard correctly", () => {
+    cy.visit(`/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}`);
 
     cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}`);
 
@@ -1622,7 +1622,7 @@ describe("scenarios > dashboard > entity id support", () => {
     H.main().findByText("Orders in a dashboard").should("be.visible");
   });
 
-  it("when loading `/dashboard/by-entity-id/${entity_id}?tab=${tab_entity_id}`, it should redirect to `/dashboard/${id}?tab=${tab_id}` and select the correct tab", () => {
+  it("when loading `/dashboard/entity/${entity_id}?tab=${tab_entity_id}`, it should redirect to `/dashboard/${id}?tab=${tab_id}` and select the correct tab", () => {
     H.createDashboardWithTabs({
       tabs: [
         { name: "Tab 1", id: -1 },
@@ -1631,7 +1631,7 @@ describe("scenarios > dashboard > entity id support", () => {
       dashcards: [],
     }).then(dashboard => {
       cy.visit(
-        `/dashboard/by-entity-id/${dashboard.entity_id}?tab=${dashboard.tabs[1].entity_id}`,
+        `/dashboard/entity/${dashboard.entity_id}?tab=${dashboard.tabs[1].entity_id}`,
       );
 
       cy.url().should(
@@ -1681,7 +1681,7 @@ describe("scenarios > dashboard > entity id support", () => {
     });
 
     // Visit the dashboard via the entity id path and verify that the filter is preserved
-    cy.visit(`/dashboard/by-entity-id/${ORDERS_DASHBOARD_ENTITY_ID}?text=123`);
+    cy.visit(`/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}?text=123`);
 
     cy.url()
       .should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}`)
@@ -1690,22 +1690,22 @@ describe("scenarios > dashboard > entity id support", () => {
     H.filterWidget().should("contain", "Text").and("contain", "123");
   });
 
-  it("when loading `/dashboard/by-entity-id/${entity_id}/move`, it should redirect to `/dashboard/${id}/move` and show the move modal", () => {
-    cy.visit(`/dashboard/by-entity-id/${ORDERS_DASHBOARD_ENTITY_ID}/move`);
+  it("when loading `/dashboard/entity/${entity_id}/move`, it should redirect to `/dashboard/${id}/move` and show the move modal", () => {
+    cy.visit(`/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}/move`);
     cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}/move`);
 
     H.main().findByText("Orders in a dashboard").should("be.visible");
     H.modal().findByText("Move dashboard to…").should("be.visible");
   });
 
-  it("when loading `/dashboard/by-entity-id/${non existing entity id}`, it should show a 404 page", () => {
+  it("when loading `/dashboard/entity/${non existing entity id}`, it should show a 404 page", () => {
     const invalidSlug = "x".repeat(21);
-    cy.visit(`/dashboard/by-entity-id/${invalidSlug}`);
+    cy.visit(`/dashboard/entity/${invalidSlug}`);
 
     H.main().findByText("We're a little lost...").should("be.visible");
   });
 
-  it("when loading `/dashboard/by-entity-id/${entity-id}?tab=${non-existing-tab-entity-id}`, it should still load the dashboard correctly", () => {
+  it("when loading `/dashboard/entity/${entity-id}?tab=${non-existing-tab-entity-id}`, it should still load the dashboard correctly", () => {
     const nonExistingTabEntityId = "x".repeat(21);
     H.createDashboardWithTabs({
       name: "Dashboard with 2 tabs",
@@ -1716,7 +1716,7 @@ describe("scenarios > dashboard > entity id support", () => {
       dashcards: [],
     }).then(dashboard => {
       cy.visit(
-        `/dashboard/by-entity-id/${dashboard.entity_id}?tab=${nonExistingTabEntityId}`,
+        `/dashboard/entity/${dashboard.entity_id}?tab=${nonExistingTabEntityId}`,
       );
       cy.url().should("contain", `/dashboard/${dashboard.id}`);
       H.main().findByText("Dashboard with 2 tabs").should("be.visible");
@@ -1724,7 +1724,7 @@ describe("scenarios > dashboard > entity id support", () => {
     });
   });
 
-  it("when loading `/dashboard/by-entity-id/${entity-id}?tab=${tab-slug of 21 chars}`, it should still load the dashboard correctly", () => {
+  it("when loading `/dashboard/entity/${entity-id}?tab=${tab-slug of 21 chars}`, it should still load the dashboard correctly", () => {
     H.createDashboardWithTabs({
       name: "Dashboard with 2 tabs",
       tabs: [
@@ -1735,7 +1735,7 @@ describe("scenarios > dashboard > entity id support", () => {
     }).then(dashboard => {
       const tabId = dashboard.tabs[1].id;
       const tabSlug = `${tabId}`.padEnd(21, "x");
-      cy.visit(`/dashboard/by-entity-id/${dashboard.entity_id}?tab=${tabSlug}`);
+      cy.visit(`/dashboard/entity/${dashboard.entity_id}?tab=${tabSlug}`);
       cy.url().should("contain", `/dashboard/${dashboard.id}`);
       H.main().findByText("Dashboard with 2 tabs").should("be.visible");
       cy.url().should("contain", `tab=${tabId}`);

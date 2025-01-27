@@ -10,8 +10,8 @@ describe("scenarios > questions > entity id support", () => {
     cy.signInAsAdmin();
   });
 
-  it("/question/by-entity-id/${entity_id} should redirect to /question/${id}", () => {
-    cy.visit(`/question/by-entity-id/${ORDERS_QUESTION_ENTITY_ID}`);
+  it("/question/entity/${entity_id} should redirect to /question/${id}", () => {
+    cy.visit(`/question/entity/${ORDERS_QUESTION_ENTITY_ID}`);
     cy.url().should("contain", `/question/${ORDERS_QUESTION_ID}`);
 
     // Making sure the question loads
@@ -20,8 +20,8 @@ describe("scenarios > questions > entity id support", () => {
       .should("have.text", "Orders");
   });
 
-  it("/question/by-entity-id/${entity_id}/notebook should redirect to /question/${id}/notebook", () => {
-    cy.visit(`/question/by-entity-id/${ORDERS_QUESTION_ENTITY_ID}/notebook`);
+  it("/question/entity/${entity_id}/notebook should redirect to /question/${id}/notebook", () => {
+    cy.visit(`/question/entity/${ORDERS_QUESTION_ENTITY_ID}/notebook`);
     cy.url().should("contain", `/question/${ORDERS_QUESTION_ID}/notebook`);
 
     H.queryBuilderHeader().should("contain", "Orders");

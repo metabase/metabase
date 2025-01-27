@@ -101,7 +101,7 @@ export const EntityIdRedirect = ({
       }
 
       if (shouldRedirect) {
-        router.push(url.replace("by-entity-id/", ""));
+        router.push(url.replace("/entity/", "/"));
       }
     }
 

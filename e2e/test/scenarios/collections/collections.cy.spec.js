@@ -1169,16 +1169,16 @@ describe("scenarios > collections > entity id support", () => {
     cy.signInAsAdmin();
   });
 
-  it("/collection/by-entity-id/${entity_id} should redirect to /collection/${id}", () => {
-    cy.visit(`/collection/by-entity-id/${FIRST_COLLECTION_ENTITY_ID}`);
+  it("/collection/entity/${entity_id} should redirect to /collection/${id}", () => {
+    cy.visit(`/collection/entity/${FIRST_COLLECTION_ENTITY_ID}`);
     cy.url().should("contain", `/collection/${FIRST_COLLECTION_ID}`);
 
     // Making sure the collection loads
     H.main().findByText("First collection").should("be.visible");
   });
 
-  it("/collection/by-entity-id/${entity_id}/move should redirect to /collection/${id}/move", () => {
-    cy.visit(`/collection/by-entity-id/${FIRST_COLLECTION_ENTITY_ID}/move`);
+  it("/collection/entity/${entity_id}/move should redirect to /collection/${id}/move", () => {
+    cy.visit(`/collection/entity/${FIRST_COLLECTION_ENTITY_ID}/move`);
     cy.url().should("contain", `/collection/${FIRST_COLLECTION_ID}/move`);
 
     H.main().findByText("First collection").should("be.visible");
