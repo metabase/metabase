@@ -90,7 +90,13 @@ class DebouncedFrame extends Component {
     return (
       <div
         ref={r => {
-          this.props.forwardedRef?.(r);
+          if (this.props.forwardedRef) {
+            if (typeof this.props.forwardedRef === "function") {
+              this.props.forwardedRef(r);
+            } else {
+              this.props.forwardedRef = r;
+            }
+          }
           return (this._container = r);
         }}
         className={cx(className, CS.relative)}
