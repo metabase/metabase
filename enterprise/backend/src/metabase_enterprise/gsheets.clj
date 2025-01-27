@@ -19,6 +19,61 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;; # Google Sheets Integration
+;;
+;; ## Overview
+;; Google Sheets Integration allows users to connect their Google Drive folders to Metabase. We sync any Google Sheets
+;; inside of those folders, and make them avaliable to the user in their attached data warehouse. This integration is
+;; implemented using Harbormaster, which is a service that manages instances of Metabase and also gives us a connection
+;; to Google Sheets data. When a user connects a Google Drive folder to Metabase, Harbormaster creates a connection to
+;; the folder and starts syncing the data to Metabase. This data is then available to the user in Metabase as tables.
+;;
+;; ## Steps to connect a new google drive folde
+;;
+;; - An admin clicks Add Data > Connect Google Sheets
+;; - FE sends :get "api/ee/gsheets/service-account" to get service-account email
+;; - FE shows instructions for how to connect a folder:
+;;   - user shares their Google Drive folder w/ service-account email
+;;   - user copies their Google Drive share link into MB and hits submit
+;; - FE sends :post "api/ee/gsheets/folder" w/ folder url string as `request.body.url`
+;;   - BE forwards request to :post "/api/v2/mb/connections" w/ body: `{:type "gdrive" :secret {:resources
+;;   - ["the-url"]}}`
+;;     - on unexceptional status:
+;;       - BE sets `gsheets.status` to `"syncing"`
+;;       - BE returns the gsheets shape: `{:status "syncing" :folder_url "the-url"}`
+;;     - on exceptional status, BE returns a message like: "Unable to setup drive folder sync. Please check that the
+;;       folder is shared with the proper service account email and sharing permissions."
+;; - FE polls :get "api/ee/gsheets/folder" until `body.status` == `complete`
+;;   - BE forwards requests to :get "/api/v2/mb/connections", filtering for the google drive connection
+;;     - If the connection doesn't exist: `{:error "google drive connection not found."}`
+;;     - If the connection exists and is NOT active, return loading state in the response
+;;     - If the connection exists and is active AND the latest sync of the attached datawarehouse is AFTER the sync time
+;;           on Harbormaster's gdrive connection, return `body.status` == "complete".
+;;   - FE sees status == "complete"
+;;
+;; ## Steps to disconnect a google drive folder
+;; - FE sends request to :delete "/folder"
+;;   - MB checks that there _is_ one or more gdrive connections
+;;     - gdrive conn not found: `"Unable to find google drive connection."`, + resets gsheets
+;;     - gdrive conn exists: MB sends HM `:delete "/api/v2/mb/connections/<conn-id>"`
+;;       - on exceptional status: returns error w/ message: `"Unable to disconnect google service account"`
+;;         - FE shows error for delete action
+;;       - on OK: MB resets gsheets to `{:status "not-connected"}` (and the user can reconnect one from `Step 2.`)
+;;         - FE shows a confirmation for the delete + resets gsheets
+;;
+;; ## Why do we need to sync the attached datawarehouse before considering it ready?
+;; - We need to sync the attached datawarehouse to make sure that the data from the Google Drive folder is available to
+;;   the user in Metabase. Once the gdrive connection's status is set to 'active' by HM, they will call MB's
+;;   `api/notify/db/attached_datawarehouse` endpoint to trigger a sync. The data from the Google Drive folder is already
+;;   availiable in the attached datawarehouse, and when MB finishes the sync (and puts an item into :model/TaskHistory
+;;   saying so), the user can start using their Google Sheets data in Metabase.
+;;
+;; ## Why do we check for multiple gdrive connections in the delete endpoint?
+;; - We check for multiple gdrive connections in the delete endpoint to make sure that we are deleting all gdrive
+;;   connections. As of Milestone 2 there are supposed to be only one gdrive connection, but we saw multiple being
+;;   created and want the delete endpoint to basically reset us to a blank slate. If there are multiple gdrive
+;;   connections, we will delete all of them.
+
 (def ^:private not-connected {:status "not-connected"})
 
 (defsetting gsheets
