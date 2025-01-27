@@ -114,10 +114,6 @@ const pugTheme: MetabaseTheme = {
       toolbar: {
         backgroundColor: "#D8D9EE",
       },
-
-      editorButton: {
-        iconColor: pugColors.secondary,
-      },
     },
   },
 };
@@ -230,9 +226,6 @@ const luminaraTheme: MetabaseTheme = {
       toolbar: {
         backgroundColor: "rgba(244, 243, 239, 1)",
       },
-      editorButton: {
-        iconColor: "rgb(104, 119, 107)",
-      },
     },
 
     number: {
@@ -316,9 +309,6 @@ const proficiencyTheme: MetabaseTheme = {
     question: {
       toolbar: {
         backgroundColor: "transparent",
-      },
-      editorButton: {
-        iconColor: "#2d2d30",
       },
     },
   },
