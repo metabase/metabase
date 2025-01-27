@@ -311,7 +311,7 @@
   [message {:keys [query viz-settings assertions endpoints user]}]
   (testing message
     (let [query-json        (json/encode query)
-          viz-settings-json (json/encode viz-settings)
+          viz-settings-json (some-> viz-settings json/encode)
           public-uuid       (str (random-uuid))
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
@@ -331,9 +331,9 @@
                   (let [results (mt/user-http-request user :post 200
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      :format_rows true
-                                                      :query query-json
-                                                      :visualization_settings viz-settings-json)]
+                                                      {:format_rows            true
+                                                       :query                  query-json
+                                                       :visualization_settings viz-settings-json})]
                     ((-> assertions export-format) results))
 
                   :card
@@ -351,7 +351,7 @@
                                                               (u/the-id card)
                                                               (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      :format_rows true)]
+                                                      {:format_rows true})]
                     ((-> assertions export-format) results))
 
                   ;; TODO -- what about the public dashcard endpoint???
@@ -388,7 +388,6 @@
                  :type     :query
                  :query    {:source-table (mt/id :venues)
                             :limit        2}}
-
     :assertions {:csv  (fn [results]
                          (is (string? results))
                           ;; CSVs round decimals to 2 digits without viz-settings
