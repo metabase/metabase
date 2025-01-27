@@ -57,7 +57,8 @@
   [pivot export-format results]
   (when (seq results)
     (case export-format
-      :csv  (csv/read-csv results)
+      :csv  (cond-> results
+              (not (map? results)) csv/read-csv)
       :xlsx (read-xlsx pivot results)
       :json (tabulate-maps results))))
 
@@ -75,16 +76,14 @@
   [card {:keys [export-format format-rows pivot]}]
   (->> (mt/user-http-request :crowberto :post 200
                              (format "dataset/%s" (name export-format))
-                             :visualization_settings (json/encode
-                                                      (:visualization_settings card))
-                             :query (json/encode
-                                     (assoc (:dataset_query card)
+                             {:visualization_settings (:visualization_settings card)
+                              :query (assoc (:dataset_query card)
                                             :was-pivot (boolean pivot)
                                             :info {:visualization-settings (:visualization_settings card)}
                                             :middleware
-                                            {:userland-query? true}))
-                             :format_rows   format-rows
-                             :pivot_results (boolean pivot))
+                                            {:userland-query? true})
+                              :format_rows   format-rows
+                              :pivot_results (boolean pivot)})
        (process-results pivot export-format)))
 
 (defn public-question-download
