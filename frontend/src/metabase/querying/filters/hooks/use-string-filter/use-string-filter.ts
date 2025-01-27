@@ -1,5 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
-import { useLatest } from "react-use";
+import { useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
@@ -35,36 +34,22 @@ export function useStringFilter({
     [query, stageIndex, column],
   );
 
-  const initialOperator = useMemo(() => {
-    return filterParts
+  const [operator, setOperator] = useState(() =>
+    filterParts
       ? filterParts.operator
-      : getDefaultOperator(query, column, availableOptions);
-  }, [filterParts, query, column, availableOptions]);
-
-  const [operator, setOperator] = useState(initialOperator);
-
-  const initialValues = useMemo(
-    () => getDefaultValues(operator, filterParts ? filterParts.values : []),
-    [operator, filterParts],
+      : getDefaultOperator(query, column, availableOptions),
   );
 
-  const [values, setValues] = useState(initialValues);
+  const [values, setValues] = useState(() =>
+    getDefaultValues(operator, filterParts ? filterParts.values : []),
+  );
 
-  const initialOptions = useMemo(() => {
-    return filterParts ? filterParts.options : { caseSensitive: false };
-  }, [filterParts]);
+  const [options, setOptions] = useState(
+    filterParts ? filterParts.options : { caseSensitive: false },
+  );
 
-  const [options, setOptions] = useState(initialOptions);
   const { type } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values, options);
-
-  const resetRef = useLatest(() => {
-    setValues(initialValues);
-    setOperator(initialOperator);
-    setOptions(initialOptions);
-  });
-
-  const reset = useCallback(() => resetRef.current(), [resetRef]);
 
   return {
     type,
@@ -79,7 +64,6 @@ export function useStringFilter({
       values: string[],
       options: Lib.StringFilterOptions,
     ) => getFilterClause(operator, column, values, options),
-    reset,
     setOperator,
     setValues,
     setOptions,

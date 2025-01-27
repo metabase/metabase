@@ -1,5 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
-import { useLatest } from "react-use";
+import { useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
@@ -35,28 +34,14 @@ export function useTimeFilter({
     [query, stageIndex, column],
   );
 
-  const initialOperator = useMemo(() => {
-    return filterParts
-      ? filterParts.operator
-      : getDefaultOperator(availableOptions);
-  }, [availableOptions, filterParts]);
-
-  const [operator, setOperator] = useState(initialOperator);
-
-  const initialValues = useMemo(() => {
-    return getDefaultValues(operator, filterParts ? filterParts.values : []);
-  }, [operator, filterParts]);
-
-  const [values, setValues] = useState(() => initialValues);
+  const [operator, setOperator] = useState(
+    filterParts ? filterParts.operator : getDefaultOperator(availableOptions),
+  );
+  const [values, setValues] = useState(() =>
+    getDefaultValues(operator, filterParts ? filterParts.values : []),
+  );
   const { valueCount } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values);
-
-  const resetRef = useLatest(() => {
-    setValues(initialValues);
-    setOperator(initialOperator);
-  });
-
-  const reset = useCallback(() => resetRef.current(), [resetRef]);
 
   return {
     operator,
@@ -67,7 +52,6 @@ export function useTimeFilter({
     getDefaultValues,
     getFilterClause: (operator: Lib.TimeFilterOperator, values: TimeValue[]) =>
       getFilterClause(operator, column, values),
-    reset,
     setOperator,
     setValues,
   };

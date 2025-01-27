@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -22,7 +22,7 @@ export function CoordinateFilterEditor({
   filter,
   onChange,
 }: FilterEditorProps) {
-  const { query, searchText, onInput } = useFilterModalContext();
+  const { query, onInput } = useFilterModalContext();
   const columnIcon = useMemo(() => getColumnIcon(column), [column]);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -35,7 +35,6 @@ export function CoordinateFilterEditor({
     hasMultipleValues,
     getDefaultValues,
     getFilterClause,
-    reset,
     setOperator,
     setValues,
   } = useCoordinateFilter({
@@ -44,10 +43,6 @@ export function CoordinateFilterEditor({
     column,
     filter,
   });
-
-  useEffect(() => {
-    reset();
-  }, [reset, searchText]);
 
   const handleOperatorChange = (newOperator: Lib.CoordinateFilterOperator) => {
     const newValues = getDefaultValues(newOperator, values);
