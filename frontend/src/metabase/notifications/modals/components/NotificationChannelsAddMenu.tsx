@@ -1,9 +1,12 @@
+// eslint-disable-next-line no-restricted-imports
+import type { MantineSize } from "@mantine/core";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import Link from "metabase/core/components/Link/Link";
+import CS from "metabase/css/core/index.css";
 import { getNotificationHandlersGroupedByTypes } from "metabase/lib/notifications";
-import { Button, Group, Icon, type IconName, Menu, Text } from "metabase/ui";
+import { Button, Menu, Text } from "metabase/ui";
 import type {
   ChannelApiResponse,
   NotificationChannel,
@@ -70,14 +73,7 @@ export const NotificationChannelsAddMenu = ({
   }
 
   if (isAdmin && !hasChannelsToAdd) {
-    return (
-      <Button
-        variant="subtle"
-        component={Link}
-        to="/admin/settings/notifications"
-        target="_blank"
-      >{t`Manage destination channels`}</Button>
-    );
+    return <ManageDestinationsButton />;
   }
 
   return (
@@ -92,19 +88,22 @@ export const NotificationChannelsAddMenu = ({
       <Menu.Dropdown>
         {channelsSpec.email?.configured && !emailHandler && (
           <Menu.Item onClick={() => onAddChannel({ type: "channel/email" })}>
-            <ChannelMenuItemContent name={t`Email`} icon="mail" />
+            <Text className={CS.textList}>{t`Email`}</Text>
           </Menu.Item>
         )}
 
         {channelsSpec.slack?.configured && !slackHandler && (
           <Menu.Item onClick={() => onAddChannel({ type: "channel/slack" })}>
-            <ChannelMenuItemContent name={t`Slack`} icon="int" />
+            <Text className={CS.textList}>{t`Slack`}</Text>
           </Menu.Item>
         )}
 
         {notAddedHookChannels.length > 0 && (
           <>
-            <Menu.Label mt="1rem">{t`Webhooks`}</Menu.Label>
+            <Menu.Label
+              mt={!hasAddedEmail || !hasAddedSlack ? "1rem" : undefined}
+              c="text-medium"
+            >{t`Webhooks`}</Menu.Label>
             {notAddedHookChannels.map(channel => (
               <Menu.Item
                 key={channel.id}
@@ -116,25 +115,35 @@ export const NotificationChannelsAddMenu = ({
                   })
                 }
               >
-                <ChannelMenuItemContent name={channel.name} icon="webhook" />
+                <Text className={CS.textList}>{channel.name}</Text>
               </Menu.Item>
             ))}
           </>
+        )}
+
+        {isAdmin && (
+          <Button
+            variant="subtle"
+            size="xs"
+            component={Link}
+            to="/admin/settings/notifications"
+            target="_blank"
+            pl="0.5rem"
+          >
+            <Text size="sm" c="inherit">{t`Manage destination channels`}</Text>
+          </Button>
         )}
       </Menu.Dropdown>
     </Menu>
   );
 };
 
-const ChannelMenuItemContent = ({
-  name,
-  icon,
-}: {
-  name: string;
-  icon: IconName;
-}) => (
-  <Group spacing="md" align="center">
-    <Icon name={icon} />
-    <Text>{name}</Text>
-  </Group>
+const ManageDestinationsButton = ({ size }: { size?: MantineSize }) => (
+  <Button
+    variant="subtle"
+    size={size}
+    component={Link}
+    to="/admin/settings/notifications"
+    target="_blank"
+  >{t`Manage destination channels`}</Button>
 );

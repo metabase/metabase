@@ -219,7 +219,6 @@ export function QueryModals({
     case MODAL_TYPES.CREATE_ALERT:
       return (
         <CreateOrEditQuestionAlertModal
-          opened
           onAlertCreated={onCloseModal}
           onClose={onCloseModal}
         />

@@ -81,6 +81,7 @@ describe("QuestionSharingMenu", () => {
     });
 
     describe("non-admins", () => {
+      // NOTE: canManageSubscriptions doesn't do anything here as it is always "true" for non-EE
       it("should show the 'Create an alert' menu item if no alerts exist", async () => {
         setupQuestionSharingMenu({
           isAdmin: false,

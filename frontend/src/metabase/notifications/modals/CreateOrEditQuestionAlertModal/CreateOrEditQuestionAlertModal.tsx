@@ -81,7 +81,6 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
 
 type CreateOrEditQuestionAlertModalProps = {
   onClose: () => void;
-  opened: boolean;
 } & (
   | {
       editingNotification?: undefined;
@@ -97,7 +96,6 @@ type CreateOrEditQuestionAlertModalProps = {
 
 export const CreateOrEditQuestionAlertModal = ({
   editingNotification,
-  opened,
   onAlertCreated,
   onAlertUpdated,
   onClose,
@@ -252,7 +250,7 @@ export const CreateOrEditQuestionAlertModal = ({
   return (
     <Modal.Root
       data-testid="alert-create"
-      opened={opened}
+      opened
       size={rem(680)}
       onClose={onClose}
     >

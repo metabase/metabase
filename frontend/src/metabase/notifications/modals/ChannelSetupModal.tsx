@@ -37,7 +37,11 @@ export const ChannelSetupModal = ({
   return (
     <Modal opened title={t`Alerts`} size="sm" onClose={onClose}>
       <Stack spacing="0.5rem">
-        <Text mb="1rem">{t`To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook first.`}</Text>
+        <Text mb="1rem">
+          {isAdmin
+            ? t`To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook.`
+            : t`To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook.`}
+        </Text>
 
         {isAdmin &&
           CHANNELS_CONFIG.map(({ title, icon, link }) => (
