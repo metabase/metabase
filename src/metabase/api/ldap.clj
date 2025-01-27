@@ -2,6 +2,7 @@
   "/api/ldap endpoints"
   (:require
    [clojure.set :as set]
+   [compojure.core :refer [PUT]]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.integrations.ldap :as ldap]
@@ -100,18 +101,14 @@
 
 (api.macros/defendpoint :put "/settings"
   "Update LDAP related settings. You must be a superuser to do this."
+  ;; TODO -- add `:ldap-port` and `:ldap-password` to the body schema and use Malli decoding for `:ldap-port`
   [_route-params
    _query-params
-   settings :- [:map
-                [:ldap-port    {:optional true} [:maybe
-                                                 ;; treat empty string as nil
-                                                 {:decode/api (fn [x]
-                                                                (when-not (= x "")
-                                                                  x))}
-                                                 pos-int?]]
-                [:ldap-enabled {:optional true} [:maybe :boolean]]]]
+   settings :- :map]
   (api/check-superuser)
   (let [ldap-settings (-> settings
+                          (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
+                                              (Long/parseLong ldap-port)))
                           (update :ldap-password update-password-if-needed)
                           (dissoc :ldap-enabled))
         ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
