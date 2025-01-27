@@ -38,7 +38,7 @@ export const NotificationChannelsPicker = ({
   onChange,
   getInvalidRecipientText,
 }: NotificationChannelsPickerProps) => {
-  const { data: notificationChannels = [] } = useListChannelsQuery();
+  const { data: httpChannelsConfig = [] } = useListChannelsQuery();
   const { data: users } = useListUserRecipientsQuery();
   const user = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
@@ -149,7 +149,7 @@ export const NotificationChannelsPicker = ({
           <ChannelSettingsBlock
             key={`webhook-${channel.channel_id}`}
             title={
-              notificationChannels.find(({ id }) => id === channel.channel_id)
+              httpChannelsConfig.find(({ id }) => id === channel.channel_id)
                 ?.name || t`Webhook`
             }
             iconName="webhook"
@@ -160,7 +160,7 @@ export const NotificationChannelsPicker = ({
       <NotificationChannelsAddMenu
         notificationHandlers={notificationHandlers}
         channelsSpec={channels}
-        notificationChannels={notificationChannels}
+        httpChannelsConfig={httpChannelsConfig}
         onAddChannel={addChannel}
         isAdmin={isAdmin}
       />

@@ -26,7 +26,7 @@ export type ChannelToAddOption =
 type NotificationChannelsAddMenuProps = {
   notificationHandlers: NotificationHandler[];
   channelsSpec: ChannelApiResponse["channels"];
-  notificationChannels: NotificationChannel[];
+  httpChannelsConfig: NotificationChannel[];
   isAdmin: boolean;
   onAddChannel: (channel: ChannelToAddOption) => void;
 };
@@ -34,7 +34,7 @@ type NotificationChannelsAddMenuProps = {
 export const NotificationChannelsAddMenu = ({
   notificationHandlers,
   channelsSpec,
-  notificationChannels,
+  httpChannelsConfig,
   isAdmin,
   onAddChannel,
 }: NotificationChannelsAddMenuProps) => {
@@ -54,12 +54,12 @@ export const NotificationChannelsAddMenu = ({
       {} as { [key: number]: true },
     );
 
-    return notificationChannels.filter(({ id }) => !addedHooksMap[id]);
+    return httpChannelsConfig.filter(({ id }) => !addedHooksMap[id]);
   }, [
     channelsSpec.http?.configured,
     hookHandlers,
     isAdmin,
-    notificationChannels,
+    httpChannelsConfig,
   ]);
 
   const hasAddedEmail = channelsSpec.email?.configured && !!emailHandler;

@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
@@ -34,6 +35,9 @@ export const AlertListModal = ({
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
   const isAdmin = user?.is_superuser;
 
+  const { data: users } = useListUserRecipientsQuery();
+  const { data: httpChannelsConfig } = useListChannelsQuery();
+
   if (!questionAlerts) {
     return null;
   }
@@ -59,11 +63,11 @@ export const AlertListModal = ({
     >
       <Modal.Overlay />
       <Modal.Content>
-        <Modal.Header p="2.5rem" pb="2rem">
+        <Modal.Header p="2rem" pb="2rem">
           <Modal.Title>{t`Edit alerts`}</Modal.Title>
           <Modal.CloseButton />
         </Modal.Header>
-        <Modal.Body p="2.5rem">
+        <Modal.Body p="2rem">
           <Stack spacing="1rem" mb="2rem">
             {sortedQuestionAlerts.map(alert => {
               const canEditAlert =
@@ -73,6 +77,8 @@ export const AlertListModal = ({
                 <AlertListItem
                   key={alert.id}
                   alert={alert}
+                  users={users?.data}
+                  httpChannelsConfig={httpChannelsConfig}
                   canEdit={canEditAlert}
                   onEdit={onEdit}
                   onDelete={onDelete}

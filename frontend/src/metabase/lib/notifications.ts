@@ -4,9 +4,10 @@ import _ from "underscore";
 import type { NotificationListItem } from "metabase/account/notifications/types";
 import { cronToScheduleSettings } from "metabase/admin/performance/utils";
 import { getEmailDomain, isEmail } from "metabase/lib/email";
-import { capitalize } from "metabase/lib/formatting/strings";
-import { formatChannelSchedule } from "metabase/lib/pulse";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
+import { formatTimeWithUnit } from "metabase/lib/formatting/time";
 import MetabaseSettings from "metabase/lib/settings";
+import { formatFrame } from "metabase/lib/time";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_TIMESERIES_GOAL,
@@ -26,6 +27,7 @@ import type {
   NotificationHandlerSlack,
   NotificationRecipient,
   NotificationRecipientRawValue,
+  ScheduleSettings,
   UpdateAlertNotificationRequest,
   User,
   VisualizationSettings,
@@ -229,12 +231,55 @@ export const formatNotificationSchedule = (
 ): string | null => {
   const schedule = cronToScheduleSettings(subscription.cron_schedule);
 
-  if (schedule) {
-    const scheduleMessage = formatChannelSchedule(schedule);
+  return (schedule && formatNotificationCheckSchedule(schedule)) || null;
+};
 
-    if (scheduleMessage) {
-      return capitalize(scheduleMessage);
+export const formatNotificationCheckSchedule = ({
+  schedule_type,
+  schedule_hour,
+  schedule_day,
+  schedule_frame,
+}: ScheduleSettings) => {
+  const options = MetabaseSettings.formattingOptions();
+
+  switch (schedule_type) {
+    case "hourly":
+      return t`Check hourly`;
+    case "daily": {
+      if (schedule_hour != null) {
+        const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
+        return t`Check daily at ${ampm}`;
+      }
+      break;
+    }
+    case "weekly": {
+      if (schedule_hour != null && schedule_day != null) {
+        const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
+        const day = formatDateTimeWithUnit(
+          schedule_day,
+          "day-of-week",
+          options,
+        );
+        return t`Check on ${day} at ${ampm}`;
+      }
+      break;
+    }
+    case "monthly": {
+      if (
+        schedule_hour != null &&
+        schedule_day != null &&
+        schedule_frame != null
+      ) {
+        const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
+        const day = formatDateTimeWithUnit(
+          schedule_day,
+          "day-of-week",
+          options,
+        );
+        const frame = formatFrame(schedule_frame);
+        return t`Check monthly on the ${frame} ${day} at ${ampm}`;
+      }
+      break;
     }
   }
-  return null;
 };

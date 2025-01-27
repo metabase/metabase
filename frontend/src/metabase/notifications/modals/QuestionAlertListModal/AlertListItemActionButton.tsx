@@ -18,7 +18,6 @@ export const AlertListItemActionButton = ({
       color="brand"
       aria-label={label}
       leftIcon={<Icon name={iconName} />}
-      mr="-0.6875rem"
       size="xs"
       variant="subtle"
       onClick={onClick}

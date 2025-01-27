@@ -1,16 +1,26 @@
 import cx from "classnames";
 import { type MouseEvent, useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
+import _ from "underscore";
 
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import {
   formatNotificationSchedule,
-  getNotificationEnabledChannelsMap,
+  getNotificationHandlersGroupedByTypes,
 } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
+import { isNotFalsy } from "metabase/lib/types";
 import { getUser } from "metabase/selectors/user";
-import { Box, Flex, Group, Icon, Text } from "metabase/ui";
-import type { Notification } from "metabase-types/api";
+import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
+import type {
+  Notification,
+  NotificationCardSendCondition,
+  NotificationChannel,
+  NotificationHandlerEmail,
+  NotificationHandlerHttp,
+  NotificationHandlerSlack,
+  User,
+} from "metabase-types/api";
 
 import S from "./AlertListItem.module.css";
 import { AlertListItemActionButton } from "./AlertListItemActionButton";
@@ -18,6 +28,8 @@ import { AlertListItemActionButton } from "./AlertListItemActionButton";
 type AlertListItemProps = {
   alert: Notification;
   canEdit: boolean;
+  users: User[] | undefined;
+  httpChannelsConfig: NotificationChannel[] | undefined;
   onEdit: (alert: Notification) => void;
   onUnsubscribe: (alert: Notification) => void;
   onDelete: (alert: Notification) => void;
@@ -26,6 +38,8 @@ type AlertListItemProps = {
 export const AlertListItem = ({
   alert,
   canEdit,
+  users,
+  httpChannelsConfig,
   onEdit,
   onUnsubscribe,
   onDelete,
@@ -34,7 +48,8 @@ export const AlertListItem = ({
 
   const [showHoverActions, setShowHoverActions] = useState(false);
 
-  const enabledChannelsMap = getNotificationEnabledChannelsMap(alert);
+  const { emailHandler, slackHandler, hookHandlers } =
+    getNotificationHandlersGroupedByTypes(alert.handlers);
   const subscription = alert.subscriptions[0];
 
   const handleEdit = () => {
@@ -64,61 +79,72 @@ export const AlertListItem = ({
   };
 
   return (
-    <Flex
+    <Box
       className={cx(
         S.notificationListItem,
         canEdit && S.notificationListItemEditable,
       )}
-      direction="row"
-      justify="space-between"
-      align="center"
-      w="100%"
-      py="0.5rem"
-      px="0.75rem"
+      p="1rem"
       onClick={handleEdit}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <Box>
-        <Box mb="0.5rem">
-          <Text
-            className={S.itemTitle}
-            size="md"
-            lineClamp={1}
-            weight="bold"
-          >{t`Alert`}</Text>
-        </Box>
-        <Group spacing="0.75rem" align="center" c="text-medium">
-          {enabledChannelsMap["channel/email"] && <Icon name="mail" />}
-          {enabledChannelsMap["channel/slack"] && (
-            <Icon name="slack" size={14} />
-          )}
-          {enabledChannelsMap["channel/http"] && (
-            <Icon name="webhook" size={16} />
-          )}
-          <Group spacing="0.25rem" align="center" c="text-medium">
-            {subscription && (
-              <span>{formatNotificationSchedule(subscription)}</span>
-            )}
-            {user && (
-              <>
-                {" · "}
-                {<span>{formatCreatorMessage(alert, user?.id)}</span>}
-              </>
-            )}
+      <Text className={S.itemTitle} size="md" lineClamp={1} weight="bold">
+        {formatTitle(alert.payload.send_condition)}
+      </Text>
+      <Group spacing="0.25rem" align="center" c="text-medium">
+        {subscription && (
+          <Text size="sm" c="inherit">
+            {formatNotificationSchedule(subscription)}
+          </Text>
+        )}
+        {user && (
+          <>
+            <Text size="sm" c="text-light">
+              •
+            </Text>
+            <Text size="sm" c="inherit">
+              {formatCreatorMessage(alert, user?.id)}
+            </Text>
+          </>
+        )}
+      </Group>
+
+      <Stack className={S.handlersContainer} spacing="0.5rem" mt="1rem">
+        {emailHandler && (
+          <Group spacing="0.5rem" noWrap>
+            <FixedSizeIcon name="mail" size={16} c="text-medium" />
+            <Text lineClamp={1} c="inherit">
+              {formatEmailHandlerInfo(emailHandler, users)}
+            </Text>
           </Group>
-        </Group>
-      </Box>
+        )}
+        {slackHandler && (
+          <Group spacing="0.5rem" noWrap>
+            <FixedSizeIcon name="slack" size={16} c="text-medium" />
+            <Text lineClamp={1} c="inherit">
+              {formatSlackHandlerInfo(slackHandler)}
+            </Text>
+          </Group>
+        )}
+        {hookHandlers && (
+          <Group spacing="0.5rem" noWrap>
+            <FixedSizeIcon name="webhook" size={16} c="text-medium" />
+            <Text lineClamp={1} c="inherit">
+              {formatHttpHandlersInfo(hookHandlers, httpChannelsConfig)}
+            </Text>
+          </Group>
+        )}
+      </Stack>
       {showHoverActions && (
-        <div>
-          {canEdit && (
+        <div className={S.actionButtonContainer}>
+          {canEdit ? (
             <AlertListItemActionButton
               label={t`Delete this alert`}
               iconName="trash"
               onClick={handleDelete}
             />
-          )}
-          {!canEdit && (
+          ) : (
             <AlertListItemActionButton
               label={t`Unsubscribe from this`}
               iconName="unsubscribe"
@@ -127,6 +153,72 @@ export const AlertListItem = ({
           )}
         </div>
       )}
-    </Flex>
+    </Box>
   );
+};
+
+const formatTitle = (sendCondition: NotificationCardSendCondition): string => {
+  switch (sendCondition) {
+    case "has_result":
+      return t`Alert when this has results`;
+    case "goal_above":
+      return t`Alert when this reaches a goal`;
+    case "goal_below":
+      return t`Alert when this goes below a goal`;
+  }
+};
+
+const formatEmailHandlerInfo = (
+  emailHandler: NotificationHandlerEmail,
+  users: User[] | undefined,
+) => {
+  if (!users) {
+    return null;
+  }
+
+  const usersMap = _.indexBy(users, "id");
+
+  const emailRecipients = emailHandler.recipients
+    .map(recipient => {
+      if (recipient.type === "notification-recipient/raw-value") {
+        return recipient.details.value;
+      }
+      if (recipient.type === "notification-recipient/user") {
+        return usersMap[recipient.user_id]?.email;
+      }
+    })
+    .filter(isNotFalsy);
+
+  const maxEmailsToDisplay = 2;
+
+  if (emailRecipients.length > maxEmailsToDisplay) {
+    const restItemsLength = emailRecipients.length - maxEmailsToDisplay;
+    return [
+      emailRecipients.slice(0, maxEmailsToDisplay).join(", "),
+      ngettext(
+        msgid`${restItemsLength} other`,
+        `${restItemsLength} others`,
+        restItemsLength,
+      ),
+    ].join(", ");
+  }
+
+  return emailRecipients.join(", ");
+};
+
+const formatSlackHandlerInfo = (handler: NotificationHandlerSlack) => {
+  return handler.recipients[0]?.details.value;
+};
+
+const formatHttpHandlersInfo = (
+  handlers: NotificationHandlerHttp[],
+  httpChannelsConfig: NotificationChannel[] | undefined,
+) => {
+  return handlers
+    .map(
+      ({ channel_id }) =>
+        httpChannelsConfig?.find(({ id }) => channel_id === id)?.name ||
+        t`unknown`,
+    )
+    .join(", ");
 };
