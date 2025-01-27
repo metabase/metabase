@@ -2,6 +2,6 @@
   background-color: var(--mb-color-background);
 
   &:hover {
-    background: var(--mb-color-sdk-toolbar-button-bg-hover) !important;
+    background: var(--mb-color-background-hover) !important;
   }
 }

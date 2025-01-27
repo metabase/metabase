@@ -3,7 +3,7 @@
   background: var(--mb-color-background);
 
   &:hover {
-    background: var(--mb-color-sdk-toolbar-button-bg-hover);
+    background: var(--mb-color-background-hover);
   }
 
   &[data-active="true"] {

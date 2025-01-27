@@ -40,9 +40,9 @@ export const THEME_DEPENDENT_CSS_VARS: Record<
     darkenBy: 0.06,
     lightenBy: 0.4,
   },
-  "--mb-color-sdk-toolbar-button-bg-hover": {
+  "--mb-color-background-hover": {
     source: { dark: "bg-white" },
-    lightenBy: 0.4,
+    darkenBy: 0.1,
   },
 };
 
