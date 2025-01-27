@@ -70,10 +70,10 @@ const CypressBackend = {
         [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
         {
           env: {
+            ...process.env,
             ...metabaseConfig,
             ...userDefaults,
             ...snowplowConfig,
-            PATH: process.env.PATH,
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||
