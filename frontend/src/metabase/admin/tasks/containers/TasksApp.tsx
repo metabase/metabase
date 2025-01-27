@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
 import AdminHeader from "metabase/components/AdminHeader";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";

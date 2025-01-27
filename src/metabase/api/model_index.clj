@@ -1,8 +1,8 @@
 (ns metabase.api.model-index
   (:require
-   [compojure.core :refer [POST]]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.model-index :as model-index]
    [metabase.task.index-values :as task.index-values]
@@ -30,13 +30,14 @@
                      :ref         ref
                      :fields      metadata}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Create ModelIndex."
-  [:as {{:keys [model_id pk_ref value_ref] :as _model-index} :body}]
-  {model_id  ms/PositiveInt
-   pk_ref    any?
-   value_ref any?}
+  [_route-params
+   _query-params
+   {:keys [model_id pk_ref value_ref] :as _model-index} :- [:map
+                                                            [:model_id  ms/PositiveInt]
+                                                            [:pk_ref    any?]
+                                                            [:value_ref any?]]]
   (let [model    (api/write-check :model/Card model_id)
         metadata (:result_metadata model)]
     (when-not (seq metadata)
@@ -57,11 +58,11 @@
       (model-index/add-values! model-index)
       (t2/select-one :model/ModelIndex :id (:id model-index)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Retrieve list of ModelIndex."
-  [model_id]
-  {model_id ms/PositiveInt}
+  [_route-params
+   {:keys [model_id]} :- [:map
+                          [:model_id ms/PositiveInt]]]
   (let [model (api/read-check :model/Card model_id)]
     (when-not (= (:type model) :model)
       (throw (ex-info (tru "Question {0} is not a model" model_id)
@@ -69,11 +70,10 @@
                        :status-code 400})))
     (t2/select :model/ModelIndex :model_id model_id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id"
+(api.macros/defendpoint :get "/:id"
   "Retrieve ModelIndex."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (let [model-index (api/check-404 (t2/select-one :model/ModelIndex :id id))
         model       (api/read-check :model/Card (:model_id model-index))]
     (when-not (= (:type model) :model)
@@ -82,11 +82,10 @@
                        :status-code 400})))
     model-index))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/:id"
+(api.macros/defendpoint :delete "/:id"
   "Delete ModelIndex."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/let-404 [model-index (t2/select-one :model/ModelIndex :id id)]
     (api/write-check :model/Card (:model_id model-index))
     (t2/delete! :model/ModelIndex id)))
