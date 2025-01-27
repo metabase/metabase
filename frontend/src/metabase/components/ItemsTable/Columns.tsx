@@ -27,7 +27,6 @@ import {
   ItemCell,
   ItemLink,
   ItemNameCell,
-  ModelDetailLink,
   RowActionsContainer,
   TableColumn,
 } from "./BaseItemsTable.styled";
@@ -308,9 +307,6 @@ export const Columns = {
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
             />
-            {item.model === "dataset" && !item.archived && (
-              <ModelDetailLink model={item} />
-            )}
           </RowActionsContainer>
         </ItemCell>
       );

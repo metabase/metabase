@@ -210,7 +210,7 @@
   (mu/with-api-error-message
    [:and
     :string
-    [:fn u/email?]]
+    [:fn {:error/message "valid email address"} u/email?]]
    (deferred-tru "value must be a valid email address.")))
 
 (def Url
@@ -224,7 +224,7 @@
   (mu/with-api-error-message
    [:and
     :string
-    [:fn (every-pred string? #'u.password/is-valid?)]]
+    [:fn {:error/message "valid password that is not too common"} (every-pred string? #'u.password/is-valid?)]]
    (deferred-tru "password is too common.")))
 
 (def IntString
@@ -384,7 +384,9 @@
   (mu/with-api-error-message
    [:and
     NonBlankString
-    [:fn i18n/available-locale?]]
+    [:fn
+     {:error/message "valid locale"}
+     i18n/available-locale?]]
    (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))
 
 (def NanoIdString

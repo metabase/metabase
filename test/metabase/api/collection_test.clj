@@ -1523,6 +1523,49 @@
                     keys
                     (into #{}))))))))
 
+(deftest dashboard-question-candidates-can-be-paginated
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+
+                   :model/Card {card-1-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-1-id}
+
+                   :model/Card {card-2-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-2-id}
+
+                   :model/Card {card-3-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-3-id}]
+      (let [fetch (fn [& {:keys [limit offset] :or {limit 10 offset 0}}]
+                    (let [resp (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                     :limit limit :offset offset)]
+                      (is (= 3 (:total resp)))
+                      (->> resp :data (map :id))))]
+        (testing "Selecting everything"
+          (is (= [card-3-id card-2-id card-1-id]
+                 (fetch))))
+        (testing "Selecting the first one"
+          (is (= [card-3-id]
+                 (fetch :limit 1))))
+        (testing "The second two"
+          (is (= [card-2-id card-1-id]
+                 (fetch :limit 2 :offset 1))))
+        (testing "The first two"
+          (is (= [card-3-id card-2-id]
+                 (fetch :limit 2 :offset 0))))
+        (testing "Only limit, no offset"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                     :limit 2)]
+            (is (= [card-3-id card-2-id]
+                   (map :id data)))))
+        (testing "Only offset, no limit"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates")
+                                                     :offset 1)]
+            (is (= [card-2-id card-1-id]
+                   (map :id data)))))
+        (testing "Zero limit"
+          (is (= [] (fetch :limit 0))))))))
+
 (deftest dashboard-question-candidates-card-is-in-two-dashboards-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card is in two dashboards"
@@ -1619,6 +1662,16 @@
                     :data
                     (map :id)
                     (into #{}))))))))
+
+(deftest get-dashboard-question-candidates-excludes-existing-dashboard-questions
+  (testing "GET /api/collection/:id/dashboard-question-candidates"
+    (testing "Existing DQs are excluded"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                     :model/Card {card-id :id} {:dashboard_id dash-id}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (is (= {:data [] :total 0}
+               (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))))))))
 
 (deftest get-root-dashboard-question-candidates-single-dashboard-card
   (testing "GET /api/collection/root/dashboard-question-candidates"
@@ -1739,6 +1792,48 @@
                                  (map :id)
                                  set)
                             card-id)))))))
+
+(deftest root-dashboard-question-candidates-can-be-paginated
+  (testing "GET /api/collection/root/dashboard-question-candidates"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
+
+                   :model/Card {card-1-id :id} {:collection_id nil}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-1-id}
+
+                   :model/Card {card-2-id :id} {:collection_id nil}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-2-id}
+
+                   :model/Card {card-3-id :id} {:collection_id nil}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-3-id}]
+      (let [fetch (fn [& {:keys [limit offset] :or {limit 10 offset 0}}]
+                    (let [resp (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                     :limit limit :offset offset)]
+                      (is (= 3 (:total resp)))
+                      (->> resp :data (map :id))))]
+        (testing "Selecting everything"
+          (is (= [card-3-id card-2-id card-1-id]
+                 (fetch))))
+        (testing "Selecting the first one"
+          (is (= [card-3-id]
+                 (fetch :limit 1))))
+        (testing "The second two"
+          (is (= [card-2-id card-1-id]
+                 (fetch :limit 2 :offset 1))))
+        (testing "The first two"
+          (is (= [card-3-id card-2-id]
+                 (fetch :limit 2 :offset 0))))
+        (testing "Only limit, no offset"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                     :limit 2)]
+            (is (= [card-3-id card-2-id]
+                   (map :id data)))))
+        (testing "Only offset, no limit"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "collection/root/dashboard-question-candidates")
+                                                     :offset 1)]
+            (is (= [card-2-id card-1-id]
+                   (map :id data)))))
+        (testing "Zero limit"
+          (is (= [] (fetch :limit 0))))))))
 
 (deftest post-move-dashboard-question-candidates-success
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
@@ -1890,7 +1985,8 @@
       (with-some-children-of-collection! nil
         ;; `:total` should be at least 4 items based on `with-some-children-of-collection`. Might be a bit more if
         ;; other stuff was created
-        (is (<= 4 (:total (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1"))))))))
+        (is (=? {:total #(>= % 4)}
+                (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1")))))))
 
 (deftest fetch-root-items-permissions-test
   (testing "GET /api/collection/root/items"
@@ -1900,7 +1996,11 @@
              (with-some-children-of-collection! nil
                (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                    remove-non-personal-collections
-                   mt/boolean-ids-and-timestamps))))
+                   mt/boolean-ids-and-timestamps)))))))
+
+(deftest fetch-root-items-permissions-test-2
+  (testing "GET /api/collection/root/items"
+    (testing "we don't let you see stuff you wouldn't otherwise be allowed to see"
       (testing "...but if they have read perms for the Root Collection they should get to see them"
         (with-some-children-of-collection! nil
           (mt/with-temp [:model/PermissionsGroup           group {}

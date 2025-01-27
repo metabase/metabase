@@ -1209,8 +1209,6 @@
                     {:card-id (:id card)})))
   (let [[dashboard :as dashboards] (:in_dashboards card)]
     (when (and (= 1 (count dashboards))
-               (= (:collection_id card)
-                  (:collection_id dashboard))
                (not (:archived dashboard))
                (not (:archived card)))
       (:id dashboard))))

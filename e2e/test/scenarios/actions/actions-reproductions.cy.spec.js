@@ -226,8 +226,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
 describe("issue 51020", () => {
   function setupBasicActionsInModel() {
     H.questionInfoButton().click();
-    H.modal().findByText("See more about this model").click();
-    cy.findByRole("tab", { name: "Actions" }).click();
+    H.sidesheet().findByText("Actions").click();
     cy.button(/Create basic actions/).click();
   }
 
@@ -309,7 +308,7 @@ describe("issue 51020", () => {
     });
   });
 
-  describe("when primary key is not called 'id'", () => {
+  describe("when primary key is not called 'id'", { tags: "@external" }, () => {
     function createTemporaryTable() {
       H.queryWritableDB(
         "CREATE TABLE IF NOT EXISTS foo (foo INT PRIMARY KEY, name VARCHAR)",

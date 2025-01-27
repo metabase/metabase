@@ -373,8 +373,7 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
     });
 
     it("should change a boolean filter", () => {
@@ -383,8 +382,7 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
 
       H.filter();
 
@@ -403,8 +401,7 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
 
       H.filter();
 
@@ -537,8 +534,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("131.68").should("be.visible"); // total for order id 17
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

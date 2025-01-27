@@ -41,7 +41,7 @@ To build a gauge chart, you'll need:
 
 You can set the ranges, their colors, and optional labels in chart settings.
 
-To open the chart setting, click on the gear icon at the bottom left of the screen.
+To open the chart setting, click on the **Visualization** icon at the bottom left of the screen.
 
 Format options will apply to both the result of the query and the range boundaries:
 

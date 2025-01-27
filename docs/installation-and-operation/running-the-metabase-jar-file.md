@@ -11,7 +11,7 @@ redirect_from:
 
 To run the free, Open Source version of Metabase via a JAR file, you will need to have a Java Runtime Environment (JRE) installed on your system.
 
-If you have a token for the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../paid-features/activating-the-enterprise-edition.md).
+If you have a token for the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../installation-and-operation/activating-the-enterprise-edition.md).
 
 ## Quick start
 
@@ -29,7 +29,7 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 
 Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit `http://localhost:3000/setup`.
 
-If you are using a Pro or Enterprise version, be sure to [activate your license](../paid-features/activating-the-enterprise-edition.md).
+If you are using a Pro or Enterprise version, be sure to [activate your license](../installation-and-operation/activating-the-enterprise-edition.md).
 
 ## Local installation
 
@@ -54,7 +54,7 @@ Download the JAR file:
 - [Metabase OSS](https://www.metabase.com/start/oss/jar)
 - [Metabase Enterprise/Pro edition](https://downloads.metabase.com/enterprise/latest/metabase.jar)
 
-If you want to install the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../paid-features/activating-the-enterprise-edition.md).
+If you want to install the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../installation-and-operation/activating-the-enterprise-edition.md).
 
 ### 3. Create a new directory and move the Metabase JAR into it
 
@@ -105,7 +105,7 @@ At this point you're ready to go! You can access your new Metabase server on por
 
 You can use another port than 3000 by setting the `MB_JETTY_PORT` [environment variable](../configuring-metabase/environment-variables.md) before running the jar.
 
-If you are using a Pro or Enterprise version of Metabase, be sure to [activate your license](../paid-features/activating-the-enterprise-edition.md).
+If you are using a Pro or Enterprise version of Metabase, be sure to [activate your license](../installation-and-operation/activating-the-enterprise-edition.md).
 
 ## Production installation
 

@@ -1,9 +1,11 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import cx from "classnames";
-import type { ComponentPropsWithoutRef } from "react";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import {
+  LoadingAndErrorWrapper,
+  type LoadingAndErrorWrapperProps,
+} from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { isEmbeddingSdk } from "metabase/env";
@@ -12,13 +14,20 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
+interface DashboardLoadingAndErrorWrapperProps
+  extends LoadingAndErrorWrapperProps {
+  isFullscreen: boolean;
+  isNightMode: boolean;
+  isFullHeight: boolean;
+}
+
 export const DashboardLoadingAndErrorWrapper = styled(
   ({
     isFullscreen,
     isNightMode,
     className,
     ...props
-  }: ComponentPropsWithoutRef<typeof LoadingAndErrorWrapper>) => {
+  }: DashboardLoadingAndErrorWrapperProps) => {
     return (
       <LoadingAndErrorWrapper
         className={cx(className, DashboardS.Dashboard, {
@@ -100,29 +109,30 @@ export function getDashboardBodyBgColor(isNightMode: boolean) {
 }
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
+  allowSticky: boolean;
   isSticky: boolean;
-  hasScroll: boolean;
   isNightMode: boolean;
 }>`
-  background-color: ${props => getDashboardBodyBgColor(props.isNightMode)};
-  border-bottom: 1px solid
-    ${props => getDashboardBodyBgColor(props.isNightMode)};
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
   /* z-index should be higher than in dashcards */
   z-index: 3;
   top: 0;
   left: 0;
+  /* this is for proper transitions from the \`transparent\` value to other values if set */
+  border-bottom: 1px solid transparent;
 
-  /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
-  ${({ isNightMode, isSticky, hasScroll }) =>
-    isSticky &&
+  ${({ allowSticky }) =>
+    allowSticky &&
     css`
       position: sticky;
-      border-bottom: 1px solid
-        ${hasScroll
-          ? "var(--mb-color-border)"
-          : getDashboardBodyBgColor(isNightMode)};
+    `}
+
+  ${({ isNightMode, isSticky }) =>
+    isSticky &&
+    css`
+      background-color: ${getDashboardBodyBgColor(isNightMode)};
+      border-bottom-color: var(--mb-color-border);
     `}
 
   ${({ isNightMode }) =>
