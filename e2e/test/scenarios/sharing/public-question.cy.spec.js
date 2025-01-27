@@ -1,3 +1,5 @@
+import xlsx from "xlsx";
+
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -196,6 +198,47 @@ describe("scenarios > public > question", () => {
   });
 });
 
+describe("scenarios > question > public link with extension", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createNativeQuestion(
+      {
+        name: "Question A",
+        native: {
+          query: "SELECT ID from (SELECT * FROM ORDERS LIMIT 1) as order_row",
+        },
+      },
+      {
+        visitQuestion: true,
+        wrapId: true,
+      },
+    ).as("questionId");
+  });
+
+  it("should download a json file when a public link with .json is shared", () => {
+    downloadPublicFileURL("json", ([response]) => {
+      expect(response).to.deep.eq({ ID: 1 });
+    });
+  });
+
+  ["csv", "xlsx"].forEach(fileType =>
+    it(`should download a ${fileType} file when a public link with .${fileType} is shared`, () => {
+      downloadPublicFileURL(fileType, response => {
+        const { SheetNames, Sheets } = xlsx.read(response.body, {
+          type: "binary",
+        });
+
+        const sheetName = SheetNames[0];
+        const sheet = Sheets[sheetName];
+        expect(sheet["A1"].v).to.eq("ID");
+        expect(sheet["A2"].v).to.eq(1);
+      });
+    }),
+  );
+});
+
 H.describeEE("scenarios [EE] > public > question", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
@@ -261,4 +304,28 @@ const visitPublicURL = () => {
       cy.signOut();
       cy.visit(publicURL);
     });
+};
+
+const downloadPublicFileURL = (fileType, validationCallback) => {
+  H.openSharingMenu("Create a public link");
+
+  H.popover().findByText(fileType).click();
+
+  H.popover().findByTestId("public-link-input").invoke("val").as("publicUrl");
+
+  cy.get("@publicUrl").should(
+    "match",
+    new RegExp(`\\/public\\/question\\/.*\\.${fileType}`),
+  );
+
+  cy.get("@publicUrl").then(url => {
+    cy.request({
+      method: "GET",
+      url: url,
+      followRedirect: true,
+      encoding: "binary",
+    }).then(response => {
+      validationCallback(response.body);
+    });
+  });
 };
