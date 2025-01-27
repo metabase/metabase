@@ -4,9 +4,9 @@
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.date-2.parse :as u.date.parse]
@@ -53,8 +53,7 @@
                {:name "Token expiration date" :value (valid-thru) :format "string" :display "value"}
                {:name "Plan" :value "Enterprise Airgap" :format "string" :display "value"}]}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,
    using the embedding token and signed in user's email to fetch the billing information."
   []

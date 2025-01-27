@@ -81,8 +81,16 @@
    Long/MIN_VALUE
    (keys m)))
 
+(defn- schema-should-be-optional? [node]
+  (case (n/tag node)
+    :token  ('#{:any ms/MaybeBooleanValue} (n/sexpr node))
+    :vector (= (n/sexpr (first (n/children node))) :maybe)
+    :list   (and (= (n/sexpr (first (n/children node))) 'mu/with)
+                 (schema-should-be-optional? (second (n/children node))))
+    false))
+
 (mu/defn- schema-map->malli :- [:maybe ::node]
-  [schema-map :- ::schema-map & {:keys [always-optional?], :or {always-optional? false}}]
+  [schema-map :- ::schema-map]
   (when (seq schema-map)
     (n/vector-node
      (into [(n/keyword-node :map)]
@@ -98,13 +106,11 @@
                                                                    (count (str (keyword k))))
                                                                 \space)))]
                           ;; add `:optional` or `:default` values to the map as needed
-                          (when (or always-optional?
-                                    (and (= (n/tag schema) :vector)
-                                         (= (n/sexpr (first (n/children schema))) :maybe)))
+                          (when (schema-should-be-optional? schema)
                             [(n/map-node
                               ;; apparently the old behavior for booleans coerced `nil`, to `false`, so let's replicate
                               ;; that.
-                              (if ('#{[:maybe :boolean] [:maybe ms/BooleanValue]} (n/sexpr schema))
+                              (if (= (n/sexpr schema) [:maybe 'ms/BooleanValue])
                                 [(n/keyword-node :default) (n/whitespace-node " ") (n/token-node 'false)]
                                 [(n/keyword-node :optional) (n/whitespace-node " ") (n/token-node 'true)]))
                              (n/whitespace-node " ")])
@@ -206,7 +212,7 @@
   [{:keys [schema-map], :as parsed} :- ::parsed]
   (some-> schema-map
           (select-keys* (query-args-symbols parsed))
-          (schema-map->malli :always-optional? true)))
+          schema-map->malli))
 
 (mu/defn- new-query-param-arg-nodes :- [:maybe [:sequential ::node]]
   [parsed :- ::parsed]
@@ -503,11 +509,3 @@
         (with-open [w (java.io.FileWriter. filename)]
           (print-root w))
         (print-root *out*)))))
-
-(comment
-  #_{:clj-kondo/ignore [:unresolved-namespace]}
-  (defn- files []
-    (->> (metabase.util.files/files-seq (metabase.util.files/get-path "src/metabase/api/"))
-         (map str)
-         (filter #(str/ends-with? % ".clj"))
-         sort)))

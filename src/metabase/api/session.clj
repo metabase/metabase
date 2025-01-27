@@ -1,16 +1,16 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require
-   [compojure.core :refer [DELETE GET POST]]
    [java-time.api :as t]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.ldap :as api.ldap]
+   [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]
+   [metabase.models.session :as session]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
@@ -27,58 +27,6 @@
    (com.unboundid.util LDAPSDKException)))
 
 (set! *warn-on-reflection* true)
-
-(mu/defn- record-login-history!
-  [session-id  :- uuid?
-   user-id     :- ms/PositiveInt
-   device-info :- request/DeviceInfo]
-  (t2/insert! :model/LoginHistory (merge {:user_id    user-id
-                                          :session_id (str session-id)}
-                                         device-info)))
-
-(defmulti create-session!
-  "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or
-  `:sso` (for other login types). Returns the newly generated Session."
-  {:arglists '(^java.util.UUID [session-type user device-info])}
-  (fn [session-type & _]
-    session-type))
-
-(def ^:private CreateSessionUserInfo
-  [:map
-   [:id          ms/PositiveInt]
-   [:last_login :any]])
-
-(def ^:private SessionSchema
-  [:and
-   [:map-of :keyword :any]
-   [:map
-    [:id   uuid?]
-    [:type [:enum :normal :full-app-embed]]]])
-
-(mu/defmethod create-session! :sso :- SessionSchema
-  [_ user :- CreateSessionUserInfo device-info :- request/DeviceInfo]
-  (let [session-uuid (random-uuid)
-        session      (first (t2/insert-returning-instances! :model/Session
-                                                            :id      (str session-uuid)
-                                                            :user_id (u/the-id user)))]
-    (assert (map? session))
-    (let [event {:user-id (u/the-id user)}]
-      (events/publish-event! :event/user-login event)
-      (when (nil? (:last_login user))
-        (events/publish-event! :event/user-joined event)))
-    (record-login-history! session-uuid (u/the-id user) device-info)
-    (when-not (:last_login user)
-      (snowplow/track-event! ::snowplow/account {:event :new-user-created} (u/the-id user)))
-    (assoc session :id session-uuid)))
-
-(mu/defmethod create-session! :password :- SessionSchema
-  [session-type
-   user         :- CreateSessionUserInfo
-   device-info  :- request/DeviceInfo]
-  ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
-  (when-not (public-settings/enable-password-login)
-    (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
-  ((get-method create-session! :sso) session-type user device-info))
 
 ;;; ## API Endpoints
 
@@ -113,7 +61,7 @@
         ;; password is ok, return new session if user is not deactivated
         (let [user (ldap/fetch-or-create-user! user-info)]
           (if (:is_active user)
-            (create-session! :sso user device-info)
+            (session/create-session! :sso user device-info)
             (throw (ex-info (str disabled-account-message)
                             {:status-code 401
                              :errors      {:_error disabled-account-snippet}})))))
@@ -128,7 +76,7 @@
   (if-let [user (t2/select-one [:model/User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (u.password/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
-        (create-session! :password user device-info)
+        (session/create-session! :password user device-info)
         (throw (ex-info (str disabled-account-message)
                         {:status-code 401
                          :errors      {:_error disabled-account-snippet}}))))
@@ -145,7 +93,7 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(mu/defn- login :- SessionSchema
+(mu/defn- login :- session/SessionSchema
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
   [username    :- ms/NonBlankString
@@ -174,12 +122,14 @@
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Login."
-  [:as {{:keys [username password]} :body, :as request}]
-  {username ms/NonBlankString
-   password ms/NonBlankString}
+  [_route-params
+   _query-params
+   {:keys [username password]} :- [:map
+                                   [:username ms/NonBlankString]
+                                   [:password ms/NonBlankString]]
+   request]
   (let [ip-address   (request/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
@@ -193,11 +143,10 @@
                                    (login-throttlers :username)   username]
           (do-login))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/"
+(api.macros/defendpoint :delete "/"
   "Logout."
   ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
-  [:as {:keys [metabase-session-id]}]
+  [_route-params _query-params _body {:keys [metabase-session-id], :as _request}]
   (api/check-exists? :model/Session metabase-session-id)
   (t2/delete! :model/Session :id metabase-session-id)
   (request/clear-session-cookie api/generic-204-no-content))
@@ -232,11 +181,13 @@
       (events/publish-event! :event/password-reset-initiated
                              {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/forgot_password"
+(api.macros/defendpoint :post "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {{:keys [email]} :body, :as request}]
-  {email ms/Email}
+  [_route-params
+   _query-params
+   {:keys [email]} :- [:map
+                       [:email ms/Email]]
+   request]
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (let [request-source (request/ip-address request)]
     (throttle-check (forgot-password-throttlers :ip-address) request-source))
@@ -276,12 +227,14 @@
   "Throttler for password_reset. There's no good field to mark so use password as a default."
   (throttle/make-throttler :password :attempts-threshold 10))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/reset_password"
+(api.macros/defendpoint :post "/reset_password"
   "Reset password with a reset token."
-  [:as {{:keys [token password]} :body, :as request}]
-  {token    ms/NonBlankString
-   password ms/ValidPassword}
+  [_route-params
+   _query-params
+   {:keys [token password]} :- [:map
+                                [:token    ms/NonBlankString]
+                                [:password ms/ValidPassword]]
+   request]
   (let [request-source (request/ip-address request)]
     (throttle-check reset-password-throttler request-source))
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
@@ -294,31 +247,32 @@
             ;; Send all the active admins an email :D
             (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User :id user-id)))
           ;; after a successful password update go ahead and offer the client a new session that they can use
-          (let [{session-uuid :id, :as session} (create-session! :password user (request/device-info request))
+          (let [{session-uuid :id, :as session} (session/create-session! :password user (request/device-info request))
                 response                        {:success    true
                                                  :session_id (str session-uuid)}]
             (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
       (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/password_reset_token_valid"
+(api.macros/defendpoint :get "/password_reset_token_valid"
   "Check if a password reset token is valid and isn't expired."
-  [token]
-  {token ms/NonBlankString}
+  [_route-params
+   {:keys [token]} :- [:map
+                       [:token ms/NonBlankString]]]
   {:valid (boolean (valid-reset-token->user token))})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/properties"
+(api.macros/defendpoint :get "/properties"
   "Get all properties and their values. These are the specific `Settings` that are readable by the current user, or are
   public if no user is logged in."
   []
   (setting/user-readable-values-map (setting/current-user-readable-visibilities)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/google_auth"
+(api.macros/defendpoint :post "/google_auth"
   "Login with Google Auth."
-  [:as {{:keys [token]} :body, :as request}]
-  {token ms/NonBlankString}
+  [_route-params
+   _query-params
+   _body :- [:map
+             [:token ms/NonBlankString]]
+   request]
   (when-not (google/google-auth-client-id)
     (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google
@@ -327,7 +281,7 @@
     (http-401-on-error
       (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
         (let [user (google/do-google-auth request)
-              {session-uuid :id, :as session} (create-session! :sso user (request/device-info request))
+              {session-uuid :id, :as session} (session/create-session! :sso user (request/device-info request))
               response {:id (str session-uuid)}
               user (t2/select-one [:model/User :id :is_active], :email (:email user))]
           (if (and user (:is_active user))
@@ -342,11 +296,10 @@
 (defn- +log-all-request-failures [handler]
   (with-meta
    (fn [request respond raise]
-     (try
-       (handler request respond raise)
-       (catch Throwable e
-         (log/error e "Authentication endpoint error")
-         (throw e))))
+     (letfn [(raise' [e]
+               (log/error e "Authentication endpoint error")
+               (raise e))]
+       (handler request respond raise')))
    (meta handler)))
 
 (api/define-routes +log-all-request-failures)

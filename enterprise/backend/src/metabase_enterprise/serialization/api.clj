@@ -2,7 +2,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [compojure.core :refer [POST]]
    [java-time.api :as t]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
@@ -10,6 +9,7 @@
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.logger :as logger]
    [metabase.models.serialization :as serdes]
@@ -154,62 +154,54 @@
 
 ;;; HTTP API
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/export"
+(api.macros/defendpoint :post "/export"
   "Serialize and retrieve Metabase instance.
 
   Outputs `.tar.gz` file with serialization results and an `export.log` file.
   On error outputs serialization logs directly."
-  [:as {{:strs [all_collections collection settings data_model field_values database_secrets dirname
-                continue_on_error full_stacktrace]
-         :or   {all_collections true
-                settings        true
-                data_model      true}}
-        :query-params}]
-  {dirname           (mu/with [:maybe string?]
-                              {:description "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"})
-   collection        (mu/with [:maybe (ms/QueryVectorOf
-                                       [:or
-                                        ms/PositiveInt
-                                        [:re {:error/message "if you are passing entity_id, it should be exactly 21 chars long"}
-                                         "^.{21}$"]
-                                        [:re {:error/message "value must be string with `eid:<...>` prefix"}
-                                         "^eid:.{21}$"]])]
-                              {:description "collections' db ids/entity-ids to serialize"})
-   all_collections   (mu/with [:maybe ms/BooleanValue]
-                              {:default     true
-                               :description "Serialize all collections (`true` unless you specify `collection`)"})
-   settings          (mu/with [:maybe ms/BooleanValue]
-                              {:default     true
-                               :description "Serialize Metabase settings"})
-   data_model        (mu/with [:maybe ms/BooleanValue]
-                              {:default     true
-                               :description "Serialize Metabase data model"})
-   field_values      (mu/with [:maybe ms/BooleanValue]
-                              {:default     false
-                               :description "Serialize cached field values"})
-   database_secrets  (mu/with [:maybe ms/BooleanValue]
-                              {:default     false
-                               :description "Serialize details how to connect to each db"})
-   continue_on_error (mu/with [:maybe ms/BooleanValue]
-                              {:default     false
-                               :description "Do not break execution on errors"})
-   full_stacktrace   (mu/with [:maybe ms/BooleanValue]
-                              {:default false
-                               :description "Show full stacktraces in the logs"})}
+  [_route-params
+   {:keys                     [collection dirname]
+    include-field-values?     :field_values
+    include-database-secrets? :database_secrets
+    all-collections?          :all_collections
+    data-model?               :data_model
+    settings?                 :settings
+    continue-on-error?        :continue_on_error
+    full-stacktrace?          :full_stacktrace
+    :as                       _query-params}
+   :- [:map
+       [:dirname           {:optional true} [:maybe
+                                             {:description "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"}
+                                             string?]]
+       [:collection        {:optional true} [:maybe
+                                             {:description "collections' db ids/entity-ids to serialize"}
+                                             (ms/QueryVectorOf
+                                              [:or
+                                               ms/PositiveInt
+                                               [:re {:error/message "if you are passing entity_id, it should be exactly 21 chars long"}
+                                                "^.{21}$"]
+                                               [:re {:error/message "value must be string with `eid:<...>` prefix"}
+                                                "^eid:.{21}$"]])]]
+       [:all_collections   {:default true}  (mu/with ms/BooleanValue {:description "Serialize all collections (`true` unless you specify `collection`)"})]
+       [:settings          {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase settings"})]
+       [:data_model        {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase data model"})]
+       [:field_values      {:default false} (mu/with ms/BooleanValue {:description "Serialize cached field values"})]
+       [:database_secrets  {:default false} (mu/with ms/BooleanValue {:description "Serialize details how to connect to each db"})]
+       [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
+       [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]]
   (api/check-superuser)
   (let [start              (System/nanoTime)
         opts               {:targets                  (mapv #(vector "Collection" %)
                                                             collection)
                             :no-collections           (and (empty? collection)
-                                                           (not all_collections))
-                            :no-data-model            (not data_model)
-                            :no-settings              (not settings)
-                            :include-field-values     field_values
-                            :include-database-secrets database_secrets
+                                                           (not all-collections?))
+                            :no-data-model            (not data-model?)
+                            :no-settings              (not settings?)
+                            :include-field-values     include-field-values?
+                            :include-database-secrets include-database-secrets?
                             :dirname                  dirname
-                            :continue-on-error        continue_on_error
-                            :full-stacktrace          full_stacktrace}
+                            :continue-on-error        continue-on-error?
+                            :full-stacktrace          full-stacktrace?}
         {:keys [archive
                 log-file
                 report
@@ -240,24 +232,26 @@
        :headers {"Content-Type" "text/plain"}
        :body    (on-response! log-file callback)})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint ^:multipart POST "/import"
+(api.macros/defendpoint :post "/import"
   "Deserialize Metabase instance from an archive generated by /export.
 
   Parameters:
   - `file`: archive encoded as `multipart/form-data` (required).
 
   Returns logs of deserialization."
-  [:as {{:strs [continue_on_error full_stacktrace]} :query-params
-        {:strs [file]}                              :multipart-params}]
-  {continue_on_error (mu/with [:maybe ms/BooleanValue]
-                              {:default     false
-                               :description "Do not break execution on errors"})
-   full_stacktrace   (mu/with [:maybe ms/BooleanValue]
-                              {:default     false
-                               :description "Show full stacktraces in the logs"})
-   file              (mu/with ms/File
-                              {:description ".tgz with serialization data"})}
+  {:multipart true}
+  [_route-params
+   {continue-on-error? :continue_on_error
+    full-stacktrace?   :full_stacktrace
+    :as                _query-params}
+   :- [:map
+       [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
+       [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]
+   _body
+   {{:strs [file]} :multipart-params, :as _request} :- [:map
+                                                        [:multipart-params
+                                                         [:map
+                                                          ["file" (mu/with ms/File {:description ".tgz with serialization data"})]]]]]
   (api/check-superuser)
   (try
     (let [start              (System/nanoTime)
@@ -267,7 +261,8 @@
                   report
                   callback]} (unpack&import (:tempfile file)
                                             {:size              (:size file)
-                                             :continue-on-error continue_on_error})
+                                             :continue-on-error continue-on-error?
+                                             :full-stacktrace   full-stacktrace?})
           imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
       (snowplow/track-event! ::snowplow/serialization
                              {:event         :serialization
