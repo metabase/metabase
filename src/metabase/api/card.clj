@@ -786,18 +786,21 @@
     :as            _body}
    :- [:map
        [:parameters    {:optional true} [:maybe
-                                         [:or
-                                          [:sequential ms/Parameter]
-                                          ;; support JSON-encoded parameters for backwards compatibility when with this
-                                          ;; was still submitted with a `<form>`... see
-                                          ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
-                                          ms/JSONString]]]
+                                         ;; support JSON-encoded parameters for backwards compatibility when with this
+                                         ;; was still submitted with a `<form>`... see
+                                         ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
+                                         {:decode/api (fn [x]
+                                                        (cond-> x
+                                                          (string? x) json/decode+kw))}
+                                         ;; TODO -- figure out what the actual schema for parameters is supposed to be
+                                         ;; here... [[ms/Parameter]] is used for other endpoints in this namespace but
+                                         ;; it breaks existing tests
+                                         [:sequential [:map-of :keyword :any]]]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (qp.card/process-query-for-card
    card-id export-format
-   :parameters  (cond-> parameters
-                  (string? parameters) json/decode+kw)
+   :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
    :middleware  {:process-viz-settings?  true
