@@ -2,7 +2,6 @@
   "/api/ldap endpoints"
   (:require
    [clojure.set :as set]
-   [compojure.core :refer [PUT]]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.integrations.ldap :as ldap]
