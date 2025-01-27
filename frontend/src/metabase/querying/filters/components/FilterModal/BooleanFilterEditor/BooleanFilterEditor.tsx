@@ -8,19 +8,17 @@ import type * as Lib from "metabase-lib";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
+import { useFilterModalContext } from "../context";
 import type { FilterEditorProps } from "../types";
 
 export function BooleanFilterEditor({
-  query,
   stageIndex,
   column,
   filter,
-  isSearching,
   onChange,
 }: FilterEditorProps) {
-  const columnIcon = useMemo(() => {
-    return getColumnIcon(column);
-  }, [column]);
+  const { query } = useFilterModalContext();
+  const columnIcon = useMemo(() => getColumnIcon(column), [column]);
 
   const {
     operator,
@@ -58,11 +56,9 @@ export function BooleanFilterEditor({
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle
-            query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
-            isSearching={isSearching}
           >
             {isExpanded && (
               <FilterOperatorPicker
