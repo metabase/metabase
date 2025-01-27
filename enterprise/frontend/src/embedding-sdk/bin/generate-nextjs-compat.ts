@@ -22,8 +22,6 @@ const COMPONENTS_TO_EXPORT: ComponentDefinition[] =
     component => component.mainComponent !== "MetabaseProvider",
   );
 
-console.log(COMPONENTS_TO_EXPORT);
-
 // END OF CONFIGURATION
 
 const MetabaseProviderCode = `
