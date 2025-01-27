@@ -54,7 +54,15 @@ export function FilterModal({
             <Modal.CloseButton />
           </Modal.Header>
           <Modal.Body className={S.ModalBody} p={0}>
-            <FilterModalBody />
+            <FilterModalBody
+              /**
+               * Force-remount when search query changes to re-initialize the state
+               * of descendant components and their hooks.
+               *
+               * @see https://github.com/metabase/metabase/issues/48319
+               */
+              key={searchText}
+            />
           </Modal.Body>
           <Flex
             className={S.ModalFooter}
