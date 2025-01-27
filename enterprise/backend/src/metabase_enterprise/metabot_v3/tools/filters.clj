@@ -87,8 +87,12 @@
           visible-cols (lib/visible-columns base-query)
           filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
           query (as-> base-query $q
-                  (reduce add-filter $q (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) filters))
-                  (reduce add-breakout $q (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) group-by)))
+                  (reduce add-filter
+                          $q
+                          (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) filters))
+                  (reduce add-breakout
+                          $q
+                          (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) group-by)))
           query-id (u/generate-nano-id)
           query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
           returned-cols (lib/returned-columns query)]
