@@ -9,7 +9,6 @@ import type { DashboardState } from "./dashboard";
 import type { DownloadsState } from "./downloads";
 import type { EmbedState } from "./embed";
 import type { EntitiesState } from "./entities";
-import type { MetabotState } from "./metabot";
 import type { ParametersState } from "./parameters";
 import type { QueryBuilderState } from "./qb";
 import type { RequestsState } from "./requests";
@@ -29,7 +28,6 @@ export interface State {
   dashboard: DashboardState;
   embed: EmbedState;
   entities: EntitiesState;
-  metabot: MetabotState;
   parameters: ParametersState;
   qb: QueryBuilderState;
   requests: RequestsState;

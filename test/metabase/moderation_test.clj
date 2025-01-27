@@ -1,16 +1,15 @@
 (ns metabase.moderation-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models :refer [Card]]
    [metabase.moderation]
+   [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (comment metabase.moderation/keep-me)
 
 (deftest hydrate-test
-  (t2.with-temp/with-temp [Card card {}]
+  (mt/with-temp [:model/Card card {}]
     (is (=? [nil
              {:id (u/the-id card)}]
             (t2/hydrate [nil card]

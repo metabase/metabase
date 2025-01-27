@@ -1,12 +1,13 @@
 (ns metabase-enterprise.auth-provider
   (:require
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.http :as u.http]))
 
 (defmulti ^:private fetch-auth*
   "Multimethod for auth-provider implementations.
    In general, implementations shouldn't change the shape of responses or names
    so that [[driver/incorporate-auth-provider-details]] can decide how to incorporate into details."
+  {:arglists '([auth-provider database-id db-details])}
   (fn [auth-provider _database-id _db-details]
     auth-provider))
 

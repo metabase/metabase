@@ -97,3 +97,27 @@ export interface ShortcutOption {
   shortcut: DatePickerShortcut;
   value: RelativeDatePickerValue;
 }
+
+export type MonthYearPickerValue = {
+  type: "month";
+  year: number;
+  /** 1-12 */
+  month: number;
+};
+
+export type QuarterYearPickerValue = {
+  type: "quarter";
+  year: number;
+  /** 1-4 */
+  quarter: number;
+};
+
+export type DateFilterValue =
+  | DatePickerValue
+  | MonthYearPickerValue
+  | QuarterYearPickerValue;
+
+export type DateFilterDisplayOpts = {
+  // whether to include `On` prefix for a single date filter
+  withPrefix?: boolean;
+};

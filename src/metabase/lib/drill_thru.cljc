@@ -5,7 +5,6 @@
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.combine-columns :as lib.drill-thru.combine-columns]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
-   [metabase.lib.drill-thru.compare-aggregations :as lib.drill-thru.compare-aggregations]
    [metabase.lib.drill-thru.distribution :as lib.drill-thru.distribution]
    [metabase.lib.drill-thru.fk-details :as lib.drill-thru.fk-details]
    [metabase.lib.drill-thru.fk-filter :as lib.drill-thru.fk-filter]
@@ -23,6 +22,7 @@
    [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.native :as lib.native]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
@@ -63,7 +63,6 @@
    {:f #'lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill, :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.column-extract/column-extract-drill,                     :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.combine-columns/combine-columns-drill,                   :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.compare-aggregations/compare-aggregations-drill,         :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.underlying-records/underlying-records-drill,             :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill,             :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.zoom-in-geographic/zoom-in-geographic-drill,             :return-drills-for-dimensions? true}
@@ -77,6 +76,19 @@
   (not-empty
    (for [dimension dimensions]
      (merge context dimension))))
+
+(mu/defn- context-with-dimensions-or-row-dimensions :- ::lib.schema.drill-thru/context
+  "Return an updated `context` with either the existing `dimensions` or dimensions constructed from the `row`."
+  [query                                       :- ::lib.schema/query
+   {:keys [column dimensions row] :as context} :- ::lib.schema.drill-thru/context]
+  ;; If no dimensions were provided but the underlying column comes from an aggregation, then construct the dimensions
+  ;; from the row data. This is needed in cases where the frontend normally provides dimensions, but will not if it
+  ;; cannot determine that the clicked table cell was from an "underlying" aggregation-sourced column. See, e.g. the
+  ;; comment in getTableCellClickedObject in table.js.
+  (let [row-dimensions (lib.drill-thru.common/dimensions-from-breakout-columns query column row)]
+    (if (and (empty? dimensions) (seq row-dimensions))
+      (assoc context :dimensions row-dimensions)
+      context)))
 
 (mu/defn available-drill-thrus :- [:sequential [:ref ::lib.schema.drill-thru/drill-thru]]
   "Get a list (possibly empty) of available drill-thrus for a column, or a column + value pair.
@@ -93,9 +105,11 @@
     context      :- ::lib.schema.drill-thru/context]
    (try
      (into []
-           (when (lib.metadata/editable? query)
+           (when (and (lib.metadata/editable? query)
+                      (not (lib.native/has-template-tag-variables? query)))
              (let [{:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql
                                                  query stage-number (:card-id context))
+                   context                      (context-with-dimensions-or-row-dimensions query context)
                    dim-contexts                 (dimension-contexts context)]
                (for [{:keys [f return-drills-for-dimensions?]} available-drill-thru-fns
                      context                                   (if (and return-drills-for-dimensions? dim-contexts)

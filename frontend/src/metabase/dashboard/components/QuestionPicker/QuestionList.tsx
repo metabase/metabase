@@ -1,7 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import {
+  skipToken,
+  useListCollectionItemsQuery,
+  useSearchQuery,
+} from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import SelectList from "metabase/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
@@ -14,13 +20,7 @@ import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import type {
-  CardId,
-  CollectionId,
-  SearchRequest,
-  SearchResult,
-} from "metabase-types/api";
-import type { WrappedEntity } from "metabase-types/entities";
+import type { CardId, CollectionId } from "metabase-types/api";
 
 import {
   EmptyStateContainer,
@@ -37,13 +37,6 @@ interface QuestionListProps {
   showOnlyPublicCollections: boolean;
 }
 
-interface SearchListLoaderProps {
-  list: WrappedEntity<SearchResult>[];
-  metadata: {
-    total: number;
-  };
-}
-
 export function QuestionList({
   searchText,
   collectionId,
@@ -58,41 +51,13 @@ export function QuestionList({
     useState<CardId | null>(null);
   const isVisualizerModalOpen = !!visualizerModalCardId;
 
-  const dispatch = useDispatch();
-
   useEffect(() => {
     setQueryOffset(0);
     setPage(0);
   }, [searchText, collectionId, setPage]);
 
-  if (collectionId === "personal" && !searchText) {
-    return null;
-  }
-
   const trimmedSearchText = searchText.trim();
   const isSearching = !!trimmedSearchText;
-
-  const query = createQuery();
-
-  function createQuery(): SearchRequest {
-    const baseQuery = isSearching
-      ? {
-          q: trimmedSearchText,
-          ...(showOnlyPublicCollections && {
-            filter_items_in_personal_collection: "exclude" as const,
-          }),
-        }
-      : { collection: collectionId };
-
-    return {
-      ...baseQuery,
-      models: isEmbeddingSdk // FIXME(sdk): remove this logic when v51 is released
-        ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
-        : ["card", "dataset", "metric"],
-      offset: queryOffset,
-      limit: DEFAULT_SEARCH_LIMIT,
-    };
-  }
 
   const handleClickNextPage = () => {
     setQueryOffset(queryOffset + DEFAULT_SEARCH_LIMIT);
@@ -104,83 +69,130 @@ export function QuestionList({
     handlePreviousPage();
   };
 
-  return (
-    <Search.ListLoader entityQuery={query} wrapped>
-      {({ list, metadata }: SearchListLoaderProps) => {
-        const shouldShowEmptyState =
-          list.length === 0 && (isSearching || !hasCollections);
-
-        if (shouldShowEmptyState) {
-          return (
-            <EmptyStateContainer>
-              <EmptyState message={t`Nothing here`} icon="folder" />
-            </EmptyStateContainer>
-          );
+  const {
+    data: searchData,
+    error: searchError,
+    isFetching: searchIsFetching,
+  } = useSearchQuery(
+    isSearching
+      ? {
+          q: trimmedSearchText,
+          ...(showOnlyPublicCollections && {
+            filter_items_in_personal_collection: "exclude" as const,
+          }),
+          models: isEmbeddingSdk // FIXME(sdk): remove this logic when v51 is released
+            ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
+            : ["card", "dataset", "metric"],
+          offset: queryOffset,
+          limit: DEFAULT_SEARCH_LIMIT,
         }
+      : skipToken,
+  );
+  const {
+    data: itemsData,
+    error: itemsError,
+    isFetching: itemsIsFetching,
+  } = useListCollectionItemsQuery(
+    !isSearching
+      ? {
+          id: collectionId,
+          models: isEmbeddingSdk // FIXME(sdk): remove this logic when v51 is released
+            ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
+            : ["card", "dataset", "metric"],
+          offset: queryOffset,
+          limit: DEFAULT_SEARCH_LIMIT,
+        }
+      : skipToken,
+  );
+  const data = isSearching ? searchData : itemsData;
+  const error = isSearching ? searchError : itemsError;
+  const isFetching = isSearching ? searchIsFetching : itemsIsFetching;
+  const dispatch = useDispatch();
 
-        return (
-          <>
-            <SelectList>
-              {list.map(item => (
-                <Flex align="center" key={item.id} className={S.questionItem}>
-                  <QuestionListItem
-                    id={item.id}
-                    name={item.getName()}
-                    icon={{
-                      name: item.getIcon().name,
-                      size: item.model === "dataset" ? 18 : 16,
-                    }}
-                    onSelect={onSelect}
-                    rightIcon={PLUGIN_MODERATION.getStatusIcon(
-                      item.moderated_status ?? undefined,
-                    )}
-                    style={{
-                      flex: 1,
-                    }}
-                  />
-                  <Tooltip label={t`Visualize another way`}>
-                    <Box
-                      ml="auto"
-                      className={S.visualizerButton}
-                      onClick={() => setVisualizerModalCardId(Number(item.id))}
-                    >
-                      <Icon name="add_data" />
-                    </Box>
-                  </Tooltip>
-                </Flex>
-              ))}
-            </SelectList>
-            <PaginationControlsContainer>
-              <PaginationControls
-                showTotal
-                total={metadata.total}
-                itemsLength={list.length}
-                page={page}
-                pageSize={DEFAULT_SEARCH_LIMIT}
-                onNextPage={handleClickNextPage}
-                onPreviousPage={handleClickPreviousPage}
-              />
-            </PaginationControlsContainer>
-            {isVisualizerModalOpen && (
-              <VisualizerModal
-                initialState={{
-                  state: {
-                    display: list.find(
-                      item => item.id === visualizerModalCardId,
-                    )?.display,
-                  },
-                  extraDataSources: [`card:${visualizerModalCardId}`],
-                }}
-                onSave={visualization => {
-                  dispatch(addCardWithVisualization({ visualization }));
-                  setVisualizerModalCardId(null);
-                }}
-                onClose={() => setVisualizerModalCardId(null)}
-              />
-            )}
-          </>
-        );
-      }}
-    </Search.ListLoader>
+  const list = useMemo(() => {
+    return data?.data?.map(item => Search.wrapEntity(item, dispatch)) ?? [];
+  }, [data, dispatch]);
+
+  if (collectionId === "personal" && !searchText) {
+    return null;
+  }
+
+  if (error || isFetching) {
+    return <LoadingAndErrorWrapper error={error} loading={isFetching} />;
+  }
+
+  const shouldShowEmptyState =
+    list.length === 0 && (isSearching || !hasCollections);
+
+  if (shouldShowEmptyState) {
+    return (
+      <EmptyStateContainer>
+        <EmptyState message={t`Nothing here`} icon="folder" />
+      </EmptyStateContainer>
+    );
+  }
+
+  return (
+    <>
+      <SelectList>
+        {list.map(item => (
+          <Flex
+            key={item.id}
+            className={S.questionItem}
+            align="center"
+            justify="space-between"
+          >
+            <QuestionListItem
+              id={item.id}
+              name={item.getName()}
+              icon={{
+                name: item.getIcon().name,
+                size: item.model === "dataset" ? 18 : 16,
+              }}
+              onSelect={onSelect}
+              rightIcon={PLUGIN_MODERATION.getStatusIcon(
+                item.moderated_status ?? undefined,
+              )}
+            />
+            <Tooltip label={t`Visualize another way`}>
+              <Box
+                className={S.visualizerButton}
+                ml="auto"
+                onClick={() => setVisualizerModalCardId(Number(item.id))}
+              >
+                <Icon name="add_data" />
+              </Box>
+            </Tooltip>
+          </Flex>
+        ))}
+      </SelectList>
+      <PaginationControlsContainer>
+        <PaginationControls
+          showTotal
+          total={data?.total}
+          itemsLength={list.length}
+          page={page}
+          pageSize={DEFAULT_SEARCH_LIMIT}
+          onNextPage={handleClickNextPage}
+          onPreviousPage={handleClickPreviousPage}
+        />
+      </PaginationControlsContainer>
+      {isVisualizerModalOpen && (
+        <VisualizerModal
+          initialState={{
+            state: {
+              display: list.find(item => item.id === visualizerModalCardId)
+                ?.display,
+            },
+            extraDataSources: [`card:${visualizerModalCardId}`],
+          }}
+          onSave={visualization => {
+            dispatch(addCardWithVisualization({ visualization }));
+            setVisualizerModalCardId(null);
+          }}
+          onClose={() => setVisualizerModalCardId(null)}
+        />
+      )}
+    </>
   );
 }

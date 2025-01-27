@@ -18,9 +18,6 @@ const MODEL_NAME = "Test Action Model";
     () => {
       beforeEach(() => {
         cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
-        cy.intercept("GET", "/api/card?f=using_model&model_id=**").as(
-          "getCardAssociations",
-        );
         cy.intercept("GET", "/api/action").as("getActions");
         cy.intercept("PUT", "/api/action/*").as("updateAction");
         cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
@@ -66,10 +63,8 @@ const MODEL_NAME = "Test Action Model";
 
           cy.get("@modelId").then(id => {
             cy.visit(`/model/${id}/detail`);
-            cy.wait(["@getModel", "@getModelActions", "@getCardAssociations"]);
+            cy.wait(["@getModel", "@getModelActions"]);
           });
-
-          cy.findByRole("tab", { name: "Actions" }).click();
 
           cy.findByTestId("model-actions-header")
             .findByText("New action")
@@ -410,14 +405,8 @@ const MODEL_NAME = "Test Action Model";
 
             cy.get("@modelId").then(id => {
               cy.visit(`/model/${id}/detail`);
-              cy.wait([
-                "@getModel",
-                "@getModelActions",
-                "@getCardAssociations",
-              ]);
+              cy.wait(["@getModel", "@getModelActions"]);
             });
-
-            cy.findByRole("tab", { name: "Actions" }).click();
 
             cy.findByTestId("model-actions-header")
               .findByText("New action")
@@ -485,14 +474,8 @@ const MODEL_NAME = "Test Action Model";
 
             cy.get("@modelId").then(id => {
               cy.visit(`/model/${id}/detail`);
-              cy.wait([
-                "@getModel",
-                "@getModelActions",
-                "@getCardAssociations",
-              ]);
+              cy.wait(["@getModel", "@getModelActions"]);
             });
-
-            cy.findByRole("tab", { name: "Actions" }).click();
 
             cy.get("[aria-label='Update Score']").within(() => {
               cy.icon("ellipsis").click();
@@ -1101,9 +1084,6 @@ describe(
   () => {
     beforeEach(() => {
       cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
-      cy.intercept("GET", "/api/card?f=using_model&model_id=**").as(
-        "getCardAssociations",
-      );
       cy.intercept("GET", "/api/action").as("getActions");
       cy.intercept("PUT", "/api/action/*").as("updateAction");
       cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
@@ -1160,7 +1140,7 @@ describe(
 
         H.filterWidget().click();
         H.popover().within(() => {
-          H.multiAutocompleteInput().type("{backspace}10");
+          H.fieldValuesInput().type("{backspace}10");
         });
         cy.button("Update filter").click();
 
@@ -1182,10 +1162,8 @@ describe(
 
         cy.get("@modelId").then(id => {
           cy.visit(`/model/${id}/detail`);
-          cy.wait(["@getModel", "@getModelActions", "@getCardAssociations"]);
+          cy.wait(["@getModel", "@getModelActions"]);
         });
-
-        cy.findByRole("tab", { name: "Actions" }).click();
 
         cy.findByTestId("model-actions-header")
           .findByText("New action")

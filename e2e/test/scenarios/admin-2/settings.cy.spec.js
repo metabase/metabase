@@ -466,7 +466,8 @@ describe.skip(
         cy.findByText("Saved");
 
         // Run the query and save the question
-        H.openNativeEditor({ databaseName: "QA Postgres12" }).type(nativeQuery);
+        H.startNewNativeQuestion().as("editor");
+        cy.get("@editor").type(nativeQuery);
         H.runNativeQuery();
 
         getCellText().then(res => {
@@ -1114,6 +1115,7 @@ describe("scenarios > admin > settings > map settings", () => {
 // docker run -p 9080:8080/tcp tarampampam/webhook-tester:1.1.0 serve --create-session 00000000-0000-0000-0000-000000000000
 describe("notifications", { tags: "@external" }, () => {
   beforeEach(() => {
+    H.resetWebhookTester();
     H.restore();
     cy.signInAsAdmin();
     cy.request({

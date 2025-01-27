@@ -1,7 +1,7 @@
 (ns metabase.integrations.google.interface
   (:require
    [metabase.models.setting.multi-setting :refer [define-multi-setting]]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 #_{:clj-kondo/ignore [:missing-docstring]}

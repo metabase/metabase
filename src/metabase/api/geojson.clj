@@ -3,12 +3,12 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [compojure.core :refer [GET]]
-   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.macros :as api.macros]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [ring.util.response :as response])
@@ -24,7 +24,6 @@
   :visibility :admin
   :export?    true
   :type       :boolean
-  :setter     :none
   :default    true
   :audit      :getter)
 
@@ -36,14 +35,13 @@
                      [:region_name                  [:maybe :string]]
                      [:builtin     {:optional true} :boolean]]])
 
-(def ^:private CustomGeoJSONValidator (mc/validator CustomGeoJSON))
+(def ^:private CustomGeoJSONValidator (mr/validator CustomGeoJSON))
 
 (defsetting default-maps-enabled
   (deferred-tru "Whether or not the default GeoJSON maps are enabled.")
   :visibility :admin
   :export?    true
   :type       :boolean
-  :setter     :none
   :default    true
   :audit      :getter)
 
@@ -167,25 +165,35 @@
     (respond (-> (response/response is)
                  (response/content-type "application/json")))))
 
-(api/defendpoint-async GET "/:key"
+(api.macros/defendpoint :get "/:key"
   "Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This just acts as a simple proxy for the
   file specified for `key`)."
-  [{{:keys [key]} :params} respond raise]
-  {key ms/NonBlankString}
-  (when-not (or (custom-geojson-enabled) ((builtin-geojson) (keyword key)))
+  [{k :key, :as _route-params} :- [:map
+                                   [:key ms/NonBlankString]]
+   _query-params
+   _body
+   _request
+   respond
+   raise]
+  (when-not (or (custom-geojson-enabled) ((builtin-geojson) (keyword k)))
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
-  (if-let [url (get-in (custom-geojson) [(keyword key) :url])]
+  (if-let [url (get-in (custom-geojson) [(keyword k) :url])]
     (try
       (read-url-and-respond url respond)
       (catch Throwable e
         (raise e)))
-    (raise (ex-info (tru "Invalid custom GeoJSON key: {0}" key) {:status-code 400}))))
+    (raise (ex-info (tru "Invalid custom GeoJSON key: {0}" k) {:status-code 400}))))
 
-(api/defendpoint-async GET "/"
+(api.macros/defendpoint :get "/"
   "Load a custom GeoJSON file based on a URL or file path provided as a query parameter.
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."
-  [{{:keys [url]} :params} respond raise]
-  {url ms/NonBlankString}
+  [_route-params
+   {:keys [url], :as _query-params} :- [:map
+                                        [:url ms/NonBlankString]]
+   _body
+   _request
+   respond
+   raise]
   (validation/check-has-application-permission :setting)
   (when-not (custom-geojson-enabled)
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))

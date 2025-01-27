@@ -7,6 +7,7 @@
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -17,7 +18,6 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.models :refer [Database]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
@@ -25,11 +25,9 @@
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :as table]
+   [metabase.permissions.util :as perms-util]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
-   [metabase.sync :as sync]
-   [metabase.sync.sync-metadata.fields :as sync-fields]
-   [metabase.sync.sync-metadata.tables :as sync-tables]
+   [metabase.sync.core :as sync]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
@@ -38,6 +36,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
+   (com.ibm.icu.text Transliterator)
    (java.io File InputStreamReader Reader)
    (java.nio.charset StandardCharsets)
    (org.apache.tika Tika)
@@ -147,11 +146,24 @@
                 (t/plus (t/seconds 1))
                 (t/truncate-to :seconds))))))
 
+(def ^:private transliterator
+  (Transliterator/getInstance "Arabic-Latin; Bulgarian-Latin/BGN; Greek-Latin/BGN; Any-Latin; Latin-ASCII"))
+
+(defn- transliterate [s]
+  (when-not (str/blank? s)
+    (-> (.transliterate ^Transliterator transliterator ^String s)
+        (str/replace #"\s+" "_")
+        (str/replace #"[^\w]+" "_")
+        (str/replace #"_{2,}" "_")
+        (str/replace #"^_|_$" ""))))
+
 (defn- unique-table-name
   "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplied `table-name` if necessary)."
   [driver table-name]
+  ;; TODO we should not rely on the timestamp to make the filename unique
+  ;; Ideally we would add an incrementing count, but it may be cheaper and easier to include some randomness.
   (let [time-format                 "_yyyyMMddHHmmss"
-        slugified-name               (or (u/slugify table-name) "")
+        slugified-name              (or (u/not-blank (transliterate table-name)) "blank")
         ;; since both the time-format and the slugified-name contain only ASCII characters, we can behave as if
         ;; [[driver/table-name-length-limit]] were defining a length in characters.
         max-length                  (- (min-safe (driver/table-name-length-limit driver)
@@ -180,7 +192,7 @@
 (defn current-database
   "The database being used for uploads."
   []
-  (t2/select-one Database :uploads_enabled true))
+  (t2/select-one :model/Database :uploads_enabled true))
 
 (mu/defn table-identifier :- :string
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
@@ -408,7 +420,7 @@
 
 (defn- scan-and-sync-table!
   [database table]
-  (sync-fields/sync-fields-for-table! database table)
+  (sync/sync-fields-for-table! database table)
   (case *auxiliary-sync-steps*
     :asynchronous (future (sync/sync-table! table))
     :synchronous (sync/sync-table! table)
@@ -449,7 +461,7 @@
       (ex-info (tru "Uploads are not enabled.")
                {:status-code 422})
 
-      (premium-features/sandboxed-user?)
+      (perms-util/sandboxed-user?)
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
 
@@ -524,9 +536,9 @@
         schema+table-name (table-identifier {:schema schema :name table-name})
         {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file)
         ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-        table             (sync-tables/create-table! db {:name         table-name
-                                                         :schema       (not-empty schema)
-                                                         :display_name display-name})
+        table             (sync/create-table! db {:name         table-name
+                                                  :schema       (not-empty schema)
+                                                  :display_name display-name})
         _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
         _sync             (scan-and-sync-table! db table)
         _set_names        (set-display-names! (:id table) columns)
@@ -582,7 +594,7 @@
        [:db-id ms/PositiveInt]
        [:schema-name {:optional true} [:maybe :string]]
        [:table-prefix {:optional true} [:maybe :string]]]]
-  (let [database (or (t2/select-one Database :id db-id)
+  (let [database (or (t2/select-one :model/Database :id db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)
@@ -636,6 +648,7 @@
                                       :model-id (:id card)))
         (assoc card :table-id (:id table)))
       (catch Throwable e
+        (prometheus/inc! :metabase-csv-upload/failed)
         (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
                                                            :event :csv-upload-failed))
 
@@ -822,6 +835,7 @@
 
           {:row-count row-count})))
     (catch Throwable e
+      (prometheus/inc! :metabase-csv-upload/failed)
       (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
                                                          :event :csv-append-failed))
       (throw e))))

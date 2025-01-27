@@ -24,7 +24,7 @@ describe("scenarios > visualizations > waterfall", () => {
   }
 
   it("should work with ordinal series", () => {
-    H.openNativeEditor().type(
+    H.startNewNativeQuestion().type(
       "select 'A' as product, 10 as profit union select 'B' as product, -4 as profit",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -36,7 +36,7 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should work with ordinal series and numeric X-axis (metabase#15550)", () => {
-    H.openNativeEditor().type(
+    H.startNewNativeQuestion().type(
       "select 1 as X, 20 as Y union select 2 as X, -10 as Y",
     );
 
@@ -61,7 +61,7 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should work with quantitative series", { tags: "@flaky" }, () => {
-    H.openNativeEditor().type(
+    H.startNewNativeQuestion().type(
       "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -136,7 +136,7 @@ describe("scenarios > visualizations > waterfall", () => {
     };
 
     function testSwitchingToWaterfall() {
-      cy.findByTestId("viz-type-button").click();
+      H.openVizTypeSidebar();
       switchToWaterfallDisplay();
 
       H.echartsContainer().within(() => {
@@ -377,11 +377,11 @@ describe("scenarios > visualizations > waterfall", () => {
     });
     H.assertEChartsTooltipNotContain(["Sum of Total"]);
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
-      cy.findByPlaceholderText("Enter metric names").click();
+      cy.findByPlaceholderText("Enter column names").click();
     });
     cy.findByRole("option", { name: "Sum of Total" }).click();
 
@@ -424,7 +424,7 @@ describe("scenarios > visualizations > waterfall", () => {
       H.restore();
       cy.signInAsNormalUser();
 
-      H.openNativeEditor().type("select 'A' as X, -4.56 as Y");
+      H.startNewNativeQuestion().type("select 'A' as X, -4.56 as Y");
       cy.findByTestId("native-query-editor-container").icon("play").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Visualization").click();
@@ -446,13 +446,15 @@ describe("scenarios > visualizations > waterfall", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Show total").next().click();
+      cy.get('[data-field-title="Show total"]').within(() => {
+        cy.findByRole("switch").click({ force: true });
+      });
 
       H.echartsContainer().get("text").contains("Total").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Show total").next().click();
+      cy.get('[data-field-title="Show total"]').within(() => {
+        cy.findByRole("switch").click({ force: true });
+      });
       H.echartsContainer().get("text").contains("Total").should("exist");
     });
 
@@ -462,8 +464,9 @@ describe("scenarios > visualizations > waterfall", () => {
 
       H.echartsContainer().get("text").contains("(4.56)").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Show values on data points").next().click();
+      cy.get('[data-field-title="Show values on data points"]')
+        .findByRole("switch")
+        .click({ force: true });
       H.echartsContainer().get("text").contains("(4.56)").should("be.visible");
     });
   });

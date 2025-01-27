@@ -20,6 +20,9 @@ export const getAutocompleteOverrides =
       styles: (theme, _, { size = "md" }) => ({
         ...getSelectInputOverrides(theme),
         ...getSelectItemsOverrides(theme, size),
+        dropdown: {
+          overflow: "auto",
+        },
       }),
     },
   });

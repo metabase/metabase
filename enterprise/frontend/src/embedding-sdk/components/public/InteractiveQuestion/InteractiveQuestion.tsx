@@ -14,6 +14,7 @@ import {
   FilterDropdown,
   QuestionResetButton,
   QuestionSettings,
+  QuestionSettingsDropdown,
   QuestionVisualization,
   SaveButton,
   SdkSaveQuestionForm,
@@ -116,6 +117,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   ChartTypeDropdown: typeof ChartTypeDropdown;
   EditorViewControl: typeof EditorViewControl;
   QuestionSettings: typeof QuestionSettings;
+  QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
   Breakout: typeof Breakout;
   BreakoutDropdown: typeof BreakoutDropdown;
 };
@@ -141,6 +143,7 @@ InteractiveQuestion.SaveButton = SaveButton;
 InteractiveQuestion.ChartTypeSelector = ChartTypeSelector;
 InteractiveQuestion.EditorViewControl = EditorViewControl;
 InteractiveQuestion.QuestionSettings = QuestionSettings;
+InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
 InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
 InteractiveQuestion.Breakout = Breakout;
 InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;

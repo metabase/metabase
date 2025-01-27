@@ -479,7 +479,7 @@ describe("issue 30165", () => {
   });
 
   it("should not autorun native queries after updating a question (metabase#30165)", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     cy.findByTestId("native-query-editor").type("SELECT * FROM ORDERS");
     H.saveQuestionToCollection("Q1");
 
@@ -609,7 +609,7 @@ describe("issue 35290", () => {
       H.createQuestion(questionDetails, { visitQuestion: true });
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar")
       // verify panel is shown
       .should("contain", "Add or remove columns")
@@ -776,6 +776,6 @@ function saveModifiedQuestion() {
 }
 
 function goToExpressionSidebarVisualizationSettings() {
-  cy.findByTestId("viz-settings-button").click();
+  H.openVizSettingsSidebar();
   cy.findByTestId(`${EXPRESSION_NAME}-settings-button`).click();
 }

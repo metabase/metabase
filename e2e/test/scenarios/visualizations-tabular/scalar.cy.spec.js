@@ -61,7 +61,7 @@ describe("scenarios > visualizations > scalar", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("April 30, 2024");
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show the time").should("be.hidden");

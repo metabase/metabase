@@ -9,7 +9,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.task.sync-databases :as task.sync-databases]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
@@ -33,10 +33,11 @@
        (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
 
 (deftest the-driver-test
-  (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
-                "there but not elsewhere")
+  (testing (str "calling `the-driver` should set the context classloader if the driver is not registered yet,"
+                "important because driver plugin code exists there but not elsewhere")
     (.setContextClassLoader (Thread/currentThread) (ClassLoader/getSystemClassLoader))
-    (driver/the-driver :h2)
+    (with-redefs [driver.impl/hierarchy (make-hierarchy)] ;; To simulate :h2 not being registed yet.
+      (driver/the-driver :h2))
     (is (= @@#'classloader/shared-context-classloader
            (.getContextClassLoader (Thread/currentThread))))))
 

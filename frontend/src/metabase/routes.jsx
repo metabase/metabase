@@ -21,6 +21,7 @@ import { MoveCollectionModal } from "metabase/collections/components/MoveCollect
 import { TrashCollectionLanding } from "metabase/collections/components/TrashCollectionLanding";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import { Unauthorized } from "metabase/components/ErrorPages";
+import { MoveQuestionsIntoDashboardsModal } from "metabase/components/MoveQuestionsIntoDashboardsModal";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/containers/Unsubscribe";
 import { UserCollectionList } from "metabase/containers/UserCollectionList";
@@ -140,7 +141,7 @@ export const getRoutes = store => {
 
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
-          <Redirect path="archive" to="trash" replace />
+          <Redirect from="archive" to="trash" replace />
           <Route
             path="trash"
             title={t`Trash`}
@@ -155,6 +156,10 @@ export const getRoutes = store => {
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+            <ModalRoute
+              path="move-questions-dashboard"
+              modal={MoveQuestionsIntoDashboardsModal}
+            />
             {PLUGIN_COLLECTIONS.cleanUpRoute}
             {getCollectionTimelineRoutes()}
           </Route>

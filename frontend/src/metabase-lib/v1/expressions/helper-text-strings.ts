@@ -1161,8 +1161,7 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
     name: "convert-timezone",
     structure: "convertTimezone",
     description: () => t`Convert timezone of a date or timestamp column.
-We support tz database time zone names.
-See the full list here: https://w.wiki/4Jx`,
+We support tz database time zone names.`,
     args: [
       {
         name: t`column`,

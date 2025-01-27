@@ -165,7 +165,7 @@ export function setFilterWidgetValue(
   popover()
     .first()
     .within(() => {
-      removeMultiAutocompleteValue(0);
+      removeFieldValuesValue(0);
       if (value) {
         cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
       }
@@ -296,6 +296,10 @@ export function tableInteractiveBody() {
   return cy.get("#main-data-grid");
 }
 
+export function tableAllFieldsHiddenImage() {
+  return cy.findByTestId("Table-all-fields-hidden-image");
+}
+
 export function tableHeaderClick(headerString) {
   tableInteractive().within(() => {
     cy.findByTextEnsureVisible(headerString).trigger("mousedown");
@@ -350,6 +354,18 @@ export function multiAutocompleteInput(filter = ":eq(0)") {
   return cy.findAllByRole("combobox").filter(filter).get("input").last();
 }
 
+export function fieldValuesInput(filter = ":eq(0)") {
+  return cy.findAllByRole("textbox").filter(filter).get("input").last();
+}
+
+export function fieldValuesValue(index) {
+  return cy.findAllByTestId("token-field").eq(index);
+}
+
+export function removeFieldValuesValue(index) {
+  return cy.findAllByTestId("token-field").icon("close").eq(index).click();
+}
+
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
   return cy
     .findAllByRole("combobox")
@@ -371,4 +387,8 @@ export function repeatAssertion(assertFn, timeout = 4000, interval = 400) {
 
   cy.wait(interval);
   repeatAssertion(assertFn, timeout - interval, interval);
+}
+
+export function mapPinIcon() {
+  return cy.get(".leaflet-marker-icon");
 }

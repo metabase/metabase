@@ -11,7 +11,7 @@ export const openImageBlobOnStorybook = ({
   imgElement.width = canvas.width / 2;
   imgElement.height = canvas.height / 2;
 
-  const root: HTMLElement = document.querySelector("#root")!;
+  const root: HTMLElement = document.querySelector("#storybook-root")!;
   const imageDownloaded = document.createElement("div");
   imageDownloaded.setAttribute("data-testid", "image-downloaded");
   root.replaceChildren(imgElement);

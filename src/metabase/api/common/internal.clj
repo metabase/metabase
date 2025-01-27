@@ -1,33 +1,31 @@
 (ns metabase.api.common.internal
-  "Internal functions used by `metabase.api.common`.
-   These are primarily used as the internal implementation of `defendpoint`."
+  "Internal functions used by [[metabase.api.common]].
+   These are primarily used as the internal implementation of legacy [[metabase.api.common/defendpoint]]. Most of this
+  stuff can be removed once we remove the legacy implementation."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
-   [metabase.async.streaming-response :as streaming-response]
    [metabase.config :as config]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types])
   (:import
-   (metabase.async.streaming_response StreamingResponse)))
+   (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 
 (comment streaming-response/keep-me)
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              DOCSTRING GENERATION                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn handle-nonstandard-namespaces
+(defn- handle-nonstandard-namespaces
   "HACK to make sure some enterprise endpoints are consistent with the code.
    The right way to fix this is to move them -- see #22687"
   [name]
@@ -95,13 +93,13 @@
     ;; we can ignore the warning printed by umd/describe when schema is `nil`.
     (binding [*out* (new java.io.StringWriter)]
       (umd/describe schema))
-    (catch Exception _
-      (ex-data
-       (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
-         (log/warn
-          (u/format-color 'red "Invalid Malli Schema: %s defined at %s"
-                          (u/pprint-to-str schema)
-                          (u/add-period route-str)))))
+    (catch Exception e
+      (when (and schema config/is-dev?) ; schema is nil for any var without a schema. That's ok!
+        (log/warn
+         e
+         (u/format-color 'red "Invalid Malli Schema: %s defined at %s"
+                         (u/pprint-to-str schema)
+                         (u/add-period route-str))))
       "")))
 
 (defn- param-name
@@ -138,7 +136,7 @@
        (format-route-schema-dox param->schema route-str)))
 
 (defn- contains-superuser-check?
-  "Does the BODY of this `defendpoint` form contain a call to `check-superuser`?"
+  "Does the `body` of this `defendpoint` form contain a call to `check-superuser`?"
   [body]
   (let [body (set body)]
     (or (contains? body '(check-superuser))
@@ -152,58 +150,6 @@
                                                  "\n\nYou must be a superuser to do this."))
                     (merge (args-form-symbols args)
                            param->schema)))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          AUTO-PARSING + ROUTE TYPING                                           |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn parse-int
-  "Parse `value` (presumabily a string) as an Integer, or throw a 400 exception. Used to automatically to parse `id`
-  parameters in `defendpoint` functions."
-  [^String value]
-  (try (Integer/parseInt value)
-       (catch NumberFormatException _
-         (throw (ex-info (tru "Not a valid integer: ''{0}''" value) {:status-code 400})))))
-
-(def ^:dynamic *auto-parse-types*
-  "Map of `param-type` -> map with the following keys:
-
-     :route-param-regex Regex pattern that should be used for params in Compojure route forms
-     :parser            Function that should be used to parse args"
-  {:int  {:route-param-regex #"[0-9]+"
-          :parser            'metabase.api.common.internal/parse-int}
-   :uuid {:route-param-regex u/uuid-regex
-          :parser            nil}})
-
-(def ^:private ^:const  auto-parse-arg-name-patterns
-  "Sequence of `[param-pattern parse-type]` pairs. A param with name matching PARAM-PATTERN should be considered to be
-  of AUTO-PARSE-TYPE."
-  [[#"^uuid$"       :uuid]
-   [#"^session_id$" :uuid]
-   [#"^[\w-_]*id$"  :int]])
-
-(defn arg-type
-  "Return a key into `*auto-parse-types*` if `arg` has a matching pattern in `auto-parse-arg-name-patterns`.
-
-    (arg-type :id) -> :int"
-  [arg]
-  (some (fn [[pattern type]]
-          (when (re-find pattern (name arg))
-            type))
-        auto-parse-arg-name-patterns))
-
-;;; ## TYPIFY-ROUTE
-
-(defn route-param-regex
-  "If keyword `arg` has a matching type, return a pair like `[arg route-param-regex]`, where `route-param-regex` is the
-  regex that this param that arg must match.
-
-    (route-param-regex :id) -> [:id #\"[0-9]+\"]"
-  [arg]
-  (some->> (arg-type arg)
-           *auto-parse-types*
-           :route-param-regex
-           (vector arg)))
 
 (defn route-arg-keywords
   "Return a sequence of keywords for URL args in string `route`.
@@ -222,7 +168,7 @@
             (catch Exception _ x)) x))
    form))
 
-(defn- ->matching-regex
+(defn ->matching-regex
   "Note: this is called in a macro context, so it can potentially be passed a symbol that resolves to a schema."
   [schema]
   (let [schema      (try #_:clj-kondo/ignore
@@ -279,33 +225,6 @@
         wildcard  wildcard
         :else     route))))
 
-;;; ## ROUTE ARG AUTO PARSING
-
-(defn let-form-for-arg
-  "Given an `arg-symbol` like `id`, return a pair like `[id (Integer/parseInt id)]` that can be used in a `let` form."
-  [arg-symbol]
-  (when (symbol? arg-symbol)
-    (some-> (arg-type arg-symbol)                                     ; :int
-            *auto-parse-types*                                        ; {:parser ... }
-            :parser                                                   ; Integer/parseInt
-            ((fn [parser] `(when ~arg-symbol (~parser ~arg-symbol)))) ; (when id (Integer/parseInt id))
-            ((partial vector arg-symbol)))))                          ; [id (Integer/parseInt id)]
-
-(defmacro auto-parse
-  "Create a `let` form that applies corresponding parse-fn for any symbols in `args` that are present in
-  `*auto-parse-types*`."
-  {:style/indent 1}
-  [args & body]
-  (let [let-forms (->> args
-                       (mapcat let-form-for-arg)
-                       (filter identity))]
-    `(let [~@let-forms]
-       ~@body)))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          AUTO-COERCION                                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (def defendpoint-transformer
   "Transformer used on values coming over the API via defendpoint."
   (mtx/transformer
@@ -336,20 +255,16 @@
                        (remove nil?))]
     `(let [~@let-forms] ~@body)))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                PARAM VALIDATION                                                |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (defn validate-param
   "Validate a parameter against its respective malli schema, or throw an Exception."
   [field-name value schema]
-  (when-not (mc/validate schema value)
+  (when-not (mr/validate schema value)
     (throw (ex-info (tru "Invalid m field: {0}" field-name)
                     {:status-code 400
                      :errors      {(keyword field-name) (umd/describe schema)}
                      :specific-errors {(keyword field-name)
                                        (-> schema
-                                           (mc/explain value)
+                                           (mr/explain value)
                                            me/with-spell-checking
                                            (me/humanize {:wrap mu/humanize-include-value}))}}))))
 
@@ -358,10 +273,6 @@
   [param->schema]
   (for [[param schema] param->schema]
     `(validate-param '~param ~param ~schema)))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                      MISC. OTHER FNS USED BY DEFENDPOINT                                       |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn route-fn-name
   "Generate a symbol suitable for use as the name of an API endpoint fn. Name is just `method` + `route` with slashes

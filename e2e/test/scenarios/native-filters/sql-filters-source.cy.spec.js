@@ -44,7 +44,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     it("should be able to use a structured question source", () => {
       cy.createQuestion(structuredSourceQuestion);
 
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
@@ -70,7 +70,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     it("should be able to use a structured question source with a text tag", () => {
       cy.createQuestion(structuredSourceQuestion);
 
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
       );
@@ -103,7 +103,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     it("should be able to use a structured question source without saving the question", () => {
       cy.createQuestion(structuredSourceQuestion);
 
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
       );
@@ -118,7 +118,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
     it("should properly cache parameter values api calls", () => {
       cy.createQuestion(structuredSourceQuestion);
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
       );
@@ -224,7 +224,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     it("should be able to use a native question source in the query builder", () => {
       cy.createNativeQuestion(nativeSourceQuestion);
 
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
@@ -309,7 +309,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
   describe("static list source (dropdown)", () => {
     it("should be able to use a static list source in the query builder", () => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
@@ -361,7 +361,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
   describe("static list source with custom labels (dropdown)", () => {
     it("should be able to use a static list source in the query builder", () => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
@@ -418,7 +418,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
   describe("static list source (search box)", () => {
     it("should be able to use a static list source in the query builder", () => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
@@ -436,10 +436,10 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.multiAutocompleteInput().type("101");
-      H.selectDropdown().findByText("1018947080336").click();
+      H.fieldValuesInput().type("101");
+      H.popover().findByText("1018947080336").click();
 
-      H.multiAutocompleteValue(0)
+      H.fieldValuesValue(0)
         .should("be.visible")
         .should("contain", "1018947080336");
       H.popover().button("Add filter").click();
@@ -459,9 +459,9 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.multiAutocompleteInput().type("101");
-      H.selectDropdown().findByText("1018947080336").click();
-      H.multiAutocompleteValue(0)
+      H.fieldValuesInput().type("101");
+      H.popover().findByText("1018947080336").click();
+      H.fieldValuesValue(0)
         .should("be.visible")
         .should("contain", "1018947080336");
       H.popover().button("Add filter").click();
@@ -481,9 +481,9 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.multiAutocompleteInput().type("101");
-      H.selectDropdown().findByText("1018947080336").click();
-      H.multiAutocompleteValue(0)
+      H.fieldValuesInput().type("101");
+      H.popover().findByText("1018947080336").click();
+      H.fieldValuesValue(0)
         .should("be.visible")
         .should("contain", "1018947080336");
       H.popover().button("Add filter").click();
@@ -494,7 +494,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
   describe("static list source with custom labels (search box)", () => {
     it("should be able to use a static list source in the query builder", () => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
@@ -512,10 +512,10 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.multiAutocompleteInput().type("Custom Label");
+      H.fieldValuesInput().type("Custom Label");
       H.popover().last().findByText("1018947080336").should("not.exist");
       H.popover().last().findByText("Custom Label").click();
-      H.multiAutocompleteValue(0)
+      H.fieldValuesValue(0)
         .should("be.visible")
         .should("contain", "Custom Label");
       H.popover().button("Add filter").click();
@@ -535,10 +535,10 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.multiAutocompleteInput().type("Custom Label");
+      H.fieldValuesInput().type("Custom Label");
       H.popover().last().findByText("1018947080336").should("not.exist");
       H.popover().last().findByText("Custom Label").click();
-      H.multiAutocompleteValue(0)
+      H.fieldValuesValue(0)
         .should("be.visible")
         .should("contain", "Custom Label");
       H.popover().button("Add filter").click();
@@ -558,10 +558,10 @@ describe("scenarios > filters > sql filters > values source", () => {
 
       FieldFilter.openEntryForm();
 
-      H.multiAutocompleteInput().type("Custom Label");
+      H.fieldValuesInput().type("Custom Label");
       H.popover().last().findByText("1018947080336").should("not.exist");
       H.popover().last().findByText("Custom Label").click();
-      H.multiAutocompleteValue(0)
+      H.fieldValuesValue(0)
         .should("be.visible")
         .should("contain", "Custom Label");
       H.popover().button("Add filter").click();
@@ -638,7 +638,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
   describe("static list source (dropdown)", () => {
     it("should be able to use a static list source in the query builder", () => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery("SELECT {{ x }}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Number");
@@ -704,7 +704,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
   describe("static list source with custom labels (dropdown)", () => {
     it("should be able to use a static list source in the query builder", () => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery("SELECT * FROM {{ tag }}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Number");
@@ -718,7 +718,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       });
 
       FieldFilter.openEntryForm();
-      H.multiAutocompleteInput().type("Tw");
+      H.fieldValuesInput().type("Tw");
       checkFilterValueNotInList("10");
       checkFilterValueNotInList("20");
       H.popover().last().findByText("Twenty").click();
@@ -783,7 +783,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
   describe("static list source (search box)", () => {
     it("should be able to use a static list source in the query builder", () => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery("SELECT {{ tag }}");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Number");
@@ -827,7 +827,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
       FieldFilter.openEntryForm();
 
-      H.multiAutocompleteInput().type("Twenty");
+      H.multiAutocompleteInput().type("Tw");
       H.popover().last().findByText("Twenty").click();
       H.multiAutocompleteValue(0)
         .should("be.visible")
@@ -839,7 +839,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
   });
 
   it("should show the values when picking the default value", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery("SELECT {{ x }}");
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Number");
@@ -868,7 +868,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
   });
 
   it("should clear the value type and config when changing the template tag type and restore them when changing the type back", () => {
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
     SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
     SQLFilter.openTypePickerFromDefaultFilterType();
     SQLFilter.chooseType("Text");

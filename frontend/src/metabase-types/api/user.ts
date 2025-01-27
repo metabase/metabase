@@ -114,3 +114,21 @@ export type UpdateUserRequest = {
   login_attributes?: Record<UserAttribute, UserAttribute> | null;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
 };
+
+export type UserKeyValue =
+  | { namespace: "test"; key: string; value: any }
+  | {
+      namespace: "user_acknowledgement";
+      key: string;
+      value: boolean;
+    };
+
+export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;
+
+export type DeleteUserKeyValueRequest = UserKeyValueKey;
+
+export type GetUserKeyValueRequest = UserKeyValueKey;
+
+export type UpdateUserKeyValueRequest = UserKeyValue & {
+  expires_at?: string;
+};

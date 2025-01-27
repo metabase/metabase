@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [compojure.core :refer [POST]]
    [malli.util :as mut]
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.common.internal :as internal]
    [metabase.config :as config]
@@ -50,35 +49,42 @@
 (def ^:private ClosedTestAddress
   (mut/closed-schema TestAddress))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/post/any" [:as {body :body :as _request}]
   {:status 200 :body body})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/post/id-int"
   [:as {{:keys [id] :as body} :body :as _request}]
   {id :int}
   {:status 200 :body body})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/post/test-address"
   [:as {address :body :as _request}]
   {address TestAddress}
   {:status 200 :body address})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/post/closed-test-address"
   [:as {address :body :as _request}]
   {address ClosedTestAddress}
   {:status 200 :body address})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/test-localized-error"
   [:as {address :body :as _request}]
   {address ms/NonBlankString}
   {:status 200 :body address})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/auto-coerce-pos-square/:x"
   [x]
   ;; if not for this annotation, x would continue to be a string:
   {x ms/PositiveInt}
   (* x x))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/auto-coerce-string-repeater"
   [:as {body :body :as _req}]
   {body [:map
@@ -88,12 +94,14 @@
   (let [{:keys [str n join]} body]
     (str/join (or join "") (repeat n str))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/auto-coerce-destructure"
   [:as {{:keys [set-of-kw]} :body :as _req}]
   {set-of-kw [:set :keyword]}
   {:pr-strd (pr-str set-of-kw)
    :api-returns set-of-kw})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/closed-map-spellcheck"
   [:as {body :body :as _req}]
   {body [:map {:closed true}
@@ -103,6 +111,7 @@
   (let [{:keys [state po-box archipelago]} body]
     (str/join " | " [state po-box archipelago])))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint GET "/with-query-params/"
   [:as {params :params}]
   {params [:and
@@ -116,10 +125,15 @@
             [:kw-key :keyword]]]}
   (pr-str params))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/accept-thing/:a" [a] {a [:re #"a.*"]} "hit route for a.")
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/accept-thing/:b" [b] {b [:re #"b.*"]} "hit route for b.")
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/accept-thing/:c" [c] {c [:re #"c.*"]} "hit route for c.")
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/accept-thing/:d" [d] {d [:re #"d.*"]} "hit route for d.")
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint POST "/accept-thing/:e" [e] {e [:re #"e.*"]} "hit route for e.")
 
 (api/define-routes)
@@ -319,41 +333,14 @@
     ;; check that internal/route-fn-name can handle routes with regex conditions
     'GET ["/:id" :id #"[0-9]+"] 'GET_:id))
 
-(deftest ^:parallel arg-type-test
-  (are [param expected] (= expected
-                           (internal/arg-type param))
-    :fish    nil
-    :id      :int
-    :card-id :int))
-
-(defmacro ^:private no-route-regexes
-  "`clojure.data/diff` doesn't think two regexes with the same exact pattern are equal. so in order to make sure we're
-  getting back the right output we'll just change them to strings, e.g.
-
-    #\"[0-9]+\" -> \"#[0-9]+\""
-  {:style/indent 0}
-  [& body]
-  `(binding [internal/*auto-parse-types* (m/map-vals #(update % :route-param-regex (partial str "#"))
-                                                     internal/*auto-parse-types*)]
-     ~@body))
-
-(deftest ^:parallel route-param-regex-test
-  (no-route-regexes
-    (are [param expected] (= expected
-                             (internal/route-param-regex param))
-      :fish    nil
-      :id      [:id "#[0-9]+"]
-      :card-id [:card-id "#[0-9]+"])))
-
 (deftest ^:parallel route-arg-keywords-test
-  (no-route-regexes
-    (are [route expected] (= expected
-                             (internal/route-arg-keywords route))
-      "/"             []
-      "/:id"          [:id]
-      "/:id/card"     [:id]
-      "/:id/etc/:org" [:id :org]
-      "/:card-id"     [:card-id])))
+  (are [route expected] (= expected
+                           (internal/route-arg-keywords route))
+    "/"             []
+    "/:id"          [:id]
+    "/:id/card"     [:id]
+    "/:id/etc/:org" [:id :org]
+    "/:card-id"     [:card-id]))
 
 (deftest ^:parallel add-route-param-schema-test
   (are [route expected] (= expected
@@ -381,45 +368,6 @@
     "/:uuid/toucans"                       ["/:uuid/toucans" :uuid (str \# u/uuid-regex)]
     "/:id/:card-id"                        ["/:id/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
     "/:unlisted/:card-id"                  ["/:unlisted/:card-id" :card-id "#[0-9]+"]))
-
-(deftest ^:parallel let-form-for-arg-test
-  (are [arg expected] (= expected
-                         (internal/let-form-for-arg arg))
-    'id           '[id (clojure.core/when id (metabase.api.common.internal/parse-int id))]
-    'org_id       '[org_id (clojure.core/when org_id (metabase.api.common.internal/parse-int org_id))]
-    'fish         nil
-    ;; make sure we don't try to generate let forms for any fancy destructuring
-    :as           nil
-    '{body :body} nil))
-
-(deftest ^:parallel auto-parse-test
-  (are [args expected] (= expected
-                          (macroexpand-1 `(internal/auto-parse ~args '~'body)))
-    ;; when auto-parse gets an args form where arg is present in *autoparse-types*
-    ;; the appropriate let binding should be generated
-    '[id]
-    '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)
-
-    ;; params not in *autoparse-types* should be ignored
-    '[id some-other-param]
-    '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)
-
-    ;; make sure multiple autoparse params work correctly
-    '[id org_id]
-    '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))
-                        org_id (clojure.core/when org_id (metabase.api.common.internal/parse-int org_id))] 'body)
-
-    ;; make sure it still works if no autoparse params are passed
-    '[some-other-param]
-    '(clojure.core/let [] 'body)
-
-    ;; should work with no params at all
-    '[]
-    '(clojure.core/let [] 'body)
-
-    ;; should work with some wacky binding form
-    '[id :as {body :body}]
-    '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)))
 
 (deftest ^:parallel enterprise-endpoint-name-test
   (when config/ee-available?

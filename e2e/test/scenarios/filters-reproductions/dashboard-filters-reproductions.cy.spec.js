@@ -152,7 +152,7 @@ describe("issue 8030 + 32444", () => {
             cy.findByText(filterDetails.name).click();
             H.popover().within(() => {
               // the filter is connected only to the first card
-              H.multiAutocompleteInput().type("1{enter}");
+              cy.findByPlaceholderText("Enter an ID").type("1");
               cy.button("Add filter").click();
             });
             cy.wait("@getCardQuery1");
@@ -1174,7 +1174,7 @@ describe("issue 21528", () => {
 
 describe("issue 22482", () => {
   function getFormattedRange(start, end) {
-    return `${start.format("MMM D, YYYY")} - ${end.format("MMM D, YYYY")}`;
+    return `${start.format("MMM D, YYYY")} – ${end.format("MMM D, YYYY")}`;
   }
 
   beforeEach(() => {
@@ -1194,12 +1194,12 @@ describe("issue 22482", () => {
 
     H.filterWidget().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates...").click();
+    cy.findByText("Relative dates…").click();
   });
 
   it("should round relative date range (metabase#22482)", () => {
-    cy.findByTestId("relative-datetime-value").clear().type(15);
-    cy.findByTestId("relative-datetime-unit").click();
+    cy.findByLabelText("Interval").clear().type(15);
+    cy.findByLabelText("Unit").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("months").click();
 
@@ -1242,7 +1242,7 @@ describe("issue 22788", () => {
   function addFilterAndAssert() {
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByRole("searchbox").type("Gizmo");
+      cy.findByPlaceholderText("Enter some text").type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -1362,7 +1362,7 @@ describe("issue 24235", () => {
     cy.intercept("POST", "/api/dashboard/**/query").as("getCardQuery");
   });
 
-  it("should remove filter when all exclude options are selected (metabase#24235)", () => {
+  it("should not allow to add a filter when all exclude options are selected (metabase#24235)", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         mapParameterToDashboardCard({ id, card_id, dashboard_id });
@@ -1372,8 +1372,8 @@ describe("issue 24235", () => {
 
     H.filterWidget().contains(parameter.name).click();
     H.popover().within(() => {
-      cy.findByText("Exclude...").click();
-      cy.findByText("Days of the week...").click();
+      cy.findByText("Exclude…").click();
+      cy.findByText("Days of the week…").click();
       cy.findByText("Select all").click();
       cy.findByText("Add filter").click();
     });
@@ -1381,14 +1381,8 @@ describe("issue 24235", () => {
     H.filterWidget().click();
     H.popover().within(() => {
       cy.findByText("Select none").click();
-      cy.findByText("Update filter").click();
+      cy.button("Update filter").should("be.disabled");
     });
-
-    cy.wait("@getCardQuery");
-    cy.get("[data-testid=cell-data]").should(
-      "contain",
-      "Price, Schultz and Daniel",
-    );
   });
 });
 
@@ -2166,7 +2160,7 @@ describe("issue 27768", () => {
 
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByRole("searchbox").type("Gizmo");
+      H.fieldValuesInput().type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -2989,8 +2983,8 @@ describe("issue 27579", () => {
     H.saveDashboard();
     H.filterWidget().click();
     H.popover().within(() => {
-      cy.findByText("Exclude...").click();
-      cy.findByText("Hours of the day...").click();
+      cy.findByText("Exclude…").click();
+      cy.findByText("Hours of the day…").click();
       cy.findByText("Select all").click();
       cy.findByLabelText("12 AM").should("be.checked");
 
@@ -4045,5 +4039,191 @@ describe("issue 48351", () => {
       "Dashboard 1",
     );
     H.assertTabSelected("Tab 2");
+  });
+});
+
+describe("issue 52484", () => {
+  const questionDetails = {
+    native: {
+      query: "SELECT ID, RATING FROM PRODUCTS [[WHERE RATING = {{rating}}]]",
+      "template-tags": {
+        rating: {
+          id: "56708d23-6f01-42b7-98ed-f930295d31b9",
+          name: "rating",
+          type: "number",
+          "display-name": "Rating",
+        },
+      },
+    },
+    parameters: [
+      {
+        id: "56708d23-6f01-42b7-98ed-f930295d31b9",
+        name: "Rating",
+        slug: "rating",
+        type: "number/=",
+        target: ["dimension", ["template-tag", "rating"]],
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use click behaviors with numeric columns that are not database fields (metabase#52484)", () => {
+    H.createNativeQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+      },
+    );
+
+    cy.log("setup a dashboard with a click behavior");
+    H.editDashboard();
+    H.setFilter("Number", "Equal to");
+    H.selectDashboardFilter(H.getDashboardCard(), "Rating");
+    H.dashboardParametersDoneButton().click();
+    H.showDashboardCardActions();
+    cy.findByLabelText("Click behavior").click();
+    H.sidebar().within(() => {
+      cy.findByText("ID").click();
+      cy.findByText("Update a dashboard filter").click();
+      cy.findByText("Number").click();
+    });
+    H.popover().findByText("ID").click();
+    H.saveDashboard();
+
+    cy.log("update a dashboard filter by clicking on a ID column value");
+    H.getDashboardCard().findByText("2").click();
+    H.filterWidget().findByDisplayValue("2").should("be.visible");
+
+    cy.log("verify query results for the new filter");
+    H.getDashboardCard().within(() => {
+      cy.findByText("27").should("be.visible");
+      cy.findByText("123").should("be.visible");
+    });
+  });
+});
+
+describe("issue 40396", { tags: "@external " }, () => {
+  const tableName = "many_data_types";
+
+  beforeEach(() => {
+    H.resetTestTable({ type: "postgres", table: tableName });
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+  });
+
+  it("should be possible to use dashboard filters with native enum fields (metabase#40396)", () => {
+    cy.log("create a dashboard with a question with a type/Enum field");
+    cy.request("GET", "/api/table").then(({ body: tables }) => {
+      const table = tables.find(table => table.name === tableName);
+      cy.request("GET", `/api/table/${table.id}/query_metadata`).then(
+        ({ body: metadata }) => {
+          const field = metadata.fields.find(field => field.name === "enum");
+          cy.request("PUT", `/api/field/${field.id}`, {
+            semantic_type: "type/Enum",
+          });
+
+          H.createQuestionAndDashboard({
+            questionDetails: {
+              database: table.db_id,
+              query: { "source-table": table.id },
+            },
+          }).then(({ body: { dashboard_id } }) => {
+            H.visitDashboard(dashboard_id);
+            cy.wait("@dashcardQuery");
+          });
+        },
+      );
+    });
+
+    cy.log("verify that a enum field can be mapped to a parameter");
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Enum");
+    H.saveDashboard();
+
+    cy.log("verify that filtering on a enum field works");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("beta").click();
+      cy.button("Add filter").click();
+    });
+    cy.wait("@dashcardQuery");
+    H.getDashboardCard().findAllByText("beta").should("have.length.gte", 1);
+  });
+});
+
+describe("issue 52627", () => {
+  const questionDetails = {
+    display: "bar",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["avg", ["field", ORDERS.TOTAL, null]],
+        ["avg", ["field", ORDERS.DISCOUNT, null]],
+      ],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+  };
+
+  const parameterDetails = {
+    name: "Category",
+    slug: "category",
+    id: "b6ed2d71",
+    type: "string/=",
+    sectionId: "string",
+    default: ["Gadget"],
+  };
+
+  const parameterTarget = [
+    "dimension",
+    ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+    { "stage-number": 0 },
+  ];
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should remove an empty query stage after a dashboard drill-thru (metabase#52627)", () => {
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        H.addOrUpdateDashboardCard({
+          dashboard_id,
+          card_id,
+          card: {
+            id,
+            parameter_mappings: [
+              {
+                card_id: card_id,
+                parameter_id: parameterDetails.id,
+                target: parameterTarget,
+              },
+            ],
+          },
+        });
+        H.visitDashboard(dashboard_id);
+      },
+    );
+    H.chartPathWithFillColor("#A989C5").first().click();
+    H.popover().findByText("See this month by week").click();
+    cy.wait("@dataset");
+    cy.findByTestId("qb-filters-panel").findByText(
+      "Product → Category is Gadget",
+    );
+    H.summarize();
+    H.rightSidebar().findByText("Average of Total").should("be.visible");
   });
 });

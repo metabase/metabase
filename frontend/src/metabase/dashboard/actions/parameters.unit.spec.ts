@@ -1,7 +1,13 @@
 import { getStore } from "__support__/entities-store";
 import { getParameters } from "metabase/dashboard/selectors";
 import { mainReducers } from "metabase/reducers-main";
-import { createMockParameter } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDashboardCard,
+  createMockNativeDatasetQuery,
+  createMockParameter,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import {
   createMockDashboardState,
@@ -13,11 +19,120 @@ import {
   REMOVE_PARAMETER,
   removeParameter,
   setParameterIsMultiSelect,
+  setParameterType,
 } from "./parameters";
 
 function setup({ routing, ...initialState }: State) {
   return getStore(mainReducers, initialState);
 }
+
+describe("setParameterType", () => {
+  const state = createMockState({
+    dashboard: createMockDashboardState({
+      dashboardId: 1,
+      dashboards: {
+        "1": createMockStoreDashboard({
+          id: 1,
+          dashcards: [1],
+          parameters: [
+            createMockParameter({
+              id: "1",
+              type: "string/=",
+              sectionId: "string",
+            }),
+            createMockParameter({
+              id: "2",
+              type: "string/=",
+              sectionId: "string",
+            }),
+          ],
+        }),
+      },
+      dashcards: {
+        "1": createMockDashboardCard({
+          id: 1,
+          card_id: 1,
+          card: createMockCard({
+            id: 1,
+            dataset_query: createMockNativeDatasetQuery(),
+          }),
+          series: [
+            createMockCard({
+              id: 2,
+              dataset_query: createMockNativeDatasetQuery(),
+            }),
+            createMockCard({
+              id: 3,
+              dataset_query: createMockStructuredDatasetQuery(),
+            }),
+            createMockCard({
+              id: 4,
+              dataset_query: createMockNativeDatasetQuery(),
+            }),
+          ],
+          parameter_mappings: [
+            {
+              parameter_id: "1",
+              card_id: 1,
+              target: ["dimension", ["field", 1, null]],
+            },
+            {
+              parameter_id: "1",
+              card_id: 2,
+              target: ["dimension", ["field", 1, null]],
+            },
+            {
+              parameter_id: "1",
+              card_id: 3,
+              target: ["dimension", ["field", 1, null]],
+            },
+            {
+              parameter_id: "1",
+              card_id: 4,
+              target: ["dimension", ["field", 1, null]],
+            },
+            {
+              parameter_id: "2",
+              card_id: 4,
+              target: ["dimension", ["field", 1, null]],
+            },
+          ],
+        }),
+      },
+    }),
+  });
+
+  it("should reset all parameter mappings when the section changes", async () => {
+    const store = setup(state);
+    await store.dispatch(setParameterType("1", "string/=", "location"));
+    expect(store.getState()).toMatchObject({
+      dashboard: {
+        dashcards: {
+          "1": {
+            parameter_mappings: [{ parameter_id: "2", card_id: 4 }],
+          },
+        },
+      },
+    });
+  });
+
+  it("should reset native query parameter mappings only when the type changes but section does not", async () => {
+    const store = setup(state);
+    await store.dispatch(setParameterType("1", "string/!=", "string"));
+    expect(store.getState()).toMatchObject({
+      dashboard: {
+        dashcards: {
+          "1": {
+            parameter_mappings: [
+              { parameter_id: "1", card_id: 3 },
+              { parameter_id: "2", card_id: 4 },
+            ],
+          },
+        },
+      },
+    });
+  });
+});
 
 describe("setParameterIsMultiSelect", () => {
   it.each([

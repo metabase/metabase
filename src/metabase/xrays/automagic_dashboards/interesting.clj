@@ -47,10 +47,8 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.field :as field]
    [metabase.models.interface :as mi]
-   [metabase.models.legacy-metric :refer [LegacyMetric]]
-   [metabase.models.table :refer [Table]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
@@ -93,12 +91,11 @@
           (group-by :semantic_type))
      set)))
 
-(defmulti
-  ^{:doc      "Get a reference for a given model to be injected into a template
-          (either MBQL, native query, or string)."
-    :arglists '([template-type model])}
-  ->reference (fn [template-type model]
-                [template-type (mi/model model)]))
+(defmulti ->reference
+  "Get a reference for a given model to be injected into a template (either MBQL, native query, or string)."
+  {:arglists '([template-type model])}
+  (fn [template-type model]
+    [template-type (mi/model model)]))
 
 (defn- optimal-temporal-resolution
   [field]
@@ -122,7 +119,7 @@
           (can-use? :hour) :hour))
       (if (can-use? :day) :day :hour))))
 
-(defmethod ->reference [:mbql Field]
+(defmethod ->reference [:mbql :model/Field]
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
   (let [reference (mbql.normalize/normalize
                    (cond
@@ -142,34 +139,34 @@
       :else
       reference)))
 
-(defmethod ->reference [:string Field]
+(defmethod ->reference [:string :model/Field]
   [_ {:keys [display_name full-name link]}]
   (cond
     full-name full-name
     link (format "%s → %s"
-                 (-> (t2/select-one Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
+                 (-> (t2/select-one :model/Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
                  display_name)
     :else display_name))
 
-(defmethod ->reference [:string Table]
+(defmethod ->reference [:string :model/Table]
   [_ {:keys [display_name full-name]}]
   (or full-name display_name))
 
-(defmethod ->reference [:string LegacyMetric]
+(defmethod ->reference [:string :model/LegacyMetric]
   [_ {:keys [name full-name]}]
   (or full-name name))
 
-(defmethod ->reference [:mbql LegacyMetric]
+(defmethod ->reference [:mbql :model/LegacyMetric]
   [_ {:keys [id definition]}]
   (if id
     [:metric id]
     (-> definition :aggregation first)))
 
-(defmethod ->reference [:native Field]
+(defmethod ->reference [:native :model/Field]
   [_ field]
   (field/qualified-name field))
 
-(defmethod ->reference [:native Table]
+(defmethod ->reference [:native :model/Table]
   [_ {:keys [name]}]
   name)
 
@@ -415,7 +412,7 @@
 
 (defn- add-field-self-reference [{{:keys [entity]} :root :as context} dimensions]
   (cond-> dimensions
-    (= Field (mi/model entity))
+    (= :model/Field (mi/model entity))
     (add-field-links-to-definitions (enriched-field-with-sources context entity))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

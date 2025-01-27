@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.audit :as audit]
    [metabase.models.interface :as mi]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

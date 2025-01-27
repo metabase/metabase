@@ -10,8 +10,7 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.task-history :as task-history]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features
-    :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.task :as task]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -91,6 +90,7 @@ If set to 0, Metabase will keep all rows.")
                :where [:<=
                        (keyword time-column)
                        (t/minus (t/offset-date-time) (t/days (audit-max-retention-days)))]
+               :order-by [[:id :asc]]
                :limit (audit-table-truncation-batch-size)}]}
 
      (:mysql :mariadb)
