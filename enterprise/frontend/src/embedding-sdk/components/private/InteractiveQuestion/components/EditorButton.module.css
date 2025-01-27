@@ -1,9 +1,9 @@
 .editorButton:not([data-css-specificity-hack="😅"]) {
   color: var(--mb-color-text-dark);
-  background: var(--mb-color-bg-white);
+  background: var(--mb-color-background);
 
   &:hover {
-    background: var(--mb-color-bg-white);
+    background: var(--mb-color-sdk-toolbar-button-bg-hover);
   }
 
   &[data-active="true"] {

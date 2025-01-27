@@ -1,4 +1,5 @@
 import { css } from "@emotion/react";
+import { P, match } from "ts-pattern";
 
 import { darken, isDark, isLight, lighten } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
@@ -13,7 +14,7 @@ type DynamicCssVarColorDefinition = {
    * The color to use as a source for generating the CSS variable.
    * If the value is an object, it will use the light color for light themes and the dark color for dark themes.
    **/
-  source: SourceColorKey | { light: SourceColorKey; dark: SourceColorKey };
+  source: SourceColorKey | { light?: SourceColorKey; dark?: SourceColorKey };
 
   /** For light themes, darken the color by this percentage */
   darkenBy?: number;
@@ -40,7 +41,7 @@ export const THEME_DEPENDENT_CSS_VARS: Record<
     lightenBy: 0.4,
   },
   "--mb-color-sdk-toolbar-button-bg-hover": {
-    source: { light: "brand", dark: "bg-white" },
+    source: { dark: "bg-white" },
     lightenBy: 0.4,
   },
 };
@@ -77,16 +78,19 @@ export function getDynamicCssVariables(theme: MantineTheme) {
 
   const mappings = Object.entries(THEME_DEPENDENT_CSS_VARS)
     .map(([cssVar, { source, lightenBy, darkenBy }]) => {
-      let sourceColor = "";
+      const sourceColor = match({ source, isDarkTheme })
+        .with({ source: P.string }, ({ source }) => theme.fn.themeColor(source))
+        .with({ isDarkTheme: true, source: { dark: P.string } }, ({ source }) =>
+          theme.fn.themeColor(source.dark),
+        )
+        .with(
+          { isDarkTheme: false, source: { light: P.string } },
+          ({ source }) => theme.fn.themeColor(source.light),
+        )
+        .otherwise(() => null);
 
-      if (typeof source === "string") {
-        // use same source for light and dark themes
-        sourceColor = theme.fn.themeColor(source);
-      } else {
-        // use different source colors for light and dark themes
-        sourceColor = isDarkTheme
-          ? theme.fn.themeColor(source.dark)
-          : theme.fn.themeColor(source.light);
+      if (!sourceColor) {
+        return [cssVar, null];
       }
 
       let mappedColor = sourceColor;

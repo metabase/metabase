@@ -3,7 +3,6 @@ import { QuestionNotebookButton } from "metabase/query_builder/components/view/V
 import { ActionIcon, Icon } from "metabase/ui";
 
 import S from "./EditorButton.module.css";
-
 export const EditorButton = ({
   isOpen,
   onClick,
