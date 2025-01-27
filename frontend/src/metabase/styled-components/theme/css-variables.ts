@@ -1,6 +1,7 @@
 import { css } from "@emotion/react";
 import { getIn } from "icepick";
 
+import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/sdk-theme-to-css-vars";
 import type { MantineTheme } from "metabase/ui";
@@ -18,6 +19,7 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
       --mb-color-summarize: ${theme.fn.themeColor("summarize")};
       --mb-color-filter: ${theme.fn.themeColor("filter")};
       ${getThemeSpecificCssVariables(theme)}
+      ${getDynamicCssVariables(theme)}
     }
   `;
 }
@@ -28,6 +30,7 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
       --mb-default-font-family: ${font};
       ${getSdkDesignSystemCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}
+      ${getDynamicCssVariables(theme)}
     }
   `;
 }
