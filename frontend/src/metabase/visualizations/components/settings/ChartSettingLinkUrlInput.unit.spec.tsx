@@ -14,7 +14,9 @@ const OPTIONS = [
   "ZIP",
 ];
 
-const setup = ({ onChange = jest.fn(), value = "", ...props } = {}) => {
+const setup = ({ value = "", ...props } = {}) => {
+  const onChange = jest.fn();
+
   const { rerender } = render(
     <ChartSettingLinkUrlInput
       {...props}
@@ -27,7 +29,7 @@ const setup = ({ onChange = jest.fn(), value = "", ...props } = {}) => {
   const input = screen.getByRole("combobox");
   const getOptions = () => screen.findAllByRole("menuitem");
 
-  return { input, getOptions, rerender };
+  return { input, getOptions, rerender, onChange };
 };
 
 describe("ChartSettingLinkUrlInput", () => {
@@ -70,10 +72,7 @@ describe("ChartSettingLinkUrlInput", () => {
   });
 
   it("appends the column on selection", async () => {
-    const onChange = jest.fn();
-    const { input, getOptions } = setup({
-      onChange,
-    });
+    const { input, getOptions, onChange } = setup();
 
     await userEvent.type(input, "Address - {{{{p");
 
@@ -86,10 +85,7 @@ describe("ChartSettingLinkUrlInput", () => {
   });
 
   it("supports keyboard navigation to choose selection", async () => {
-    const onChange = jest.fn();
-    const { input, getOptions } = setup({
-      onChange,
-    });
+    const { input, getOptions, onChange } = setup();
 
     await userEvent.type(input, "Address - {{{{p");
 
@@ -103,11 +99,8 @@ describe("ChartSettingLinkUrlInput", () => {
   });
 
   it("handles multiple variables in a single value", async () => {
-    const onChange = jest.fn();
-
-    const { input, getOptions } = setup({
+    const { input, getOptions, onChange } = setup({
       value: "{{STATE}} - ",
-      onChange,
     });
 
     await userEvent.type(input, "{{{{c");
@@ -122,5 +115,25 @@ describe("ChartSettingLinkUrlInput", () => {
     input.blur();
 
     expect(onChange).toHaveBeenCalledWith("{{STATE}} - {{CITY}}");
+  });
+
+  it("should correctly reset the input value when re-rendered with the same empty value", async () => {
+    const { input, rerender, onChange } = setup({
+      value: "",
+    });
+    await userEvent.type(input, "abc");
+    await userEvent.click(document.body);
+    expect(onChange).toHaveBeenCalledWith("abc");
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <ChartSettingLinkUrlInput
+        value=""
+        options={OPTIONS}
+        onChange={onChange}
+      />,
+    );
+    expect(input).toHaveValue("");
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 });
