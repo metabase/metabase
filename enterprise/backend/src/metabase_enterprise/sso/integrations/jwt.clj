@@ -10,7 +10,7 @@
    [metabase.api.session :as api.session]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.common :as integrations.common]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [ring.util.response :as response])

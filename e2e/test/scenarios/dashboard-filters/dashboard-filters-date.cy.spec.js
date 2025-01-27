@@ -175,7 +175,7 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Toutes les options").click(); // "All Options"
+    cy.findByText("Date").click(); // "Date" - it's the same word in English and in French
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exclure...").click(); // "Exclude…"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -186,10 +186,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Ajouter un filtre").click(); // "Add filter"
 
-    cy.url().should(
-      "match",
-      /\/dashboard\/\d+\?toutes_les_options=exclude-months-Jan/,
-    );
+    cy.url().should("match", /\/dashboard\/\d+\?date=exclude-months-Jan/);
   });
 });
 

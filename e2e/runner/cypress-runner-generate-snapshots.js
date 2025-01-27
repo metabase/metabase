@@ -12,7 +12,7 @@ const getConfig = baseUrl => {
   };
 };
 
-const generateSnapshots = async (baseUrl, exitFunction) => {
+const generateSnapshots = async (baseUrl, exitFunction = console.log) => {
   // We only ever care about a browser out of all possible user arguments,
   // when it comes to the snapshot generation.
   // Anything else could result either in a failure or in a wrong database snapshot!

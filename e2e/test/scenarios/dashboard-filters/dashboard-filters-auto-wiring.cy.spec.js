@@ -398,7 +398,7 @@ describe("dashboard filters auto-wiring", () => {
           );
 
         H.selectDashboardFilter(H.getDashboardCard(0), "Name");
-        goToFilterMapping("Equal to");
+        goToFilterMapping("Number");
         H.selectDashboardFilter(H.getDashboardCard(0), "Total");
 
         addCardToDashboard();

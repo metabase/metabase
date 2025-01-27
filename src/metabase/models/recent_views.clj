@@ -217,6 +217,7 @@
 
   Sometimes we get an invalid or inconsistent recent view record. (E.g. the parent collection for an item no longer
   exists). In these cases we simply do not include the value in the recent views response."
+  {:arglists '([recent-view])}
   (fn [{:keys [model #_model_id #_timestamp card_type]}]
     (or (get {"model" :dataset "question" :card "metric" :metric} card_type)
         (keyword model))))
@@ -511,7 +512,7 @@
      :collection (m/index-by :id (collection-recents collection-ids))
      :table      (m/index-by :id (table-recents table-ids))}))
 
-(def ^:private ItemValidator (mc/validator Item))
+(def ^:private ItemValidator (mr/validator Item))
 
 (defn error-avoider
   "The underlying data model here can become inconsistent, and it's better to return the recents data that we know is

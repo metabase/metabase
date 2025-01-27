@@ -13,7 +13,6 @@ import {
   setArchivedDashboard,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { useHasDashboardScroll } from "metabase/dashboard/components/Dashboard/use-has-dashboard-scroll";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import type {
   CancelledFetchDashboardResult,
@@ -87,6 +86,7 @@ export type DashboardProps = {
   isNavigatingBackToDashboard: boolean;
   addCardOnLoad?: DashCardId;
   editingOnLoad?: string | string[] | boolean;
+  autoScrollToDashcardId: DashCardId | undefined;
   dashboardId: DashboardId;
   parameterQueryParams: Query;
 
@@ -170,12 +170,15 @@ export type DashboardProps = {
     reload?: boolean;
     clearCache?: boolean;
   }) => void;
+
+  reportAutoScrolledToDashcard: () => void;
 } & DashboardDisplayOptionControls;
 
 function Dashboard(props: DashboardProps) {
   const {
     addCardOnLoad,
     addCardToDashboard,
+    autoScrollToDashcardId,
     cancelFetchDashboardCardData,
     closeNavbar,
     dashboard,
@@ -191,6 +194,7 @@ function Dashboard(props: DashboardProps) {
     isSharing,
     onRefreshPeriodChange,
     parameterValues,
+    reportAutoScrolledToDashcard,
     selectedTabId,
     setEditingDashboard,
     setErrorPage,
@@ -205,8 +209,6 @@ function Dashboard(props: DashboardProps) {
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
-
-  const hasScroll = useHasDashboardScroll({ isInitialized });
 
   const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);
@@ -391,6 +393,8 @@ function Dashboard(props: DashboardProps) {
         selectedTabId={selectedTabId}
         onEditingChange={handleSetEditing}
         downloadsEnabled={downloadsEnabled}
+        autoScrollToDashcardId={autoScrollToDashcardId}
+        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
       />
     );
   };
@@ -467,10 +471,7 @@ function Dashboard(props: DashboardProps) {
                   !isFullscreen && (isEditing || isSharing)
                 }
               >
-                <DashboardParameterPanel
-                  isFullscreen={isFullscreen}
-                  hasScroll={hasScroll}
-                />
+                <DashboardParameterPanel isFullscreen={isFullscreen} />
                 <CardsContainer data-element-id="dashboard-cards-container">
                   {renderContent()}
                 </CardsContainer>

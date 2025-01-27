@@ -135,7 +135,7 @@ describe("issue 9027", () => {
       cy.button("Close").click();
     });
 
-    H.openNativeEditor({ fromCurrentPage: true });
+    H.startNewNativeQuestion();
 
     H.focusNativeEditor().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -277,9 +277,11 @@ describe("issue 14957", { tags: "@external" }, () => {
   });
 
   it("should save a question before query has been executed (metabase#14957)", () => {
-    H.openNativeEditor({ databaseName: PG_DB_NAME }).type(
-      "select pg_sleep(60)",
-    );
+    H.startNewNativeQuestion().as("editor");
+
+    cy.findByTestId("gui-builder-data").click();
+    cy.findByLabelText(PG_DB_NAME).click();
+    cy.get("@editor").type("select pg_sleep(60)");
     H.saveQuestion("14957", undefined, {
       tab: "Browse",
       path: ["Our analytics"],
@@ -532,19 +534,25 @@ describe("issue 17514", () => {
       cy.location("search").should("eq", "?date_filter=past30years");
       cy.wait("@cardQuery");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Previous 30 Years");
+      cy.findByTestId("parameter-value-widget-target")
+        .findByText("Previous 30 Years")
+        .click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("17514").click();
+      cy.findByTestId("parameter-value-dropdown")
+        .findByText("Update filter")
+        .click();
+
+      cy.findByTestId("legend-caption").findByText("17514").click();
       cy.wait("@dataset");
       cy.findByTextEnsureVisible("Subtotal");
 
-      // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("79.37").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this value");
+      cy.findByTestId("view-footer")
+        .findByText("Showing first 2,000 rows")
+        .should("be.visible");
+
+      cy.findByTestId("query-builder-main").findByText("79.37").click();
+
+      cy.findByTestId("click-actions-view").findByText("Filter by this value");
     });
   });
 
@@ -552,7 +560,7 @@ describe("issue 17514", () => {
     beforeEach(() => {
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
 
       moveColumnToTop("Subtotal");
 
@@ -708,7 +716,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
 
     H.getNotebookStep("filter").findByText("Discount is greater than Quantity");
 
-    cy.findByRole("button", { name: "Summarize" }).click();
+    cy.findByRole("button", { name: /Summarize/ }).click();
     H.popover().findByText("Count of rows").click();
 
     H.visualize();
@@ -819,7 +827,7 @@ describe("issue 18207", () => {
   });
 });
 
-describe("issues 11914, 18978, 18977, 23857", () => {
+describe("issues 11914, 18978, 18977, 23857", { tags: "@flaky" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -897,7 +905,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
     assertIsNotAdHoc();
 
     cy.log("Make sure user can change visualization but not save the question");
-    cy.findByTestId("viz-type-button").click();
+    H.openVizTypeSidebar();
     cy.findByTestId("Number-button").click();
     cy.findByTestId("scalar-value").should("exist");
     assertSaveIsDisabled();

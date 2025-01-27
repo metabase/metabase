@@ -188,12 +188,18 @@ describe("issue 15342", { tags: "@external" }, () => {
     });
 
     cy.icon("join_left_outer").click();
-    H.entityPickerModal().findByText("Orders").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
     H.getNotebookStep("join").findByLabelText("Right column").click();
     H.popover().findByText("Product ID").click();
 
     cy.icon("join_left_outer").last().click();
-    H.entityPickerModal().findByText("Products").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
     H.getNotebookStep("join").icon("join_left_outer").click();
     H.popover().findByText("Inner join").click();
 
@@ -787,7 +793,7 @@ describe("issue 23293", () => {
   it("should retain the filter when drilling through the dashboard card with implicitly added column (metabase#23293)", () => {
     H.openOrdersTable();
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     modifyColumn("Product ID", "remove");
     modifyColumn("Category", "add");
     cy.wait("@dataset");
@@ -1202,7 +1208,7 @@ describe.skip("issue 27521", () => {
     assertTableHeader(1, "Q1 → ID");
     assertTableHeader(2, "Q1 → Orders → ID");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findAllByText("ID").should("have.length", 1);
       cy.findAllByText("Q1 → ID").should("have.length", 1);

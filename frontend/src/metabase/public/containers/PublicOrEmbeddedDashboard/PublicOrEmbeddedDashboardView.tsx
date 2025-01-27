@@ -3,7 +3,7 @@ import { assoc } from "icepick";
 import type { HandleThunkActionCreator } from "react-redux";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -206,6 +206,8 @@ export function PublicOrEmbeddedDashboardView({
                 clickBehaviorSidebarDashcard={null}
                 navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
                 downloadsEnabled={downloadsEnabled}
+                autoScrollToDashcardId={undefined}
+                reportAutoScrolledToDashcard={_.noop}
               />
             </DashboardContainer>
           );

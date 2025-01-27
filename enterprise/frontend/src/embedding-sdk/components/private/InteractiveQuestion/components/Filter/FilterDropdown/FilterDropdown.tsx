@@ -10,20 +10,23 @@ import {
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import type { FilterColumnPickerProps } from "metabase/querying/filters/components/FilterPicker/FilterColumnPicker";
+import type { PopoverProps } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { useInteractiveQuestionContext } from "../../../context";
 import { ToolbarButton } from "../../util/ToolbarButton";
+import { FilterBadgeList } from "../FilterBadgeList";
 import { FilterPicker } from "../FilterPicker/FilterPicker";
-
-import { FilterBadgeList } from "./FilterBadgeList";
 
 type FilterProps = Pick<FilterColumnPickerProps, "withColumnItemIcon">;
 
 const FilterDropdownInner = ({
   query,
   withColumnItemIcon,
-}: UpdateQueryHookProps & FilterProps) => {
+  ...popoverProps
+}: UpdateQueryHookProps &
+  FilterProps &
+  Omit<PopoverProps, "children" | "onClose" | "opened">) => {
   const filters = useMemo(() => getFilterItems(query), [query]);
 
   const [step, setStep] = useState<MultiStepState<"list" | "picker">>(null);
@@ -50,7 +53,11 @@ const FilterDropdownInner = ({
   };
 
   return (
-    <MultiStepPopover currentStep={step} onClose={() => setStep(null)}>
+    <MultiStepPopover
+      currentStep={step}
+      onClose={() => setStep(null)}
+      {...popoverProps}
+    >
       <MultiStepPopover.Target>
         <ToolbarButton
           label={label}

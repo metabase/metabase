@@ -130,7 +130,7 @@ describe("scenarios > visualizations > bar chart", () => {
     beforeEach(() => {
       H.visitQuestionAdhoc(breakoutBarChart);
 
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       H.sidebar().findByText("Data").click();
     });
 
@@ -178,7 +178,9 @@ describe("scenarios > visualizations > bar chart", () => {
 
       H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
 
-      H.queryBuilderHeader().button("Filter").click();
+      H.queryBuilderHeader()
+        .button(/Filter/)
+        .click();
       H.modal().within(() => {
         cy.findByText("Product").click();
         cy.findByTestId("filter-column-Category")
@@ -338,7 +340,7 @@ describe("scenarios > visualizations > bar chart", () => {
     // Ensure the gray color did not get assigned to series
     H.chartPathWithFillColor(grayColor).should("not.exist");
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
 
     // Open color picker for the first series
     cy.findByLabelText("#88BF4D").click();
@@ -371,7 +373,7 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     });
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.leftSidebar().button("90 more series").click();
     cy.get("[data-testid^=draggable-item]").should("have.length", 100);
 
@@ -835,7 +837,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     // Enable 'Other' series
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     H.leftSidebar().findByTestId("settings-STATE").click();
     H.popover().findByLabelText("Enforce maximum number of series").click();
 
@@ -915,14 +917,14 @@ describe("scenarios > visualizations > bar chart", () => {
 
     // Test "graph.other_category_aggregation_fn" for native queries
     H.openNotebook();
-    H.queryBuilderHeader().button("View the SQL").click();
+    H.queryBuilderHeader().button("View SQL").click();
     cy.findByTestId("native-query-preview-sidebar")
       .button("Convert this question to SQL")
       .click();
     cy.wait("@dataset");
     H.queryBuilderMain().findByTestId("visibility-toggler").click();
 
-    cy.findByTestId("viz-settings-button").click();
+    H.openVizSettingsSidebar();
     setOtherCategoryAggregationFn("Average");
 
     H.chartPathWithFillColor(AK_SERIES_COLOR).first().realHover();

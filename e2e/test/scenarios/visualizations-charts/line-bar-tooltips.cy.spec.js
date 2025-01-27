@@ -259,19 +259,17 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       H.assertEChartsTooltipNotContain([SUM_OF_TOTAL, AVG_OF_QUANTITY]);
 
       // Go to the additional tooltip columns setting
-      cy.findByTestId("viz-settings-button").click();
+      H.openVizSettingsSidebar();
       H.leftSidebar().within(() => {
         cy.findByText("Display").click();
-        cy.findByPlaceholderText("Enter metric names").click();
+        cy.findByPlaceholderText("Enter column names").click();
       });
 
-      // Select two additional metric columns to show in the tooltip
+      // Select two additional columns to show in the tooltip
       cy.findByRole("option", { name: SUM_OF_TOTAL }).click();
       cy.findByRole("option", { name: AVG_OF_QUANTITY }).click();
-      // It should not suggest categorical columns
-      cy.findByRole("option", { name: "Product → Category" }).should(
-        "not.exist",
-      );
+      // It should suggest categorical columns as well
+      cy.findByRole("option", { name: "Product → Category" }).should("exist");
 
       // Ensure the tooltip shows additional columns
       showTooltipForBarInSeries(COUNT_COLOR);

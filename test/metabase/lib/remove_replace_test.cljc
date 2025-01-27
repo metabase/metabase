@@ -632,6 +632,19 @@
               (-> query
                   (lib/replace-clause 0 expr-a 999)))))))
 
+(deftest ^:parallel replace-clause-expression-used-in-breakout-test
+  (let [query    (-> lib.tu/venues-query
+                     (lib/expression "a" (lib/+ (meta/field-metadata :venues :name) 7))
+                     (as-> $q (lib/breakout $q -1 (lib/expression-ref $q -1 "a"))))
+        [before] (lib/breakouts query)
+        [expr]   (lib/expressions query)
+        edited   (lib/replace-clause query -1 expr (lib/with-expression-name expr "b"))]
+    (is (=? [{:lib/expression-name "b"
+              :ident               (lib.options/ident expr)}]
+            (map lib.options/options (lib/expressions edited))))
+    (is (=? [[:expression {:ident (lib.options/ident before)} "b"]]
+            (lib/breakouts edited)))))
+
 (deftest ^:parallel replace-order-by-breakout-col-test
   (testing "issue #30980"
     (testing "Bucketing should keep order-by in sync"
@@ -742,6 +755,24 @@
              (-> q3
                  (lib/remove-clause ten-breakout)
                  lib/order-bys)))))))
+
+(deftest ^:parallel replace-breakout-syncs-extra-fields-to-order-by
+  (testing "issue #52124"
+    (testing "Changing a breakout should sync all fields to the order-by"
+      (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))
+            breakout-col (->> (lib/breakoutable-columns query)
+                              (m/find-first (comp #{"LAST_LOGIN"} :name)))
+            month (lib/with-temporal-bucket breakout-col :month)
+            day (assoc (lib/with-temporal-bucket breakout-col :day)
+                       :metabase.lib.field/original-temporal-unit :month)
+            q2 (-> query
+                   (lib/breakout month))
+            cols (lib/orderable-columns q2)
+            q3 (-> q2
+                   (lib/order-by (first cols))
+                   (lib/replace-clause (first (lib/breakouts q2)) day))]
+        (is (= (get-in q3 [:stages 0 :breakout 0 1 :metabase.lib.field/original-temporal-unit])
+               (get-in q3 [:stages 0 :order-by 0 2 1 :metabase.lib.field/original-temporal-unit])))))))
 
 (deftest ^:parallel rename-join-test
   (let [joined-column (-> (meta/field-metadata :venues :id)

@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.sync :as sync]
+   [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.indexes :as sync.indexes]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]

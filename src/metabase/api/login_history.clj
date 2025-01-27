@@ -1,8 +1,8 @@
 (ns metabase.api.login-history
   (:require
-   [compojure.core :refer [GET]]
    [metabase.api.common :as api]
-   [metabase.models.login-history :as login-history :refer [LoginHistory]]
+   [metabase.api.macros :as api.macros]
+   [metabase.models.login-history :as login-history]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -13,11 +13,11 @@
   ;; nice to be able to see every log in that's every happened with an account. Maybe we should page this, or page the
   ;; API endpoint?
   (login-history/human-friendly-infos
-   (t2/select [LoginHistory :timestamp :session_id :device_description :ip_address]
+   (t2/select [:model/LoginHistory :timestamp :session_id :device_description :ip_address]
               :user_id (u/the-id user-or-id)
               {:order-by [[:timestamp :desc]]})))
 
-(api/defendpoint GET "/current"
+(api.macros/defendpoint :get "/current"
   "Fetch recent logins for the current user."
   []
   (login-history api/*current-user-id*))

@@ -19,10 +19,27 @@ body:where(:global(.mb-wrapper)) {
   border-color: var(--mb-color-border);
 }
 
+.EmbedFrame .DashCard .Card {
+  /* this is for proper transitions from the `transparent` value to other values if set */
+  border: 1px solid transparent;
+}
+
 .EmbedFrameHeader,
 .EmbedFrameFooter {
   color: var(--mb-color-text-primary);
   background-color: var(--mb-color-bg-dashboard);
+}
+
+.EmbedFrame,
+.EmbedFrame .DashCard .Card,
+.EmbedFrame .ContentContainer,
+.EmbedFrame .EmbedFrameHeader,
+.EmbedFrame .Separator,
+.EmbedFrame .ParameterFieldSet,
+.EmbedFrame .ParametersWidgetContainer,
+.EmbedFrame .EmbedFrameFooter,
+.EmbedFrame .LogoBadge {
+  transition: var(--transition-theme-change);
 }
 
 [data-metabase-theme="night"][data-metabase-theme="night"],
@@ -47,7 +64,7 @@ body:where(:global(.mb-wrapper)) {
     var(--mb-color-text-white) 45%,
     transparent
   );
-  --mb-color-bg-light: var(--mb-base-color-gray-70);
+  --mb-color-bg-light: var(--mb-base-color-orion-70);
 }
 
 [data-metabase-theme="night"][data-metabase-theme="night"] {
@@ -58,8 +75,9 @@ body:where(:global(.mb-wrapper)) {
   --mb-color-background: var(--mb-color-bg-black);
   --mb-color-background-selected: var(--mb-base-color-brand-60);
   --mb-color-background-hover: var(--mb-base-color-brand-70);
-  --mb-color-background-disabled: var(--mb-base-color-gray-70);
+  --mb-color-background-disabled: var(--mb-base-color-orion-70);
   --mb-color-background-brand: var(--mb-base-color-brand-60);
+  --mb-color-switch-off: var(--mb-base-color-orion-70);
 
   .EmbedFrameHeader,
   .EmbedFrameFooter {
@@ -68,7 +86,7 @@ body:where(:global(.mb-wrapper)) {
   }
 
   .EmbedFrame .fullscreenNightText {
-    transition: color 1s linear;
+    transition: var(--transition-theme-change);
   }
 
   /* A temporary solution until we migrated all colors in visualization to use semantic colors

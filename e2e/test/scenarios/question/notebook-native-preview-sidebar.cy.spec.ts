@@ -1,5 +1,3 @@
-import { onlyOn } from "@cypress/skip-test";
-
 import { H } from "e2e/support";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -19,7 +17,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
   it("should show empty sidebar when no data source is selected", () => {
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
     H.openReviewsTable({ mode: "notebook", limit: 1 });
-    cy.findByLabelText("View the SQL").click();
+    cy.findByLabelText("View SQL").click();
     cy.wait("@nativeDataset");
 
     cy.findByTestId("app-bar").findByLabelText("New").click();
@@ -45,7 +43,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
 
     H.openReviewsTable({ mode: "notebook", limit: queryLimit });
-    cy.findByLabelText("View the SQL").click();
+    cy.findByLabelText("View SQL").click();
     cy.wait("@nativeDataset");
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
@@ -78,7 +76,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       .and("not.contain", queryLimit);
 
     cy.log("It should be possible to close the sidebar");
-    cy.findByLabelText("Hide the SQL").click();
+    cy.findByLabelText("Hide SQL").click();
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
   });
 
@@ -86,9 +84,9 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.signIn("nosql");
     H.openReviewsTable({ mode: "notebook" });
     cy.findByTestId("qb-header-action-panel")
-      .findByLabelText(/view the sql/i)
+      .findByLabelText(/View SQL/i)
       .should("not.exist");
-    cy.findByLabelText("View the SQL").should("not.exist");
+    cy.findByLabelText("View SQL").should("not.exist");
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
     cy.get("code").should("not.exist");
   });
@@ -101,7 +99,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       cy.location("pathname").should("eq", "/question/notebook");
 
       cy.log("Opening a preview sidebar should completely cover the notebook");
-      cy.findByLabelText("View the SQL").click();
+      cy.findByLabelText("View SQL").click();
       cy.location("pathname").should("eq", "/question/notebook");
       cy.log(
         "It shouldn't be possible to click on any of the notebook elements",
@@ -146,7 +144,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     H.openReviewsTable({ mode: "notebook", limit: 1 });
     cy.wait("@metadata");
-    cy.findByLabelText("View the SQL").click();
+    cy.findByLabelText("View SQL").click();
     cy.wait(["@updatePreviewState", "@sessionProperties"]);
 
     cy.log(
@@ -187,7 +185,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     H.openNotebook();
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
-    cy.findByLabelText("View the SQL").click();
+    cy.findByLabelText("View SQL").click();
     cy.findByTestId("native-query-preview-sidebar")
       .should("be.visible")
       .then($sidebar => {
@@ -255,7 +253,7 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
 });
 
 describe(
-  "converting question to a native query (metabase#15946, metabase#32121, metabase#38181)",
+  "converting question to a native query (metabase#15946, metabase#32121, metabase#38181, metabase#40557)",
   { tags: "@mongo" },
   () => {
     const MONGO_DB_NAME = "QA Mongo";
@@ -275,7 +273,7 @@ describe(
       });
 
       cy.log("Simple question");
-      cy.findByLabelText("View the native query").click();
+      cy.findByLabelText("View native query").click();
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
         H.nativeEditor()
@@ -316,18 +314,12 @@ describe(
         cy.button("Convert this question to a native query").click();
       });
 
-      // FIXME: Remove `onlyOn` wrapper block once the issue #40557 is fixed
-      onlyOn(false, () => {
-        cy.log(
-          "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
-        );
-        cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
-        cy.findByTestId("selected-table").should("have.text", "Products");
-        cy.get("[data-testid=cell-data]").should(
-          "contain",
-          "Small Marble Shoes",
-        );
-      });
+      cy.log(
+        "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
+      );
+      cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
+      cy.findByTestId("selected-table").should("have.text", "Products");
+      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
     });
 
     it.skip("should work for a nested GUI question (metabase#40557)", () => {
@@ -358,7 +350,7 @@ describe(
 
       cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
       H.openNotebook();
-      cy.findByLabelText("View the native query").click();
+      cy.findByLabelText("View native query").click();
 
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
@@ -399,7 +391,7 @@ H.describeWithSnowplow(
       H.openReviewsTable({ mode: "notebook", limit: 1 });
       H.expectGoodSnowplowEvents(1); // page view
 
-      cy.findByLabelText("View the SQL").click();
+      cy.findByLabelText("View SQL").click();
       cy.wait("@nativeDataset");
       cy.findByTestId("native-query-preview-sidebar").should("exist");
 
@@ -407,7 +399,7 @@ H.describeWithSnowplow(
         event: "notebook_native_preview_shown",
       });
 
-      cy.findByLabelText("Hide the SQL").click();
+      cy.findByLabelText("Hide SQL").click();
       cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
       H.expectGoodSnowplowEvent({
@@ -421,7 +413,7 @@ H.describeWithSnowplow(
 
 function convertToSql() {
   H.openNotebook();
-  cy.findByLabelText("View the SQL").click();
+  cy.findByLabelText("View SQL").click();
   cy.intercept("POST", "/api/dataset").as("dataset");
   cy.button("Convert this question to SQL").click();
   cy.wait("@dataset");
