@@ -54,7 +54,7 @@ function setup({
 
   renderWithProviders(
     <FilterModalProvider
-      value={createMockFilterModalContext({ handleInput: onInput, query })}
+      value={createMockFilterModalContext({ query, onInput })}
     >
       <StringFilterEditor
         stageIndex={stageIndex}

@@ -18,9 +18,7 @@ export function BooleanFilterEditor({
   onChange,
 }: FilterEditorProps) {
   const { query, searchText } = useFilterModalContext();
-  const columnIcon = useMemo(() => {
-    return getColumnIcon(column);
-  }, [column]);
+  const columnIcon = useMemo(() => getColumnIcon(column), [column]);
 
   const {
     operator,

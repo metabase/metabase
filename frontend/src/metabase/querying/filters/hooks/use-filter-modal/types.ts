@@ -1,5 +1,3 @@
-import type { Dispatch, SetStateAction } from "react";
-
 import type * as Lib from "metabase-lib";
 
 import type { GroupItem } from "../../types";
@@ -11,13 +9,13 @@ export type FilterModalResult = {
   isSearching: boolean;
   query: Lib.Query;
   searchText: string;
-  setTab: Dispatch<SetStateAction<string | null>>;
   tab: string | null;
   version: number;
   visibleItems: GroupItem[];
-  handleChange: (query: Lib.Query) => void;
-  handleInput: () => void;
-  handleReset: () => void;
-  handleSearch: (searchText: string) => void;
-  handleSubmit: () => void;
+  onInput: () => void;
+  onQueryChange: (query: Lib.Query) => void;
+  onReset: () => void;
+  onSearchTextChange: (searchText: string) => void;
+  onSubmit: () => void;
+  onTabChange: (tab: string | null) => void;
 };

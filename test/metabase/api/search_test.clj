@@ -1645,11 +1645,11 @@
     (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
       (testing "default weights"
         (is (= original-weights (mt/user-http-request :crowberto :get 200 base-url)))
-        (is (mt/user-http-request :rasta :get 403 (weights-url {:recency 4})))
+        (is (mt/user-http-request :rasta :put 403 (weights-url {:recency 4})))
         (is (= (assoc original-weights :recency 4.0)
-               (mt/user-http-request :crowberto :get 200 (weights-url {:recency 4}))))
+               (mt/user-http-request :crowberto :put 200 (weights-url {:recency 4}))))
         (is (= (assoc original-weights :recency 4.0 :text 30.0)
-               (mt/user-http-request :crowberto :get 200 (weights-url {:text 30}))))
+               (mt/user-http-request :crowberto :put 200 (weights-url {:text 30}))))
         (is (= (assoc original-weights :recency 4.0 :text 30.0)
                (mt/user-http-request :crowberto :get 200 base-url)))))))
 
@@ -1660,11 +1660,13 @@
             context-url      (weights-url context {})
             original-weights (search.config/weights context)]
         (is (= original-weights (mt/user-http-request :crowberto :get 200 context-url)))
-        (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 5})))
-        (is (= (assoc original-weights :recency 5.0)
+        (mt/user-http-request :rasta :put 403 (weights-url context {:recency 5}))
+        (is (= original-weights
                (mt/user-http-request :crowberto :get 200 (weights-url context {:recency 5}))))
+        (is (= (assoc original-weights :recency 5.0)
+               (mt/user-http-request :crowberto :put 200 (weights-url context {:recency 5}))))
         (is (= (assoc original-weights :recency 5.0 :text 40.0)
-               (mt/user-http-request :crowberto :get 200 (weights-url context {:text 40}))))
+               (mt/user-http-request :crowberto :put 200 (weights-url context {:text 40}))))
         (is (= (assoc original-weights :recency 5.0 :text 40.0)
                (mt/user-http-request :crowberto :get 200 context-url)))))))
 
@@ -1682,9 +1684,9 @@
                  (merge
                   (:default (mt/user-http-request :crowberto :get 200 context-url))
                   (:none-given (mt/user-http-request :crowberto :get 200 context-url)))))
-          (is (mt/user-http-request :rasta :get 403 (weights-url context {:recency 4})))
-          (is (mt/user-http-request :crowberto :get 400 (weights-url context {:recency 4})))
-          (is (mt/user-http-request :crowberto :get 400 (weights-url context {:text 30})))
+          (mt/user-http-request :rasta :put 403 (weights-url context {:recency 4}))
+          (mt/user-http-request :crowberto :put 400 (weights-url context {:recency 4}))
+          (mt/user-http-request :crowberto :put 400 (weights-url context {:text 30}))
           (is (= all-weights (mt/user-http-request :crowberto :get 200 context-url))))))))
 
 (deftest ^:synchronized weights-test-4
@@ -1692,10 +1694,10 @@
     (testing "ranker parameters"
       (let [context :just-for-fun]
         (is (=? {:model/dataset 10.0}
-                (mt/user-http-request :crowberto :get 200 (weights-url context {:model/dataset 10}))))
+                (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 10}))))
         (is (= 10.0 (search.config/scorer-param context :model :dataset)))
         (is (=? {:model/dataset 5.0}
-                (mt/user-http-request :crowberto :get 200 (weights-url context {:model/dataset 5}))))
+                (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 5}))))
         (is (= 5.0 (search.config/scorer-param context :model :dataset)))))))
 
 (deftest dashboard-questions

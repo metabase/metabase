@@ -1,7 +1,7 @@
 (ns metabase.api.login-history
   (:require
-   [compojure.core :refer [GET]]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.models.login-history :as login-history]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -17,8 +17,7 @@
               :user_id (u/the-id user-or-id)
               {:order-by [[:timestamp :desc]]})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/current"
+(api.macros/defendpoint :get "/current"
   "Fetch recent logins for the current user."
   []
   (login-history api/*current-user-id*))
