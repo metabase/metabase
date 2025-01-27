@@ -349,8 +349,7 @@ describe("FilterModal - issue 48319", () => {
   }
 
   it("string filters - does not mix up column filter state when changing search query (metabase#48319)", async () => {
-    const query = createQuery();
-    setup({ query });
+    setup({ query: createQuery() });
 
     const searchInput = screen.getByPlaceholderText("Search for a column…");
     await userEvent.type(searchInput, "category");
@@ -477,5 +476,50 @@ describe("FilterModal - issue 48319", () => {
       expect(screen.getByText("Foo")).toBeInTheDocument();
     });
     expect(screen.getByPlaceholderText("Enter a time")).toHaveValue("12:34");
+  });
+
+  it("coordinate filters - does not mix up column filter state when changing search query (metabase#48319)", async () => {
+    setup({ query: createQuery() });
+
+    const searchInput = screen.getByPlaceholderText("Search for a column…");
+    await userEvent.type(searchInput, "latitude");
+
+    await waitFor(() => {
+      expect(screen.getByText("Latitude")).toBeInTheDocument();
+    });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Filter operator" }),
+    );
+    await userEvent.click(screen.getByText("Less than"));
+    await userEvent.type(screen.getByPlaceholderText("Enter a number"), "45");
+
+    await userEvent.type(
+      searchInput,
+      `${"{backspace}".repeat("latitude".length)}longitude`,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Longitude")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("button", { name: "Filter operator" }),
+    ).toHaveTextContent("between");
+
+    expect(
+      screen.queryByPlaceholderText("Enter a number"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.type(
+      searchInput,
+      `${"{backspace}".repeat("longitude".length)}latitude`,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Latitude")).toBeInTheDocument();
+    });
+    expect(screen.getByPlaceholderText("Enter a number")).toHaveValue("45");
+    expect(
+      screen.getByRole("button", { name: "Filter operator" }),
+    ).toHaveTextContent("less than");
   });
 });

@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 
 import * as Lib from "metabase-lib";
 
@@ -44,18 +45,37 @@ export function useCoordinateFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : getDefaultOperator(availableOptions),
+  const initialOperator = useMemo(() => {
+    return filterParts
+      ? filterParts.operator
+      : getDefaultOperator(availableOptions);
+  }, [availableOptions, filterParts]);
+
+  const [operator, setOperator] = useState(initialOperator);
+
+  const initialValues = useMemo(() => {
+    return getDefaultValues(operator, filterParts ? filterParts.values : []);
+  }, [operator, filterParts]);
+
+  const [values, setValues] = useState(initialValues);
+
+  const initialSecondColumn = useMemo(
+    () => getDefaultSecondColumn(availableColumns, filterParts),
+    [availableColumns, filterParts],
   );
-  const [values, setValues] = useState(
-    getDefaultValues(operator, filterParts ? filterParts.values : []),
-  );
-  const [secondColumn, setSecondColumn] = useState(
-    getDefaultSecondColumn(availableColumns, filterParts),
-  );
+
+  const [secondColumn, setSecondColumn] = useState(initialSecondColumn);
 
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, secondColumn, values);
+
+  const resetRef = useLatest(() => {
+    setOperator(initialOperator);
+    setValues(initialValues);
+    setSecondColumn(initialSecondColumn);
+  });
+
+  const reset = useCallback(() => resetRef.current(), [resetRef]);
 
   return {
     operator,
@@ -73,6 +93,7 @@ export function useCoordinateFilter({
       secondColumn: Lib.ColumnMetadata | undefined,
       values: NumberValue[],
     ) => getFilterClause(operator, column, secondColumn, values),
+    reset,
     setOperator,
     setValues,
     setSecondColumn,

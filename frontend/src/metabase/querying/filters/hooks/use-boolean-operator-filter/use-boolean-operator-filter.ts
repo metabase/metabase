@@ -42,16 +42,16 @@ export function useBooleanOperatorFilter({
 
   const [operator, setOperator] = useState(initialOperator);
 
-  const defaultValues = useMemo(() => {
+  const initialValues = useMemo(() => {
     return filterParts ? filterParts.values : [];
   }, [filterParts]);
 
-  const [values, setValues] = useState(defaultValues);
+  const [values, setValues] = useState(initialValues);
   const { valueCount, isAdvanced } = getOptionByOperator(operator);
   const [isExpanded, setIsExpanded] = useState(isAdvanced);
 
   const resetRef = useLatest(() => {
-    setValues(defaultValues);
+    setValues(initialValues);
     const { isAdvanced } = getOptionByOperator(initialOperator);
     setOperator(initialOperator);
     setIsExpanded(isAdvanced);
