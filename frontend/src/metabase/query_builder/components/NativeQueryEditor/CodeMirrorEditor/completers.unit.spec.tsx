@@ -782,6 +782,10 @@ describe("useKeywordsCompletion", () => {
         options: [
           {
             detail: "keyword",
+            label: "$fill",
+          },
+          {
+            detail: "keyword",
             label: "$filter",
           },
         ],
