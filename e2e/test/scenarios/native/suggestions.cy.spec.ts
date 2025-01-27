@@ -44,7 +44,7 @@ describe("scenarios > question > native > suggestions", () => {
 
   it("should suggest quoted locals", () => {
     H.startNewNativeQuestion({
-      query: "SELECT foo as 'QUOTED_local' FROM ORDERS GROUP BY ",
+      query: 'SELECT foo as "QUOTED_local" FROM ORDERS GROUP BY ',
     });
     H.NativeEditor.type("QU");
 
