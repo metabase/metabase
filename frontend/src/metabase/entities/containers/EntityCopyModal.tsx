@@ -64,6 +64,7 @@ const EntityCopyModal = ({
           onCancel={onClose}
           onSaved={onSaved}
           initialValues={initialValues}
+          model={entityObject?.type}
           {...props}
         />
       )}

@@ -122,7 +122,7 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Quantity is equal to 100").should("not.exist");
   });
 
-  it("should duplicate a saved question", () => {
+  it("should duplicate a saved question into a collection", () => {
     cy.intercept("POST", "/api/card").as("cardCreate");
 
     H.visitQuestion(ORDERS_QUESTION_ID);
@@ -143,6 +143,36 @@ describe("scenarios > question > saved", () => {
     cy.findByTestId("qb-header-left-side").within(() => {
       cy.findByDisplayValue("Orders - Duplicate");
     });
+  });
+
+  it("should duplicate a saved question into a dashboard", () => {
+    cy.intercept("POST", "/api/card").as("cardCreate");
+
+    H.visitQuestion(ORDERS_QUESTION_ID);
+
+    H.openQuestionActions();
+    H.popover().within(() => {
+      cy.findByText("Duplicate").click();
+    });
+
+    H.modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByLabelText(/Where do you want to save this/).click();
+    });
+
+    H.entityPickerModal().within(() => {
+      cy.findByText("Orders in a dashboard").click();
+      cy.findByRole("button", { name: "Select this dashboard" }).click();
+    });
+
+    H.modal().within(() => {
+      cy.findByText("Duplicate").click();
+      cy.wait("@cardCreate");
+    });
+
+    cy.url().should("include", "/dashboard/");
+    cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+    H.dashboardCards().findByText("Orders - Duplicate").should("exist");
   });
 
   it("should duplicate a saved question to a collection created on the go", () => {
@@ -189,6 +219,52 @@ describe("scenarios > question > saved", () => {
     });
 
     cy.get("header").findByText(NEW_COLLECTION);
+  });
+
+  it("should duplicate a saved question to a dashboard created on the go", () => {
+    cy.intercept("POST", "/api/card").as("cardCreate");
+
+    H.visitQuestion(ORDERS_QUESTION_ID);
+
+    H.openQuestionActions();
+    H.popover().within(() => {
+      cy.findByText("Duplicate").click();
+    });
+
+    H.modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByTestId("dashboard-and-collection-picker-button").click();
+    });
+
+    H.entityPickerModal().findByText("New dashboard").click();
+
+    const NEW_DASHBOARD = "Foo Dashboard";
+    H.dashboardOnTheGoModal().within(() => {
+      cy.findByLabelText(/Give it a name/).type(NEW_DASHBOARD);
+      cy.findByText("Create").click();
+    });
+
+    H.entityPickerModal().within(() => {
+      cy.findByText(NEW_DASHBOARD).click();
+      cy.button(/Select/).click();
+    });
+
+    H.modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByTestId("dashboard-and-collection-picker-button").should(
+        "have.text",
+        NEW_DASHBOARD,
+      );
+      cy.button("Duplicate").click();
+      cy.wait("@cardCreate");
+    });
+
+    cy.findByTestId("qb-header-left-side").within(() => {
+      cy.findByDisplayValue("Orders - Duplicate");
+    });
+
+    cy.get("header").findByText(NEW_DASHBOARD);
+    cy.url().should("include", "/dashboard/");
   });
 
   it("should revert a saved question to a previous version", () => {
