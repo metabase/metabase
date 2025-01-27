@@ -1,6 +1,6 @@
 import { css } from "@emotion/react";
 
-import { isDark, isLight, shade, tint } from "metabase/lib/colors";
+import { darken, isDark, isLight, lighten } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
 
@@ -10,8 +10,12 @@ type SourceColorKey = ColorName | SemanticColorKey;
 
 type DynamicCssVarColorDefinition = {
   source: SourceColorKey;
-  shadeBy: number;
-  tintBy: number;
+
+  /** Darkens the color in light mode */
+  darkenBy: number;
+
+  /** Lightens the color in dark mode */
+  lightenBy: number;
 };
 
 /**
@@ -20,13 +24,13 @@ type DynamicCssVarColorDefinition = {
 export const THEME_DEPENDENT_CSS_VARS = {
   "--mb-color-notebook-step-bg": {
     source: "bg-white",
-    shadeBy: 0.02,
-    tintBy: 0.5,
+    darkenBy: 0.02,
+    lightenBy: 0.5,
   },
   "--mb-color-notebook-step-bg-hover": {
     source: "bg-white",
-    shadeBy: 0.06,
-    tintBy: 0.08,
+    darkenBy: 0.06,
+    lightenBy: 0.4,
   },
 } satisfies Record<string, DynamicCssVarColorDefinition>;
 
@@ -61,12 +65,12 @@ export function getDynamicCssVariables(theme: MantineTheme) {
   const isDarkTheme = getIsDarkThemeFromPalette(theme);
 
   const mappings = Object.entries(THEME_DEPENDENT_CSS_VARS)
-    .map(([cssVar, { source: sourceColorKey, tintBy, shadeBy }]) => {
+    .map(([cssVar, { source: sourceColorKey, lightenBy, darkenBy }]) => {
       const sourceColor = theme.fn.themeColor(sourceColorKey);
 
       const finalColor = isDarkTheme
-        ? tint(sourceColor, tintBy)
-        : shade(sourceColor, shadeBy);
+        ? lighten(sourceColor, lightenBy)
+        : darken(sourceColor, darkenBy);
 
       return [cssVar, finalColor];
     })
