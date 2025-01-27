@@ -84,9 +84,30 @@
                          :field-definitions [{:field-name "foo", :base-type :type/Text}]
                          :rows              [["bar"]]}]}))
 
+(doseq [driver [:redshift :snowflake :oracle]]
+        (defmethod driver/database-supports? [driver :test/details-name-is-db]
+          [_driver _feature _database]
+          true))
+
+(doseq [driver [:oracle]]
+        (defmethod driver/database-supports? [driver :test/details-name-is-service-name]
+          [_driver _feature _database]
+          true))
+
+(doseq [driver [:presto-jdbc]]
+        (defmethod driver/database-supports? [driver :test/details-name-is-catalog]
+          [_driver _feature _database]
+          true))
+
+(doseq [driver [:redshift :snowflake :vertica :presto-jdbc :oracle]]
+        (defmethod driver/database-supports? [driver :test/cannot-destroy-db]
+          [_driver _feature _database]
+          true))
+
 (deftest can-connect-with-destroy-db-test
   (testing "driver/can-connect? should fail or throw after destroying a database"
-    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+                                     (mt/normal-drivers-with-feature :test/creates-db-on-connect))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -100,11 +121,15 @@
             (testing "after deleting a database, can-connect? should return false or throw an exception"
               (let [;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
                     ;; so fake it by changing the database details
-                    details (case driver/*driver*
-                              (:redshift :snowfake :vertica) (assoc details :db (mt/random-name))
-                              :oracle                        (assoc details :service-name (mt/random-name))
-                              :presto-jdbc                   (assoc details :catalog (mt/random-name))
+                    details (cond
+                              (driver/database-supports? driver/*driver* :test/details-name-is-db (mt/db))
+                              (assoc details :db (mt/random-name))
+                              (driver/database-supports? driver/*driver* :test/details-name-is-service-name (mt/db))
+                              (assoc details :service-name (mt/random-name))
+                              (driver/database-supports? driver/*driver* :test/details-name-is-catalog (mt/db))
+                              (assoc details :catalog (mt/random-name))
                               ;; otherwise destroy the db and use the original details
+                              :else
                               (do
                                 (tx/destroy-db! driver/*driver* dbdef)
                                 details))]
@@ -118,7 +143,8 @@
 
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+                                     (mt/normal-drivers-with-feature :test/creates-db-on-connect))
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -142,14 +168,17 @@
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             ;; destroy the db
-            (if (contains? #{:redshift :snowflake :vertica :presto-jdbc :oracle} driver/*driver*)
+            (if (driver/database-supports? driver/*driver* :test/cannot-destroy-db (mt/db))
               ;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
               ;; so fake it by changing the database details
               (let [details     (:details (mt/db))
-                    new-details (case driver/*driver*
-                                  (:redshift :snowflake :vertica) (assoc details :db (mt/random-name))
-                                  :oracle                         (assoc details :service-name (mt/random-name))
-                                  :presto-jdbc                    (assoc details :catalog (mt/random-name)))]
+                    new-details (cond
+                                  (driver/database-supports? driver/*driver* :test/details-name-is-db (mt/db))
+                                  (assoc details :db (mt/random-name))
+                                  (driver/database-supports? driver/*driver* :test/details-name-is-service-name (mt/db))
+                                  (assoc details :service-name (mt/random-name))
+                                  (driver/database-supports? driver/*driver* :test/details-name-is-catalog (mt/db))
+                                  (assoc details :catalog (mt/random-name)))]
                 (t2/update! :model/Database (u/the-id db) {:details new-details}))
               ;; otherwise destroy the db and use the original details
               (tx/destroy-db! driver/*driver* dbdef))

@@ -756,7 +756,7 @@
          (is (= #{{:type :normal-column-index :value "id"}}
                 (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index))))))))))
 
-(defmethod driver/database-supports? [::driver/driver ::materialized-view-fields]
+(defmethod driver/database-supports? [::driver/driver ::describe-materialized-view-fields]
   [_driver _feature _database]
   true)
 
