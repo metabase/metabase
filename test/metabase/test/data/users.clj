@@ -204,7 +204,7 @@
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-real-request
-  "Like `user-http-request` but instead of calling the app handler, this makes an actual http request."
+  "Like [[user-http-request]] but instead of calling the app handler, this makes an actual http request."
   (partial user-request client/real-client))
 
 (defn do-with-test-user [user-kwd thunk]
