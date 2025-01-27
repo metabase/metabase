@@ -55,7 +55,15 @@ ParenExpression {
 
 CallExpression {
   Identifier "(" ")"
-| Identifier "(" expression ("," expression)* ")"
+| Identifier "(" ArgList ")"
+}
+
+ArgList {
+  Arg ("," Arg)*
+}
+
+Arg {
+  expression
 }
 
 @skip {} {

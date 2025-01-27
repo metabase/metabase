@@ -39,6 +39,8 @@ import { tokenAtPos } from "./suggestions";
 
 // TODO: Toggle help description open/close expand
 // TODO: Segments/metrics always shown?
+// TODO: highlight currently shown documentation (enclosingFunction)
+// TODO: remove bold from non-existing/unsupported functions
 
 type State = {
   completions: readonly Completion[];
