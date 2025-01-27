@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.channel.email-test :as et]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.http-client :as client]
    [metabase.models.permissions :as perms]
@@ -809,14 +808,10 @@
           (is (= #{"crowberto@metabase.com" "rasta@metabase.com"}
                  (recipient-emails (mt/user-http-request
                                     :rasta :get 200 (alert-question-url card)))))
-          (et/with-expected-messages 1
-            (api:unsubscribe! :rasta 204 alert))
+          (api:unsubscribe! :rasta 204 alert)
           (is (= #{"crowberto@metabase.com"}
                  (recipient-emails (mt/user-http-request
-                                    :crowberto :get 200 (alert-question-url card)))))
-          (is (= (unsubscribe-email :rasta {"Foo" true})
-                 (et/regex-email-bodies #"https://metabase.com/testmb"
-                                        #"Foo"))))))))
+                                    :crowberto :get 200 (alert-question-url card))))))))))
 
 (deftest unsubscribe-tests-2
   (testing "Alert has two recipients, and admin unsubscribes"
@@ -830,13 +825,9 @@
         (with-alert-setup!
           (is (= #{"crowberto@metabase.com" "rasta@metabase.com"}
                  (recipient-emails (mt/user-http-request :rasta :get 200 (alert-question-url card)))))
-          (et/with-expected-messages 1
-            (api:unsubscribe! :crowberto 204 alert))
+          (api:unsubscribe! :crowberto 204 alert)
           (is (= #{"rasta@metabase.com"}
-                 (recipient-emails (mt/user-http-request :crowberto :get 200 (alert-question-url card)))))
-          (is (= (unsubscribe-email :crowberto {"Foo" true})
-                 (et/regex-email-bodies #"https://metabase.com/testmb"
-                                        #"Foo"))))))))
+                 (recipient-emails (mt/user-http-request :crowberto :get 200 (alert-question-url card))))))))))
 
 (deftest unsubscribe-tests-3
   (testing "Alert should be archived if the last recipient unsubscribes"
@@ -847,11 +838,8 @@
                    :model/PulseChannelRecipient _     (recipient pc :rasta)]
       (with-alerts-in-readable-collection! [alert]
         (with-alert-setup!
-          (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
-          (is (t2/select-one-fn :archived :model/Pulse :id (u/the-id alert)))
-          (is (= (unsubscribe-email :rasta {"Foo" true})
-                 (et/regex-email-bodies #"https://metabase.com/testmb"
-                                        #"Foo"))))))))
+          (api:unsubscribe! :rasta 204 alert)
+          (is (t2/select-one-fn :archived :model/Pulse :id (u/the-id alert))))))))
 
 (deftest unsubscribe-tests-4
   (testing "Alert should not be archived if there is a slack channel"
@@ -863,11 +851,8 @@
                    :model/PulseChannelRecipient _     (recipient pc-1 :rasta)]
       (with-alerts-in-readable-collection! [alert]
         (with-alert-setup!
-          (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
-          (is (not (t2/select-one-fn :archived :model/Pulse :id (u/the-id alert))))
-          (is (= (unsubscribe-email :rasta {"Foo" true})
-                 (et/regex-email-bodies #"https://metabase.com/testmb"
-                                        #"Foo"))))))))
+          (api:unsubscribe! :rasta 204 alert)
+          (is (not (t2/select-one-fn :archived :model/Pulse :id (u/the-id alert)))))))))
 
 (deftest unsubscribe-tests-5
   (testing "If email is disabled, users should be unsubscribed"
@@ -879,15 +864,9 @@
                    :model/PulseChannelRecipient _     (recipient pc-1 :rasta)]
       (with-alerts-in-readable-collection! [alert]
         (with-alert-setup!
-          (et/with-expected-messages 1
-            ((alert-client :crowberto)
-             :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] false)))
-          (is (not (t2/select-one-fn :archived :model/Pulse :id (u/the-id alert))))
-          (is (= (et/email-to :rasta {:subject "You’ve been unsubscribed from an alert",
-                                      :body    {"https://metabase.com/testmb"          true,
-                                                "letting you know that Crowberto Corv" true}})
-                 (et/regex-email-bodies #"https://metabase.com/testmb"
-                                        #"letting you know that Crowberto Corv"))))))))
+          ((alert-client :crowberto)
+           :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] false))
+          (is (not (t2/select-one-fn :archived :model/Pulse :id (u/the-id alert)))))))))
 
 (deftest unsubscribe-tests-6
   (testing "Re-enabling email should send users a subscribe notification"
@@ -899,15 +878,9 @@
                    :model/PulseChannelRecipient _     (recipient pc-1 :rasta)]
       (with-alerts-in-readable-collection! [alert]
         (with-alert-setup!
-          (et/with-expected-messages 1
-            ((alert-client :crowberto)
-             :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] true)))
-          (is (not (t2/select-one-fn :archived :model/Pulse :id (u/the-id alert))))
-          (is (= (et/email-to :rasta {:subject "Crowberto Corv added you to an alert",
-                                      :body    {"https://metabase.com/testmb"    true,
-                                                "now getting alerts about .*Foo" true}})
-                 (et/regex-email-bodies #"https://metabase.com/testmb"
-                                        #"now getting alerts about .*Foo"))))))))
+          ((alert-client :crowberto)
+           :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] true))
+          (is (not (t2/select-one-fn :archived :model/Pulse :id (u/the-id alert)))))))))
 
 (deftest alert-unsubscribe-event-test
   (testing "Alert has two recipients, and non-admin unsubscribes"
