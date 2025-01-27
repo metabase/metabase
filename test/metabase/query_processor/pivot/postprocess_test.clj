@@ -1,6 +1,8 @@
 (ns metabase.query-processor.pivot.postprocess-test
   (:require
    [clojure.test :refer :all]
+   [flatland.ordered.map :as ordered-map]
+   [flatland.ordered.set :as ordered-set]
    [metabase.query-processor.pivot.postprocess :as process]))
 
 (def ^:private column-titles
@@ -10,6 +12,80 @@
   {:pivot-rows [2 3]
    :pivot-cols [0 1]
    :column-titles column-titles})
+
+(deftest assoc-in-path-tree-test
+  (testing "Values are correctly assoc'ed into a path tree, maintaining insertion order at every level"
+    (let [base-tree (#'process/add-to-path-tree (ordered-map/ordered-map) [:a :b :c :d])]
+      ;; Assert on strings because direct map/set comparison doesn't preserve order, but strings do
+      (is (= "{:a {:b {:c #{:d}}}}" (str base-tree)))
+      (is (= "{:a {:b {:c #{:d :e}}}}"
+             (str (#'process/add-to-path-tree base-tree [:a :b :c :e]))))
+      (is (= "{:a {:b {:c #{:d :c}}}}"
+             (str (#'process/add-to-path-tree base-tree [:a :b :c :c]))))
+      (is (= "{:a {:b {:c #{:d}}, :e {:f #{:g}}}}"
+             (str (#'process/add-to-path-tree base-tree [:a :e :f :g]))))
+      (is (= "{:a {:b {:c #{:d}}, :a {:f #{:g}}}}"
+             (str (#'process/add-to-path-tree base-tree [:a :a :f :g]))))))
+
+  (testing "Assoc'ing a value with no key to an ordered map converts it to a top-level ordered set"
+    (let [new-tree (#'process/add-to-path-tree (ordered-map/ordered-map) [:a])]
+      (is (= [:a] (seq new-tree))))
+
+    (let [new-tree (#'process/add-to-path-tree (ordered-set/ordered-set :b) [:a])]
+      (is (= [:b :a] (seq new-tree))))))
+
+(deftest sort-path-tree-test
+  (testing "sort-path-tree with ascending and descending orders using integer indices in sort-orders"
+    (let [tree (ordered-map/ordered-map
+                :a (ordered-set/ordered-set 3 1 2)
+                :b (ordered-map/ordered-map
+                    :x (ordered-set/ordered-set 5 4 6)
+                    :y (ordered-set/ordered-set 8 7 9)))
+          sort-orders {0 :ascending
+                       1 :descending}
+          result (#'process/sort-path-tree tree [0 1] sort-orders)]
+      ;; Assert top-level keys are in ascending order
+      (is (= [:a :b] (keys result)))
+      ;; Assert second-level values in :a are in descending order
+      (is (= [3 2 1] (seq (get result :a))))
+      ;; Assert nested keys (:x, :y) in :b are in descending order
+      (is (= [:y :x] (keys (get result :b))))
+      ;; Assert :x and :y sets remain unsorted (no specific sort order provided for them)
+      (is (= [5 4 6] (seq (get-in result [:b :x]))))
+      (is (= [8 7 9] (seq (get-in result [:b :y]))))))
+
+  (testing "sort-path-tree with no sort order provided"
+    (let [tree (ordered-map/ordered-map
+                :a (ordered-set/ordered-set 3 1 2)
+                :b (ordered-map/ordered-map
+                    :x (ordered-set/ordered-set 5 4 6)))
+          sort-orders {}
+          result (#'process/sort-path-tree tree [0 1] sort-orders)]
+      ;; Ensure the original tree structure remains intact
+      (is (= (str tree) (str result)))))
+
+  (testing "sort-path-tree with nil input"
+    (is (nil? (#'process/sort-path-tree nil [] {})))))
+
+(deftest enumerate-paths-test
+  (testing "enumerate-paths with nested maps and sets"
+    (let [tree (ordered-map/ordered-map
+                :a (ordered-map/ordered-map
+                    :w (ordered-set/ordered-set 1 2)
+                    :x (ordered-set/ordered-set 2 1)))]
+      (is (= [[:a :w 1]
+              [:a :w 2]
+              [:a :x 2]
+              [:a :x 1]]
+             (#'process/enumerate-paths tree)))))
+
+  (testing "enumerate-paths with a single-level set"
+    (let [tree (ordered-set/ordered-set 1 2 3)]
+      (is (= [[1] [2] [3]]
+             (#'process/enumerate-paths tree)))))
+
+  (testing "enumerate-paths with empty input"
+    (is (= [] (#'process/enumerate-paths {})))))
 
 (deftest add-pivot-measures-test
   (testing "Given a `pivot-spec` without `:pivot-measures`, add them."
@@ -55,12 +131,13 @@
                       "bD" {3 {:result 1}}}}
                (:data pivot-data)))
 
-        ;; all distinct values encountered for each row/col index are stored
-        ;; this is necessary to construct the headers as well as the combinations
-        ;; that make up the 'paths' to get measure values for every cell in the pivot table
-        (is (= {:row-values {0 #{"aA" "aB"}}
-                :column-values {1 #{"bA" "bB" "bC" "bD"}}}
-               (select-keys pivot-data [:row-values :column-values])))
+        ;; Distinct values of rows and columns are built into a tree composed of ordered maps and sets. If there is only
+        ;; one row/col, it is stored as an ordered set at the top-level.
+        (is (= {:row-paths #{"aA" "aB"}
+                :col-paths #{"bA" "bB" "bC" "bD"}}
+               (select-keys pivot-data [:row-paths :col-paths])))
+        (is (= flatland.ordered.set.OrderedSet (type (:row-paths pivot-data))))
+        (is (= flatland.ordered.set.OrderedSet (type (:col-paths pivot-data))))
 
         ;; since everything is aggregated as a row is added, we can store all of the
         ;; relevant totals right away and use them to construct the pivot table totals
@@ -150,7 +227,8 @@
                         (:totals pivot-data)
                         true
                         (repeat 5 identity)
-                        (repeat 2 identity))))
+                        (repeat 2 identity)
+                        pivot-config)))
       (is (= ["Totals for 4" nil 3 4 7]
              (build-column-totals [4]
                                   [[3] [4]]
@@ -158,4 +236,5 @@
                                   (:totals pivot-data)
                                   true
                                   (repeat 5 identity)
-                                  (repeat 2 identity)))))))
+                                  [0 1]
+                                  [2]))))))
