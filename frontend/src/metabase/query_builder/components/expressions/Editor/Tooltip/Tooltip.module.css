@@ -1,0 +1,64 @@
+.tooltip {
+  background: var(--mb-color-background);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
+  z-index: 1000;
+  width: 400px;
+  overflow: hidden;
+  box-shadow: rgba(0, 0, 0, 0.05) 0 4px 20px 0;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.listbox {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.item {
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+
+  &:hover,
+  &[aria-selected="true"] {
+    color: inherit;
+    background-color: var(--mb-color-focus);
+  }
+
+  .icon {
+    margin-right: 8px;
+    height: 14px;
+  }
+}
+
+.footer {
+  /* TODO: use correct color */
+  background-color: #fafafb;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  color: var(--mb-color-text-secondary);
+  border-top: 1px solid var(--mb-color-border);
+  font-size: 12px;
+}
+
+.key {
+  padding: 6px;
+  border-radius: 6px;
+  background-color: var(--mb-base-color-orion-10);
+  height: 12px;
+  width: 12px;
+  margin: 0 4px;
+
+  & + .key {
+    margin-left: 0;
+  }
+
+  &:first-child {
+    margin-left: 0;
+  }
+}

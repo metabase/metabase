@@ -11,23 +11,18 @@ import {
   type Extension,
   StateField,
 } from "@codemirror/state";
-import { EditorView, type Tooltip, showTooltip } from "@codemirror/view";
 import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+  EditorView,
+  type Tooltip as TooltipView,
+  showTooltip,
+} from "@codemirror/view";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { Box, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import css from "./Editor.module.css";
-import { HelpText } from "./HelpText";
+import { Tooltip } from "./Tooltip/Tooltip";
 import { tokenAtPos } from "./suggestions";
 import { enclosingFunction } from "./util";
 
@@ -38,6 +33,12 @@ import { enclosingFunction } from "./util";
 // TODO: allow using keys after clicking the popover
 // TODO: fix fonts
 
+type TooltipOptions = {
+  query: Lib.Query;
+  metadata: Metadata;
+  reportTimezone?: string;
+};
+
 type State = {
   completions: readonly Completion[];
   selectedCompletion: number | null;
@@ -47,12 +48,6 @@ type State = {
     to: number;
   } | null;
   hasFocus?: boolean;
-};
-
-type TooltipOptions = {
-  query: Lib.Query;
-  metadata: Metadata;
-  reportTimezone?: string;
 };
 
 /**
@@ -156,7 +151,7 @@ export function useTooltip({
     createPortal(
       <Tooltip
         ref={tooltipRef}
-        state={state}
+        {...state}
         query={query}
         metadata={metadata}
         reportTimezone={reportTimezone}
@@ -183,7 +178,7 @@ export function tooltip(element: HTMLElement) {
     return { dom, offset: { x: 0, y: 5 } };
   }
 
-  function getCursorTooltips(state: EditorState): readonly Tooltip[] {
+  function getCursorTooltips(state: EditorState): readonly TooltipView[] {
     return [
       {
         pos: getPosition(state),
@@ -195,122 +190,11 @@ export function tooltip(element: HTMLElement) {
     ];
   }
 
-  return StateField.define<readonly Tooltip[]>({
+  return StateField.define<readonly TooltipView[]>({
     create: getCursorTooltips,
     update(_, transaction) {
       return getCursorTooltips(transaction.state);
     },
     provide: f => showTooltip.computeN([f], state => state.field(f)),
   });
-}
-
-type TooltipProps = {
-  state: State;
-  query: Lib.Query;
-  metadata: Metadata;
-  reportTimezone?: string;
-  onCompletionClick: (index: number) => void;
-  onBlur: () => void;
-};
-
-const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
-  function TooltipInner(props, ref) {
-    const {
-      query,
-      metadata,
-      reportTimezone,
-      state,
-      onCompletionClick,
-      onBlur,
-    } = props;
-    const { completions, selectedCompletion, enclosingFunction, hasFocus } =
-      state;
-
-    if (!hasFocus) {
-      return null;
-    }
-
-    return (
-      <div className={css.tooltip} ref={ref} onBlur={onBlur} tabIndex={0}>
-        <HelpText
-          enclosingFunction={enclosingFunction?.name}
-          query={query}
-          metadata={metadata}
-          reportTimezone={reportTimezone}
-        />
-        {completions.length > 0 && (
-          <>
-            <ul role="listbox">
-              {completions.map((completion, index) => (
-                <CompletionItem
-                  completion={completion}
-                  index={index}
-                  key={index}
-                  selected={selectedCompletion === index}
-                  onCompletionClick={onCompletionClick}
-                />
-              ))}
-            </ul>
-            <Footer />
-          </>
-        )}
-      </div>
-    );
-  },
-);
-
-function CompletionItem({
-  completion,
-  selected,
-  onCompletionClick,
-  index,
-}: {
-  completion: Completion;
-  index: number;
-  onCompletionClick: (index: number) => void;
-  selected: boolean;
-}) {
-  const ref = useRef<HTMLLIElement>(null);
-  const handleMouseDown = useCallback(
-    (evt: React.MouseEvent<HTMLLIElement>) => {
-      evt.preventDefault();
-      onCompletionClick(index);
-    },
-    [index, onCompletionClick],
-  );
-
-  useEffect(() => {
-    if (!selected || !ref.current) {
-      return;
-    }
-
-    ref.current.scrollIntoView({
-      block: "nearest",
-    });
-  }, [selected]);
-
-  return (
-    <li
-      role="option"
-      aria-selected={selected}
-      onMouseDown={handleMouseDown}
-      ref={ref}
-    >
-      <Icon name={completion.icon} className={css.icon} />
-
-      {completion.displayLabel ?? completion.label}
-    </li>
-  );
-}
-
-function Footer() {
-  return (
-    <Box className={css.footer}>
-      <Icon name="arrow_up" className={css.key} />
-      <Icon name="arrow_down" className={css.key} />
-      to navigate.
-      <span />
-      <Icon name="enter_or_return" className={css.key} /> to select.
-    </Box>
-  );
 }
