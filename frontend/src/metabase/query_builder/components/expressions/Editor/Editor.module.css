@@ -123,9 +123,9 @@
 
   .usage {
     padding: 8px;
-    border-bottom: 1px solid var(--mb-color-border);
     font-size: 12px;
     color: var(--mb-color-text-secondary);
+    cursor: pointer;
   }
 
   .arg {
@@ -136,6 +136,7 @@
     padding: 8px;
     max-height: 150px;
     overflow: auto;
+    border-top: 1px solid var(--mb-color-border);
   }
 
   .title {

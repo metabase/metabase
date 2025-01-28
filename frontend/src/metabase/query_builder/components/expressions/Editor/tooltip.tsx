@@ -41,6 +41,7 @@ import { tokenAtPos } from "./suggestions";
 // TODO: Segments/metrics always shown?
 // TODO: highlight currently shown documentation (enclosingFunction)
 // TODO: remove bold from non-existing/unsupported functions
+// TODO: add link to docs
 
 type State = {
   completions: readonly Completion[];
@@ -301,17 +302,24 @@ function wrapPlaceholder(name: string) {
 }
 
 function Help({ helpText }: { helpText?: HelpText | null }) {
+  const [open, setOpen] = useState(true);
+  const handleMouseDown = useCallback(
+    (evt: React.MouseEvent<HTMLDivElement>) => {
+      evt.preventDefault();
+      setOpen(open => !open);
+    },
+    [],
+  );
+
   if (!helpText) {
     return null;
   }
 
   const { description, structure, args, example } = helpText;
 
-  // TODO: add link to docs
-
   return (
     <Box className={css.helpText}>
-      <Box className={css.usage}>
+      <Box className={css.usage} onMouseDown={handleMouseDown}>
         {structure}
         {args != null && (
           <>
@@ -327,32 +335,34 @@ function Help({ helpText }: { helpText?: HelpText | null }) {
         )}
       </Box>
 
-      <Box className={css.info}>
-        <Box>{description}</Box>
+      {open && (
+        <Box className={css.info}>
+          <Box>{description}</Box>
 
-        {args != null && (
-          <Box
-            className={css.arguments}
-            data-testid="expression-helper-popover-arguments"
-          >
-            {args.map(({ name, description }) => (
-              <Fragment key={name}>
-                <Box className={css.arg}>{wrapPlaceholder(name)}</Box>
-                <Box>{description}</Box>
-              </Fragment>
-            ))}
-          </Box>
-        )}
-
-        {example && (
-          <>
-            <Box className={css.title}>{t`Example`}</Box>
-            <Box className={css.example}>
-              <Highlight expression={example} />
+          {args != null && (
+            <Box
+              className={css.arguments}
+              data-testid="expression-helper-popover-arguments"
+            >
+              {args.map(({ name, description }) => (
+                <Fragment key={name}>
+                  <Box className={css.arg}>{wrapPlaceholder(name)}</Box>
+                  <Box>{description}</Box>
+                </Fragment>
+              ))}
             </Box>
-          </>
-        )}
-      </Box>
+          )}
+
+          {example && (
+            <>
+              <Box className={css.title}>{t`Example`}</Box>
+              <Box className={css.example}>
+                <Highlight expression={example} />
+              </Box>
+            </>
+          )}
+        </Box>
+      )}
     </Box>
   );
 }
