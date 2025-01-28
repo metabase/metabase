@@ -1,4 +1,3 @@
-import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import type {
   CardId,
   CreateAlertNotificationRequest,
@@ -12,7 +11,7 @@ export const createQuestionAlert = ({
   card_id = 1,
   send_once = false,
   send_condition = "has_result",
-  user_id = ADMIN_USER_ID,
+  user_id,
   cron_schedule = "0 0 9 * * ?",
   handlers,
 }: {

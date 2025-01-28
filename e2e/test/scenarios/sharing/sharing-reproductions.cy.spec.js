@@ -909,6 +909,7 @@ describe("issue 17547", () => {
 
     cy.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
       H.createQuestionAlert({
+        user_id: ADMIN_USER_ID,
         card_id: questionId,
         handlers: [
           {

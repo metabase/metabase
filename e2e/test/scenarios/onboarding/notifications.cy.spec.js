@@ -43,6 +43,7 @@ describe("scenarios > account > notifications", () => {
               cy.createQuestion(getQuestionDetails()).then(
                 ({ body: { id: card_id } }) => {
                   H.createQuestionAlert({
+                    user_id: admin_id,
                     card_id,
                     handlers: [
                       {

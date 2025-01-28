@@ -1,6 +1,7 @@
-import { H } from "e2e/support";
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+
+import { openSharingMenu } from "./e2e-sharing-helpers";
 
 /**
  * @typedef {object} QuestionResource
@@ -203,7 +204,7 @@ export function openStaticEmbeddingModal({
   acceptTerms = true,
   confirmSave,
 } = {}) {
-  H.openSharingMenu("Embed");
+  openSharingMenu("Embed");
 
   if (confirmSave) {
     cy.findByRole("button", { name: "Save" }).click();
@@ -281,7 +282,7 @@ export function openNewPublicLinkDropdown(resourceType) {
     "sharingEnabled",
   );
 
-  H.openSharingMenu(/public link/i);
+  openSharingMenu(/public link/i);
 
   cy.wait("@sharingEnabled").then(
     ({

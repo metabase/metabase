@@ -534,16 +534,15 @@ describe(
       cy.findByTestId("sharing-menu-button").click();
       H.popover().findByText("Create an alert").click();
 
-      H.modal()
-        .within(() => {
-          H.getAlertChannel(firstWebhookName).scrollIntoView();
+      H.modal().within(() => {
+        H.getAlertChannel(firstWebhookName).scrollIntoView();
 
-          H.getAlertChannel(firstWebhookName)
-            .findByRole("checkbox")
-            .click({ force: true });
+        H.getAlertChannel(firstWebhookName)
+          .findByRole("checkbox")
+          .click({ force: true });
 
-          H.getAlertChannel(firstWebhookName).button("Send a test").click();
-        });
+        H.getAlertChannel(firstWebhookName).button("Send a test").click();
+      });
 
       cy.wait("@testAlert");
 

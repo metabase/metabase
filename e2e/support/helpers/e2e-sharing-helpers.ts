@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 export const sharingMenuButton = () => cy.findByTestId("sharing-menu-button");
 export const sharingMenu = () => cy.findByTestId("sharing-menu");
@@ -11,7 +11,7 @@ export const openSharingMenu = (menuItemText?: string) => {
 };
 
 export const removeNotificationHandlerChannel = (channel: string) => {
-  H.modal()
+  modal()
     .findByText(channel)
     .closest('[data-testid="channel-block"]')
     .findByTestId("remove-channel-button")
@@ -23,13 +23,10 @@ export const addNotificationHandlerChannel = (
   { hasNoChannelsAdded = false }: { hasNoChannelsAdded?: boolean } = {},
 ) => {
   if (hasNoChannelsAdded) {
-    H.modal().findByText("Add a destination").should("be.visible").click();
+    modal().findByText("Add a destination").should("be.visible").click();
   } else {
-    H.modal()
-      .findByText("Add another destination")
-      .should("be.visible")
-      .click();
+    modal().findByText("Add another destination").should("be.visible").click();
   }
 
-  H.popover().findByText(channel).click();
+  popover().findByText(channel).click();
 };
