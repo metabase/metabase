@@ -29,7 +29,7 @@ type TooltipOptions = {
  * Note: this is a bit hacky, but there is currently no other way to render custom
  * tooltips with suggestions in CodeMirror.
  */
-export function useTooltip({
+export function useCustomTooltip({
   render,
   getPosition,
 }: TooltipOptions): [Extension[], React.ReactNode] {

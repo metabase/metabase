@@ -1,22 +1,19 @@
 import { bracketMatching, syntaxHighlighting } from "@codemirror/language";
-import type { EditorState } from "@codemirror/state";
+import type { Extension } from "@codemirror/state";
 import { EditorView, drawSelection, keymap, tooltips } from "@codemirror/view";
 import { Prec } from "@uiw/react-codemirror";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
-import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import type * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import css from "./Editor.module.css";
 import { highlightStyle } from "./Highlight";
-import { Tooltip } from "./Tooltip/Tooltip";
 import { customExpression } from "./language";
-import { suggestions, tokenAtPos } from "./suggestions";
-import { useTooltip } from "./tooltip";
+import { suggestions } from "./suggestions";
 
 type Options = {
   startRule: "expression" | "aggregation" | "boolean";
@@ -25,7 +22,9 @@ type Options = {
   name?: string | null;
   expressionIndex: number | undefined;
   onCommit: (source: string) => void;
+  metadata: Metadata;
   reportTimezone?: string;
+  extensions?: Extension[];
 };
 
 function getTooltipParent() {
@@ -41,15 +40,7 @@ function getTooltipParent() {
   return el;
 }
 
-function getTooltipPosition(state: EditorState) {
-  const pos = state.selection.main.head;
-  const source = state.doc.toString();
-  const token = tokenAtPos(source, pos);
-
-  return token?.start ?? pos;
-}
-
-export function useExtensions(options: Options) {
+export function useExtensions(options: Options): Extension[] {
   const {
     startRule,
     query,
@@ -58,22 +49,11 @@ export function useExtensions(options: Options) {
     expressionIndex,
     onCommit,
     reportTimezone,
+    metadata,
+    extensions: extra = [],
   } = options;
 
-  const metadata = useSelector(getMetadata);
-  const [tooltip, content] = useTooltip({
-    getPosition: getTooltipPosition,
-    render: props => (
-      <Tooltip
-        query={query}
-        metadata={metadata}
-        reportTimezone={reportTimezone}
-        {...props}
-      />
-    ),
-  });
-
-  const extensions = useMemo(() => {
+  return useMemo(() => {
     return [
       nonce(),
       fonts(),
@@ -123,10 +103,11 @@ export function useExtensions(options: Options) {
         position: "fixed",
         parent: getTooltipParent(),
       }),
-      tooltip,
+      ...extra,
     ]
       .flat()
       .filter(isNotNull);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     startRule,
     query,
@@ -136,10 +117,9 @@ export function useExtensions(options: Options) {
     onCommit,
     metadata,
     reportTimezone,
-    tooltip,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    ...extra,
   ]);
-
-  return { extensions, content };
 }
 
 function nonce() {

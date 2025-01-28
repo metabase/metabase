@@ -1,7 +1,10 @@
+import type { EditorState } from "@codemirror/state";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
@@ -11,7 +14,10 @@ import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type { Expression } from "metabase-types/api";
 
 import S from "./Editor.module.css";
+import { Tooltip } from "./Tooltip/Tooltip";
 import { useExtensions } from "./extensions";
+import { tokenAtPos } from "./suggestions";
+import { useCustomTooltip } from "./tooltip";
 
 type EditorProps = {
   expression: Expression | undefined | null;
@@ -45,10 +51,24 @@ export function Editor(props: EditorProps) {
   } = props;
 
   const ref = useRef<ReactCodeMirrorRef>(null);
+  const metadata = useSelector(getMetadata);
+
   const { source, onSourceChange, commitExpression, hasChanges } =
     useExpression(props);
 
-  const { extensions, content } = useExtensions({
+  const [customTooltip, portal] = useCustomTooltip({
+    getPosition: getTooltipPosition,
+    render: props => (
+      <Tooltip
+        query={query}
+        metadata={metadata}
+        reportTimezone={reportTimezone}
+        {...props}
+      />
+    ),
+  });
+
+  const extensions = useExtensions({
     startRule,
     query,
     stageIndex,
@@ -56,6 +76,8 @@ export function Editor(props: EditorProps) {
     expressionIndex,
     onCommit: commitExpression,
     reportTimezone,
+    metadata,
+    extensions: [customTooltip],
   });
 
   const handleBlur = useCallback(() => {
@@ -81,7 +103,7 @@ export function Editor(props: EditorProps) {
         />
       </div>
       {error && hasChanges && <Box className={S.error}>{error.message}</Box>}
-      {content}
+      {portal}
     </>
   );
 }
@@ -176,4 +198,12 @@ function useExpression({
     onSourceChange: handleSourceChange,
     hasChanges,
   };
+}
+
+function getTooltipPosition(state: EditorState) {
+  const pos = state.selection.main.head;
+  const source = state.doc.toString();
+  const token = tokenAtPos(source, pos);
+
+  return token?.start ?? pos;
 }
