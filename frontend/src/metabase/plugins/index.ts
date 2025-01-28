@@ -5,7 +5,7 @@ import type {
   ReactNode,
   SetStateAction,
 } from "react";
-import React from "react";
+import type React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import type { AnySchema } from "yup";
