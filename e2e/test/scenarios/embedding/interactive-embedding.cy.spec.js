@@ -898,7 +898,7 @@ describe("scenarios > embedding > full app", () => {
         "not.exist",
       );
       H.dashboardGrid()
-        .findByText("Rows 1-7 of first 2000")
+        .findByText("Rows 1-6 of first 2000")
         .should("be.visible");
     });
 
