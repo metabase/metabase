@@ -16,6 +16,7 @@ describe("enclosingFunction", () => {
       name: "concat",
       from: 0,
       to: 6,
+      arg: null,
     };
 
     expect(setup("|concat")).toEqual(result);
@@ -28,6 +29,7 @@ describe("enclosingFunction", () => {
       name: "concat",
       from: 0,
       to: 7,
+      arg: null,
     };
 
     expect(setup("|concat(")).toEqual(result);
@@ -40,12 +42,13 @@ describe("enclosingFunction", () => {
       name: "concat",
       from: 0,
       to: 11,
+      arg: null,
     };
 
     expect(setup("|concat(a, b")).toEqual(result);
     expect(setup("conca|t(a, b")).toEqual(result);
-    expect(setup("concat(a|, b")).toEqual(result);
-    expect(setup("concat(a, b|")).toEqual(result);
+    expect(setup("concat(a|, b")).toEqual({ ...result, arg: 0 });
+    expect(setup("concat(a, b|")).toEqual({ ...result, arg: 1 });
   });
 
   it("should find the enclosing function when it has a closing parenthesis", () => {
@@ -53,12 +56,13 @@ describe("enclosingFunction", () => {
       name: "concat",
       from: 0,
       to: 14,
+      arg: null,
     };
 
     expect(setup("|concat(10, 20)")).toEqual(result);
     expect(setup("conca|t(10, 20)")).toEqual(result);
-    expect(setup("concat(1|0, 20)")).toEqual(result);
-    expect(setup("concat(10, 2|0)")).toEqual(result);
+    expect(setup("concat(1|0, 20)")).toEqual({ ...result, arg: 0 });
+    expect(setup("concat(10, 2|0)")).toEqual({ ...result, arg: 1 });
   });
 
   it("should not find an enclosing function when it the cursor is set after the closing parenthesis", () => {
@@ -67,10 +71,11 @@ describe("enclosingFunction", () => {
   });
 
   it("should find the innermost enclosing function", () => {
-    expect(setup("case([X] > 10, concat(a|, b), coalesce(c, d))")).toEqual({
+    expect(setup("case([X] > 10, concat(a, b|), coalesce(c, d))")).toEqual({
       name: "concat",
       from: 15,
       to: 27,
+      arg: 1,
     });
   });
 
@@ -79,6 +84,7 @@ describe("enclosingFunction", () => {
       name: "case",
       from: 5,
       to: 28,
+      arg: 0,
     });
   });
 });
