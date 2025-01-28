@@ -94,7 +94,7 @@ function ExplicitSize<T>({
 
       _getElement() {
         try {
-          let element = this.elementRef?.current;
+          let element = this.elementRef.current;
           if (selector && element instanceof Element) {
             element = element.querySelector(selector) || element;
           }
@@ -255,9 +255,7 @@ function ExplicitSize<T>({
                   }
                 }
 
-                if (this.elementRef) {
-                  this.elementRef.current = el;
-                }
+                this.elementRef.current = el;
               }}
               {...(props as unknown as T)}
               {...this.state}

@@ -13,6 +13,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useMergedRef } from "@mantine/hooks";
 import {
   type ReactNode,
   type Ref,
@@ -54,6 +55,7 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
     ref: Ref<HTMLDivElement>,
   ) {
     const tabListRef = useRef<HTMLDivElement>(null);
+    const mergedRef = useMergedRef(tabListRef, ref);
 
     const [scrollPosition, setScrollPosition] = useState(0);
     const [showScrollRight, setShowScrollRight] = useState(false);
@@ -110,8 +112,7 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
       <TabList
         onChange={onChange as (value: unknown) => void}
         onScroll={event => setScrollPosition(event.currentTarget.scrollLeft)}
-        rootRef={ref}
-        ref={tabListRef}
+        ref={mergedRef}
         {...props}
       >
         <DndContext

@@ -13,12 +13,11 @@ export interface TabListProps<T>
   value?: T;
   onChange?: (value: T) => void;
   onScroll?: UIEventHandler<HTMLDivElement>;
-  rootRef?: Ref<HTMLDivElement>;
   children?: ReactNode;
 }
 
 const TabList = forwardRef(function TabGroup<T>(
-  { value, onChange, onScroll, children, rootRef, ...props }: TabListProps<T>,
+  { value, onChange, onScroll, children, ...props }: TabListProps<T>,
   ref: Ref<HTMLDivElement>,
 ) {
   const idPrefix = useUniqueId();
@@ -31,7 +30,7 @@ const TabList = forwardRef(function TabGroup<T>(
   const activeContext = outerContext.isDefault ? innerContext : outerContext;
 
   return (
-    <TabListRoot {...props} role="tablist" ref={rootRef}>
+    <TabListRoot {...props} role="tablist">
       <TabListContent ref={ref} onScroll={onScroll}>
         <TabContext.Provider value={activeContext as TabContextType}>
           {children}

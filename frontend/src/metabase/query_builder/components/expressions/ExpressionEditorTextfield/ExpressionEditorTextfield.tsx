@@ -851,6 +851,6 @@ const ExpressionEditorTextfieldWithRef = React.forwardRef<
 ));
 
 export const ExpressionEditorTextfield = _.compose(
+  connect(mapStateToProps),
   ExplicitSize<ExpressionEditorTextfieldProps>(),
-  connect(mapStateToProps, null, null, { forwardRef: true }),
 )(ExpressionEditorTextfieldWithRef);

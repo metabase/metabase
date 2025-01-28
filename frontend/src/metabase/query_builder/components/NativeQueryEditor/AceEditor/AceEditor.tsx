@@ -1,6 +1,6 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
-import { Component, type MutableRefObject, createRef, forwardRef } from "react";
+import { Component, createRef, forwardRef } from "react";
 import slugg from "slugg";
 import { t } from "ttag";
 import _ from "underscore";
@@ -79,7 +79,7 @@ type AceEditorProps = EditorProps &
   SnippetProps;
 
 export class AceEditorInner extends Component<AceEditorProps> {
-  editor: MutableRefObject<HTMLDivElement | null> = createRef();
+  editor = createRef<HTMLDivElement>();
 
   // this is overwritten when the editor mounts
   nextCompleters?: (position: Ace.Position) => Ace.Completer[] = undefined;
@@ -530,7 +530,7 @@ export class AceEditorInner extends Component<AceEditorProps> {
         className={S.editor}
         id={ACE_ELEMENT_ID}
         data-testid="native-query-editor"
-        ref={el => (this.editor.current = el)}
+        ref={this.editor}
       />
     );
   }
