@@ -62,13 +62,15 @@ describeEE("scenarios > embedding-sdk > interactive-question > theming", () => {
       const buttonHoverBg = "rgb(33, 39, 43)";
       const customColumn = "[aria-label='Custom column']";
 
-      // Should be the lightened version of the background color.
+      // Should be the lightened version of the background color
       cy.findByTestId("notebook-button")
+        .should("be.visible")
         .realHover()
         .should("have.css", "background-color", buttonHoverBg);
 
-      // Should be the lightened version of the background color.
+      // Should be the lightened version of the background color
       cy.findByTestId("chart-type-selector-button")
+        .should("be.visible")
         .realHover()
         .should("have.css", "background-color", buttonHoverBg);
 
@@ -83,6 +85,7 @@ describeEE("scenarios > embedding-sdk > interactive-question > theming", () => {
 
       // Hover should be a less lightened version of the background color.
       cy.get(customColumn)
+        .should("be.visible")
         .realHover()
         .should("have.css", "background-color", "rgb(31, 36, 41)");
     });
@@ -124,6 +127,7 @@ describeEE("scenarios > embedding-sdk > interactive-question > theming", () => {
 
       // Hover should be an even darker version of the background color
       cy.get(customColumn)
+        .should("be.visible")
         .realHover()
         .should("have.css", "background-color", "rgb(230, 230, 230)");
     });
