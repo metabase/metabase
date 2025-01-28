@@ -783,7 +783,8 @@
                 :mongo
                 :sparksql
                 :sqlite
-                :athena]]
+                :athena
+                :vertica]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
     [_driver _feature _database]
     false))
