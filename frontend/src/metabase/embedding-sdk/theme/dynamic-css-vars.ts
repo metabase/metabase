@@ -20,18 +20,11 @@ type DynamicCssVarColorDefinition = {
    * If the value is an object, it will use the light color for light themes and the dark color for dark themes.
    **/
   source: SourceColorKey | { light?: SourceColorKey; dark?: SourceColorKey };
-} & (
-  | {
-      // applies the same operations to both light and dark themes
-      apply: ColorOperation;
-    }
-  | {
-      // applies different operations to light and dark themes
-      light?: ColorOperation;
-      dark?: ColorOperation;
-      apply?: never;
-    }
-);
+
+  // applies different operations to light and dark themes
+  light?: ColorOperation;
+  dark?: ColorOperation;
+};
 
 /**
  * These CSS variables are dynamically generated based on the theme.
@@ -109,9 +102,7 @@ export function getDynamicCssVariables(theme: MantineTheme) {
         colorKey = config.source.light;
       }
 
-      if (config.apply) {
-        operation = config.apply;
-      } else if (isDarkTheme && config.dark) {
+      if (isDarkTheme && config.dark) {
         operation = config.dark;
       } else if (!isDarkTheme && config.light) {
         operation = config.light;
