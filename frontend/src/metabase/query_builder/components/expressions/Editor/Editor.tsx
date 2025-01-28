@@ -41,6 +41,7 @@ export function Editor(props: EditorProps) {
     expressionIndex,
     readOnly,
     error,
+    reportTimezone,
   } = props;
 
   const ref = useRef<ReactCodeMirrorRef>(null);
@@ -54,6 +55,7 @@ export function Editor(props: EditorProps) {
     name,
     expressionIndex,
     onCommit: commitExpression,
+    reportTimezone,
   });
 
   const handleBlur = useCallback(() => {
