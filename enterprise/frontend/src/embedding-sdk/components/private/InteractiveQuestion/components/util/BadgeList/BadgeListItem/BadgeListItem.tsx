@@ -37,7 +37,7 @@ const _BadgeListItem = (
           e.stopPropagation();
           onRemoveItem?.();
         }}
-        className={CS.bgMediumHover}
+        className={S.BadgeListRemoveButton}
       >
         <Icon name="close" c="var(--mb-color-text-brand)" size={10} />
       </ActionIcon>
