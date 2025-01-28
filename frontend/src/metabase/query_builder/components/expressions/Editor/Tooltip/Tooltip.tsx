@@ -8,7 +8,7 @@ import {
 } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
-import { forwardRef, useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 
 import { Box, Icon } from "metabase/ui";
@@ -27,57 +27,59 @@ import S from "./Tooltip.module.css";
 // TODO: allow using keys after clicking the popover
 // TODO: fix fonts
 
-type TooltipProps = {
+export function Tooltip({
+  query,
+  metadata,
+  reportTimezone,
+
+  state,
+  view,
+}: {
   query: Lib.Query;
   metadata: Metadata;
   reportTimezone?: string;
 
+  // from tooltip extension
   state: EditorState;
   view: EditorView;
-};
+}) {
+  const handleCompletionClick = useCallback(
+    (index: number) => {
+      if (!view) {
+        return;
+      }
 
-export const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
-  function TooltipInner(props) {
-    const { state, view, metadata, query, reportTimezone } = props;
+      view.dispatch({
+        effects: [setSelectedCompletion(index)],
+      });
+      acceptCompletion(view);
+    },
+    [view],
+  );
 
-    const handleCompletionClick = useCallback(
-      (index: number) => {
-        if (!view) {
-          return;
-        }
+  const { options, selectedOption } = useCompletions(state);
 
-        view.dispatch({
-          effects: [setSelectedCompletion(index)],
-        });
-        acceptCompletion(view);
-      },
-      [view],
-    );
+  const enclosingFn = enclosingFunction(
+    state.doc.toString(),
+    state.selection.main.head,
+  );
 
-    const { options, selectedOption } = useCompletions(state);
-
-    const enclosingFn = enclosingFunction(
-      state.doc.toString(),
-      state.selection.main.head,
-    );
-
-    return (
-      <Box className={S.tooltip}>
-        <HelpText
-          enclosingFunction={enclosingFn?.name}
-          query={query}
-          metadata={metadata}
-          reportTimezone={reportTimezone}
-        />
-        <Completions
-          completions={options}
-          selectedCompletion={selectedOption}
-          onCompletionClick={handleCompletionClick}
-        />
-      </Box>
-    );
-  },
-);
+  return (
+    <Box className={S.tooltip}>
+      <HelpText
+        enclosingFunction={enclosingFn?.name}
+        query={query}
+        metadata={metadata}
+        reportTimezone={reportTimezone}
+      />
+      <Completions
+        completions={options}
+        selectedCompletion={selectedOption}
+        onCompletionClick={handleCompletionClick}
+      />
+    </Box>
+  );
+}
 
 function useCompletions(state: EditorState) {
   const completions = useMemo(() => {
