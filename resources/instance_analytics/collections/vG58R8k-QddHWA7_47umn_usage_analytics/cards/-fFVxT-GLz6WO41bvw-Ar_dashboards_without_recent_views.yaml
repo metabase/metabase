@@ -9,9 +9,9 @@ collection_id: audit_internal_col_id
 collection_preview: true
 collection_position: null
 query_type: query
-database_id: audit_development_app_db
+database_id: Internal Metabase Database
 table_id:
-- audit_development_app_db
+- Internal Metabase Database
 - public
 - v_content
 enable_embedding: false
@@ -21,7 +21,7 @@ public_uuid: null
 parameters: []
 parameter_mappings: []
 dataset_query:
-  database: audit_development_app_db
+  database: Internal Metabase Database
   query:
     expression-idents:
       Days since last view: expression_-fFVxT-GLz6WO41bvw-Ar@0__Days since last view
@@ -36,19 +36,19 @@ dataset_query:
       - day
     fields:
     - - field
-      - - audit_development_app_db
+      - - Internal Metabase Database
         - public
         - v_content
         - entity_id
       - base-type: type/Integer
     - - field
-      - - audit_development_app_db
+      - - Internal Metabase Database
         - public
         - v_content
         - created_at
       - base-type: type/DateTimeWithLocalTZ
     - - field
-      - - audit_development_app_db
+      - - Internal Metabase Database
         - public
         - v_content
         - name
@@ -60,7 +60,7 @@ dataset_query:
     - and
     - - =
       - - field
-        - - audit_development_app_db
+        - - Internal Metabase Database
           - public
           - v_content
           - entity_type
@@ -72,7 +72,7 @@ dataset_query:
         - base-type: type/Integer
     - - =
       - - field
-        - - audit_development_app_db
+        - - Internal Metabase Database
           - public
           - v_content
           - archived
@@ -83,13 +83,13 @@ dataset_query:
       condition:
       - =
       - - field
-        - - audit_development_app_db
+        - - Internal Metabase Database
           - public
           - v_content
           - entity_qualified_id
         - base-type: type/Text
       - - field
-        - - audit_development_app_db
+        - - Internal Metabase Database
           - public
           - v_view_log
           - entity_qualified_id
@@ -116,14 +116,14 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - audit_development_app_db
+  - - Internal Metabase Database
     - public
     - v_content
     - entity_id
   - base-type: type/Integer
   fk_target_field_id: null
   id:
-  - audit_development_app_db
+  - Internal Metabase Database
   - public
   - v_content
   - entity_id
@@ -135,7 +135,7 @@ result_metadata:
   settings: null
   source: fields
   table_id:
-  - audit_development_app_db
+  - Internal Metabase Database
   - public
   - v_content
   visibility_type: normal
@@ -147,7 +147,7 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - audit_development_app_db
+  - - Internal Metabase Database
     - public
     - v_content
     - created_at
@@ -155,7 +155,7 @@ result_metadata:
     temporal-unit: default
   fk_target_field_id: null
   id:
-  - audit_development_app_db
+  - Internal Metabase Database
   - public
   - v_content
   - created_at
@@ -167,7 +167,7 @@ result_metadata:
   settings: null
   source: fields
   table_id:
-  - audit_development_app_db
+  - Internal Metabase Database
   - public
   - v_content
   unit: default
@@ -180,14 +180,14 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - audit_development_app_db
+  - - Internal Metabase Database
     - public
     - v_content
     - name
   - base-type: type/Text
   fk_target_field_id: null
   id:
-  - audit_development_app_db
+  - Internal Metabase Database
   - public
   - v_content
   - name
@@ -199,7 +199,7 @@ result_metadata:
   settings: null
   source: fields
   table_id:
-  - audit_development_app_db
+  - Internal Metabase Database
   - public
   - v_content
   visibility_type: normal
@@ -215,12 +215,12 @@ visualization_settings:
   column_settings:
     '["ref",["expression","Days since last view"]]':
       show_mini_bar: true
-    '["ref",["field",["audit_development_app_db","public","v_content","entity_id"],{"base-type":"type/Integer"}]]':
+    '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer"}]]':
       column_title: Dashboard ID
       link_text: ''
       link_url: /dashboard/{{entity_id}}
       view_as: link
-    '["ref",["field",["audit_development_app_db","public","v_content","name"],{"base-type":"type/Text"}]]':
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text"}]]':
       link_text: ''
       link_url: /dashboard/{{entity_id}}
       view_as: link
