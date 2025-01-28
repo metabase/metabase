@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { c, jt, t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
+import CS from "metabase/css/core/index.css";
 import { Button, Icon, type IconName, Stack, Text, Title } from "metabase/ui";
 
 interface DashboardEmptyStateProps {
@@ -68,6 +69,7 @@ export function DashboardEmptyState({
           </Text>
         </Stack>
         <Button
+          className={CS.flexNoShrink}
           onClick={addQuestion}
           variant="filled"
           w="12.5rem"
