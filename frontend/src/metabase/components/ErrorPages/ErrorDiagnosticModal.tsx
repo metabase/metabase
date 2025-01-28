@@ -31,8 +31,6 @@ interface ErrorDiagnosticModalProps {
   onClose: () => void;
 }
 
-type PayloadSelection = Partial<Record<keyof ErrorPayload, boolean>>;
-
 export const ErrorDiagnosticModal = ({
   errorInfo,
   loading,
@@ -75,15 +73,17 @@ export const ErrorDiagnosticModal = ({
     browserInfo: true,
   };
 
-  const handleSubmit = (values: PayloadSelection) => {
+  const handleSubmit = (values: Record<string, boolean | string>) => {
     trackErrorDiagnosticModalSubmitted("download-diagnostics");
-    const selectedKeys = Object.keys(values).filter(
-      key => values[key as keyof PayloadSelection],
+    const { description, ...diagnosticSelections } = values;
+
+    const selectedKeys = Object.keys(diagnosticSelections).filter(
+      key => diagnosticSelections[key],
     );
-    const selectedInfo: Partial<ErrorPayload> = _.pick(
-      errorInfo,
-      ...selectedKeys,
-    );
+    const selectedInfo = {
+      ..._.pick(errorInfo, ...selectedKeys),
+      description,
+    };
 
     downloadObjectAsJson(
       selectedInfo,
@@ -92,9 +92,7 @@ export const ErrorDiagnosticModal = ({
     onClose();
   };
 
-  const handleSlackSubmit = async (
-    values: Record<string, boolean | string>,
-  ) => {
+  const handleSlackSubmit = async (values: Record<string, any>) => {
     setIsSlackSending(true);
     const { description, ...diagnosticSelections } = values;
 
@@ -197,7 +195,7 @@ export const ErrorDiagnosticModalTrigger = () => {
           leftIcon={<Icon name="download" />}
           onClick={() => setModalOpen(true)}
         >
-          {t`Download diagnostic information`}
+          {t`Gather diagnostic information`}
         </Button>
       </Stack>
       <ErrorDiagnosticModalWrapper

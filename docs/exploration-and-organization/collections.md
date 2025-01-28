@@ -70,14 +70,30 @@ Pinned items will appear pinned for all people looking at the collection. If you
 
 ## Moving items from collection to collection
 
-To move an item from one collection to another, just click and drag it onto the collection where you want it to go.
-You can also click on the the three dot menu (**...**) menu to the right of the item and pick the **Move** action.
+To move an item from one collection to another, just click and drag it onto the collection where you want it to go. You can also click on the the three dot menu (**...**) menu to the right of the item and pick the **Move** action.
 
 If you're trying to move several things at once, click on the checkboxes next to the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
 
 ![Selecting questions](./images/question-checkbox.png)
 
 Note that you have to have Curate permission for the collection that you're moving a question into _and_ the collection you're moving the question out of. Metabase admins can move items into (and out of) anyone's [personal collection](#your-personal-collection).
+
+## Moving questions into dashboards
+
+You can move any question from a collection to a dashboard (and vice versa). Visit a question, click on the three-dot menu (**...**) and select **Move**. Pick a destination and your question will enjoy its new home.
+
+### Bulk-moving questions into dashboards
+
+If a collection has questions that have been added to dashboards in that collection, you can move the questions into their dashboards to declutter the collection.
+
+To bulk-move questions into their dashboards, visit a collection page, click on the three-dot menu (**...**), and select **Move questions into their dashboards**. Metabase will pop up a modal to let you know what's going on:
+
+- If a question only appears in a single dashboard in this collection, it'll be moved into that dashboard to declutter the collection.
+- Permissions won't change.
+
+You can preview the changes before initiating the move. Hit the preview button to see which questions will be moved into which dashboards. No questions will be moved into dashboards they weren't already added to. All this move does is "save" the questions to the dashboard rather than the collection.
+
+In general, you want to save questions to dashboards unless you know people will want to re-use that question in multiple dashboards.
 
 ## Cleaning up collections
 
