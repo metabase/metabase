@@ -75,7 +75,7 @@
   border-right: none;
 }
 
-.tr:hover .td {
+.td:hover {
   background-color: var(--mb-color-bg-light);
 }
 

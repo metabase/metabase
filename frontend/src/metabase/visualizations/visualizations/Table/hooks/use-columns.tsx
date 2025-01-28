@@ -18,7 +18,7 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { OrderByDirection } from "metabase-lib/types";
-import { isFK, isNumber, isPK } from "metabase-lib/v1/types/utils/isa";
+import { isFK, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ColumnSettings,
   DatasetColumn,
@@ -44,12 +44,11 @@ declare module "@tanstack/react-table" {
 }
 
 import type { CellMeasurer } from "./use-cell-measure";
-import { ColumnDef, RowData } from "@tanstack/react-table";
+import { ColumnDef, RowData, createColumnHelper } from "@tanstack/react-table";
 import { MIN_COLUMN_WIDTH } from "../constants";
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { flexRender } from "@tanstack/react-table";
 
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import * as Lib from "metabase-lib";
@@ -215,6 +214,8 @@ const TableHeader = memo(function TableHeader({
   );
 });
 
+const columnHelper = createColumnHelper<RowValues>();
+
 export const useColumns = ({
   settings,
   onVisualizationClick,
@@ -277,7 +278,8 @@ export const useColumns = ({
   );
 
   const onResizeColumn = useCallback(
-    (columnIndex: number, width: number) => {
+    (columnId: string, width: number) => {
+      const columnIndex = cols.findIndex(col => col.name === columnId);
       const newWidths = columnWidths.slice();
       newWidths[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
 
@@ -305,9 +307,8 @@ export const useColumns = ({
         !columnIsExpanded[index] &&
         Math.min(columnWidth, measuredColumnWidth) > TRUNCATE_WIDTH;
 
-      return {
-        id: index.toString(),
-        accessorFn: (row: RowValues) => row[index],
+      return columnHelper.accessor(row => row[index], {
+        id: col.name,
         header: props => {
           const sortDirection = getColumnSortDirection(index);
           const clicked = getTableHeaderClickedObject(data, index, isPivoted);
@@ -400,7 +401,7 @@ export const useColumns = ({
           datasetIndex: index,
           wrap,
         },
-      };
+      });
     });
   }, [
     cols,
