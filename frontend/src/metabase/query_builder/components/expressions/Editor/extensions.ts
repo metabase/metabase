@@ -1,10 +1,5 @@
-import {
-  HighlightStyle,
-  bracketMatching,
-  syntaxHighlighting,
-} from "@codemirror/language";
+import { bracketMatching, syntaxHighlighting } from "@codemirror/language";
 import { EditorView, drawSelection, keymap, tooltips } from "@codemirror/view";
-import { type Tag, tags } from "@lezer/highlight";
 import { Prec } from "@uiw/react-codemirror";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
@@ -16,6 +11,7 @@ import { monospaceFontFamily } from "metabase/styled-components/theme";
 import type * as Lib from "metabase-lib";
 
 import css from "./Editor.module.css";
+import { highlightStyle } from "./Highlight";
 import { customExpression } from "./language";
 import { suggestions } from "./suggestions";
 import { useTooltip } from "./tooltip";
@@ -149,20 +145,6 @@ function fonts() {
   });
 }
 
-const metabaseStyle = HighlightStyle.define(
-  // Map all tags to CSS variables with the same name
-  // See ./CodeMirrorEditor.module.css for the colors
-  [
-    { tag: tags.function(tags.variableName), class: "cm-call-expression" },
-    ...Object.entries(tags)
-      .filter((item): item is [string, Tag] => typeof item[1] !== "function")
-      .map(([name, tag]: [string, Tag]) => ({
-        tag,
-        class: `cm-token-${name}`,
-      })),
-  ],
-);
-
 function highlighting() {
-  return syntaxHighlighting(metabaseStyle);
+  return syntaxHighlighting(highlightStyle);
 }
