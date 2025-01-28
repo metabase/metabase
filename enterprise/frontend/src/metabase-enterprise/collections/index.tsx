@@ -4,6 +4,7 @@ import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
+import { Icon, Menu } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { Collection } from "metabase-types/api";
 
@@ -40,25 +41,27 @@ if (hasPremiumFeature("official_collections")) {
   ) => {
     if (isRegularCollection(collection)) {
       return [
-        {
-          title: t`Make collection official`,
-          icon: OFFICIAL_COLLECTION.icon,
-          action: () =>
+        <Menu.Item
+          key="collection-make-official"
+          icon={<Icon name={OFFICIAL_COLLECTION.icon} />}
+          onClick={() =>
             onUpdate(collection, {
               authority_level: OFFICIAL_COLLECTION.type,
-            }),
-        },
+            })
+          }
+        >{t`Make collection official`}</Menu.Item>,
       ];
     } else {
       return [
-        {
-          title: t`Remove Official badge`,
-          icon: "close",
-          action: () =>
+        <Menu.Item
+          key="collection-remove-official"
+          icon={<Icon name="close" />}
+          onClick={() =>
             onUpdate(collection, {
               authority_level: REGULAR_COLLECTION.type,
-            }),
-        },
+            })
+          }
+        >{t`Remove Official badge`}</Menu.Item>,
       ];
     }
   };

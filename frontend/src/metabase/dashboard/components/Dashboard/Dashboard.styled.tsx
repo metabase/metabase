@@ -150,6 +150,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
 
 export const ParametersAndCardsContainer = styled.div<{
   shouldMakeDashboardHeaderStickyAfterScrolling: boolean;
+  isEmpty: boolean;
 }>`
   flex: auto;
   min-width: 0;
@@ -164,8 +165,8 @@ export const ParametersAndCardsContainer = styled.div<{
 
   padding-bottom: 40px;
   /* Makes sure it doesn't use all the height, so the actual content height could be used in embedding #37437 */
-  align-self: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
-    !shouldMakeDashboardHeaderStickyAfterScrolling && "flex-start"};
+  align-self: ${({ shouldMakeDashboardHeaderStickyAfterScrolling, isEmpty }) =>
+    !shouldMakeDashboardHeaderStickyAfterScrolling && !isEmpty && "flex-start"};
 `;
 
 export const FIXED_WIDTH = "1048px";

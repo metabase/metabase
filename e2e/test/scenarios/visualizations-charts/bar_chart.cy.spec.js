@@ -793,6 +793,7 @@ describe("scenarios > visualizations > bar chart", () => {
       H.popover()
         .findByTestId("graph-other-category-aggregation-fn-picker")
         .click();
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.popover().last().findByText(fnName).click();
     }
 
