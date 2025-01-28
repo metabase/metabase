@@ -53,7 +53,7 @@ export const EditorViewControl = ({
         color: "var(--mb-color-brand)",
         "&[data-active]": {
           "&, &:hover": {
-            color: "var(--mb-color-white)",
+            color: "var(--mb-color-text-white)",
           },
         },
         // this really should be design token values
