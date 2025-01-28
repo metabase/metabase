@@ -1,12 +1,18 @@
 (ns metabase-enterprise.api.gsheets-test
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
+            [clojure.test.check.clojure-test :refer [defspec]]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.properties :as prop]
+            [clojure.walk :as walk]
             [java-time.api :as t]
+            [malli.generator :as mg]
             [metabase-enterprise.gsheets :as gsheets.api]
             [metabase-enterprise.harbormaster.client :as hm.client]
             [metabase.premium-features.token-check :as token-check]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
+            [metabase.util.malli.registry :as mr]
             [toucan2.core :as t2])
   (:import [java.time
             LocalDate
@@ -17,15 +23,15 @@
 (deftest ->config-good-test
   (testing "Both needed values are present and pulled from settings"
     (tu/with-temporary-setting-values
-      [api-key "mb_api_key_123"
-       store-api-url "http://store-api-url.com"]
+        [api-key "mb_api_key_123"
+         store-api-url "http://store-api-url.com"]
       (is (= {:store-api-url "http://store-api-url.com", :api-key "mb_api_key_123"}
              (#'gsheets.api/->config))))))
 
 (deftest ->config-missing-api-key-test
   (tu/with-temporary-setting-values
-    [api-key nil
-     store-api-url "http://store-api-url.com"]
+      [api-key nil
+       store-api-url "http://store-api-url.com"]
     (is (thrown-with-msg?
          Exception
          #"Missing api-key."
@@ -33,8 +39,8 @@
 
 (deftest ->config-missing-both-test
   (tu/with-temporary-setting-values
-    [api-key ""
-     store-api-url nil]
+      [api-key ""
+       store-api-url nil]
     (is (thrown-with-msg?
          Exception
          #"Missing api-key."
@@ -233,3 +239,44 @@
       (with-sample-db-as-dwh
         (is (= "Unable to disconnect google service account"
                (:message (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder"))))))))
+
+(def zdt-schema-with-gen
+  [:time/zoned-date-time
+   {:gen/gen
+    (gen/fmap (fn [[d t z]] (->zdt d t z))
+              (gen/tuple
+               (gen/choose 0 (* 50 365))
+               (gen/choose 0 (* 24 60 60))
+               (gen/elements (vec (ZoneId/getAvailableZoneIds)))))}])
+
+(defn ->generatable-zdtimes [schema]
+  (walk/postwalk (fn [x]
+                   (if (= x :time/zoned-date-time)
+                     zdt-schema-with-gen
+                     x))
+                 schema))
+
+(deftest sort-gdrive-conns-test
+  (let [unsorted [{:status "initializing", :created-at #t "2023-01-01T05:31:13+02:00[EET]"}
+                  {:status "active", :created-at #t "2019-01-01T08:28:46+01:00[Europe/Podgorica]"}
+                  {:status "error", :created-at #t "2022-01-01T15:54:29-03:00[America/Argentina/San_Juan]"}
+                  {:status "active", :created-at #t "2009-01-01T19:21:38-04:00[SystemV/AST4]"}
+                  {:status "initializing", :created-at #t "2021-01-01T06:42:22-05:18:08[America/Panama]"}
+                  {:status "initializing", :created-at #t "2020-01-01T15:45:14-05:00[America/Cayman]"}
+                  {:status "syncing", :created-at #t "2003-01-01T09:25:08-04:00[America/Virgin]"}
+                  {:status "active", :created-at #t "2000-01-01T18:47:07+03:00[Europe/Simferopol]"}]
+        sorted (#'gsheets.api/sort-gdrive-conns unsorted)]
+    (is (= ["active" "syncing" "initializing" "error"] (distinct (map :status sorted)))
+        "Sorted by `status`")
+    (doseq [[_status conns] (group-by :status sorted)
+            [{t1 :created-at} {t2 :created-at}] (partition 2 1 conns)]
+      (is (t/after? (t/instant t1) (t/instant t2))
+          "`created-at` times are sorted in descending order"))))
+
+(defspec gdrive-conns-get-sorted-by-status
+  (prop/for-all [conns (mg/generator (->generatable-zdtimes
+                                      [:sequential (mr/schema ::gsheets.api/gdrive-conn)]))]
+    (let [sorted (#'gsheets.api/sort-gdrive-conns conns)
+          existing-statuses (set (distinct (keep :status sorted)))]
+      (= (filter existing-statuses ["active" "syncing" "initializing" "error"])
+         (distinct (map :status sorted))))))

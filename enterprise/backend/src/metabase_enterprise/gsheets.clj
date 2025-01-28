@@ -153,26 +153,40 @@
 
 (def ^:private status-order {"active" 0 "syncing" 1 "initializing" 2 "error" 3})
 
+(defn- sort-gdrive-conns
+  "Sorts the gdrive connections found on HM.
+   First sorted by: status = active > syncing > intiializing > error
+   Then in descending order on created-at."
+  [conns]
+  (sort-by (fn [{:keys [status created-at]}]
+                   [(get status-order status Integer/MAX_VALUE)
+                    ;; Convert created-at to millis, treat nil as the oldest
+                    (if created-at (t/instant created-at) (t/instant 0))])
+           (fn [[status1 time1] [status2 time2]]
+             (or (compare status1 status2)
+                 (compare time2 time1)))
+           conns))
+
 (mu/defn- get-gdrive-conns :- [:sequential ::gdrive-conn]
   "Get the harbormaster gdrive type connection."
   []
   (let [[status {:keys [body]
-                 :as _response}] (hm.client/make-request (->config) :get "/api/v2/mb/connections")]
-    (if (= status :ok)
+                 :as response}] (:body (second (hm.client/make-request (->config) :get "/api/v2/mb/connections")))]
+    (condp = [status (boolean (seq body))]
+      [:ok true]
       (some->> (filter is-gdrive? body)
                (map (fn [gdc] (-> gdc
                                   (m/update-existing :last-sync-at u.date/parse)
                                   (m/update-existing :last-sync-started-at u.date/parse)
                                   (m/update-existing :created-at u.date/parse)
                                   (m/update-existing :updated-at u.date/parse))))
-               ;; First sorted by active > syncing > intiializing > error, Then oldest first:
-               (sort-by (fn [{:keys [status created-at]}]
-                          [(get status-order status Integer/MAX_VALUE)
-                           ;; Convert created-at to millis, treat nil as the oldest
-                           (if created-at (t/instant created-at) (t/instant 0))])
-                        (fn [[status1 time1] [status2 time2]]
-                          (or (compare status1 status2)
-                              (compare time2 time1))))) ;; Descending order for timestamps
+               (sort-gdrive-conns))
+
+      [:ok false] ;; if there are no gdrive connections, we need to revert to the not-connected state:
+      (do (gsheets! not-connected)
+          (throw (ex-info "There are no gdrive connections, please re-connect."
+                          {:status-code (:status-code response)})))
+
       [])))
 
 (mu/defn- get-gdrive-conn :- [:maybe ::gdrive-conn]
