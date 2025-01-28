@@ -70,19 +70,18 @@ describe("scenarios > dashboard", () => {
         cy.location("pathname").should("contain", `/dashboard/${body.id}`);
       });
 
-      cy.findByTestId("dashboard-empty-state").findByText(
-        "This dashboard is looking empty.",
-      );
-
       cy.log("New dashboards are opened in editing mode by default");
+      cy.findByTestId("dashboard-empty-state").should(
+        "contain",
+        "Create a new question or browse your collections for an existing one.",
+      );
       cy.findByTestId("edit-bar").findByText("You're editing this dashboard.");
 
       cy.log(
         "Should create new question from an empty dashboard (metabase#31848)",
       );
-      cy.findByTestId("dashboard-empty-state")
-        .findByRole("link", { name: "ask a new one" })
-        .click();
+      cy.findByTestId("dashboard-empty-state").button("Add a chart").click();
+      cy.findByTestId("new-button-bar").findByText("New Question").click();
 
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Collections").click();
@@ -339,8 +338,8 @@ describe("scenarios > dashboard", () => {
 
       it("should save a dashboard after adding a saved question from an empty state (metabase#29450)", () => {
         cy.findByTestId("dashboard-empty-state").within(() => {
-          cy.findByText("This dashboard is looking empty.");
-          cy.findByText("Add a saved question").click();
+          cy.findByText("This dashboard is empty");
+          cy.findByText("Add a chart").click();
         });
 
         H.sidebar().findByText("Orders, Count").click();
@@ -563,11 +562,11 @@ describe("scenarios > dashboard", () => {
       "should not allow dashboard editing on small screens",
       { viewportWidth: 480, viewportHeight: 800 },
       () => {
-        cy.icon("pencil").should("not.be.visible");
+        cy.findByLabelText("Edit dashboard").should("not.be.visible");
 
         cy.viewport(660, 800);
 
-        cy.icon("pencil").should("be.visible").click();
+        cy.findByLabelText("Edit dashboard").should("be.visible").click();
         cy.findByTestId("edit-bar").findByText(
           "You're editing this dashboard.",
         );
@@ -767,9 +766,9 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("dash:11007").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
+    cy.findByText("This dashboard is empty");
     // add previously created question to it
-    cy.icon("pencil").click();
+    cy.findByLabelText("Edit dashboard").click();
     H.openQuestionsSidebar();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
