@@ -1,4 +1,3 @@
-import { moveCompletionSelection } from "@codemirror/autocomplete";
 import {
   type EditorState,
   type Extension,
@@ -70,20 +69,12 @@ export function useCustomTooltip({
       if (!update?.view) {
         return;
       }
-
-      switch (evt.key) {
-        case "ArrowUp":
-          moveCompletionSelection(true)(update.view);
-          return;
-        case "ArrowDown":
-          moveCompletionSelection(false)(update.view);
-          return;
-        case "Escape":
-          evt.preventDefault();
-          evt.stopPropagation();
-          setHasFocus(false);
-          return;
-      }
+      // forward keys to the editor
+      return update.view.contentDOM.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: evt.key,
+        }),
+      );
     },
     [update],
   );
