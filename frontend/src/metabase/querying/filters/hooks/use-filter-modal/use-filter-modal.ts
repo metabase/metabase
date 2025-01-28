@@ -48,7 +48,7 @@ export const useFilterModal = (
   const onReset = () => {
     onQueryChange(removeFilters(query));
     // to reset internal state of filter components
-    setVersion(version + 1);
+    setVersion(version => version + 1);
   };
 
   const onSubmit = () => {
