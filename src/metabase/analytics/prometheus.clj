@@ -234,6 +234,7 @@
 
 (defmulti known-labels
   "Implement this for a given metric to initialize zeros for the given set of label values."
+  {:arglists '([metric]), :added "0.52.0"}
   identity)
 
 (defn- setup-metrics!
