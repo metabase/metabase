@@ -24,6 +24,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
   canManageSubscriptions,
+  getUser,
   getUserIsAdmin,
 } from "metabase/selectors/user";
 import type {
@@ -119,6 +120,7 @@ type EntityListLoaderMergedProps = {
 
 const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
   return {
+    user: getUser(state),
     canManageSubscriptions: canManageSubscriptions(state),
     isAdmin: getUserIsAdmin(state),
 

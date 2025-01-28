@@ -19,7 +19,7 @@ describe("scenarios > alert", () => {
 
       H.modal().within(() => {
         cy.findByText(
-          "To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook first.",
+          "To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook.",
         );
 
         cy.findByText("Set up SMTP")
@@ -45,7 +45,7 @@ describe("scenarios > alert", () => {
 
       H.modal().within(() => {
         cy.findByText(
-          "To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook first.",
+          "To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP, Slack, or a webhook.",
         );
 
         cy.findByText("Set up SMTP").should("not.exist");
@@ -184,9 +184,8 @@ H.describeEE(
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.openSharingMenu("Subscriptions");
 
-      cy.findByRole("heading", { name: "Email it" }).click();
-
       H.sidebar().within(() => {
+        cy.findByText("Email it").click();
         addEmailRecipient(deniedEmail);
 
         // Reproduces metabase#17977

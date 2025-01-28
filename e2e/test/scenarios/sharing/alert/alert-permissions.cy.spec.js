@@ -138,7 +138,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
         expect(body.subscriptions[0].cron_schedule).to.equal("0 0 9 ? * 2");
       });
 
-      H.modal().findByText("Monday at 9:00 am");
+      H.modal().findByText("Check on Monday at 9:00 AM");
     });
   });
 });

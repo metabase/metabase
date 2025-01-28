@@ -20,7 +20,10 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     cy.visit("/");
 
     cy.request("/api/notification").then(({ body }) => {
-      expect(body).to.have.length(0);
+      const questionAlerts = body.filter(
+        notification => notification.payload_type === "notification/card",
+      );
+      expect(questionAlerts).to.have.length(0);
     });
   });
 

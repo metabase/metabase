@@ -934,7 +934,7 @@ describe("issue 17547", () => {
 
   it("editing an alert should not delete it (metabase#17547)", () => {
     H.openSharingMenu("Edit alerts");
-    H.modal().findByText("Daily at 9:00 am").should("be.visible").click();
+    H.modal().findByText("Check daily at 9:00 AM").should("be.visible").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("PM").click();
@@ -946,7 +946,7 @@ describe("issue 17547", () => {
       .findByText("Your alert was updated.")
       .should("be.visible");
 
-    H.modal().findByText("Daily at 9:00 pm");
+    H.modal().findByText("Check daily at 9:00 PM");
   });
 });
 
