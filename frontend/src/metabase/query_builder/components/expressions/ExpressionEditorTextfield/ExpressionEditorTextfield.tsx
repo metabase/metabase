@@ -779,7 +779,12 @@ class ExpressionEditorTextfieldInner extends React.Component<
     } = this.state;
 
     return (
-      <Popover opened={!!helpText} position="bottom-start">
+      <Popover
+        opened={!!helpText}
+        position="bottom-start"
+        withinPortal={false}
+        floatingStrategy="fixed"
+      >
         <Popover.Target>
           <Box>
             <ExpressionEditorSuggestions

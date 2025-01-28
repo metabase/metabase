@@ -87,16 +87,16 @@ export const BrowseModels = () => {
         <BrowseSection>
           <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
-              <Stack spacing="lg" align="center" data-testid="empty-state">
+              <Stack gap="lg" align="center" data-testid="empty-state">
                 <Box maw="45rem" w="100%">
                   <ModelsVideo autoplay={0} />
                 </Box>
-                <Stack spacing="xs" maw="28rem">
+                <Stack gap="xs" maw="28rem">
                   <Title
                     order={2}
-                    align="center"
+                    ta="center"
                   >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
-                  <Text align="center">{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
+                  <Text ta="center">{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
                 </Stack>
                 {showMetabaseLinks && (
                   <Button variant="subtle" p={0}>

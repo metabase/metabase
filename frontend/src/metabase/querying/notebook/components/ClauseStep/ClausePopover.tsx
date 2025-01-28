@@ -29,6 +29,12 @@ export function ClausePopover({
     setIsOpen(value => !value);
   }, []);
 
+  useLayoutEffect(() => {
+    if (active) {
+      setIsOpen(false);
+    }
+  }, [active]);
+
   return (
     <Popover
       opened={isOpen}
