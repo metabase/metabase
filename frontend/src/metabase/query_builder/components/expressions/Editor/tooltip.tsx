@@ -292,6 +292,14 @@ function Footer() {
   );
 }
 
+function wrapPlaceholder(name: string) {
+  if (name === "…") {
+    return name;
+  }
+
+  return `⟨${name}⟩`;
+}
+
 function Help({ helpText }: { helpText?: HelpText | null }) {
   if (!helpText) {
     return null;
@@ -310,11 +318,7 @@ function Help({ helpText }: { helpText?: HelpText | null }) {
             (
             {args.map(({ name }, index) => (
               <span key={name}>
-                <span className={css.arg}>
-                  {"<"}
-                  {name}
-                  {">"}
-                </span>
+                <span className={css.arg}>{wrapPlaceholder(name)}</span>
                 {index < args.length - 1 && ", "}
               </span>
             ))}
@@ -333,7 +337,7 @@ function Help({ helpText }: { helpText?: HelpText | null }) {
           >
             {args.map(({ name, description }) => (
               <Fragment key={name}>
-                <Box className={css.arg}>{name}</Box>
+                <Box className={css.arg}>{wrapPlaceholder(name)}</Box>
                 <Box>{description}</Box>
               </Fragment>
             ))}
