@@ -21,7 +21,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ^:const max-log-entries 2500)
+(def ^:private ^:const max-log-entries 250)
 
 (defonce ^:private messages* (atom (ring-buffer max-log-entries)))
 
@@ -30,14 +30,21 @@
   []
   (reverse (seq @messages*)))
 
+(defn- elide-string
+  "Elides the string to the specified length, adding '...' if it exceeds that length."
+  [s max-length]
+  (if (> (count s) max-length)
+    (str (subs s 0 (- max-length 3)) "...")
+    s))
+
 (defn- event->log-data [^LogEvent event]
   {:timestamp    (time.format/unparse (time.format/formatter :date-time)
                                       (time.coerce/from-long (.getTimeMillis event)))
    :level        (.getLevel event)
    :fqns         (.getLoggerName event)
-   :msg          (.getMessage event)
+   :msg          (elide-string (str (.getMessage event)) 4000)
    :exception    (when-let [throwable (.getThrown event)]
-                   (seq (ExceptionUtils/getStackFrames throwable)))
+                   (take 20 (map #(elide-string (str %) 500) (seq (ExceptionUtils/getStackFrames throwable)))))
    :process_uuid config/local-process-uuid})
 
 (defn- metabase-appender ^Appender []

@@ -15,6 +15,7 @@ import {
   type ShortcutOption,
 } from "../../DatePicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
+import { useFilterModalContext } from "../context";
 import type { FilterEditorProps } from "../types";
 
 import { ClearIcon } from "./DateFilterEditor.styled";
@@ -22,13 +23,12 @@ import { SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
 
 export function DateFilterEditor({
-  query,
   stageIndex,
   column,
   filter,
-  isSearching,
   onChange,
 }: FilterEditorProps) {
+  const { query } = useFilterModalContext();
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
@@ -62,11 +62,9 @@ export function DateFilterEditor({
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle
-            query={query}
             stageIndex={stageIndex}
             column={column}
             columnIcon={columnIcon}
-            isSearching={isSearching}
           />
         </Grid.Col>
         <Grid.Col span={4}>

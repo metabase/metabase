@@ -4,6 +4,7 @@
    [clojure.test.check :as tc]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [java-time.api :as t]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.test :as mt]))
 
@@ -459,8 +460,9 @@
 
 (tc/quick-check 1000
   (prop/for-all [[tr tr+from-zero] time-range-generator]
-    (= (params.dates/date-string->range tr)
-       (params.dates/date-string->range tr+from-zero))))
+    (mt/with-clock (t/zoned-date-time)
+      (= (params.dates/date-string->range tr)
+         (params.dates/date-string->range tr+from-zero)))))
 
 (deftest custom-start-of-week-test
   (testing "Relative filters should respect the custom `start-of-week` Setting (#14294)"

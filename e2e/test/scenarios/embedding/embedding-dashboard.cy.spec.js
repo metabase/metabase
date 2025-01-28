@@ -1021,6 +1021,27 @@ H.describeEE("scenarios > embedding > dashboard appearance", () => {
 
     cy.url().should("include", "locale=de");
   });
+
+  it("should allow to set font from the `font` hash parameter", () => {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      enable_embedding: true,
+    });
+    cy.signOut();
+
+    H.visitEmbeddedPage(
+      {
+        resource: { dashboard: ORDERS_DASHBOARD_ID },
+        params: {},
+      },
+      {
+        additionalHashOptions: {
+          font: "Roboto",
+        },
+      },
+    );
+
+    H.main().should("have.css", "font-family", "Roboto, sans-serif");
+  });
 });
 
 function openFilterOptions(name) {

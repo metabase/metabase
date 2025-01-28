@@ -179,11 +179,15 @@
    (< (abs (- actual expected)) epsilon)))
 
 (deftest inc!-test
-  (testing "inc has no effect if system is not setup"
-    (prometheus/inc! :metabase-email/messages)) ; << Does not throw.
-  (testing "inc has no effect when called with unknown metric"
+  (testing "inc starts a system if it wasn't started"
+    (with-redefs [prometheus/system nil]
+      (prometheus/inc! :metabase-email/messages) ; << Does not throw.
+      (is (approx= 1 (metric-value @#'prometheus/system :metabase-email/messages)))))
+  (testing "inc throws when called with an unknown metric"
     (with-prometheus-system! [_ _system]
-      (prometheus/inc! :metabase-email/unknown-metric))) ; << Does not throw.
+      (is (thrown-with-msg? RuntimeException
+                            #"error when updating metric"
+                            (prometheus/inc! :metabase-email/unknown-metric)))))
   (testing "inc is recorded for known metrics"
     (with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-email/messages)

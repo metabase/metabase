@@ -3,7 +3,7 @@
   #_{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.string :as str]
-   [compojure.core :refer [GET]]
+   [compojure.core :refer [GET PUT]]
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
@@ -84,6 +84,11 @@
 
 (api/defendpoint GET "/weights"
   "Return the current weights being used to rank the search results"
+  [context]
+  (search.config/weights (keyword (or context :default))))
+
+(api/defendpoint PUT "/weights"
+  "Update the current weights being used to rank the search results"
   [:as {overrides :params}]
   ;; remove cookie
   (let [context   (keyword (:context overrides :default))

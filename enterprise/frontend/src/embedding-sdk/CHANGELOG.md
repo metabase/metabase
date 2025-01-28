@@ -1,3 +1,22 @@
+## [0.52.8](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.7...embedding-sdk-0.52.8) (2025-01-28)
+
+
+### Bug Fixes
+
+* **sdk:** add theme change transition to the root element ([#52427](https://github.com/metabase/metabase/issues/52427)) ([#52449](https://github.com/metabase/metabase/issues/52449)) ([754cf8e](https://github.com/metabase/metabase/commit/754cf8ed12d5df5c9a4f1225228b8aa5be6547bf))
+* **sdk:** disable dashboard card click behavior and prevent url formatting ([#51290](https://github.com/metabase/metabase/issues/51290)) ([#52390](https://github.com/metabase/metabase/issues/52390)) ([7f821ff](https://github.com/metabase/metabase/commit/7f821ff352844c5bc8b521134a974a3e5b5d0636))
+* **sdk:** echarts tooltip is cut off below the viewport height ([#52310](https://github.com/metabase/metabase/issues/52310)) ([#52572](https://github.com/metabase/metabase/issues/52572)) ([a32c63d](https://github.com/metabase/metabase/commit/a32c63d89f98d9a8c8e38dafe16592ed3129643e))
+* **sdk:** fix data picker crash by using mantine popover ([#52203](https://github.com/metabase/metabase/issues/52203)) ([b19cec4](https://github.com/metabase/metabase/commit/b19cec43b0b7dd8ad8180418c784826447b401db)), closes [#52096](https://github.com/metabase/metabase/issues/52096)
+* **sdk:** Fix nextJS compatibility layer missing components ([#52672](https://github.com/metabase/metabase/issues/52672)) ([#52741](https://github.com/metabase/metabase/issues/52741)) ([fb732d6](https://github.com/metabase/metabase/commit/fb732d659925647080c11fd0d23340ab934d9f14))
+* **sdk:** fix save question form's cancel button height ([#52504](https://github.com/metabase/metabase/issues/52504)) ([#52573](https://github.com/metabase/metabase/issues/52573)) ([487cb25](https://github.com/metabase/metabase/commit/487cb254367b261a86d9adc61fb5fa2466e2a672))
+
+
+### Features
+
+* **sdk:** granular documentation links in usage problem banner ([#52257](https://github.com/metabase/metabase/issues/52257)) ([#52386](https://github.com/metabase/metabase/issues/52386)) ([524c8f8](https://github.com/metabase/metabase/commit/524c8f817c0acc5b01466abb0ea25b71741071d7))
+
+
+
 ## [0.52.7](https://github.com/metabase/metabase/compare/embedding-sdk-0.52.6...embedding-sdk-0.52.7) (2025-01-18)
 
 

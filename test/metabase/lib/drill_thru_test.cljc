@@ -655,7 +655,9 @@
                    :many-pks? false}]}))
 
 (deftest ^:parallel available-drill-thrus-test-3
-  (lib.drill-thru.tu/test-available-drill-thrus
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-available-drill-thrus
+   "unaggregated cell click on numeric column"
    {:click-type  :cell
     :query-type  :unaggregated
     :column-name "SUBTOTAL"
@@ -665,7 +667,14 @@
                   {:type :drill-thru/quick-filter, :operators [{:name "<"}
                                                                {:name ">"}
                                                                {:name "="}
-                                                               {:name "≠"}]}]}))
+                                                               {:name "≠"}]}]}
+
+   "drill thrus are disabled for native queries with template-tag variables"
+   {:custom-native #(lib/with-native-query % "SELECT * FROM orders WHERE product_id = {{mytag}}")
+    :native-drills #{}}
+
+   "snippets and card tags are allowed"
+   {:custom-native #(lib/with-native-query % "SELECT * FROM {{#123-mycard}} WHERE {{snippet:mysnip}}")}))
 
 (deftest ^:parallel available-drill-thrus-test-4
   (lib.drill-thru.tu/test-available-drill-thrus
@@ -690,14 +699,23 @@
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
 
 (deftest ^:parallel available-drill-thrus-test-6
-  (lib.drill-thru.tu/test-available-drill-thrus
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-available-drill-thrus
+   "unaggregated header click on fk column"
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "PRODUCT_ID"
     :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
                   {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
-                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
+                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}
+
+   "drill thrus are disabled for native queries with template-tag variables"
+   {:custom-native #(lib/with-native-query % "SELECT * FROM orders WHERE product_id = {{mytag}}")
+    :native-drills #{}}
+
+   "snippets and card tags are allowed"
+   {:custom-native #(lib/with-native-query % "SELECT * FROM {{#123-mycard}} WHERE {{snippet:mysnip}}")}))
 
 (deftest ^:parallel available-drill-thrus-test-7
   (lib.drill-thru.tu/test-available-drill-thrus
@@ -728,7 +746,9 @@
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "
                 "fk-details should not get returned for non-fk column (#34441) "
                 "underlying-records should only get shown once for aggregated query (#34439)"))
-  (lib.drill-thru.tu/test-available-drill-thrus
+  (lib.drill-thru.tu/test-drill-variants-with-merged-args
+   lib.drill-thru.tu/test-available-drill-thrus
+   "aggregated cell click on count column"
    {:click-type  :cell
     :query-type  :aggregated
     :column-name "count"
@@ -747,7 +767,15 @@
                    :type         :drill-thru/zoom-in.timeseries}]
     ;; Underlying records and automatic insights are not supported for native.
     ;; zoom-in.timeseries can't be because we don't know what unit (if any) it's currently bucketed by.
-    :native-drills #{:drill-thru/quick-filter}}))
+    :native-drills #{:drill-thru/quick-filter}}
+
+   "drill thrus are disabled for native queries with template-tag variables"
+   {:custom-native #(lib/with-native-query %
+                      "SELECT COUNT(*) FROM orders GROUP BY product_id HAVING product_id > {{mytag}}")
+    :native-drills #{}}
+
+   "snippets and card tags are allowed"
+   {:custom-native #(lib/with-native-query % "SELECT COUNT(*) FROM {{#123-mycard}} GROUP BY {{snippet:mysnip}}")}))
 
 (deftest ^:parallel available-drill-thrus-test-10
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "

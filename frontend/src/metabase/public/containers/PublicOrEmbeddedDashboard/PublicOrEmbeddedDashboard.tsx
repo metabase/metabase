@@ -74,7 +74,7 @@ type OwnProps = {
 type PublicOrEmbeddedDashboardProps = OwnProps &
   ReduxProps &
   DashboardDisplayOptionControls &
-  EmbedDisplayParams &
+  Omit<EmbedDisplayParams, "font"> &
   Pick<EmbeddingAdditionalHashOptions, "locale">;
 
 const initializeData = async ({

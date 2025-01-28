@@ -663,9 +663,7 @@
                (= [["B" "C" "3" "4" "Row totals"]
                    ["BA" "3" "1" "1" "2"]
                    ["BA" "4" "1" "1" "2"]
-                   ;; Without the fix in pr#50380, this would incorrectly look like:
-                   ;; ["Totals for BA"  "" "2" "[4 {:result 1}]"]
-                   ["Totals for BA"  "" "2" "2"]
+                   ["Totals for BA"  "" "2" "2" "4"]
                    ["Grand totals" "" "2" "2" "4"]]
                   result)))))))))
 
@@ -691,15 +689,12 @@
                                                 :pivot_results true)
                           csv/read-csv)]
           (is (= [["Created At: Month" "Category" "Sum of Price"]
-                  ["April, 2016" "Gadget" "49.54"]
-                  ["April, 2016" "Gizmo" "87.29"]
-                  ["Totals for April, 2016" "" "136.83"]
                   ["May, 2016" "Doohickey" "144.12"]
                   ["May, 2016" "Gadget" "81.58"]
                   ["May, 2016" "Gizmo" "75.09"]
                   ["May, 2016" "Widget" "90.21"]
                   ["Totals for May, 2016" "" "391"]]
-                 (take 9 result))))))))
+                 (take 6 result))))))))
 
 (deftest ^:parallel zero-row-pivot-tables-test
   (testing "Pivot tables with zero rows download correctly."
@@ -722,11 +717,10 @@
                                                 :pivot_results true)
                           csv/read-csv)]
           (is (= [["Category" "Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
-                  ["" "2185.89" "3019.2" "2834.88" "3109.31" ""]
                   ["Grand totals" "2185.89" "3019.2" "2834.88" "3109.31" "11149.28"]]
                  result)))))))
 
-(deftest ^:parallel zero-column-multiple-meausres-pivot-tables-test
+(deftest ^:parallel zero-column-multiple-measures-pivot-tables-test
   (testing "Pivot tables with zero columns and multiple measures download correctly."
     (mt/dataset test-data
       (mt/with-temp [:model/Card {pivot-card-id :id}
@@ -1416,15 +1410,13 @@
         (let [named-cards {:one-scale-card one-scale-card
                            :two-scale-card zero-scale-card
                            :no-scale-card no-scale-card}]
+          ;; TODO: We don't support JSON for pivot tables, once we do, we should add them here
           (doseq [[c1-name c2-name export-format expected] [[:one-scale-card  :no-scale-card  :csv  true]
                                                             [:one-scale-card  :two-scale-card :csv  false]
                                                             [:no-scale-card   :two-scale-card :csv  false]
                                                             [:one-scale-card  :no-scale-card  :xlsx true]
                                                             [:one-scale-card  :two-scale-card :xlsx false]
-                                                            [:no-scale-card   :two-scale-card :xlsx false]
-                                                            ;; TODO: We don't support JSON for pivot tables, once we
-                                                            ;; do, we should add them here
-                                                            ]]
+                                                            [:no-scale-card   :two-scale-card :xlsx false]]]
             (testing (str "> " (name c1-name) " and " (name c2-name) " with export-format: '" (name export-format) "' should be " expected)
               (let [c1 (get named-cards c1-name)
                     c2 (get named-cards c2-name)
@@ -1507,15 +1499,13 @@
                                                  {:rows    ["MEASURE"]
                                                   :columns []
                                                   :values  ["count" "sum" "sum_2"]}}
-                        :dataset_query          {:database (mt/id)
-                                                 :type     :query
-                                                 :query
-                                                 {:breakout     [[:field "MEASURE" {:base-type :type/Integer}]],
-                                                  :aggregation
-                                                  [[:count]
-                                                   [:sum [:field "A" {:base-type :type/Integer}]]
-                                                   [:sum [:field "B" {:base-type :type/Integer}]]]
-                                                  :source-table (format "card__%s" pivot-data-card-id)}}}
+                        :dataset_query          (mt/mbql-query nil
+                                                  {:breakout [[:field "MEASURE" {:base-type :type/Integer}]],
+                                                   :aggregation
+                                                   [[:count]
+                                                    [:sum [:field "A" {:base-type :type/Integer}]]
+                                                    [:sum [:field "B" {:base-type :type/Integer}]]]
+                                                   :source-table (format "card__%s" pivot-data-card-id)})}
                        :model/Card reordered-card
                        {:display                :pivot
                         :visualization_settings {:pivot_table.column_split

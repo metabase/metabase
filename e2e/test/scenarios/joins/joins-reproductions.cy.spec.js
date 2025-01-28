@@ -188,12 +188,18 @@ describe("issue 15342", { tags: "@external" }, () => {
     });
 
     cy.icon("join_left_outer").click();
-    H.entityPickerModal().findByText("Orders").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
     H.getNotebookStep("join").findByLabelText("Right column").click();
     H.popover().findByText("Product ID").click();
 
     cy.icon("join_left_outer").last().click();
-    H.entityPickerModal().findByText("Products").click();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
     H.getNotebookStep("join").icon("join_left_outer").click();
     H.popover().findByText("Inner join").click();
 
