@@ -13,6 +13,10 @@
 
 .arg {
   color: var(--mb-base-color-lobster-60);
+
+  &.active {
+    background-color: var(--mb-base-color-lobster-20);
+  }
 }
 
 .info {

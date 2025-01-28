@@ -67,7 +67,7 @@ export function Tooltip({
   return (
     <Box className={S.tooltip}>
       <HelpText
-        enclosingFunction={enclosingFn?.name}
+        enclosingFunction={enclosingFn}
         query={query}
         metadata={metadata}
         reportTimezone={reportTimezone}

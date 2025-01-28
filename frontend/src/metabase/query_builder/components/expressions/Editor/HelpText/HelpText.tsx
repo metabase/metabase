@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { Fragment, useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -25,7 +26,12 @@ function wrapPlaceholder(name: string) {
 }
 
 type HelpTextProps = {
-  enclosingFunction?: string;
+  enclosingFunction?: {
+    name: string;
+    arg: {
+      index: number;
+    } | null;
+  } | null;
   query: Lib.Query;
   metadata: Metadata;
   reportTimezone?: string;
@@ -47,7 +53,7 @@ export function HelpText({
   const database = getDatabase(query, metadata);
   const helpText =
     enclosingFunction && database
-      ? getHelpText(enclosingFunction, database, reportTimezone)
+      ? getHelpText(enclosingFunction.name, database, reportTimezone)
       : null;
 
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
@@ -67,6 +73,7 @@ export function HelpText({
   }
 
   const { description, structure, args, example } = helpText;
+  const argIndex = enclosingFunction?.arg?.index ?? -1;
 
   return (
     <Box className={S.helpText}>
@@ -77,7 +84,15 @@ export function HelpText({
             (
             {args.map(({ name }, index) => (
               <span key={name}>
-                <span className={S.arg}>{wrapPlaceholder(name)}</span>
+                <span
+                  className={cx(S.arg, {
+                    [S.active]:
+                      argIndex === index ||
+                      (name === "…" && argIndex > args.length - 1),
+                  })}
+                >
+                  {wrapPlaceholder(name)}
+                </span>
                 {index < args.length - 1 && ", "}
               </span>
             ))}
