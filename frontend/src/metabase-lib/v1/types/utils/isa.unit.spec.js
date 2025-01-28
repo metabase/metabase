@@ -202,7 +202,7 @@ describe("isa", () => {
         isNumber({ base_type: TYPE.Integer, semantic_type: TYPE.ZipCode }),
       ).toBe(false);
       expect(
-        isNumber({ base_type: TYPE.Integer, semantic_type: TYPE.ID }),
+        isNumber({ base_type: TYPE.Integer, semantic_type: TYPE.PK }),
       ).toBe(false);
     });
   });
