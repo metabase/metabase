@@ -17,6 +17,7 @@ function setValue({ value, unit }) {
     cy.findByLabelText("Interval").clear().type(value);
     cy.findByLabelText("Unit").click();
   });
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByText(getUnitRegexp(unit)).last().click();
 }
 
@@ -31,6 +32,7 @@ function setStartingFrom({ value, unit }) {
     cy.findByLabelText("Starting from interval").clear().type(value);
     cy.findByLabelText("Starting from unit").click();
   });
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByText(getUnitRegexp(unit)).last().click();
 }
 
