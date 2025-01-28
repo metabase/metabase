@@ -104,6 +104,21 @@
       (is (not (me/humanize (mr/explain mbql.s/Query query))))
       (is (= query (mbql.s/validate-query query))))))
 
+(deftest ^:parallel aggregate-constant-test
+  (testing "should be able to nest aggregation functions within a coalesce"
+    (let [query {:database 1,
+                 :type :query,
+                 :query
+                 {:source-table 5,
+                  :aggregation
+                  [[:aggregation-options
+                    [:cum-sum 1]
+                    {:name "Avg discount", :display-name "Avg discount"}]],
+                  :aggregation-idents {0 "ZOn_HshYdSEeteY5ArmS9"}},
+                 :parameters []}]
+      (is (not (me/humanize (mr/explain mbql.s/Query query))))
+      (is (= query (mbql.s/validate-query query))))))
+
 (deftest ^:parallel aggregation-reference-test
   (are [schema] (nil? (me/humanize (mr/explain schema [:aggregation 0])))
     mbql.s/aggregation

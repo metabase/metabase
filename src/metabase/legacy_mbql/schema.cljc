@@ -985,15 +985,15 @@
 ;;
 ;;    SUM(field_1 + field_2)
 
-(defclause ^{:requires-features #{:basic-aggregations}} avg,      field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause ^{:requires-features #{:basic-aggregations}} cum-sum,  field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause ^{:requires-features #{:basic-aggregations}} distinct, field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause ^{:requires-features #{:basic-aggregations}} sum,      field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause ^{:requires-features #{:basic-aggregations}} min,      field-or-expression [:ref ::FieldOrExpressionDef])
-(defclause ^{:requires-features #{:basic-aggregations}} max,      field-or-expression [:ref ::FieldOrExpressionDef])
+(defclause ^{:requires-features #{:basic-aggregations}} avg,      field-or-expression [:ref ::ExpressionArg])
+(defclause ^{:requires-features #{:basic-aggregations}} cum-sum,  field-or-expression [:ref ::ExpressionArg])
+(defclause ^{:requires-features #{:basic-aggregations}} distinct, field-or-expression [:ref ::ExpressionArg])
+(defclause ^{:requires-features #{:basic-aggregations}} sum,      field-or-expression [:ref ::ExpressionArg])
+(defclause ^{:requires-features #{:basic-aggregations}} min,      field-or-expression [:ref ::ExpressionArg])
+(defclause ^{:requires-features #{:basic-aggregations}} max,      field-or-expression [:ref ::ExpressionArg])
 
 (defclause ^{:requires-features #{:basic-aggregations}} sum-where
-  field-or-expression [:ref ::FieldOrExpressionDef], pred Filter)
+  field-or-expression [:ref ::ExpressionArg], pred Filter)
 
 (defclause ^{:requires-features #{:basic-aggregations}} count-where
   pred Filter)
@@ -1002,16 +1002,16 @@
   pred Filter)
 
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
-  field-or-expression [:ref ::FieldOrExpressionDef])
+  field-or-expression [:ref ::ExpressionArg])
 
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} [ag:var var]
-  field-or-expression [:ref ::FieldOrExpressionDef])
+  field-or-expression [:ref ::ExpressionArg])
 
 (defclause ^{:requires-features #{:percentile-aggregations}} median
-  field-or-expression [:ref ::FieldOrExpressionDef])
+  field-or-expression [:ref ::ExpressionArg])
 
 (defclause ^{:requires-features #{:percentile-aggregations}} percentile
-  field-or-expression [:ref ::FieldOrExpressionDef], percentile NumericExpressionArg)
+  field-or-expression [:ref ::ExpressionArg], percentile NumericExpressionArg)
 
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
 ;; expanded to other aggregations/etc. in the expand-macros middleware
