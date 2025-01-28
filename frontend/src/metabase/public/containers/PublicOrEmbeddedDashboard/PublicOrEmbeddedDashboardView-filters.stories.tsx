@@ -1,7 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
-import { userEvent, waitFor, within } from "@storybook/test";
+import { userEvent, within } from "@storybook/test";
 import { type ComponentProps, useEffect } from "react";
 
 import { getStore } from "__support__/entities-store";
@@ -235,6 +235,7 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
   // @ts-expect-error -- custom prop to support non JSON-serializable value as args
   const parameterType: ParameterType = args.parameterType;
   const dashboard = args.dashboard;
+
   if (!dashboard) {
     return <>Please pass `dashboard`</>;
   }
@@ -459,24 +460,16 @@ export const LightThemeTextWithValue = {
   args: createDefaultArgs(),
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const asyncCallback = createAsyncCallback();
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", { name: "Category" });
+    await userEvent.click(filter);
 
-    try {
-      const canvas = within(canvasElement);
-      const filter = await canvas.findByRole("button", { name: "Category" });
-      await userEvent.click(filter);
-
-      const popover = await waitFor(() => getLastPopover());
-      await userEvent.type(
-        popover.getByPlaceholderText("Enter some text"),
-        "filter value",
-      );
-      await userEvent.click(getLastPopoverElement());
-    } catch (e) {
-      console.error("story failed", e);
-    } finally {
-      asyncCallback();
-    }
+    const popover = getLastPopover();
+    await userEvent.type(
+      popover.getByPlaceholderText("Enter some text"),
+      "filter value",
+    );
+    await userEvent.click(getLastPopoverElement());
   },
 };
 
