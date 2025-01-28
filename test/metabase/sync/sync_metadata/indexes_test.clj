@@ -50,11 +50,9 @@
 (deftest all-indexes->fields-ids-many-indexes-test
   (testing "no exception is thrown when there are very many indexes"
     (mt/test-drivers (mt/normal-drivers-with-feature :describe-indexes)
-      (let [database (mt/db)
-            indexes (into [] (driver/describe-indexes (driver.u/database->driver database) database))
+      (let [indexes (into [] (driver/describe-indexes (driver.u/database->driver (mt/db)) (mt/db)))
             many-indexes (into indexes (repeat 100000 {:table-schema "public",
                                                        :table-name "fake_table",
                                                        :field-name "id"}))
-            field-ids (#'sync.indexes/all-indexes->field-ids (:id database) many-indexes)]
-        (println "number of field ids:" (count field-ids) "field ids" field-ids)
+            field-ids (#'sync.indexes/all-indexes->field-ids (:id (mt/db)) many-indexes)]
         (is (= 8 (count field-ids)))))))
