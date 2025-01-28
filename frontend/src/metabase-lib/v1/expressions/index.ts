@@ -284,7 +284,8 @@ export function isExpression(expr: unknown): expr is Expression {
     isBooleanLiteral(expr) ||
     isMetric(expr) ||
     isSegment(expr) ||
-    isCaseOrIf(expr)
+    isCaseOrIf(expr) ||
+    isValue(expr)
   );
 }
 
@@ -302,6 +303,10 @@ export function isBooleanLiteral(expr: unknown): boolean {
 
 export function isNumberLiteral(expr: unknown): boolean {
   return typeof expr === "number";
+}
+
+export function isValue(expr: unknown): boolean {
+  return Array.isArray(expr) && expr[0] === "value" && isExpression(expr[1]);
 }
 
 export function isOperator(expr: unknown): boolean {

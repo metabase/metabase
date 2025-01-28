@@ -23,6 +23,7 @@ import {
   isOptionsObject,
   isSegment,
   isStringLiteral,
+  isValue,
 } from "./index";
 
 export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
@@ -63,6 +64,8 @@ export function format(mbql: any, options: Options): string {
     return formatCaseOrIf(mbql, options);
   } else if (isNegativeFilter(mbql)) {
     return formatNegativeFilter(mbql, options);
+  } else if (isValue(mbql)) {
+    return formatValue(mbql, options);
   }
   throw new Error("Unknown MBQL clause " + JSON.stringify(mbql));
 }
@@ -251,4 +254,8 @@ function formatNegativeFilter(mbql: Filter, options: Options) {
   const [fn, ...args] = mbql;
   const baseFn = NEGATIVE_FILTERS[fn];
   return "NOT " + format([baseFn, ...args], options);
+}
+
+function formatValue([, value]: any[], options: Options) {
+  return format(value, options);
 }

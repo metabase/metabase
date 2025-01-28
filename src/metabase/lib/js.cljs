@@ -2332,9 +2332,11 @@
   expression parser understand MLv2 expressions."
   [a-query stage-number legacy-expression]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [expr (js->clj legacy-expression :keywordize-keys true)
-          expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
-      (lib.core/normalize (lib.convert/->pMBQL expr)))))
+    (binding [mbql.normalize/*use-implicit-field-ids* false]
+      (let [expr (js->clj legacy-expression :keywordize-keys true)
+            _ (prn "js->clj" expr)
+            expr (first (mbql.normalize/normalize-fragment [:query :aggregation] [expr]))]
+        (lib.core/normalize (lib.convert/->pMBQL expr))))))
 
 (defn ^:export legacy-expression-for-expression-clause
   "Convert `an-expression-clause` into a legacy expression.

@@ -487,6 +487,18 @@
 ;;; |                                                  CANONICALIZE                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def *use-implicit-field-ids* true)
+
+(defn- wrap-implicit-field-id
+  "Wrap raw integer Field IDs (i.e., those in an implicit 'field' position) in a `:field` clause if they're not
+  already. Done for MBQL 95 backwards-compatibility. e.g.:
+
+    {:filter [:= 10 20]} ; -> {:filter [:= [:field 10 nil] 20]}"
+  [field]
+  (cond (not (integer? field)) field
+        *use-implicit-field-ids* [:field field nil]
+        :else [:value field]))
+
 (defmulti ^:private canonicalize-mbql-clause
   {:arglists '([clause])}
   (fn [clause]
@@ -500,7 +512,7 @@
 (defn- canonicalize-implicit-field-id
   "If `clause` is a raw integer ID wrap it in a `:field` clause. Either way, canonicalize the resulting clause."
   [clause]
-  (canonicalize-mbql-clause clause))
+  (canonicalize-mbql-clause (wrap-implicit-field-id clause)))
 
 (defmethod canonicalize-mbql-clause :field
   [[_ id-or-name opts]]
@@ -783,7 +795,7 @@
 (defn- canonicalize-breakouts [breakouts]
   (if (mbql-clause? breakouts)
     (recur [breakouts])
-    (not-empty breakouts)))
+    (not-empty (mapv wrap-implicit-field-id breakouts))))
 
 (defn- canonicalize-order-by
   "Make sure order by clauses like `[:asc 10]` get `:field-id` added where appropriate, e.g. `[:asc [:field-id 10]]`"
@@ -837,6 +849,7 @@
   (cond-> mbql-query
     (non-empty? (:aggregation  mbql-query)) (update :aggregation  canonicalize-aggregations)
     (non-empty? (:breakout     mbql-query)) (update :breakout     canonicalize-breakouts)
+    (non-empty? (:fields       mbql-query)) (update :fields       (partial mapv wrap-implicit-field-id))
     (non-empty? (:order-by     mbql-query)) (update :order-by     canonicalize-order-by)
     (non-empty? (:source-query mbql-query)) (update :source-query canonicalize-source-query)))
 
