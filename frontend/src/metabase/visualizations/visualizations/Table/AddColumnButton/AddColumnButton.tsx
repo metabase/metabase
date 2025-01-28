@@ -1,38 +1,27 @@
+import cx from "classnames";
 import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
 import { Button, Icon } from "metabase/ui";
 
+import S from "./AddColumnButton.module.css";
+
 interface AddColumnButtonProps extends HTMLAttributes<HTMLButtonElement> {
   headerHeight: number;
-  pageWidth: number;
-  tableContentWidth?: number;
+  isOverflowing?: boolean;
 }
 
 export const AddColumnButton = ({
   headerHeight,
-  pageWidth,
-  tableContentWidth,
+  isOverflowing,
   onClick,
 }: AddColumnButtonProps) => {
-  if (!tableContentWidth) {
-    return null;
-  }
-
-  const isOverflowing = tableContentWidth > pageWidth;
-
-  if (!tableContentWidth) {
-    return null;
-  }
   return (
     <div
+      className={cx(S.root, { [S.sticky]: isOverflowing })}
       style={{
-        position: "absolute",
         height: headerHeight,
         width: headerHeight,
-        top: 0,
-        left: isOverflowing ? undefined : tableContentWidth,
-        right: isOverflowing ? 0 : undefined,
       }}
     >
       <Button

@@ -8,7 +8,7 @@ import {
   KeyboardSensor,
   MouseSensor,
   TouchSensor,
-  closestCenter,
+  pointerWithin,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -23,7 +23,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { connect } from "metabase/lib/redux";
 import {
@@ -37,6 +37,7 @@ import type { OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 
+import { AddColumnButton } from "./AddColumnButton";
 import styles from "./Table.module.css";
 import { useTableCellsMeasure } from "./hooks/use-cell-measure";
 import { useColumnResizeObserver } from "./hooks/use-column-resize-observer";
@@ -68,7 +69,7 @@ export const _Table = ({
   const { rows, cols } = data;
   const bodyRef = useRef<HTMLDivElement>(null);
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
-    cols.map((_col, index) => index.toString()),
+    cols.map(col => col.name),
   );
 
   const {
@@ -115,7 +116,6 @@ export const _Table = ({
   const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event;
     if (active && over && active.id !== over.id) {
-      // Only update UI state for visual feedback during drag
       setColumnOrder(columnOrder => {
         const oldIndex = columnOrder.indexOf(active.id as string);
         const newIndex = columnOrder.indexOf(over.id as string);
@@ -125,7 +125,7 @@ export const _Table = ({
   }, []);
 
   const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
+    (_event: DragEndEvent) => {
       if (bodyRef.current) {
         bodyRef.current.style.overflow = "auto";
       }
@@ -134,27 +134,40 @@ export const _Table = ({
         return;
       }
 
-      const { active, over } = event;
-      if (active && over && active.id !== over.id) {
-        const oldIndex = parseInt(active.id as string, 10);
-        const newIndex = parseInt(over.id as string, 10);
+      const columns = settings["table.columns"]?.slice() ?? [];
 
-        const columns =
-          settings["table.columns"]?.slice() ||
-          cols.map((col, index) => ({
-            name: col.name,
-            enabled: true,
-            index,
-          }));
+      const enabledColumns = columns
+        .map((c, index) => ({ ...c, index }))
+        .filter(c => c.enabled);
 
-        columns.splice(newIndex, 0, columns.splice(oldIndex, 1)[0]);
+      const columnOrderPositions = new Map(
+        columnOrder.map((name, index) => [name, index]),
+      );
 
-        onUpdateVisualizationSettings({
-          "table.columns": columns,
-        });
-      }
+      enabledColumns.sort(
+        (a, b) =>
+          (columnOrderPositions.get(a.name) ?? 0) -
+          (columnOrderPositions.get(b.name) ?? 0),
+      );
+
+      const reorderedColumns = [...columns];
+      enabledColumns.forEach((col, i) => {
+        const prevCol = enabledColumns[i - 1];
+        const targetIndex = prevCol ? prevCol.index + 1 : 0;
+        if (targetIndex !== col.index) {
+          reorderedColumns.splice(
+            targetIndex,
+            0,
+            reorderedColumns.splice(col.index, 1)[0],
+          );
+        }
+      });
+
+      onUpdateVisualizationSettings({
+        "table.columns": reorderedColumns,
+      });
     },
-    [settings, onUpdateVisualizationSettings, isPivoted, cols],
+    [columnOrder, settings, onUpdateVisualizationSettings, isPivoted],
   );
 
   const {
@@ -175,8 +188,7 @@ export const _Table = ({
 
   const handleColumnResize = useCallback(
     (columnId: string, width: number) => {
-      const columnIndex = parseInt(columnId);
-      const newColumnWidths = onResizeColumn(columnIndex, width);
+      const newColumnWidths = onResizeColumn(columnId, width);
 
       onUpdateVisualizationSettings({
         "table.column_widths": newColumnWidths,
@@ -196,6 +208,35 @@ export const _Table = ({
     [rowVirtualizer],
   );
 
+  const totalContentWidth = useMemo(
+    () =>
+      table
+        .getHeaderGroups()
+        .flatMap(headerGroup =>
+          headerGroup.headers.map(header => header.getSize()),
+        )
+        .reduce((acc, current) => acc + current, 0),
+    [table],
+  );
+
+  const isAddColumnButtonSticky = totalContentWidth >= width;
+
+  const addColumnButton = useMemo(
+    () => (
+      <AddColumnButton
+        headerHeight={36}
+        isOverflowing={isAddColumnButtonSticky}
+        onClick={e =>
+          onVisualizationClick?.({
+            columnShortcuts: true,
+            element: e.currentTarget,
+          })
+        }
+      />
+    ),
+    [isAddColumnButtonSticky, onVisualizationClick],
+  );
+
   if (width == null || height == null) {
     return null;
   }
@@ -203,128 +244,128 @@ export const _Table = ({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={pointerWithin}
       modifiers={[restrictToHorizontalAxis]}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <>
-        <div style={{ height, width }} className={styles.table}>
-          <div
-            ref={bodyRef}
-            style={{
-              height: `${height}px`,
-              width: `${width}px`,
-              overflow: "auto",
-              position: "relative",
-            }}
-          >
-            <div className={styles.tableGrid}>
-              <div className={styles.thead}>
-                {table.getHeaderGroups().map(headerGroup => (
-                  <div key={headerGroup.id} className={styles.tr}>
+      <div style={{ height, width }} className={styles.table}>
+        <div
+          ref={bodyRef}
+          style={{
+            height: `${height}px`,
+            width: `${width}px`,
+            overflow: "auto",
+            position: "relative",
+          }}
+        >
+          <div className={styles.tableGrid}>
+            <div className={styles.thead}>
+              {table.getHeaderGroups().map(headerGroup => (
+                <div key={headerGroup.id} className={styles.tr}>
+                  {virtualPaddingLeft ? (
+                    <div
+                      className={styles.th}
+                      style={{ width: virtualPaddingLeft }}
+                    />
+                  ) : null}
+                  <SortableContext
+                    items={columnOrder}
+                    strategy={horizontalListSortingStrategy}
+                  >
+                    {virtualColumns.map(virtualColumn => {
+                      const header = headerGroup.headers[virtualColumn.index];
+                      const headerContent = flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      );
+                      return (
+                        <div
+                          key={header.id}
+                          style={{
+                            width: header.getSize(),
+                            position: "relative",
+                          }}
+                        >
+                          {headerContent}
+                        </div>
+                      );
+                    })}
+                  </SortableContext>
+                  {!isAddColumnButtonSticky ? addColumnButton : null}
+                  {virtualPaddingRight ? (
+                    <div
+                      className={styles.th}
+                      style={{ width: virtualPaddingRight }}
+                    />
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            <div
+              className={styles.tbody}
+              style={{
+                display: "grid",
+                position: "relative",
+                height: `${rowVirtualizer.getTotalSize()}px`,
+              }}
+            >
+              {virtualRows.map(virtualRow => {
+                const row = table.getRowModel().rows[virtualRow.index];
+                return (
+                  <div
+                    key={row.id}
+                    ref={measureRef}
+                    data-index={virtualRow.index}
+                    className={styles.tr}
+                    style={{
+                      position: "absolute",
+                      width: "100%",
+                      minHeight: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
                     {virtualPaddingLeft ? (
                       <div
-                        className={styles.th}
+                        className={styles.td}
                         style={{ width: virtualPaddingLeft }}
                       />
                     ) : null}
-                    <SortableContext
-                      items={columnOrder}
-                      strategy={horizontalListSortingStrategy}
-                    >
-                      {virtualColumns.map(virtualColumn => {
-                        const header = headerGroup.headers[virtualColumn.index];
-                        const headerContent = flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        );
-                        return (
-                          <div
-                            key={header.id}
-                            style={{
-                              width: header.getSize(),
-                              position: "relative",
-                            }}
-                          >
-                            {headerContent}
-                          </div>
-                        );
-                      })}
-                    </SortableContext>
+
+                    {virtualColumns.map(virtualColumn => {
+                      const cell = row.getVisibleCells()[virtualColumn.index];
+                      return (
+                        <div
+                          key={cell.id}
+                          className={styles.td}
+                          style={{
+                            position: "relative",
+                            width: cell.column.getSize(),
+                          }}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </div>
+                      );
+                    })}
                     {virtualPaddingRight ? (
                       <div
-                        className={styles.th}
+                        className={styles.td}
                         style={{ width: virtualPaddingRight }}
                       />
                     ) : null}
                   </div>
-                ))}
-              </div>
-              <div
-                className={styles.tbody}
-                style={{
-                  display: "grid",
-                  position: "relative",
-                  height: `${rowVirtualizer.getTotalSize()}px`,
-                }}
-              >
-                {virtualRows.map(virtualRow => {
-                  const row = table.getRowModel().rows[virtualRow.index];
-                  return (
-                    <div
-                      key={row.id}
-                      ref={measureRef}
-                      data-index={virtualRow.index}
-                      className={styles.tr}
-                      style={{
-                        position: "absolute",
-                        width: "100%",
-                        minHeight: `${virtualRow.size}px`,
-                        transform: `translateY(${virtualRow.start}px)`,
-                      }}
-                    >
-                      {virtualPaddingLeft ? (
-                        <div
-                          className={styles.td}
-                          style={{ width: virtualPaddingLeft }}
-                        />
-                      ) : null}
-
-                      {virtualColumns.map(virtualColumn => {
-                        const cell = row.getVisibleCells()[virtualColumn.index];
-                        return (
-                          <div
-                            key={cell.id}
-                            className={styles.td}
-                            style={{
-                              position: "relative",
-                              width: cell.column.getSize(),
-                            }}
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </div>
-                        );
-                      })}
-                      {virtualPaddingRight ? (
-                        <div
-                          className={styles.td}
-                          style={{ width: virtualPaddingRight }}
-                        />
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
+                );
+              })}
             </div>
           </div>
         </div>
-        {measureRoot}
-      </>
+        {isAddColumnButtonSticky ? addColumnButton : null}
+      </div>
+      {measureRoot}
     </DndContext>
   );
 };
