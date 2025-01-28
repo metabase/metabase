@@ -24,13 +24,12 @@ import { createPortal } from "react-dom";
 
 import { Box, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import { doesFunctionNameExist } from "metabase-lib/v1/expressions/helper-text-strings";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import css from "./Editor.module.css";
 import { HelpText } from "./HelpText";
-import { parser } from "./language";
 import { tokenAtPos } from "./suggestions";
+import { enclosingFunction } from "./util";
 
 // TODO: Toggle help description open/close expand
 // TODO: Segments/metrics always shown?
@@ -114,7 +113,10 @@ export function useTooltip({
       EditorView.updateListener.of(update => {
         view.current = update.view;
         setState(state => {
-          const enclosingFn = enclosingFunction(update.state);
+          const enclosingFn = enclosingFunction(
+            update.state.doc.toString(),
+            update.state.selection.main.head,
+          );
           const status = completionStatus(update.state);
 
           if (status === "pending") {
@@ -311,38 +313,4 @@ function Footer() {
       <Icon name="enter_or_return" className={css.key} /> to select.
     </Box>
   );
-}
-
-function enclosingFunction(state: EditorState) {
-  const tree = parser.parse(state.doc.toString());
-  const pos = state.selection.main.head;
-
-  const cursor = tree.cursor();
-  let res = null;
-
-  do {
-    if (
-      cursor.name === "CallExpression" &&
-      cursor.from <= pos &&
-      cursor.to >= pos
-    ) {
-      const value = state.sliceDoc(cursor.from, cursor.to);
-      const name = value.replace(/\(.*\)?$/, "");
-
-      if (value.endsWith(")") && cursor.to === pos) {
-        // do not show help when cursor is placed after closing )
-        break;
-      }
-
-      if (doesFunctionNameExist(name)) {
-        res = {
-          name,
-          from: cursor.from,
-          to: cursor.to,
-        };
-      }
-    }
-  } while (cursor.next());
-
-  return res;
 }
