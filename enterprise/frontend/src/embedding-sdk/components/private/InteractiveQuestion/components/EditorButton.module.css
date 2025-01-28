@@ -1,4 +1,4 @@
-.editorButton:not([data-css-specificity-hack]) {
+.EditorButton:not([data-css-specificity-hack]) {
   color: var(--mb-color-text-dark);
   background: var(--mb-color-background);
 

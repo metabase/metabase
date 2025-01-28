@@ -22,7 +22,7 @@ export const EditorButton = ({
         data-testid="notebook-button"
         size="lg"
         onClick={onClick}
-        className={S.editorButton}
+        className={S.EditorButton}
         data-active={isOpen}
         variant="default"
       >
