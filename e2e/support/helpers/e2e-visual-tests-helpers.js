@@ -8,6 +8,8 @@ import {
   svgToDataUri,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 
+import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
+
 export function echartsContainer() {
   return cy.findByTestId("chart-container");
 }
@@ -134,11 +136,22 @@ export function pieSliceWithColor(color) {
 
 export function echartsTooltip() {
   // ECharts may keep two dom instances of the tooltip
-  return cy
-    .findAllByTestId("echarts-tooltip")
-    .filter(":visible")
-    .should("have.length", 1)
-    .eq(0);
+  return cy.findAllByTestId("echarts-tooltip").should($elements => {
+    // Use a custom function to check if the fixed-position tooltip is visible,
+    // as Cypress's ":visible" or "be.visible" fails to identify a fixed-position tooltip as visible.
+    const visibleTooltips = $elements
+      .toArray()
+      .filter(isFixedPositionElementVisible);
+
+    // Assert we have exactly one visible tooltip
+    expect(visibleTooltips).to.have.length(
+      1,
+      "there must be only one visible echarts tooltip",
+    );
+
+    // Return the visible tooltip
+    return visibleTooltips[0];
+  });
 }
 
 export function tooltipHeader() {
@@ -190,7 +203,6 @@ function assertTooltipFooter({ name, value, secondaryValue }) {
 }
 
 export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
-  echartsTooltip().should("be.visible");
   echartsTooltip().within(() => {
     if (header != null) {
       tooltipHeader().should("have.text", header);
