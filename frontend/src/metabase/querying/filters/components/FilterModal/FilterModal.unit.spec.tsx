@@ -276,6 +276,21 @@ describe("FilterModal", () => {
     );
   });
 
+  it("should update column filter state when clearing all filters", async () => {
+    setup({ query: createQuery() });
+    await userEvent.click(screen.getByRole("tab", { name: "Product" }));
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Doohickey" }));
+    expect(screen.getByRole("checkbox", { name: "Doohickey" })).toBeChecked();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear all filters" }),
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Doohickey" }),
+    ).not.toBeChecked();
+  });
+
   it("does not mix up column filter state when changing search query (metabase#48319)", async () => {
     setup({ query: createQuery() });
 
