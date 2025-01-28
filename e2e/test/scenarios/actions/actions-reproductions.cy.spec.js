@@ -445,7 +445,7 @@ describe("issue 32840", () => {
           "have.value",
           "2023-07-19T19:44:56",
         );
-        cy.button("Update").scrollIntoView().click();
+        cy.findAllByText("Update").last().scrollIntoView().click();
       });
     cy.wait("@executeAction");
     H.modal().findByText("July 19, 2023, 7:44 PM").should("be.visible");
