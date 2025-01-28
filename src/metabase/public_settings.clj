@@ -1057,7 +1057,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru "Whether or not we analyze any queries at all")
   :visibility :admin
   :export?    false
-  :default    true
+  :default    false
   :type       :boolean)
 
 (defsetting download-row-limit
