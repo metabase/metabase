@@ -99,7 +99,7 @@ const pugTheme: MetabaseTheme = {
     },
     dashboard: {
       card: {
-        border: "1px solid var(--mantine-color-gray-3)",
+        border: "1px solid #dee2e6",
       },
     },
     number: {
