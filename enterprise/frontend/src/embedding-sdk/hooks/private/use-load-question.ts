@@ -1,13 +1,13 @@
 import { useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
-import type { ParameterValues } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import {
   loadQuestionSdk,
   runQuestionOnNavigateSdk,
   runQuestionQuerySdk,
   updateQuestionSdk,
 } from "embedding-sdk/lib/interactive-question";
+import { getParameterDependencyKey } from "embedding-sdk/lib/load-question-utils";
 import { useSdkDispatch } from "embedding-sdk/store";
 import type {
   LoadSdkQuestionParams,
@@ -204,11 +204,3 @@ const questionReducer = (state: SdkQuestionState, next: SdkQuestionState) => ({
   ...state,
   ...next,
 });
-
-export const getParameterDependencyKey = (
-  parameters?: ParameterValues,
-): string =>
-  Object.entries(parameters ?? {})
-    .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
-    .map(([key, value]) => `${key}=${value}`)
-    .join(":");
