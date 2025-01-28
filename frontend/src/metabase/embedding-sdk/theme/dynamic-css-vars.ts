@@ -35,12 +35,12 @@ export const THEME_DEPENDENT_CSS_VARS: Record<
 > = {
   "--mb-color-notebook-step-bg": {
     source: "bg-white",
-    light: { darken: 0.02 },
+    light: { darken: 0.05 },
     dark: { lighten: 0.5 },
   },
   "--mb-color-notebook-step-bg-hover": {
     source: "bg-white",
-    light: { darken: 0.06 },
+    light: { darken: 0.1 },
     dark: { lighten: 0.4 },
   },
   "--mb-color-background-hover": {
