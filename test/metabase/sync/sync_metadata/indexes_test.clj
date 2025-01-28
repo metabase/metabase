@@ -45,3 +45,13 @@
                    :model/Table    table {:db_id (:id db)}]
       (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes! db)))
       (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes-for-table! db table))))))
+
+(deftest all-indexes->fields-ids-many-indexes-test
+  (testing "no exception is thrown when there are very many indexes"
+    (is (try (#'sync.indexes/all-indexes->field-ids
+              (:id (mt/db))
+              (repeat 100000 {:table-schema "public",
+                              :table-name "serialization_stats",
+                              :field-name "id"}))
+             true
+             (catch Exception _e false)))))
