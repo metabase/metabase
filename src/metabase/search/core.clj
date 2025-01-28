@@ -1,6 +1,7 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
@@ -41,6 +42,11 @@
 
  [search.spec
   define-spec])
+
+(defmethod prometheus/known-labels :metabase-search/index
+  [_]
+  (for [model (keys (metabase.search.spec/specifications))]
+    {:model model}))
 
 (defn supports-index?
   "Does this instance support a search index, of any sort?"

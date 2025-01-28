@@ -232,18 +232,26 @@
    (prometheus/counter :metabase-search/response-error
                        {:description "Number of errors when responding to search requests."})])
 
+(defmulti known-labels
+  "Implement this for a given metric to initialize zeros for the given set of label values."
+  identity)
+
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
   will throw."
   [registry-name]
   (log/info "Starting prometheus metrics collector")
-  (let [registry (prometheus/collector-registry registry-name)]
-    (apply prometheus/register
-           (collector.ring/initialize registry)
-           (concat (jvm-collectors)
-                   (jetty-collectors)
-                   [@c3p0-collector]
-                   (product-collectors)))))
+  (let [registry (prometheus/collector-registry registry-name)
+        registry (apply prometheus/register
+                        (collector.ring/initialize registry)
+                        (concat (jvm-collectors)
+                                (jetty-collectors)
+                                [@c3p0-collector]
+                                (product-collectors)))]
+    (doseq [metric (keys (methods known-labels))
+            labels (known-labels metric)]
+      (prometheus/inc registry metric labels 0))
+    registry))
 
 (defn- start-web-server!
   "Start the prometheus web-server. If [[prometheus-server-port]] is not set it will throw."
