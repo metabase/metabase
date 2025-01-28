@@ -13,7 +13,6 @@ import { copy } from "metabase/lib/utils";
 import { fetchAlertsForQuestion } from "metabase/notifications/redux/alert";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { openUrl } from "metabase/redux/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -28,7 +27,6 @@ import type {
   Database,
   DatasetQuery,
   ParameterId,
-  ParameterValuesMap,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -84,33 +82,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     );
     const card = Questions.HACK_getObjectFromAction(action);
 
-    // We need to manually massage the parameters into the parameterValues shape,
-    // to be able to pass them to new Question.
-    // We could use _parameterValues here but prefer not to use internal fields.
-    const parameterValues: ParameterValuesMap = outdatedQuestion
-      .parameters()
-      .reduce(
-        (acc, next) => ({
-          ...acc,
-          [next.id]: next.value,
-        }),
-        {},
-      );
-
-    const question = new Question(
-      card,
-      getMetadata(getState()),
-      parameterValues,
-    );
-
     dispatch(loadMetadataForCard(card));
-
-    dispatch(
-      runQuestionQuery({
-        overrideWithQuestion: question,
-        shouldUpdateUrl: false,
-      }),
-    );
 
     // if the name of the card changed this will update the url slug
     dispatch(updateUrl(new Question(card), { dirty: false }));
@@ -355,6 +327,7 @@ export const revertToRevision = createThunkAction(
     return async dispatch => {
       await dispatch(Revisions.objectActions.revert(revision));
       await dispatch(reloadCard());
+      dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
     };
   },
 );
