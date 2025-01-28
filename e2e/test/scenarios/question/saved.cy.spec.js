@@ -161,6 +161,7 @@ describe("scenarios > question > saved", () => {
     });
 
     H.entityPickerModal().within(() => {
+      cy.findByText("Select a collection or dashboard").should("exist");
       cy.findByText("Orders in a dashboard").click();
       cy.findByRole("button", { name: "Select this dashboard" }).click();
     });
