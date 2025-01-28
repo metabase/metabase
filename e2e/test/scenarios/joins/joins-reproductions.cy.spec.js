@@ -195,6 +195,7 @@ describe("issue 15342", { tags: "@external" }, () => {
     H.getNotebookStep("join").findByLabelText("Right column").click();
     H.popover().findByText("Product ID").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.icon("join_left_outer").last().click();
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Tables").click();
@@ -351,6 +352,7 @@ describe("issue 17968", () => {
       .click();
     H.popover().findByText("Created At").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Tables").click();
@@ -647,6 +649,7 @@ describe("issue 20519", () => {
 
   // Tightly related issue: metabase#17767
   it("should allow subsequent joins and nested query after summarizing on the implicit joins (metabase#20519)", () => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByLabelText("Custom column").last().click();
 
     H.enterCustomColumnDetails({
@@ -846,10 +849,12 @@ describe("issue 23293", () => {
         "contain",
         "Product → Category is Doohickey",
       );
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("header-cell")
         .last()
         .should("have.text", "Product → Category");
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByRole("grid")
         .last()
         .as("tableResults")
@@ -889,6 +894,7 @@ describe("issue 27380", () => {
     );
 
     // Doesn't really matter which 'circle" we click on the graph
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().last().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See this month by week").click();
@@ -1224,6 +1230,7 @@ describe.skip("issue 27521", () => {
   });
 
   function assertTableHeader(index, name) {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 });
