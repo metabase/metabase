@@ -283,3 +283,38 @@ describe("issue 47793", () => {
     },
   );
 });
+
+describe("issue 50662", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "api/dataset").as("dataset");
+  });
+
+  it("does not crash (metabase#50662)", () => {
+    cy.visit("/");
+    H.newButton("Question").click();
+    H.entityPickerModalItem(2, "Orders").click();
+    H.join();
+    H.joinTable("People");
+    H.getNotebookStep("filter")
+      .findByText("Add filters to narrow your answer")
+      .click();
+    H.popover().findByText("Product ID").click();
+    H.popover().findByPlaceholderText("Enter an ID").type("142");
+    H.popover().button("Add filter").click();
+    cy.findByLabelText("View SQL").click();
+    cy.button("Convert this question to SQL").click();
+    cy.wait("@dataset");
+    H.focusNativeEditor().type(
+      "{pagedown}{uparrow}{uparrow}{end}{backspace}{backspace}{backspace}{{test",
+    );
+    cy.findByTestId("variable-type-select").click();
+
+    cy.on("uncaught:exception", err => {
+      expect(err.name.includes("StructuredQuery usage is forbidden")).to.be
+        .false;
+    });
+    H.popover().findByText("Number").click();
+  });
+});
