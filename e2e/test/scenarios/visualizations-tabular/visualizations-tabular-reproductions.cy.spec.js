@@ -1198,3 +1198,41 @@ describe("issue 50346", () => {
     });
   });
 });
+
+describe("issue 50686", () => {
+  const questionDetails = {
+    name: "50686",
+    display: "smartscalar",
+    native: {
+      query:
+        "select 100 as total, 110 as forecast, 80 as last_year, now() as now",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow selecting more than 1 comparison (metabase#50686)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+    // Default comparison
+    H.queryBuilderMain().findByText("N/A");
+
+    // Add another comparison
+    H.openVizSettingsSidebar();
+    cy.button("Add comparison").click();
+    H.popover().findByText("Value from another column…").click();
+    H.popover().findByText("FORECAST").click();
+    cy.button("Done").click();
+
+    H.queryBuilderMain().within(() => {
+      // First comparison still exists
+      cy.findByText("N/A");
+
+      // New comparison has been added
+      cy.findByText("9.09%");
+      cy.contains("vs. FORECAST");
+    });
+  });
+});

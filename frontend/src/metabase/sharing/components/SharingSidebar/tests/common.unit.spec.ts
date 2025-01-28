@@ -31,29 +31,14 @@ describe("SharingSidebar", () => {
     setup({ isAdmin: true, email: true, slack: false });
 
     expect(await screen.findByText("Email it")).toBeInTheDocument();
-    expect(await screen.findByText("Send it to Slack")).toBeInTheDocument();
+    expect(await screen.findByText("Configure Slack")).toBeInTheDocument();
   });
 
   it("should not forward admins to slack - when email is not setup", async () => {
     setup({ isAdmin: true, email: false, slack: true });
 
-    expect(await screen.findByText("Email it")).toBeInTheDocument();
+    expect(await screen.findByText("Set up email")).toBeInTheDocument();
     expect(await screen.findByText("Send it to Slack")).toBeInTheDocument();
-  });
-
-  it("should disable slack option when slack is not configured", async () => {
-    setup({ isAdmin: true, email: true, slack: false });
-
-    expect(await screen.findByText(/First, you'll have to/i)).toBeVisible();
-    expect(await screen.findByText(/configure Slack/i)).toBeVisible();
-  });
-
-  it("should disable email option when email is not configured", async () => {
-    setup({ isAdmin: true, email: false, slack: true });
-
-    expect(await screen.findByText(/you'll need to/i)).toBeVisible();
-    expect(await screen.findByText(/set up Email/i)).toBeVisible();
-    expect(await screen.findByText(/first/i)).toBeVisible();
   });
 
   describe("Slack Subscription sidebar", () => {
