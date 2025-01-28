@@ -1,9 +1,9 @@
 import { HighlightStyle } from "@codemirror/language";
 import { type Tag, highlightCode, tags } from "@lezer/highlight";
-import { useMemo } from "react";
+
+import { parser } from "../language";
 
 import S from "./Highlight.module.css";
-import { parser } from "./language";
 
 function className(tag: Tag | Tag[]): string {
   if (Array.isArray(tag)) {
@@ -50,9 +50,4 @@ export function highlight(code: string): string {
   highlightCode(code, tree, highlighter, emit, brk);
 
   return res;
-}
-
-export function Highlight({ expression }: { expression: string }) {
-  const __html = useMemo(() => highlight(expression), [expression]);
-  return <pre dangerouslySetInnerHTML={{ __html }} />;
 }
