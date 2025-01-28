@@ -302,13 +302,13 @@ describe("issue 50662", () => {
       .findByText("Add filters to narrow your answer")
       .click();
     H.popover().findByText("Product ID").click();
-    H.popover().findByPlaceholderText("Enter an ID").type("142");
+    H.popover().findByPlaceholderText("Enter an ID").type("42");
     H.popover().button("Add filter").click();
     cy.findByLabelText("View SQL").click();
     cy.button("Convert this question to SQL").click();
     cy.wait("@dataset");
     H.focusNativeEditor().type(
-      "{pagedown}{uparrow}{uparrow}{end}{backspace}{backspace}{backspace}{{test",
+      "{pagedown}{uparrow}{uparrow}{end}{shift+leftarrow}{shift+leftarrow}{backspace}{{test",
     );
     cy.findByTestId("variable-type-select").click();
     H.popover().findByText("Number").click();
