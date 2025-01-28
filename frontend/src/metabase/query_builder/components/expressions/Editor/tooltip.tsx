@@ -47,7 +47,6 @@ type State = {
     from: number;
     to: number;
   } | null;
-  hasFocus?: boolean;
 };
 
 /**
@@ -66,34 +65,22 @@ export function useTooltip({
     completions: [],
     selectedCompletion: null,
     enclosingFunction: null,
-    hasFocus: false,
   });
-
-  const element = useMemo(() => {
-    const element = document.createElement("div");
-    return element;
-  }, []);
 
   const view = useRef<EditorView | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const element = useMemo(() => document.createElement("div"), []);
 
-  const handleBlur = useCallback(() => {
-    setState(state => ({
-      ...state,
-      hasFocus: false,
-    }));
-  }, []);
+  const [hasFocus, setHasFocus] = useState(false);
+
+  const handleFocus = useCallback(() => setHasFocus(true), []);
+  const handleBlur = useCallback(() => setHasFocus(false), []);
 
   const extensions = useMemo(
     () => [
       tooltip(element),
       EditorView.domEventHandlers({
-        focus() {
-          setState(state => ({
-            ...state,
-            hasFocus: true,
-          }));
-        },
+        focus: handleFocus,
         blur(evt) {
           evt.preventDefault();
           evt.stopPropagation();
@@ -102,6 +89,7 @@ export function useTooltip({
           if (tooltipRef.current === el || tooltipRef.current?.contains(el)) {
             return;
           }
+
           handleBlur();
         },
       }),
@@ -132,7 +120,7 @@ export function useTooltip({
         });
       }),
     ],
-    [element, handleBlur],
+    [element, handleBlur, handleFocus],
   );
 
   const handleCompletionClick = useCallback((index: number) => {
@@ -152,6 +140,7 @@ export function useTooltip({
       <Tooltip
         ref={tooltipRef}
         {...state}
+        hasFocus={hasFocus}
         query={query}
         metadata={metadata}
         reportTimezone={reportTimezone}
