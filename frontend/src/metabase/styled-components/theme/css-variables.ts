@@ -4,6 +4,7 @@ import { getIn } from "icepick";
 import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
 import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import { monospaceFontFamily } from "metabase/styled-components/theme";
 import type { MantineTheme } from "metabase/ui";
 
 /**
@@ -13,6 +14,7 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
   return css`
     :root {
       --mb-default-font-family: "${theme.fontFamily}";
+      --mb-default-monospace-font-family: ${monospaceFontFamily};
 
       /* Semantic colors */
       --mb-color-brand: ${theme.fn.themeColor("brand")};
