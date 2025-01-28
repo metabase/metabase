@@ -340,7 +340,7 @@
                   (let [results (mt/user-http-request user :post 200
                                                       (format "card/%d/query/%s" (u/the-id card) (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      :format_rows true)]
+                                                      {:format_rows true})]
                     ((-> assertions export-format) results))
 
                   :dashboard
@@ -354,6 +354,7 @@
                                                       {:format_rows true})]
                     ((-> assertions export-format) results))
 
+                  ;; TODO -- what about the public dashcard endpoint???
                   :public
                   (let [results (mt/user-http-request user :get 200
                                                       (format "public/card/%s/query/%s?format_rows=true" public-uuid (name export-format))
