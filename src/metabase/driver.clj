@@ -719,11 +719,11 @@
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
     :test/dynamic-dataset-loading
 
-    ;; Some DBs allow you to connect to a DB that doesn't exist by creating it for you. 
+    ;; Some DBs allow you to connect to a DB that doesn't exist by creating it for you.
     ;; This is to allow such DBs to opt out of tests that rely on not being able to connect to non-existent DBs.
     :test/creates-db-on-connect
 
-    ;; For some cloud DBs the test database is never created, and can't or shouldn't be destroyed. 
+    ;; For some cloud DBs the test database is never created, and can't or shouldn't be destroyed.
     ;; This is to allow avoiding destroying the test DBs of such cloud DBs.
     :test/cannot-destroy-db})
 
