@@ -1,0 +1,55 @@
+.helpText {
+  /* todo: use correct color */
+  background-color: #fafafb;
+  color: var(--mb-color-text-primary);
+}
+
+.usage {
+  padding: 8px;
+  font-size: 12px;
+  color: var(--mb-color-text-secondary);
+  cursor: pointer;
+}
+
+.arg {
+  color: var(--mb-base-color-lobster-60);
+}
+
+.info {
+  padding: 8px;
+  max-height: 150px;
+  overflow: auto;
+  border-top: 1px solid var(--mb-color-border);
+}
+
+.title {
+  color: var(--mb-color-text-secondary);
+  margin: 8px 0;
+}
+
+.arguments {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(4rem, max-content));
+  margin: 16px 0;
+}
+
+.example {
+  background-color: var(--mb-color-bg-medium);
+  color: var(--mb-color-text-primary);
+  border-radius: 4px;
+  padding: 16px 8px;
+  overflow: auto;
+
+  pre {
+    margin: 0;
+  }
+}
+
+.documentationLink {
+  display: flex;
+  align-items: center;
+  margin-top: 1rem;
+  color: var(--mb-color-brand);
+  font-weight: 700;
+}

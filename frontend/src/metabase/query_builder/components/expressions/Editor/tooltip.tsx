@@ -13,7 +13,6 @@ import {
 } from "@codemirror/state";
 import { EditorView, type Tooltip, showTooltip } from "@codemirror/view";
 import {
-  Fragment,
   forwardRef,
   useCallback,
   useEffect,
@@ -22,22 +21,14 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { t } from "ttag";
 
-import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { Box, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import {
-  doesFunctionNameExist,
-  getHelpDocsUrl,
-  getHelpText,
-} from "metabase-lib/v1/expressions/helper-text-strings";
-import type { HelpText } from "metabase-lib/v1/expressions/types";
+import type * as Lib from "metabase-lib";
+import { doesFunctionNameExist } from "metabase-lib/v1/expressions/helper-text-strings";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import css from "./Editor.module.css";
-import { Highlight } from "./Highlight";
+import { HelpText } from "./HelpText";
 import { parser } from "./language";
 import { tokenAtPos } from "./suggestions";
 
@@ -220,11 +211,6 @@ type TooltipProps = {
   onBlur: () => void;
 };
 
-function getDatabase(query: Lib.Query, metadata: Metadata) {
-  const databaseId = Lib.databaseID(query);
-  return metadata.database(databaseId);
-}
-
 const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
   function TooltipInner(props, ref) {
     const {
@@ -238,23 +224,18 @@ const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
     const { completions, selectedCompletion, enclosingFunction, hasFocus } =
       state;
 
-    const database = getDatabase(query, metadata);
-    const helpText =
-      enclosingFunction && database
-        ? getHelpText(enclosingFunction.name, database, reportTimezone)
-        : null;
-
     if (!hasFocus) {
-      return null;
-    }
-
-    if (completions.length === 0 && !helpText) {
       return null;
     }
 
     return (
       <div className={css.tooltip} ref={ref} onBlur={onBlur} tabIndex={0}>
-        <Help helpText={helpText} />
+        <HelpText
+          enclosingFunction={enclosingFunction?.name}
+          query={query}
+          metadata={metadata}
+          reportTimezone={reportTimezone}
+        />
         {completions.length > 0 && (
           <>
             <ul role="listbox">
@@ -328,96 +309,6 @@ function Footer() {
       to navigate.
       <span />
       <Icon name="enter_or_return" className={css.key} /> to select.
-    </Box>
-  );
-}
-
-function wrapPlaceholder(name: string) {
-  if (name === "…") {
-    return name;
-  }
-
-  return `⟨${name}⟩`;
-}
-
-function Help({ helpText }: { helpText?: HelpText | null }) {
-  const [open, setOpen] = useState(true);
-
-  const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
-    helpText ? getHelpDocsUrl(helpText) : "",
-  );
-
-  const handleMouseDown = useCallback(
-    (evt: React.MouseEvent<HTMLDivElement>) => {
-      evt.preventDefault();
-      setOpen(open => !open);
-    },
-    [],
-  );
-
-  if (!helpText) {
-    return null;
-  }
-
-  const { description, structure, args, example } = helpText;
-
-  return (
-    <Box className={css.helpText}>
-      <Box className={css.usage} onMouseDown={handleMouseDown}>
-        {structure}
-        {args != null && (
-          <>
-            (
-            {args.map(({ name }, index) => (
-              <span key={name}>
-                <span className={css.arg}>{wrapPlaceholder(name)}</span>
-                {index < args.length - 1 && ", "}
-              </span>
-            ))}
-            )
-          </>
-        )}
-      </Box>
-
-      {open && (
-        <Box className={css.info}>
-          <Box>{description}</Box>
-
-          {args != null && (
-            <Box
-              className={css.arguments}
-              data-testid="expression-helper-popover-arguments"
-            >
-              {args.map(({ name, description }) => (
-                <Fragment key={name}>
-                  <Box className={css.arg}>{wrapPlaceholder(name)}</Box>
-                  <Box>{description}</Box>
-                </Fragment>
-              ))}
-            </Box>
-          )}
-
-          {example && (
-            <>
-              <Box className={css.title}>{t`Example`}</Box>
-              <Box className={css.example}>
-                <Highlight expression={example} />
-              </Box>
-            </>
-          )}
-
-          {showMetabaseLinks && (
-            <ExternalLink
-              className={css.documentationLink}
-              href={docsUrl}
-              target="_blank"
-            >
-              <Icon m="0.25rem 0.5rem" name="reference" size={12} />
-              {t`Learn more`}
-            </ExternalLink>
-          )}
-        </Box>
-      )}
     </Box>
   );
 }
