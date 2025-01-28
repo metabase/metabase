@@ -38,7 +38,7 @@ export const useFilterModal = (
     [groupItems, searchText, isSearching],
   );
 
-  const forceDescendantsRemount = () => {
+  const forceRemountDescendants = () => {
     setRemountKey(version => version + 1);
   };
 
@@ -57,7 +57,7 @@ export const useFilterModal = (
 
   const onReset = () => {
     onQueryChange(removeFilters(query));
-    forceDescendantsRemount();
+    forceRemountDescendants();
   };
 
   const onSubmit = () => {
@@ -67,7 +67,7 @@ export const useFilterModal = (
   const onSearchTextChange = (searchText: string) => {
     setTab(isSearchActive(searchText) ? SEARCH_KEY : groupItems[0]?.key);
     setSearchText(searchText);
-    forceDescendantsRemount();
+    forceRemountDescendants();
   };
 
   return {
