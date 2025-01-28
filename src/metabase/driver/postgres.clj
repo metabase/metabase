@@ -1115,6 +1115,51 @@
           "from table_privileges t"]))
        (filter #(or (:select %) (:update %) (:delete %) (:insert %)))))
 
+(defn- alter-column-using-hsql-expr
+  "Returns a honey expr to convert the column from the old type to the new when a USING expr is necessary (nil if not).
+
+  The output can be used in the context of ALTER COLUMN when the :old-type key is provided
+  as part of the new column-definition.
+
+  Unfortunately out of the box not all trivial conversions are possible using CAST alone:
+  e.g. BOOLEAN to BIGINT, or BOOLEAN to FLOAT.
+  This function therefore provides more options for alter-columns-sql to produce DDL that can 'just work' without
+  extra input from the user."
+  [column new-type old-type]
+  (condp = [new-type old-type]
+    [[:bigint] [:boolean]]
+    [:case
+     (quote-identifier column) 1
+     :else 0]
+
+    [[:float] [:boolean]]
+    [:case
+     (quote-identifier column) 1.0
+     :else 0.0]
+
+    nil))
+
+(defmethod sql-jdbc.sync/alter-columns-sql :postgres
+  [driver table-name column-definitions]
+  (with-quoting driver
+    (-> {:alter-table  (keyword table-name)
+         :alter-column (for [{:keys [column
+                                     column-type
+                                     old-type]}
+                             column-definitions]
+                         (let [base (list* (quote-identifier column)
+                                           [:raw "TYPE"]
+                                           (if (string? column-type)
+                                             [[:raw column-type]]
+                                             column-type))]
+                           (if-some [using (alter-column-using-hsql-expr column column-type old-type)]
+                             (vec (concat base [[:raw "USING"] using]))
+                             (vec base))))}
+        (sql/format
+          :quoted true
+          :dialect (sql.qp/quote-style driver))
+        first)))
+
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
 (defmethod driver.sql/set-role-statement :postgres

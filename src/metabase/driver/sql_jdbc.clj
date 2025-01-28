@@ -193,17 +193,16 @@
   (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
   (with-quoting driver
     (let [primary-key-column (first primary-key)
-          sql                (first (sql/format {:alter-table (keyword table-name)
-                                                 :add-column  (map (fn [[column-name type-and-constraints]]
-                                                                     (cond-> (vec (cons (quote-identifier column-name)
-                                                                                        (if (string? type-and-constraints)
-                                                                                          [[:raw type-and-constraints]]
-                                                                                          type-and-constraints)))
-                                                                       (= primary-key-column column-name)
-                                                                       (conj :primary-key)))
-                                                                   column-definitions)}
-                                                :quoted true
-                                                :dialect (sql.qp/quote-style driver)))]
+          [sql]              (sql/format {:alter-table (keyword table-name)
+                                          :add-column  (for [{:keys [column column-type]} column-definitions]
+                                                         (cond-> (vec (cons (quote-identifier column)
+                                                                            (if (string? column-type)
+                                                                              [[:raw column-type]]
+                                                                              column-type)))
+                                                           (= primary-key-column column)
+                                                           (conj :primary-key)))}
+                                         :quoted true
+                                         :dialect (sql.qp/quote-style driver))]
       (qp.writeback/execute-write-sql! db-id sql))))
 
 (defmethod driver/alter-columns! :sql-jdbc
