@@ -19,7 +19,13 @@ export const useFilterModal = (
       : Lib.ensureFilterStage(question.query()),
   );
   const queryRef = useRef(query);
-  const [version, setVersion] = useState(1);
+  /**
+   * Used to re-initialize the state of descendant components and their hooks.
+   * Kicks in when changing search query or clearing all filters.
+   *
+   * @see https://github.com/metabase/metabase/issues/48319
+   */
+  const [remountKey, setRemountKey] = useState(1);
   const [isChanged, setIsChanged] = useState(false);
   const groupItems = useMemo(() => getGroupItems(query), [query]);
   const [tab, setTab] = useState<string | null>(groupItems[0]?.key);
@@ -32,9 +38,8 @@ export const useFilterModal = (
     [groupItems, searchText, isSearching],
   );
 
-  // to reset internal state of filter components
   const forceDescendantsRemount = () => {
-    setVersion(version => version + 1);
+    setRemountKey(version => version + 1);
   };
 
   const onInput = () => {
@@ -66,14 +71,14 @@ export const useFilterModal = (
   };
 
   return {
-    query,
-    version,
-    isChanged,
-    groupItems,
-    tab,
     canRemoveFilters,
-    searchText,
+    groupItems,
+    isChanged,
     isSearching,
+    query,
+    remountKey,
+    searchText,
+    tab,
     visibleItems,
     onInput,
     onQueryChange,

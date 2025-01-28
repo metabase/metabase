@@ -27,8 +27,8 @@ export function FilterModal({
     canRemoveFilters,
     groupItems,
     isChanged,
+    remountKey,
     searchText,
-    version,
     onReset,
     onSearchTextChange,
     onSubmit,
@@ -58,10 +58,11 @@ export function FilterModal({
             <FilterModalBody
               /**
                * Force-remount to re-initialize the state of descendant components and their hooks.
+               * Kicks in when changing search query or clearing all filters.
                *
                * @see https://github.com/metabase/metabase/issues/48319
                */
-              key={version}
+              key={remountKey}
             />
           </Modal.Body>
           <Flex
