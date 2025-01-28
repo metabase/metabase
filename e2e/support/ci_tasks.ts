@@ -89,7 +89,7 @@ async function addOrUpdateComment({
 }
 
 function getExistingCommentSha(commentBody: string): string | undefined {
-  const hash = commentBody.match(/failed on `([a-f0-9]+)`/);
+  const hash = commentBody.match(/failed on `([a-f0-9\-]+)`/);
   return hash?.[1];
 }
 
