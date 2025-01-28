@@ -200,6 +200,11 @@
             {:payload_type :notification/system-event
              :active       true}))
 
+   :model/NotificationCard
+   (fn [_] (default-timestamped
+            {:send_once      false
+             :send_condition :has_result}))
+
    :model/NotificationSubscription
    (fn [_] (default-created-at-timestamped
             {}))
@@ -617,6 +622,8 @@
                  #(u/round-to-decimals decimal-place %)
                  data))
 
+;;; TODO -- we should generalize this to `let-testing` (`testing-let`?) that is a version of `let` that adds `testing`
+;;; context
 (defmacro let-url
   "Like normal `let`, but adds `testing` context with the `url` you've bound."
   {:style/indent 1}

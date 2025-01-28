@@ -98,7 +98,7 @@
                                                       :notification_subscription_id subscription-id
                                                       :cron_schedule                (:cron_schedule subscription)
                                                       :notification_ids             [notification-id]}}
-        (notification/send-notification! (t2/select-one :model/Notification notification-id)))
+        (notification/send-notification! (t2/select-one :model/Notification notification-id) :notification/sync? true))
       (log/infof "Sent notification %d for subscription %d" notification-id subscription-id)
       (catch Exception e
         (log/errorf e "Failed to send notification %d for subscription %d" notification-id subscription-id)

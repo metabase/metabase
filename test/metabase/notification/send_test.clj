@@ -12,8 +12,8 @@
 (use-fixtures :once (fixtures/initialize :web-server))
 
 (deftest send-notification!*-test
-  (testing "sending a ntoification will call render on all of its handlers"
-    (notification.tu/with-notification-testing-setup
+  (testing "sending a notification will call render on all of its handlers"
+    (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/Channel         chn-1 notification.tu/default-can-connect-channel
                      :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")
                      :model/ChannelTemplate tmpl  {:channel_type notification.tu/test-channel-type}]
@@ -63,7 +63,7 @@
 
 (deftest send-notification-record-task-history-test
   (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
-    (notification.tu/with-notification-testing-setup
+    (notification.tu/with-notification-testing-setup!
       (let [n (models.notification/create-notification!
                {:payload_type :notification/testing}
                nil
@@ -89,7 +89,7 @@
                            {:order-by [[:started_at :asc]]})))))))
 
 (deftest notification-send-retrying-test
-  (notification.tu/with-notification-testing-setup
+  (notification.tu/with-notification-testing-setup!
     (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
       (let [n (models.notification/create-notification!
                {:payload_type :notification/testing}

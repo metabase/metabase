@@ -23,7 +23,7 @@
 
 (deftest system-event-e2e-test
   (testing "a system event that sends to an email channel with a custom template to an user recipient"
-    (notification.tu/with-notification-testing-setup
+    (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                   :details      {:type    :email/handlebars-text
                                                                  :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
@@ -43,8 +43,8 @@
                              :user_id (mt/user->id :crowberto)}
                             {:type                 :notification-recipient/group
                              :permissions_group_id group-id}
-                            {:type    :notification-recipient/external-email
-                             :details {:email "hi@metabase.com"}}]}])
+                            {:type    :notification-recipient/raw-value
+                             :details {:value "hi@metabase.com"}}]}])
           (mt/with-temporary-setting-values
             [site-name "Metabase Test"]
             (mt/with-fake-inbox
@@ -60,7 +60,7 @@
 
 (deftest system-event-resouce-template-test
   (testing "a system event that sends to an email channel with a custom template to an user recipient"
-    (notification.tu/with-notification-testing-setup
+    (notification.tu/with-notification-testing-setup!
       (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                   :details      {:type    :email/handlebars-resource
                                                                  :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
@@ -80,8 +80,8 @@
                              :user_id (mt/user->id :crowberto)}
                             {:type                 :notification-recipient/group
                              :permissions_group_id group-id}
-                            {:type    :notification-recipient/external-email
-                             :details {:email "hi@metabase.com"}}]}])
+                            {:type    :notification-recipient/raw-value
+                             :details {:value "hi@metabase.com"}}]}])
           (mt/with-temporary-setting-values
             [site-name "Metabase Test"]
             (mt/with-fake-inbox

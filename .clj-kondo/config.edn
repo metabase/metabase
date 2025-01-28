@@ -1,8 +1,7 @@
 ;; -*- comment-column: 100; -*-
 {:config-paths ["macros" "src"]
  :linters
- {
-  ;;
+ {;;
   ;; enabled optional linters (these are disabled by default)
   ;;
 
@@ -183,7 +182,7 @@
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
   ;; middleware or compilation behavior with just H2 since it's the default.
-  {:drivers #{ ;; core drivers
+  {:drivers #{;; core drivers
               #_:h2
               :postgres
               :mysql
@@ -348,6 +347,7 @@
                                      metabase.channel.core
                                      metabase.channel.email
                                      metabase.channel.email.messages
+                                     metabase.channel.models.channel
                                      metabase.channel.init
                                      metabase.channel.render.core
                                      metabase.channel.template.core}
@@ -814,8 +814,13 @@
   metabase.integrations.ldap/with-ldap-connection                                       clojure.core/fn
   metabase.models.collection-test/with-collection-in-location                           clojure.core/let
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
+  metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def
   metabase.models.setting/defsetting                                                    clj-kondo.lint-as/def-catch-all
+  metabase.notification.test-util/with-card-notification                                clojure.core/let
+  metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
+  metabase.public-settings.premium-features/defenterprise-schema                        clj-kondo.lint-as/def-catch-all
+  metabase.public-settings.premium-features/define-premium-feature                      clojure.core/def
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
   metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
   metabase.premium-features.core/define-premium-feature                                 clojure.core/def

@@ -26,6 +26,7 @@
    [metabase.api.login-history :as api.login-history]
    [metabase.api.model-index :as api.model-index]
    [metabase.api.native-query-snippet :as api.native-query-snippet]
+   [metabase.api.notification :as api.notification]
    [metabase.api.permissions :as api.permissions]
    [metabase.api.persist :as api.persist]
    [metabase.api.premium-features :as api.premium-features]
@@ -97,6 +98,7 @@
   (context "/login-history"        [] (+auth api.login-history/routes))
   (context "/model-index"          [] (+auth api.model-index/routes))
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
+  (context "/notification"         [] (+auth api.notification/routes))
   (context "/notify"               [] (+static-apikey sync.api/notify-routes))
   (context "/permissions"          [] (+auth api.permissions/routes))
   (context "/persist"              [] (+auth api.persist/routes))

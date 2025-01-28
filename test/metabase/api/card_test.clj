@@ -10,6 +10,8 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
    [metabase.api.card :as api.card]
+   [metabase.api.common.openapi]
+   [metabase.api.notification-test :as api.notification-test]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.driver :as driver]
@@ -25,6 +27,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.util :as perms.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
@@ -702,13 +705,29 @@
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest ^:parallel docstring-test
+(deftest ^:parallel doc-test
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
-    (let [doc (-> #'api.card/POST_ meta :doc)]
+    (let [openapi-object             (metabase.api.common.openapi/openapi-object #'api.card/routes)
+          schemas                    (get-in openapi-object [:components :schemas])
+          body-properties            (get-in openapi-object [:paths "/" :post :requestBody :content "application/json" :schema :properties])
+          type-schema-ref            (some-> (get-in body-properties [:type :$ref])
+                                             (str/replace #"^#/components/schemas/" "")
+                                             (str/replace #"\Q~1\E" "/"))
+          type-schema                (get schemas type-schema-ref)
+          result-metadata-schema-ref (some-> (get-in body-properties [:result_metadata :$ref])
+                                             (str/replace #"^#/components/schemas/" "")
+                                             (str/replace #"\Q~1\E" "/"))
+          result-metadata-schema     (get schemas result-metadata-schema-ref)]
       (testing 'type
-        (is (str/includes? doc "**`type`** nullable enum of :question, :metric, :model.")))
+        (testing type-schema-ref
+          (is (=? {:type "string", :enum [:question :metric :model]}
+                  type-schema))))
       (testing 'result_metadata
-        (is (str/includes? doc "**`result_metadata`** nullable value must be an array of valid results column metadata maps."))))))
+        (testing (pr-str result-metadata-schema-ref)
+          (is (=? {:type        "array"
+                   :description "value must be an array of valid results column metadata maps."
+                   :optional    true}
+                  result-metadata-schema)))))))
 
 (deftest create-a-card
   (testing "POST /api/card"
@@ -770,14 +789,28 @@
 
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
-    (is (= {:errors          {:visualization_settings "Value must be a map."}
-            :specific-errors {:visualization_settings ["Value must be a map., received: \"ABC\""]}}
-           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
+    (is (=? {:errors {:name                   "value must be a non-blank string."
+                      :dataset_query          "Value must be a map."
+                      :display                "value must be a non-blank string."
+                      :visualization_settings "Value must be a map."}
+             :specific-errors {:name                   ["missing required key, received: nil"]
+                               :dataset_query          ["missing required key, received: nil"]
+                               :display                ["missing required key, received: nil"]
+                               :visualization_settings ["Value must be a map., received: \"ABC\""]}}
+            (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))))
 
-    (is (= {:errors          {:parameters "nullable sequence of parameter must be a map with :id and :type keys"}
-            :specific-errors {:parameters ["invalid type, received: \"abc\""]}}
-           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
-                                                              :parameters             "abc"})))))
+(deftest ^:parallel create-card-validation-test-1b
+  (testing "POST /api/card"
+    (is (=? {:errors {:name          "value must be a non-blank string."
+                      :dataset_query "Value must be a map."
+                      :parameters    "nullable sequence of parameter must be a map with :id and :type keys"
+                      :display       "value must be a non-blank string."}
+             :specific-errors {:name          ["missing required key, received: nil"]
+                               :dataset_query ["missing required key, received: nil"]
+                               :parameters    ["invalid type, received: \"abc\""]
+                               :display       ["missing required key, received: nil"]}}
+            (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
+                                                               :parameters             "abc"})))))
 
 (deftest create-card-validation-test-2
   (testing "POST /api/card"
@@ -1749,39 +1782,31 @@
 ;;; |                                        Card updates that impact alerts                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- rasta-alert-not-working [body-map]
-  (mt/email-to :rasta {:subject "One of your alerts has stopped working"
-                       :body    body-map}))
-
-(defn- crowberto-alert-not-working [body-map]
-  (mt/email-to :crowberto {:subject "One of your alerts has stopped working"
-                           :body    body-map}))
-
 (deftest alert-deletion-test
   (doseq [{:keys [message card deleted? expected-email-re f]}
           [{:message           "Archiving a Card should trigger Alert deletion"
             :deleted?          true
             :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was archived by Rasta Toucan"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
            {:message           "Validate changing a display type triggers alert deletion"
             :card              {:display :table}
             :deleted?          true
             :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}
            {:message           "Changing the display type from line to table should force a delete"
             :card              {:display :line}
             :deleted?          true
             :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :table}))}
            {:message           "Removing the goal value will trigger the alert to be deleted"
             :card              {:display                :line
                                 :visualization_settings {:graph.goal_value 10}}
             :deleted?          true
             :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
            {:message           "Adding an additional breakout does not cause the alert to be removed if no goal is set"
             :card              {:display                :line
@@ -1792,9 +1817,8 @@
                                                          [[:field
                                                            (mt/id :checkins :date)
                                                            {:temporal-unit :hour}]])}
-            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
             :deleted?          false
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                        {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
                                                                                  [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
@@ -1810,73 +1834,60 @@
                                                            {:temporal-unit :hour}]])}
             :deleted?          true
             :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
-            :f                 (fn [{:keys [card]}]
+            :f                 (fn [card]
                                  (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                                        {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
                                                                                  [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
                                                                                                      [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
     (testing message
-      (mt/test-helpers-set-global-values!
-        (mt/with-temp
-          [:model/Card           card  card
-           :model/Pulse                 pulse {:alert_condition  "rows"
-                                               :alert_first_only false
-                                               :creator_id       (mt/user->id :rasta)
-                                               :name             "Original Alert Name"}
-
-           :model/PulseCard             _     {:pulse_id (u/the-id pulse)
-                                               :card_id  (u/the-id card)
-                                               :position 0}
-           :model/PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-           :model/PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
-                                               :pulse_channel_id (u/the-id pc)}
-           :model/PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                               :pulse_channel_id (u/the-id pc)}]
-          (mt/with-temporary-setting-values [site-url "https://metabase.com"]
-            (with-cards-in-writeable-collection! card
-              (mt/with-fake-inbox
-                (when deleted?
-                  (u/with-timeout 5000
-                    (mt/with-expected-messages 2
-                      (f {:card card}))
-                    (is (= (merge (crowberto-alert-not-working {(str expected-email-re) true})
-                                  (rasta-alert-not-working     {(str expected-email-re) true}))
-                           (mt/regex-email-bodies expected-email-re))
-                        (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email-re)))))
-                (if deleted?
-                  (is (= nil (t2/select-one :model/Pulse :id (u/the-id pulse)))
-                      "Alert should have been deleted")
-                  (is (not= nil (t2/select-one :model/Pulse :id (u/the-id pulse)))
-                      "Alert should not have been deleted"))))))))))
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (api.notification-test/with-send-messages-sync!
+          (notification.tu/with-card-notification
+            [notification {:card     (merge {:name "YOLO"} card)
+                           :handlers [{:channel_type :channel/email
+                                       :recipients  [{:type    :notification-recipient/user
+                                                      :user_id (mt/user->id :crowberto)}
+                                                     {:type    :notification-recipient/user
+                                                      :user_id (mt/user->id :rasta)}
+                                                     {:type    :notification-recipient/raw-value
+                                                      :details {:value "ngoc@metabase.com"}}]}]}]
+            (when deleted?
+              (let [[email] (notification.tu/with-mock-inbox-email!
+                              (f (->> notification :payload :card_id (t2/select-one :model/Card))))]
+                (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
+                         :subject "One of your alerts has stopped working"
+                         :body    [{(str expected-email-re) true}]}
+                        (mt/summarize-multipart-single-email email expected-email-re)))))
+            (if deleted?
+              (is (= nil (t2/select-one :model/Notification :id (:id notification)))
+                  "Alert should have been deleted")
+              (is (not= nil (t2/select-one :model/Notification :id (:id notification)))
+                  "Alert should not have been deleted"))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
-  (is (= {:emails-1 {}
-          :pulse-1  true
-          :emails-2 {}
-          :pulse-2  true}
-         (mt/with-temp [:model/Card           card  {:display                :line
-                                                     :visualization_settings {:graph.goal_value 10}}
-                        :model/Pulse                 pulse {:alert_condition  "goal"
-                                                            :alert_first_only false
-                                                            :creator_id       (mt/user->id :rasta)
-                                                            :name             "Original Alert Name"}
-                        :model/PulseCard             _     {:pulse_id (u/the-id pulse)
-                                                            :card_id  (u/the-id card)
-                                                            :position 0}
-                        :model/PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-                        :model/PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                                            :pulse_channel_id (u/the-id pc)}]
-           (with-cards-in-writeable-collection! card
-             (mt/with-fake-inbox
-               (array-map
-                :emails-1 (do
-                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :area})
-                            (mt/regex-email-bodies #"the question was edited by Rasta Toucan"))
-                :pulse-1  (boolean (t2/select-one :model/Pulse :id (u/the-id pulse)))
-                :emails-2 (do
-                            (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :bar})
-                            (mt/regex-email-bodies #"the question was edited by Rasta Toucan"))
-                :pulse-2  (boolean (t2/select-one :model/Pulse :id (u/the-id pulse))))))))))
+  (doseq [{:keys [message display]}
+          [{:message "Changing display type from line to area should not delete alert"
+            :display :area}
+           {:message "Changing display type from line to bar should not delete alert"
+            :display :bar}]]
+    (testing message
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (api.notification-test/with-send-messages-sync!
+          (notification.tu/with-card-notification
+            [notification {:card     {:name "Test Card"
+                                      :display :line
+                                      :visualization_settings {:graph.goal_value 10}}
+                           :handlers [{:channel_type :channel/email
+                                       :recipients   [{:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :crowberto)}
+                                                      {:type    :notification-recipient/user
+                                                       :user_id (mt/user->id :rasta)}
+                                                      {:type    :notification-recipient/raw-value
+                                                       :details {:value "ngoc@metabase.com"}}]}]}]
+            (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+              (mt/user-http-request :rasta :put 200 (str "card/" (->> notification :payload :card_id)) {:display display})
+              (is (t2/exists? :model/Notification (:id notification))
+                  "Alert should not have been deleted"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          DELETING A CARD (DEPRECATED)                                          |
@@ -2019,42 +2030,46 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
-(def ^:private ^:const ^String encoded-params
-  (json/encode [{:type   :number
-                 :target [:variable [:template-tag :category]]
-                 :value  2}]))
+(def ^:private ^String test-params
+  [{:type   :number
+    :target [:variable [:template-tag :category]]
+    :value  2}])
 
 (deftest csv-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection! card
-        (is (= ["COUNT(*)"
-                "75"]
-               (str/split-lines
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
-                                                               (u/the-id card)))))))))
+        (let [response (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card)))]
+          (is (= ["COUNT(*)"
+                  "75"]
+                 (cond-> response
+                   (string? response) str/split-lines))))))))
+
+(deftest csv-download-test-2
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
-        (is (= ["COUNT(*)"
-                "8"]
-               (str/split-lines
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
-                                                               (u/the-id card))
-                                      :parameters encoded-params))))))))
+        (let [response (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))
+                                             {:parameters test-params})]
+          (is (= ["COUNT(*)"
+                  "8"]
+                 (cond-> response
+                   (string? response) str/split-lines))))))))
 
 (deftest json-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "75"}]
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) :format_rows true))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) {:format_rows true})))))))
+
+(deftest json-download-test-2
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "8"}]
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) :format_rows true
-                                     :parameters encoded-params)))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
+                                     {:format_rows true, :parameters test-params})))))))
 
 (deftest renamed-column-names-are-applied-to-json-test
   (testing "JSON downloads should have the same columns as displayed in Metabase (#18572)"
@@ -2129,7 +2144,7 @@
           (letfn [(col-names [card-id]
                     (->> (mt/user-http-request :crowberto :post 200
                                                (format "card/%d/query/json" card-id)
-                                               :format_rows true)
+                                               {:format_rows true})
                          first keys (map name) set))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= #{"THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"}
@@ -2157,14 +2172,16 @@
       (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+
+(deftest xlsx-download-test-2
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 8.0}]
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      :parameters encoded-params))))))))
+                                      {:parameters test-params}))))))))
 
 (defn- parse-xlsx-results-to-strings
   "Parse an excel response into a 2-D array of formatted values"
@@ -2192,7 +2209,7 @@
         (is (= [["T"] ["2023-1-1"]]
                (parse-xlsx-results-to-strings
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      :format_rows true))))))))
+                                      {:format_rows true}))))))))
 
 (deftest xlsx-default-currency-formatting-test
   (testing "The default currency is USD"
@@ -2207,7 +2224,7 @@
               ["[$$]123.45"]]
              (parse-xlsx-results-to-strings
               (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                    :format_rows true)))))))
+                                    {:format_rows true})))))))
 
 (deftest xlsx-default-currency-formatting-test-2
   (testing "Default localization settings take effect"
@@ -2224,7 +2241,7 @@
                 ["[$€]123.45"]]
                (parse-xlsx-results-to-strings
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      :format_rows true))))))))
+                                      {:format_rows true}))))))))
 
 (deftest xlsx-currency-formatting-test
   (testing "Currencies are applied correctly in Excel files"
@@ -2247,7 +2264,7 @@
                   ["[$$]123.45" "[$CA$]123.45" "[$€]123.45" "[$¥]123.45"]]
                  (parse-xlsx-results-to-strings
                   (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                        :format_rows true)))))))))
+                                        {:format_rows true})))))))))
 
 (def ^:private excel-data-query
   "with t1 as (
@@ -2389,7 +2406,7 @@
                     ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
                    (parse-xlsx-results-to-strings
                     (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                          :format_rows true))))))))))
+                                          {:format_rows true}))))))))))
 
 (deftest xlsx-full-formatting-test-2
   (testing "Formatting should be applied correctly for all types, including numbers, currencies, exponents, and times. (relates to #14393)"
@@ -2408,10 +2425,10 @@
                     ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$€]3,456.00" "[$EUR] 2300.00" "2,250.00 euros" "12.7181E+4" "95.40%" "11.580%"]]
                    (parse-xlsx-results-to-strings
                     (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                          :format_rows true)))))
+                                          {:format_rows true})))))
           (parse-xlsx-results-to-strings
            (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                 :format_rows true)))))))
+                                 {:format_rows true})))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -2643,7 +2660,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-        ;; testing that we aren't just adding a nil moderation each time we update a card
+          ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
@@ -3395,7 +3412,7 @@
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
 
-(defn upload-example-csv-via-api!
+(defn- upload-example-csv-via-api!
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
   [& {:as args}]
   (mt/with-current-user (mt/user->id :rasta)
@@ -3604,7 +3621,7 @@
                    (->> (mt/user-http-request
                          :crowberto :post 200
                          (format "card/%s/query/%s" card-id (name export-format))
-                         :format_rows apply-formatting?)
+                         {:format_rows apply-formatting?})
                         ((get output-helper export-format)))))))))))
 
 (deftest ^:parallel can-restore
