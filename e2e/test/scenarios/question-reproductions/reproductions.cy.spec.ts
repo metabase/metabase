@@ -84,6 +84,7 @@ describe("issue 39487", () => {
     H.popover().findByText("Filter by this column").click();
     H.popover().findByText("Specific dates…").click();
     H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
     previousButton().click();
     checkDateRangeFilter();

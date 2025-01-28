@@ -293,6 +293,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("January 2025");
 
     // drill into a recent week
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get(".dot").eq(-4).click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("See these Orders").click();
@@ -665,6 +666,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       H.visitQuestionAdhoc(questionDetails);
 
       // Drill-through the last bar (Widget)
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.chartPathWithFillColor("#509EE3").last().click();
       H.popover().findByTextEnsureVisible("See these Products").click();
     });

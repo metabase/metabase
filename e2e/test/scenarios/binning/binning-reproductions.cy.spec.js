@@ -111,6 +111,7 @@ describe("binning related reproductions", () => {
       .findByRole("option", { name: "CREATED_AT" })
       .findByLabelText("Temporal bucket")
       .click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Quarter").click();
 
     H.getNotebookStep("sort").findByText("CREATED_AT: Quarter");

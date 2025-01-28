@@ -241,6 +241,7 @@ describe("scenarios > question > joined questions", () => {
     H.addSummaryField({ metric: "Count of rows" });
     H.addSummaryGroupingField({ table: "Products", field: "ID" });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
     H.joinTable("Reviews");
     H.visualize();
@@ -289,6 +290,7 @@ describe("scenarios > question > joined questions", () => {
 
     cy.findByLabelText("Right column").click();
     H.popover().findByText("by month").click({ force: true });
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Week").click();
 
     assertJoinColumnName("left", "Created At: Week");
@@ -298,6 +300,7 @@ describe("scenarios > question > joined questions", () => {
 
     cy.findByLabelText("Right column").click();
     H.popover().findByText("by week").click({ force: true });
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Day").click();
 
     assertJoinColumnName("left", "Created At: Day");

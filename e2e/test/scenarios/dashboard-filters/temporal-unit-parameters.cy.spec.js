@@ -770,6 +770,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.log("add a temporal unit parameter");
       addTemporalUnitParameter();
       H.selectDashboardFilter(H.getDashboardCard(1), "Created At");
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.undoToastList().last().button("Auto-connect").click();
       H.saveDashboard();
 
