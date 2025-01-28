@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.indexes :as sync.indexes]
    [metabase.test :as mt]
@@ -48,10 +49,12 @@
 
 (deftest all-indexes->fields-ids-many-indexes-test
   (testing "no exception is thrown when there are very many indexes"
-    (is (try (#'sync.indexes/all-indexes->field-ids
-              (:id (mt/db))
-              (repeat 100000 {:table-schema "public",
-                              :table-name "serialization_stats",
-                              :field-name "id"}))
-             true
-             (catch Exception _e false)))))
+    (mt/test-drivers (mt/normal-drivers-with-feature :describe-indexes)
+      (let [database (mt/db)
+            indexes (into [] (driver/describe-indexes (driver.u/database->driver database) database))
+            many-indexes (into indexes (repeat 100000 {:table-schema "public",
+                                                       :table-name "fake_table",
+                                                       :field-name "id"}))
+            field-ids (#'sync.indexes/all-indexes->field-ids (:id database) many-indexes)]
+        (println "number of field ids:" (count field-ids) "field ids" field-ids)
+        (is (= 8 (count field-ids)))))))
