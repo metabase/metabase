@@ -23,10 +23,13 @@ import {
 import { createPortal } from "react-dom";
 import { t } from "ttag";
 
+import { useDocsUrl } from "metabase/common/hooks";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { Box, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
   doesFunctionNameExist,
+  getHelpDocsUrl,
   getHelpText,
 } from "metabase-lib/v1/expressions/helper-text-strings";
 import type { HelpText } from "metabase-lib/v1/expressions/types";
@@ -41,7 +44,8 @@ import { tokenAtPos } from "./suggestions";
 // TODO: Segments/metrics always shown?
 // TODO: highlight currently shown documentation (enclosingFunction)
 // TODO: remove bold from non-existing/unsupported functions
-// TODO: add link to docs
+// TODO: allow using keys after clicking the popover
+// TODO: fix fonts
 
 type State = {
   completions: readonly Completion[];
@@ -212,8 +216,6 @@ export function Tooltip(props: TooltipProps) {
     return null;
   }
 
-  // TODO: allow using keys after clicking the popover
-
   return (
     <div className={css.tooltip}>
       <Help helpText={helpText} />
@@ -303,6 +305,11 @@ function wrapPlaceholder(name: string) {
 
 function Help({ helpText }: { helpText?: HelpText | null }) {
   const [open, setOpen] = useState(true);
+
+  const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
+    helpText ? getHelpDocsUrl(helpText) : "",
+  );
+
   const handleMouseDown = useCallback(
     (evt: React.MouseEvent<HTMLDivElement>) => {
       evt.preventDefault();
@@ -360,6 +367,17 @@ function Help({ helpText }: { helpText?: HelpText | null }) {
                 <Highlight expression={example} />
               </Box>
             </>
+          )}
+
+          {showMetabaseLinks && (
+            <ExternalLink
+              className={css.documentationLink}
+              href={docsUrl}
+              target="_blank"
+            >
+              <Icon m="0.25rem 0.5rem" name="reference" size={12} />
+              {t`Learn more`}
+            </ExternalLink>
           )}
         </Box>
       )}

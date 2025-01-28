@@ -162,6 +162,14 @@
       margin: 0;
     }
   }
+
+  .documentationLink {
+    display: flex;
+    align-items: center;
+    margin-top: 1rem;
+    color: var(--mb-color-brand);
+    font-weight: 700;
+  }
 }
 
 .tooltip {
