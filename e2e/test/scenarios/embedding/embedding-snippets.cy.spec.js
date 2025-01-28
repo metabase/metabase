@@ -53,6 +53,7 @@ features.forEach(feature => {
         .and("contain", "Python")
         .and("contain", "Clojure");
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
 
       H.modal()

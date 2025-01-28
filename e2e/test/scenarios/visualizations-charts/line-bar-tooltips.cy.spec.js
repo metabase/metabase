@@ -1078,11 +1078,13 @@ function resetHoverState() {
 
 function showTooltipForCircleInSeries(seriesColor, index = 0) {
   resetHoverState();
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.cartesianChartCircleWithColor(seriesColor).eq(index).realHover();
 }
 
 function showTooltipForBarInSeries(seriesColor, index = 0) {
   resetHoverState();
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.chartPathWithFillColor(seriesColor).eq(index).realHover();
 }
 

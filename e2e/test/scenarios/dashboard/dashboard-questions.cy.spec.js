@@ -575,6 +575,7 @@ describe("Dashboard > Dashboard Questions", () => {
       // remove the card saved inside the dashboard
       H.editDashboard();
       H.dashboardCards().findByText("Total Orders").realHover();
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.icon("close").last().click();
       H.undoToast().findByText("Removed card");
       H.saveDashboard();
