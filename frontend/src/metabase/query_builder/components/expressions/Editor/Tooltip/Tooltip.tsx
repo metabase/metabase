@@ -20,10 +20,6 @@ import { enclosingFunction } from "../util";
 
 import S from "./Tooltip.module.css";
 
-// TODO: Toggle help description open/close expand
-// TODO: Segments/metrics always shown?
-// TODO: highlight currently shown documentation (enclosingFunction)
-// TODO: remove bold from non-existing/unsupported functions
 // TODO: allow using keys after clicking the popover
 
 export function Tooltip({
