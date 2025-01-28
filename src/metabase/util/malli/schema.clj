@@ -346,21 +346,21 @@
 
 (def Parameter
   "Schema for a valid Parameter.
-  We're not using [metabase.legacy-mbql.schema/Parameter] here because this Parameter is meant to be used for
+  We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter is meant to be used for
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
   (mu/with-api-error-message
-   [:map [:id NonBlankString]
+   [:map
+    [:id   NonBlankString]
     [:type keyword-or-non-blank-str-malli]
      ;; TODO how to merge this with ParameterSource above?
-    [:values_source_type {:optional true} [:enum "static-list" "card" nil]]
+    [:values_source_type   {:optional true} [:enum "static-list" "card" nil]]
     [:values_source_config {:optional true} ValuesSourceConfig]
-    [:slug {:optional true} :string]
-    [:name {:optional true} :string]
-    [:default {:optional true} :any]
-    [:sectionId {:optional true} NonBlankString]
-    [:temporal_units {:optional true}
-     [:sequential ::lib.schema.temporal-bucketing/unit]]]
+    [:slug                 {:optional true} :string]
+    [:name                 {:optional true} :string]
+    [:default              {:optional true} :any]
+    [:sectionId            {:optional true} NonBlankString]
+    [:temporal_units       {:optional true} [:sequential ::lib.schema.temporal-bucketing/unit]]]
    (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping

@@ -15,6 +15,10 @@ import type { ErrorPayload, ReportableEntityName } from "./types";
 
 const defaultErrorPayload: ErrorPayload = {
   url: "http://example.com/question/1",
+  reporter: {
+    name: "John McLane",
+    email: "diehard@metabase.com",
+  },
   frontendErrors: ["Frontend error 1", "Frontend error 2"],
   backendErrors: [
     {
@@ -91,7 +95,7 @@ describe("ErrorDiagnosticsModal", () => {
   it("should show diagnostic modal", () => {
     setup(defaultErrorPayload);
     expect(
-      screen.getByText("Download diagnostic information"),
+      screen.getByText("Gather diagnostic information"),
     ).toBeInTheDocument();
   });
 
@@ -105,6 +109,7 @@ describe("ErrorDiagnosticsModal", () => {
     "dashboard",
     "collection",
     "model",
+    "metric",
   ];
 
   entityNames.forEach(entityName => {
@@ -143,6 +148,15 @@ describe("ErrorDiagnosticsModal", () => {
       ...defaultErrorPayload,
       entityName: "model",
       localizedEntityName: "Model",
+    });
+    expect(screen.getByText(/query results/i)).toBeInTheDocument();
+  });
+
+  it("should show query results checkbox for metrics", () => {
+    setup({
+      ...defaultErrorPayload,
+      entityName: "metric",
+      localizedEntityName: "Metric",
     });
     expect(screen.getByText(/query results/i)).toBeInTheDocument();
   });
@@ -199,9 +213,7 @@ describe("ErrorDiagnosticsModal", () => {
 
     it("should show description textarea with correct label", () => {
       expect(
-        screen.getByText(
-          /what were you trying to do, and what steps did you take\? what was the expected result, and what happened instead\?/i,
-        ),
+        screen.getByText(/Could you provide us with a little context\?/i),
       ).toBeInTheDocument();
     });
 
