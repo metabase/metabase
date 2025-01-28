@@ -17,7 +17,7 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describeEE(
   "scenarios > embedding-sdk > interactive-question > theming",
-  // realHover causes flakiness so a retry is added
+  // realHover color check is flaky 10% of the time so a retry is added
   { retries: { runMode: 2, openMode: 2 } },
   () => {
     beforeEach(() => {
