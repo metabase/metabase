@@ -2,6 +2,7 @@
   /* todo: use correct color */
   background-color: #fafafb;
   color: var(--mb-color-text-primary);
+  font-family: var(--mb-default-font-family);
 }
 
 .usage {
@@ -9,10 +10,12 @@
   font-size: 12px;
   color: var(--mb-color-text-secondary);
   cursor: pointer;
+  font-family: var(--mb-default-monospace-font-family);
 }
 
 .arg {
   color: var(--mb-base-color-lobster-60);
+  font-family: var(--mb-default-monospace-font-family);
 
   &.active {
     background-color: var(--mb-base-color-lobster-20);
@@ -47,6 +50,7 @@
 
   pre {
     margin: 0;
+    font-family: Monaco, monospace;
   }
 }
 

@@ -25,7 +25,6 @@ import S from "./Tooltip.module.css";
 // TODO: highlight currently shown documentation (enclosingFunction)
 // TODO: remove bold from non-existing/unsupported functions
 // TODO: allow using keys after clicking the popover
-// TODO: fix fonts
 
 export function Tooltip({
   query,

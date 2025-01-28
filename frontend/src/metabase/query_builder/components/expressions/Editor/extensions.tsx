@@ -6,7 +6,6 @@ import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
-import { monospaceFontFamily } from "metabase/styled-components/theme";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
@@ -136,7 +135,7 @@ function fonts() {
   const shared = {
     fontSize: "12px",
     lineHeight: "normal",
-    fontFamily: monospaceFontFamily,
+    fontFamily: "var(--mb-default-monospace-font-family)",
   };
 
   return EditorView.theme({
