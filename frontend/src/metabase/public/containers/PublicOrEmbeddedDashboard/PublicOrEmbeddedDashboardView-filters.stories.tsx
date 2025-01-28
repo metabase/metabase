@@ -119,7 +119,7 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
  * This is an arbitrary number, it should be big enough to pass CI tests.
  * This works because we set delays for ExplicitSize to 0 in storybook.
  */
-const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1500;
+const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 2500;
 function WaitForResizeToStopDecorator(Story: StoryFn) {
   const asyncCallback = createAsyncCallback();
   useEffect(() => {
