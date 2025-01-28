@@ -15,7 +15,7 @@ const getDefaultTitle = (isDashboardEmpty: boolean) =>
   isDashboardEmpty ? t`This dashboard is empty` : t`There's nothing here, yet`;
 
 function InlineIcon({ name }: { name: IconName }) {
-  return <Icon name={name} style={{ verticalAlign: " middle" }} />;
+  return <Icon name={name} style={{ verticalAlign: "middle" }} />;
 }
 
 function EmptyStateWrapper({
