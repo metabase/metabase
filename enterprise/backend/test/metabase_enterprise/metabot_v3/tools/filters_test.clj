@@ -103,13 +103,14 @@
                                   :field_granularity "week"}]}
                      {})))))
         (testing "Missing metric results in an error."
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found."
-                                (metabot-v3.tools.interface/*invoke-tool*
-                                 :metabot.tool/query-metric
-                                 {:metric-id Integer/MAX_VALUE}
-                                 {}))))
+          (is (= {:output (str "No metric found with metric_id " Integer/MAX_VALUE)}
+                 (metabot-v3.tools.interface/*invoke-tool*
+                  :metabot.tool/query-metric
+                  {:metric-id Integer/MAX_VALUE}
+                  {}))))
         (testing "Invalid metric-id results in an error."
-          (is (thrown? clojure.lang.ExceptionInfo (metabot-v3.tools.interface/*invoke-tool*
-                                                   :metabot.tool/query-metric
-                                                   {:metric-id "42"}
-                                                   {}))))))))
+          (is (= {:output (str "Invalid metric_id " metric-id)}
+                 (metabot-v3.tools.interface/*invoke-tool*
+                  :metabot.tool/query-metric
+                  {:metric-id (str metric-id)}
+                  {}))))))))
