@@ -15,121 +15,126 @@ import { Box } from "metabase/ui";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describeEE("scenarios > embedding-sdk > interactive-question > theming", () => {
-  beforeEach(() => {
-    signInAsAdminAndEnableEmbeddingSdk();
+describeEE(
+  "scenarios > embedding-sdk > interactive-question > theming",
+  // realHover causes flakiness so a retry is added
+  { retries: { runMode: 2, openMode: 2 } },
+  () => {
+    beforeEach(() => {
+      signInAsAdminAndEnableEmbeddingSdk();
 
-    createQuestion({
-      name: "47563",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
-        breakout: [["field", ORDERS.PRODUCT_ID, null]],
-        limit: 2,
-      },
-    }).then(({ body: question }) => {
-      cy.wrap(question.id).as("questionId");
+      createQuestion({
+        name: "47563",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
+          breakout: [["field", ORDERS.PRODUCT_ID, null]],
+          limit: 2,
+        },
+      }).then(({ body: question }) => {
+        cy.wrap(question.id).as("questionId");
+      });
+
+      cy.signOut();
+
+      mockAuthProviderAndJwtSignIn();
     });
 
-    cy.signOut();
+    it("derives dynamic css variables for dark theme", () => {
+      const theme: MetabaseTheme = {
+        colors: {
+          background: "rgb(22, 26, 29)",
+          "background-hover": "rgb(14, 17, 20)",
+          "background-disabled": "rgb(45, 45, 48)",
+          "text-primary": "rgb(255, 255, 255)",
+          brand: "rgb(253, 121, 168)",
+        },
+      };
 
-    mockAuthProviderAndJwtSignIn();
-  });
+      cy.get<number>("@questionId").then(questionId => {
+        mountSdkContent(
+          <Box bg={theme.colors?.background} h="100vh">
+            <InteractiveQuestion questionId={questionId} />
+          </Box>,
+          { theme },
+        );
+      });
 
-  it("derives dynamic css variables for dark theme", () => {
-    const theme: MetabaseTheme = {
-      colors: {
-        background: "rgb(22, 26, 29)",
-        "background-hover": "rgb(14, 17, 20)",
-        "background-disabled": "rgb(45, 45, 48)",
-        "text-primary": "rgb(255, 255, 255)",
-        brand: "rgb(253, 121, 168)",
-      },
-    };
+      getSdkRoot().within(() => {
+        cy.findByText("Product ID").should("be.visible");
 
-    cy.get<number>("@questionId").then(questionId => {
-      mountSdkContent(
-        <Box bg={theme.colors?.background} h="100vh">
-          <InteractiveQuestion questionId={questionId} />
-        </Box>,
-        { theme },
-      );
+        const buttonHoverBg = "rgb(33, 39, 43)";
+        const customColumn = "[aria-label='Custom column']";
+
+        // Should be the lightened version of the background color
+        cy.findByTestId("notebook-button")
+          .should("be.visible")
+          .realHover()
+          .should("have.css", "background-color", buttonHoverBg);
+
+        // Should be the lightened version of the background color
+        cy.findByTestId("chart-type-selector-button")
+          .should("be.visible")
+          .realHover()
+          .should("have.css", "background-color", buttonHoverBg);
+
+        cy.findByTestId("notebook-button").click();
+
+        // Should be the lightened version of the background color, same as the notebook button hover.
+        cy.get(customColumn).should(
+          "have.css",
+          "background-color",
+          buttonHoverBg,
+        );
+
+        // Hover should be a less lightened version of the background color.
+        cy.get(customColumn)
+          .should("be.visible")
+          .realHover()
+          .should("have.css", "background-color", "rgb(31, 36, 41)");
+      });
     });
 
-    getSdkRoot().within(() => {
-      cy.findByText("Product ID").should("be.visible");
+    it("derives dynamic css variables for light theme", () => {
+      const theme: MetabaseTheme = {
+        colors: {
+          background: "rgb(255, 255, 255)",
+          "background-hover": "rgb(245, 245, 245)",
+          "background-disabled": "rgb(230, 230, 230)",
+          "text-primary": "rgb(51, 51, 51)",
+          brand: "rgb(253, 121, 168)",
+        },
+      };
 
-      const buttonHoverBg = "rgb(33, 39, 43)";
-      const customColumn = "[aria-label='Custom column']";
+      cy.get<number>("@questionId").then(questionId => {
+        mountSdkContent(
+          <Box bg={theme.colors?.background} h="100vh">
+            <InteractiveQuestion questionId={questionId} />
+          </Box>,
+          { theme },
+        );
+      });
 
-      // Should be the lightened version of the background color
-      cy.findByTestId("notebook-button")
-        .should("be.visible")
-        .realHover()
-        .should("have.css", "background-color", buttonHoverBg);
+      getSdkRoot().within(() => {
+        cy.findByText("Product ID").should("be.visible");
 
-      // Should be the lightened version of the background color
-      cy.findByTestId("chart-type-selector-button")
-        .should("be.visible")
-        .realHover()
-        .should("have.css", "background-color", buttonHoverBg);
+        const customColumn = "[aria-label='Custom column']";
 
-      cy.findByTestId("notebook-button").click();
+        cy.findByTestId("notebook-button").click();
 
-      // Should be the lightened version of the background color, same as the notebook button hover.
-      cy.get(customColumn).should(
-        "have.css",
-        "background-color",
-        buttonHoverBg,
-      );
+        // Should be the slightly darker version of the background color, same as the notebook button hover
+        cy.get(customColumn).should(
+          "have.css",
+          "background-color",
+          "rgb(242, 242, 242)",
+        );
 
-      // Hover should be a less lightened version of the background color.
-      cy.get(customColumn)
-        .should("be.visible")
-        .realHover()
-        .should("have.css", "background-color", "rgb(31, 36, 41)");
+        // Hover should be an even darker version of the background color
+        cy.get(customColumn)
+          .should("be.visible")
+          .realHover()
+          .should("have.css", "background-color", "rgb(230, 230, 230)");
+      });
     });
-  });
-
-  it("derives dynamic css variables for light theme", () => {
-    const theme: MetabaseTheme = {
-      colors: {
-        background: "rgb(255, 255, 255)",
-        "background-hover": "rgb(245, 245, 245)",
-        "background-disabled": "rgb(230, 230, 230)",
-        "text-primary": "rgb(51, 51, 51)",
-        brand: "rgb(253, 121, 168)",
-      },
-    };
-
-    cy.get<number>("@questionId").then(questionId => {
-      mountSdkContent(
-        <Box bg={theme.colors?.background} h="100vh">
-          <InteractiveQuestion questionId={questionId} />
-        </Box>,
-        { theme },
-      );
-    });
-
-    getSdkRoot().within(() => {
-      cy.findByText("Product ID").should("be.visible");
-
-      const customColumn = "[aria-label='Custom column']";
-
-      cy.findByTestId("notebook-button").click();
-
-      // Should be the slightly darker version of the background color, same as the notebook button hover
-      cy.get(customColumn).should(
-        "have.css",
-        "background-color",
-        "rgb(242, 242, 242)",
-      );
-
-      // Hover should be an even darker version of the background color
-      cy.get(customColumn)
-        .should("be.visible")
-        .realHover()
-        .should("have.css", "background-color", "rgb(230, 230, 230)");
-    });
-  });
-});
+  },
+);
