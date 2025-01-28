@@ -64,13 +64,13 @@ describe("ActionCreator > Query Actions", () => {
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
       });
 
-      const makePublic = screen.getByRole("checkbox", {
+      const makePublic = screen.getByRole("switch", {
         name: "Make public",
       });
       expect(makePublic).toBeDisabled();
       expect(makePublic).not.toBeChecked();
       await userEvent.hover(makePublic);
-      expect(screen.getByRole("tooltip")).toHaveTextContent(
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
         "To enable creating a shareable link you first need to save your action",
       );
     });
