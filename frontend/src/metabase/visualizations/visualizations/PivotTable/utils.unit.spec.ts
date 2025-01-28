@@ -18,6 +18,18 @@ import {
 } from "./utils";
 
 describe("Visualizations > Visualizations > PivotTable > utils", () => {
+  beforeEach(() => {
+    jest
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockImplementation(function (this: HTMLElement) {
+        return this.innerHTML.length;
+      });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   const cols = [
     createMockColumn({ source: "breakout", name: "field-123" }),
     createMockColumn({ source: "breakout", name: "field-456" }),
