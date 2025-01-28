@@ -8,6 +8,10 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [query-analysis-enabled true]
+                        (thunk))))
+
 (defn- do-with-test-setup! [f]
   (query-analysis/without-analysis
    (t2.with-temp/with-temp [:model/Table      {table-1 :id}  {:name "T1"}
