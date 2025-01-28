@@ -38,6 +38,7 @@ export function modifyPermission(
 }
 
 export function selectPermissionRow(item, permissionIndex) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   getPermissionRowPermissions(item).eq(permissionIndex).click();
 }
 
@@ -79,6 +80,7 @@ export function assertPermissionForItem(
   permissionColumnIndex,
   permissionValue,
 ) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   getPermissionRowPermissions(item)
     .eq(permissionColumnIndex)
     .should("have.text", permissionValue);
@@ -90,6 +92,7 @@ export function assertPermissionForItem(
  * @param {boolean} isDisabled
  */
 export function isPermissionDisabled(index, permission, isDisabled) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy
     .findAllByTestId("permissions-select")
     .eq(index)
