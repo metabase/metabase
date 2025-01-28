@@ -17,7 +17,7 @@ import S from "./Editor.module.css";
 import { Tooltip } from "./Tooltip";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
-import { tokenAtPos } from "./suggestions";
+import { tokenAtPos } from "./util";
 
 type EditorProps = {
   expression: Expression | undefined | null;

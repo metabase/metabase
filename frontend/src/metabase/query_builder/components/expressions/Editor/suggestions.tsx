@@ -23,14 +23,14 @@ import {
 } from "metabase-lib/v1/expressions/config";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import type { SuggestArgs } from "metabase-lib/v1/expressions/suggest";
-import { TOKEN, tokenize } from "metabase-lib/v1/expressions/tokenizer";
 import type {
   HelpText,
   MBQLClauseFunctionConfig,
-  Token,
 } from "metabase-lib/v1/expressions/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+
+import { isFieldReference, isIdentifier, tokenAtPos } from "./util";
 
 type SuggestOptions = Omit<
   SuggestArgs,
@@ -71,30 +71,6 @@ export function suggestions(options: SuggestOptions) {
       },
     ],
   });
-}
-
-export function tokenAtPos(source: string, pos: number): TokenWithText | null {
-  const { tokens } = tokenize(source);
-
-  const idx = tokens.findIndex(token => token.start <= pos && token.end >= pos);
-  if (idx === -1) {
-    return null;
-  }
-
-  const token = tokens[idx];
-  const prevToken = tokens[idx - 1];
-
-  if (
-    prevToken &&
-    prevToken.type === TOKEN.String &&
-    prevToken.end - prevToken.start === 1
-  ) {
-    // dangling single- or double-quote
-    return null;
-  }
-
-  const text = source.slice(token.start, token.end);
-  return { ...token, text };
 }
 
 function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
@@ -408,14 +384,4 @@ function expressionClauseCompletion(
     displayLabel: clause.displayName,
     icon: "function",
   };
-}
-
-type TokenWithText = Token & { text: string };
-
-function isIdentifier(token: TokenWithText | null) {
-  return token != null && token.type === TOKEN.Identifier;
-}
-
-function isFieldReference(token: TokenWithText | null) {
-  return token != null && isIdentifier(token) && token.text.startsWith("[");
 }
