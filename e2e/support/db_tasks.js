@@ -33,16 +33,20 @@ export async function connectAndQueryDB({ connectionConfig, query }) {
   }
 }
 
+/**
+ * For postgres, drops all schemas except for public, and drops all tables from the public schema.
+ *
+ * For mysql, drops all user created tables from the writable_db database.
+ */
 export async function resetWritableDb({ type = "postgres" }) {
   const dbClient = getDbClient(WRITABLE_DB_CONFIG[type]);
 
   if (type === "postgres") {
-    const dontDrop = /^pg_|information_schema/;
+    const dontDrop = /^pg_|information_schema|public/;
 
     const { rows: schemas } = await dbClient.raw(
       "SELECT nspname as name FROM pg_namespace;",
     );
-    console.log({ schemas });
 
     if (!schemas?.length) {
       return null;
@@ -54,7 +58,17 @@ export async function resetWritableDb({ type = "postgres" }) {
       }
     }
 
-    await dbClient.raw("CREATE SCHEMA public");
+    const { rows: tables } = await dbClient.raw(
+      "SELECT table_name as name FROM information_schema.tables WHERE table_schema = 'public'",
+    );
+
+    if (!tables?.length) {
+      return null;
+    }
+
+    for (const table of tables) {
+      await dbClient.raw(`DROP TABLE public.${table.name};`);
+    }
   } else if (type === "mysql") {
     const { rows: tables } = await dbClient.raw(
       "SELECT table_name as name FROM information_schema.tables WHERE table_schema = 'writable_db';",
