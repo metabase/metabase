@@ -32,6 +32,11 @@ export const useFilterModal = (
     [groupItems, searchText, isSearching],
   );
 
+  // to reset internal state of filter components
+  const forceDescendantsRemount = () => {
+    setVersion(version => version + 1);
+  };
+
   const onInput = () => {
     if (!isChanged) {
       setIsChanged(true);
@@ -47,8 +52,7 @@ export const useFilterModal = (
 
   const onReset = () => {
     onQueryChange(removeFilters(query));
-    // to reset internal state of filter components
-    setVersion(version => version + 1);
+    forceDescendantsRemount();
   };
 
   const onSubmit = () => {
@@ -58,6 +62,7 @@ export const useFilterModal = (
   const onSearchTextChange = (searchText: string) => {
     setTab(isSearchActive(searchText) ? SEARCH_KEY : groupItems[0]?.key);
     setSearchText(searchText);
+    forceDescendantsRemount();
   };
 
   return {

@@ -28,6 +28,7 @@ export function FilterModal({
     groupItems,
     isChanged,
     searchText,
+    version,
     onReset,
     onSearchTextChange,
     onSubmit,
@@ -56,12 +57,11 @@ export function FilterModal({
           <Modal.Body className={S.ModalBody} p={0}>
             <FilterModalBody
               /**
-               * Force-remount when search query changes to re-initialize the state
-               * of descendant components and their hooks.
+               * Force-remount to re-initialize the state of descendant components and their hooks.
                *
                * @see https://github.com/metabase/metabase/issues/48319
                */
-              key={searchText}
+              key={version}
             />
           </Modal.Body>
           <Flex
