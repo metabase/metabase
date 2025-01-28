@@ -32,6 +32,8 @@ dataset_query:
         - 0.9
       - name: Percentile 90 of query running time
         display-name: Percentile 90 of query running time
+    aggregation-idents:
+      0: aggregation_aC-dZfkgNTINqvVTNKfCV@0__0
     breakout:
     - - field
       - started_at
@@ -40,6 +42,9 @@ dataset_query:
     - - field
       - cache_hit
       - base-type: type/Boolean
+    breakout-idents:
+      0: breakout_aC-dZfkgNTINqvVTNKfCV@0__0
+      1: breakout_aC-dZfkgNTINqvVTNKfCV@0__1
     filter:
     - and
     - - time-interval
@@ -56,7 +61,7 @@ dataset_query:
   type: query
 result_metadata:
 - base_type: type/DateTime
-  display_name: Started At
+  display_name: 'Started At: Week'
   effective_type: type/DateTime
   field_ref:
   - field
@@ -115,6 +120,7 @@ serdes/meta:
   label: 90th_percentile_of_query_run_time__seconds_
   model: Card
 archived_directly: false
+dashboard_id: Glqmoytsnu0n6rfLUjock
 metabase_version: vUNKNOWN (9aa572c)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

@@ -103,6 +103,7 @@ dataset_query:
           - entity_id
         - base-type: type/Integer
           join-alias: Content - Card Qualified
+      ident: join_7FLoE9kUELG4Ess6DsSEY@0__Content - Card Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Content - Dashboard Qualified
@@ -136,6 +137,7 @@ dataset_query:
           - entity_id
         - base-type: type/Integer
           join-alias: Content - Dashboard Qualified
+      ident: join_7FLoE9kUELG4Ess6DsSEY@0__Content - Dashboard Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Databases - Database Qualified
@@ -169,6 +171,7 @@ dataset_query:
           - name
         - base-type: type/Text
           join-alias: Databases - Database Qualified
+      ident: join_7FLoE9kUELG4Ess6DsSEY@0__Databases - Database Qualified
       source-table: -19557ZnrWiDgG4h4cKxF
       strategy: left-join
     - alias: People - User
@@ -202,6 +205,7 @@ dataset_query:
           - full_name
         - base-type: type/Text
           join-alias: People - User
+      ident: join_7FLoE9kUELG4Ess6DsSEY@0__People - User
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     limit: 200
@@ -822,6 +826,7 @@ serdes/meta:
   label: last_downloads
   model: Card
 archived_directly: false
+dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
 metabase_version: vUNKNOWN (a98530f)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

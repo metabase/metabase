@@ -197,6 +197,7 @@ serdes/meta:
   label: system_tasks
   model: Card
 archived_directly: false
+dashboard_id: null
 metabase_version: vUNKNOWN (1308cef)
 source_card_id: null
 type: model

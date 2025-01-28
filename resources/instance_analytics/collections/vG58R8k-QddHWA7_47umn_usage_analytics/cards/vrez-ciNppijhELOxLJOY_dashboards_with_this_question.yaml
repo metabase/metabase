@@ -48,6 +48,7 @@ dataset_query:
         - base-type: type/Text
           join-alias: Content - Card Qualified
       fields: none
+      ident: join_vrez-ciNppijhELOxLJOY@0__Content - Card Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Content - Dashboard Qualified
@@ -81,6 +82,7 @@ dataset_query:
           - name
         - base-type: type/Text
           join-alias: Content - Dashboard Qualified
+      ident: join_vrez-ciNppijhELOxLJOY@0__Content - Dashboard Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     order-by:
@@ -223,6 +225,7 @@ serdes/meta:
   label: dashboards_with_this_question
   model: Card
 archived_directly: false
+dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
 metabase_version: vUNKNOWN (13e6090)
 source_card_id: pKdvc0pwu1zDi8NqnyJkt
 type: question

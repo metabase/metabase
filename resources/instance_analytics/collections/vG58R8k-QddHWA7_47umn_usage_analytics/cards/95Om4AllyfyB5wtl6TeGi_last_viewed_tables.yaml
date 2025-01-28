@@ -85,6 +85,7 @@ dataset_query:
           - database_id
         - base-type: type/Integer
           join-alias: Tables - Entity Qualified
+      ident: join_95Om4AllyfyB5wtl6TeGi@0__Tables - Entity Qualified
       source-table: x7GwgNdjfzrpQkKTraaqo
       strategy: left-join
     - alias: People - User
@@ -104,6 +105,7 @@ dataset_query:
         - base-type: type/Integer
           join-alias: People - User
       fields: none
+      ident: join_95Om4AllyfyB5wtl6TeGi@0__People - User
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     limit: 200
@@ -367,6 +369,7 @@ serdes/meta:
   label: last_viewed_tables
   model: Card
 archived_directly: false
+dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: vUNKNOWN (ad99d37)
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

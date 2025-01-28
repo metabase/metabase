@@ -67,6 +67,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+    - stage-number: 0
   - card_id: MUXrck2HHcd2TIRuPfK0v
     parameter_id: 124adfb8
     target:
@@ -77,6 +78,7 @@ dashcards:
         - v_users
         - full_name
       - join-alias: People - Creator
+    - stage-number: 0
   - card_id: MUXrck2HHcd2TIRuPfK0v
     parameter_id: '5e162806'
     target:
@@ -87,6 +89,7 @@ dashcards:
         - v_users
         - is_active
       - join-alias: People - Creator
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings:
@@ -157,6 +160,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+    - stage-number: 0
   - card_id: _lfXwss_MckZBidbcJsgk
     parameter_id: 124adfb8
     target:
@@ -167,6 +171,7 @@ dashcards:
         - v_users
         - full_name
       - join-alias: People - Creator
+    - stage-number: 0
   - card_id: _lfXwss_MckZBidbcJsgk
     parameter_id: '5e162806'
     target:
@@ -177,6 +182,7 @@ dashcards:
         - v_users
         - is_active
       - join-alias: People - Creator
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings:
@@ -248,6 +254,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+    - stage-number: 0
   - card_id: ItdtatOMd0uUEpvx7tDAC
     parameter_id: 124adfb8
     target:
@@ -258,6 +265,7 @@ dashcards:
         - v_users
         - full_name
       - join-alias: People - User
+    - stage-number: 0
   - card_id: ItdtatOMd0uUEpvx7tDAC
     parameter_id: '5e162806'
     target:
@@ -268,6 +276,7 @@ dashcards:
         - v_users
         - is_active
       - join-alias: People - User
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -296,6 +305,7 @@ dashcards:
         - v_users
         - is_active
       - join-alias: People - Creator
+    - stage-number: 0
   - card_id: 57V11my5MYVnSlaJYM8cX
     parameter_id: 124adfb8
     target:
@@ -306,6 +316,7 @@ dashcards:
         - v_users
         - full_name
       - join-alias: People - Creator
+    - stage-number: 0
   - card_id: 57V11my5MYVnSlaJYM8cX
     parameter_id: 27bf158b
     target:
@@ -316,6 +327,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings:

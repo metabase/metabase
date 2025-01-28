@@ -48,6 +48,7 @@ dashcards:
         - full_name
       - base-type: type/Text
         join-alias: People - Creator
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings:
@@ -64,7 +65,9 @@ dashcards:
               target:
                 id: 6b3da96f
                 type: parameter
-          tabId: ["DHMhMa1FYxiyIgM7_xdgR", "VLzpbzPlShrECFp-dG4pH"]
+          tabId:
+          - DHMhMa1FYxiyIgM7_xdgR
+          - VLzpbzPlShrECFp-dG4pH
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
       '["name","name"]':
@@ -99,6 +102,7 @@ dashcards:
         - full_name
       - base-type: type/Text
         join-alias: People - Creator
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings:
@@ -115,7 +119,9 @@ dashcards:
               target:
                 id: 6b3da96f
                 type: parameter
-          tabId: ["DHMhMa1FYxiyIgM7_xdgR", "VLzpbzPlShrECFp-dG4pH"]
+          tabId:
+          - DHMhMa1FYxiyIgM7_xdgR
+          - VLzpbzPlShrECFp-dG4pH
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
   serdes/meta:

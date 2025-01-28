@@ -625,6 +625,7 @@ serdes/meta:
   label: content
   model: Card
 archived_directly: false
+dashboard_id: null
 metabase_version: null
 source_card_id: null
 type: model

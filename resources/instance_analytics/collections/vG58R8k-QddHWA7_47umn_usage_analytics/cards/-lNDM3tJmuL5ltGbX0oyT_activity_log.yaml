@@ -309,6 +309,7 @@ serdes/meta:
   label: activity_log
   model: Card
 archived_directly: false
+dashboard_id: null
 metabase_version: null
 source_card_id: null
 type: model
