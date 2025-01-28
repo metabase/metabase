@@ -32,6 +32,45 @@ export async function connectAndQueryDB({ connectionConfig, query }) {
     return result;
   }
 }
+
+export async function resetWritableDb({ type = "postgres" }) {
+  const dbClient = getDbClient(WRITABLE_DB_CONFIG[type]);
+
+  if (type === "postgres") {
+    const dontDrop = /^pg_|information_schema/;
+
+    const { rows: schemas } = await dbClient.raw(
+      "SELECT nspname as name FROM pg_namespace;",
+    );
+    console.log({ schemas });
+
+    if (!schemas?.length) {
+      return null;
+    }
+
+    for (const schema of schemas) {
+      if (!dontDrop.test(schema.name)) {
+        await dbClient.raw(`DROP SCHEMA "${schema.name}" CASCADE;`);
+      }
+    }
+
+    await dbClient.raw("CREATE SCHEMA public");
+  } else if (type === "mysql") {
+    const { rows: tables } = await dbClient.raw(
+      "SELECT table_name as name FROM information_schema.tables WHERE table_schema = 'writable_db';",
+    );
+
+    if (!tables?.length) {
+      return null;
+    }
+
+    for (const table of tables) {
+      await dbClient.raw(`DROP TABLE ${table.name};`);
+    }
+  }
+  return null;
+}
+
 export async function resetTable({ type = "postgres", table = "testTable1" }) {
   const dbClient = getDbClient(WRITABLE_DB_CONFIG[type]);
 

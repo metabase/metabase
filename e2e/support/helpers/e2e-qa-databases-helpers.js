@@ -216,6 +216,11 @@ export function queryWritableDB(query, type = "postgres") {
   });
 }
 
+export function resetWritableDb({ type = "postgres" }) {
+  cy.log(`Resetting ${type} writable DB`);
+  cy.task("resetWritableDb", { type });
+}
+
 export function resetTestTable({ type, table }) {
   cy.task("resetTable", { type, table });
 }
