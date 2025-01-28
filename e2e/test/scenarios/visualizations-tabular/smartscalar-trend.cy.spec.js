@@ -208,6 +208,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     cy.button("Add comparison").should("be.disabled");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findByTestId("comparison-list")
       .children()
       .last()

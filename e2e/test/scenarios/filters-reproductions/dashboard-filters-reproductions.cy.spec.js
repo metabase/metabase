@@ -879,6 +879,7 @@ describe("issue 19494", () => {
   function connectFilterToCard({ filterName, cardPosition }) {
     cy.findByText(filterName).find(".Icon-gear").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText("Select…").eq(cardPosition).click();
 
     H.popover().contains("Category").click();
@@ -3613,9 +3614,11 @@ describe("issue 34955", () => {
 
       H.saveDashboard();
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("column-header")
         .eq(-2)
         .should("have.text", "Created At");
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("column-header").eq(-1).should("have.text", ccName);
       cy.findAllByTestId("cell-data")
         .filter(":contains(May 15, 2024, 8:04 AM)")
@@ -3627,6 +3630,7 @@ describe("issue 34955", () => {
     cy.get("@dashboardId").then(dashboard_id => {
       // Apply filter through URL to prevent the typing flakes
       cy.visit(`/dashboard/${dashboard_id}?on=&between=2024-01-01~2024-03-01`);
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("field-set-content")
         .last()
         .should("contain", "January 1, 2024 - March 1, 2024");

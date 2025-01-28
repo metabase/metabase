@@ -49,6 +49,7 @@ describe("scenarios > dashboard > filters > number", () => {
 
     DASHBOARD_NUMBER_FILTERS.forEach(
       ({ operator, value, representativeResult }, index) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         addWidgetNumberFilter(value);
         cy.wait("@dashboardData");

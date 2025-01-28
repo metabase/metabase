@@ -510,6 +510,7 @@ function setSearchFilter(label) {
     H.fieldValuesInput().type(label);
   });
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.popover().last().findByText(label).click();
   H.popover().within(() => {
     H.fieldValuesValue(0).should("be.visible").should("contain", label);
