@@ -72,9 +72,6 @@
 
 (defn- add-breakout
   [query {:keys [column field_granularity]}]
-  (when (and field_granularity
-             (not (lib.types.isa/temporal? column)))
-    (throw (ex-info "field_granularity can only be specified for date fields" {:agent-error? true})))
   (let [expr (cond-> column
                (and field_granularity
                     (lib.types.isa/temporal? column))
@@ -83,24 +80,28 @@
 
 (defn- query-metric
   [{:keys [metric-id filters group-by] :as _arguments}]
-  (when-let [card (api.card/get-card metric-id)]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
-          base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
-                          lib/remove-all-breakouts)
-          visible-cols (lib/visible-columns base-query)
-          filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
-          query (as-> base-query $q
-                  (reduce add-filter $q (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) filters))
-                  (reduce add-breakout $q (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) group-by)))
-          query-id (u/generate-nano-id)
-          query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
-          returned-cols (lib/returned-columns query)]
-      {:type :query
-       :query_id query-id
-       :query (lib.convert/->legacy-MBQL query)
-       :result_columns (into []
-                             (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 query-field-id-prefix))
-                             returned-cols)})))
+  (let [card (api.card/get-card metric-id)
+        mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
+        base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
+                        lib/remove-all-breakouts)
+        visible-cols (lib/visible-columns base-query)
+        filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
+        query (as-> base-query $q
+                (reduce add-filter
+                        $q
+                        (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) filters))
+                (reduce add-breakout
+                        $q
+                        (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) group-by)))
+        query-id (u/generate-nano-id)
+        query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
+        returned-cols (lib/returned-columns query)]
+    {:type :query
+     :query_id query-id
+     :query (lib.convert/->legacy-MBQL query)
+     :result_columns (into []
+                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                           returned-cols)}))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})]
@@ -109,13 +110,15 @@
   -)
 
 (mu/defmethod metabot-v3.tools.interface/*invoke-tool* :metabot.tool/query-metric
-  [_tool-name arguments _e]
+  [_tool-name {:keys [metric-id] :as arguments} _e]
   (try
-    (if-let [result (query-metric arguments)]
-      {:structured-output result}
-      {:output "metric not found"})
+    (if (int? metric-id)
+      {:structured-output (query-metric arguments)}
+      {:output (str "Invalid metric_id " metric-id)})
     (catch Exception e
-      (metabot-v3.tools.u/handle-agent-error e))))
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (str "No metric found with metric_id " metric-id)}
+        (metabot-v3.tools.u/handle-agent-error e)))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -184,7 +187,7 @@
      :query_id query-id
      :query (lib.convert/->legacy-MBQL query)
      :result_columns (into []
-                           (map-indexed #(metabot-v3.tools.u/->result-column %2 %1 query-field-id-prefix))
+                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            (lib/returned-columns query))}))
 
 (comment
