@@ -1,2 +1,2 @@
 export { Highlight } from "./Highlight";
-export { highlight } from "./util";
+export { highlight, highlightStyle } from "./util";
