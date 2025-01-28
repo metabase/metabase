@@ -324,7 +324,7 @@
                                                                                          (fn [x]
                                                                                            (cond-> x
                                                                                              (string? x) json/decode+kw))}
-                                                                                        :map]]
+                                                                                        [:sequential :map]]]
                                                       [:format_rows   {:default false} ms/BooleanValue]
                                                       [:pivot_results {:default false} ms/BooleanValue]]]
   (validation/check-public-sharing-enabled)
