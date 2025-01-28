@@ -6,6 +6,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import { getCardsColumns } from "../../model";
 import { getXAxisModel, getYAxesModels } from "../../model/axis";
@@ -58,6 +59,7 @@ export function getScatterPlotModel(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   hiddenSeries: string[],
+  VISUALIZER_DATA: VisualizerHistoryItem | undefined,
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): ScatterPlotModel {

@@ -21,6 +21,7 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
@@ -124,6 +125,8 @@ export interface VisualizationProps {
 
   visualizationIsClickable: (clickObject?: ClickObject) => boolean;
   getExtraDataForClick?: (clickObject?: ClickObject) => Record<string, unknown>;
+
+  VISUALIZER_DATA?: VisualizerHistoryItem;
 
   onRender: ({
     yAxisSplit,

@@ -29,6 +29,7 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
+import { parseDataSourceId } from "metabase/visualizer/utils";
 import type {
   CardId,
   DatasetColumn,
@@ -38,6 +39,7 @@ import type {
   SeriesSettings,
   SingleSeries,
 } from "metabase-types/api";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -119,6 +121,7 @@ export const getCardsSeriesModels = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
   hiddenSeries: string[],
+  VISUALIZER_DATA: VisualizerHistoryItem | undefined,
   settings: ComputedVisualizationSettings,
 ) => {
   const hasMultipleCards = rawSeries.length > 1;
@@ -129,6 +132,7 @@ export const getCardsSeriesModels = (
       cardDataset,
       cardColumns,
       hiddenSeries,
+      VISUALIZER_DATA,
       hasMultipleCards,
       index === 0,
       settings,
@@ -150,6 +154,7 @@ export const getCardSeriesModels = (
   { card, data }: SingleSeries,
   columns: CartesianChartColumns,
   hiddenSeries: string[],
+  VISUALIZER_DATA: VisualizerHistoryItem | undefined,
   hasMultipleCards: boolean,
   isFirstCard: boolean,
   settings: ComputedVisualizationSettings,
@@ -194,7 +199,9 @@ export const getCardSeriesModels = (
         tooltipName,
         color,
         visible: !hiddenSeries.includes(dataKey),
-        cardId,
+        cardId: VISUALIZER_DATA
+          ? findVisualizerColumnCardId(metric.column, VISUALIZER_DATA)
+          : cardId,
         column: metric.column,
         columnIndex: metric.index,
         dataKey,
@@ -271,6 +278,18 @@ export const getCardSeriesModels = (
           : undefined,
     };
   });
+};
+
+const findVisualizerColumnCardId = (
+  column: DatasetColumn,
+  VISUALIZER_DATA: VisualizerHistoryItem,
+) => {
+  const [valueSource] =
+    VISUALIZER_DATA?.columnValuesMapping?.[column.name] ?? [];
+  if (typeof valueSource !== "string") {
+    return parseDataSourceId(valueSource.sourceId).sourceId;
+  }
+  return null;
 };
 
 export const getDimensionModel = (

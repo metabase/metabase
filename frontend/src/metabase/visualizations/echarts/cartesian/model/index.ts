@@ -26,6 +26,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
+import type { VisualizerHistoryItem } from "metabase-types/store/visualizer";
 
 import type { ShowWarning } from "../../types";
 
@@ -83,6 +84,7 @@ export const getCartesianChartModel = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   hiddenSeries: string[],
+  VISUALIZER_DATA: VisualizerHistoryItem | undefined,
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): CartesianChartModel => {
@@ -95,6 +97,7 @@ export const getCartesianChartModel = (
     rawSeries,
     cardsColumns,
     hiddenSeries,
+    VISUALIZER_DATA,
     settings,
   );
 
