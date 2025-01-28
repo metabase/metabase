@@ -47,11 +47,6 @@ export const THEME_DEPENDENT_CSS_VARS: Record<
     source: { dark: "bg-white" },
     dark: { lighten: 0.5 },
   },
-  "--mb-color-brand-light": {
-    source: "brand",
-    light: { lighten: 0.2 },
-    dark: { lighten: 0.1 },
-  },
 };
 
 const isColorDefined = (color: string) =>

@@ -11,7 +11,7 @@
     background: var(--mb-color-brand);
 
     &:hover {
-      background: var(--mb-color-brand-light);
+      background: color-mix(in srgb, var(--mb-color-brand), transparent 20%);
     }
   }
 }
