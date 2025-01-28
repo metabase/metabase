@@ -336,6 +336,7 @@ describe("scenarios > dashboard > title drill", () => {
         H.queryBuilderMain().findByText("53").should("be.visible");
 
         // make sure the unset id parameter works
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().last().click();
         H.popover().within(() => {
           H.fieldValuesInput().type("5");

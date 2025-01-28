@@ -122,6 +122,7 @@ describe("scenarios > embedding > questions", () => {
     H.echartsContainer().should("contain", "60");
 
     // Check the tooltip for the last point on the line
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().last().trigger("mousemove");
 
     H.assertEChartsTooltip({

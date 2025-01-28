@@ -45,6 +45,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.get("input").first().type("/foo/{{my_number}}/{{my_param}}", {
           parseSpecialCharSequences: false,
         });
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.get("input")
           .last()
           .type("column value: {{my_number}}", {
@@ -286,6 +287,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.get("input")
           .first()
           .type(`/dashboard/${dashboardId}?my_param=Aaron Hand`, { delay: 0 });
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.get("input").last().type("Click behavior", { delay: 0 }).blur();
         cy.button("Done").click();
       });
@@ -990,6 +992,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     function postDrillAssertion(filterName) {
       cy.findByTestId("qb-filters-panel").findByText(filterName).click();
       H.popover().within(() => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByRole("combobox")
           .last()
           .should("contain", "1")
