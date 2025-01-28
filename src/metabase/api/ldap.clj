@@ -2,8 +2,8 @@
   "/api/ldap endpoints"
   (:require
    [clojure.set :as set]
-   [compojure.core :refer [PUT]]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.integrations.ldap :as ldap]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -98,11 +98,12 @@
       current-password
       new-password)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/settings"
+(api.macros/defendpoint :put "/settings"
   "Update LDAP related settings. You must be a superuser to do this."
-  [:as {settings :body}]
-  {settings :map}
+  ;; TODO -- add `:ldap-port` and `:ldap-password` to the body schema and use Malli decoding for `:ldap-port`
+  [_route-params
+   _query-params
+   settings :- :map]
   (api/check-superuser)
   (let [ldap-settings (-> settings
                           (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
@@ -113,7 +114,8 @@
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
       (t2/with-transaction [_conn]
-       ;; We need to update the ldap settings before we update ldap-enabled, as the ldap-enabled setter tests the ldap settings
+       ;; We need to update the ldap settings before we update ldap-enabled, as the ldap-enabled setter tests the ldap
+       ;; settings
         (setting/set-many! ldap-settings)
         (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
       ;; test failed, return result message

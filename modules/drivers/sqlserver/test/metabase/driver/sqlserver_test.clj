@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -239,6 +240,55 @@
            ;; rollback transaction so `temp` table gets discarded
            (finally
              (.rollback conn))))))))
+
+(deftest ^:parallel locale-week-test
+  (mt/test-driver :sqlserver
+    (testing "Make sure aggregating by week starts weeks on the appropriate day regardless of the value of DATEFIRST"
+      ;; we're manually sending sql to the database instead of using process-query because setting DATEFIRST doesn't
+      ;; persist otherwise
+      (sql-jdbc.execute/do-with-connection-with-options
+       :sqlserver
+       (mt/db)
+       {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
+       (fn [^java.sql.Connection conn]
+         (doseq [datefirst (range 1 8)]
+           (binding [driver.common/*start-of-week* :sunday]
+             (let [{:keys [query params]} (qp.compile/compile (mt/mbql-query users
+                                                                {:aggregation [["count"]]
+                                                                 :breakout [!week.last_login]
+                                                                 :filter [:= $name "Plato Yeshua"]}))
+                   sql (format "SET DATEFIRST %d; %s" datefirst query)]
+               (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
+                           rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
+                 (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))
+                       row (row-thunk)]
+                   (is (= [#t "2014-03-30T00:00" 1]
+                          row))))))))))))
+
+(deftest ^:parallel locale-day-of-week-test
+  (mt/test-driver :sqlserver
+    (testing "Make sure aggregating by day of week starts weeks on the appropriate day regardless of the value of
+    DATEFIRST"
+      ;; we're manually sending sql to the database instead of using process-query because setting DATEFIRST doesn't
+      ;; persist otherwise
+      (sql-jdbc.execute/do-with-connection-with-options
+       :sqlserver
+       (mt/db)
+       {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
+       (fn [^java.sql.Connection conn]
+         (doseq [datefirst (range 1 8)]
+           (binding [driver.common/*start-of-week* :sunday]
+             (let [{:keys [query params]} (qp.compile/compile (mt/mbql-query users
+                                                                {:aggregation [["count"]]
+                                                                 :breakout [!day-of-week.last_login]
+                                                                 :filter [:= $name "Plato Yeshua"]}))
+                   sql (format "SET DATEFIRST %d; %s" datefirst query)]
+               (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
+                           rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
+                 (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))
+                       row (row-thunk)]
+                   (is (= [3 1]
+                          row))))))))))))
 
 (deftest ^:parallel inline-value-test
   (mt/test-driver :sqlserver
