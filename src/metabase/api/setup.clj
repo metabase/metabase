@@ -14,12 +14,13 @@
    [metabase.integrations.slack :as slack]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.session :refer [Session]]
+   [metabase.models.session :as session]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.server.request.util :as req.util]
    [metabase.setup :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -45,7 +46,7 @@
   to. This var is redef'd to false by certain tests to allow that."
   false)
 
-(defn- setup-create-user! [{:keys [email first-name last-name password]}]
+(defn- setup-create-user! [{:keys [email first-name last-name password device-info]}]
   (when (and (setup/has-user-setup)
              (not *allow-api-setup-after-first-user-is-created*))
     ;; many tests use /api/setup to setup multiple users, so *allow-api-setup-after-first-user-is-created* is
@@ -53,8 +54,7 @@
     (throw (ex-info
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
             {:status-code 403})))
-  (let [session-id (str (random-uuid))
-        new-user   (first (t2/insert-returning-instances! User
+  (let [new-user   (first (t2/insert-returning-instances! User
                                                           :email        email
                                                           :first_name   first-name
                                                           :last_name    last-name
@@ -64,11 +64,9 @@
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
-    (let [session (first (t2/insert-returning-instances! Session
-                                                         :id      session-id
-                                                         :user_id user-id))]
+    (let [session (session/create-session! :password new-user device-info)]
       ;; return user ID, session ID, and the Session object itself
-      {:session-id session-id, :user-id user-id, :session session})))
+      {:session-id (:id session), :user-id user-id, :session session})))
 
 (defn- setup-maybe-create-and-invite-user! [{:keys [email] :as user}, invitor]
   (when email
@@ -125,7 +123,8 @@
                 (let [user-info (setup-create-user! {:email email
                                                      :first-name first_name
                                                      :last-name last_name
-                                                     :password password})]
+                                                     :password password
+                                                     :device-info (req.util/device-info request)})]
                   (setup-maybe-create-and-invite-user! {:email invited_email,
                                                         :first_name invited_first_name,
                                                         :last_name invited_last_name}
@@ -143,7 +142,6 @@
       (events/publish-event! :event/user-login {:user-id user-id})
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))
-      (snowplow/track-event! ::snowplow/account {:event :new-user-created} user-id)
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 

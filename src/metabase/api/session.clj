@@ -3,7 +3,6 @@
   (:require
    [compojure.core :refer [DELETE GET POST]]
    [java-time.api :as t]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.ldap :as api.ldap]
    [metabase.config :as config]
@@ -11,8 +10,7 @@
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]
-   [metabase.models.login-history :refer [LoginHistory]]
-   [metabase.models.session :refer [Session]]
+   [metabase.models.session :as session]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
@@ -30,58 +28,6 @@
    (com.unboundid.util LDAPSDKException)))
 
 (set! *warn-on-reflection* true)
-
-(mu/defn- record-login-history!
-  [session-id  :- uuid?
-   user-id     :- ms/PositiveInt
-   device-info :- req.util/DeviceInfo]
-  (t2/insert! LoginHistory (merge {:user_id    user-id
-                                   :session_id (str session-id)}
-                                  device-info)))
-
-(defmulti create-session!
-  "Generate a new Session for a User. `session-type` is the currently either `:password` (for email + password login) or
-  `:sso` (for other login types). Returns the newly generated Session."
-  {:arglists '(^java.util.UUID [session-type user device-info])}
-  (fn [session-type & _]
-    session-type))
-
-(def ^:private CreateSessionUserInfo
-  [:map
-   [:id          ms/PositiveInt]
-   [:last_login :any]])
-
-(def ^:private SessionSchema
-  [:and
-   [:map-of :keyword :any]
-   [:map
-    [:id   uuid?]
-    [:type [:enum :normal :full-app-embed]]]])
-
-(mu/defmethod create-session! :sso :- SessionSchema
-  [_ user :- CreateSessionUserInfo device-info :- req.util/DeviceInfo]
-  (let [session-uuid (random-uuid)
-        session      (first (t2/insert-returning-instances! Session
-                                                            :id      (str session-uuid)
-                                                            :user_id (u/the-id user)))]
-    (assert (map? session))
-    (let [event {:user-id (u/the-id user)}]
-      (events/publish-event! :event/user-login event)
-      (when (nil? (:last_login user))
-        (events/publish-event! :event/user-joined event)))
-    (record-login-history! session-uuid (u/the-id user) device-info)
-    (when-not (:last_login user)
-      (snowplow/track-event! ::snowplow/account {:event :new-user-created} (u/the-id user)))
-    (assoc session :id session-uuid)))
-
-(mu/defmethod create-session! :password :- SessionSchema
-  [session-type
-   user         :- CreateSessionUserInfo
-   device-info  :- req.util/DeviceInfo]
-  ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
-  (when-not (public-settings/enable-password-login)
-    (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
-  ((get-method create-session! :sso) session-type user device-info))
 
 ;;; ## API Endpoints
 
@@ -116,7 +62,7 @@
         ;; password is ok, return new session if user is not deactivated
         (let [user (ldap/fetch-or-create-user! user-info)]
           (if (:is_active user)
-            (create-session! :sso user device-info)
+            (session/create-session! :sso user device-info)
             (throw (ex-info (str disabled-account-message)
                             {:status-code 401
                              :errors      {:_error disabled-account-snippet}})))))
@@ -131,7 +77,7 @@
   (if-let [user (t2/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (u.password/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
-        (create-session! :password user device-info)
+        (session/create-session! :password user device-info)
         (throw (ex-info (str disabled-account-message)
                         {:status-code 401
                          :errors      {:_error disabled-account-snippet}}))))
@@ -148,7 +94,7 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(mu/defn- login :- SessionSchema
+(mu/defn- login :- session/SessionSchema
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
   [username    :- ms/NonBlankString
@@ -199,8 +145,8 @@
   "Logout."
   ;; `metabase-session-id` gets added automatically by the [[metabase.server.middleware.session]] middleware
   [:as {:keys [metabase-session-id]}]
-  (api/check-exists? Session metabase-session-id)
-  (t2/delete! Session :id metabase-session-id)
+  (api/check-exists? :model/Session metabase-session-id)
+  (t2/delete! :model/Session :id metabase-session-id)
   (mw.session/clear-session-cookie api/generic-204-no-content))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
@@ -293,7 +239,7 @@
             ;; Send all the active admins an email :D
             (messages/send-user-joined-admin-notification-email! (t2/select-one User :id user-id)))
           ;; after a successful password update go ahead and offer the client a new session that they can use
-          (let [{session-uuid :id, :as session} (create-session! :password user (req.util/device-info request))
+          (let [{session-uuid :id, :as session} (session/create-session! :password user (req.util/device-info request))
                 response                        {:success    true
                                                  :session_id (str session-uuid)}]
             (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
@@ -323,7 +269,7 @@
     (http-401-on-error
       (throttle/with-throttling [(login-throttlers :ip-address) (req.util/ip-address request)]
         (let [user (google/do-google-auth request)
-              {session-uuid :id, :as session} (create-session! :sso user (req.util/device-info request))
+              {session-uuid :id, :as session} (session/create-session! :sso user (req.util/device-info request))
               response {:id (str session-uuid)}
               user (t2/select-one [User :id :is_active], :email (:email user))]
           (if (and user (:is_active user))
