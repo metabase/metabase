@@ -34,6 +34,7 @@ function EmptyStateWrapper({
       h="100%"
       justify="center"
       spacing="lg"
+      mih="20rem"
     >
       <img src={EmptyDashboardBot} alt={t`Empty dashboard illustration`} />
       {children}
