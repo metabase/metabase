@@ -13,6 +13,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { Button } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
@@ -20,7 +21,7 @@ import type { CollectionId } from "metabase-types/api";
 const QUESTION_SCHEMA = Yup.object({
   name: Yup.string()
     .required(Errors.required)
-    .max(100, Errors.maxLength)
+    .max(QUESTION_NAME_MAX_LENGTH, Errors.maxLength)
     .default(""),
   description: Yup.string().nullable().default(null),
   collection_id: Yup.number().nullable().default(null),
