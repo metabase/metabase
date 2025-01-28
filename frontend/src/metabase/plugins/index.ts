@@ -1,11 +1,10 @@
-import type {
-  ComponentType,
-  Dispatch,
-  HTMLAttributes,
-  ReactNode,
-  SetStateAction,
+import React, {
+  type ComponentType,
+  type Dispatch,
+  type HTMLAttributes,
+  type ReactNode,
+  type SetStateAction,
 } from "react";
-import type React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import type { AnySchema } from "yup";
