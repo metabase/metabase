@@ -310,30 +310,23 @@
                     :status :success
                     {:order-by [[:ended_at :desc]]})
 
-   ;; This is what the notify endpoint calls:
-   ;; Do a sync on the attached dwh:
   (do
+    ;; This is what the notify endpoint calls:
+    ;; Do a sync on the attached dwh:
     (require '[metabase.sync.sync-metadata :as sync-metadata])
 
     (sync-metadata/sync-db-metadata!
      (t2/select-one :model/Database :is_attached_dwh true)))
 
-
   (t2/update! :model/Database 1 {:is_attached_dwh true})
 
-  ;; testing auto-cruft:
-  (do
+  (do ;; testing auto-cruft:
     (t2/update! :model/Database 1 {:settings {:auto-cruft-tables ["X"]}})
     (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :id 1))
-
-    (t2/select-fn-vec :visibility_type :model/Table :db_id 1)
-
-
-
-    )
+    (t2/select-fn-vec :visibility_type :model/Table :db_id 1))
 
   (defn reset-all! []
     (let [statuses (for [{:keys [id]} (get-gdrive-conns)]
                      ;; (println "deleting" id)
-                     (first (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" id))))]
+                     (hm.client/make-request (->config) :delete (str "/api/v2/mb/connections/" id)))]
       [statuses (gsheets! not-connected)])))

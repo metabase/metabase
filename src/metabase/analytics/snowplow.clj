@@ -232,12 +232,3 @@
          (track-event-impl! tracker event))
        (catch Throwable e
          (log/errorf e "Error sending Snowplow analytics event for schema %s" schema))))))
-
-(comment
-  (def schema ::simple_event)
-  (def data {:event "test"})
-  (def user-id 1)
-  (with-redefs [track-event-impl! println]
-    )
-
-  )

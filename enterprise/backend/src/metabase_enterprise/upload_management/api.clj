@@ -19,7 +19,6 @@
       (when-let [dw-tables (t2/select :model/Table :db_id dw-db-id :active true)]
         dw-tables))))
 
-
 (api.macros/defendpoint :get "/tables"
   "Get all `Tables` visible to the current user which were created by uploading a file."
   []

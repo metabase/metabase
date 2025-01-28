@@ -1,14 +1,13 @@
 (ns metabase-enterprise.api.gsheets-test
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
+            [java-time.api :as t]
             [metabase-enterprise.gsheets :as gsheets.api]
             [metabase-enterprise.harbormaster.client :as hm.client]
             [metabase.premium-features.token-check :as token-check]
-            [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
-            [toucan2.core :as t2]
-            [java-time.api :as t])
+            [toucan2.core :as t2])
   (:import [java.time
             LocalDate
             LocalTime
@@ -185,7 +184,7 @@
     (with-redefs [hm.client/make-request (partial mock-make-request (happy-responses))]
       ;; when the dwh has never been synced
       (with-redefs [gsheets.api/get-last-dwh-sync-time (constantly nil)]
-          (with-sample-db-as-dwh
+        (with-sample-db-as-dwh
           (is (partial= {:status "loading", :folder_url "<gdrive-link>" :db_id 1}
                         (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
           (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))

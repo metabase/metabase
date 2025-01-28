@@ -150,12 +150,10 @@
                                                                    :table_id      transactions-table-id
                                                                    :parent_id     food-likes-field-id
                                                                    :active        true))]
-
         ;; now sync again.
         (sync-metadata/sync-db-metadata! db)
         ;; field should become inactive
         (is (false? (t2/select-one-fn :active :model/Field :id blueberries-field-id)))))))
-
 
 (deftest auto-cruft-all-tables-test
   (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
