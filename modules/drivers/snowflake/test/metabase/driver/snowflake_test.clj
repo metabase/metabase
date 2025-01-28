@@ -483,18 +483,34 @@
 
         (when (and pk-key pk-user)
           (mt/with-temp-file [pk-path]
-            (mt/with-temp [:model/Secret {secret-id :id} {:name   "Private key for Snowflake"
-                                                          :kind   :pem-cert
-                                                          :source "file-path"
-                                                          :value  pk-path}]
+            (mt/with-temp [:model/Secret {path-secret-id :id} {:name "Private key for Snowflake"
+                                                               :kind :pem-cert
+                                                               :source "file-path"
+                                                               :value pk-path}
+                           :model/Secret {upload-secret-id :id} {:name "Private key upload for Snowflake"
+                                                                 :kind :pem-cert
+                                                                 :source "uploaded"
+                                                                 :value (u/string-to-bytes pk-key)}
+                           :model/Secret {base64-upload-secret-id :id} {:name "Private key base64 upload for Snowflake"
+                                                                        :kind :pem-cert
+                                                                        :source "uploaded"
+                                                                        :value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))}]
               (testing "private key authentication via uploaded keys or local key with path stored in a secret"
                 (spit pk-path pk-key)
-                (doseq [to-merge [{:private-key-value pk-key                      ;; uploaded string
+                (doseq [to-merge [;; uploaded string
+                                  {:private-key-value pk-key
                                    :private-key-options "uploaded"}
+                                  ;; uploaded byte array
                                   {:private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))
-                                   :private-key-options "uploaded"}               ;; uploaded byte array
-                                  {:private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))}   ;; uploaded byte array without private-key-options
-                                  {:private-key-id secret-id}]]              ;; local file path
+                                   :private-key-options "uploaded"}
+                                  ;; uploaded byte array without private-key-options
+                                  {:private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))}
+                                  ;; saved local path
+                                  {:private-key-id path-secret-id}
+                                  ;; saved uploaded bytes
+                                  {:private-key-id upload-secret-id}
+                                  ;; saved base64
+                                  {:private-key-id base64-upload-secret-id}]]
                   (let [details (-> (:details (mt/db))
                                     (dissoc :password)
                                     (merge {:db pk-db :user pk-user} to-merge))]
