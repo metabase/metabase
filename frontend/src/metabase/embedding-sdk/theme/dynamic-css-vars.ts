@@ -1,53 +1,14 @@
 import { css } from "@emotion/react";
 
 import { alpha, darken, isDark, isLight, lighten } from "metabase/lib/colors";
-import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
 
-import type { SemanticColorKey } from "./embedding-color-palette";
+import type {
+  ColorOperation,
+  SourceColorKey,
+} from "../types/private/css-variables";
 
-type SourceColorKey = ColorName | SemanticColorKey;
-
-type ColorOperation = {
-  lighten?: number;
-  darken?: number;
-  alpha?: number;
-};
-
-type DynamicCssVarColorDefinition = {
-  /**
-   * The color to use as a source for generating the CSS variable.
-   * If the value is an object, it will use the light color for light themes and the dark color for dark themes.
-   **/
-  source: SourceColorKey | { light?: SourceColorKey; dark?: SourceColorKey };
-
-  // applies different operations to light and dark themes
-  light?: ColorOperation;
-  dark?: ColorOperation;
-};
-
-/**
- * These CSS variables are dynamically generated based on the theme.
- */
-export const THEME_DEPENDENT_CSS_VARS: Record<
-  string,
-  DynamicCssVarColorDefinition
-> = {
-  "--mb-color-notebook-step-bg": {
-    source: "bg-white",
-    light: { darken: 0.05 },
-    dark: { lighten: 0.5 },
-  },
-  "--mb-color-notebook-step-bg-hover": {
-    source: "bg-white",
-    light: { darken: 0.1 },
-    dark: { lighten: 0.4 },
-  },
-  "--mb-color-background-hover": {
-    source: { dark: "bg-white" },
-    dark: { lighten: 0.5 },
-  },
-};
+import { DYNAMIC_CSS_VARIABLES } from "./dynamic-css-vars-config";
 
 const isColorDefined = (color: string) =>
   color && color !== "transparent" && color !== "unset";
@@ -79,7 +40,7 @@ export function getIsDarkThemeFromPalette(theme: MantineTheme) {
 export function getDynamicCssVariables(theme: MantineTheme) {
   const isDarkTheme = getIsDarkThemeFromPalette(theme);
 
-  const mappings = Object.entries(THEME_DEPENDENT_CSS_VARS)
+  const mappings = Object.entries(DYNAMIC_CSS_VARIABLES)
     .map(([cssVar, config]) => {
       let colorKey: SourceColorKey | null = null;
       let operation: ColorOperation | null = null;
