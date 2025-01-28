@@ -47,8 +47,22 @@ describe("enclosingFunction", () => {
 
     expect(setup("|concat(a, b")).toEqual(result);
     expect(setup("conca|t(a, b")).toEqual(result);
-    expect(setup("concat(a|, b")).toEqual({ ...result, arg: 0 });
-    expect(setup("concat(a, b|")).toEqual({ ...result, arg: 1 });
+    expect(setup("concat(a|, b")).toEqual({
+      ...result,
+      arg: {
+        index: 0,
+        from: 7,
+        to: 8,
+      },
+    });
+    expect(setup("concat(a, b|")).toEqual({
+      ...result,
+      arg: {
+        index: 1,
+        from: 10,
+        to: 11,
+      },
+    });
   });
 
   it("should find the enclosing function when it has a closing parenthesis", () => {
@@ -61,8 +75,22 @@ describe("enclosingFunction", () => {
 
     expect(setup("|concat(10, 20)")).toEqual(result);
     expect(setup("conca|t(10, 20)")).toEqual(result);
-    expect(setup("concat(1|0, 20)")).toEqual({ ...result, arg: 0 });
-    expect(setup("concat(10, 2|0)")).toEqual({ ...result, arg: 1 });
+    expect(setup("concat(1|0, 20)")).toEqual({
+      ...result,
+      arg: {
+        index: 0,
+        from: 7,
+        to: 9,
+      },
+    });
+    expect(setup("concat(10, 2|0)")).toEqual({
+      ...result,
+      arg: {
+        index: 1,
+        from: 11,
+        to: 13,
+      },
+    });
   });
 
   it("should not find an enclosing function when it the cursor is set after the closing parenthesis", () => {
@@ -75,7 +103,11 @@ describe("enclosingFunction", () => {
       name: "concat",
       from: 15,
       to: 27,
-      arg: 1,
+      arg: {
+        index: 1,
+        from: 25,
+        to: 26,
+      },
     });
   });
 
@@ -84,7 +116,11 @@ describe("enclosingFunction", () => {
       name: "case",
       from: 5,
       to: 28,
-      arg: 0,
+      arg: {
+        index: 0,
+        from: 10,
+        to: 19,
+      },
     });
   });
 });

@@ -19,11 +19,9 @@ export function enclosingFunction(doc: string, pos: number) {
       const value = doc.slice(cursor.from, cursor.to);
       const name = value.replace(/\(.*\)?$/, "");
 
-      const argIndex =
-        cursor.node
-          .getChildren("ArgList")?.[0]
-          ?.getChildren("Arg")
-          .findIndex(arg => arg.from <= pos && arg.to >= pos) ?? null;
+      const args =
+        cursor.node.getChildren("ArgList")?.[0]?.getChildren("Arg") ?? [];
+      const argIndex = args.findIndex(arg => arg.from <= pos && arg.to >= pos);
 
       if (value.endsWith(")") && cursor.to === pos) {
         // do not show help when cursor is placed after closing )
@@ -35,7 +33,14 @@ export function enclosingFunction(doc: string, pos: number) {
           name,
           from: cursor.from,
           to: cursor.to,
-          arg: argIndex < 0 ? null : argIndex,
+          arg:
+            argIndex >= 0
+              ? {
+                  index: argIndex,
+                  from: args[argIndex].from,
+                  to: args[argIndex].to,
+                }
+              : null,
         };
       }
     }
