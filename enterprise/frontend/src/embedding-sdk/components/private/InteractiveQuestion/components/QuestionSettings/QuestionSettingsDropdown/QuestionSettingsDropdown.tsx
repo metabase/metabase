@@ -23,7 +23,6 @@ export const QuestionSettingsDropdown = ({
             <Icon c="inherit" size={16} name="gear" />
           </Center>
         }
-        data-testid="question-settings-toolbar-button"
         className={ToolbarButtonS.PrimaryToolbarButton}
       />
     </Popover.Target>
