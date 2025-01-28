@@ -757,7 +757,7 @@
          (is (= #{{:type :normal-column-index :value "id"}}
                 (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index))))))))))
 
-(defmethod driver/database-supports? [::driver/driver ::materialized-view-fields]
+(defmethod driver/database-supports? [::driver/driver ::describe-materialized-view-fields]
   [_driver _feature _database]
   true)
 
@@ -784,7 +784,8 @@
                 :mongo
                 :sparksql
                 :sqlite
-                :athena]]
+                :athena
+                :vertica]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
     [_driver _feature _database]
     false))
