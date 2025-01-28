@@ -7,7 +7,10 @@ import {
   isBaseEntityID,
 } from "metabase-types/api/entity-id";
 
-import { useTranslateEntityIdQuery } from "./api/entity-id";
+import {
+  type TranslateEntityIdResponse,
+  useTranslateEntityIdQuery,
+} from "./api/entity-id";
 import { NotFound } from "./components/ErrorPages";
 import { LoadingAndErrorWrapper } from "./components/LoadingAndErrorWrapper";
 type ResourceType = "dashboard" | "collection" | "card" | "dashboard-tab";
@@ -18,6 +21,14 @@ type ParamConfig = {
   type: ParamType;
   resourceType: ResourceType;
   required?: boolean;
+};
+
+type ParamWithValue = {
+  required: boolean;
+  value: string;
+  name: string;
+  type: ParamType;
+  resourceType: ResourceType;
 };
 
 export type EntityIdRedirectProps = WithRouterProps & {
@@ -32,7 +43,7 @@ export const EntityIdRedirect = ({
 }: EntityIdRedirectProps) => {
   const currentUrl = location.pathname + location.search;
 
-  const paramsWithValues = useMemo(() => {
+  const paramsWithValues: ParamWithValue[] = useMemo(() => {
     // add the value from the params or the query
     return parametersToTranslate.map(config => {
       const value = match(config.type)
@@ -70,30 +81,12 @@ export const EntityIdRedirect = ({
   } = useTranslateEntityIdQuery(entityIdsToTranslate);
 
   useEffect(() => {
-    function handleResults() {
-      let shouldRedirect = false;
-      let url = currentUrl;
-      let notFound = false;
-      for (const { value, required } of paramsWithValues) {
-        if (isBaseEntityID(value)) {
-          const mappedEntityId = entity_ids?.[value];
-          // if the entity id is found, we replace it with the numeric id
-          if (mappedEntityId?.id) {
-            shouldRedirect = true;
-            url = url.replace(value, String(mappedEntityId.id));
-          } else if (!canBeNormalId(value)) {
-            // if it's found and cannot be a normal slug (ie: it doesn't start with a number)
-            if (required) {
-              // if it's required, then we show an error, this is needed because at this time some endpoints
-              // become stuck in infinite loading if they fail to parse the numeric id from the slug
-              notFound = true;
-            } else {
-              // if it's not required then we remove it from the url
-              url = url.replace(value, "");
-            }
-          }
-        }
-      }
+    if (!isLoading) {
+      const { shouldRedirect, url, notFound } = handleResults({
+        currentUrl,
+        paramsWithValues,
+        entity_ids,
+      });
 
       if (notFound) {
         setStatus("not-found");
@@ -103,10 +96,6 @@ export const EntityIdRedirect = ({
       if (shouldRedirect) {
         router.push(url.replace("/entity/", "/"));
       }
-    }
-
-    if (!isLoading) {
-      handleResults();
     }
   }, [currentUrl, entity_ids, isError, isLoading, paramsWithValues, router]);
 
@@ -122,6 +111,41 @@ export const EntityIdRedirect = ({
     return <NotFound />;
   }
 };
+
+function handleResults({
+  currentUrl,
+  paramsWithValues,
+  entity_ids,
+}: {
+  currentUrl: string;
+  paramsWithValues: ParamWithValue[];
+  entity_ids: TranslateEntityIdResponse | undefined;
+}) {
+  let shouldRedirect = false;
+  let url = currentUrl;
+  let notFound = false;
+  for (const { value, required } of paramsWithValues) {
+    if (isBaseEntityID(value)) {
+      const mappedEntityId = entity_ids?.[value];
+      // if the entity id is found, we replace it with the numeric id
+      if (mappedEntityId?.id) {
+        shouldRedirect = true;
+        url = url.replace(value, String(mappedEntityId.id));
+      } else if (!canBeNormalId(value)) {
+        // if it's found and cannot be a normal slug (ie: it doesn't start with a number)
+        if (required) {
+          // if it's required, then we show an error, this is needed because at this time some endpoints
+          // become stuck in infinite loading if they fail to parse the numeric id from the slug
+          notFound = true;
+        } else {
+          // if it's not required then we remove it from the url
+          url = url.replace(value, "");
+        }
+      }
+    }
+  }
+  return { shouldRedirect, url, notFound };
+}
 
 export function createEntityIdRedirect(config: {
   parametersToTranslate: ParamConfig[];

@@ -181,9 +181,21 @@ export function PublicOrEmbeddedDashboardView({
             return null;
           }
 
-          if (!dashboardHasCards || !tabHasCards) {
+          if (!dashboardHasCards) {
             return (
-              <DashboardEmptyStateWithoutAddPrompt isNightMode={isNightMode} />
+              <DashboardEmptyStateWithoutAddPrompt
+                isNightMode={isNightMode}
+                isDashboardEmpty={true}
+              />
+            );
+          }
+
+          if (dashboardHasCards && !tabHasCards) {
+            return (
+              <DashboardEmptyStateWithoutAddPrompt
+                isNightMode={isNightMode}
+                isDashboardEmpty={false}
+              />
             );
           }
 

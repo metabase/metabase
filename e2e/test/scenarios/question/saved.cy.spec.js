@@ -53,6 +53,7 @@ describe("scenarios > question > saved", () => {
     cy.button("Not now").click();
 
     // Add a filter in order to be able to save question again
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.popover().findByText("Total: Auto binned").click();

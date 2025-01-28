@@ -9,8 +9,11 @@
 
 (defn malli=-report [message schema actuals]
   (doseq [actual actuals]
-    (t/testing (str \newline (u/pprint-to-str actual))
-      (let [error (me/humanize (mr/explain schema actual))]
+    (let [error (me/humanize (mr/explain schema actual))]
+      (t/testing (if error
+                   ;; Only serialize the value when there is an error to save time.
+                   (str "\n" (u/pprint-to-str actual))
+                   "\n")
         (t/do-report
          {:type     (if error :fail :pass)
           :message  message

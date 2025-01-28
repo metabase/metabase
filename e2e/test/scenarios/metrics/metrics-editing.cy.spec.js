@@ -511,6 +511,7 @@ function getActionButton(title) {
 }
 
 function getPlusButton() {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy.findAllByTestId("notebook-cell-item").last();
 }
 
@@ -587,6 +588,7 @@ function addBreakout({ tableName, columnName, bucketName, stageIndex }) {
   }
   if (bucketName) {
     H.popover().findByLabelText(columnName).findByText("by month").click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText(bucketName).click();
   } else {
     H.popover().findByText(columnName).click();

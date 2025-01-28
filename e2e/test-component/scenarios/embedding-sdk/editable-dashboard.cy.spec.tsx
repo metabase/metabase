@@ -83,9 +83,7 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.findByDisplayValue("Embedding SDK Test Dashboard").should(
             "be.visible",
           );
-          cy.findByText("This dashboard is looking empty.").should(
-            "be.visible",
-          );
+          cy.findByText("This dashboard is empty").should("be.visible");
         });
       });
     });
@@ -101,7 +99,7 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
           cy.findByDisplayValue("Embedding SDK Test Dashboard").should(
             "not.exist",
           );
-          cy.findByText("This dashboard is looking empty.").should("not.exist");
+          cy.findByText("This dashboard is empty").should("not.exist");
         });
       });
     });
