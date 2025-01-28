@@ -54,8 +54,6 @@
       "name": "Admin Webapp",
       "label": ".Team/AdminWebapp",
       "members": [
-        "noahmoss",
-        "escherize",
         "npfitz",
         "johnswanson",
         "rafpaf",
@@ -69,17 +67,18 @@
       "label": ".Team/DashViz",
       "members": [
         "alxnddr",
-        "kulyk",
-        "adam-james-v",
+        "kulyk",        
         "tsplude",
-        "lorem--ipsum"
+        "lorem--ipsum",
+        "noahmoss"
       ]
     },
     {
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
-        "camsaul"
+        "camsaul",
+        "escherize"
       ]
     }
   ]
