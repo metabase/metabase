@@ -49,13 +49,8 @@ export const THEME_DEPENDENT_CSS_VARS: Record<
   },
   "--mb-color-brand-light": {
     source: "brand",
-    light: { lighten: 0.5 },
+    light: { lighten: 0.2 },
     dark: { lighten: 0.1 },
-  },
-  "--mb-color-brand-lighter": {
-    source: "brand",
-    light: { lighten: 0.6 },
-    dark: { lighten: 0.15 },
   },
 };
 
