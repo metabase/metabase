@@ -45,7 +45,7 @@
 
 (defmethod prometheus/known-labels :metabase-search/index
   [_]
-  (for [model (keys (metabase.search.spec/specifications))]
+  (for [model (keys (search.spec/specifications))]
     {:model model}))
 
 (defn supports-index?
