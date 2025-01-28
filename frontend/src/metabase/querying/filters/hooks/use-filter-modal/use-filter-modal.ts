@@ -39,7 +39,7 @@ export const useFilterModal = (
   );
 
   const forceRemountDescendants = () => {
-    setRemountKey(version => version + 1);
+    setRemountKey(remountKey => remountKey + 1);
   };
 
   const onInput = () => {
