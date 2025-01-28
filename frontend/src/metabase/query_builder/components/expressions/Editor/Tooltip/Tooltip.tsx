@@ -20,8 +20,6 @@ import { enclosingFunction } from "../util";
 
 import S from "./Tooltip.module.css";
 
-// TODO: allow using keys after clicking the popover
-
 export function Tooltip({
   query,
   metadata,

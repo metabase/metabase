@@ -1,3 +1,4 @@
+import { moveCompletionSelection } from "@codemirror/autocomplete";
 import {
   type EditorState,
   type Extension,
@@ -64,8 +65,36 @@ export function useCustomTooltip({
     [element, handleBlur, handleFocus, getPosition],
   );
 
+  const handleKeyDown = useCallback(
+    function (evt: React.KeyboardEvent) {
+      if (!update?.view) {
+        return;
+      }
+
+      switch (evt.key) {
+        case "ArrowUp":
+          moveCompletionSelection(true)(update.view);
+          return;
+        case "ArrowDown":
+          moveCompletionSelection(false)(update.view);
+          return;
+        case "Escape":
+          evt.preventDefault();
+          evt.stopPropagation();
+          setHasFocus(false);
+          return;
+      }
+    },
+    [update],
+  );
+
   const children = (
-    <div ref={tooltipRef} onBlur={handleBlur} tabIndex={0}>
+    <div
+      ref={tooltipRef}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+    >
       {update &&
         hasFocus &&
         render({
