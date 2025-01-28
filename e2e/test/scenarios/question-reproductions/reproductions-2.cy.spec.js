@@ -235,6 +235,7 @@ describe("issue 27104", () => {
   });
 
   it("should correctly format the filter operator after the aggregation (metabase#27104)", () => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
     H.popover().findByText("Count").click();
     // The following line is the main assertion.

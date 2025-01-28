@@ -302,6 +302,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     drillPK({ id: 2 });
     cy.url().should("contain", "objectId=2");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findByTestId("object-detail")
       .findAllByText("Domenica Williamson")
       .last()
