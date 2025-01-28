@@ -1422,9 +1422,8 @@
 
   `options` are passed to [[user-facing-value]].
 
-  This is currently used by `GET /api/setting` ([[metabase.api.setting/GET_]]; admin-only; powers the Admin Settings
-  page) so all admin-visible Settings should be included. We *do not* want to return env var values, since admins
-  are not allowed to modify them.
+  This is currently used by `GET /api/setting` (admin-only; powers the Admin Settings page) so all admin-visible
+  Settings should be included. We *do not* want to return env var values, since admins are not allowed to modify them.
 
   For settings managers who are not admins, only the subset of settings with the :settings-manager visibility level
   are returned."
@@ -1470,7 +1469,7 @@
 
   Settings marked `:sensitive?` (e.g. passwords) are excluded.
 
-  This is currently used by `GET /api/session/properties` ([[metabase.api.session/GET_properties]]) and
+  This is currently used by `GET /api/session/properties` and
   in [[metabase.server.routes.index/load-entrypoint-template]]. These are used as read-only sources of Settings for
   the frontend client. For that reason, these Settings *should* include values that come back from environment
   variables, *unless* they are marked `:sensitive?`."

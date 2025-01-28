@@ -200,7 +200,7 @@
 
   Typical example:
 
-    (api/defendpoint-schema GET \"/whatever\" []
+    (api.macros/defendpoint :get \"/whatever\" []
       (qp.streaming/streaming-response [rff :json]
         (qp/process-query (qp/userland-query-with-default-constraints query) rff)))
 
