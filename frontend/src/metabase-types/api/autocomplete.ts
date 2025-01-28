@@ -1,12 +1,10 @@
 import type { CardType } from "./card";
 import type { DatabaseId } from "./database";
 
-export type AutocompleteMatchStyle = "off" | "prefix" | "substring";
-
 export type AutocompleteRequest = {
   databaseId: DatabaseId;
-  matchStyle: AutocompleteMatchStyle;
-  query: string;
+  prefix?: string;
+  substring?: string;
 };
 
 export type AutocompleteSuggestion = [string, string];

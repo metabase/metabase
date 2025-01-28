@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 
-import type { AutocompleteMatchStyle } from "./autocomplete";
-
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -246,6 +244,8 @@ export interface OpenAiModel {
 }
 
 export type HelpLinkSetting = "metabase" | "hidden" | "custom";
+
+export type AutocompleteMatchStyle = "off" | "prefix" | "substring";
 
 export interface UploadsSettings {
   db_id: number | null;

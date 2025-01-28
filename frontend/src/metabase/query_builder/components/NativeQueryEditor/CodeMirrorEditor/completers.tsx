@@ -4,9 +4,9 @@ import slugg from "slugg";
 import { t } from "ttag";
 
 import {
-  useLazyGetAutocompleteSuggestionsQuery,
-  useLazyGetCardAutocompleteSuggestionsQuery,
   useLazyGetCardQuery,
+  useLazyListAutocompleteSuggestionsQuery,
+  useLazyListCardAutocompleteSuggestionsQuery,
   useListSnippetsQuery,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
@@ -44,7 +44,8 @@ function matchAfter(context: CompletionContext, expr: RegExp) {
 export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
   const matchStyle = useSetting("native-query-autocomplete-match-style");
 
-  const [getAutocompleteSuggestions] = useLazyGetAutocompleteSuggestionsQuery();
+  const [listAutocompleteSuggestions] =
+    useLazyListAutocompleteSuggestionsQuery();
 
   return useCallback(
     async function (context: CompletionContext) {
@@ -70,15 +71,10 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
 
       const suffix = matchAfter(context, /\w+/);
 
-      // Do not cache this in the rtk-query's cache, since there is no
-      // way to invalidate it. The autocomplete endpoint set caching headers
-      // so the request should be cached in the browser.
-      const shouldCache = false;
-
-      const { data } = await getAutocompleteSuggestions(
-        { databaseId, matchStyle, query: word.text.trim() },
-        shouldCache,
-      );
+      const { data } = await listAutocompleteSuggestions({
+        databaseId,
+        [matchStyle]: word.text.trim(),
+      });
       if (!data) {
         return null;
       }
@@ -112,7 +108,7 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
         },
       };
     },
-    [databaseId, matchStyle, getAutocompleteSuggestions],
+    [databaseId, matchStyle, listAutocompleteSuggestions],
   );
 }
 
@@ -161,8 +157,8 @@ type CardTagCompletionOptions = {
 
 // Completes card names when inside a card tag
 export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
-  const [getCardAutocompleteSuggestions] =
-    useLazyGetCardAutocompleteSuggestionsQuery();
+  const [listCardAutocompleteSuggestions] =
+    useLazyListCardAutocompleteSuggestionsQuery();
   return useCallback(
     async function completeCardTags(context: CompletionContext) {
       if (databaseId == null) {
@@ -182,18 +178,10 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
         return null;
       }
 
-      // Do not cache this in the rtk-query's cache, since there is no
-      // way to invalidate it. The autocomplete endpoint set caching headers
-      // so the request should be cached in the browser.
-      const shouldCache = false;
-
-      const { data } = await getCardAutocompleteSuggestions(
-        {
-          databaseId,
-          query,
-        },
-        shouldCache,
-      );
+      const { data } = await listCardAutocompleteSuggestions({
+        databaseId,
+        query,
+      });
       if (!data) {
         return null;
       }
@@ -220,7 +208,7 @@ export function useCardTagCompletion({ databaseId }: CardTagCompletionOptions) {
         },
       };
     },
-    [databaseId, getCardAutocompleteSuggestions],
+    [databaseId, listCardAutocompleteSuggestions],
   );
 }
 
