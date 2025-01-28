@@ -14,10 +14,10 @@ import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type { Expression } from "metabase-types/api";
 
 import S from "./Editor.module.css";
-import { Tooltip } from "./Tooltip/Tooltip";
+import { Tooltip } from "./Tooltip";
+import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
 import { tokenAtPos } from "./suggestions";
-import { useCustomTooltip } from "./tooltip";
 
 type EditorProps = {
   expression: Expression | undefined | null;
