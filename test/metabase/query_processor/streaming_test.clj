@@ -354,6 +354,7 @@
                                                       :format_rows true)]
                     ((-> assertions export-format) results))
 
+                  ;; TODO -- what about the public dashcard endpoint???
                   :public
                   (let [results (mt/user-http-request user :get 200
                                                       (format "public/card/%s/query/%s?format_rows=true" public-uuid (name export-format))

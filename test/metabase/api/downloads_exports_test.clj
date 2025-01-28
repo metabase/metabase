@@ -126,8 +126,8 @@
               (->> (mt/user-http-request :crowberto :post 200
                                          (format "public/dashboard/%s/dashcard/%d/card/%d/%s"
                                                  public-uuid dashcard-id card-id (name export-format))
-                                         :format_rows   format-rows
-                                         :pivot_results pivot)
+                                         {:format_rows   format-rows
+                                          :pivot_results pivot})
                    (process-results pivot export-format)))]
       (if (= :model/DashboardCard (t2/model card-or-dashcard))
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid public-uuid}]
