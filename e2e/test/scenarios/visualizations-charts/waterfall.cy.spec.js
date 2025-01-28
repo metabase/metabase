@@ -48,6 +48,7 @@ describe("scenarios > visualizations > waterfall", () => {
     H.sidebar().findAllByPlaceholderText("Select a field").first().click();
     H.popover().findByText("X").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar().findAllByPlaceholderText("Select a field").last().click();
     H.popover().findByText("Y").click();
 
@@ -72,6 +73,7 @@ describe("scenarios > visualizations > waterfall", () => {
     H.sidebar().findAllByPlaceholderText("Select a field").first().click();
     H.popover().findByText("X").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar().findAllByPlaceholderText("Select a field").last().click();
     H.popover().findByText("Y").click();
 
@@ -223,6 +225,7 @@ describe("scenarios > visualizations > waterfall", () => {
     H.sidebar().findAllByPlaceholderText("Select a field").first().click();
     H.popover().findByText("Created At: Year").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar().findAllByPlaceholderText("Select a field").last().click();
     H.popover().findByText("Count").click();
 
@@ -266,12 +269,14 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     getWaterfallDataLabels()
       .as("labels")
       .eq(-3)
       .invoke("text")
       .should("eq", "0");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });
 
@@ -295,6 +300,7 @@ describe("scenarios > visualizations > waterfall", () => {
     // the null data label which should exist at index -3
     // should now display no label. so the label at index -3 should be the label
     // before the null data point
+    // eslint-disable-next-line no-unsafe-element-filtering
     getWaterfallDataLabels()
       .as("labels")
       .eq(-3)
@@ -304,12 +310,14 @@ describe("scenarios > visualizations > waterfall", () => {
     // but the x-axis label and area should still be shown for the null data point
     H.echartsContainer().findByText("f");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     getWaterfallDataLabels()
       .as("labels")
       .eq(-2)
       .invoke("text")
       .should("eq", "(2)");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });
 

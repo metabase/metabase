@@ -150,6 +150,7 @@ describe("revision history", () => {
               cy.findByRole("tab", { name: "History" }).click();
 
               // Last revert is the original state
+              // eslint-disable-next-line no-unsafe-element-filtering
               cy.findAllByTestId("question-revert-button").last().click();
 
               cy.wait("@revert").then(({ response: { statusCode, body } }) => {
@@ -189,6 +190,7 @@ describe("revision history", () => {
 });
 
 function clickRevert(event_name, index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByLabelText(event_name).eq(index).click();
 }
 

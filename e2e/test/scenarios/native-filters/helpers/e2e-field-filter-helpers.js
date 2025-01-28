@@ -162,6 +162,7 @@ function addBetweenFilter([low, high] = [], buttonLabel = "Add filter") {
   popover().within(() => {
     cy.get("input").first().type(`${low}{enter}`);
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("input").last().type(`${high}{enter}`);
   });
 

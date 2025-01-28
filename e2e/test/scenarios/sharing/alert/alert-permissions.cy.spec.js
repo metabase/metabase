@@ -113,6 +113,7 @@ function createBasicAlert({ firstAlert, includeNormal } = {}) {
   }
 
   if (includeNormal) {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findByText("Email alerts to:").parent().children().last().click();
     cy.findByText(H.getFullName(normal)).click();
   }
