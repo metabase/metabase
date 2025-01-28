@@ -123,4 +123,60 @@ describe("enclosingFunction", () => {
       },
     });
   });
+
+  it("should mark the correct argument when the cursor is inside the argument", () => {
+    const base = {
+      name: "concat",
+      from: 0,
+      to: 16,
+    };
+
+    [
+      "concat(|aaa, bbb)",
+      "concat(a|aa, bbb)",
+      "concat(aa|a, bbb)",
+      "concat(aaa|, bbb)",
+    ].forEach(doc => {
+      expect(setup(doc)).toEqual({
+        ...base,
+        arg: {
+          index: 0,
+          from: 7,
+          to: 10,
+        },
+      });
+    });
+
+    [
+      "concat(aaa, |bbb)",
+      "concat(aaa, b|bb)",
+      "concat(aaa, bb|b)",
+      "concat(aaa, bbb|)",
+    ].forEach(doc => {
+      expect(setup(doc)).toEqual({
+        ...base,
+        arg: {
+          index: 1,
+          from: 12,
+          to: 15,
+        },
+      });
+    });
+
+    [
+      "concat(aaa, |bbb)",
+      "concat(aaa, b|bb)",
+      "concat(aaa, bb|b)",
+      "concat(aaa, bbb|)",
+    ].forEach(doc => {
+      expect(setup(doc)).toEqual({
+        ...base,
+        arg: {
+          index: 1,
+          from: 12,
+          to: 15,
+        },
+      });
+    });
+  });
 });
