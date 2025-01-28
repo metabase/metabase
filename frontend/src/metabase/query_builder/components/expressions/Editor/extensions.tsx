@@ -1,4 +1,5 @@
 import { bracketMatching, syntaxHighlighting } from "@codemirror/language";
+import type { EditorState } from "@codemirror/state";
 import { EditorView, drawSelection, keymap, tooltips } from "@codemirror/view";
 import { Prec } from "@uiw/react-codemirror";
 import { getNonce } from "get-nonce";
@@ -12,8 +13,9 @@ import type * as Lib from "metabase-lib";
 
 import css from "./Editor.module.css";
 import { highlightStyle } from "./Highlight";
+import { Tooltip } from "./Tooltip/Tooltip";
 import { customExpression } from "./language";
-import { suggestions } from "./suggestions";
+import { suggestions, tokenAtPos } from "./suggestions";
 import { useTooltip } from "./tooltip";
 
 type Options = {
@@ -39,6 +41,14 @@ function getTooltipParent() {
   return el;
 }
 
+function getTooltipPosition(state: EditorState) {
+  const pos = state.selection.main.head;
+  const source = state.doc.toString();
+  const token = tokenAtPos(source, pos);
+
+  return token?.start ?? pos;
+}
+
 export function useExtensions(options: Options) {
   const {
     startRule,
@@ -51,7 +61,17 @@ export function useExtensions(options: Options) {
   } = options;
 
   const metadata = useSelector(getMetadata);
-  const [tooltip, content] = useTooltip({ query, metadata, reportTimezone });
+  const [tooltip, content] = useTooltip({
+    getPosition: getTooltipPosition,
+    render: props => (
+      <Tooltip
+        query={query}
+        metadata={metadata}
+        reportTimezone={reportTimezone}
+        {...props}
+      />
+    ),
+  });
 
   const extensions = useMemo(() => {
     return [

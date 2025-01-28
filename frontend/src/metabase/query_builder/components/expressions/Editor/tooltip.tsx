@@ -12,16 +12,14 @@ import {
 import { useCallback, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import type * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-
-import { Tooltip } from "./Tooltip/Tooltip";
-import { tokenAtPos } from "./suggestions";
+type TooltipProps = {
+  state: EditorState;
+  view: EditorView;
+};
 
 type TooltipOptions = {
-  query: Lib.Query;
-  metadata: Metadata;
-  reportTimezone?: string;
+  render: (props: TooltipProps) => React.ReactNode;
+  getPosition: (state: EditorState) => number;
 };
 
 /**
@@ -32,9 +30,8 @@ type TooltipOptions = {
  * tooltips with suggestions in CodeMirror.
  */
 export function useTooltip({
-  query,
-  metadata,
-  reportTimezone,
+  render,
+  getPosition,
 }: TooltipOptions): [Extension[], React.ReactNode] {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const element = useMemo(() => document.createElement("div"), []);
@@ -47,7 +44,7 @@ export function useTooltip({
 
   const extensions = useMemo(
     () => [
-      tooltip(element),
+      tooltip(element, getPosition),
       EditorView.domEventHandlers({
         focus: handleFocus,
         blur(evt) {
@@ -64,38 +61,27 @@ export function useTooltip({
       }),
       EditorView.updateListener.of(update => setUpdate(update)),
     ],
-    [element, handleBlur, handleFocus],
+    [element, handleBlur, handleFocus, getPosition],
   );
 
-  return [
-    extensions,
-    createPortal(
-      update && (
-        <Tooltip
-          ref={tooltipRef}
-          state={update.state}
-          view={update.view}
-          hasFocus={hasFocus}
-          query={query}
-          metadata={metadata}
-          reportTimezone={reportTimezone}
-          onBlur={handleBlur}
-        />
-      ),
-      element,
-    ),
-  ];
+  const children = (
+    <div ref={tooltipRef} onBlur={handleBlur} tabIndex={0}>
+      {update &&
+        hasFocus &&
+        render({
+          state: update.state,
+          view: update.view,
+        })}
+    </div>
+  );
+
+  return [extensions, createPortal(children, element)];
 }
 
-export function tooltip(element: HTMLElement) {
-  function getPosition(state: EditorState) {
-    const pos = state.selection.main.head;
-    const source = state.doc.toString();
-    const token = tokenAtPos(source, pos);
-
-    return token?.start ?? pos;
-  }
-
+function tooltip(
+  element: HTMLElement,
+  getPosition: (state: EditorState) => number,
+) {
   function create() {
     const dom = document.createElement("div");
     dom.append(element);

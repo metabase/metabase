@@ -34,14 +34,11 @@ type TooltipProps = {
 
   state: EditorState;
   view: EditorView;
-  hasFocus?: boolean;
-  onBlur: () => void;
 };
 
 export const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
-  function TooltipInner(props, ref) {
-    const { state, view, hasFocus, metadata, onBlur, query, reportTimezone } =
-      props;
+  function TooltipInner(props) {
+    const { state, view, metadata, query, reportTimezone } = props;
 
     const handleCompletionClick = useCallback(
       (index: number) => {
@@ -59,17 +56,13 @@ export const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
 
     const { options, selectedOption } = useCompletions(state);
 
-    if (!hasFocus) {
-      return null;
-    }
-
     const enclosingFn = enclosingFunction(
       state.doc.toString(),
       state.selection.main.head,
     );
 
     return (
-      <Box className={S.tooltip} ref={ref} onBlur={onBlur} tabIndex={0}>
+      <Box className={S.tooltip}>
         <HelpText
           enclosingFunction={enclosingFn?.name}
           query={query}
