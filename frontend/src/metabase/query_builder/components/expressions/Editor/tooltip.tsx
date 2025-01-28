@@ -1,12 +1,4 @@
 import {
-  type Completion,
-  acceptCompletion,
-  completionStatus,
-  currentCompletions,
-  selectedCompletionIndex,
-  setSelectedCompletion,
-} from "@codemirror/autocomplete";
-import {
   type EditorState,
   type Extension,
   StateField,
@@ -14,6 +6,7 @@ import {
 import {
   EditorView,
   type Tooltip as TooltipView,
+  type ViewUpdate,
   showTooltip,
 } from "@codemirror/view";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -24,29 +17,11 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { Tooltip } from "./Tooltip/Tooltip";
 import { tokenAtPos } from "./suggestions";
-import { enclosingFunction } from "./util";
-
-// TODO: Toggle help description open/close expand
-// TODO: Segments/metrics always shown?
-// TODO: highlight currently shown documentation (enclosingFunction)
-// TODO: remove bold from non-existing/unsupported functions
-// TODO: allow using keys after clicking the popover
-// TODO: fix fonts
 
 type TooltipOptions = {
   query: Lib.Query;
   metadata: Metadata;
   reportTimezone?: string;
-};
-
-type State = {
-  completions: readonly Completion[];
-  selectedCompletion: number | null;
-  enclosingFunction: {
-    name: string;
-    from: number;
-    to: number;
-  } | null;
 };
 
 /**
@@ -61,16 +36,10 @@ export function useTooltip({
   metadata,
   reportTimezone,
 }: TooltipOptions): [Extension[], React.ReactNode] {
-  const [state, setState] = useState<State>({
-    completions: [],
-    selectedCompletion: null,
-    enclosingFunction: null,
-  });
-
-  const view = useRef<EditorView | null>(null);
-  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const element = useMemo(() => document.createElement("div"), []);
 
+  const [update, setUpdate] = useState<ViewUpdate | null>(null);
   const [hasFocus, setHasFocus] = useState(false);
 
   const handleFocus = useCallback(() => setHasFocus(true), []);
@@ -93,60 +62,26 @@ export function useTooltip({
           handleBlur();
         },
       }),
-      EditorView.updateListener.of(update => {
-        view.current = update.view;
-        setState(state => {
-          const enclosingFn = enclosingFunction(
-            update.state.doc.toString(),
-            update.state.selection.main.head,
-          );
-          const status = completionStatus(update.state);
-
-          if (status === "pending") {
-            // use the previous completions, if they exist
-            return {
-              ...state,
-              completions: state.completions,
-              selectedCompletion: state.selectedCompletion,
-              enclosingFunction: enclosingFn,
-            };
-          }
-          return {
-            ...state,
-            completions: currentCompletions(update.state),
-            selectedCompletion: selectedCompletionIndex(update.state),
-            enclosingFunction: enclosingFn,
-          };
-        });
-      }),
+      EditorView.updateListener.of(update => setUpdate(update)),
     ],
     [element, handleBlur, handleFocus],
   );
 
-  const handleCompletionClick = useCallback((index: number) => {
-    if (!view.current) {
-      return;
-    }
-
-    view.current.dispatch({
-      effects: [setSelectedCompletion(index)],
-    });
-    acceptCompletion(view.current);
-  }, []);
-
   return [
     extensions,
     createPortal(
-      <Tooltip
-        ref={tooltipRef}
-        {...state}
-        hasFocus={hasFocus}
-        query={query}
-        metadata={metadata}
-        reportTimezone={reportTimezone}
-        onCompletionClick={handleCompletionClick}
-        onBlur={handleBlur}
-      />,
+      update && (
+        <Tooltip
+          ref={tooltipRef}
+          state={update.state}
+          view={update.view}
+          hasFocus={hasFocus}
+          query={query}
+          metadata={metadata}
+          reportTimezone={reportTimezone}
+          onBlur={handleBlur}
+        />
+      ),
       element,
     ),
   ];
