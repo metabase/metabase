@@ -5,9 +5,12 @@
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
+   [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]))
 
 (declare load-one!)
 
@@ -67,6 +70,20 @@
      :table      (some->> last-model (keyword "model") t2/table-name)
      :error      error-type}))
 
+(defn- valid-model-name-for-load? [model-name]
+  ;; linear scan, but small n
+  (->> (concat serdes.models/inlined-models
+               serdes.models/exported-models)
+       (some #{model-name})
+       boolean))
+
+(defn- exported-with-entity-id?
+  "Returns true if entities with the given model-name should have been exported with an entity_id."
+  [model-name]
+  (when (valid-model-name-for-load? model-name)
+    (let [model (t2.model/resolve-model (symbol model-name))]
+      (serdes.backfill/has-entity-id? model))))
+
 (defn- load-one!
   "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to
   avoid cycles.
@@ -92,7 +109,18 @@
                              (throw (ex-info (format "Failed to read file for %s" (serdes/log-path-str path))
                                              (path-error-data ::not-found expanding path)
                                              e))))
+                ;; Use the abstract path as attached by the ingestion process, not the original one we were passed.
+                rebuilt-path (serdes/path ingested)
+                ;; If nil or absent :entity_id is taken as a signal to create a new entity
+                ;; To get a nil entity_id, a user has to manually set the entity_id to null or remove it
+                ;; in the yaml file.
+                ;; In all other cases we should expect an :entity_id:
+                ;; - exported entities have a :entity_id for every model that can have one
+                ;; - backfill (pre import) guarantees all entities have ids in the appdb
+                expect-entity-id (some-> rebuilt-path peek :model exported-with-entity-id?)
+                require-new-entity (and expect-entity-id (nil? (:entity_id ingested)))
                 ingested (cond-> ingested
+                           require-new-entity (assoc :entity_id (u/generate-nano-id))
                            modfn modfn)
                 deps     (serdes/dependencies ingested)
                 _        (log/debug "Loading dependencies" deps)
@@ -101,9 +129,7 @@
                              (load-deps! deps)
                              (update :seen conj path)
                              (update :expanding disj path))
-                ;; Use the abstract path as attached by the ingestion process, not the original one we were passed.
-                rebuilt-path    (serdes/path ingested)
-                local-or-nil    (serdes/load-find-local rebuilt-path)]
+                local-or-nil (when-not require-new-entity (serdes/load-find-local rebuilt-path))]
             (try
               (serdes/load-one! ingested local-or-nil)
               ctx
