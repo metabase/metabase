@@ -8,7 +8,6 @@ import React from "react";
 
 import { USERS } from "e2e/support/cypress_data";
 import { signInAsAdminAndEnableEmbeddingSdkForE2e } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-
 import { ThemeProvider } from "metabase/ui";
 
 export const METABASE_INSTANCE_URL = "http://localhost:4000";
