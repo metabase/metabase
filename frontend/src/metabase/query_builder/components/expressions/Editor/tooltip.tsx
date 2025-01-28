@@ -14,6 +14,7 @@ import {
 import { EditorView, type Tooltip, showTooltip } from "@codemirror/view";
 import {
   Fragment,
+  forwardRef,
   useCallback,
   useEffect,
   useMemo,
@@ -89,10 +90,36 @@ export function useTooltip({
   }, []);
 
   const view = useRef<EditorView | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+  const handleBlur = useCallback(() => {
+    setState(state => ({
+      ...state,
+      hasFocus: false,
+    }));
+  }, []);
 
   const extensions = useMemo(
     () => [
       tooltip(element),
+      EditorView.domEventHandlers({
+        focus() {
+          setState(state => ({
+            ...state,
+            hasFocus: true,
+          }));
+        },
+        blur(evt) {
+          evt.preventDefault();
+          evt.stopPropagation();
+
+          const el = evt.relatedTarget as HTMLElement | null;
+          if (tooltipRef.current === el || tooltipRef.current?.contains(el)) {
+            return;
+          }
+          handleBlur();
+        },
+      }),
       EditorView.updateListener.of(update => {
         view.current = update.view;
         setState(state => {
@@ -102,24 +129,22 @@ export function useTooltip({
           if (status === "pending") {
             // use the previous completions, if they exist
             return {
-              focus: update.view.hasFocus,
+              ...state,
               completions: state.completions,
               selectedCompletion: state.selectedCompletion,
               enclosingFunction: enclosingFn,
-              hasFocus: update.view.hasFocus,
             };
           }
           return {
-            focus: update.view.hasFocus,
+            ...state,
             completions: currentCompletions(update.state),
             selectedCompletion: selectedCompletionIndex(update.state),
             enclosingFunction: enclosingFn,
-            hasFocus: update.view.hasFocus,
           };
         });
       }),
     ],
-    [element],
+    [element, handleBlur],
   );
 
   const handleCompletionClick = useCallback((index: number) => {
@@ -137,11 +162,13 @@ export function useTooltip({
     extensions,
     createPortal(
       <Tooltip
+        ref={tooltipRef}
         state={state}
         query={query}
         metadata={metadata}
         reportTimezone={reportTimezone}
         onCompletionClick={handleCompletionClick}
+        onBlur={handleBlur}
       />,
       element,
     ),
@@ -190,6 +217,7 @@ type TooltipProps = {
   metadata: Metadata;
   reportTimezone?: string;
   onCompletionClick: (index: number) => void;
+  onBlur: () => void;
 };
 
 function getDatabase(query: Lib.Query, metadata: Metadata) {
@@ -197,47 +225,56 @@ function getDatabase(query: Lib.Query, metadata: Metadata) {
   return metadata.database(databaseId);
 }
 
-export function Tooltip(props: TooltipProps) {
-  const { query, metadata, reportTimezone, state, onCompletionClick } = props;
-  const { completions, selectedCompletion, enclosingFunction, hasFocus } =
-    state;
+const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
+  function TooltipInner(props, ref) {
+    const {
+      query,
+      metadata,
+      reportTimezone,
+      state,
+      onCompletionClick,
+      onBlur,
+    } = props;
+    const { completions, selectedCompletion, enclosingFunction, hasFocus } =
+      state;
 
-  const database = getDatabase(query, metadata);
-  const helpText =
-    enclosingFunction && database
-      ? getHelpText(enclosingFunction.name, database, reportTimezone)
-      : null;
+    const database = getDatabase(query, metadata);
+    const helpText =
+      enclosingFunction && database
+        ? getHelpText(enclosingFunction.name, database, reportTimezone)
+        : null;
 
-  if (!hasFocus) {
-    return null;
-  }
+    if (!hasFocus) {
+      return null;
+    }
 
-  if (completions.length === 0 && !helpText) {
-    return null;
-  }
+    if (completions.length === 0 && !helpText) {
+      return null;
+    }
 
-  return (
-    <div className={css.tooltip}>
-      <Help helpText={helpText} />
-      {completions.length > 0 && (
-        <>
-          <ul role="listbox">
-            {completions.map((completion, index) => (
-              <CompletionItem
-                completion={completion}
-                index={index}
-                key={index}
-                selected={selectedCompletion === index}
-                onCompletionClick={onCompletionClick}
-              />
-            ))}
-          </ul>
-          <Footer />
-        </>
-      )}
-    </div>
-  );
-}
+    return (
+      <div className={css.tooltip} ref={ref} onBlur={onBlur} tabIndex={0}>
+        <Help helpText={helpText} />
+        {completions.length > 0 && (
+          <>
+            <ul role="listbox">
+              {completions.map((completion, index) => (
+                <CompletionItem
+                  completion={completion}
+                  index={index}
+                  key={index}
+                  selected={selectedCompletion === index}
+                  onCompletionClick={onCompletionClick}
+                />
+              ))}
+            </ul>
+            <Footer />
+          </>
+        )}
+      </div>
+    );
+  },
+);
 
 function CompletionItem({
   completion,
