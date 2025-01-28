@@ -369,7 +369,8 @@ function getDatabase(query: Lib.Query, metadata: Metadata) {
 
 function getSnippet(helpText: HelpText) {
   const args = helpText.args
-    ?.map(arg => "${" + arg.name.replace("…", "") + "}")
+    ?.filter(arg => arg.name !== "…")
+    ?.map(arg => "${" + arg.name + "}")
     .join(", ");
   return `${helpText.structure}(${args})`;
 }
