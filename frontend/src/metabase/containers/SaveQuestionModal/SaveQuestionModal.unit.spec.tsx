@@ -294,6 +294,31 @@ describe("SaveQuestionModal", () => {
       expect(newQuestion.collectionId()).toBe(1);
     });
 
+    it("should not allow to enter a name with more than 254 characters", async () => {
+      const question = getQuestion();
+      await setup(question);
+
+      await fillForm({
+        name: "A".repeat(254),
+        description: "B",
+      });
+      expect(
+        screen.queryByText(/must be 254 characters or less/),
+      ).not.toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: "Save" })).toBeEnabled();
+
+      await fillForm({
+        name: "A".repeat(255),
+        description: "B",
+      });
+      expect(
+        await screen.findByText(/must be 254 characters or less/),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByRole("button", { name: "Save" }),
+      ).toBeDisabled();
+    });
+
     it("should trim name and description", async () => {
       const question = getQuestion();
       const { onCreateMock } = await setup(question);

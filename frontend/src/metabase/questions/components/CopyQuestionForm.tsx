@@ -27,18 +27,18 @@ const QUESTION_SCHEMA = Yup.object({
   collection_id: Yup.number().nullable().default(null),
 });
 
-type CopyQuestionProperties = {
+export type CopyQuestionProperties = {
   name: string;
   description: string | null;
   collection_id: CollectionId | null;
 };
 
-interface CopyQuestionFormProps {
+type CopyQuestionFormProps = {
   initialValues: Partial<CopyQuestionProperties>;
   onCancel: () => void;
   onSubmit: (vals: CopyQuestionProperties) => Promise<Question>;
   onSaved: (newQuestion: Question) => void;
-}
+};
 
 export const CopyQuestionForm = ({
   initialValues,
