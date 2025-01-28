@@ -294,6 +294,7 @@ describe("issue 50662", () => {
   it("does not crash (metabase#50662)", () => {
     cy.visit("/");
     H.newButton("Question").click();
+    H.entityPickerModalTab("Tables").click();
     H.entityPickerModalItem(2, "Orders").click();
     H.join();
     H.joinTable("People");
@@ -310,11 +311,7 @@ describe("issue 50662", () => {
       "{pagedown}{uparrow}{uparrow}{end}{backspace}{backspace}{backspace}{{test",
     );
     cy.findByTestId("variable-type-select").click();
-
-    cy.on("uncaught:exception", err => {
-      expect(err.name.includes("StructuredQuery usage is forbidden")).to.be
-        .false;
-    });
     H.popover().findByText("Number").click();
+    cy.findByTestId("variable-type-select").should("have.value", "Number");
   });
 });
