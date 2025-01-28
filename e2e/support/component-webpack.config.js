@@ -85,10 +85,13 @@ function resolveEmbeddingSdkPackage() {
 
   try {
     const packagePath = require.resolve("@metabase/embedding-sdk-react");
+    console.log("packagePath", packagePath);
     if (packagePath.includes("node_modules")) {
       isEmbeddingSdkPackageInstalled = true;
     }
-  } catch (err) {}
+  } catch (error) {
+    console.log("resolving SDK path error", error);
+  }
 
   return {
     isEmbeddingSdkPackageInstalled,
