@@ -55,7 +55,7 @@
 }
 
 .documentationLink {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   margin-top: 1rem;
   color: var(--mb-color-brand);
