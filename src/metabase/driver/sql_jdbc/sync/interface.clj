@@ -133,7 +133,7 @@
 
 (defmulti alter-columns-sql
   "Generate the query to be used with [[driver/alter-columns!]]."
-  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
+  {:added "0.49.0", :arglists '([driver table-name column-definitions])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
