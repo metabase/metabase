@@ -122,7 +122,7 @@ describeEE("scenarios > embedding-sdk > interactive-question > theming", () => {
         "rgb(242, 242, 242)",
       );
 
-      // Hover should be an even slightly darker version of the background color
+      // Hover should be an even darker version of the background color
       cy.get(customColumn)
         .realHover()
         .should("have.css", "background-color", "rgb(230, 230, 230)");
