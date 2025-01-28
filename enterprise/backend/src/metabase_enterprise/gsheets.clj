@@ -169,7 +169,7 @@
                (sort-by (fn [{:keys [status created-at]}]
                           [(get status-order status Integer/MAX_VALUE)
                            ;; Convert created-at to millis, treat nil as the oldest
-                           (if created-at (t/instant created-at) (Instant/ofEpochSecond 0))])
+                           (if created-at (t/instant created-at) (t/instant 0))])
                         (fn [[status1 time1] [status2 time2]]
                           (or (compare status1 status2)
                               (compare time2 time1))))) ;; Descending order for timestamps
