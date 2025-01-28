@@ -1216,5 +1216,5 @@ export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
     : "questions/query-builder/expressions";
 };
 
-export const doesFunctionNameExist = name =>
-  Boolean(HELPER_TEXT_STRINGS.find(h => h.name === name));
+export const getFunctionByStructure = (structure: string) =>
+  HELPER_TEXT_STRINGS.find(h => h.structure === structure)?.name;

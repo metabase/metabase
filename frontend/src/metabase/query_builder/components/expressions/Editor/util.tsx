@@ -1,4 +1,4 @@
-import { doesFunctionNameExist } from "metabase-lib/v1/expressions/helper-text-strings";
+import { getFunctionByStructure } from "metabase-lib/v1/expressions/helper-text-strings";
 import { TOKEN, tokenize } from "metabase-lib/v1/expressions/tokenizer";
 import type { Token } from "metabase-lib/v1/expressions/types";
 
@@ -17,7 +17,7 @@ export function enclosingFunction(doc: string, pos: number) {
       cursor.to >= pos
     ) {
       const value = doc.slice(cursor.from, cursor.to);
-      const name = value.replace(/\(.*\)?$/, "");
+      const structure = value.replace(/\(.*\)?$/, "");
 
       const args =
         cursor.node.getChildren("ArgList")?.[0]?.getChildren("Arg") ?? [];
@@ -28,9 +28,10 @@ export function enclosingFunction(doc: string, pos: number) {
         break;
       }
 
-      if (doesFunctionNameExist(name)) {
+      const fn = getFunctionByStructure(structure);
+      if (fn) {
         res = {
-          name,
+          name: fn,
           from: cursor.from,
           to: cursor.to,
           arg:

@@ -179,4 +179,13 @@ describe("enclosingFunction", () => {
       });
     });
   });
+
+  it("should find the enclosing function when it the structure is different from the name", () => {
+    expect(setup(`datetimeDiff|(date, date, "day")`)).toEqual({
+      name: "datetime-diff",
+      from: 0,
+      to: 31,
+      arg: null,
+    });
+  });
 });
