@@ -879,6 +879,7 @@ describe("issue 28193", () => {
 
   function assertOnColumns() {
     cy.findAllByText("2.07").should("be.visible").and("have.length", 2);
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell")
       .should("be.visible")
       .last()
@@ -1220,6 +1221,7 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
     cy.button("Get Answer").should("be.visible");
     H.saveMetadataChanges();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
 
     dragColumn(0, 100);
@@ -1663,6 +1665,7 @@ describe("issue 37009", () => {
       .button("Save")
       .should("be.enabled")
       .click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.modal()
       .last()
       .within(() => {

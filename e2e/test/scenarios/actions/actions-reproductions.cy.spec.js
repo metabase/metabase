@@ -37,6 +37,7 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
+          // eslint-disable-next-line no-unsafe-element-filtering
           const dashCard = cy
             .findAllByTestId("dashcard-container")
             .last()
@@ -64,6 +65,7 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
+          // eslint-disable-next-line no-unsafe-element-filtering
           const dashCard = cy
             .findAllByTestId("dashcard-container")
             .last()
@@ -229,7 +231,7 @@ describe("issue 51020", () => {
     H.modal().findByLabelText("Name").type("Dash");
     H.modal().button("Create").click();
 
-    cy.button("Add a saved question").click();
+    cy.button("Add a chart").click();
     cy.findByTestId("add-card-sidebar").findByText(questionName).click();
 
     cy.findByLabelText("Add a filter or parameter").click();
