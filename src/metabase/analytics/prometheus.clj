@@ -230,12 +230,26 @@
    (prometheus/counter :metabase-search/response-ok
                        {:description "Number of successful search requests."})
    (prometheus/counter :metabase-search/response-error
-                       {:description "Number of errors when responding to search requests."})])
+                       {:description "Number of errors when responding to search requests."})
+   (prometheus/gauge :metabase-search/engine-default
+                     {:description "Whether a given engine is being used as the default. User can override via cookie."
+                      :labels [:engine]})
+   (prometheus/gauge :metabase-search/engine-active
+                     {:description "Whether a given engine is active. This does NOT mean that it is the default."
+                      :labels [:engine]})])
 
 (defmulti known-labels
-  "Implement this for a given metric to initialize zeros for the given set of label values."
+  "Implement this for a given metric to initialize it for the given set of label values."
   {:arglists '([metric]), :added "0.52.0"}
   identity)
+
+(defmulti initial-value
+  "Implement this for a given metric to have non-zero initial values for the given set of label values."
+  {:arglists '([metric labels]), :added "0.52.0"}
+  (fn [metric _labels]
+    metric))
+
+(defmethod initial-value :default [_ _] 0)
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
@@ -250,8 +264,9 @@
                                 [@c3p0-collector]
                                 (product-collectors)))]
     (doseq [metric (keys (methods known-labels))
-            labels (known-labels metric)]
-      (prometheus/inc registry metric labels 0))
+            labels (known-labels metric)
+            :let [value (initial-value metric labels)]]
+      (prometheus/inc registry metric labels value))
     registry))
 
 (defn- start-web-server!
