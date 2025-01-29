@@ -7,7 +7,6 @@
 
 .usage {
   padding: 8px;
-  font-size: 12px;
   color: var(--mb-color-text-secondary);
   cursor: pointer;
   font-family: var(--mb-default-monospace-font-family);
