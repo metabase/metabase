@@ -2,7 +2,7 @@
 title: Usage analytics
 ---
 
-# Usage analytics
+# Usage analytics Sanity Check
 
 {% include plans-blockquote.html feature="Usage analytics" %}
 
