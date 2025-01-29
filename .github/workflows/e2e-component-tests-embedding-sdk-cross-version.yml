@@ -165,6 +165,7 @@ jobs:
 
       - name: Move tests from the release commit into the repo
         run: |
+          # remove this line after we release a new SDK 0.53.x, since it will already contain the fixed version then.
           mv ./e2e/support/component-webpack.config.js .
 
           rm -rf ./e2e/support/*
