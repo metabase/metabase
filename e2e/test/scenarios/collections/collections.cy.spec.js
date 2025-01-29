@@ -308,22 +308,22 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("should handle moving a question when you don't have access to entier collection path (metabase#44316", () => {
-      cy.createCollection({
+      H.createCollection({
         name: "Collection A",
       }).then(({ body: collectionA }) => {
-        cy.createCollection({
+        H.createCollection({
           name: "Collection B",
           parent_id: collectionA.id,
         }).then(({ body: collectionB }) => {
-          cy.createCollection({
+          H.createCollection({
             name: "Collection C",
             parent_id: collectionB.id,
           }).then(({ body: collectionC }) => {
-            cy.createCollection({
+            H.createCollection({
               name: "Collection D",
               parent_id: collectionC.id,
             }).then(({ body: collectionD }) => {
-              cy.createCollection({
+              H.createCollection({
                 name: "Collection E",
                 parent_id: collectionD.id,
               }).then(({ body: collectionE }) => {
@@ -380,7 +380,7 @@ describe("scenarios > collection defaults", () => {
         native: { query: "select 1 --[[]]", "template-tags": {} },
       };
 
-      cy.createNativeQuestion(questionDetails);
+      H.createNativeQuestion(questionDetails);
 
       visitRootCollection();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -486,7 +486,7 @@ describe("scenarios > collection defaults", () => {
       const COLLECTION = "14122C";
 
       // Create Parent collection within admin's personal collection
-      cy.createCollection({
+      H.createCollection({
         name: COLLECTION,
         parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       });
@@ -511,7 +511,7 @@ describe("scenarios > collection defaults", () => {
       const NEW_COLLECTION = "New collection";
 
       // Create New collection within `Our analytics`
-      cy.createCollection({
+      H.createCollection({
         name: NEW_COLLECTION,
         parent_id: null,
       });
@@ -690,7 +690,7 @@ describe("scenarios > collection defaults", () => {
         });
 
         it("moving collections should disable moving into any of the moving collections", () => {
-          cy.createCollection({ name: "Another collection" });
+          H.createCollection({ name: "Another collection" });
 
           cy.log("moving a single collection");
           cy.visit(`/collection/${SECOND_COLLECTION_ID}`);
@@ -833,7 +833,7 @@ describe("scenarios > collection defaults", () => {
     it("collections list on the home page shouldn't depend on the name of the first 50 objects (metabase#16784)", () => {
       // Although there are already some objects in the default snapshot (3 questions, 1 dashboard, 3 collections),
       // let's create 50 more dashboards with the letter of alphabet `D` coming before the first letter of the existing collection `F`.
-      Cypress._.times(50, i => cy.createDashboard({ name: `Dashboard ${i}` }));
+      Cypress._.times(50, i => H.createDashboard({ name: `Dashboard ${i}` }));
 
       cy.visit("/");
       // There is already a collection named "First collection" in the default snapshot
@@ -885,6 +885,7 @@ describe("scenarios > collection items listing", () => {
 
   function assertCollectionItemsOrder(testId, names) {
     for (let index = 0; index < names.length; ++index) {
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId(testId).eq(index).should("have.text", names[index]);
     }
   }
@@ -942,10 +943,10 @@ describe("scenarios > collection items listing", () => {
       archiveAll();
 
       _.times(ADDED_DASHBOARDS, i =>
-        cy.createDashboard({ name: `dashboard ${i}` }),
+        H.createDashboard({ name: `dashboard ${i}` }),
       );
       _.times(ADDED_QUESTIONS, i =>
-        cy.createQuestion({
+        H.createQuestion({
           name: `generated question ${i}`,
           query: TEST_QUESTION_QUERY,
         }),
@@ -993,7 +994,7 @@ describe("scenarios > collection items listing", () => {
 
     it("should allow to sort unpinned items by columns asc and desc", () => {
       ["A", "B", "C"].forEach((letter, i) => {
-        cy.createDashboard({
+        H.createDashboard({
           name: `${letter} Dashboard`,
           collection_position: null,
         });
@@ -1002,7 +1003,7 @@ describe("scenarios > collection items listing", () => {
         // In that way we can test sorting by this column correctly
         cy.signIn("normal");
 
-        cy.createQuestion({
+        H.createQuestion({
           name: `${letter} Question`,
           collection_position: null,
           query: TEST_QUESTION_QUERY,
@@ -1138,9 +1139,9 @@ describe("scenarios > collection items listing", () => {
     });
 
     it("should reset pagination if sorting applied on not first page", () => {
-      _.times(15, i => cy.createDashboard(`dashboard ${i}`));
+      _.times(15, i => H.createDashboard(`dashboard ${i}`));
       _.times(15, i =>
-        cy.createQuestion({
+        H.createQuestion({
           name: `generated question ${i}`,
           query: TEST_QUESTION_QUERY,
         }),

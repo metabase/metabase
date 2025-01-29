@@ -44,7 +44,8 @@
           "@metabase/embedding-sdk-react"
         ]
       }
-    ]
+    ],
+    "no-unsafe-element-filtering": ["warn"]
   },
   "env": {
     "cypress/globals": true,

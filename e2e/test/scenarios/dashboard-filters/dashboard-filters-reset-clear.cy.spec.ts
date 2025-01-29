@@ -1101,6 +1101,7 @@ function addRangeFilter(
 ) {
   filter(label).click();
   H.popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
   H.popover().button("Add filter").click();
 }
@@ -1112,6 +1113,7 @@ function updateRangeFilter(
 ) {
   filter(label).click();
   H.popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
   H.popover().button("Update filter").click();
 }

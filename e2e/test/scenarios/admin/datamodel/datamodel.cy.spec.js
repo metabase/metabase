@@ -510,7 +510,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       semantic_type: null,
     });
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "14124",
         query: {
@@ -934,6 +934,7 @@ describe("scenarios > admin > datamodel > segments", () => {
           .first()
           .should("contain", "You edited the description")
           .and("contain", "Foo");
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.get("@revisions")
           .last()
           .should("contain", `You created "${SEGMENT_NAME}"`)
@@ -1034,7 +1035,7 @@ describe("scenarios > admin > databases > table", () => {
     });
 
     it("question with joins (metabase#15947-2)", () => {
-      cy.createQuestion({
+      H.createQuestion({
         name: "15947",
         query: {
           "source-table": ORDERS_ID,

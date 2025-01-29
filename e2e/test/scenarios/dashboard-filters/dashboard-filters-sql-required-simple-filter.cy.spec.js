@@ -37,7 +37,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: dashboardCard }) => {
@@ -53,7 +53,7 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
         ],
       };
 
-      cy.editDashboardCard(dashboardCard, mapFilterToCard);
+      H.editDashboardCard(dashboardCard, mapFilterToCard);
 
       H.visitDashboard(dashboard_id);
     });
