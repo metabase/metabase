@@ -299,23 +299,23 @@
                 {:data-source {:query_id query-id}}
                 env))))
     (testing "Filtering works."
-            (is (=? {:structured-output {:type :query,
-                                         :query_id string?
-                                         :query {:database (mt/id)
-                                                 :type :query
-                                                 :query {:source-table table-id
-                                                         :filter [:>
-                                                                  [:field
-                                                                   (mt/id :orders :discount)
-                                                                   {:base-type :type/Float}]
-                                                                  3]}}}}
-                    (metabot-v3.tools.interface/*invoke-tool*
-                     :metabot.tool/filter-records
-                     {:data-source {:query_id query-id}
-                      :filters [{:field_id (->field-id "Discount")
-                                 :operation "number-greater-than"
-                                 :value 3}]}
-                     env))))
+      (is (=? {:structured-output {:type :query,
+                                   :query_id string?
+                                   :query {:database (mt/id)
+                                           :type :query
+                                           :query {:source-table table-id
+                                                   :filter [:>
+                                                            [:field
+                                                             (mt/id :orders :discount)
+                                                             {:base-type :type/Float}]
+                                                            3]}}}}
+              (metabot-v3.tools.interface/*invoke-tool*
+               :metabot.tool/filter-records
+               {:data-source {:query_id query-id}
+                :filters [{:field_id (->field-id "Discount")
+                           :operation "number-greater-than"
+                           :value 3}]}
+               env))))
     (testing "Missing query results in an error."
       (is (= {:output (str "No query found with query_id " query-id)}
              (metabot-v3.tools.interface/*invoke-tool*
