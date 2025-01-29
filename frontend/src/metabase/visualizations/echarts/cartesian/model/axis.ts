@@ -484,7 +484,7 @@ function getYAxisExtent(
   seriesKeys: DataKey[],
   stackModels: StackModel[],
   dataset: ChartDataset,
-  stackType: StackType,
+  stackType?: StackType,
 ): Extent {
   if (dataset.length === 0) {
     return [0, 0];
