@@ -1,5 +1,6 @@
 (ns metabase.search.core
   (:require
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
@@ -38,6 +39,11 @@
 
  [search.spec
   define-spec])
+
+(defmethod prometheus/known-labels :metabase-search/index
+  [_]
+  (for [model (keys (search.spec/specifications))]
+    {:model model}))
 
 (defn supports-index?
   "Does this instance support a search index, of any sort?"
