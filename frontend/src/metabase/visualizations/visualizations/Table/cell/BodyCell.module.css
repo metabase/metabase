@@ -34,8 +34,8 @@
 .pill .content {
   display: inline-flex;
   color: var(--mb-color-brand);
-  border: 1px solid rgba(80, 158, 227, 0.14);
-  background-color: rgba(80, 158, 227, 0.08);
+  border: 1px solid var(--mb-color-brand-light);
+  background-color: var(--mb-color-brand-lighter);
   border-radius: 99px;
   padding: 0.25em 0.65em;
   width: auto;
