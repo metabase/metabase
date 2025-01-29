@@ -149,8 +149,18 @@ export function echartsTooltip() {
       "there must be only one visible echarts tooltip",
     );
 
+    const visibleTooltip = visibleTooltips[0];
+
+    const tooltipContainerStyle = window.getComputedStyle(
+      visibleTooltip.closest(".echarts-tooltip-container"),
+    );
+
+    // metabase#52732: tooltip container must have the correct z-index (200)
+    // this assertion prevents the tooltip from being rendered below charts.
+    cy.wrap(tooltipContainerStyle.zIndex).should("equal", 200);
+
     // Return the visible tooltip
-    return visibleTooltips[0];
+    return visibleTooltip;
   });
 }
 
