@@ -25,7 +25,7 @@ describe("scenarios > dashboard > filters > SQL > management", () => {
     };
 
     beforeEach(() => {
-      cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      H.createNativeQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id } }) => {
           H.visitDashboard(dashboard_id);
         },

@@ -21,9 +21,9 @@ describe("scenarios > question > view", () => {
       cy.findByText("Yes").click();
 
       // Native query saved in dasbhoard
-      cy.createDashboard({}, { wrapId: true });
+      H.createDashboard({}, { wrapId: true });
 
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "Question",
           native: {

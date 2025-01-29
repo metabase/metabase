@@ -524,7 +524,7 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
   });
 
   it("should work with time columns", { tags: ["@external"] }, () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "11398",
         native: {
