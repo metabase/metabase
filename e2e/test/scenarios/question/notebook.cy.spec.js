@@ -995,8 +995,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.addSummaryField({ metric: "Sum of ...", field: "Price" });
 
     cy.findByTestId("loading-indicator").should("not.exist");
-    H.nativeEditor()
-      .get(".ace_line")
+    H.NativeEditor.get(".ace_line")
       .should("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum"')
       .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."RATING") AS "sum_2"')
       .and("include.text", 'SUM("PUBLIC"."PRODUCTS"."PRICE") AS "sum_3"');

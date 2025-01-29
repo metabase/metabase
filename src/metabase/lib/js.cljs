@@ -1938,7 +1938,7 @@
 
   > **Code health:** Healthy."
   [a-query]
-  (name (lib.core/engine a-query)))
+  (some-> (lib.core/engine a-query) name))
 
 ;; # Legacy Segments
 ;; Segments are a deprecated kind of reusable query fragments, roughly equivalent to a set of filter clauses.
