@@ -70,19 +70,18 @@ describe("scenarios > dashboard", () => {
         cy.location("pathname").should("contain", `/dashboard/${body.id}`);
       });
 
-      cy.findByTestId("dashboard-empty-state").findByText(
-        "This dashboard is looking empty.",
-      );
-
       cy.log("New dashboards are opened in editing mode by default");
+      cy.findByTestId("dashboard-empty-state").should(
+        "contain",
+        "Create a new question or browse your collections for an existing one.",
+      );
       cy.findByTestId("edit-bar").findByText("You're editing this dashboard.");
 
       cy.log(
         "Should create new question from an empty dashboard (metabase#31848)",
       );
-      cy.findByTestId("dashboard-empty-state")
-        .findByRole("link", { name: "ask a new one" })
-        .click();
+      cy.findByTestId("dashboard-empty-state").button("Add a chart").click();
+      cy.findByTestId("new-button-bar").findByText("New Question").click();
 
       H.entityPickerModal().within(() => {
         H.entityPickerModalTab("Collections").click();
@@ -230,7 +229,7 @@ describe("scenarios > dashboard", () => {
     const originalDashboardName = "Amazing Dashboard";
 
     beforeEach(() => {
-      cy.createDashboard({ name: originalDashboardName }).then(
+      H.createDashboard({ name: originalDashboardName }).then(
         ({ body: { id } }) => {
           H.visitDashboard(id);
         },
@@ -282,9 +281,9 @@ describe("scenarios > dashboard", () => {
         const collectionInRoot = {
           name: "Collection in root collection",
         };
-        cy.createCollection(collectionInRoot);
+        H.createCollection(collectionInRoot);
         const myPersonalCollection = "My personal collection";
-        cy.createDashboard({
+        H.createDashboard({
           name: "dashboard in root collection",
         }).then(({ body: { id: dashboardId } }) => {
           H.visitDashboard(dashboardId);
@@ -339,8 +338,8 @@ describe("scenarios > dashboard", () => {
 
       it("should save a dashboard after adding a saved question from an empty state (metabase#29450)", () => {
         cy.findByTestId("dashboard-empty-state").within(() => {
-          cy.findByText("This dashboard is looking empty.");
-          cy.findByText("Add a saved question").click();
+          cy.findByText("This dashboard is empty");
+          cy.findByText("Add a chart").click();
         });
 
         H.sidebar().findByText("Orders, Count").click();
@@ -563,11 +562,11 @@ describe("scenarios > dashboard", () => {
       "should not allow dashboard editing on small screens",
       { viewportWidth: 480, viewportHeight: 800 },
       () => {
-        cy.icon("pencil").should("not.be.visible");
+        cy.findByLabelText("Edit dashboard").should("not.be.visible");
 
         cy.viewport(660, 800);
 
-        cy.icon("pencil").should("be.visible").click();
+        cy.findByLabelText("Edit dashboard").should("be.visible").click();
         cy.findByTestId("edit-bar").findByText(
           "You're editing this dashboard.",
         );
@@ -578,7 +577,7 @@ describe("scenarios > dashboard", () => {
       "shows sorted cards on mobile screens",
       { viewportWidth: 400, viewportHeight: 800 },
       () => {
-        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+        H.createDashboard().then(({ body: { id: dashboard_id } }) => {
           const cards = [
             // the bottom card intentionally goes first to have unsorted cards coming from the BE
             H.getTextCardDetails({
@@ -642,7 +641,7 @@ describe("scenarios > dashboard", () => {
 
       H.updateSetting("allowed-iframe-hosts", "*");
 
-      cy.createDashboard().then(({ body: { id } }) => {
+      H.createDashboard().then(({ body: { id } }) => {
         H.visitDashboard(id);
       });
 
@@ -663,7 +662,7 @@ describe("scenarios > dashboard", () => {
         ["youtube.com", "player.videos.com"].join("\n"),
       );
 
-      cy.createDashboard().then(({ body: { id } }) => H.visitDashboard(id));
+      H.createDashboard().then(({ body: { id } }) => H.visitDashboard(id));
       H.editDashboard();
 
       // Test allowed domain with subdomains
@@ -760,16 +759,16 @@ describe("scenarios > dashboard", () => {
       visualization_settings: {},
     });
 
-    cy.createDashboard({ name: "dash:11007" });
+    H.createDashboard({ name: "dash:11007" });
 
     cy.visit("/collection/root");
     // enter newly created dashboard
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("dash:11007").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
+    cy.findByText("This dashboard is empty");
     // add previously created question to it
-    cy.icon("pencil").click();
+    cy.findByLabelText("Edit dashboard").click();
     H.openQuestionsSidebar();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
@@ -803,7 +802,7 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "13597",
       query: {
         "source-table": PEOPLE_ID,
@@ -811,7 +810,7 @@ describe("scenarios > dashboard", () => {
       },
       display: "map",
     }).then(({ body: { id: questionId } }) => {
-      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.createDashboard().then(({ body: { id: dashboardId } }) => {
         // add filter (ID) to the dashboard
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           parameters: [
@@ -869,7 +868,7 @@ describe("scenarios > dashboard", () => {
       native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
     };
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+    H.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { dashboard_id } }) => {
         cy.log("Add 4 filters to the dashboard");
 
@@ -1402,7 +1401,7 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
     });
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         name: "15694",
         query: { "source-table": PEOPLE_ID },
@@ -1562,7 +1561,7 @@ describe("scenarios > dashboard > permissions", () => {
       }).then(({ body: { id } }) => (secondQuestionId = id));
     });
 
-    cy.createDashboard().then(({ body: { id: dashId } }) => {
+    H.createDashboard().then(({ body: { id: dashId } }) => {
       dashboardId = dashId;
 
       H.updateDashboardCards({
@@ -1744,6 +1743,7 @@ describe("scenarios > dashboard > entity id support", () => {
 });
 
 function validateIFrame(src, index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.getDashboardCards()
     .get("iframe")
     .eq(index)

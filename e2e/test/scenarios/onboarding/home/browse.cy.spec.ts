@@ -216,7 +216,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
       "Create several models - enough that we can see recently viewed models",
     );
     Array.from({ length: 10 }).forEach((_, i) => {
-      cy.createQuestion({
+      H.createQuestion({
         name: `Model ${i}`,
         query: {
           "source-table": PRODUCTS_ID,

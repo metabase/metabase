@@ -37,7 +37,7 @@ describe("issue 18067", () => {
           database: WRITABLE_DB_ID,
           query: { "source-table": testTable.id },
         };
-        cy.createQuestionAndDashboard({
+        H.createQuestionAndDashboard({
           dashboardDetails,
           questionDetails,
         }).then(({ body: { dashboard_id } }) => {
@@ -66,15 +66,15 @@ describe("issue 15993", () => {
   });
 
   it("should show filters defined on a question with filter pass-thru (metabase#15993)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "15993",
       query: {
         "source-table": ORDERS_ID,
       },
     }).then(({ body: { id: question1Id } }) => {
-      cy.createNativeQuestion({ native: { query: "select 0" } }).then(
+      H.createNativeQuestion({ native: { query: "select 0" } }).then(
         ({ body: { id: nativeId } }) => {
-          cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+          H.createDashboard().then(({ body: { id: dashboardId } }) => {
             // Add native question to the dashboard
             H.addOrUpdateDashboardCard({
               dashboard_id: dashboardId,
@@ -236,7 +236,7 @@ describe("issue 17160", () => {
   }
 
   function setup() {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "17160Q",
       native: {
         query: "SELECT * FROM products WHERE {{CATEGORY}}",
@@ -256,7 +256,7 @@ describe("issue 17160", () => {
       // Share the question
       cy.request("POST", `/api/card/${questionId}/public_link`);
 
-      cy.createDashboard({ name: "17160D" }).then(
+      H.createDashboard({ name: "17160D" }).then(
         ({ body: { id: dashboardId } }) => {
           // Share the dashboard
           cy.request("POST", `/api/dashboard/${dashboardId}/public_link`).then(
@@ -372,59 +372,57 @@ describe("issue 17160", () => {
   }
 
   function createTargetDashboard() {
-    return cy
-      .createQuestionAndDashboard({
-        dashboardDetails: {
-          name: TARGET_DASHBOARD_NAME,
+    return H.createQuestionAndDashboard({
+      dashboardDetails: {
+        name: TARGET_DASHBOARD_NAME,
+      },
+      questionDetails: {
+        query: {
+          "source-table": PRODUCTS_ID,
         },
-        questionDetails: {
-          query: {
-            "source-table": PRODUCTS_ID,
-          },
-        },
-      })
-      .then(({ body: { id, card_id, dashboard_id } }) => {
-        // Share the dashboard
-        cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`);
+      },
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      // Share the dashboard
+      cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`);
 
-        // Add a filter
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          parameters: [
+      // Add a filter
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        parameters: [
+          {
+            name: "Category",
+            slug: "category",
+            id: "dd19ec03",
+            type: "string/=",
+            sectionId: "string",
+          },
+        ],
+      });
+
+      // Resize the question card and connect the filter to it
+      return cy
+        .request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
-              name: "Category",
-              slug: "category",
-              id: "dd19ec03",
-              type: "string/=",
-              sectionId: "string",
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 10,
+              parameter_mappings: [
+                {
+                  parameter_id: "dd19ec03",
+                  card_id,
+                  target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                },
+              ],
             },
           ],
+        })
+        .then(() => {
+          return dashboard_id;
         });
-
-        // Resize the question card and connect the filter to it
-        return cy
-          .request("PUT", `/api/dashboard/${dashboard_id}`, {
-            dashcards: [
-              {
-                id,
-                card_id,
-                row: 0,
-                col: 0,
-                size_x: 16,
-                size_y: 10,
-                parameter_mappings: [
-                  {
-                    parameter_id: "dd19ec03",
-                    card_id,
-                    target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-                  },
-                ],
-              },
-            ],
-          })
-          .then(() => {
-            return dashboard_id;
-          });
-      });
+    });
   }
 
   function visitSourceDashboard() {
@@ -527,7 +525,7 @@ describe("issue 18454", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({ questionDetails }).then(
+    H.createQuestionAndDashboard({ questionDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
       },
@@ -574,13 +572,13 @@ describe("adding an additional series to a dashcard (metabase#20637)", () => {
       display: "bar",
     };
 
-    cy.createQuestion(additionalSeriesQuestion).then(
+    H.createQuestion(additionalSeriesQuestion).then(
       ({ body: { id: additionalSeriesId } }) => {
         cy.intercept("POST", `/api/card/${additionalSeriesId}/query`).as(
           "additionalSeriesCardQuery",
         );
 
-        cy.createQuestionAndDashboard({
+        H.createQuestionAndDashboard({
           questionDetails: dashcardQuestion,
         }).then(({ body: { id, card_id, dashboard_id } }) => {
           cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -665,11 +663,11 @@ describe("issue 22265", () => {
   });
 
   it("should allow editing dashcard series when added series are broken (metabase#22265)", () => {
-    cy.createNativeQuestion(invalidQuestion, {
+    H.createNativeQuestion(invalidQuestion, {
       wrapId: true,
       idAlias: "invalidQuestionId",
     });
-    cy.createNativeQuestionAndDashboard({ questionDetails: baseQuestion }).then(
+    H.createNativeQuestionAndDashboard({ questionDetails: baseQuestion }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           dashcards: [
@@ -755,7 +753,7 @@ describe("issue 23137", () => {
   it("should navigate to a target from a gauge card (metabase#23137)", () => {
     const target_id = ORDERS_QUESTION_ID;
 
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: GAUGE_QUESTION_DETAILS,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
       H.addOrUpdateDashboardCard({
@@ -785,7 +783,7 @@ describe("issue 23137", () => {
   it("should navigate to a target from a progress card (metabase#23137)", () => {
     const target_id = ORDERS_QUESTION_ID;
 
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: PROGRESS_QUESTION_DETAILS,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
       H.addOrUpdateDashboardCard({
@@ -843,7 +841,7 @@ describe("issues 27020 and 27105: static-viz fails to render for certain date fo
   };
 
   function assertStaticVizRenders(questionDetails) {
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.request({
         method: "GET",
         url: `/api/pulse/preview_card_png/${id}`,
@@ -944,8 +942,8 @@ describe("issue 29304", () => {
     });
 
     it("should render scalar with correct size on the first render (metabase#29304)", () => {
-      cy.createDashboard().then(({ body: dashboard }) => {
-        cy.createQuestionAndAddToDashboard(
+      H.createDashboard().then(({ body: dashboard }) => {
+        H.createQuestionAndAddToDashboard(
           SCALAR_QUESTION,
           dashboard.id,
           SCALAR_QUESTION_CARD,
@@ -969,8 +967,8 @@ describe("issue 29304", () => {
     });
 
     it("should render smart scalar with correct size on the first render (metabase#29304)", () => {
-      cy.createDashboard().then(({ body: dashboard }) => {
-        cy.createQuestionAndAddToDashboard(
+      H.createDashboard().then(({ body: dashboard }) => {
+        H.createQuestionAndAddToDashboard(
           SMART_SCALAR_QUESTION,
           dashboard.id,
           SMART_SCALAR_QUESTION_CARD,
@@ -1073,10 +1071,10 @@ describe("issue 31628", () => {
   ];
 
   const setupDashboardWithQuestionInCards = (question, cards) => {
-    cy.createDashboard().then(({ body: dashboard }) => {
+    H.createDashboard().then(({ body: dashboard }) => {
       H.cypressWaitAll(
         cards.map(card => {
-          return cy.createQuestionAndAddToDashboard(
+          return H.createQuestionAndAddToDashboard(
             question,
             dashboard.id,
             card,
@@ -1564,8 +1562,8 @@ describe("issue 32231", () => {
   });
 
   it("should show user-friendly error when combining series that cannot be visualized together (metabase#32231)", () => {
-    cy.createNativeQuestion(incompleteQuestion);
-    cy.createQuestionAndDashboard({ questionDetails: baseQuestion }).then(
+    H.createNativeQuestion(incompleteQuestion);
+    H.createQuestionAndDashboard({ questionDetails: baseQuestion }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           dashcards: [
@@ -1611,7 +1609,7 @@ describe("issue 32231", () => {
   });
 
   it("should show default visualization error message when the only series is incomplete", () => {
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails: incompleteQuestion,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
       cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -1692,7 +1690,7 @@ describe("issue 43219", () => {
     );
 
     cy.then(function () {
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails: {
           parameters: [textFilter],
         },
@@ -1807,6 +1805,7 @@ describe("issue 48878", () => {
       cy.button("Save").click();
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.modal()
       .last()
       .within(() => {

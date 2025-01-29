@@ -13,7 +13,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   });
 
   it("should allow sharing if there are no dashboard cards", () => {
-    cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+    H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       H.visitDashboard(DASHBOARD_ID);
     });
 
@@ -30,7 +30,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
-    cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+    H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       H.visitDashboard(DASHBOARD_ID);
     });
     H.addTextBox("Foo");
@@ -331,7 +331,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     it("should work when using dashboard default filter value on native query with required parameter (metabase#15705)", () => {
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "15705",
         native: {
           query: "SELECT COUNT(*) FROM ORDERS WHERE QUANTITY={{qty}}",
@@ -346,7 +346,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           },
         },
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.createDashboard({ name: "15705D" }).then(
+        H.createDashboard({ name: "15705D" }).then(
           ({ body: { id: DASHBOARD_ID } }) => {
             // Add filter to the dashboard
             cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
@@ -429,7 +429,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       const dashboardDetails = { name: "Repro Dashboard" };
 
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: { dashboard_id } }) => {
           assignRecipient({ dashboard_id });
         },
@@ -668,6 +668,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly").click();
 
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByText("Corbin Mertz").last().click();
         H.popover().within(() => {
           H.fieldValuesInput().type("Bob");
@@ -675,6 +676,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
         H.popover().contains("Update filter").click();
 
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.findAllByText("Text 1").last().click();
         H.popover().findByText("Gizmo").click();
         H.popover().contains("Add filter").click();

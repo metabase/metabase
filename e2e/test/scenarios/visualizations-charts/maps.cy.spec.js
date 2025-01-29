@@ -55,7 +55,7 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should suggest map visualization regardless of the first column type (metabase#14254)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "14254",
         native: {
