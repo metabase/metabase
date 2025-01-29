@@ -14,18 +14,14 @@
 (def ^:private scalar-config
   "See https://github.com/scalar/scalar/blob/main/documentation/configuration.md"
   {:servers [{:url         "http://localhost:3000/api"
-              :description "Localhost"}]})
-
-(def ^:private scalar-info
-  "Info to include at the top of the page."
-  {:info {:title "Metabase API documentation"
+              :description "Localhost"}]
+   :info {:title "Metabase API documentation"
           :description (slurp (io/resource "openapi/api-intro.md"))}})
 
 (defn- openapi-object []
   (merge
    (metabase.api.common/openapi-object #'metabase.api.routes/routes)
-   scalar-config
-   scalar-info))
+   scalar-config))
 
 (defn generate-dox!
   "Generates OpenAPI/Scalar documentation and write it to `docs/api.html`."

@@ -3,12 +3,12 @@
 
 ## API tutorial
 
-Check out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api.
+Check out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api).
 
 ## API keys
 
-Create keys to authenticate programmatic requests to your Metabase. See [API keys](./people-and-groups/api-keys.md).
+Create keys to authenticate programmatic requests to your Metabase. See [API keys](./people-and-groups/api-keys).
 
 ## API changelog
 
-For breaking changes, see the API [changelog](./developers-guide/api-changelog.md).
+For breaking changes, see the API [changelog](./developers-guide/api-changelog).
