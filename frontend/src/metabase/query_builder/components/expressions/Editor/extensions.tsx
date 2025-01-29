@@ -1,4 +1,4 @@
-import { acceptCompletion } from "@codemirror/autocomplete";
+import { acceptCompletion, startCompletion } from "@codemirror/autocomplete";
 import { bracketMatching, syntaxHighlighting } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { EditorView, drawSelection, keymap, tooltips } from "@codemirror/view";
@@ -70,6 +70,18 @@ export function useExtensions(options: Options): Extension[] {
         // element needs a tabIndex and data-autofocus attribute.
         tabIndex: "0",
         "data-autofocus": "",
+      }),
+      EditorView.domEventHandlers({
+        click(_, view) {
+          if (view.state.doc.toString() === "") {
+            startCompletion(view);
+          }
+        },
+        focus(_, view) {
+          if (view.state.doc.toString() === "") {
+            startCompletion(view);
+          }
+        },
       }),
       highlighting(),
       customExpression({

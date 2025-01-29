@@ -51,7 +51,7 @@ export function suggestions(options: SuggestOptions) {
       suggestSegments(options),
       suggestFunctions(options),
       suggestAggregations(options),
-      null && suggestPopular(options),
+      suggestPopular(options),
     ].filter(isNotNull),
   });
 }
