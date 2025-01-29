@@ -85,32 +85,31 @@ class Visualization extends PureComponent {
     computedSettings: {},
   };
 
-  UNSAFE_componentWillMount() {
-    this.transform(this.props);
+  constructor(props) {
+    super(props);
+    this.state = this.transformPropsToState(props);
   }
 
-  UNSAFE_componentWillReceiveProps(newProps) {
+  componentDidUpdate(prevProps, prevState) {
     if (
-      !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
-      !equals(newProps.settings, this.props.settings) ||
-      !equals(newProps.timelineEvents, this.props.timelineEvents) ||
+      !isSameSeries(prevProps.rawSeries, this.props.rawSeries) ||
+      !equals(prevProps.settings, this.props.settings) ||
+      !equals(prevProps.timelineEvents, this.props.timelineEvents) ||
       !equals(
-        newProps.selectedTimelineEventIds,
+        prevProps.selectedTimelineEventIds,
         this.props.selectedTimelineEventIds,
       )
     ) {
-      this.transform(newProps);
+      this.setState(this.transformPropsToState(this.props));
+    }
+
+    if (!equals(this.getWarnings(prevProps, prevState), this.getWarnings())) {
+      this.updateWarnings();
     }
   }
 
   componentDidMount() {
     this.updateWarnings();
-  }
-
-  componentDidUpdate(prevProps, prevState) {
-    if (!equals(this.getWarnings(prevProps, prevState), this.getWarnings())) {
-      this.updateWarnings();
-    }
   }
 
   componentDidCatch(error, info) {
@@ -141,7 +140,7 @@ class Visualization extends PureComponent {
     }
   }
 
-  transform(newProps) {
+  transformPropsToState(newProps) {
     const transformed = newProps.rawSeries
       ? getVisualizationTransformed(extractRemappings(newProps.rawSeries))
       : null;
@@ -151,7 +150,7 @@ class Visualization extends PureComponent {
       ? getComputedSettingsForSeries(series)
       : {};
 
-    this.setState({
+    return {
       hovered: null,
       error: null,
       genericError: null,
@@ -159,7 +158,7 @@ class Visualization extends PureComponent {
       series: series,
       visualization: visualization,
       computedSettings: computedSettings,
-    });
+    };
   }
 
   isLoading = series => {
