@@ -1,13 +1,11 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component, createRef } from "react";
-import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
+import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import { getMappingOptionByTarget } from "metabase/parameters/utils/mapping-options";
-
-import ParameterTargetList from "../components/ParameterTargetList";
 
 export default class ParameterTargetWidget extends Component {
   constructor(props) {
