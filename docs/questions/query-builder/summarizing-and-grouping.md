@@ -57,10 +57,9 @@ When you click on a different grouping column than the one you currently have se
 
 Some grouping columns will give you the option of choosing how big or small to make the groupings:
 
-- For datetime columns, you can click on the words `by month` to change the grouping to day, week, hour, quarter, year, etc. You'll also be able to add multiple breakouts by the same datetime column with different time granularities (for example, group by week and day of the week).
+- For datetime columns, you can click on the words `by month` to change the grouping to day, week, hour, quarter, year, etc. You'll also be able to add multiple breakouts by the same datetime column with different time granularities (for example, group by week and day of the week). See [Week of year](./expressions/week.md) for more information about grouping by week of year.
 - For numeric columns like age, Metabase will automatically "bin" the results, so you'll see your metric grouped in age brackets, like 0–10, 11–20, 21–30, etc. Just like with dates, you can click on the current binning option to change it to a specific number of bins. Currently, you can't choose your own ranges for bins.
 
   ![Multiple groupings](../images/histogram-bins.png)
 
   If you select a fixed number of bins, Metabase will break the range of the data into that number of equal size intervals. Some intervals might end up having no data, and Metabase will not display them.
-
