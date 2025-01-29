@@ -286,6 +286,7 @@ const config = {
     new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
+      ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new rspack.ProvidePlugin({ process: "process/browser.js" }),
