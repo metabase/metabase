@@ -21,9 +21,9 @@ describe("scenarios > question > view", () => {
       cy.findByText("Yes").click();
 
       // Native query saved in dasbhoard
-      cy.createDashboard({}, { wrapId: true });
+      H.createDashboard({}, { wrapId: true });
 
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "Question",
           native: {
@@ -90,6 +90,7 @@ describe("scenarios > question > view", () => {
         cy.findByText("Add filter").click();
       });
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("run-button").last().click();
 
       cy.findAllByText("Widget");
@@ -125,6 +126,7 @@ describe("scenarios > question > view", () => {
           .type("Widget");
         cy.findByText("Add filter").click();
       });
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("run-button").last().click();
 
       cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(

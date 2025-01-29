@@ -376,7 +376,7 @@ export function ComponentCompatibility() {
         }
         // loki couldn't make a screenshot of the tooltip in correct default position,
         // so we have to specify it explicitly
-        placement="bottom"
+        offset={[8, 8]} // Add explicit offset
       />
       <PopoverWithTrigger
         isInitiallyOpen

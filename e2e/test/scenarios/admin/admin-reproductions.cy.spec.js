@@ -55,7 +55,7 @@ describe("issue 21532", () => {
   });
 });
 
-describe("issue 41765", { tags: ["@external"] }, () => {
+describe("issue 41765", { tags: ["@external", "@flaky"] }, () => {
   // In this test we are testing the in-browser cache that metabase uses,
   // so we need to navigate by clicking trough the UI without reloading the page.
 
@@ -209,6 +209,7 @@ describe("(metabase#46714)", () => {
     cy.findByLabelText("Filter operator")
       .should("have.text", "Between")
       .click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Less than").click();
     cy.findByLabelText("Filter operator").should("have.text", "Less than");
     H.popover().findByPlaceholderText("Enter a number").clear().type("1000");

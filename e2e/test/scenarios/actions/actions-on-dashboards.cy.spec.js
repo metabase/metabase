@@ -261,7 +261,7 @@ const MODEL_NAME = "Test Action Model";
               });
             })
             .then(({ body: action }) => {
-              cy.createDashboard(dashboardDetails).then(
+              H.createDashboard(dashboardDetails).then(
                 ({ body: dashboard }) => {
                   H.updateDashboardCards({
                     dashboard_id: dashboard.id,
@@ -317,7 +317,7 @@ const MODEL_NAME = "Test Action Model";
               });
             })
             .then(({ body: action }) => {
-              cy.createDashboard(dashboardDetails).then(
+              H.createDashboard(dashboardDetails).then(
                 ({ body: dashboard }) => {
                   H.updateDashboardCards({
                     dashboard_id: dashboard.id,
@@ -967,9 +967,9 @@ const MODEL_NAME = "Test Action Model";
           });
 
           actionEditorModal().within(() => {
-            H.focusNativeEditor().type("{home}{shift+end}{backspace}");
+            H.NativeEditor.clear();
             const TEST_COLUMNS_QUERY = `UPDATE ${TEST_COLUMNS_TABLE} SET timestamp = {{ Timestamp }} WHERE id = {{ ID }}`;
-            H.focusNativeEditor().type(TEST_COLUMNS_QUERY, {
+            H.NativeEditor.focus().type(TEST_COLUMNS_QUERY, {
               delay: 0,
               parseSpecialCharSequences: false,
             });
@@ -1182,7 +1182,7 @@ describe(
         cy.findByPlaceholderText("My new fantastic action").type(ACTION_NAME);
         cy.findByTestId("create-action-form").button("Create").click();
 
-        cy.createDashboard({ name: "action packed dashboard" }).then(
+        H.createDashboard({ name: "action packed dashboard" }).then(
           ({ body: { id: dashboardId } }) => {
             H.visitDashboard(dashboardId);
           },
@@ -1241,7 +1241,7 @@ function createDashboardWithActionButton({
   idFilter = false,
   hideField,
 }) {
-  cy.createDashboard({ name: "action packed dashboard" }).then(
+  H.createDashboard({ name: "action packed dashboard" }).then(
     ({ body: { id: dashboardId } }) => {
       cy.wrap(dashboardId).as("dashboardId");
       H.visitDashboard(dashboardId);

@@ -13,7 +13,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion({
+    H.createQuestion({
       name: "QB Binning",
       query: {
         "source-table": ORDERS_ID,
