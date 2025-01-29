@@ -252,7 +252,9 @@ Metabase's reference documentation.
 
 Share and connect with other Metabasers.
 
-### [Metabase Cloud](https://www.metabase.com/cloud/docs)r docs specific to Metabase Cloud plans.
+### [Metabase Cloud](https://www.metabase.com/cloud/docs)
+
+For docs specific to Metabase Cloud plans.
 
 ### [Community stories](https://www.metabase.com/community)
 
