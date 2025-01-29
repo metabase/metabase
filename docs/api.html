@@ -17,8 +17,8 @@
 {
   "openapi" : "3.1.0",
   "info" : {
-    "title" : "Metabase API",
-    "version" : "vLOCAL_DEV"
+    "title" : "Metabase API documentation",
+    "description" : "- **The API is subject to change.** We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.\n- **The API isn't versioned.** So don’t expect to stay on a particular version of Metabase in order to use a “stable” API.\n\n## API tutorial\n\nCheck out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api.html).\n\n## API keys\n\nCreate keys to authenticate programmatic requests to your Metabase. See [API keys](./people-and-groups/api-keys).\n\n## API changelog\n\nFor breaking changes, see the API [changelog](./developers-guide/api-changelog).\n\n## View the API docs for your Metabase\n\nYou can view the API docs for your Metabase by visiting `https://[your-metabase-url]/api/docs`.\n"
   },
   "paths" : {
     "/public/action/{uuid}" : {
@@ -50,7 +50,21 @@
       "get" : {
         "summary" : "GET /embed/card/{token}/params/{param-key}/values",
         "description" : "Embedded version of api.card filter values endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "tags" : [ "embed" ]
       }
     },
@@ -76,6 +90,18 @@
           },
           "description" : "value must be a non-blank string."
         }, {
+          "in" : "path",
+          "name" : "prefix",
+          "required" : true,
+          "schema" : { },
+          "description" : "invalid value for prefix"
+        }, {
+          "in" : "path",
+          "name" : "dashboard-template",
+          "required" : true,
+          "schema" : { },
+          "description" : "invalid value for dashboard template name"
+        }, {
           "in" : "query",
           "name" : "show",
           "required" : false,
@@ -89,18 +115,6 @@
             } ]
           },
           "description" : "invalid show value"
-        }, {
-          "in" : "path",
-          "name" : "prefix",
-          "required" : true,
-          "schema" : { },
-          "description" : "invalid value for prefix"
-        }, {
-          "in" : "path",
-          "name" : "dashboard-template",
-          "required" : true,
-          "schema" : { },
-          "description" : "invalid value for dashboard template name"
         } ],
         "tags" : [ "automagic-dashboards" ]
       }
@@ -190,7 +204,7 @@
         }, {
           "in" : "query",
           "name" : "parameters",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "type" : "string"
           },
@@ -375,23 +389,26 @@
           "schema" : {
             "type" : "string",
             "enum" : [ "json" ]
-          }
+          },
+          "description" : "The format param is not used by the API, but is required as part of the oEmbed spec: http://oembed.com/#section2 just return an error if `format` is specified and it's anything other than `json`."
         }, {
           "in" : "query",
           "name" : "maxheight",
           "required" : true,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid integer."
+            "default" : 800,
+            "type" : "integer",
+            "minimum" : 1
+          }
         }, {
           "in" : "query",
           "name" : "maxwidth",
           "required" : true,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid integer."
+            "default" : 1024,
+            "type" : "integer",
+            "minimum" : 1
+          }
         } ],
         "tags" : [ "public" ]
       }
@@ -497,6 +514,21 @@
       }
     },
     "/timeline-event/{id}" : {
+      "get" : {
+        "summary" : "GET /timeline-event/{id}",
+        "description" : "Fetch the [[TimelineEvent]] with `id`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "timeline-event" ]
+      },
       "put" : {
         "summary" : "PUT /timeline-event/{id}",
         "description" : "Update a [[TimelineEvent]].",
@@ -517,37 +549,36 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "timestamp" : {
-                    "type" : "string",
-                    "description" : "value must be a valid date string"
+                  "name" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
                   "description" : {
                     "type" : "string"
                   },
-                  "archived" : {
+                  "timestamp" : {
+                    "type" : "string",
+                    "description" : "value must be a valid date string"
+                  },
+                  "time_matters" : {
                     "type" : "boolean"
                   },
                   "timezone" : {
                     "type" : "string"
                   },
-                  "time_matters" : {
-                    "type" : "boolean"
-                  },
-                  "name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  "icon" : {
+                    "type" : "string",
+                    "enum" : [ "star", "cake", "mail", "warning", "bell", "cloud" ]
                   },
                   "timeline_id" : {
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
                     "minimum" : 1
                   },
-                  "icon" : {
-                    "type" : "string",
-                    "enum" : [ "star", "cake", "mail", "warning", "bell", "cloud" ]
+                  "archived" : {
+                    "type" : "boolean"
                   }
-                },
-                "required" : [ "timestamp" ]
+                }
               }
             }
           }
@@ -556,21 +587,6 @@
       "delete" : {
         "summary" : "DELETE /timeline-event/{id}",
         "description" : "Delete a [[TimelineEvent]].",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "timeline-event" ]
-      },
-      "get" : {
-        "summary" : "GET /timeline-event/{id}",
-        "description" : "Fetch the [[TimelineEvent]] with `id`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -787,7 +803,7 @@
     "/public/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}/{export-format}" : {
       "post" : {
         "summary" : "POST /public/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}/{export-format}",
-        "description" : "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the export formats. Does not require auth credentials. Public sharing must be enabled.",
+        "description" : "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the\n  export formats. Does not require auth credentials. Public sharing must be enabled.",
         "parameters" : [ {
           "in" : "path",
           "name" : "uuid",
@@ -816,14 +832,6 @@
           },
           "description" : "value must be an integer greater than zero."
         }, {
-          "in" : "query",
-          "name" : "parameters",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
-        }, {
           "in" : "path",
           "name" : "export-format",
           "required" : true,
@@ -831,26 +839,32 @@
             "type" : "string",
             "enum" : [ "csv", "api", "xlsx", "json" ]
           }
-        } ],
-        "tags" : [ "public" ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "format_rows" : {
-                    "type" : "boolean"
-                  },
-                  "pivot_results" : {
-                    "type" : "boolean"
-                  }
-                },
-                "required" : [ ]
-              }
-            }
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        }, {
+          "in" : "query",
+          "name" : "format_rows",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
           }
-        }
+        }, {
+          "in" : "query",
+          "name" : "pivot_results",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        } ],
+        "tags" : [ "public" ]
       }
     },
     "/geojson/{key}" : {
@@ -873,11 +887,89 @@
       "get" : {
         "summary" : "GET /geojson/",
         "description" : "Load a custom GeoJSON file based on a URL or file path provided as a query parameter.\n  This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "url",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+          },
+          "description" : "value must be a non-blank string."
+        } ],
         "tags" : [ "geojson" ]
       }
     },
+    "/collection/{id}/move-dashboard-question-candidates" : {
+      "post" : {
+        "summary" : "POST /collection/{id}/move-dashboard-question-candidates",
+        "description" : "Move candidate cards to the dashboards they appear in.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "collection" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "card_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "uniqueItems" : true
+                  }
+                },
+                "optional" : true
+              }
+            }
+          }
+        }
+      }
+    },
     "/public/dashboard/{uuid}/dashcard/{dashcard-id}/execute" : {
+      "get" : {
+        "summary" : "GET /public/dashboard/{uuid}/dashcard/{dashcard-id}/execute",
+        "description" : "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "path",
+          "name" : "dashcard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        } ],
+        "tags" : [ "public" ]
+      },
       "post" : {
         "summary" : "POST /public/dashboard/{uuid}/dashcard/{dashcard-id}/execute",
         "description" : "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.\n\n   `parameters` should be the mapped dashboard parameters with values.",
@@ -911,44 +1003,11 @@
                     "type" : "object",
                     "additionalProperties" : { }
                   }
-                },
-                "required" : [ ]
+                }
               }
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /public/dashboard/{uuid}/dashcard/{dashcard-id}/execute",
-        "description" : "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "uuid",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-          },
-          "description" : "value must be a valid UUID."
-        }, {
-          "in" : "path",
-          "name" : "dashcard-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "parameters",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
-        } ],
-        "tags" : [ "public" ]
       }
     },
     "/action/public" : {
@@ -1054,6 +1113,13 @@
         "summary" : "GET /embed/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}",
         "description" : "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the\n  `embedding-secret-key`",
         "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "in" : "path",
           "name" : "dashcard-id",
           "required" : true,
@@ -1319,6 +1385,35 @@
         "tags" : [ "dashboard" ]
       }
     },
+    "/collection/root/move-dashboard-question-candidates" : {
+      "post" : {
+        "summary" : "POST /collection/root/move-dashboard-question-candidates",
+        "description" : "Move candidate cards to the dashboards they appear in (for the root collection)",
+        "parameters" : [ ],
+        "tags" : [ "collection" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "card_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "uniqueItems" : true
+                  }
+                },
+                "optional" : true
+              }
+            }
+          }
+        }
+      }
+    },
     "/notify/db/{id}/new-table" : {
       "post" : {
         "summary" : "POST /notify/db/{id}/new-table",
@@ -1350,39 +1445,6 @@
                   }
                 },
                 "required" : [ "schema_name", "table_name" ]
-              }
-            }
-          }
-        }
-      }
-    },
-    "/metabot/database/{database-id}/query" : {
-      "post" : {
-        "summary" : "POST /metabot/database/{database-id}/query",
-        "description" : "Ask Metabot to generate a SQL query given a prompt about a given database.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "database-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "metabot" ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "question" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  }
-                },
-                "required" : [ "question" ]
               }
             }
           }
@@ -1448,8 +1510,7 @@
                     "type" : "string",
                     "enum" : [ "full", "schema" ]
                   }
-                },
-                "required" : [ ]
+                }
               }
             }
           }
@@ -1531,7 +1592,8 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -1690,7 +1752,7 @@
         "parameters" : [ {
           "in" : "path",
           "name" : "persisted-info-id",
-          "required" : false,
+          "required" : true,
           "schema" : {
             "type" : "integer",
             "minimum" : 1
@@ -1701,21 +1763,6 @@
       }
     },
     "/permissions/membership/{id}" : {
-      "delete" : {
-        "summary" : "DELETE /permissions/membership/{id}",
-        "description" : "Remove a User from a PermissionsGroup (delete their membership).",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "permissions" ]
-      },
       "put" : {
         "summary" : "PUT /permissions/membership/{id}",
         "description" : "Update a Permission Group membership. Returns the updated record.",
@@ -1745,6 +1792,21 @@
             }
           }
         }
+      },
+      "delete" : {
+        "summary" : "DELETE /permissions/membership/{id}",
+        "description" : "Remove a User from a PermissionsGroup (delete their membership).",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "permissions" ]
       }
     },
     "/ee/serialization/import" : {
@@ -1754,43 +1816,30 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "continue_on_error",
-          "required" : false,
+          "required" : true,
           "schema" : {
-            "type" : "boolean",
-            "default" : false
-          },
-          "description" : "Do not break execution on errors"
+            "default" : false,
+            "type" : "boolean"
+          }
         }, {
           "in" : "query",
           "name" : "full_stacktrace",
-          "required" : false,
+          "required" : true,
           "schema" : {
-            "type" : "boolean",
-            "default" : false
-          },
-          "description" : "Show full stacktraces in the logs"
-        } ],
-        "tags" : [ "ee" ],
-        "requestBody" : {
-          "content" : {
-            "multipart/form-data" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "file" : {
-                    "type" : "string",
-                    "format" : "binary",
-                    "description" : ".tgz with serialization data"
-                  }
-                },
-                "required" : [ "file" ]
-              }
-            }
+            "default" : false,
+            "type" : "boolean"
           }
-        }
+        } ],
+        "tags" : [ "ee" ]
       }
     },
     "/permissions/group" : {
+      "get" : {
+        "summary" : "GET /permissions/group",
+        "description" : "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.\n  This API requires superuser or group manager of more than one group.\n  Group manager is only available if `advanced-permissions` is enabled and returns only groups that user\n  is manager of.",
+        "parameters" : [ ],
+        "tags" : [ "permissions" ]
+      },
       "post" : {
         "summary" : "POST /permissions/group",
         "description" : "Create a new `PermissionsGroup`.",
@@ -1812,12 +1861,6 @@
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /permissions/group",
-        "description" : "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.\n  This API requires superuser or group manager of more than one group.\n  Group manager is only available if `advanced-permissions` is enabled and returns only groups that user\n  is manager of.",
-        "parameters" : [ ],
-        "tags" : [ "permissions" ]
       }
     },
     "/card/{id}/query_metadata" : {
@@ -1854,6 +1897,7 @@
           "name" : "model",
           "required" : true,
           "schema" : {
+            "default" : [ "root" ],
             "type" : "array",
             "items" : {
               "type" : "string",
@@ -1903,45 +1947,7 @@
                     "minimum" : 0
                   },
                   "strategy" : {
-                    "allOf" : [ {
-                      "type" : "object",
-                      "properties" : {
-                        "type" : {
-                          "type" : "string",
-                          "enum" : [ "nocache", "ttl" ]
-                        }
-                      },
-                      "required" : [ "type" ]
-                    }, {
-                      "oneOf" : [ {
-                        "type" : "object",
-                        "properties" : {
-                          "type" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "type" ]
-                      }, {
-                        "type" : "object",
-                        "properties" : {
-                          "type" : {
-                            "const" : "ttl"
-                          },
-                          "multiplier" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "min_duration_ms" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 0
-                          }
-                        },
-                        "required" : [ "type", "multiplier", "min_duration_ms" ],
-                        "additionalProperties" : false
-                      } ]
-                    } ]
+                    "$ref" : "#/components/schemas/metabase.api.cache~1cache-strategy"
                   }
                 },
                 "required" : [ "model", "model_id", "strategy" ]
@@ -2085,69 +2091,7 @@
         "tags" : [ "field" ]
       }
     },
-    "/metabot/feedback" : {
-      "post" : {
-        "summary" : "POST /metabot/feedback",
-        "description" : "Record feedback on metabot results.",
-        "parameters" : [ ],
-        "tags" : [ "metabot" ]
-      }
-    },
     "/table/{id}" : {
-      "put" : {
-        "summary" : "PUT /table/{id}",
-        "description" : "Update `Table` with ID.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "table" ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "visibility_type" : {
-                    "type" : "string",
-                    "enum" : [ "technical", "hidden", "cruft" ]
-                  },
-                  "field_order" : {
-                    "type" : "string",
-                    "enum" : [ "alphabetical", "custom", "database", "smart" ]
-                  },
-                  "display_name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "points_of_interest" : {
-                    "type" : "string"
-                  },
-                  "entity_type" : {
-                    "description" : "value must be a valid entity type (keyword or string)."
-                  },
-                  "description" : {
-                    "type" : "string"
-                  },
-                  "show_in_getting_started" : {
-                    "type" : "boolean"
-                  },
-                  "caveats" : {
-                    "type" : "string"
-                  }
-                },
-                "required" : [ ]
-              }
-            }
-          }
-        }
-      },
       "get" : {
         "summary" : "GET /table/{id}",
         "description" : "Get `Table` with ID.",
@@ -2169,6 +2113,59 @@
           }
         } ],
         "tags" : [ "table" ]
+      },
+      "put" : {
+        "summary" : "PUT /table/{id}",
+        "description" : "Update `Table` with ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "table" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "display_name" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  },
+                  "entity_type" : {
+                    "description" : "value must be a valid entity type (keyword or string)."
+                  },
+                  "visibility_type" : {
+                    "type" : "string",
+                    "enum" : [ "technical", "hidden", "cruft" ]
+                  },
+                  "description" : {
+                    "type" : "string"
+                  },
+                  "caveats" : {
+                    "type" : "string"
+                  },
+                  "points_of_interest" : {
+                    "type" : "string"
+                  },
+                  "show_in_getting_started" : {
+                    "type" : "boolean"
+                  },
+                  "field_order" : {
+                    "type" : "string",
+                    "enum" : [ "alphabetical", "custom", "database", "smart" ]
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/embed/dashboard/{token}/params/{param-key}/search/{prefix}" : {
@@ -2222,7 +2219,23 @@
       "put" : {
         "summary" : "PUT /collection/graph",
         "description" : "Do a batch update of Collections Permissions by passing in a modified graph. Will overwrite parts of the graph that\n  are present in the request, and leave the rest unchanged.\n\n  If the `force` query parameter is `true`, a `revision` number is not required. The provided graph will be persisted\n  as-is, and has the potential to clobber other writes that happened since the last read.\n\n  If the `skip_graph` query parameter is `true`, it will only return the current revision, not the entire permissions\n  graph.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "force",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "skip-graph",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        } ],
         "tags" : [ "collection" ],
         "requestBody" : {
           "content" : {
@@ -2241,12 +2254,6 @@
                   "groups" : {
                     "type" : "object",
                     "properties" : { }
-                  },
-                  "force" : {
-                    "type" : "boolean"
-                  },
-                  "skip-graph" : {
-                    "type" : "boolean"
                   }
                 },
                 "required" : [ "groups" ]
@@ -2309,8 +2316,7 @@
                     "type" : "object",
                     "additionalProperties" : { }
                   }
-                },
-                "required" : [ ]
+                }
               }
             }
           }
@@ -2352,28 +2358,32 @@
           "name" : "include_hidden",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "remove_inactive",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "skip_fields",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "database" ]
@@ -2462,9 +2472,9 @@
       }
     },
     "/setting/{key}" : {
-      "put" : {
-        "summary" : "PUT /setting/{key}",
-        "description" : "Create/update a `Setting`. If called by a non-admin, only user-local settings can be updated.\n   This endpoint can also be used to delete Settings by passing `nil` for `:value`.",
+      "get" : {
+        "summary" : "GET /setting/{key}",
+        "description" : "Fetch a single `Setting`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "key",
@@ -2475,9 +2485,9 @@
         } ],
         "tags" : [ "setting" ]
       },
-      "get" : {
-        "summary" : "GET /setting/{key}",
-        "description" : "Fetch a single `Setting`.",
+      "put" : {
+        "summary" : "PUT /setting/{key}",
+        "description" : "Create/update a `Setting`. If called by a non-admin, only user-local settings can be updated.\n   This endpoint can also be used to delete Settings by passing `nil` for `:value`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "key",
@@ -2694,9 +2704,9 @@
       }
     },
     "/model-index/{id}" : {
-      "delete" : {
-        "summary" : "DELETE /model-index/{id}",
-        "description" : "Delete ModelIndex.",
+      "get" : {
+        "summary" : "GET /model-index/{id}",
+        "description" : "Retrieve ModelIndex.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -2709,9 +2719,9 @@
         } ],
         "tags" : [ "model-index" ]
       },
-      "get" : {
-        "summary" : "GET /model-index/{id}",
-        "description" : "Retrieve ModelIndex.",
+      "delete" : {
+        "summary" : "DELETE /model-index/{id}",
+        "description" : "Delete ModelIndex.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -2745,30 +2755,26 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "timestamp" : {
-                    "type" : "string",
-                    "description" : "value must be a valid date string"
-                  },
-                  "question_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
+                  "name" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
                   "description" : {
                     "type" : "string"
                   },
-                  "archived" : {
+                  "timestamp" : {
+                    "type" : "string",
+                    "description" : "value must be a valid date string"
+                  },
+                  "time_matters" : {
                     "type" : "boolean"
                   },
                   "timezone" : {
                     "type" : "string"
                   },
-                  "time_matters" : {
-                    "type" : "boolean"
-                  },
-                  "name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  "icon" : {
+                    "type" : "string",
+                    "enum" : [ "star", "cake", "mail", "warning", "bell", "cloud" ]
                   },
                   "timeline_id" : {
                     "description" : "value must be an integer greater than zero.",
@@ -2779,12 +2785,16 @@
                     "type" : "string",
                     "enum" : [ "collections", "question" ]
                   },
-                  "icon" : {
-                    "type" : "string",
-                    "enum" : [ "star", "cake", "mail", "warning", "bell", "cloud" ]
+                  "question_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "archived" : {
+                    "type" : "boolean"
                   }
                 },
-                "required" : [ "timestamp", "timezone", "name", "timeline_id" ]
+                "required" : [ "name", "timestamp", "timezone", "timeline_id" ]
               }
             }
           }
@@ -2832,61 +2842,6 @@
       }
     },
     "/database/" : {
-      "post" : {
-        "summary" : "POST /database/",
-        "description" : "Add a new `Database`.",
-        "parameters" : [ ],
-        "tags" : [ "database" ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "engine" : {
-                    "description" : "value must be a valid database engine.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "schedules" : {
-                    "$ref" : "#/components/schemas/metabase.sync.schedules~1ExpandedSchedulesMap"
-                  },
-                  "connection_source" : {
-                    "type" : "string",
-                    "enum" : [ "admin", "setup" ],
-                    "default" : "admin"
-                  },
-                  "auto_run_queries" : {
-                    "type" : "boolean"
-                  },
-                  "name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "is_full_sync" : {
-                    "type" : "boolean",
-                    "default" : true
-                  },
-                  "cache_ttl" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "details" : {
-                    "description" : "Value must be a map.",
-                    "type" : "object",
-                    "properties" : { }
-                  },
-                  "is_on_demand" : {
-                    "type" : "boolean",
-                    "default" : false
-                  }
-                },
-                "required" : [ "engine", "name", "details" ]
-              }
-            }
-          }
-        }
-      },
       "get" : {
         "summary" : "GET /database/",
         "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if\n    Enterprise Edition code is available the advanced-permissions feature is enabled.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`\n  in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the\n  database details.",
@@ -2903,38 +2858,98 @@
           "name" : "include_analytics",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "saved",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "exclude_uneditable_details",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_only_uploadable",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "database" ]
+      },
+      "post" : {
+        "summary" : "POST /database/",
+        "description" : "Add a new `Database`.",
+        "parameters" : [ ],
+        "tags" : [ "database" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  },
+                  "engine" : {
+                    "description" : "value must be a valid database engine.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  },
+                  "details" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  },
+                  "is_full_sync" : {
+                    "type" : "boolean",
+                    "default" : true
+                  },
+                  "is_on_demand" : {
+                    "type" : "boolean",
+                    "default" : false
+                  },
+                  "schedules" : {
+                    "$ref" : "#/components/schemas/metabase.sync.schedules~1ExpandedSchedulesMap"
+                  },
+                  "auto_run_queries" : {
+                    "type" : "boolean"
+                  },
+                  "cache_ttl" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "connection_source" : {
+                    "type" : "string",
+                    "enum" : [ "admin", "setup" ],
+                    "default" : "admin"
+                  }
+                },
+                "required" : [ "name", "engine", "details" ]
+              }
+            }
+          }
+        }
       }
     },
     "/collection/trash" : {
@@ -2981,7 +2996,7 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "value-pairs" : {
+                  "values" : {
                     "type" : "array",
                     "items" : {
                       "anyOf" : [ {
@@ -2999,7 +3014,7 @@
                     }
                   }
                 },
-                "required" : [ "value-pairs" ]
+                "required" : [ "values" ]
               }
             }
           }
@@ -3037,26 +3052,28 @@
           },
           "description" : "value must be an integer greater than zero."
         }, {
-          "in" : "query",
-          "name" : "format_rows",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        }, {
-          "in" : "query",
-          "name" : "pivot_results",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        }, {
           "in" : "path",
           "name" : "export-format",
           "required" : true,
           "schema" : {
             "type" : "string",
             "enum" : [ "csv", "api", "xlsx", "json" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "format_rows",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "pivot_results",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
           }
         } ],
         "tags" : [ "embed" ]
@@ -3078,7 +3095,7 @@
         }, {
           "in" : "query",
           "name" : "parameters",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "type" : "string"
           },
@@ -3109,6 +3126,12 @@
           },
           "description" : "value must be a non-blank string."
         }, {
+          "in" : "path",
+          "name" : "cell-query",
+          "required" : true,
+          "schema" : { },
+          "description" : "value couldn't be parsed as base64 encoded JSON"
+        }, {
           "in" : "query",
           "name" : "show",
           "required" : false,
@@ -3122,12 +3145,6 @@
             } ]
           },
           "description" : "invalid show value"
-        }, {
-          "in" : "path",
-          "name" : "cell-query",
-          "required" : true,
-          "schema" : { },
-          "description" : "value couldn't be parsed as base64 encoded JSON"
         } ],
         "tags" : [ "automagic-dashboards" ]
       }
@@ -3155,6 +3172,29 @@
       }
     },
     "/field/{id}" : {
+      "get" : {
+        "summary" : "GET /field/{id}",
+        "description" : "Get `Field` with ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "include_editable_data_model",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        } ],
+        "tags" : [ "field" ]
+      },
       "put" : {
         "summary" : "PUT /field/{id}",
         "description" : "Update `Field` with ID.",
@@ -3175,19 +3215,24 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "visibility_type" : {
-                    "type" : "string",
-                    "enum" : [ "retired", "sensitive", "normal", "hidden", "details-only" ]
+                  "caveats" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  },
+                  "description" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
                   "display_name" : {
                     "description" : "value must be a non-blank string.",
                     "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
-                  "points_of_interest" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  "fk_target_field_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
                   },
-                  "description" : {
+                  "points_of_interest" : {
                     "description" : "value must be a non-blank string.",
                     "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
@@ -3197,6 +3242,10 @@
                   "coercion_strategy" : {
                     "description" : "value must be a valid coercion strategy (keyword or string)."
                   },
+                  "visibility_type" : {
+                    "type" : "string",
+                    "enum" : [ "retired", "sensitive", "normal", "hidden", "details-only" ]
+                  },
                   "has_field_values" : {
                     "$ref" : "#/components/schemas/metabase.lib.schema.metadata~1column.has-field-values"
                   },
@@ -3204,15 +3253,6 @@
                     "description" : "Value must be a map.",
                     "type" : "object",
                     "properties" : { }
-                  },
-                  "caveats" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "fk_target_field_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
                   },
                   "nfc_path" : {
                     "type" : "array",
@@ -3224,34 +3264,11 @@
                   "json_unfolding" : {
                     "type" : "boolean"
                   }
-                },
-                "required" : [ ]
+                }
               }
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /field/{id}",
-        "description" : "Get `Field` with ID.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "include_editable_data_model",
-          "required" : true,
-          "schema" : {
-            "type" : "boolean"
-          }
-        } ],
-        "tags" : [ "field" ]
       }
     },
     "/card/embeddable" : {
@@ -3314,26 +3331,30 @@
       "put" : {
         "summary" : "PUT /permissions/graph",
         "description" : "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same\n  format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This\n  modified graph must correspond to the `PermissionsGraph` schema. If successful, this endpoint returns the updated\n  permissions graph; use this as a base for any further modifications.\n\n  Revisions to the permissions graph are tracked. If you fetch the permissions graph and some other third-party\n  modifies it before you can submit you revisions, the endpoint will instead make no changes and return a\n  409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that.\n\n  The optional `sandboxes` key contains a list of sandboxes that should be created or modified in conjunction with\n  this permissions graph update. Since data sandboxing is an Enterprise Edition-only feature, a 402 (Payment Required)\n  response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the\n  `:sandboxes` feature flag is not present.\n\n  If the skip-graph query param is truthy, then the graph will not be returned.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "skip-graph",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "force",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        } ],
         "tags" : [ "permissions" ],
         "requestBody" : {
           "content" : {
             "application/json" : {
               "schema" : {
                 "type" : "object",
-                "properties" : {
-                  "body" : {
-                    "type" : "object",
-                    "properties" : { }
-                  },
-                  "skip-graph" : {
-                    "type" : "boolean"
-                  },
-                  "force" : {
-                    "type" : "boolean"
-                  }
-                },
-                "required" : [ "body" ]
+                "properties" : { }
               }
             }
           }
@@ -3381,7 +3402,7 @@
         "parameters" : [ {
           "in" : "path",
           "name" : "card-id",
-          "required" : false,
+          "required" : true,
           "schema" : {
             "type" : "integer",
             "minimum" : 1
@@ -3392,6 +3413,21 @@
       }
     },
     "/native-query-snippet/{id}" : {
+      "get" : {
+        "summary" : "GET /native-query-snippet/{id}",
+        "description" : "Fetch native query snippet with ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "native-query-snippet" ]
+      },
       "put" : {
         "summary" : "PUT /native-query-snippet/{id}",
         "description" : "Update an existing `NativeQuerySnippet`.",
@@ -3429,16 +3465,17 @@
                     "type" : "integer",
                     "minimum" : 1
                   }
-                },
-                "required" : [ ]
+                }
               }
             }
           }
         }
-      },
+      }
+    },
+    "/channel/{id}" : {
       "get" : {
-        "summary" : "GET /native-query-snippet/{id}",
-        "description" : "Fetch native query snippet with ID.",
+        "summary" : "GET /channel/{id}",
+        "description" : "Get a channel",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -3449,10 +3486,8 @@
           },
           "description" : "value must be an integer greater than zero."
         } ],
-        "tags" : [ "native-query-snippet" ]
-      }
-    },
-    "/channel/{id}" : {
+        "tags" : [ "channel" ]
+      },
       "put" : {
         "summary" : "PUT /channel/{id}",
         "description" : "Update a channel",
@@ -3491,27 +3526,11 @@
                   "active" : {
                     "type" : "boolean"
                   }
-                },
-                "required" : [ ]
+                }
               }
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /channel/{id}",
-        "description" : "Get a channel",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "channel" ]
       }
     },
     "/pulse/unsubscribe/undo" : {
@@ -3549,7 +3568,14 @@
       "get" : {
         "summary" : "GET /embed/dashboard/{token}",
         "description" : "Fetch a Dashboard via a JSON Web Token signed with the `embedding-secret-key`.\n\n   Token should have the following format:\n\n     {:resource {:dashboard <dashboard-id>}}",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "tags" : [ "embed" ]
       }
     },
@@ -3573,7 +3599,8 @@
                     "type" : "string"
                   },
                   "synchronous?" : {
-                    "type" : "boolean"
+                    "type" : "boolean",
+                    "default" : false
                   }
                 },
                 "required" : [ ]
@@ -3586,7 +3613,7 @@
     "/table/{id}/replace-csv" : {
       "post" : {
         "summary" : "POST /table/{id}/replace-csv",
-        "description" : "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have been created by uploading a CSV file.",
+        "description" : "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have\n  been created by uploading a CSV file.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -3601,9 +3628,9 @@
       }
     },
     "/bookmark/{model}/{id}" : {
-      "delete" : {
-        "summary" : "DELETE /bookmark/{model}/{id}",
-        "description" : "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id.",
+      "post" : {
+        "summary" : "POST /bookmark/{model}/{id}",
+        "description" : "Create a new bookmark for user.",
         "parameters" : [ {
           "in" : "path",
           "name" : "model",
@@ -3624,9 +3651,9 @@
         } ],
         "tags" : [ "bookmark" ]
       },
-      "post" : {
-        "summary" : "POST /bookmark/{model}/{id}",
-        "description" : "Create a new bookmark for user.",
+      "delete" : {
+        "summary" : "DELETE /bookmark/{model}/{id}",
+        "description" : "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id.",
         "parameters" : [ {
           "in" : "path",
           "name" : "model",
@@ -3663,6 +3690,23 @@
           "description" : "value must be an integer greater than zero."
         } ],
         "tags" : [ "dashboard" ]
+      }
+    },
+    "/collection/{id}/dashboard-question-candidates" : {
+      "get" : {
+        "summary" : "GET /collection/{id}/dashboard-question-candidates",
+        "description" : "Find cards in this collection that can be moved into dashboards in this collection.\n\n  To be eligible, a card must only appear in one dashboard (which is also in this collection), and must not already be a\n  dashboard question.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "collection" ]
       }
     },
     "/card/{id}/timelines" : {
@@ -3749,11 +3793,26 @@
         "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filters_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n\n  Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
         "parameters" : [ {
           "in" : "query",
-          "name" : "filter_items_in_personal_collection",
+          "name" : "q",
           "required" : false,
           "schema" : {
-            "type" : "string",
-            "enum" : [ "all", "only", "only-mine", "exclude", "exclude-others" ]
+            "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+          },
+          "description" : "value must be a non-blank string."
+        }, {
+          "in" : "query",
+          "name" : "context",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -3764,74 +3823,6 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "created_by",
-          "required" : false,
-          "schema" : {
-            "type" : "array",
-            "items" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }
-          }
-        }, {
-          "in" : "query",
-          "name" : "verified",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        }, {
-          "in" : "query",
-          "name" : "created_at",
-          "required" : false,
-          "schema" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-          },
-          "description" : "value must be a non-blank string."
-        }, {
-          "in" : "query",
-          "name" : "include_dashboard_questions",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        }, {
-          "in" : "query",
-          "name" : "q",
-          "required" : false,
-          "schema" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-          },
-          "description" : "value must be a non-blank string."
-        }, {
-          "in" : "query",
-          "name" : "ids",
-          "required" : false,
-          "schema" : {
-            "type" : "array",
-            "items" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }
-          }
-        }, {
-          "in" : "query",
-          "name" : "search_native_query",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
         }, {
           "in" : "query",
           "name" : "models",
@@ -3845,14 +3836,23 @@
           }
         }, {
           "in" : "query",
-          "name" : "search_engine",
+          "name" : "filter_items_in_personal_collection",
           "required" : false,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "enum" : [ "all", "only", "only-mine", "exclude", "exclude-others" ]
           }
         }, {
           "in" : "query",
-          "name" : "last_edited_by",
+          "name" : "created_at",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+          },
+          "description" : "value must be a non-blank string."
+        }, {
+          "in" : "query",
+          "name" : "created_by",
           "required" : false,
           "schema" : {
             "type" : "array",
@@ -3872,6 +3872,59 @@
           "description" : "value must be a non-blank string."
         }, {
           "in" : "query",
+          "name" : "last_edited_by",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          }
+        }, {
+          "in" : "query",
+          "name" : "model_ancestors",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "search_engine",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "search_native_query",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "verified",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "ids",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }
+          }
+        }, {
+          "in" : "query",
           "name" : "calculate_available_models",
           "required" : false,
           "schema" : {
@@ -3879,17 +3932,11 @@
           }
         }, {
           "in" : "query",
-          "name" : "context",
+          "name" : "include_dashboard_questions",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "model_ancestors",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "search" ]
@@ -3898,7 +3945,7 @@
     "/card/{id}/series" : {
       "get" : {
         "summary" : "GET /card/{id}/series",
-        "description" : "Fetches a list of comptatible series with the card with id `card_id`.\n\n  - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.\n  - `query` to search card by name.\n  - `exclude_ids` to filter out a list of card ids",
+        "description" : "Fetches a list of compatible series with the card with id `card_id`.\n\n  - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.\n  - `query` to search card by name.\n  - `exclude_ids` to filter out a list of card ids",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -3933,6 +3980,21 @@
       }
     },
     "/alert/{id}" : {
+      "get" : {
+        "summary" : "GET /alert/{id}",
+        "description" : "Fetch an alert by ID",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "alert" ]
+      },
       "put" : {
         "summary" : "PUT /alert/{id}",
         "description" : "Update a `Alert` with ID.",
@@ -3996,16 +4058,17 @@
                   "archived" : {
                     "type" : "boolean"
                   }
-                },
-                "required" : [ ]
+                }
               }
             }
           }
         }
-      },
+      }
+    },
+    "/pulse/{id}" : {
       "get" : {
-        "summary" : "GET /alert/{id}",
-        "description" : "Fetch an alert by ID",
+        "summary" : "GET /pulse/{id}",
+        "description" : "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,\n  we still return it but with some sensitive metadata removed.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -4016,10 +4079,8 @@
           },
           "description" : "value must be an integer greater than zero."
         } ],
-        "tags" : [ "alert" ]
-      }
-    },
-    "/pulse/{id}" : {
+        "tags" : [ "pulse" ]
+      },
       "put" : {
         "summary" : "PUT /pulse/{id}",
         "description" : "Update a Pulse with `id`.",
@@ -4047,7 +4108,8 @@
                   "cards" : { },
                   "channels" : { },
                   "skip_if_empty" : {
-                    "type" : "boolean"
+                    "type" : "boolean",
+                    "default" : false
                   },
                   "collection_id" : {
                     "description" : "value must be an integer greater than zero.",
@@ -4055,7 +4117,8 @@
                     "minimum" : 1
                   },
                   "archived" : {
-                    "type" : "boolean"
+                    "type" : "boolean",
+                    "default" : false
                   },
                   "parameters" : {
                     "type" : "array",
@@ -4071,21 +4134,6 @@
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /pulse/{id}",
-        "description" : "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,\n  we still return it but with some sensitive metadata removed.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "pulse" ]
       }
     },
     "/activity/popular_items" : {
@@ -4101,20 +4149,6 @@
         "summary" : "GET /automagic-dashboards/{entity}/{entity-id-or-query}/compare/{comparison-entity}/{comparison-entity-id-or-query}",
         "description" : "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity\n   `comparison-entity` with id `comparison-entity-id-or-query.`",
         "parameters" : [ {
-          "in" : "query",
-          "name" : "show",
-          "required" : false,
-          "schema" : {
-            "anyOf" : [ {
-              "type" : "string",
-              "enum" : [ "all" ]
-            }, {
-              "type" : "integer",
-              "minimum" : 0
-            } ]
-          },
-          "description" : "invalid show value"
-        }, {
           "in" : "path",
           "name" : "entity-id-or-query",
           "required" : true,
@@ -4140,6 +4174,20 @@
             "enum" : [ "segment", "adhoc", "table" ]
           },
           "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""
+        }, {
+          "in" : "query",
+          "name" : "show",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "all" ]
+            }, {
+              "type" : "integer",
+              "minimum" : 0
+            } ]
+          },
+          "description" : "invalid show value"
         } ],
         "tags" : [ "automagic-dashboards" ]
       }
@@ -4247,8 +4295,7 @@
                     "description" : "value must be a non-blank string.",
                     "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   }
-                },
-                "required" : [ ]
+                }
               }
             }
           }
@@ -4276,6 +4323,13 @@
         "description" : "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format.",
         "parameters" : [ {
           "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
           "name" : "export-format",
           "required" : true,
           "schema" : {
@@ -4285,15 +4339,17 @@
         }, {
           "in" : "query",
           "name" : "format_rows",
-          "required" : false,
+          "required" : true,
           "schema" : {
+            "default" : false,
             "type" : "boolean"
           }
         }, {
           "in" : "query",
           "name" : "pivot_results",
-          "required" : false,
+          "required" : true,
           "schema" : {
+            "default" : false,
             "type" : "boolean"
           }
         } ],
@@ -4323,22 +4379,12 @@
         "description" : "Serialize and retrieve Metabase instance.\n\n  Outputs `.tar.gz` file with serialization results and an `export.log` file.\n  On error outputs serialization logs directly.",
         "parameters" : [ {
           "in" : "query",
-          "name" : "field_values",
+          "name" : "dirname",
           "required" : false,
           "schema" : {
-            "type" : "boolean",
-            "default" : false
+            "type" : "string"
           },
-          "description" : "Serialize cached field values"
-        }, {
-          "in" : "query",
-          "name" : "data_model",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean",
-            "default" : true
-          },
-          "description" : "Serialize Metabase data model"
+          "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"
         }, {
           "in" : "query",
           "name" : "collection",
@@ -4362,57 +4408,60 @@
           "description" : "collections' db ids/entity-ids to serialize"
         }, {
           "in" : "query",
-          "name" : "dirname",
-          "required" : false,
+          "name" : "all_collections",
+          "required" : true,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"
-        }, {
-          "in" : "query",
-          "name" : "continue_on_error",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean",
-            "default" : false
-          },
-          "description" : "Do not break execution on errors"
+            "default" : true,
+            "type" : "boolean"
+          }
         }, {
           "in" : "query",
           "name" : "settings",
-          "required" : false,
+          "required" : true,
           "schema" : {
-            "type" : "boolean",
-            "default" : true
-          },
-          "description" : "Serialize Metabase settings"
+            "default" : true,
+            "type" : "boolean"
+          }
         }, {
           "in" : "query",
-          "name" : "all_collections",
-          "required" : false,
+          "name" : "data_model",
+          "required" : true,
           "schema" : {
-            "type" : "boolean",
-            "default" : true
-          },
-          "description" : "Serialize all collections (`true` unless you specify `collection`)"
+            "default" : true,
+            "type" : "boolean"
+          }
         }, {
           "in" : "query",
-          "name" : "full_stacktrace",
-          "required" : false,
+          "name" : "field_values",
+          "required" : true,
           "schema" : {
-            "type" : "boolean",
-            "default" : false
-          },
-          "description" : "Show full stacktraces in the logs"
+            "default" : false,
+            "type" : "boolean"
+          }
         }, {
           "in" : "query",
           "name" : "database_secrets",
-          "required" : false,
+          "required" : true,
           "schema" : {
-            "type" : "boolean",
-            "default" : false
-          },
-          "description" : "Serialize details how to connect to each db"
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "continue_on_error",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "full_stacktrace",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
         } ],
         "tags" : [ "ee" ]
       }
@@ -4700,6 +4749,13 @@
         "description" : "Fetch FieldValues for a Field that is used as a param in an embedded Dashboard.",
         "parameters" : [ {
           "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
           "name" : "field-id",
           "required" : true,
           "schema" : {
@@ -4729,14 +4785,16 @@
           "name" : "include_hidden",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "database" ]
@@ -4782,6 +4840,13 @@
         "description" : "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the\n  `embedding-secret-key`",
         "parameters" : [ {
           "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
           "name" : "dashcard-id",
           "required" : true,
           "schema" : {
@@ -4803,6 +4868,21 @@
       }
     },
     "/segment/{id}" : {
+      "get" : {
+        "summary" : "GET /segment/{id}",
+        "description" : "Fetch `Segment` with ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "segment" ]
+      },
       "put" : {
         "summary" : "PUT /segment/{id}",
         "description" : "Update a `Segment` with ID.",
@@ -4823,14 +4903,9 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "points_of_interest" : {
-                    "type" : "string"
-                  },
-                  "description" : {
-                    "type" : "string"
-                  },
-                  "archived" : {
-                    "type" : "boolean"
+                  "name" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
                   "definition" : {
                     "type" : "object",
@@ -4840,15 +4915,20 @@
                     "description" : "value must be a non-blank string.",
                     "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
-                  "show_in_getting_started" : {
+                  "archived" : {
                     "type" : "boolean"
-                  },
-                  "name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
                   "caveats" : {
                     "type" : "string"
+                  },
+                  "description" : {
+                    "type" : "string"
+                  },
+                  "points_of_interest" : {
+                    "type" : "string"
+                  },
+                  "show_in_getting_started" : {
+                    "type" : "boolean"
                   }
                 },
                 "required" : [ "revision_message" ]
@@ -4877,21 +4957,6 @@
             "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
           },
           "description" : "value must be a non-blank string."
-        } ],
-        "tags" : [ "segment" ]
-      },
-      "get" : {
-        "summary" : "GET /segment/{id}",
-        "description" : "Fetch `Segment` with ID.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
         } ],
         "tags" : [ "segment" ]
       }
@@ -4926,20 +4991,6 @@
           },
           "description" : "value must be a non-blank string."
         }, {
-          "in" : "query",
-          "name" : "show",
-          "required" : false,
-          "schema" : {
-            "anyOf" : [ {
-              "type" : "string",
-              "enum" : [ "all" ]
-            }, {
-              "type" : "integer",
-              "minimum" : 0
-            } ]
-          },
-          "description" : "invalid show value"
-        }, {
           "in" : "path",
           "name" : "prefix",
           "required" : true,
@@ -4966,11 +5017,46 @@
             "enum" : [ "segment", "adhoc", "table" ]
           },
           "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""
+        }, {
+          "in" : "query",
+          "name" : "show",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "all" ]
+            }, {
+              "type" : "integer",
+              "minimum" : 0
+            } ]
+          },
+          "description" : "invalid show value"
         } ],
         "tags" : [ "automagic-dashboards" ]
       }
     },
     "/channel/" : {
+      "get" : {
+        "summary" : "GET /channel/",
+        "description" : "Get all channels",
+        "parameters" : [ ],
+        "tags" : [ "channel" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "include_inactive" : {
+                    "type" : "boolean",
+                    "default" : false
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post" : {
         "summary" : "POST /channel/",
         "description" : "Create a channel",
@@ -5007,12 +5093,6 @@
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /channel/",
-        "description" : "Get all channels",
-        "parameters" : [ ],
-        "tags" : [ "channel" ]
       }
     },
     "/collection/root" : {
@@ -5061,6 +5141,13 @@
         "summary" : "GET /embed/card/{token}/field/{field-id}/search/{search-field-id}",
         "description" : "Search for values of a Field that is referenced by an embedded Card.",
         "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "in" : "path",
           "name" : "field-id",
           "required" : true,
@@ -5239,13 +5326,7 @@
             "application/json" : {
               "schema" : {
                 "type" : "object",
-                "properties" : {
-                  "settings" : {
-                    "type" : "object",
-                    "properties" : { }
-                  }
-                },
-                "required" : [ "settings" ]
+                "properties" : { }
               }
             }
           }
@@ -5269,13 +5350,7 @@
             "application/json" : {
               "schema" : {
                 "type" : "object",
-                "properties" : {
-                  "settings" : {
-                    "type" : "object",
-                    "properties" : { }
-                  }
-                },
-                "required" : [ "settings" ]
+                "properties" : { }
               }
             }
           }
@@ -5393,7 +5468,14 @@
       "get" : {
         "summary" : "GET /embed/card/{token}",
         "description" : "Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.\n\n   Token should have the following format:\n\n     {:resource {:question <card-id>}}",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "tags" : [ "embed" ]
       }
     },
@@ -5540,6 +5622,21 @@
       }
     },
     "/user/{id}" : {
+      "get" : {
+        "summary" : "GET /user/{id}",
+        "description" : "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "user" ]
+      },
       "put" : {
         "summary" : "PUT /user/{id}",
         "description" : "Update an existing, active `User`.\n  Self or superusers can update user info and groups.\n  Group Managers can only add/remove users from groups they are manager of.",
@@ -5568,31 +5665,20 @@
                     "description" : "value must be a non-blank string.",
                     "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
-                  "is_group_manager" : {
-                    "type" : "boolean"
-                  },
-                  "locale" : {
-                    "description" : "String must be a valid two-letter ISO language or language-country code e.g. en or en_US.",
+                  "last_name" : {
+                    "description" : "value must be a non-blank string.",
                     "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
                   "user_group_memberships" : {
                     "type" : "array",
                     "items" : {
-                      "type" : "object",
-                      "properties" : {
-                        "id" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        },
-                        "is_group_manager" : {
-                          "type" : "boolean"
-                        }
-                      },
-                      "required" : [ "id" ]
+                      "$ref" : "#/components/schemas/metabase.api.user~1user-group-membership"
                     }
                   },
                   "is_superuser" : {
+                    "type" : "boolean"
+                  },
+                  "is_group_manager" : {
                     "type" : "boolean"
                   },
                   "login_attributes" : {
@@ -5600,12 +5686,11 @@
                     "type" : "object",
                     "additionalProperties" : { }
                   },
-                  "last_name" : {
-                    "description" : "value must be a non-blank string.",
+                  "locale" : {
+                    "description" : "String must be a valid two-letter ISO language or language-country code e.g. en or en_US.",
                     "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   }
-                },
-                "required" : [ "email", "locale" ]
+                }
               }
             }
           }
@@ -5614,21 +5699,6 @@
       "delete" : {
         "summary" : "DELETE /user/{id}",
         "description" : "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "user" ]
-      },
-      "get" : {
-        "summary" : "GET /user/{id}",
-        "description" : "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -5710,7 +5780,7 @@
         }, {
           "in" : "query",
           "name" : "parameters",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "type" : "string"
           },
@@ -5879,6 +5949,37 @@
       }
     },
     "/pulse/" : {
+      "get" : {
+        "summary" : "GET /pulse/",
+        "description" : "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write\n  permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.\n\n  If `dashboard_id` is specified, restricts results to subscriptions for that dashboard.\n\n  If `created_or_receive` is `true`, it specifically returns all subscriptions for which the current user\n  created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,\n  and a subset of the default items returned for admins. This is used to power the /account/notifications page.\n  This may include subscriptions which the current user does not have collection permissions for, in which case\n  some sensitive metadata (the list of cards and recipients) is stripped out.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "dashboard_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "creator_or_recipient",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        } ],
+        "tags" : [ "pulse" ]
+      },
       "post" : {
         "summary" : "POST /pulse/",
         "description" : "Create a new `Pulse`.",
@@ -5897,7 +5998,8 @@
                   "cards" : { },
                   "channels" : { },
                   "skip_if_empty" : {
-                    "type" : "boolean"
+                    "type" : "boolean",
+                    "default" : false
                   },
                   "collection_id" : {
                     "description" : "value must be an integer greater than zero.",
@@ -5927,35 +6029,6 @@
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /pulse/",
-        "description" : "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write\n  permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.\n\n  If `dashboard_id` is specified, restricts results to subscriptions for that dashboard.\n\n  If `created_or_receive` is `true`, it specifically returns all subscriptions for which the current user\n  created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,\n  and a subset of the default items returned for admins. This is used to power the /account/notifications page.\n  This may include subscriptions which the current user does not have collection permissions for, in which case\n  some sensitive metadata (the list of cards and recipients) is stripped out.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        }, {
-          "in" : "query",
-          "name" : "dashboard_id",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "creator_or_recipient",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        } ],
-        "tags" : [ "pulse" ]
       }
     },
     "/alert/question/{id}" : {
@@ -5965,7 +6038,7 @@
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
-          "required" : false,
+          "required" : true,
           "schema" : {
             "type" : "integer",
             "minimum" : 1
@@ -5976,7 +6049,8 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "alert" ]
@@ -6014,7 +6088,7 @@
         "parameters" : [ {
           "in" : "path",
           "name" : "key",
-          "required" : false,
+          "required" : true,
           "schema" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
           },
@@ -6035,26 +6109,15 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "k" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "v" : { },
+                  "value" : { },
                   "expires_at" : {
                     "$ref" : "#/components/schemas/metabase.lib.schema.literal~1string.datetime"
                   }
-                },
-                "required" : [ "k", "v" ]
+                }
               }
             }
           }
         }
-      },
-      "delete" : {
-        "summary" : "DELETE /user-key-value/namespace/{namespace}/key/{key}",
-        "description" : "Deletes a KV-pair for the user",
-        "parameters" : [ ],
-        "tags" : [ "user-key-value" ]
       },
       "get" : {
         "summary" : "GET /user-key-value/namespace/{namespace}/key/{key}",
@@ -6076,6 +6139,12 @@
           },
           "description" : "value must be a non-blank string."
         } ],
+        "tags" : [ "user-key-value" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /user-key-value/namespace/{namespace}/key/{key}",
+        "description" : "Deletes a KV-pair for the user",
+        "parameters" : [ ],
         "tags" : [ "user-key-value" ]
       }
     },
@@ -6178,7 +6247,7 @@
                     "additionalProperties" : { }
                   }
                 },
-                "required" : [ ]
+                "optional" : true
               }
             }
           }
@@ -6186,58 +6255,6 @@
       }
     },
     "/user/" : {
-      "post" : {
-        "summary" : "POST /user/",
-        "description" : "Create a new `User`, return a 400 if the email address is already taken",
-        "parameters" : [ ],
-        "tags" : [ "user" ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "first_name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "last_name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "email" : {
-                    "type" : "string",
-                    "description" : "value must be a valid email address."
-                  },
-                  "user_group_memberships" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "object",
-                      "properties" : {
-                        "id" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        },
-                        "is_group_manager" : {
-                          "type" : "boolean"
-                        }
-                      },
-                      "required" : [ "id" ]
-                    }
-                  },
-                  "login_attributes" : {
-                    "description" : "login attribute keys must be a keyword or string",
-                    "type" : "object",
-                    "additionalProperties" : { }
-                  }
-                },
-                "required" : [ "email" ]
-              }
-            }
-          }
-        }
-      },
       "get" : {
         "summary" : "GET /user/",
         "description" : "Fetch a list of `Users` for admins or group managers.\n  By default returns only active users for admins and only active users within groups that the group manager is managing for group managers.\n\n   - If `status` is `deactivated`, include deactivated users only.\n   - If `status` is `all`, include all users (active and inactive).\n   - Also supports `include_deactivated`, which if true, is equivalent to `status=all`; If is false, is equivalent to `status=active`.\n   `status` and `include_deactivated` requires superuser permissions.\n   - `include_deactivated` is a legacy alias for `status` and will be removed in a future release, users are advised to use `status` for better support and flexibility.\n   If both params are passed, `status` takes precedence.\n\n  For users with segmented permissions, return only themselves.\n\n  Takes `limit`, `offset` for pagination.\n  Takes `query` for filtering on first name, last name, email.\n  Also takes `group_id`, which filters on group id.",
@@ -6269,10 +6286,52 @@
           "name" : "include_deactivated",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "user" ]
+      },
+      "post" : {
+        "summary" : "POST /user/",
+        "description" : "Create a new `User`, return a 400 if the email address is already taken",
+        "parameters" : [ ],
+        "tags" : [ "user" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "first_name" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  },
+                  "last_name" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  },
+                  "email" : {
+                    "type" : "string",
+                    "description" : "value must be a valid email address."
+                  },
+                  "user_group_memberships" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.api.user~1user-group-membership"
+                    }
+                  },
+                  "login_attributes" : {
+                    "description" : "login attribute keys must be a keyword or string",
+                    "type" : "object",
+                    "additionalProperties" : { }
+                  }
+                },
+                "required" : [ "email" ]
+              }
+            }
+          }
+        }
       }
     },
     "/dashboard/save/collection/{parent-collection-id}" : {
@@ -6331,8 +6390,7 @@
                   "slack-bug-report-channel" : {
                     "type" : "string"
                   }
-                },
-                "required" : [ ]
+                }
               }
             }
           }
@@ -6419,6 +6477,30 @@
             "type" : "string",
             "enum" : [ "csv", "api", "xlsx", "json" ]
           }
+        }, {
+          "in" : "query",
+          "name" : "format_rows",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "pivot_results",
+          "required" : true,
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
         } ],
         "tags" : [ "public" ]
       }
@@ -6566,7 +6648,10 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "visualization_settings" : {
+                  "dataset" : {
+                    "type" : "boolean"
+                  },
+                  "dataset_query" : {
                     "description" : "Value must be a map.",
                     "type" : "object",
                     "properties" : { }
@@ -6626,36 +6711,6 @@
                       "required" : [ "id", "type" ]
                     }
                   },
-                  "dataset" : {
-                    "type" : "boolean"
-                  },
-                  "description" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "collection_position" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "result_metadata" : {
-                    "$ref" : "#/components/schemas/metabase.analyze.query-results~1ResultsMetadata"
-                  },
-                  "collection_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "cache_ttl" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "dataset_query" : {
-                    "description" : "Value must be a map.",
-                    "type" : "object",
-                    "properties" : { }
-                  },
                   "parameter_mappings" : {
                     "type" : "array",
                     "items" : {
@@ -6676,12 +6731,39 @@
                       "required" : [ "parameter_id", "target" ]
                     }
                   },
+                  "description" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  },
                   "display" : {
                     "description" : "value must be a non-blank string.",
                     "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  },
+                  "visualization_settings" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  },
+                  "collection_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "collection_position" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "result_metadata" : {
+                    "$ref" : "#/components/schemas/metabase.analyze.query-results~1ResultsMetadata"
+                  },
+                  "cache_ttl" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
                   }
                 },
-                "required" : [ "visualization_settings", "dataset_query", "display" ]
+                "required" : [ "dataset_query", "display", "visualization_settings" ]
               }
             }
           }
@@ -6780,96 +6862,14 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "collection" ]
       }
     },
     "/database/{id}" : {
-      "put" : {
-        "summary" : "PUT /database/{id}",
-        "description" : "Update a `Database`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "database" ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "engine" : {
-                    "description" : "value must be a valid database engine.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "schedules" : {
-                    "$ref" : "#/components/schemas/metabase.sync.schedules~1ExpandedSchedulesMap"
-                  },
-                  "refingerprint" : {
-                    "type" : "boolean"
-                  },
-                  "points_of_interest" : {
-                    "type" : "string"
-                  },
-                  "description" : {
-                    "type" : "string"
-                  },
-                  "auto_run_queries" : {
-                    "type" : "boolean"
-                  },
-                  "name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "settings" : {
-                    "description" : "Value must be a map.",
-                    "type" : "object",
-                    "properties" : { }
-                  },
-                  "caveats" : {
-                    "type" : "string"
-                  },
-                  "cache_ttl" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "details" : {
-                    "description" : "Value must be a map.",
-                    "type" : "object",
-                    "properties" : { }
-                  }
-                },
-                "required" : [ "engine" ]
-              }
-            }
-          }
-        }
-      },
-      "delete" : {
-        "summary" : "DELETE /database/{id}",
-        "description" : "Delete a `Database`.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "database" ]
-      },
       "get" : {
         "summary" : "GET /database/{id}",
         "description" : "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables\n   belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB\n   (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the\n   returned details (see [[metabase.models.secret/expand-db-details-inferred-secret-values]] for full details).\n\n   Passing include_editable_data_model will only return tables for which the current user has data model editing\n   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.\n   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID\n   and tables, with no additional metadata.\n\n   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n   [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`\n   in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the\n   database details.",
@@ -6892,13 +6892,127 @@
           }
         } ],
         "tags" : [ "database" ]
+      },
+      "put" : {
+        "summary" : "PUT /database/{id}",
+        "description" : "Update a `Database`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "database" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "name" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  },
+                  "engine" : {
+                    "description" : "value must be a valid database engine.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  },
+                  "refingerprint" : {
+                    "type" : "boolean"
+                  },
+                  "details" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  },
+                  "schedules" : {
+                    "$ref" : "#/components/schemas/metabase.sync.schedules~1ExpandedSchedulesMap"
+                  },
+                  "description" : {
+                    "type" : "string"
+                  },
+                  "caveats" : {
+                    "type" : "string"
+                  },
+                  "points_of_interest" : {
+                    "type" : "string"
+                  },
+                  "auto_run_queries" : {
+                    "type" : "boolean"
+                  },
+                  "cache_ttl" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "settings" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "summary" : "DELETE /database/{id}",
+        "description" : "Delete a `Database`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "database" ]
       }
     },
     "/search/weights" : {
       "get" : {
         "summary" : "GET /search/weights",
         "description" : "Return the current weights being used to rank the search results",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "context",
+          "required" : true,
+          "schema" : {
+            "default" : "default",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "search_engine",
+          "required" : false,
+          "schema" : { }
+        } ],
+        "tags" : [ "search" ]
+      },
+      "put" : {
+        "summary" : "PUT /search/weights",
+        "description" : "Update the current weights being used to rank the search results",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "context",
+          "required" : true,
+          "schema" : {
+            "default" : "default",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "search_engine",
+          "required" : false,
+          "schema" : { }
+        } ],
         "tags" : [ "search" ]
       }
     },
@@ -6906,7 +7020,14 @@
       "get" : {
         "summary" : "GET /embed/pivot/card/{token}/query",
         "description" : "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.\n\n   Token should have the following format:\n\n     {:resource {:question <card-id>}\n      :params   <parameters>}",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "tags" : [ "embed" ]
       }
     },
@@ -7043,6 +7164,13 @@
         "description" : "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with\n  embedded Dashboards.",
         "parameters" : [ {
           "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
           "name" : "field-id",
           "required" : true,
           "schema" : {
@@ -7130,39 +7258,6 @@
         "tags" : [ "dashboard" ]
       }
     },
-    "/metabot/database/{database-id}" : {
-      "post" : {
-        "summary" : "POST /metabot/database/{database-id}",
-        "description" : "Ask Metabot to generate a native question given a prompt about a given database.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "database-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "metabot" ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "question" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  }
-                },
-                "required" : [ "question" ]
-              }
-            }
-          }
-        }
-      }
-    },
     "/email/test" : {
       "post" : {
         "summary" : "POST /email/test",
@@ -7189,14 +7284,16 @@
           "name" : "include_hidden",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "database" ]
@@ -7239,16 +7336,22 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "engine" : {
-                    "description" : "value must be a valid database engine.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
                   "details" : {
                     "type" : "object",
-                    "properties" : { }
+                    "properties" : {
+                      "engine" : {
+                        "description" : "value must be a valid database engine.",
+                        "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                      },
+                      "details" : {
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    },
+                    "required" : [ "engine", "details" ]
                   }
                 },
-                "required" : [ "engine", "details" ]
+                "required" : [ "details" ]
               }
             }
           }
@@ -7256,9 +7359,9 @@
       }
     },
     "/action/{id}/public_link" : {
-      "delete" : {
-        "summary" : "DELETE /action/{id}/public_link",
-        "description" : "Delete the publicly-accessible link to this Dashboard.",
+      "post" : {
+        "summary" : "POST /action/{id}/public_link",
+        "description" : "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this\n  Action has already been shared, it will return the existing public link rather than creating a new one.) Public\n  sharing must be enabled.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -7271,9 +7374,9 @@
         } ],
         "tags" : [ "action" ]
       },
-      "post" : {
-        "summary" : "POST /action/{id}/public_link",
-        "description" : "Generate publicly-accessible links for this Action. Returns UUID to be used in public links. (If this\n  Action has already been shared, it will return the existing public link rather than creating a new one.) Public\n  sharing must be enabled.",
+      "delete" : {
+        "summary" : "DELETE /action/{id}/public_link",
+        "description" : "Delete the publicly-accessible link to this Dashboard.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -7368,8 +7471,7 @@
                   "google-auth-auto-create-accounts-domain" : {
                     "type" : "string"
                   }
-                },
-                "required" : [ ]
+                }
               }
             }
           }
@@ -7490,7 +7592,14 @@
       "get" : {
         "summary" : "GET /embed/card/{token}/query",
         "description" : "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.\n\n   Token should have the following format:\n\n     {:resource {:question <card-id>}\n      :params   <parameters>}",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "tags" : [ "embed" ]
       }
     },
@@ -7600,8 +7709,7 @@
                   "archived" : {
                     "type" : "boolean"
                   }
-                },
-                "required" : [ ]
+                }
               }
             }
           }
@@ -7665,6 +7773,29 @@
       }
     },
     "/alert/" : {
+      "get" : {
+        "summary" : "GET /alert/",
+        "description" : "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.\n  The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "user_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "alert" ]
+      },
       "post" : {
         "summary" : "POST /alert/",
         "description" : "Create a new Alert.",
@@ -7722,28 +7853,6 @@
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /alert/",
-        "description" : "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.\n  The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        }, {
-          "in" : "query",
-          "name" : "user_id",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "alert" ]
       }
     },
     "/automagic-dashboards/{entity}/{entity-id-or-query}" : {
@@ -7751,6 +7860,15 @@
         "summary" : "GET /automagic-dashboards/{entity}/{entity-id-or-query}",
         "description" : "Return an automagic dashboard for entity `entity` with id `id`.",
         "parameters" : [ {
+          "in" : "path",
+          "name" : "entity",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
+          },
+          "description" : "Invalid entity type"
+        }, {
           "in" : "query",
           "name" : "show",
           "required" : false,
@@ -7762,15 +7880,6 @@
               "minimum" : 0
             } ]
           }
-        }, {
-          "in" : "path",
-          "name" : "entity",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "metric", "model" ]
-          },
-          "description" : "Invalid entity type"
         } ],
         "tags" : [ "automagic-dashboards" ]
       }
@@ -7795,48 +7904,65 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "invited_last_name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "site_locale" : {
-                    "description" : "String must be a valid two-letter ISO language or language-country code e.g. en or en_US.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "email" : {
-                    "type" : "string",
-                    "description" : "value must be a valid email address."
-                  },
-                  "first_name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "password" : {
-                    "type" : "string",
-                    "description" : "password is too common."
-                  },
-                  "invited_email" : {
-                    "type" : "string",
-                    "description" : "value must be a valid email address."
-                  },
-                  "invited_first_name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
-                  "site_name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  },
                   "token" : {
                     "description" : "Token does not match the setup token.",
                     "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
-                  "last_name" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  "user" : {
+                    "type" : "object",
+                    "properties" : {
+                      "email" : {
+                        "type" : "string",
+                        "description" : "value must be a valid email address."
+                      },
+                      "password" : {
+                        "type" : "string",
+                        "description" : "password is too common."
+                      },
+                      "first_name" : {
+                        "description" : "value must be a non-blank string.",
+                        "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                      },
+                      "last_name" : {
+                        "description" : "value must be a non-blank string.",
+                        "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                      }
+                    },
+                    "required" : [ "email", "password" ]
+                  },
+                  "invite" : {
+                    "type" : "object",
+                    "properties" : {
+                      "first_name" : {
+                        "description" : "value must be a non-blank string.",
+                        "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                      },
+                      "last_name" : {
+                        "description" : "value must be a non-blank string.",
+                        "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                      },
+                      "email" : {
+                        "type" : "string",
+                        "description" : "value must be a valid email address."
+                      }
+                    }
+                  },
+                  "prefs" : {
+                    "type" : "object",
+                    "properties" : {
+                      "site_name" : {
+                        "description" : "value must be a non-blank string.",
+                        "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                      },
+                      "site_locale" : {
+                        "description" : "String must be a valid two-letter ISO language or language-country code e.g. en or en_US.",
+                        "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                      }
+                    },
+                    "required" : [ "site_name" ]
                   }
                 },
-                "required" : [ "site_locale", "email", "password", "invited_email", "site_name", "token" ]
+                "required" : [ "token", "user", "prefs" ]
               }
             }
           }
@@ -7888,6 +8014,13 @@
         "summary" : "GET /embed/dashboard/{token}/field/{field-id}/search/{search-field-id}",
         "description" : "Search for values of a Field that is referenced by a Card in an embedded Dashboard.",
         "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "in" : "path",
           "name" : "field-id",
           "required" : true,
@@ -8013,104 +8146,98 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "action" : {
+                  "archived" : {
+                    "type" : "boolean"
+                  },
+                  "database_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "dataset_query" : {
+                    "type" : "object",
+                    "properties" : { }
+                  },
+                  "description" : {
+                    "type" : "string"
+                  },
+                  "error_handle" : {
+                    "allOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "description" : "must be a valid json-query, something like '.item.title'"
+                    } ]
+                  },
+                  "kind" : {
+                    "description" : "Unsupported implicit action kind",
+                    "type" : "string",
+                    "enum" : [ "row/create", "row/update", "row/delete", "bulk/create", "bulk/update", "bulk/delete" ]
+                  },
+                  "model_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "name" : {
+                    "type" : "string"
+                  },
+                  "parameter_mappings" : {
+                    "type" : "object",
+                    "properties" : { }
+                  },
+                  "parameters" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : { }
+                    }
+                  },
+                  "response_handle" : {
+                    "allOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "description" : "must be a valid json-query, something like '.item.title'"
+                    } ]
+                  },
+                  "template" : {
                     "type" : "object",
                     "properties" : {
-                      "archived" : {
-                        "type" : "boolean"
-                      },
-                      "database_id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "dataset_query" : {
-                        "type" : "object",
-                        "properties" : { }
-                      },
-                      "description" : {
-                        "type" : "string"
-                      },
-                      "error_handle" : {
-                        "allOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "description" : "must be a valid json-query, something like '.item.title'"
-                        } ]
-                      },
-                      "kind" : {
-                        "description" : "Unsupported implicit action kind",
+                      "method" : {
                         "type" : "string",
-                        "enum" : [ "row/create", "row/update", "row/delete", "bulk/create", "bulk/update", "bulk/delete" ]
+                        "enum" : [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
                       },
-                      "model_id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "name" : {
+                      "url" : {
                         "type" : "string"
                       },
-                      "parameter_mappings" : {
-                        "type" : "object",
-                        "properties" : { }
+                      "body" : {
+                        "type" : "string"
+                      },
+                      "headers" : {
+                        "type" : "string"
                       },
                       "parameters" : {
                         "type" : "array",
                         "items" : {
-                          "type" : "object",
-                          "properties" : { }
+                          "type" : "object"
                         }
                       },
-                      "response_handle" : {
-                        "allOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "description" : "must be a valid json-query, something like '.item.title'"
-                        } ]
-                      },
-                      "template" : {
-                        "type" : "object",
-                        "properties" : {
-                          "method" : {
-                            "type" : "string",
-                            "enum" : [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
-                          },
-                          "url" : {
-                            "type" : "string"
-                          },
-                          "body" : {
-                            "type" : "string"
-                          },
-                          "headers" : {
-                            "type" : "string"
-                          },
-                          "parameters" : {
-                            "type" : "array",
-                            "items" : {
-                              "type" : "object"
-                            }
-                          },
-                          "parameter_mappings" : {
-                            "type" : "object"
-                          }
-                        },
-                        "required" : [ "method", "url" ],
-                        "additionalProperties" : false
-                      },
-                      "type" : {
-                        "description" : "Unsupported action type",
-                        "type" : "string",
-                        "enum" : [ "http", "query", "implicit" ]
-                      },
-                      "visualization_settings" : {
-                        "type" : "object",
-                        "properties" : { }
+                      "parameter_mappings" : {
+                        "type" : "object"
                       }
-                    }
+                    },
+                    "required" : [ "method", "url" ],
+                    "additionalProperties" : false
+                  },
+                  "type" : {
+                    "description" : "Unsupported action type",
+                    "type" : "string",
+                    "enum" : [ "http", "query", "implicit" ]
+                  },
+                  "visualization_settings" : {
+                    "type" : "object",
+                    "properties" : { }
                   }
-                },
-                "required" : [ "action" ]
+                }
               }
             }
           }
@@ -8275,7 +8402,7 @@
     "/table/{id}/append-csv" : {
       "post" : {
         "summary" : "POST /table/{id}/append-csv",
-        "description" : "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by uploading a CSV file.",
+        "description" : "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by\n  uploading a CSV file.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -8346,14 +8473,16 @@
           "name" : "exclude-archived",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "exclude-other-user-collections",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -8368,7 +8497,8 @@
           "name" : "shallow",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -8384,6 +8514,23 @@
       }
     },
     "/activity/recents" : {
+      "get" : {
+        "summary" : "GET /activity/recents",
+        "description" : "Get a list of recent items the current user has been viewing most recently under the `:recents` key.\n  Allows for filtering by context: views or selections",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "context",
+          "required" : true,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "selections", "views" ]
+            }
+          }
+        } ],
+        "tags" : [ "activity" ]
+      },
       "post" : {
         "summary" : "POST /activity/recents",
         "description" : "Adds a model to the list of recently selected items.",
@@ -8414,12 +8561,6 @@
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /activity/recents",
-        "description" : "Get a list of recent items the current user has been viewing most recently under the `:recents` key.\n  Allows for filtering by context: views or selections",
-        "parameters" : [ ],
-        "tags" : [ "activity" ]
       }
     },
     "/embed/card/{token}/field/{field-id}/values" : {
@@ -8427,6 +8568,13 @@
         "summary" : "GET /embed/card/{token}/field/{field-id}/values",
         "description" : "Fetch FieldValues for a Field that is referenced by an embedded Card.",
         "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "in" : "path",
           "name" : "field-id",
           "required" : true,
@@ -8461,20 +8609,6 @@
           },
           "description" : "value must be a non-blank string."
         }, {
-          "in" : "query",
-          "name" : "show",
-          "required" : false,
-          "schema" : {
-            "anyOf" : [ {
-              "type" : "string",
-              "enum" : [ "all" ]
-            }, {
-              "type" : "integer",
-              "minimum" : 0
-            } ]
-          },
-          "description" : "invalid show value"
-        }, {
           "in" : "path",
           "name" : "prefix",
           "required" : true,
@@ -8492,6 +8626,20 @@
           "required" : true,
           "schema" : { },
           "description" : "value couldn't be parsed as base64 encoded JSON"
+        }, {
+          "in" : "query",
+          "name" : "show",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "all" ]
+            }, {
+              "type" : "integer",
+              "minimum" : 0
+            } ]
+          },
+          "description" : "invalid show value"
         } ],
         "tags" : [ "automagic-dashboards" ]
       }
@@ -8522,21 +8670,6 @@
       }
     },
     "/field/{id}/dimension" : {
-      "delete" : {
-        "summary" : "DELETE /field/{id}/dimension",
-        "description" : "Remove the dimension associated to field at ID",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "field" ]
-      },
       "post" : {
         "summary" : "POST /field/{id}/dimension",
         "description" : "Sets the dimension for the given field at ID",
@@ -8557,11 +8690,11 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "dimension-type" : {
+                  "type" : {
                     "type" : "string",
                     "enum" : [ "internal", "external" ]
                   },
-                  "dimension-name" : {
+                  "name" : {
                     "description" : "value must be a non-blank string.",
                     "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
@@ -8571,11 +8704,26 @@
                     "minimum" : 1
                   }
                 },
-                "required" : [ "dimension-type", "dimension-name" ]
+                "required" : [ "type", "name" ]
               }
             }
           }
         }
+      },
+      "delete" : {
+        "summary" : "DELETE /field/{id}/dimension",
+        "description" : "Remove the dimension associated to field at ID",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "field" ]
       }
     },
     "/pulse/preview_card_info/{id}" : {
@@ -8596,6 +8744,21 @@
       }
     },
     "/action/" : {
+      "get" : {
+        "summary" : "GET /action/",
+        "description" : "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional\n  `?model-id=<model-id>` to limit to actions on a particular model.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "model-id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "action" ]
+      },
       "post" : {
         "summary" : "POST /action/",
         "description" : "Create a new action.",
@@ -8607,8 +8770,21 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "visualization_settings" : {
-                    "type" : "object"
+                  "name" : {
+                    "type" : "string"
+                  },
+                  "model_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "type" : {
+                    "description" : "Unsupported action type",
+                    "type" : "string",
+                    "enum" : [ "http", "query", "implicit" ]
+                  },
+                  "description" : {
+                    "type" : "string"
                   },
                   "parameters" : {
                     "type" : "array",
@@ -8616,30 +8792,24 @@
                       "type" : "object"
                     }
                   },
-                  "description" : {
-                    "type" : "string"
+                  "parameter_mappings" : {
+                    "type" : "object"
                   },
-                  "error_handle" : {
-                    "allOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "description" : "must be a valid json-query, something like '.item.title'"
-                    } ]
+                  "visualization_settings" : {
+                    "type" : "object"
+                  },
+                  "kind" : {
+                    "description" : "Unsupported implicit action kind",
+                    "type" : "string",
+                    "enum" : [ "row/create", "row/update", "row/delete", "bulk/create", "bulk/update", "bulk/delete" ]
                   },
                   "database_id" : {
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
                     "minimum" : 1
                   },
-                  "name" : {
-                    "type" : "string"
-                  },
-                  "response_handle" : {
-                    "allOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "description" : "must be a valid json-query, something like '.item.title'"
-                    } ]
+                  "dataset_query" : {
+                    "type" : "object"
                   },
                   "template" : {
                     "type" : "object",
@@ -8670,26 +8840,19 @@
                     "required" : [ "method", "url" ],
                     "additionalProperties" : false
                   },
-                  "type" : {
-                    "description" : "Unsupported action type",
-                    "type" : "string",
-                    "enum" : [ "http", "query", "implicit" ]
+                  "response_handle" : {
+                    "allOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "description" : "must be a valid json-query, something like '.item.title'"
+                    } ]
                   },
-                  "dataset_query" : {
-                    "type" : "object"
-                  },
-                  "model_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "kind" : {
-                    "description" : "Unsupported implicit action kind",
-                    "type" : "string",
-                    "enum" : [ "row/create", "row/update", "row/delete", "bulk/create", "bulk/update", "bulk/delete" ]
-                  },
-                  "parameter_mappings" : {
-                    "type" : "object"
+                  "error_handle" : {
+                    "allOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "description" : "must be a valid json-query, something like '.item.title'"
+                    } ]
                   }
                 },
                 "required" : [ "name", "model_id" ]
@@ -8697,21 +8860,6 @@
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /action/",
-        "description" : "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional\n  `?model-id=<model-id>` to limit to actions on a particular model.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "model-id",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "action" ]
       }
     },
     "/table/card__{id}/fks" : {
@@ -8757,21 +8905,24 @@
           "name" : "include_sensitive_fields",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_hidden_fields",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "table" ]
@@ -8794,13 +8945,7 @@
             "application/json" : {
               "schema" : {
                 "type" : "object",
-                "properties" : {
-                  "settings" : {
-                    "type" : "object",
-                    "additionalProperties" : { }
-                  }
-                },
-                "required" : [ "settings" ]
+                "additionalProperties" : { }
               }
             }
           }
@@ -8823,7 +8968,7 @@
         }, {
           "in" : "query",
           "name" : "parameters",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "type" : "string"
           },
@@ -8861,7 +9006,8 @@
                     "minimum" : 1
                   },
                   "is_group_manager" : {
-                    "type" : "boolean"
+                    "type" : "boolean",
+                    "default" : false
                   }
                 },
                 "required" : [ "group_id", "user_id" ]
@@ -8893,20 +9039,6 @@
           },
           "description" : "value must be a non-blank string."
         }, {
-          "in" : "query",
-          "name" : "show",
-          "required" : false,
-          "schema" : {
-            "anyOf" : [ {
-              "type" : "string",
-              "enum" : [ "all" ]
-            }, {
-              "type" : "integer",
-              "minimum" : 0
-            } ]
-          },
-          "description" : "invalid show value"
-        }, {
           "in" : "path",
           "name" : "prefix",
           "required" : true,
@@ -8927,6 +9059,20 @@
             "enum" : [ "segment", "adhoc", "table" ]
           },
           "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""
+        }, {
+          "in" : "query",
+          "name" : "show",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "all" ]
+            }, {
+              "type" : "integer",
+              "minimum" : 0
+            } ]
+          },
+          "description" : "invalid show value"
         } ],
         "tags" : [ "automagic-dashboards" ]
       }
@@ -9028,7 +9174,8 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
@@ -9066,7 +9213,8 @@
           "name" : "show_dashboard_questions",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "collection" ]
@@ -9077,6 +9225,13 @@
         "summary" : "GET /embed/card/{token}/field/{field-id}/remapping/{remapped-id}",
         "description" : "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with\n  embedded Cards.",
         "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "in" : "path",
           "name" : "field-id",
           "required" : true,
@@ -9173,18 +9328,12 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "field_order" : {
-                    "type" : "array",
-                    "items" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }
-                  }
-                },
-                "required" : [ "field_order" ]
+                "type" : "array",
+                "items" : {
+                  "description" : "value must be an integer greater than zero.",
+                  "type" : "integer",
+                  "minimum" : 1
+                }
               }
             }
           }
@@ -9195,11 +9344,40 @@
       "get" : {
         "summary" : "GET /embed/dashboard/{token}/params/{param-key}/values",
         "description" : "Embedded version of chain filter values endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "tags" : [ "embed" ]
       }
     },
     "/collection/{id}" : {
+      "get" : {
+        "summary" : "GET /collection/{id}",
+        "description" : "Fetch a specific Collection with standard details added",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "tags" : [ "collection" ]
+      },
       "put" : {
         "summary" : "PUT /collection/{id}",
         "description" : "Modify an existing Collection, including archiving or unarchiving it, or moving it.",
@@ -9229,7 +9407,8 @@
                     "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
                   },
                   "archived" : {
-                    "type" : "boolean"
+                    "type" : "boolean",
+                    "default" : false
                   },
                   "parent_id" : {
                     "description" : "value must be an integer greater than zero.",
@@ -9246,21 +9425,6 @@
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /collection/{id}",
-        "description" : "Fetch a specific Collection with standard details added",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "collection" ]
       }
     },
     "/public/card/{uuid}/params/{param-key}/values" : {
@@ -9469,7 +9633,8 @@
           "name" : "archived",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "collection" ]
@@ -9490,6 +9655,20 @@
       }
     },
     "/native-query-snippet/" : {
+      "get" : {
+        "summary" : "GET /native-query-snippet/",
+        "description" : "Fetch all snippets",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        } ],
+        "tags" : [ "native-query-snippet" ]
+      },
       "post" : {
         "summary" : "POST /native-query-snippet/",
         "description" : "Create a new `NativeQuerySnippet`.",
@@ -9521,19 +9700,6 @@
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /native-query-snippet/",
-        "description" : "Fetch all snippets",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        } ],
-        "tags" : [ "native-query-snippet" ]
       }
     },
     "/database/{id}/schemas" : {
@@ -9554,14 +9720,16 @@
           "name" : "include_editable_data_model",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         }, {
           "in" : "query",
           "name" : "include_hidden",
           "required" : false,
           "schema" : {
-            "type" : "boolean"
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "tags" : [ "database" ]
@@ -9606,20 +9774,6 @@
           },
           "description" : "value must be a non-blank string."
         }, {
-          "in" : "query",
-          "name" : "show",
-          "required" : false,
-          "schema" : {
-            "anyOf" : [ {
-              "type" : "string",
-              "enum" : [ "all" ]
-            }, {
-              "type" : "integer",
-              "minimum" : 0
-            } ]
-          },
-          "description" : "invalid show value"
-        }, {
           "in" : "path",
           "name" : "cell-query",
           "required" : true,
@@ -9634,6 +9788,20 @@
             "enum" : [ "segment", "adhoc", "table" ]
           },
           "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""
+        }, {
+          "in" : "query",
+          "name" : "show",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "all" ]
+            }, {
+              "type" : "integer",
+              "minimum" : 0
+            } ]
+          },
+          "description" : "invalid show value"
         } ],
         "tags" : [ "automagic-dashboards" ]
       }
@@ -9688,6 +9856,14 @@
         "tags" : [ "bookmark" ]
       }
     },
+    "/collection/root/dashboard-question-candidates" : {
+      "get" : {
+        "summary" : "GET /collection/root/dashboard-question-candidates",
+        "description" : "Find cards in the root collection that can be moved into dashboards in the root collection. (Same as the above\n  endpoint, but for the root collection)",
+        "parameters" : [ ],
+        "tags" : [ "collection" ]
+      }
+    },
     "/premium-features/token/status" : {
       "get" : {
         "summary" : "GET /premium-features/token/status",
@@ -9732,7 +9908,8 @@
                   "cards" : { },
                   "channels" : { },
                   "skip_if_empty" : {
-                    "type" : "boolean"
+                    "type" : "boolean",
+                    "default" : false
                   },
                   "collection_id" : {
                     "description" : "value must be an integer greater than zero.",
@@ -9957,6 +10134,44 @@
       }
     },
     "/collection/" : {
+      "get" : {
+        "summary" : "GET /collection/",
+        "description" : "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an\n  additional property of each Collection so you can tell which of these you have write permissions for.)\n\n  By default, this returns non-archived Collections, but instead you can show archived ones by passing\n  `?archived=true`.\n\n  By default, admin users will see all collections. To hide other user's collections pass in\n  `?exclude-other-user-collections=true`.\n\n  If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "exclude-other-user-collections",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }, {
+          "in" : "query",
+          "name" : "namespace",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+          },
+          "description" : "value must be a non-blank string."
+        }, {
+          "in" : "query",
+          "name" : "personal-only",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        } ],
+        "tags" : [ "collection" ]
+      },
       "post" : {
         "summary" : "POST /collection/",
         "description" : "Create a new Collection.",
@@ -9995,41 +10210,6 @@
             }
           }
         }
-      },
-      "get" : {
-        "summary" : "GET /collection/",
-        "description" : "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an\n  additional property of each Collection so you can tell which of these you have write permissions for.)\n\n  By default, this returns non-archived Collections, but instead you can show archived ones by passing\n  `?archived=true`.\n\n  By default, admin users will see all collections. To hide other user's collections pass in\n  `?exclude-other-user-collections=true`.\n\n  If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        }, {
-          "in" : "query",
-          "name" : "exclude-other-user-collections",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        }, {
-          "in" : "query",
-          "name" : "namespace",
-          "required" : false,
-          "schema" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-          },
-          "description" : "value must be a non-blank string."
-        }, {
-          "in" : "query",
-          "name" : "personal-only",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
-          }
-        } ],
-        "tags" : [ "collection" ]
       }
     },
     "/automagic-dashboards/database/{id}/candidates" : {
@@ -10064,39 +10244,6 @@
           "description" : "value must be an integer greater than zero."
         } ],
         "tags" : [ "permissions" ]
-      }
-    },
-    "/metabot/model/{model-id}" : {
-      "post" : {
-        "summary" : "POST /metabot/model/{model-id}",
-        "description" : "Ask Metabot to generate a SQL query given a prompt about a given model.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "model-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "metabot" ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "question" : {
-                    "description" : "value must be a non-blank string.",
-                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
-                  }
-                },
-                "required" : [ "question" ]
-              }
-            }
-          }
-        }
       }
     },
     "/card/pivot/{card-id}/query" : {
@@ -10289,6 +10436,13 @@
   },
   "components" : {
     "schemas" : {
+      "metabase.api.cache/cache-strategy" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.api.cache~1cache-strategy.ee"
+        }, {
+          "$ref" : "#/components/schemas/metabase.api.cache~1cache-strategy.oss"
+        } ]
+      },
       "metabase.analyze.fingerprint.schema/NumberFingerprint" : {
         "type" : "object",
         "properties" : {
@@ -10426,6 +10580,16 @@
         },
         "required" : [ "schedule_type" ]
       },
+      "metabase.api.cache/cache-strategy.base" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "enum" : [ "nocache", "ttl", "duration", "schedule" ]
+          }
+        },
+        "required" : [ "type" ]
+      },
       "metabase.lib.schema.literal/string.datetime" : {
         "anyOf" : [ {
           "type" : "string",
@@ -10459,6 +10623,22 @@
         "minimum" : 0,
         "maximum" : 59
       },
+      "metabase.api.cache/cache-strategy.ee.schedule" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "const" : "schedule"
+          },
+          "schedule" : {
+            "$ref" : "#/components/schemas/metabase.util.cron~1CronScheduleString"
+          },
+          "refresh_automatically" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "type", "schedule" ],
+        "additionalProperties" : false
+      },
       "metabase.api.card/card-type" : {
         "type" : "string",
         "enum" : [ "question", "metric", "model" ]
@@ -10479,9 +10659,59 @@
         "type" : "string",
         "minLength" : 1
       },
+      "metabase.api.cache/cache-strategy.oss" : {
+        "description" : "Schema for a caching strategy (OSS)",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/metabase.api.cache~1cache-strategy.base"
+        }, {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.api.cache~1cache-strategy.nocache"
+          }, {
+            "$ref" : "#/components/schemas/metabase.api.cache~1cache-strategy.ttl"
+          } ]
+        } ]
+      },
+      "metabase.api.cache/cache-strategy.ee" : {
+        "description" : "Schema for a caching strategy in EE when we have an premium token with `:cache-granular-controls`.",
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/metabase.api.cache~1cache-strategy.base"
+        }, {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.api.cache~1cache-strategy.nocache"
+          }, {
+            "$ref" : "#/components/schemas/metabase.api.cache~1cache-strategy.ttl"
+          }, {
+            "$ref" : "#/components/schemas/metabase.api.cache~1cache-strategy.ee.duration"
+          }, {
+            "$ref" : "#/components/schemas/metabase.api.cache~1cache-strategy.ee.schedule"
+          } ]
+        } ]
+      },
       "metabase.lib.schema.temporal-bucketing/unit" : {
         "type" : "string",
         "enum" : [ "quarter", "day", "hour", "week", "second", "default", "day-of-week", "hour-of-day", "month", "month-of-year", "day-of-month", "year", "day-of-year", "millisecond", "year-of-era", "second-of-minute", "week-of-year", "quarter-of-year", "minute-of-hour", "minute" ]
+      },
+      "metabase.api.cache/cache-strategy.ee.duration" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "const" : "duration"
+          },
+          "duration" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "unit" : {
+            "type" : "string",
+            "enum" : [ "hours", "minutes", "seconds", "days" ]
+          },
+          "refresh_automatically" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "type", "duration", "unit" ],
+        "additionalProperties" : false
       },
       "metabase.lib.schema.metadata/column.has-field-values" : {
         "type" : "string",
@@ -10497,6 +10727,42 @@
         },
         "description" : "value must be an array of valid results column metadata maps.",
         "optional" : true
+      },
+      "metabase.api.cache/cache-strategy.ttl" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "const" : "ttl"
+          },
+          "multiplier" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "min_duration_ms" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "type", "multiplier", "min_duration_ms" ],
+        "additionalProperties" : false
+      },
+      "metabase.api.user/user-group-membership" : {
+        "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "is_group_manager" : {
+            "description" : "Only relevant if `advanced-permissions` is enabled. If it is, you should always include this key.",
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "id" ]
       },
       "metabase.analyze.fingerprint.schema/TypeSpecificFingerprint" : {
         "type" : "object",
@@ -10531,6 +10797,19 @@
             "type" : "number"
           }
         }
+      },
+      "metabase.util.cron/CronScheduleString" : {
+        "description" : "value must be a valid Quartz cron schedule string.",
+        "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+      },
+      "metabase.api.cache/cache-strategy.nocache" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "const" : "nocache"
+          }
+        },
+        "required" : [ "type" ]
       }
     }
   },
