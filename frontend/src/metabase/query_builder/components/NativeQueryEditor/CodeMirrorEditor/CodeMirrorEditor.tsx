@@ -115,6 +115,7 @@ export const CodeMirrorEditor = forwardRef<
       onChange={onChange}
       height="100%"
       onUpdate={handleUpdate}
+      autoFocus
     />
   );
 });
