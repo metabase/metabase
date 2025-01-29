@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
@@ -295,18 +297,39 @@ const findVisualizerColumnCardId = (
 export const getDimensionModel = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
+  VISUALIZER_DATA: VisualizerHistoryItem | undefined,
 ): DimensionModel => {
+  const columnByCardId = rawSeries.reduce(
+    (columnByCardId, series, index) => {
+      const cardColumns = cardsColumns[index];
+      if (series.card.id) {
+        columnByCardId[series.card.id] = cardColumns.dimension.column;
+      }
+      return columnByCardId;
+    },
+    {} as Record<CardId, DatasetColumn>,
+  );
+  if (VISUALIZER_DATA) {
+    cardsColumns.forEach(cardColumns => {
+      const cardIds = _.uniq(
+        cardColumns.metrics.map(metric =>
+          findVisualizerColumnCardId(metric.column, VISUALIZER_DATA),
+        ),
+      );
+      const cardId = findVisualizerColumnCardId(
+        cardColumns.dimension.column,
+        VISUALIZER_DATA,
+      );
+      columnByCardId[cardId] = cardColumns.dimension.column;
+      cardIds.forEach(cardId => {
+        columnByCardId[cardId] = cardColumns.dimension.column;
+      });
+    });
+  }
   return {
     column: cardsColumns[0].dimension.column,
     columnIndex: cardsColumns[0].dimension.index,
-    columnByCardId: rawSeries.reduce(
-      (columnByCardId, series, index) => {
-        const cardColumns = cardsColumns[index];
-        columnByCardId[series.card.id] = cardColumns.dimension.column;
-        return columnByCardId;
-      },
-      {} as Record<CardId, DatasetColumn>,
-    ),
+    columnByCardId,
   };
 };
 

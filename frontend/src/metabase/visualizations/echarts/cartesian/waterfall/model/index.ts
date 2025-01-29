@@ -45,11 +45,16 @@ export const getWaterfallChartModel = (
 
   const cardsColumns = [getCartesianChartColumns(data.cols, settings)];
   const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
-  const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
+  const dimensionModel = getDimensionModel(
+    rawSeries,
+    cardsColumns,
+    VISUALIZER_DATA,
+  );
   const [seriesModel] = getCardSeriesModels(
     singleRawSeries,
     cardsColumns[0],
     [],
+    VISUALIZER_DATA,
     false,
     true,
     settings,

@@ -41,7 +41,16 @@ export const getNewCardUrl = ({
   const cardAfterClick = getCardAfterVisualizationClick(nextCard, previousCard);
 
   const previousQuestion = new Question(previousCard, metadata);
-  const { isEditable } = Lib.queryDisplayInfo(previousQuestion.query());
+  const isVisualizer = _.isEqual(Object.keys(previousCard), [
+    "display",
+    "visualization_settings",
+  ]);
+
+  let isEditable = true;
+  if (!isVisualizer) {
+    isEditable = Lib.queryDisplayInfo(previousQuestion.query()).isEditable;
+  }
+
   const parametersMappedToCard = getParametersMappedToDashcard(
     dashboard.parameters,
     dashcard,

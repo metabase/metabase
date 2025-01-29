@@ -63,6 +63,7 @@ export const useChartEvents = (
     clicked,
     metadata,
     isDashboard,
+    VISUALIZER_DATA,
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
@@ -170,7 +171,12 @@ export const useChartEvents = (
       {
         eventName: "click",
         handler: (event: EChartsSeriesMouseEvent) => {
-          const clickData = getSeriesClickData(chartModel, settings, event);
+          const clickData = getSeriesClickData(
+            chartModel,
+            settings,
+            event,
+            VISUALIZER_DATA,
+          );
 
           if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
             onOpenTimelines?.();
@@ -246,6 +252,7 @@ export const useChartEvents = (
       onOpenQuestion,
       rawSeries,
       metadata,
+      VISUALIZER_DATA,
       onChangeCardAndRun,
     ],
   );
