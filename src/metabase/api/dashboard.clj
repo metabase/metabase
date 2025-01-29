@@ -1309,6 +1309,8 @@
     (into {} (for [field-id filtered-field-ids]
                [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))]))))
 
+;;; TODO -- why don't we use [[metabase.util.malli.schema/Parameter]] for this? Are the parameters passed here
+;;; different?
 (def ParameterWithID
   "Schema for a parameter map with an string `:id`."
   (mu/with-api-error-message
