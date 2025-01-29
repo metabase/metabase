@@ -35,7 +35,7 @@ export const GsheetsSyncStatus = () => {
 
   const title = match(folderSync?.status)
     .with("complete", () => t`Imported Google Sheets`)
-    .with("error", () => t`Error Importing Google Sheets`)
+    .with("error", () => t`Error importing Google Sheets`)
     .otherwise(() => t`Importing Google Sheets...`);
 
   const description = match(folderSync?.status)

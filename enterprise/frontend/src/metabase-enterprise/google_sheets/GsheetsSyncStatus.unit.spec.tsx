@@ -93,4 +93,19 @@ describe("GsheetsSyncStatus", () => {
       await screen.findByText("Imported Google Sheets"),
     ).toBeInTheDocument();
   });
+
+  it("should show errors", async () => {
+    setup({
+      settingStatus: "loading",
+      folderStatus: "error",
+    });
+
+    // initial loading state
+    expect(screen.getByText("Importing Google Sheets...")).toBeInTheDocument();
+
+    // error state
+    expect(
+      await screen.findByText(/Error importing Google Sheets/),
+    ).toBeInTheDocument();
+  });
 });
