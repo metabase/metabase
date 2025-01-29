@@ -11,7 +11,7 @@ export const gsheetsApi = EnterpriseApi.injectEndpoints({
       }),
     }),
     getGsheetsFolder: builder.query<
-      (Settings["gsheets"] & { db_id: DatabaseId}),
+      Settings["gsheets"] & { db_id: DatabaseId },
       void
     >({
       query: () => ({
