@@ -70,7 +70,7 @@ const prepareDashboard = () => {
 
   cy.intercept("/api/dashboard/*/public_link").as("publicLink");
 
-  cy.createNativeQuestionAndDashboard({
+  H.createNativeQuestionAndDashboard({
     questionDetails,
     dashboardDetails,
   }).then(

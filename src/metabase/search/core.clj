@@ -48,6 +48,23 @@
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
+(defmethod prometheus/known-labels :metabase-search/engine-default
+  [_]
+  (prometheus/known-labels :metabase-search/engine-active))
+
+(defmethod prometheus/known-labels :metabase-search/engine-active
+  [_]
+  (for [e (search.engine/known-engines)]
+    {:engine (name e)}))
+
+(defmethod prometheus/initial-value :metabase-search/engine-default
+  [_ {:keys [engine]}]
+  (if (= engine (name (search.impl/default-engine))) 1 0))
+
+(defmethod prometheus/initial-value :metabase-search/engine-active
+  [_ {:keys [engine]}]
+  (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
+
 (defn supports-index?
   "Does this instance support a search index, of any sort?"
   []

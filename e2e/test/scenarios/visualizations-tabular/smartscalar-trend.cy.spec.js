@@ -25,7 +25,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should allow data settings to be changed and display should reflect changes", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13710",
         query: {
@@ -157,7 +157,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should handle up to 3 comparisons", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -231,7 +231,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   it("should reset 'another column' comparison when it becomes invalid", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -346,7 +346,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should allow display settings to be changed and display should reflect changes", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13710",
         query: {
@@ -432,7 +432,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should work regardless of column order (metabase#13710)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "13710",
         query: {

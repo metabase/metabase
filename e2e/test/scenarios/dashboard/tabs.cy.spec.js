@@ -288,7 +288,7 @@ describe("scenarios > dashboard > tabs", () => {
         }),
       ];
 
-      cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+      H.createDashboard().then(({ body: { id: dashboard_id } }) => {
         H.updateDashboardCards({ dashboard_id, cards });
 
         H.visitDashboard(dashboard_id);
@@ -327,7 +327,7 @@ describe("scenarios > dashboard > tabs", () => {
       },
       collection_id: ADMIN_PERSONAL_COLLECTION_ID,
     };
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails: {
         collection_id: NORMAL_PERSONAL_COLLECTION_ID,

@@ -70,7 +70,7 @@ describe("scenarios > admin > settings > public sharing", () => {
   it("should see public dashboards", () => {
     const expectedDashboardName = "Public dashboard";
     const expectedDashboardSlug = "public-dashboard";
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       dashboardDetails: {
         name: expectedDashboardName,
       },
@@ -139,7 +139,7 @@ describe("scenarios > admin > settings > public sharing", () => {
   it("should see public questions", () => {
     const expectedQuestionName = "Public question";
     const expectedQuestionSlug = "public-question";
-    cy.createQuestion({
+    H.createQuestion({
       name: expectedQuestionName,
       query: {
         "source-table": ORDERS_ID,
@@ -194,7 +194,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     H.setActionsEnabledForDB(SAMPLE_DB_ID);
     const expectedActionName = "Public action";
 
-    cy.createQuestion({
+    H.createQuestion({
       name: "Model",
       query: {
         "source-table": ORDERS_ID,
