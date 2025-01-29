@@ -1242,39 +1242,44 @@ H.describeEE("formatting > sandboxes", () => {
       },
     );
 
-    it("should match sandbox targets with stage-number", () => {
-      cy.sandboxTable({
-        table_id: PRODUCTS_ID,
-        group_id: DATA_GROUP,
-        attribute_remappings: {
-          attr_cat: [
-            "dimension",
-            ["field", PRODUCTS.CATEGORY, null],
-            { "stage-number": 0 },
-          ],
-        },
-      });
-      verifySandboxModal({
-        databaseId: SAMPLE_DB_ID,
-        tableId: PRODUCTS_ID,
-        columnName: "Category",
-        attributeName: "attr_cat",
-      });
-    });
+    describe("sandbox target matching", () => {
+      function verifySandboxModal(target) {
+        cy.sandboxTable({
+          table_id: PRODUCTS_ID,
+          group_id: DATA_GROUP,
+          attribute_remappings: {
+            attr_cat: target,
+          },
+        });
+        cy.visit(
+          `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
+        );
+        H.selectPermissionRow("data", VIEW_DATA_PERMISSION_INDEX);
+        H.popover().findByText("Edit sandboxed access").click();
+        H.modal().findAllByTestId("select-button").contains("Category").click();
+        H.popover()
+          .findByLabelText("Category")
+          .should("have.attr", "aria-selected", "true");
+      }
 
-    it("should match sandbox targets without stage-number", () => {
-      cy.sandboxTable({
-        table_id: PRODUCTS_ID,
-        group_id: DATA_GROUP,
-        attribute_remappings: {
-          attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-        },
+      it("should match targets without dimension of field ref options", () => {
+        verifySandboxModal(["dimension", ["field", PRODUCTS.CATEGORY, null]]);
       });
-      verifySandboxModal({
-        databaseId: SAMPLE_DB_ID,
-        tableId: PRODUCTS_ID,
-        columnName: "Category",
-        attributeName: "attr_cat",
+
+      it("should match targets with dimension options", () => {
+        verifySandboxModal([
+          "dimension",
+          ["field", PRODUCTS.CATEGORY, null],
+          { "stage-number": 0 },
+        ]);
+      });
+
+      it("should match targets with field ref options", () => {
+        verifySandboxModal([
+          "dimension",
+          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+          { "stage-number": 0 },
+        ]);
       });
     });
   });
@@ -1309,25 +1314,4 @@ function preparePermissions() {
   H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
   H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
   H.blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
-}
-
-function verifySandboxModal({
-  databaseId,
-  tableId,
-  columnName,
-  attributeName,
-}) {
-  cy.visit(
-    `/admin/permissions/data/database/${databaseId}/schema/PUBLIC/table/${tableId}`,
-  );
-  H.selectPermissionRow("data", VIEW_DATA_PERMISSION_INDEX);
-  H.popover().findByText("Edit sandboxed access").click();
-  H.modal().within(() => {
-    cy.findAllByTestId("select-button")
-      .contains(columnName)
-      .should("be.visible");
-    cy.findAllByTestId("select-button")
-      .contains(attributeName)
-      .should("be.visible");
-  });
 }

@@ -51,8 +51,8 @@ export default class ParameterTargetWidget extends Component {
             onChange(target);
             this.popover.current.close();
           }}
-          target={target}
           mappingOptions={mappingOptions}
+          selectedMappingOption={selected}
         />
       </PopoverWithTrigger>
     );
