@@ -39,8 +39,8 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.api.common :as api]
-   [metabase.api.session :as api.session]
    [metabase.integrations.common :as integrations.common]
+   [metabase.models.session :as session]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
@@ -104,7 +104,7 @@
                         (sso-utils/check-user-provisioning :saml)
                         (sso-utils/create-new-sso-user! new-user))]
       (sync-groups! user group-names)
-      (api.session/create-session! :sso user device-info))))
+      (session/create-session! :sso user device-info))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

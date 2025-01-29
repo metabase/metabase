@@ -40,8 +40,9 @@
 
       (with-redefs [ldap/test-ldap-connection (constantly {:status :SUCCESS})]
         (testing "LDAP port is saved as default value if passed as an empty string (#18936)"
-          (mt/user-http-request :crowberto :put 200 "ldap/settings"
-                                (assoc (ldap-test-details) :ldap-port ""))
+          (is (= true
+                 (mt/user-http-request :crowberto :put 200 "ldap/settings"
+                                       (assoc (ldap-test-details) :ldap-port ""))))
           (is (= 389 (ldap/ldap-port)))))
 
       (testing "Could update with obfuscated password"

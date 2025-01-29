@@ -20,7 +20,7 @@ describe("scenarios > dashboard > title drill", () => {
         },
       };
 
-      cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      H.createNativeQuestionAndDashboard({ questionDetails }).then(
         ({ body: { dashboard_id }, questionId }) => {
           cy.wrap(questionId).as("questionId");
           H.visitDashboard(dashboard_id);
@@ -118,7 +118,7 @@ describe("scenarios > dashboard > title drill", () => {
 
       const dashboardDetails = { parameters: [filter] };
 
-      cy.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -225,7 +225,7 @@ describe("scenarios > dashboard > title drill", () => {
       H.restore();
       cy.signInAsAdmin();
 
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: dashboardCard, questionId }) => {
           const { card_id, dashboard_id } = dashboardCard;
 
@@ -246,7 +246,7 @@ describe("scenarios > dashboard > title drill", () => {
             ],
           };
 
-          cy.editDashboardCard(dashboardCard, mapFiltersToCard);
+          H.editDashboardCard(dashboardCard, mapFiltersToCard);
 
           cy.intercept(
             "POST",
@@ -373,7 +373,7 @@ describe("scenarios > dashboard > title drill", () => {
       H.restore();
       cy.signInAsAdmin();
 
-      cy.createQuestion(questionDetails, {
+      H.createQuestion(questionDetails, {
         wrapId: true,
         idAlias: "questionId",
       });
@@ -385,13 +385,13 @@ describe("scenarios > dashboard > title drill", () => {
             "source-table": `card__${questionId}`,
           },
         };
-        cy.createQuestion(nestedQuestionDetails, {
+        H.createQuestion(nestedQuestionDetails, {
           wrapId: true,
           idAlias: "nestedQuestionId",
         });
       });
 
-      cy.createDashboard(dashboardDetails).then(
+      H.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
           cy.wrap(dashboardId).as("dashboardId");
         },
@@ -444,7 +444,7 @@ describe("scenarios > dashboard > title drill", () => {
     });
 
     it("titles become actual HTML anchors on focus and on hover", () => {
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardName: "Dashboard with aggregated Q2",
         questions: [
           {

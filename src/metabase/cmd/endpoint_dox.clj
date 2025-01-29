@@ -14,7 +14,9 @@
 (def ^:private scalar-config
   "See https://github.com/scalar/scalar/blob/main/documentation/configuration.md"
   {:servers [{:url         "http://localhost:3000/api"
-              :description "Localhost"}]})
+              :description "Localhost"}]
+   :info {:title "Metabase API documentation"
+          :description (slurp (io/resource "openapi/api-intro.md"))}})
 
 (defn- openapi-object []
   (merge
