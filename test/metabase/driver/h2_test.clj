@@ -208,6 +208,16 @@
                       "ORDER BY ATTEMPTS.DATE ASC")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
+(deftest ^:parallel do-not-cast-to-date-binned-by-week-to-datetime
+  (mt/test-driver :h2
+    (testing "Don't cast date binned by week"
+      (mt/dataset attempted-murders
+        (let [query (mt/mbql-query attempts
+                      {:aggregation [[:count]]
+                       :breakout    [!week.date]})
+              compiled (some-> (qp.compile/compile query) :query pretty-sql)]
+          (is (not (re-find #"CAST\([^)]+\s+AS\s+datetime\)" compiled))))))))
+
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
