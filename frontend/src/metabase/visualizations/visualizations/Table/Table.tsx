@@ -24,6 +24,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useCallback, useMemo, useRef, useState } from "react";
+import _ from "underscore";
 
 import { connect } from "metabase/lib/redux";
 import {
@@ -32,6 +33,10 @@ import {
   getUiControls,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import {
+  getTableCellClickedObject,
+  getTableClickedObjectRowData,
+} from "metabase/visualizations/lib/table";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
@@ -39,9 +44,11 @@ import type { VisualizationSettings } from "metabase-types/api";
 
 import { AddColumnButton } from "./AddColumnButton";
 import styles from "./Table.module.css";
+import { HEADER_HEIGHT, INDEX_COLUMN_ID, ROW_HEIGHT } from "./constants";
 import { useTableCellsMeasure } from "./hooks/use-cell-measure";
 import { useColumnResizeObserver } from "./hooks/use-column-resize-observer";
 import { useColumns } from "./hooks/use-columns";
+import { useObjectDetail } from "./hooks/use-object-detail";
 import { useVirtualGrid } from "./hooks/use-virtual-grid";
 
 interface TableProps extends VisualizationProps {
@@ -56,6 +63,7 @@ interface TableProps extends VisualizationProps {
 
 export const _Table = ({
   data,
+  series,
   height,
   settings,
   width,
@@ -68,9 +76,10 @@ export const _Table = ({
 }: TableProps) => {
   const { rows, cols } = data;
   const bodyRef = useRef<HTMLDivElement>(null);
-  const [columnOrder, setColumnOrder] = useState<string[]>(() =>
-    cols.map(col => col.name),
-  );
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => [
+    INDEX_COLUMN_ID,
+    ...cols.map(col => col.name),
+  ]);
 
   const {
     measureBodyCellDimensions,
@@ -78,7 +87,13 @@ export const _Table = ({
     measureRoot,
   } = useTableCellsMeasure();
 
-  const { columns, columnFormatters, onResizeColumn } = useColumns({
+  const {
+    columns,
+    columnFormatters,
+    onResizeColumn,
+    columnSizing,
+    setColumnSizing,
+  } = useColumns({
     settings,
     onVisualizationClick,
     data,
@@ -90,16 +105,70 @@ export const _Table = ({
     hasMetadataPopovers,
   });
 
+  const wrappedColumns = useMemo(() => {
+    return columns.filter(col => col.meta?.wrap);
+  }, [columns]);
+
   const table = useReactTable({
     data: rows,
     columns,
+    initialState: {
+      columnPinning: {
+        left: [INDEX_COLUMN_ID],
+      },
+    },
     state: {
+      columnSizing,
       columnOrder,
     },
     getCoreRowModel: getCoreRowModel(),
-    columnResizeMode: "onEnd",
+    columnResizeMode: "onChange",
     onColumnOrderChange: setColumnOrder,
+    onColumnSizingChange: setColumnSizing,
   });
+
+  const onOpenObjectDetail = useObjectDetail(data);
+
+  const measureRowHeight = useCallback(
+    (rowIndex: number) => {
+      if (wrappedColumns.length === 0) {
+        return ROW_HEIGHT;
+      }
+
+      const height = Math.max(
+        ...wrappedColumns.map(column => {
+          const datasetIndex = column.meta?.datasetIndex;
+          const columnName = column.id;
+          if (!datasetIndex || !columnName) {
+            return 0;
+          }
+
+          const value = data.rows[rowIndex][datasetIndex];
+          const formattedValue = columnFormatters[datasetIndex](value);
+          if (!formattedValue || _.isEmpty(formattedValue)) {
+            return ROW_HEIGHT;
+          }
+          const formattedString = formattedValue?.toString() ?? "";
+          const tableColumn = table.getColumn(columnName);
+
+          const cellDimensions = measureBodyCellDimensions(
+            formattedString,
+            tableColumn?.getSize(),
+          );
+          return cellDimensions.height;
+        }, ROW_HEIGHT),
+      );
+
+      return height;
+    },
+    [
+      columnFormatters,
+      data.rows,
+      measureBodyCellDimensions,
+      table,
+      wrappedColumns,
+    ],
+  );
 
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
@@ -180,15 +249,12 @@ export const _Table = ({
   } = useVirtualGrid({
     bodyRef,
     table,
-    data,
-    columns,
-    columnFormatters,
-    measureBodyCellDimensions,
+    measureRowHeight,
   });
 
   const handleColumnResize = useCallback(
-    (columnId: string, width: number) => {
-      const newColumnWidths = onResizeColumn(columnId, width);
+    (columnName: string, width: number) => {
+      const newColumnWidths = onResizeColumn(columnName, width);
 
       onUpdateVisualizationSettings({
         "table.column_widths": newColumnWidths,
@@ -208,23 +274,12 @@ export const _Table = ({
     [rowVirtualizer],
   );
 
-  const totalContentWidth = useMemo(
-    () =>
-      table
-        .getHeaderGroups()
-        .flatMap(headerGroup =>
-          headerGroup.headers.map(header => header.getSize()),
-        )
-        .reduce((acc, current) => acc + current, 0),
-    [table],
-  );
-
-  const isAddColumnButtonSticky = totalContentWidth >= width;
+  const isAddColumnButtonSticky = table.getTotalSize() >= width;
 
   const addColumnButton = useMemo(
     () => (
       <AddColumnButton
-        headerHeight={36}
+        headerHeight={HEADER_HEIGHT}
         isOverflowing={isAddColumnButtonSticky}
         onClick={e =>
           onVisualizationClick?.({
@@ -235,6 +290,50 @@ export const _Table = ({
       />
     ),
     [isAddColumnButtonSticky, onVisualizationClick],
+  );
+
+  const handleBodyCellClick = useCallback(
+    (
+      event: React.MouseEvent<HTMLDivElement, MouseEvent>,
+      rowIndex: number,
+      columnName: string,
+    ) => {
+      if (columnName === INDEX_COLUMN_ID) {
+        onOpenObjectDetail(rowIndex);
+        return;
+      }
+
+      const columnIndex = data.cols.findIndex(col => col.name === columnName);
+      const clickedRowData = getTableClickedObjectRowData(
+        series as any,
+        rowIndex,
+        columnIndex,
+        isPivoted,
+        data,
+      );
+
+      const clicked = getTableCellClickedObject(
+        data,
+        settings,
+        rowIndex,
+        columnIndex,
+        isPivoted,
+        clickedRowData,
+      );
+
+      onVisualizationClick?.({
+        ...clicked,
+        element: event.currentTarget,
+      });
+    },
+    [
+      data,
+      isPivoted,
+      onOpenObjectDetail,
+      onVisualizationClick,
+      series,
+      settings,
+    ],
   );
 
   if (width == null || height == null) {
@@ -339,6 +438,13 @@ export const _Table = ({
                         <div
                           key={cell.id}
                           className={styles.td}
+                          onClick={e =>
+                            handleBodyCellClick(
+                              e,
+                              cell.row.index,
+                              cell.column.id,
+                            )
+                          }
                           style={{
                             position: "relative",
                             width: cell.column.getSize(),
