@@ -1,6 +1,6 @@
 import { EditableDashboard } from "@metabase/embedding-sdk-react";
 
-import { describeEE } from "e2e/support/helpers";
+import { createDashboard, describeEE } from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -12,7 +12,7 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    cy.createDashboard({
+    createDashboard({
       name: "Embedding SDK Test Dashboard",
     }).then(({ body: dashboard }) => {
       cy.wrap(dashboard.id).as("dashboardId");

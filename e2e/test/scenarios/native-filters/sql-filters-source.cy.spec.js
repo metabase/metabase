@@ -42,7 +42,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
   describe("structured question source", () => {
     it("should be able to use a structured question source", () => {
-      cy.createQuestion(structuredSourceQuestion);
+      H.createQuestion(structuredSourceQuestion);
 
       H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
@@ -68,7 +68,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a structured question source with a text tag", () => {
-      cy.createQuestion(structuredSourceQuestion);
+      H.createQuestion(structuredSourceQuestion);
 
       H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery(
@@ -101,7 +101,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a structured question source without saving the question", () => {
-      cy.createQuestion(structuredSourceQuestion);
+      H.createQuestion(structuredSourceQuestion);
 
       H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery(
@@ -117,7 +117,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should properly cache parameter values api calls", () => {
-      cy.createQuestion(structuredSourceQuestion);
+      H.createQuestion(structuredSourceQuestion);
       H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{tag}}",
@@ -156,9 +156,9 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a structured question source when embedded", () => {
-      cy.createQuestion(structuredSourceQuestion).then(
+      H.createQuestion(structuredSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
-          cy.createNativeQuestion(
+          H.createNativeQuestion(
             getStructuredDimensionTargetQuestion(sourceQuestionId),
           ).then(({ body: { id: targetQuestionId } }) => {
             H.visitEmbeddedPage(getQuestionResource(targetQuestionId));
@@ -172,9 +172,9 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a structured question source when embedded with a text tag", () => {
-      cy.createQuestion(structuredSourceQuestion).then(
+      H.createQuestion(structuredSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
-          cy.createNativeQuestion(
+          H.createNativeQuestion(
             getStructuredTextTargetQuestion(sourceQuestionId),
           ).then(({ body: { id: targetQuestionId } }) => {
             H.visitEmbeddedPage(getQuestionResource(targetQuestionId));
@@ -188,9 +188,9 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a structured question source when public", () => {
-      cy.createQuestion(structuredSourceQuestion).then(
+      H.createQuestion(structuredSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
-          cy.createNativeQuestion(
+          H.createNativeQuestion(
             getStructuredDimensionTargetQuestion(sourceQuestionId),
           ).then(({ body: { id: targetQuestionId } }) => {
             H.visitPublicQuestion(targetQuestionId);
@@ -204,9 +204,9 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a structured question source when public with a text tag", () => {
-      cy.createQuestion(structuredSourceQuestion).then(
+      H.createQuestion(structuredSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
-          cy.createNativeQuestion(
+          H.createNativeQuestion(
             getStructuredTextTargetQuestion(sourceQuestionId),
           ).then(({ body: { id: targetQuestionId } }) => {
             H.visitPublicQuestion(targetQuestionId);
@@ -222,7 +222,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
   describe("native question source", () => {
     it("should be able to use a native question source in the query builder", () => {
-      cy.createNativeQuestion(nativeSourceQuestion);
+      H.createNativeQuestion(nativeSourceQuestion);
 
       H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
@@ -243,9 +243,9 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a native question source when embedded", () => {
-      cy.createNativeQuestion(nativeSourceQuestion).then(
+      H.createNativeQuestion(nativeSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
-          cy.createNativeQuestion(
+          H.createNativeQuestion(
             getNativeDimensionTargetQuestion(sourceQuestionId),
           ).then(({ body: { id: targetQuestionId } }) => {
             H.visitEmbeddedPage(getQuestionResource(targetQuestionId));
@@ -259,9 +259,9 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a native question source when embedded with a text tag", () => {
-      cy.createNativeQuestion(nativeSourceQuestion).then(
+      H.createNativeQuestion(nativeSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
-          cy.createNativeQuestion(
+          H.createNativeQuestion(
             getNativeTextTargetQuestion(sourceQuestionId),
           ).then(({ body: { id: targetQuestionId } }) => {
             H.visitEmbeddedPage(getQuestionResource(targetQuestionId));
@@ -275,9 +275,9 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a native question source when public", () => {
-      cy.createNativeQuestion(nativeSourceQuestion).then(
+      H.createNativeQuestion(nativeSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
-          cy.createNativeQuestion(
+          H.createNativeQuestion(
             getNativeDimensionTargetQuestion(sourceQuestionId),
           ).then(({ body: { id: targetQuestionId } }) => {
             H.visitPublicQuestion(targetQuestionId);
@@ -291,9 +291,9 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a native question source when public with a text tag", () => {
-      cy.createNativeQuestion(nativeSourceQuestion).then(
+      H.createNativeQuestion(nativeSourceQuestion).then(
         ({ body: { id: sourceQuestionId } }) => {
-          cy.createNativeQuestion(
+          H.createNativeQuestion(
             getNativeTextTargetQuestion(sourceQuestionId),
           ).then(({ body: { id: targetQuestionId } }) => {
             H.visitPublicQuestion(targetQuestionId);
@@ -329,7 +329,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getListDimensionTargetQuestion({
           values: ["1018947080336", "7663515285824"],
         }),
@@ -344,7 +344,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getListDimensionTargetQuestion({
           values: ["1018947080336", "7663515285824"],
         }),
@@ -384,7 +384,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getListDimensionTargetQuestion({
           values: [["1018947080336", "Custom Label"], "7663515285824"],
         }),
@@ -400,7 +400,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getListDimensionTargetQuestion({
           values: [["1018947080336", "Custom Label"], "7663515285824"],
         }),
@@ -448,7 +448,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getListDimensionTargetQuestion({
           values_query_type: "search",
           values: ["1018947080336", "7663515285824"],
@@ -470,7 +470,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getListDimensionTargetQuestion({
           values_query_type: "search",
           values: ["1018947080336", "7663515285824"],
@@ -526,7 +526,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getListDimensionTargetQuestion({
           values_query_type: "search",
           values: [["1018947080336", "Custom Label"], "7663515285824"],
@@ -551,7 +551,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getListDimensionTargetQuestion({
           values_query_type: "search",
           values: [["1018947080336", "Custom Label"], "7663515285824"],
@@ -606,9 +606,9 @@ H.describeEE("scenarios > filters > sql filters > values source", () => {
       },
     });
 
-    cy.createQuestion(structuredSourceQuestion).then(
+    H.createQuestion(structuredSourceQuestion).then(
       ({ body: { id: sourceQuestionId } }) => {
-        cy.createNativeQuestion(
+        H.createNativeQuestion(
           getStructuredDimensionTargetQuestion(sourceQuestionId),
         ).then(({ body: { id: targetQuestionId } }) => {
           cy.signOut();
@@ -666,7 +666,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getNumberTargetQuestion({
           parameter: {
             values_query_type: "list",
@@ -687,7 +687,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getNumberTargetQuestion({
           parameter: {
             values_query_type: "list",
@@ -736,7 +736,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getNumberTargetQuestion({
           parameter: {
             values_query_type: "search",
@@ -763,7 +763,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getNumberTargetQuestion({
           parameter: {
             values_query_type: "search",
@@ -821,7 +821,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         getNumberTargetQuestion({
           parameter: {
             values_query_type: "search",

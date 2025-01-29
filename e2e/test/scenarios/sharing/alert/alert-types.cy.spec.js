@@ -104,7 +104,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
     });
 
     it("should not be possible to create goal based alert for a multi-series question", () => {
-      cy.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
+      H.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
 
       H.openSharingMenu("Create alert");
       cy.wait("@channel");

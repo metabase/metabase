@@ -25,7 +25,7 @@ describe("revision history", () => {
     });
 
     it("shouldn't render revision history steps when there was no diff (metabase#1926)", () => {
-      cy.createDashboard().then(({ body }) => {
+      H.createDashboard().then(({ body }) => {
         H.visitDashboard(body.id);
         H.editDashboard();
       });
@@ -67,7 +67,7 @@ describe("revision history", () => {
               cy.intercept("GET", "/api/dashboard/*").as("fetchDashboard");
               cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-              cy.createDashboard().then(({ body }) => {
+              H.createDashboard().then(({ body }) => {
                 H.visitDashboard(body.id);
                 H.editDashboard();
               });

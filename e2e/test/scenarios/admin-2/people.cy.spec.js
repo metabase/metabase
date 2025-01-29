@@ -528,7 +528,7 @@ H.describeEE("scenarios > admin > people", () => {
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {
     H.getCurrentUser().then(({ body: { id: user_id } }) => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
       }).then(({ body: { card_id, dashboard_id } }) => {
         H.createAlert(getAlertDetails({ user_id, card_id }));

@@ -510,7 +510,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       semantic_type: null,
     });
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "14124",
         query: {
@@ -1035,7 +1035,7 @@ describe("scenarios > admin > databases > table", () => {
     });
 
     it("question with joins (metabase#15947-2)", () => {
-      cy.createQuestion({
+      H.createQuestion({
         name: "15947",
         query: {
           "source-table": ORDERS_ID,

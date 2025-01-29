@@ -116,7 +116,7 @@ describe("collection permissions", () => {
 
                 it("should be able to archive/unarchive model", () => {
                   cy.skipOn(user === "nodata");
-                  cy.createNativeQuestion({
+                  H.createNativeQuestion({
                     name: "Model",
                     type: "model",
                     native: {

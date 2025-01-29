@@ -194,8 +194,8 @@ describe(
                   const dashboardInRoot = {
                     name: "Dashboard in root collection",
                   };
-                  cy.createCollection(collectionInRoot);
-                  cy.createDashboard(dashboardInRoot);
+                  H.createCollection(collectionInRoot);
+                  H.createDashboard(dashboardInRoot);
                   cy.log(
                     "reload the page so the new collection is in the state",
                   );
