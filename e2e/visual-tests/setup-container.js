@@ -19,6 +19,7 @@ const BUILD_ARGS = [
 
 const WORKING_DIRECTORY = "/app";
 const CONTAINER_BOUND_DIRECTORIES = ["/"];
+const CONTAINER_OVERRIDE_PACKAGES = ["esbuild", "@esbuild"];
 
 const SUCCESS_EXIT_CODE = 0;
 const ERROR_EXIT_CODE = 1;
@@ -93,9 +94,16 @@ async function runContainer(options) {
       Tty: true,
       Cmd: ["-c", command, ...after],
       HostConfig: {
-        Binds: CONTAINER_BOUND_DIRECTORIES.map(
-          directory => `${cwd}/${directory}:${WORKING_DIRECTORY}/${directory}`,
-        ),
+        Binds: [
+          ...CONTAINER_BOUND_DIRECTORIES.map(
+            directory =>
+              `${cwd}/${directory}:${WORKING_DIRECTORY}/${directory}`,
+          ),
+          ...CONTAINER_OVERRIDE_PACKAGES.map(
+            (packageName, index) =>
+              `override_${index}:/${WORKING_DIRECTORY}/node_modules/${packageName}`,
+          ),
+        ],
         ExtraHosts: ["host.docker.internal:host-gateway"],
       },
       WorkingDir: WORKING_DIRECTORY,

@@ -8,8 +8,10 @@ const HIDE_SCROLLBARS_STYLES = `
   }
 `;
 const PREVENT_POINTER_EVENTS_STYLES = `
-  * {
+  *, *::before, *::after {
     pointer-events: none;
+    transition: none !important;
+    animation: none !important;
   }
 `;
 
@@ -40,6 +42,9 @@ export const captureSnapshot = (
     cy.compareSnapshot({
       name: buildSnapshotName(name),
       retryOptions: { doNotFail },
+      cypressScreenshotOptions: {
+        disableTimersAndAnimations: true,
+      },
     }).then(() => {
       // Restore styles back to default
       style.remove();

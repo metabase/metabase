@@ -26,4 +26,6 @@ RUN mkdir -p /opt/cypress && \
     unzip /tmp/cypress.zip -d /opt/cypress && \
     rm /tmp/cypress.zip
 
+RUN npm i esbuild
+
 ENTRYPOINT ["/bin/bash"]
