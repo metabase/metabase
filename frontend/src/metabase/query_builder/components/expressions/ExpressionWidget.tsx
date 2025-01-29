@@ -17,7 +17,7 @@ import {
 } from "../../analytics";
 
 import { CombineColumns, hasCombinations } from "./CombineColumns";
-import { Editor as ExpressionEditorTextfield, type Shortcut } from "./Editor";
+import { Editor, type Shortcut } from "./Editor";
 import ExpressionWidgetS from "./ExpressionWidget.module.css";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
@@ -220,7 +220,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           {t`Expression`}
           <ExpressionWidgetInfo />
         </Box>
-        <ExpressionEditorTextfield
+        <Editor
           id="expression-content"
           expression={expression}
           expressionIndex={expressionIndex}
