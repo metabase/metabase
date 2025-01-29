@@ -25,7 +25,7 @@ const markdownCard = {
 const nativeQuestionDetails = {
   name: "Native Question",
   native: {
-    query: "select count(*) from orders limit 5",
+    query: "select count(*)  from orders limit 5",
   },
   display: "scalar",
   // Put native question inside admin's personal collection

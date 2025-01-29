@@ -27,7 +27,7 @@ function navigatorInfo() {
 }
 
 const template = `**Describe the bug**
-A clear and concise description of what the bug is.
+A clear and concise description of what the bug  is.
 
 **Logs**
 Please include javascript console and server logs around the time this bug occurred. For information about how to get these, consult our [bug troubleshooting guide](https://metabase.com/docs/latest/troubleshooting-guide/bugs.html)
