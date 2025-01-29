@@ -96,7 +96,7 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
 
           // (metabase#52732): tooltip container must have the user-supplied z-index
           // prevents the tooltip from being rendered below charts.
-          expect(tooltipContainerStyle.zIndex).to.be.equal(
+          expect(Number(tooltipContainerStyle.zIndex)).to.be.equal(
             zIndexTestCase.expected,
           );
 
