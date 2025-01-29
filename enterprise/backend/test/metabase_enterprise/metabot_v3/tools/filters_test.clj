@@ -12,7 +12,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-(defn- name->dimension
+(defn- by-name
   [dimensions dimension-name]
   (m/find-first (comp #{dimension-name} :name) dimensions))
 
@@ -38,7 +38,7 @@
                                {}))))
       (mt/with-current-user (mt/user->id :crowberto)
         (let [metric-details (metabot-v3.dummy-tools/metric-details metric-id)
-              ->field-id #(u/prog1 (-> metric-details :queryable_dimensions (name->dimension %) :field_id)
+              ->field-id #(u/prog1 (-> metric-details :queryable_dimensions (by-name %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
           (testing "Trivial query works."
@@ -113,3 +113,212 @@
                   :metabot.tool/query-metric
                   {:metric-id (str metric-id)}
                   {}))))))))
+
+(deftest ^:parallel filter-records-table-test
+  (testing "User has to have execution rights, otherwise the table should be invisible."
+    (is (= {:output (str "No table found with table_id " (mt/id :orders))}
+           (metabot-v3.tools.interface/*invoke-tool*
+            :metabot.tool/filter-records
+            {:data-source {:table_id (mt/id :orders)}
+             :filters []}
+            {}))))
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          table-id (mt/id :orders)
+          table-details (#'metabot-v3.dummy-tools/table-details table-id {:metadata-provider mp})
+          ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
+                        (when-not <>
+                          (throw (ex-info (str "Column " % " not found") {:column %}))))]
+      (testing "Trivial query works."
+        (is (=? {:structured-output {:type :query,
+                                     :query_id string?
+                                     :query {:database (mt/id)
+                                             :type :query
+                                             :query {:source-table table-id}}}}
+                (metabot-v3.tools.interface/*invoke-tool*
+                 :metabot.tool/filter-records
+                 {:data-source {:table_id table-id}
+                  :filters []}
+                 {}))))
+      (testing "Filtering works."
+        (is (=? {:structured-output {:type :query,
+                                     :query_id string?
+                                     :query {:database (mt/id)
+                                             :type :query
+                                             :query {:source-table (mt/id :orders)
+                                                     :filter
+                                                     [:> [:field (mt/id :orders :discount)
+                                                          {:base-type :type/Float}]
+                                                      3]}}}}
+                (metabot-v3.tools.interface/*invoke-tool*
+                 :metabot.tool/filter-records
+                 {:data-source {:table_id table-id}
+                  :filters [{:field_id (->field-id "Discount")
+                             :operation "number-greater-than"
+                             :value 3}]}
+                 {})))))
+    (testing "Missing table results in an error."
+      (is (= {:output (str "No table found with table_id " Integer/MAX_VALUE)}
+             (metabot-v3.tools.interface/*invoke-tool*
+              :metabot.tool/filter-records
+              {:data-source {:table_id Integer/MAX_VALUE}}
+              {}))))))
+
+(deftest ^:parallel filter-records-model-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        legacy-query (lib.convert/->legacy-MBQL query)]
+    (mt/with-temp [:model/Card {model-id :id} {:dataset_query legacy-query
+                                               :database_id (mt/id)
+                                               :name "Orders"
+                                               :description "The orders."
+                                               :type :model}]
+      (testing "User has to have execution rights."
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                              (metabot-v3.tools.interface/*invoke-tool*
+                               :metabot.tool/filter-records
+                               {:data-source {:table_id (str "card__" model-id)}
+                                :filters []}
+                               {}))))
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [model-details (#'metabot-v3.dummy-tools/card-details model-id)
+              table-id (str "card__" model-id)
+              ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
+                            (when-not <>
+                              (throw (ex-info (str "Column " % " not found") {:column %}))))]
+          (testing "Trivial query works."
+            (is (=? {:structured-output {:type :query,
+                                         :query_id string?
+                                         :query {:database (mt/id)
+                                                 :type :query
+                                                 :query {:source-table table-id}}}}
+                    (metabot-v3.tools.interface/*invoke-tool*
+                     :metabot.tool/filter-records
+                     {:data-source {:table_id table-id}
+                      :filters []}
+                     {}))))
+          (testing "Filtering works."
+            (is (=? {:structured-output {:type :query,
+                                         :query_id string?
+                                         :query {:database (mt/id)
+                                                 :type :query
+                                                 :query {:source-table table-id
+                                                         :filter [:> [:field "DISCOUNT" {:base-type :type/Float}] 3]}}}}
+                    (metabot-v3.tools.interface/*invoke-tool*
+                     :metabot.tool/filter-records
+                     {:data-source {:table_id table-id}
+                      :filters [{:field_id (->field-id "Discount")
+                                 :operation "number-greater-than"
+                                 :value 3}]}
+                     {})))))
+        (testing "Missing table results in an error."
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found."
+                                (metabot-v3.tools.interface/*invoke-tool*
+                                 :metabot.tool/filter-records
+                                 {:data-source {:table_id (str "card__" Integer/MAX_VALUE)}}
+                                 {}))))))))
+
+(deftest ^:parallel filter-records-report-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        table-id (mt/id :orders)
+        query (lib/query mp (lib.metadata/table mp table-id))
+        legacy-query (lib.convert/->legacy-MBQL query)]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query legacy-query
+                                              :database_id (mt/id)
+                                              :name "Orders"
+                                              :description "The orders."
+                                              :type :question}]
+      (testing "User has to have execution rights."
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                              (metabot-v3.tools.interface/*invoke-tool*
+                               :metabot.tool/filter-records
+                               {:data-source {:report_id card-id}
+                                :filters []}
+                               {}))))
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [report-details (#'metabot-v3.dummy-tools/card-details card-id)
+              ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field_id)
+                            (when-not <>
+                              (throw (ex-info (str "Column " % " not found") {:column %}))))]
+          (testing "Trivial query works."
+            (is (=? {:structured-output {:type :query,
+                                         :query_id string?
+                                         :query {:database (mt/id)
+                                                 :type :query
+                                                 :query {:source-table table-id}}}}
+                    (metabot-v3.tools.interface/*invoke-tool*
+                     :metabot.tool/filter-records
+                     {:data-source {:report_id card-id}
+                      :filters []}
+                     {}))))
+          (testing "Filtering works."
+            (is (=? {:structured-output {:type :query,
+                                         :query_id string?
+                                         :query {:database (mt/id)
+                                                 :type :query
+                                                 :query {:source-table table-id
+                                                         :filter [:>
+                                                                  [:field
+                                                                   (mt/id :orders :discount)
+                                                                   {:base-type :type/Float}]
+                                                                  3]}}}}
+                    (metabot-v3.tools.interface/*invoke-tool*
+                     :metabot.tool/filter-records
+                     {:data-source {:report_id card-id}
+                      :filters [{:field_id (->field-id "Discount")
+                                 :operation "number-greater-than"
+                                 :value 3}]}
+                     {})))))
+        (testing "Missing table results in an error."
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found."
+                                (metabot-v3.tools.interface/*invoke-tool*
+                                 :metabot.tool/filter-records
+                                 {:data-source {:report_id Integer/MAX_VALUE}}
+                                 {}))))))))
+
+(deftest ^:parallel filter-records-query-test
+  (let [query-id (u/generate-nano-id)
+        mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        table-id (mt/id :orders)
+        query (lib/query mp (lib.metadata/table mp table-id))
+        legacy-query (lib.convert/->legacy-MBQL query)
+        query-details (#'metabot-v3.dummy-tools/execute-query query-id legacy-query)
+        ->field-id #(u/prog1 (-> query-details :result_columns (by-name %) :field_id)
+                      (when-not <>
+                        (throw (ex-info (str "Column " % " not found") {:column %}))))
+        env {:history [{:role :tool
+                        :tool-call-id "some tool call ID"
+                        :structured-content query-details}]}]
+    (testing "Trivial query works."
+      (is  (=? {:structured-output
+                {:type :query
+                 :query_id string?
+                 :query {:database (mt/id), :type :query, :query {:source-table table-id}}}}
+               (metabot-v3.tools.interface/*invoke-tool*
+                :metabot.tool/filter-records
+                {:data-source {:query_id query-id}}
+                env))))
+    (testing "Filtering works."
+            (is (=? {:structured-output {:type :query,
+                                         :query_id string?
+                                         :query {:database (mt/id)
+                                                 :type :query
+                                                 :query {:source-table table-id
+                                                         :filter [:>
+                                                                  [:field
+                                                                   (mt/id :orders :discount)
+                                                                   {:base-type :type/Float}]
+                                                                  3]}}}}
+                    (metabot-v3.tools.interface/*invoke-tool*
+                     :metabot.tool/filter-records
+                     {:data-source {:query_id query-id}
+                      :filters [{:field_id (->field-id "Discount")
+                                 :operation "number-greater-than"
+                                 :value 3}]}
+                     env))))
+    (testing "Missing query results in an error."
+      (is (= {:output (str "No query found with query_id " query-id)}
+             (metabot-v3.tools.interface/*invoke-tool*
+              :metabot.tool/filter-records
+              {:data-source {:query_id query-id}}
+              {}))))))
