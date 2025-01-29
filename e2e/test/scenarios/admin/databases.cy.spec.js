@@ -689,7 +689,7 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     // metric
-    cy.createQuestion({
+    H.createQuestion({
       name: "Revenue",
       description: "Sum of orders subtotal",
       type: "metric",

@@ -48,14 +48,12 @@ function createDashboardWithCards({
   dashboardName = "test dashboard",
   cards = [],
 } = {}) {
-  return cy
-    .createDashboard({ name: dashboardName })
-    .then(({ body: { id } }) => {
-      H.updateDashboardCards({
-        dashboard_id: id,
-        cards,
-      });
-
-      cy.wrap(id).as("dashboardId");
+  return H.createDashboard({ name: dashboardName }).then(({ body: { id } }) => {
+    H.updateDashboardCards({
+      dashboard_id: id,
+      cards,
     });
+
+    cy.wrap(id).as("dashboardId");
+  });
 }

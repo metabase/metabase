@@ -57,7 +57,7 @@ describe(
           cy.get("@modelId").then(modelId => {
             H.createImplicitActions({ modelId });
 
-            cy.createQuestionAndDashboard({
+            H.createQuestionAndDashboard({
               questionDetails: {
                 name: "Score detail",
                 display: "object",

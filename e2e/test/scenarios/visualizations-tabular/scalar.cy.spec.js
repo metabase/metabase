@@ -24,7 +24,7 @@ describe("scenarios > visualizations > scalar", () => {
       cy.skipOn(size === "mobile");
 
       cy.viewport(width, height);
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: {
           name: "12629",
           query: {
