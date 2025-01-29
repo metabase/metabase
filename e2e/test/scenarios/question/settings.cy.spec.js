@@ -199,6 +199,7 @@ describe("scenarios > question > settings", () => {
        */
 
       function findColumnAtIndex(column_name, index) {
+        // eslint-disable-next-line no-unsafe-element-filtering
         return getVisibleSidebarColumns().eq(index).contains(column_name);
       }
     });

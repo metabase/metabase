@@ -885,6 +885,7 @@ describe("scenarios > collection items listing", () => {
 
   function assertCollectionItemsOrder(testId, names) {
     for (let index = 0; index < names.length; ++index) {
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId(testId).eq(index).should("have.text", names[index]);
     }
   }
