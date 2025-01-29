@@ -1039,9 +1039,9 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 });
 
 function setup({ question, addedSeriesQuestion, cardSize }) {
-  return cy.createQuestion(question).then(({ body: { id: card1Id } }) => {
+  return H.createQuestion(question).then(({ body: { id: card1Id } }) => {
     if (addedSeriesQuestion) {
-      cy.createQuestion(addedSeriesQuestion).then(
+      H.createQuestion(addedSeriesQuestion).then(
         ({ body: { id: card2Id } }) => {
           return setupDashboard(card1Id, card2Id, cardSize);
         },
@@ -1057,7 +1057,7 @@ function setupDashboard(
   addedSeriesCardId,
   cardSize = { x: 24, y: 12 },
 ) {
-  return cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+  return H.createDashboard().then(({ body: { id: dashboardId } }) => {
     return H.addOrUpdateDashboardCard({
       dashboard_id: dashboardId,
       card_id: cardId,
