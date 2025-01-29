@@ -90,7 +90,7 @@ Arg {
   stringContentDouble { ![\\\n"]+ }
 
   ColumnReference {
-    "[" $[a-zA-Z0-9 →.]* "]"
+    "[" ![\]]* "]"
   }
 
   Identifier {
