@@ -6,7 +6,7 @@ redirect_from:
 
 # Partner and community drivers
 
-In addition to our [Officially supported drivers](../databases/connecting.md#connecting-to-supported-databases), many people build and maintain drivers for database integrations.
+In addition to our [Officially supported drivers](../../databases/connecting.md#connecting-to-supported-databases), many people build and maintain drivers for database integrations.
 
 We have two types of third-party drivers:
 
@@ -67,7 +67,7 @@ Anyone can build a community driver. These are the currently known third-party d
 | [Dremio](https://github.com/Baoqi/metabase-dremio-driver)                             | ![GitHub stars](https://img.shields.io/github/stars/Baoqi/metabase-dremio-driver)              | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/Baoqi/metabase-dremio-driver)              |
 | [Firebird](https://github.com/evosec/metabase-firebird-driver)                        | ![GitHub stars](https://img.shields.io/github/stars/evosec/metabase-firebird-driver)           | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/evosec/metabase-firebird-driver)           |
 | [GreptimeDB](https://github.com/greptimeteam/greptimedb-metabase-driver)              | ![GitHub stars](https://img.shields.io/github/stars/greptimeteam/greptimedb-metabase-driver)   | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/greptimeteam/greptimedb-metabase-driver)   |
-| [Hydra](https://www.hydra.so/blog-posts/2022-09-28-metabase-and-hydra)                | Hydra connections use the official [Postgres driver](../databases/connections/postgresql.md).  | Not applicable.                                                                                                        |
+| [Hydra](https://www.hydra.so/blog-posts/2022-09-28-metabase-and-hydra)                | Hydra connections use the official [Postgres driver](../../databases/connections/postgresql.md).  | Not applicable.                                                                                                        |
 | [Impala](https://github.com/brenoae/metabase-impala-driver)                           | ![GitHub stars](https://img.shields.io/github/stars/brenoae/metabase-impala-driver)            | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/brenoae/metabase-impala-driver)            |
 | [Neo4j](https://github.com/StronkMan/metabase-neo4j-driver)                           | ![GitHub stars](https://img.shields.io/github/stars/StronkMan/metabase-neo4j-driver)           | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/StronkMan/metabase-neo4j-driver)           |
 | [Netsuite SuiteAnalytics Connect](https://github.com/ericcj/metabase-netsuite-driver) | ![GitHub stars](https://img.shields.io/github/stars/ericcj/metabase-netsuite-driver)           | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/ericcj/metabase-netsuite-driver)           |
@@ -78,7 +78,7 @@ If you don't see a driver for your database, try looking in the comments of the 
 
 If you are having problems installing or using a community driver, your best bet is to contact the author of the driver.
 
-[Metabase Cloud](https://www.metabase.com/start/) doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported drivers](../databases/connecting.md#connecting-to-supported-databases), and the partner drivers listed above.
+[Metabase Cloud](https://www.metabase.com/start/) doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported drivers](../../databases/connecting.md#connecting-to-supported-databases), and the partner drivers listed above.
 
 ## Write your own driver
 

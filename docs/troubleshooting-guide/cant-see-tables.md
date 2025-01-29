@@ -6,7 +6,7 @@ title: I can't see my tables
 
 You've connected Metabase to a database, but:
 
-- you don't see the tables in the [Table Metadata](../data-modeling/metadata-editing.md) section of the Admin Panel,
+- you don't see the tables in the [Table Metadata](../../data-modeling/metadata-editing.md) section of the Admin Panel,
 - the tables don't appear in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser),
 - the tables don't show up as possible data sources when you create a query using the Query Builder, or
 - you can no longer see tables that you used to be able to see.
@@ -25,7 +25,7 @@ Sometimes your browser will show an old cached list of tables. Browser extension
 
 ## Test the database connection
 
-1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
+1. Go to the Metabase [SQL editor](../../questions/native-editor/writing-sql.md).
 2. Test the connection to your database by running:
    ```sql
    SELECT 1
@@ -41,7 +41,7 @@ Something may have changed on the database side (if you were previously connecte
 
 To make sure that your table is actually queryable by Metabase:
 
-1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
+1. Go to the Metabase [SQL editor](../../questions/native-editor/writing-sql.md).
 2. Look for your table:
    ```sql
    SELECT *
@@ -85,7 +85,7 @@ MongoDB lets you "successfully connect" to any collection name, even if the coll
 
 ## Related topics
 
-- [Table visibility](../data-modeling/metadata-editing.md#table-visibility).
+- [Table visibility](../../data-modeling/metadata-editing.md#table-visibility).
 - [My data sandboxes aren't working](./sandboxing.md).
 - [I can't view or edit a question or dashboard](./cant-view-or-edit.md).
 - [My visualizations are wrong](./visualization.md).

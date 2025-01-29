@@ -160,4 +160,4 @@ Update a Pulse with `id`.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

@@ -11,7 +11,7 @@ redirect_from:
 Integrating your SSO with Metabase allows you to:
 
 - Provision a Metabase account when someone logs in to Metabase.
-- Automatically pass user attributes from your SSO to Metabase in order to power [data sandboxes](../permissions/data-sandboxes.md).
+- Automatically pass user attributes from your SSO to Metabase in order to power [data sandboxes](../../permissions/data-sandboxes.md).
 - Let people access Metabase without re-authenticating.
 
 ## Confirm the password for your Metabase admin account
@@ -62,7 +62,7 @@ The names of the fields in the Metabase SAML form won't always match the names u
 
 ### URL the IdP should redirect back to
 
-The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../configuring-metabase/settings.md#site-url), with `/auth/sso` at the end.
+The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../../configuring-metabase/settings.md#site-url), with `/auth/sso` at the end.
 
 For example, if your Metabase Site URL is `https://metabase.yourcompany.com`, you'll use
 
@@ -206,4 +206,4 @@ You can find example code that uses SAML authentication in the [SSO examples rep
 
 ## Troubleshooting SAML issues
 
-- [Troubleshooting SAML](../troubleshooting-guide/saml.md).
+- [Troubleshooting SAML](../../troubleshooting-guide/saml.md).

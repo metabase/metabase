@@ -12,7 +12,7 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ## Key points regarding permissions
 
-- Permissions are granted to [groups](../people-and-groups/managing.md#groups), not people.
+- Permissions are granted to [groups](../../people-and-groups/managing.md#groups), not people.
 - People can be in more than one group.
 - If a person is in multiple groups, they will have the _most permissive_ access granted to them across all of their groups. For example, if a person is in three groups, and any one of those groups has Curate access to a collection, then that person will have curate access to that collection.
 
@@ -64,7 +64,7 @@ Whenever you change permissions for a group, make sure you:
 
 ## Further reading
 
-- [Managing people and groups](../people-and-groups/managing.md)
+- [Managing people and groups](../../people-and-groups/managing.md)
 - [Permissions guide][permissions]
 - [Troubleshooting permissions][troubleshooting-permissions]
 

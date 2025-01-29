@@ -35,4 +35,4 @@ Moves a number of Cards to a single collection or dashboard.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

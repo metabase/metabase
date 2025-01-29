@@ -71,4 +71,4 @@ You can edit the attribute values from your Metabase **Admin settings** > **Auth
 
 ## Troubleshooting SAML issues
 
-For common issues, go to [Troubleshooting SAML](../troubleshooting-guide/saml.md).
+For common issues, go to [Troubleshooting SAML](../../troubleshooting-guide/saml.md).

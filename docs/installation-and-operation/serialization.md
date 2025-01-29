@@ -84,7 +84,7 @@ Database connection details are not included by default, so you but you can [con
 
 ### General Metabase settings that are exported
 
-Here's the list of the general settings Metabase exports in the `settings.yaml` file. For more on Metabase settings, see [Configuring Metabase](../configuring-metabase/start.md).
+Here's the list of the general settings Metabase exports in the `settings.yaml` file. For more on Metabase settings, see [Configuring Metabase](../../configuring-metabase/start.md).
 
 ```
 humanization-strategy
@@ -360,7 +360,7 @@ If you're instead looking to do a one-time migration from the default H2 databas
 
 ### You'll need to manually add license tokens
 
-Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition), or via an [environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
+Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition), or via an [environment variable](../../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
 
 ### Metabase adds logs to exports and imports
 
@@ -430,7 +430,7 @@ The `--no-settings` flag (alias `-S`) tells Metabase to exclude the `settings.ya
 
 #### `--no-data-model`
 
-The `--no-data-model` flag (alias `-D`) tells Metabase to exclude the Table Metadata settings from the export. Admins define the metadata settings in the [Table Metadata](../data-modeling/metadata-editing.md) tab of the Admin settings.
+The `--no-data-model` flag (alias `-D`) tells Metabase to exclude the Table Metadata settings from the export. Admins define the metadata settings in the [Table Metadata](../../data-modeling/metadata-editing.md) tab of the Admin settings.
 
 #### `--include-field-values`
 
@@ -540,7 +540,7 @@ Type: Boolean.
 
 Default: `true`.
 
-To exclude the [Table Metadata](../data-modeling/metadata-editing.md):
+To exclude the [Table Metadata](../../data-modeling/metadata-editing.md):
 
 ```
 data_model=false
@@ -606,7 +606,7 @@ tar -xvf  metabase_data.tgz
 
 ### Step 1: Set up an API key
 
-1. Create an [API key](../people-and-groups/api-keys.md).
+1. Create an [API key](../../people-and-groups/api-keys.md).
 2. Assign the key to the Admin group
 
 ### Step 2: Export

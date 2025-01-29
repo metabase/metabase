@@ -61,4 +61,4 @@ For example, to add the attribute "First name":
 
 ## Troubleshooting SAML issues
 
-- [Troubleshooting SAML](../troubleshooting-guide/saml.md).
+- [Troubleshooting SAML](../../troubleshooting-guide/saml.md).

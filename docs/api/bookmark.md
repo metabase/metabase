@@ -50,4 +50,4 @@ Sets the order of bookmarks for user.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

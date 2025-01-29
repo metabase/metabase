@@ -8,8 +8,8 @@ title: People can't log in to Metabase
 
 To reset a password for your Metabase instance, see:
 
-- [Reset a user's password](../people-and-groups/managing.md#resetting-someones-password).
-- [Reset admin password](../people-and-groups/managing.md#resetting-the-admin-password).
+- [Reset a user's password](../../people-and-groups/managing.md#resetting-someones-password).
+- [Reset admin password](../../people-and-groups/managing.md#resetting-the-admin-password).
 
 To reset password for your Metabase Store account, [contact support](https://www.metabase.com/help-premium).
 
@@ -17,8 +17,8 @@ To reset password for your Metabase Store account, [contact support](https://www
 
 If you're not a Metabase admin, you'll have to tag them for help here.
 
-1. Check that you have the correct [site URL](../configuring-metabase/settings.md) from **Settings** > **Admin settings** > **General**.
-2. Check if the [account is deactivated](../people-and-groups/managing.md#deactivating-an-account).
+1. Check that you have the correct [site URL](../../configuring-metabase/settings.md) from **Settings** > **Admin settings** > **General**.
+2. Check if the [account is deactivated](../../people-and-groups/managing.md#deactivating-an-account).
 
 ## No access to Metabase Cloud account
 
@@ -30,9 +30,9 @@ If you've forgotten your Metabase Cloud admin password, you can [contact support
 
 - [Troubleshooting SAML](./saml.md).
 - [Troubleshooting LDAP](./ldap.md).
-- [Resetting someone's password](../people-and-groups/managing.md#resetting-someones-password).
-- [Resetting the admin password](../people-and-groups/managing.md#resetting-the-admin-password).
-- [Deleting an account that's set up incorrectly](../people-and-groups/managing.md#deleting-an-account).
+- [Resetting someone's password](../../people-and-groups/managing.md#resetting-someones-password).
+- [Resetting the admin password](../../people-and-groups/managing.md#resetting-the-admin-password).
+- [Deleting an account that's set up incorrectly](../../people-and-groups/managing.md#deleting-an-account).
 
 ## Are you still stuck?
 

@@ -61,7 +61,7 @@ Safety first! See [Backing up Metabase Application Data](backing-up-metabase-app
 
 ### 4. Run the Metabase data migration command
 
-Run the migration command, `load-from-h2`, using the appropriate [environment variables](../configuring-metabase/environment-variables.md) for the target database you want to migrate to.
+Run the migration command, `load-from-h2`, using the appropriate [environment variables](../../configuring-metabase/environment-variables.md) for the target database you want to migrate to.
 
 You can find details about specifying databases at [Configuring the application database](configuring-application-database.md).
 
@@ -133,7 +133,7 @@ Make sure you use the same version of Metabase you've been using. If you want to
 
 Create another copy of your H2 file that you extracted from the container when you backed up your app db (step 2).
 
-From the directory with your H2 file and your Metabase JAR, run the migration command, `load-from-h2`. Use the appropriate connection string or [environment variables](../configuring-metabase/environment-variables.md) for the target database you want to migrate to. The command would look something like:
+From the directory with your H2 file and your Metabase JAR, run the migration command, `load-from-h2`. Use the appropriate connection string or [environment variables](../../configuring-metabase/environment-variables.md) for the target database you want to migrate to. The command would look something like:
 
 ```
 export MB_DB_TYPE=postgres
@@ -200,4 +200,4 @@ You can then take the supplied SQL script and apply it to your database manually
 
 ## Troubleshooting migration issues
 
-Check out [this troubleshooting guide](../troubleshooting-guide/loading-from-h2.md).
+Check out [this troubleshooting guide](../../troubleshooting-guide/loading-from-h2.md).

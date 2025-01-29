@@ -15,7 +15,7 @@ redirect_from:
 
 Appearance settings give admins the option to whitelabel Metabase to match your company’s branding.
 
-If you're looking for date, time, number, or currency formatting, see [Formatting defaults](../data-modeling/formatting.md).
+If you're looking for date, time, number, or currency formatting, see [Formatting defaults](../../data-modeling/formatting.md).
 
 ## Changing Metabase's appearance
 
@@ -62,11 +62,11 @@ You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase
 
 Custom colors are unavailable for:
 
-- [Number charts](../questions/visualizations/numbers.md)
-- [Trend charts](../questions/visualizations/trend.md)
-- [Funnel charts](../questions/visualizations/funnel.md)
-- Conditional formatting ([tables](../questions/visualizations/table.md) and [pivot tables](../questions/visualizations/pivot-table.md))
-- [Maps](../questions/visualizations/map.md)
+- [Number charts](../../questions/visualizations/numbers.md)
+- [Trend charts](../../questions/visualizations/trend.md)
+- [Funnel charts](../../questions/visualizations/funnel.md)
+- Conditional formatting ([tables](../../questions/visualizations/table.md) and [pivot tables](../../questions/visualizations/pivot-table.md))
+- [Maps](../../questions/visualizations/map.md)
 
 ## Logo
 
@@ -168,5 +168,5 @@ Metabase will display this illustration when searches don't return any results.
 ## Further reading
 
 - [Customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding).
-- [Embedding introduction](../embedding/start.md).
+- [Embedding introduction](../../embedding/start.md).
 - [Brand your Metabase](https://www.metabase.com/learn/metabase-basics/embedding/brand).

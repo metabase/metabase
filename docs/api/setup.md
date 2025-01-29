@@ -53,4 +53,4 @@ Special endpoint for creating the first user during setup. This endpoint both cr
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

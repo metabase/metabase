@@ -64,7 +64,7 @@ The email address users should be referred to if they encounter a problem.
 
 - Type: integer
 - Default: `10000`
-- [Exported as](../installation-and-operation/serialization.md): `aggregated-query-row-limit`.
+- [Exported as](../../installation-and-operation/serialization.md): `aggregated-query-row-limit`.
 - [Configuration file name](./config-file.md): `aggregated-query-row-limit`
 
 Maximum number of rows to return for aggregated queries via the API.
@@ -98,7 +98,7 @@ gist.github.com,
 linkedin.com,
 twitter.com,
 x.com`
-- [Exported as](../installation-and-operation/serialization.md): `allowed-iframe-hosts`.
+- [Exported as](../../installation-and-operation/serialization.md): `allowed-iframe-hosts`.
 - [Configuration file name](./config-file.md): `allowed-iframe-hosts`
 
 Allowed iframe hosts.
@@ -128,7 +128,7 @@ Middleware that enforces validation of the client via the request header X-Metab
 
 - Type: json
 - Default: `{}`
-- [Exported as](../installation-and-operation/serialization.md): `application-colors`.
+- [Exported as](../../installation-and-operation/serialization.md): `application-colors`.
 - [Configuration file name](./config-file.md): `application-colors`
 
 Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.
@@ -164,7 +164,7 @@ To change the chart colors:
 
 - Type: string
 - Default: `app/assets/img/favicon.ico`
-- [Exported as](../installation-and-operation/serialization.md): `application-favicon-url`.
+- [Exported as](../../installation-and-operation/serialization.md): `application-favicon-url`.
 - [Configuration file name](./config-file.md): `application-favicon-url`
 
 Upload a file to use as the favicon.
@@ -175,7 +175,7 @@ Upload a file to use as the favicon.
 
 - Type: string
 - Default: `Lato`
-- [Exported as](../installation-and-operation/serialization.md): `application-font`.
+- [Exported as](../../installation-and-operation/serialization.md): `application-font`.
 - [Configuration file name](./config-file.md): `application-font`
 
 Replace “Lato” as the font family.
@@ -186,7 +186,7 @@ Replace “Lato” as the font family.
 
 - Type: json
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `application-font-files`.
+- [Exported as](../../installation-and-operation/serialization.md): `application-font-files`.
 - [Configuration file name](./config-file.md): `application-font-files`
 
 Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.
@@ -208,7 +208,7 @@ Example value:
 ]
 ```
 
-See [fonts](../configuring-metabase/fonts.md).
+See [fonts](../../configuring-metabase/fonts.md).
 
 ### `MB_APPLICATION_LOGO_URL`
 
@@ -216,7 +216,7 @@ See [fonts](../configuring-metabase/fonts.md).
 
 - Type: string
 - Default: `app/assets/img/logo.svg`
-- [Exported as](../installation-and-operation/serialization.md): `application-logo-url`.
+- [Exported as](../../installation-and-operation/serialization.md): `application-logo-url`.
 - [Configuration file name](./config-file.md): `application-logo-url`
 
 Upload a file to replace the Metabase logo on the top bar.
@@ -229,7 +229,7 @@ Inline styling and inline scripts are not supported.
 
 - Type: string
 - Default: `Metabase`
-- [Exported as](../installation-and-operation/serialization.md): `application-name`.
+- [Exported as](../../installation-and-operation/serialization.md): `application-name`.
 - [Configuration file name](./config-file.md): `application-name`
 
 Replace the word “Metabase” wherever it appears.
@@ -264,7 +264,7 @@ When using the default binning strategy for a field of type Coordinate (such as 
 
 - Type: integer
 - Default: `8`
-- [Exported as](../installation-and-operation/serialization.md): `breakout-bins-num`.
+- [Exported as](../../installation-and-operation/serialization.md): `breakout-bins-num`.
 - [Configuration file name](./config-file.md): `breakout-bins-num`
 
 When using the default binning strategy and a number of bins is not provided, this number will be used as the default.
@@ -289,7 +289,7 @@ Whether to (asynchronously) sync newly created Databases during config-from-file
 
 - Type: json
 - Default: `{}`
-- [Exported as](../installation-and-operation/serialization.md): `custom-formatting`.
+- [Exported as](../../installation-and-operation/serialization.md): `custom-formatting`.
 - [Configuration file name](./config-file.md): `custom-formatting`
 
 Object keyed by type, containing formatting settings.
@@ -298,7 +298,7 @@ Object keyed by type, containing formatting settings.
 
 - Type: json
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `custom-geojson`.
+- [Exported as](../../installation-and-operation/serialization.md): `custom-geojson`.
 - [Configuration file name](./config-file.md): `custom-geojson`
 
 JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.
@@ -307,7 +307,7 @@ JSON containing information about custom GeoJSON files for use in map visualizat
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `custom-geojson-enabled`.
+- [Exported as](../../installation-and-operation/serialization.md): `custom-geojson-enabled`.
 - [Configuration file name](./config-file.md): `custom-geojson-enabled`
 
 Whether or not the use of custom GeoJSON is enabled.
@@ -356,7 +356,7 @@ Timeout in minutes for databases query execution, both Metabase application data
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `default-maps-enabled`.
+- [Exported as](../../installation-and-operation/serialization.md): `default-maps-enabled`.
 - [Configuration file name](./config-file.md): `default-maps-enabled`
 
 Whether or not the default GeoJSON maps are enabled.
@@ -365,7 +365,7 @@ Whether or not the default GeoJSON maps are enabled.
 
 - Type: integer
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `download-row-limit`.
+- [Exported as](../../installation-and-operation/serialization.md): `download-row-limit`.
 
 Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.
 
@@ -419,7 +419,7 @@ The name you want to use for the sender of emails.
 
 - Type: integer
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `email-max-recipients-per-second`.
+- [Exported as](../../installation-and-operation/serialization.md): `email-max-recipients-per-second`.
 - [Configuration file name](./config-file.md): `email-max-recipients-per-second`
 
 The maximum number of recipients, summed across emails, that can be sent per second.
@@ -497,7 +497,7 @@ Allow Metabase SDK access to these space delimited origins.
 
 - Type: keyword
 - Default: `:hidden`
-- [Exported as](../installation-and-operation/serialization.md): `embedding-homepage`.
+- [Exported as](../../installation-and-operation/serialization.md): `embedding-homepage`.
 - [Configuration file name](./config-file.md): `embedding-homepage`
 
 Embedding homepage status, indicating if its visible, hidden or has been dismissed.
@@ -548,7 +548,7 @@ Allow logging in by email and password.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `enable-pivoted-exports`.
+- [Exported as](../../installation-and-operation/serialization.md): `enable-pivoted-exports`.
 - [Configuration file name](./config-file.md): `enable-pivoted-exports`
 
 Enable pivoted exports and pivoted subscriptions.
@@ -573,7 +573,7 @@ Allow caching results of queries that take a long time to run.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `enable-xrays`.
+- [Exported as](../../installation-and-operation/serialization.md): `enable-xrays`.
 - [Configuration file name](./config-file.md): `enable-xrays`
 
 Allow users to explore data using X-rays.
@@ -647,7 +647,7 @@ Custom URL for the help link.
 
 - Type: keyword
 - Default: `:simple`
-- [Exported as](../installation-and-operation/serialization.md): `humanization-strategy`.
+- [Exported as](../../installation-and-operation/serialization.md): `humanization-strategy`.
 - [Configuration file name](./config-file.md): `humanization-strategy`
 
 To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’.
@@ -783,7 +783,7 @@ don't have one.
 
 - Type: string
 - Default: ``
-- [Exported as](../installation-and-operation/serialization.md): `landing-page`.
+- [Exported as](../../installation-and-operation/serialization.md): `landing-page`.
 - [Configuration file name](./config-file.md): `landing-page`
 
 Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.
@@ -794,7 +794,7 @@ Enter a URL of the landing page to show the user. This overrides the custom home
 
 - Type: string
 - Default: `default`
-- [Exported as](../installation-and-operation/serialization.md): `landing-page-illustration`.
+- [Exported as](../../installation-and-operation/serialization.md): `landing-page-illustration`.
 - [Configuration file name](./config-file.md): `landing-page-illustration`
 
 Options for displaying the illustration on the landing page.
@@ -805,7 +805,7 @@ Options for displaying the illustration on the landing page.
 
 - Type: string
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `landing-page-illustration-custom`.
+- [Exported as](../../installation-and-operation/serialization.md): `landing-page-illustration-custom`.
 - [Configuration file name](./config-file.md): `landing-page-illustration-custom`
 
 The custom illustration for the landing page.
@@ -961,7 +961,7 @@ don't have one.
 
 - Type: keyword
 - Default: `:doing-science`
-- [Exported as](../installation-and-operation/serialization.md): `loading-message`.
+- [Exported as](../../installation-and-operation/serialization.md): `loading-message`.
 - [Configuration file name](./config-file.md): `loading-message`
 
 Choose the message to show while a query is running. Possible values are "doing-science", "running-query", or "loading-results".
@@ -972,7 +972,7 @@ Choose the message to show while a query is running. Possible values are "doing-
 
 - Type: string
 - Default: `default`
-- [Exported as](../installation-and-operation/serialization.md): `login-page-illustration`.
+- [Exported as](../../installation-and-operation/serialization.md): `login-page-illustration`.
 - [Configuration file name](./config-file.md): `login-page-illustration`
 
 Options for displaying the illustration on the login page.
@@ -983,7 +983,7 @@ Options for displaying the illustration on the login page.
 
 - Type: string
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `login-page-illustration-custom`.
+- [Exported as](../../installation-and-operation/serialization.md): `login-page-illustration-custom`.
 - [Configuration file name](./config-file.md): `login-page-illustration-custom`
 
 The custom illustration for the login page.
@@ -1030,7 +1030,7 @@ When attempting to assemble prompts, the threshold at which prompt will no longe
 
 - Type: keyword
 - Default: `:substring`
-- [Exported as](../installation-and-operation/serialization.md): `native-query-autocomplete-match-style`.
+- [Exported as](../../installation-and-operation/serialization.md): `native-query-autocomplete-match-style`.
 - [Configuration file name](./config-file.md): `native-query-autocomplete-match-style`
 
 Matching style for native query editors autocomplete. Can be "substring", "prefix", or "off". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off.
@@ -1039,7 +1039,7 @@ Matching style for native query editors autocomplete. Can be "substring", "prefi
 
 - Type: integer
 - Default: `50000`
-- [Exported as](../installation-and-operation/serialization.md): `nested-field-columns-value-length-limit`.
+- [Exported as](../../installation-and-operation/serialization.md): `nested-field-columns-value-length-limit`.
 
 Maximum length of a JSON string before skipping it during sync for JSON unfolding. If this is set too high it could lead to slow syncs or out of memory errors.
 
@@ -1049,7 +1049,7 @@ Maximum length of a JSON string before skipping it during sync for JSON unfoldin
 
 - Type: string
 - Default: `default`
-- [Exported as](../installation-and-operation/serialization.md): `no-data-illustration`.
+- [Exported as](../../installation-and-operation/serialization.md): `no-data-illustration`.
 - [Configuration file name](./config-file.md): `no-data-illustration`
 
 Options for displaying the illustration when there are no results after running a question.
@@ -1060,7 +1060,7 @@ Options for displaying the illustration when there are no results after running 
 
 - Type: string
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `no-data-illustration-custom`.
+- [Exported as](../../installation-and-operation/serialization.md): `no-data-illustration-custom`.
 - [Configuration file name](./config-file.md): `no-data-illustration-custom`
 
 The custom illustration for when there are no results after running a question.
@@ -1071,7 +1071,7 @@ The custom illustration for when there are no results after running a question.
 
 - Type: string
 - Default: `default`
-- [Exported as](../installation-and-operation/serialization.md): `no-object-illustration`.
+- [Exported as](../../installation-and-operation/serialization.md): `no-object-illustration`.
 - [Configuration file name](./config-file.md): `no-object-illustration`
 
 Options for displaying the illustration when there are no results after searching.
@@ -1082,7 +1082,7 @@ Options for displaying the illustration when there are no results after searchin
 
 - Type: string
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `no-object-illustration-custom`.
+- [Exported as](../../installation-and-operation/serialization.md): `no-object-illustration-custom`.
 - [Configuration file name](./config-file.md): `no-object-illustration-custom`
 
 The custom illustration for when there are no results after searching.
@@ -1156,7 +1156,7 @@ cron syntax string to schedule refreshing persisted models.
 
 - Type: boolean
 - Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `persisted-models-enabled`.
+- [Exported as](../../installation-and-operation/serialization.md): `persisted-models-enabled`.
 - [Configuration file name](./config-file.md): `persisted-models-enabled`
 
 Allow persisting models into the source database.
@@ -1205,7 +1205,7 @@ Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 
 - Type: string
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `report-timezone`.
+- [Exported as](../../installation-and-operation/serialization.md): `report-timezone`.
 - [Configuration file name](./config-file.md): `report-timezone`
 
 Connection timezone to use when executing queries. Defaults to system timezone.
@@ -1440,7 +1440,7 @@ Which engine to use when performing search. Supported values are :in-place and :
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `search-typeahead-enabled`.
+- [Exported as](../../installation-and-operation/serialization.md): `search-typeahead-enabled`.
 - [Configuration file name](./config-file.md): `search-typeahead-enabled`
 
 Enable typeahead search in the Metabase navbar?
@@ -1461,8 +1461,8 @@ Should new email notifications be sent to admins, for all new SSO users?
 
 Value for the session cookies `SameSite` directive.
 
-See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
-        Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+See [Embedding Metabase in a different domain](../../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
+        Read more about [interactive Embedding](../../embedding/interactive-embedding.md).
         Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 
 ### `MB_SESSION_COOKIES`
@@ -1491,7 +1491,7 @@ Has to be in the JSON format `"{"amount":120,"unit":"minutes"}"` where the unit 
 
 - Type: boolean
 - Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `setup-embedding-autoenabled`.
+- [Exported as](../../installation-and-operation/serialization.md): `setup-embedding-autoenabled`.
 - [Configuration file name](./config-file.md): `setup-embedding-autoenabled`
 
 Indicates if embedding has enabled automatically during the setup because the user was interested in embedding.
@@ -1500,7 +1500,7 @@ Indicates if embedding has enabled automatically during the setup because the us
 
 - Type: boolean
 - Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `setup-license-active-at-setup`.
+- [Exported as](../../installation-and-operation/serialization.md): `setup-license-active-at-setup`.
 - [Configuration file name](./config-file.md): `setup-license-active-at-setup`
 
 Indicates if at the end of the setup a valid license was active.
@@ -1517,7 +1517,7 @@ Whether an introductory modal should be shown after the next database connection
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-homepage-data`.
+- [Exported as](../../installation-and-operation/serialization.md): `show-homepage-data`.
 - [Configuration file name](./config-file.md): `show-homepage-data`
 
 Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data.
@@ -1526,7 +1526,7 @@ Whether or not to display data on the homepage. Admins might turn this off in or
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-homepage-xrays`.
+- [Exported as](../../installation-and-operation/serialization.md): `show-homepage-xrays`.
 - [Configuration file name](./config-file.md): `show-homepage-xrays`
 
 Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data.
@@ -1547,7 +1547,7 @@ Whether or not to display Metabase links outside admin settings.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-metabot`.
+- [Exported as](../../installation-and-operation/serialization.md): `show-metabot`.
 - [Configuration file name](./config-file.md): `show-metabot`
 
 Enables Metabot character on the home page.
@@ -1556,7 +1556,7 @@ Enables Metabot character on the home page.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-static-embed-terms`.
+- [Exported as](../../installation-and-operation/serialization.md): `show-static-embed-terms`.
 - [Configuration file name](./config-file.md): `show-static-embed-terms`
 
 Check if the static embedding licensing should be hidden in the static embedding flow.
@@ -1565,7 +1565,7 @@ Check if the static embedding licensing should be hidden in the static embedding
 
 - Type: string
 - Default: `en`
-- [Exported as](../installation-and-operation/serialization.md): `site-locale`.
+- [Exported as](../../installation-and-operation/serialization.md): `site-locale`.
 - [Configuration file name](./config-file.md): `site-locale`
 
 The default language for all users across the Metabase UI, system emails, pulses, and alerts. Users can individually override this default language from their own account settings.
@@ -1574,7 +1574,7 @@ The default language for all users across the Metabase UI, system emails, pulses
 
 - Type: string
 - Default: `Metabase`
-- [Exported as](../installation-and-operation/serialization.md): `site-name`.
+- [Exported as](../../installation-and-operation/serialization.md): `site-name`.
 - [Configuration file name](./config-file.md): `site-name`
 
 The name used for this instance of Metabase.
@@ -1619,7 +1619,7 @@ The name of the channel to which Metabase files should be initially uploaded.
 
 - Type: string
 - Default: `X-Forwarded-For`
-- [Exported as](../installation-and-operation/serialization.md): `source-address-header`.
+- [Exported as](../../installation-and-operation/serialization.md): `source-address-header`.
 - [Configuration file name](./config-file.md): `source-address-header`
 
 Identify the source of HTTP requests by this headers value, instead of its remote address.
@@ -1651,7 +1651,7 @@ Controls how often the heartbeats are sent when an SSH tunnel is established (in
 
 - Type: keyword
 - Default: `:sunday`
-- [Exported as](../installation-and-operation/serialization.md): `start-of-week`.
+- [Exported as](../../installation-and-operation/serialization.md): `start-of-week`.
 - [Configuration file name](./config-file.md): `start-of-week`
 
 This will affect things like grouping by week or filtering in GUI queries. It won't affect most SQL queries, although it is used to set the WEEK_START session variable in Snowflake.
@@ -1662,7 +1662,7 @@ This will affect things like grouping by week or filtering in GUI queries. It wo
 
 - Type: string
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `subscription-allowed-domains`.
+- [Exported as](../../installation-and-operation/serialization.md): `subscription-allowed-domains`.
 - [Configuration file name](./config-file.md): `subscription-allowed-domains`
 
 Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. To specify multiple domains, separate each domain with a comma, with no space in between. To allow all domains, leave the field empty. This setting doesn’t affect existing subscriptions.
@@ -1678,7 +1678,7 @@ Enable or disable surveys.
 
 - Type: boolean
 - Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `synchronous-batch-updates`.
+- [Exported as](../../installation-and-operation/serialization.md): `synchronous-batch-updates`.
 - [Configuration file name](./config-file.md): `synchronous-batch-updates`
 
 Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.
@@ -1687,7 +1687,7 @@ Process batches updates synchronously. If true, all `submit!` calls will be proc
 
 - Type: integer
 - Default: `2000`
-- [Exported as](../installation-and-operation/serialization.md): `unaggregated-query-row-limit`.
+- [Exported as](../../installation-and-operation/serialization.md): `unaggregated-query-row-limit`.
 - [Configuration file name](./config-file.md): `unaggregated-query-row-limit`
 
 Maximum number of rows to return specifically on :rows type queries via the API.
@@ -1700,7 +1700,7 @@ Must be less than 1048575, and less than the number configured in MB_AGGREGATED_
 
 - Type: string
 - Default: `latest`
-- [Exported as](../installation-and-operation/serialization.md): `update-channel`.
+- [Exported as](../../installation-and-operation/serialization.md): `update-channel`.
 - [Configuration file name](./config-file.md): `update-channel`
 
 Well notify you here when theres a new version of this type of release.
@@ -1738,7 +1738,7 @@ Note: This setting is not an idle/inactivity timeout. If you set this to 15 minu
 
 Use [MB_SESSION_COOKIES](#mb_session_cookies) to also expire sessions, when browser is closed.
 
-Also see the [Changing session expiration](../people-and-groups/changing-session-expiration.md) documentation page.
+Also see the [Changing session expiration](../../people-and-groups/changing-session-expiration.md) documentation page.
 
 ### `MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE`
 
@@ -1941,7 +1941,7 @@ Default: `null`
 
 When set, this will encrypt database credentials stored in the application database. Requirement: minimum 16 characters base64-encoded string.
 
-Also see documentation page [Encrypting database details at rest](../databases/encrypting-details-at-rest.md).
+Also see documentation page [Encrypting database details at rest](../../databases/encrypting-details-at-rest.md).
 
 ### `MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS`
 
@@ -2102,7 +2102,7 @@ Default page to show people when they log in.
 Type: Boolean<br>
 Default: True
 
-If you want to exclude the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
+If you want to exclude the [Metabase analytics](../../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
 
 ### `MB_LOAD_SAMPLE_CONTENT`
 

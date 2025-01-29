@@ -14,7 +14,7 @@ While tables are useful for looking up information or finding specific numbers, 
 The query builder will automatically select an appropriate chart to visual your results. With native queries, however, you'll need to manually select a chart type.
 ### Visualizing questions in the query builder
 
-To visualize results of a question built in the [query builder](../query-builder/editor.md), click on the **Visualize** button under the last query builder step. Metabase will select a chart type most appropriate for your data, but you can [change the visualization type](#change-visualization-type). You can also toggle between the visualization and the table of results.
+To visualize results of a question built in the [query builder](../../query-builder/editor.md), click on the **Visualize** button under the last query builder step. Metabase will select a chart type most appropriate for your data, but you can [change the visualization type](#change-visualization-type). You can also toggle between the visualization and the table of results.
 
 You can switch between the visualization view and the query builder using the **Visualization**/**Editor** button in the top right.
 
@@ -168,10 +168,10 @@ You can access formatting options for the columns used in a chart. Just open the
 
 Options differ depending on the chart, and can include settings for the chart's data, its display, and its axes.
 
-See also [Formatting defaults](../../data-modeling/formatting.md).
+See also [Formatting defaults](../../../data-modeling/formatting.md).
 
 ## Further reading
 
-- [Charts with multiple series](../../dashboards/multiple-series.md)
-- [Appearance](../../configuring-metabase/appearance.md)
+- [Charts with multiple series](../../../dashboards/multiple-series.md)
+- [Appearance](../../../configuring-metabase/appearance.md)
 - [BI dashboard best practices](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/bi-dashboard-best-practices.html)

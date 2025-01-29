@@ -20,6 +20,6 @@ Metabase will create basic actions that auto-track a model's schema.
 
 Write SQL to create new actions.
 
-## [Actions on dashboards](../dashboards/actions.md)
+## [Actions on dashboards](../../dashboards/actions.md)
 
 Add actions on dashboards as buttons that you can pass filter values to.

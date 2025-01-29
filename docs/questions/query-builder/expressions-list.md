@@ -656,11 +656,11 @@ Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
 
 ### dayName
 
-Returns the localized name of a day of the week, given the day's number (1-7). Respects the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
+Returns the localized name of a day of the week, given the day's number (1-7). Respects the [first day of the week setting](../../../configuring-metabase/localization.md#first-day-of-the-week).
 
 Syntax: `dayName(dayNumber)`.
 
-Example: `dayName(1)` would return `Sunday`, unless you change the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
+Example: `dayName(1)` would return `Sunday`, unless you change the [first day of the week setting](../../../configuring-metabase/localization.md#first-day-of-the-week).
 
 Related: [quarterName](#quartername), [monthName](#monthname).
 
@@ -712,7 +712,7 @@ Related: [dayName](#dayname), [quarterName](#quartername).
 
 ### [now](./expressions/now.md)
 
-Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
+Returns the current date and time using your Metabase [report timezone](../../../configuring-metabase/localization.md#report-timezone).
 
 Syntax: `now`.
 

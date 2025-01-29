@@ -11,15 +11,15 @@ Set up an alert to send the results of questions to people via email or Slack, o
 
 ![The wide world of alerts](../images/the-wide-world-of-alerts.png)
 
-Alerts are for questions only. If you instead want to get the results of a dashboard sent to you, check out [dashboard subscriptions](../dashboards/subscriptions.md).
+Alerts are for questions only. If you instead want to get the results of a dashboard sent to you, check out [dashboard subscriptions](../../dashboards/subscriptions.md).
 
 ## Prerequisite for alerts
 
 To start using alerts, an administrator will need to have set up at least one of the following notification channels.
 
-- [Email](../configuring-metabase/email.md)
-- [Slack](../configuring-metabase/slack.md)
-- [Webhooks](../configuring-metabase/webhooks.md)
+- [Email](../../configuring-metabase/email.md)
+- [Slack](../../configuring-metabase/slack.md)
+- [Webhooks](../../configuring-metabase/webhooks.md)
 
 ## Creating an alert
 
@@ -104,7 +104,7 @@ You'll be able to edit alerts that you set up. Admins get additional special pri
 
 - Admins can edit and delete any alert. This can't be undone, so be careful!
 - Admins can add or remove recipients on any alert, even ones that they did not create themselves.
-- Admins can remove all alerts created by a Metabase user and unsubscribe that user from all other alerts from the [People menu in Admin settings](../people-and-groups/managing.md#unsubscribe-from-all-subscriptions-and-alerts).
+- Admins can remove all alerts created by a Metabase user and unsubscribe that user from all other alerts from the [People menu in Admin settings](../../people-and-groups/managing.md#unsubscribe-from-all-subscriptions-and-alerts).
 
 ## Avoid changing the name of the alerted channel in Slack
 
@@ -124,19 +124,19 @@ Alerts will continue to work even if the person who set up the alert no longer h
 
 {% include plans-blockquote.html feature="Usage analytics" %}
 
-Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in the **Usage analytics** collection. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md#alerts-model).
+Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in the **Usage analytics** collection. See [Usage analytics](../../usage-and-performance-tools/usage-analytics.md#alerts-model).
 
 ## How permissions work with alerts
 
-See [Notification permissions](../permissions/notifications.md).
+See [Notification permissions](../../permissions/notifications.md).
 
 ### Sending alerts to private Slack channels
 
-See [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
+See [Sending alerts and subscriptions to private Slack channels](../../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
 
 ## Further reading
 
-- [Dashboard subscriptions](../dashboards/subscriptions.md)
-- [Setting up email](../configuring-metabase/email.md)
-- [Setting up Slack](../configuring-metabase/slack.md)
-- [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
+- [Dashboard subscriptions](../../dashboards/subscriptions.md)
+- [Setting up email](../../configuring-metabase/email.md)
+- [Setting up Slack](../../configuring-metabase/slack.md)
+- [Usage analytics](../../usage-and-performance-tools/usage-analytics.md)

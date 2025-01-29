@@ -16,7 +16,7 @@ Even if you don't understand SQL or how to use it, it's worthwhile to get an ide
 
 ## Starting a new SQL query
 
-Select **+ New** in the main nav bar. If you have the [permissions](../../permissions/data.md) to use the SQL editor, you'll see an option to start a new **SQL query** next to a little console icon.
+Select **+ New** in the main nav bar. If you have the [permissions](../../../permissions/data.md) to use the SQL editor, you'll see an option to start a new **SQL query** next to a little console icon.
 
 After clicking **SQL query**, you'll see an editor where you can write and run queries in SQL (or your database's native querying language).
 
@@ -34,7 +34,7 @@ GROUP BY created_at;
 
 Don't worry if you don't understand this just yet. Click the blue **Run query** button to execute your query.
 
-You'll notice that the table that comes back is the same as if you had used the [query builder](../query-builder/editor.md) to ask for the sum of `Subtotal` in the `Orders` table, grouped by the `Created At` date.
+You'll notice that the table that comes back is the same as if you had used the [query builder](../../query-builder/editor.md) to ask for the sum of `Subtotal` in the `Orders` table, grouped by the `Created At` date.
 
 ### Running query selections
 
@@ -78,9 +78,9 @@ When you run a query from the SQL editor, Metabase sends the query to your datab
 
 ## Question version history
 
-For questions, [dashboards](../../dashboards/start.md), and [models](../../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
+For questions, [dashboards](../../../dashboards/start.md), and [models](../../../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
 
-See [History](../../exploration-and-organization/history.md).
+See [History](../../../exploration-and-organization/history.md).
 
 ## Explore SQL question results using the Query Builder
 
@@ -92,12 +92,12 @@ On saved SQL questions without [parameters](./sql-parameters.md), you'll get the
 
 Visualizations created with SQL have limited [drill-through][drill-through] capabilities:
 
-- You can filter results of SQL queries by clicking on data points, zoom in on time series or maps, and use some [column header actions](../visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
+- You can filter results of SQL queries by clicking on data points, zoom in on time series or maps, and use some [column header actions](../../visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
 - You won't be able to drill down to unaggregated records, change time granularity, or break out by categories or locations.
 
 ## Caching results
 
-See [Caching question policies](../../configuring-metabase/caching.md#question-caching-policy).
+See [Caching question policies](../../../configuring-metabase/caching.md#question-caching-policy).
 
 ## Learn more
 

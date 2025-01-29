@@ -79,4 +79,4 @@ Save your settings, then [enable SAML](authenticating-with-saml.md) in Metabase,
 
 ## Troubleshooting SAML issues
 
-- [SAML troubleshooting page](../troubleshooting-guide/saml.md).
+- [SAML troubleshooting page](../../troubleshooting-guide/saml.md).

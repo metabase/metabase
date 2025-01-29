@@ -14,7 +14,7 @@ Site name, report timezone, and more settings.
 
 ## [Email](./email.md)
 
-Set up email for [Alerts](../questions/alerts.md) and [Dashboard subscriptions](../dashboards/subscriptions.md).
+Set up email for [Alerts](../../questions/alerts.md) and [Dashboard subscriptions](../../dashboards/subscriptions.md).
 
 ## [Slack](./slack.md)
 
@@ -44,7 +44,7 @@ Guidance on timezone settings.
 
 Set language, datetime, and currency settings.
 
-## [Uploads](../databases/uploads.md)
+## [Uploads](../../databases/uploads.md)
 
 Allow people to upload data to collections.
 

@@ -44,8 +44,8 @@ If you're seeing this "Out of memory" (OOM) error, you'll need to [allocate more
 
 You can use tools to view how Metabase uses the memory available to it over time. Check out:
 
-- [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md)
-- [Monitoring your Metabase](../installation-and-operation/monitoring-metabase.md)
+- [Observability with Prometheus](../../installation-and-operation/observability-with-prometheus.md)
+- [Monitoring your Metabase](../../installation-and-operation/monitoring-metabase.md)
 
 The specific Prometheus metric you need to check is jvm_memory_bytes_used{area="heap"}
 

@@ -13,7 +13,7 @@ If your Metabase has email or Slack set up, all you need to do is create a dashb
 
 ## Enabling dashboard subscriptions
 
-To enable dashboard subscriptions, your administrators will need to have set up email or Slack for your Metabase. See [Setting up email](../configuring-metabase/email.md) or [Setting up Slack](../configuring-metabase/slack.md).
+To enable dashboard subscriptions, your administrators will need to have set up email or Slack for your Metabase. See [Setting up email](../../configuring-metabase/email.md) or [Setting up Slack](../../configuring-metabase/slack.md).
 
 ## Setting up a dashboard subscription
 
@@ -31,7 +31,7 @@ For emails, we can:
 
 ### Add subscribers
 
-Add email addresses to register subscribers. On Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise), admins can limit email recipients to [approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications) and [configure which recipients Metabase suggests](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts).
+Add email addresses to register subscribers. On Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise), admins can limit email recipients to [approved domains for notifications](../../configuring-metabase/email.md#approved-domains-for-notifications) and [configure which recipients Metabase suggests](../../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts).
 
 ### Determine frequency and timing
 
@@ -80,7 +80,7 @@ If you check this box, Metabase will drop any visualization settings applied to 
 
 Here you can specify which questions Metabase should attach results for.
 
-The attached files will include up to 2000 rows by default. If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [MB_UNAGGREGATED_QUERY_ROW_LIMIT](../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). To change this row limit on your Metabase Cloud instance, you can [contact us](https://www.metabase.com/help/premium) and request a different row limit.
+The attached files will include up to 2000 rows by default. If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [MB_UNAGGREGATED_QUERY_ROW_LIMIT](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). To change this row limit on your Metabase Cloud instance, you can [contact us](https://www.metabase.com/help/premium) and request a different row limit.
 
 ## Slack subscription options
 
@@ -96,7 +96,7 @@ You can specify how often Metabase sends a Slack message (hourly, daily, weekly,
 
 ### Sending subscriptions to private channels
 
-See [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
+See [Sending alerts and subscriptions to private Slack channels](../../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
 
 ## Adding multiple subscriptions
 
@@ -110,7 +110,7 @@ To remove a subscription from a dashboard, select the subscription you'd like to
 
 {% include plans-blockquote.html feature="Usage analytics" %}
 
-You can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in **Usage analytics** collection. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
+You can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in **Usage analytics** collection. See [Usage analytics](../../usage-and-performance-tools/usage-analytics.md).
 
 ## Customize filter values for each dashboard subscription
 
@@ -130,11 +130,11 @@ The section to call out here is the **Set filter values for when this gets sent*
 
 ## How permissions work with dashboard subscriptions
 
-See [Notification permissions](../permissions/notifications.md).
+See [Notification permissions](../../permissions/notifications.md).
 
 ## Further reading
 
-- [Alerts](../questions/alerts.md)
-- [Setting up email](../configuring-metabase/email.md)
-- [Setting up Slack](../configuring-metabase/slack.md)
-- [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
+- [Alerts](../../questions/alerts.md)
+- [Setting up email](../../configuring-metabase/email.md)
+- [Setting up Slack](../../configuring-metabase/slack.md)
+- [Usage analytics](../../usage-and-performance-tools/usage-analytics.md)

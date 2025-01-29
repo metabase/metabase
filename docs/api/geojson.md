@@ -36,4 +36,4 @@ Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This ju
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

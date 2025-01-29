@@ -90,4 +90,4 @@ Get all of the required query metadata for an ad-hoc query.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

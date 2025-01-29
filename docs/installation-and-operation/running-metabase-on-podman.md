@@ -40,7 +40,7 @@ podman run -d -p 12345:3000 --name=metabase docker.io/metabase/metabase:latest
 
 ## Pro or Enterprise quick start
 
-Use this quick start if you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally.
+Use this quick start if you have a [license token](../../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally.
 
 Assuming you have [Podman](https://podman.io) installed and running, get the latest container image:
 
@@ -139,7 +139,7 @@ To verify that the system functions correctly, reboot the system. Upon completio
 
 ### Customizing the Metabase Jetty server
 
-You can use any of the custom settings from [Customizing the Metabase Jetty Webserver](../configuring-metabase/customizing-jetty-webserver.md) by setting environment variables in your Podman run command.
+You can use any of the custom settings from [Customizing the Metabase Jetty Webserver](../../configuring-metabase/customizing-jetty-webserver.md) by setting environment variables in your Podman run command.
 
 ### Setting the Java Timezone
 
@@ -153,8 +153,8 @@ podman run -d -p 3000:3000 \
 
 ## Troubleshooting
 
-See Running Metabase in the [Troubleshooting guide](../troubleshooting-guide/running.md).
+See Running Metabase in the [Troubleshooting guide](../../troubleshooting-guide/running.md).
 
 ## Continue to setup
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../../configuring-metabase/setting-up-metabase.md).

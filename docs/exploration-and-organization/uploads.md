@@ -4,23 +4,23 @@ title: Uploading data
 
 # Uploading data
 
-If an admin has [set up uploads](../databases/uploads.md), you can upload CSV data by clicking on the **Upload** icon in the top right of the collection page.
+If an admin has [set up uploads](../../databases/uploads.md), you can upload CSV data by clicking on the **Upload** icon in the top right of the collection page.
 
-![Upload CSV data](../databases/images/upload-icon.png).
+![Upload CSV data](../../databases/images/upload-icon.png).
 
 ## Create, append, or replace models with uploads
 
 When you upload a CSV file, Metabase may ask to select a destination for that upload (depending on whether there are other uploads).
 
-If your CSV has the same columns as a model from a previously uploaded file, you can append data to that model. Otherwise, you can create a new [model](../data-modeling/models.md). if you want to:
+If your CSV has the same columns as a model from a previously uploaded file, you can append data to that model. Otherwise, you can create a new [model](../../data-modeling/models.md). if you want to:
 
 - Create a new model
 - [Append to an existing model created by an upload](#appending-to-a-model-created-by-an-upload)
 - [Replace the data for an existing model created by an upload](#replacing-the-data-of-an-uploaded-model)
 
-Metabase will create a [model](../data-modeling/models.md) that contains that CSV data, as well as the model's underlying table.
+Metabase will create a [model](../../data-modeling/models.md) that contains that CSV data, as well as the model's underlying table.
 
-Uploads will only be available if your admin has enabled uploads for your Metabase, and you're in a group with Unrestricted access to the schema used to store those uploads. See [Uploading data](../databases/uploads.md).
+Uploads will only be available if your admin has enabled uploads for your Metabase, and you're in a group with Unrestricted access to the schema used to store those uploads. See [Uploading data](../../databases/uploads.md).
 
 ## Appending to a model created by an upload
 
@@ -40,8 +40,8 @@ Instead of deleting a model and recreating it, you can replace the underlying da
 
 Like appending to uploaded models, replacing the uploaded CSV data with a new CSV file requires the columns and headings to match.
 
-If you [delete the uploaded table](../databases/uploads.md#deleting-tables-created-by-uploads), you won't be able to replace the model's data.
+If you [delete the uploaded table](../../databases/uploads.md#deleting-tables-created-by-uploads), you won't be able to replace the model's data.
 
 ## Further reading
 
-- [Enabling uploads](../databases/uploads.md)
+- [Enabling uploads](../../databases/uploads.md)

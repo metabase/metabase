@@ -46,4 +46,4 @@ Provide a summary of a dashboard.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

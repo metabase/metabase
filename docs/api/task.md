@@ -26,4 +26,4 @@ Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers).
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

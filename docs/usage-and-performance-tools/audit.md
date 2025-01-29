@@ -49,7 +49,7 @@ The **Items** section focuses on questions, dashboards, downloads, and Subscript
 
 The Questions section will show you your most popular queries, as well as your slowest queries. If queries you think are important aren't appearing on your most popular queries list, you may want to make sure your team is focusing on the right things.
 
-If important queries are appearing on the list of slowest queries, you will want to look at optimizing them. One option is to adjust your [caching settings](../configuring-metabase/caching.md), but there are plenty of other options as well. To help you determine if your optimization efforts are heading in the right direction, use the `Query views and speed per day` visualization at the bottom of the page.
+If important queries are appearing on the list of slowest queries, you will want to look at optimizing them. One option is to adjust your [caching settings](../../configuring-metabase/caching.md), but there are plenty of other options as well. To help you determine if your optimization efforts are heading in the right direction, use the `Query views and speed per day` visualization at the bottom of the page.
 
 ![Items](../images/audit-questions.png)
 
@@ -108,7 +108,7 @@ Admins can add and remove people from a subscription or alert by clicking on the
 
 Everyone can view all of their subscriptions and alerts by clicking on the **gear** icon in the upper right and navigating to **Account settings** > **Notifications**.
 
-For more, see [how permissions work with alerts and subscriptions](../permissions/notifications.md).
+For more, see [how permissions work with alerts and subscriptions](../../permissions/notifications.md).
 
 [alerts]: ../questions/alerts.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md

@@ -20,10 +20,10 @@ You can export the results of a question as:
 
 You can choose between downloading the results as:
 
-- **Formatted**: With any [formatting changes](../data-modeling/formatting.md) you've applied in Metabase.
-- **Unformatted**: Metabase will export the raw results of the question without applying any of the [formatting you applied](../data-modeling/formatting.md) to the columns in the question. For example, if you formatted a floating point number to display only the first two decimal digits in the table results, exporting the unformatted results would include additional decimal digits (if any) found in the raw results.
+- **Formatted**: With any [formatting changes](../../data-modeling/formatting.md) you've applied in Metabase.
+- **Unformatted**: Metabase will export the raw results of the question without applying any of the [formatting you applied](../../data-modeling/formatting.md) to the columns in the question. For example, if you formatted a floating point number to display only the first two decimal digits in the table results, exporting the unformatted results would include additional decimal digits (if any) found in the raw results.
 
-If you don't see the option to export results, you may not have [permissions to download results](../permissions/data.md#download-results-permissions).
+If you don't see the option to export results, you may not have [permissions to download results](../../permissions/data.md#download-results-permissions).
 
 ## Exporting pivot tables
 
@@ -33,7 +33,7 @@ If you're exporting a pivot table, you'll have the option to keep the table pivo
 
 You can export (download) up to 1 million rows.
 
-You can change this limit with an environment variable: [`MB_DOWNLOAD_ROW_LIMIT`](../configuring-metabase/environment-variables.md).
+You can change this limit with an environment variable: [`MB_DOWNLOAD_ROW_LIMIT`](../../configuring-metabase/environment-variables.md).
 
 ### Cell character limit in Excel exports
 
@@ -41,7 +41,7 @@ Just something to be aware of: when exporting results to an Excel document (.xls
 
 ## Exporting data via a public link
 
-You can also create a [public link](../embedding/public-links.md#public-link-to-export-question-results-in-csv-xlsx-json) that people can use to download data in a specific format, as well as [raw, unformatted question results](../embedding/public-links.md#exporting-raw-unformatted-question-results).
+You can also create a [public link](../../embedding/public-links.md#public-link-to-export-question-results-in-csv-xlsx-json) that people can use to download data in a specific format, as well as [raw, unformatted question results](../../embedding/public-links.md#exporting-raw-unformatted-question-results).
 
 ## Exporting question data via alerts
 
@@ -78,14 +78,14 @@ From here you can select:
 
 To export the raw, unformatted results, hold down the `option` key for Macs, or `Alt` key for Windows, then click on the download file format.
 
-If you don't see this option, you may not have [permissions to download results](../permissions/data.md#download-results-permissions).
+If you don't see this option, you may not have [permissions to download results](../../permissions/data.md#download-results-permissions).
 
 ### Exporting results of a dashboard via dashboard subscriptions
 
-You can use [dashboard subscriptions](../dashboards/subscriptions.md) to regularly export data from all questions on a dashboard, and include those results as an attachment.
+You can use [dashboard subscriptions](../../dashboards/subscriptions.md) to regularly export data from all questions on a dashboard, and include those results as an attachment.
 
 ## Further reading
 
 - [Alerts](./alerts.md)
-- [Dashboard subscriptions](../dashboards/subscriptions.md)
+- [Dashboard subscriptions](../../dashboards/subscriptions.md)
 - [Tables](./visualizations/table.md)

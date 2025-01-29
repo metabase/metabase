@@ -66,4 +66,4 @@ Store cache configuration.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

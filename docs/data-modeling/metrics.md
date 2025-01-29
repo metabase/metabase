@@ -17,11 +17,11 @@ For example, you may want to create a metric that calculates revenue, so people 
 
 You can:
 
-- Save metrics to [collections](../exploration-and-organization/collections.md).
-- Add metrics to [dashboards](../dashboards/introduction.md).
-- View metrics in the [database browser](../exploration-and-organization/exploration.md#browse-your-databases).
+- Save metrics to [collections](../../exploration-and-organization/collections.md).
+- Add metrics to [dashboards](../../dashboards/introduction.md).
+- View metrics in the [database browser](../../exploration-and-organization/exploration.md#browse-your-databases).
 - Pick metrics as aggregation columns in the Summarize block when creating questions, modify them or combine.
-- [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to [mark metrics as verified](../exploration-and-organization/content-verification.md).
+- [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to [mark metrics as verified](../../exploration-and-organization/content-verification.md).
 
 ### Metrics in the query builder
 
@@ -80,15 +80,15 @@ When you click on a metric, Metabase will assume that you're using that metric a
 
 ## Metric permissions
 
-Like questions, models, and dashboards, whether a group can view or edit a metric depends on [collection permissions](../permissions/collections.md). By "view" we mean the ability to see the metric in a collection, or see the metric as an option when building a query with the metric's data source. If a metric is used in another question, whether a group can view the question depends on the question's collection, not the metric's collection.
+Like questions, models, and dashboards, whether a group can view or edit a metric depends on [collection permissions](../../permissions/collections.md). By "view" we mean the ability to see the metric in a collection, or see the metric as an option when building a query with the metric's data source. If a metric is used in another question, whether a group can view the question depends on the question's collection, not the metric's collection.
 
 By "editing" a metric, we mean [editing the metric's query definition](#editing-a-metric).
 
-These collection permissions also interact with the group's [data permissions](../permissions/data.md), which define whether the group can view or query the metric's source data.
+These collection permissions also interact with the group's [data permissions](../../permissions/data.md), which define whether the group can view or query the metric's source data.
 
 ## Verifying a metric
 
-See [content verification](../exploration-and-organization/content-verification.md).
+See [content verification](../../exploration-and-organization/content-verification.md).
 
 ## Further reading
 

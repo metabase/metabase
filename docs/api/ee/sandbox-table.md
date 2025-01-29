@@ -28,4 +28,4 @@ This endpoint essentially acts as a wrapper for the OSS version of this route. W
 
 ---
 
-[<< Back to API index](../../api-documentation.md)
+[<< Back to API index](../../../api-documentation.md)

@@ -36,13 +36,13 @@ To edit a table's display name in Metabase, click into the box that contains the
 
 ### Table description
 
-To add a table description, click into the box below the table name. Descriptions are displayed in Metabase's [data reference](../exploration-and-organization/data-model-reference.md) to help people find the right table for their use case.
+To add a table description, click into the box below the table name. Descriptions are displayed in Metabase's [data reference](../../exploration-and-organization/data-model-reference.md) to help people find the right table for their use case.
 
 ### Table visibility
 
 **Queryable** tables are visible across all of Metabase.
 
-**Hidden** tables won't show up in the [query builder](../questions/query-builder/editor.md) or [data reference](../exploration-and-organization/data-model-reference.md). But this is not a security feature: hidden tables can still be used in SQL questions if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
+**Hidden** tables won't show up in the [query builder](../../questions/query-builder/editor.md) or [data reference](../../exploration-and-organization/data-model-reference.md). But this is not a security feature: hidden tables can still be used in SQL questions if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../../permissions/data.md).
 
 Tip: To hide all of the tables in a database (say, if you've migrated to a new database), click on the **hidden eye** icon beside "# queryable tables" in the left sidebar.
 
@@ -77,7 +77,7 @@ To change the _global_ display name of a column in Metabase, click on the name o
 
 ### Column description
 
-To add a description, click into the box below the column name. Descriptions are displayed in the [data reference](../exploration-and-organization/data-model-reference.md) to help people interpret the column's values. You should consider adding a description if your column contains:
+To add a description, click into the box below the column name. Descriptions are displayed in the [data reference](../../exploration-and-organization/data-model-reference.md) to help people interpret the column's values. You should consider adding a description if your column contains:
 
 - abbreviations or codes
 - zeroes, nulls, or blank values
@@ -89,7 +89,7 @@ To add a description, click into the box below the column name. Descriptions are
 
 **Only in detail views** will hide lengthy text from question results. This setting is applied by default if a column's values have an average length of more than 50 characters. For example, you could use this setting on a column like "Customer Comments" if you already have a column for "Customer Rating".
 
-**Do not include** columns won't show up in the query builder or data reference. You can set "do not include" on sensitive columns (such as PII) or irrelevant columns. But this visibility option is a simple omit/hide option; it's not a security feature. These columns are still accessible for people with native query privileges; they can write `SELECT hidden_column FROM table` or `SELECT * from table` in the [SQL editor](../questions/native-editor/writing-sql.md) and they'll be able to view these fields and their values. To prevent people from viewing certain columns, see [data sandboxing](../permissions/data-sandboxes.md).
+**Do not include** columns won't show up in the query builder or data reference. You can set "do not include" on sensitive columns (such as PII) or irrelevant columns. But this visibility option is a simple omit/hide option; it's not a security feature. These columns are still accessible for people with native query privileges; they can write `SELECT hidden_column FROM table` or `SELECT * from table` in the [SQL editor](../../questions/native-editor/writing-sql.md) and they'll be able to view these fields and their values. To prevent people from viewing certain columns, see [data sandboxing](../../permissions/data-sandboxes.md).
 
 ### Column order
 
@@ -104,7 +104,7 @@ To sort the columns **automatically**, click on the **sort** icon at the top rig
 
 ### Field type
 
-To change the [field type](../data-modeling/field-types.md) of a column, click on the **Type** dropdown menu in a column's setting box. You can also use the **Type** dropdown to label a column as an [entity key](https://www.metabase.com/glossary/entity_key) (primary key) or [foreign key](https://www.metabase.com/glossary/foreign_key) in Metabase (with no consequence to your database).
+To change the [field type](../../data-modeling/field-types.md) of a column, click on the **Type** dropdown menu in a column's setting box. You can also use the **Type** dropdown to label a column as an [entity key](https://www.metabase.com/glossary/entity_key) (primary key) or [foreign key](https://www.metabase.com/glossary/foreign_key) in Metabase (with no consequence to your database).
 
 ### Casting to a specific data type
 
@@ -116,7 +116,7 @@ If you want Metabase to treat a text or number column as a datetime column:
 4. Scroll to **Cast to a specific data type**
 5. Select a casting option.
 
-> Metabase currently supports only casting to a datetime type in **Cast to a specific data type**. If you need to cast to a different type (like float), you can [create a SQL question](../questions/native-editor/writing-sql.md#starting-a-new-sql-query) that casts the data and [save it as a model](./models.md#create-a-model-from-a-saved-question), or create a view directly in your database.
+> Metabase currently supports only casting to a datetime type in **Cast to a specific data type**. If you need to cast to a different type (like float), you can [create a SQL question](../../questions/native-editor/writing-sql.md#starting-a-new-sql-query) that casts the data and [save it as a model](./models.md#create-a-model-from-a-saved-question), or create a view directly in your database.
 
 **Text to datetime casting options**:
 
@@ -134,13 +134,13 @@ If you want Metabase to treat a text or number column as a datetime column:
 Casting is different from setting the [field type](./field-types.md). For example, say you have a "Created At" column with a string [data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview) in your database. You'll need to cast "Created At" to one of the datetime types above if you want to do things like:
 
 - Create relative date filters, such as "Created At = Last week".
-- Use "Created At" with formulas like [datetimeAdd](../questions/query-builder/expressions/datetimeadd.md).
+- Use "Created At" with formulas like [datetimeAdd](../../questions/query-builder/expressions/datetimeadd.md).
 
 > Casting data types from the **Table Metadata** admin settings won't affect the original data types in your database.
 
 ### Changing the filter widget
 
-To change a column's [filter widget](../dashboards/filters.md):
+To change a column's [filter widget](../../dashboards/filters.md):
 
 1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
@@ -158,7 +158,7 @@ The default behavior for the `Is` filter for the field.
 
 ### Changing a search box filter to a dropdown filter
 
-The dropdown filter widget can be finicky, because Metabase needs to run a [scan](../databases/sync-scan.md#how-database-scans-work) to get the list of values for the dropdown menu.
+The dropdown filter widget can be finicky, because Metabase needs to run a [scan](../../databases/sync-scan.md#how-database-scans-work) to get the list of values for the dropdown menu.
 
 1. Go to **Admin settings** > **Table Metadata**.
 2. Find your database and table.
@@ -219,7 +219,7 @@ https://www.google.com/search?q=askew
 
 To update the values in your filter dropdown menus, refresh or reset the cached values. **Cache actions** include:
 
-- **Re-scan this table or field** to run a manual scan for new or updated column values. If possible, re-scan the table during off-peak hours, as [scans](../databases/sync-scan.md#how-database-scans-work) can slow down your database.
+- **Re-scan this table or field** to run a manual scan for new or updated column values. If possible, re-scan the table during off-peak hours, as [scans](../../databases/sync-scan.md#how-database-scans-work) can slow down your database.
 - **Discard cached field values** to clear cached values and stop them from showing up in your [filter widgets](#changing-the-filter-widget).
 
 ### Table cache actions

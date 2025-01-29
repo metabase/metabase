@@ -12,11 +12,11 @@ Metabase runs different types of queries to stay up to date with your database.
 
 ## Initial sync, scan, and fingerprinting
 
-When Metabase first connects to your database, Metabase performs a [sync](#how-database-scans-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md). Once the sync is successful, Metabase runs [scans](#scheduling-database-scans) of each table to look for URLs, JSON, encoded strings, etc. The [fingerprinting](#how-database-fingerprinting-works) queries run once the syncs are complete.
+When Metabase first connects to your database, Metabase performs a [sync](#how-database-scans-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../../data-modeling/field-types.md). Once the sync is successful, Metabase runs [scans](#scheduling-database-scans) of each table to look for URLs, JSON, encoded strings, etc. The [fingerprinting](#how-database-fingerprinting-works) queries run once the syncs are complete.
 
 You can follow the progress of these queries from **Admin** > **Troubleshooting** > **Logs**.
 
-Once the queries are done running, you can view and edit the synced metadata from **Admin settings** > **Table Metadata**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
+Once the queries are done running, you can view and edit the synced metadata from **Admin settings** > **Table Metadata**. For more info, see [editing metadata](../../data-modeling/metadata-editing.md).
 
 ## Choose when Metabase syncs and scans
 
@@ -76,17 +76,17 @@ You can also tell Metabase to forget the cached values for individual fields by 
 
 ## Disabling syncing and scanning for specific tables
 
-To prevent Metabase from running syncs and scans against a specific table, change the [table visibility](../data-modeling/metadata-editing.md#table-visibility) to **Hidden**:
+To prevent Metabase from running syncs and scans against a specific table, change the [table visibility](../../data-modeling/metadata-editing.md#table-visibility) to **Hidden**:
 
 1. Go to **Admin settings** > **Table Metadata** > your database.
 2. Hover over the table name in the sidebar.
 3. Click the **eye** icon.
 
-> Hiding a table will also prevent it from showing up in the [query builder](../questions/query-builder/editor.md) and [data reference](../exploration-and-organization/data-model-reference.md). People can still query hidden tables from the [SQL editor](../questions/native-editor/writing-sql.md).
+> Hiding a table will also prevent it from showing up in the [query builder](../../questions/query-builder/editor.md) and [data reference](../../exploration-and-organization/data-model-reference.md). People can still query hidden tables from the [SQL editor](../../questions/native-editor/writing-sql.md).
 
 ## Syncing and scanning using the API
 
-Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api) to force a sync or scan. [Our API](../api-documentation.md) provides two ways to initiate a sync or scan of a database:
+Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api) to force a sync or scan. [Our API](../../api-documentation.md) provides two ways to initiate a sync or scan of a database:
 
 1. Using a session token: the `/api/database/:id/sync_schema` or `api/database/:id/rescan_values` endpoints. These endpoints do the same things as going to the database in the Admin Panel and choosing **Sync database schema now** or **Re-scan field values now** respectively. To use these endpoints, you have to authenticate with a user ID and pass a session token in the header of your request.
 2. Using an API key: `/api/notify/db/:id`. We created this endpoint so that people could notify their Metabase to sync after an [ETL operation](https://www.metabase.com/learn/grow-your-data-skills/data-landscape/etl-landscape) finishes. To use this endpoint, you must pass an API key by defining the `MB_API_KEY` environment variable.
@@ -105,7 +105,7 @@ WHERE
 LIMIT 0
 ```
 
-This query runs against your database during setup, and again every hour by default. This scanning query is fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../developers-guide/partner-and-community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
+This query runs against your database during setup, and again every hour by default. This scanning query is fast with most relational databases, but can be slower with MongoDB and some [community-built database drivers](../../developers-guide/partner-and-community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
 
 ## How database scans work
 
@@ -162,5 +162,5 @@ To avoid putting strain on your database, Metabase only runs fingerprinting quer
 
 Metabase doesn't do any caching or rate limiting during the sync and scan process. If your data appears to be missing or out of date, check out:
 
-- [Can’t see tables](../troubleshooting-guide/cant-see-tables.md).
-- [Data in Metabase doesn’t match my database](../troubleshooting-guide/sync-fingerprint-scan.md).
+- [Can’t see tables](../../troubleshooting-guide/cant-see-tables.md).
+- [Data in Metabase doesn’t match my database](../../troubleshooting-guide/sync-fingerprint-scan.md).

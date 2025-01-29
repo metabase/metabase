@@ -24,7 +24,7 @@ You can use the command palette to:
 
 So anytime you want to do or find anything in Metabase, just hit `cmd/ctrl + k` and start typing what you want to do.
 
-> The command palette is currently unavailable in [interactive embedding](../embedding/interactive-embedding.md) contexts.
+> The command palette is currently unavailable in [interactive embedding](../../embedding/interactive-embedding.md) contexts.
 
 ## Advanced search
 
@@ -47,11 +47,11 @@ You can search by:
 
 ## Browse your databases
 
-> Whether a group has access to the database browser depends on the group's [Create queries permission](../permissions/data.md#create-queries-permissions).
+> Whether a group has access to the database browser depends on the group's [Create queries permission](../../permissions/data.md#create-queries-permissions).
 
 ![Browse databases](../images/browse-data.png)
 
-The left sidebar lists your databases, [models](../data-modeling/models.md), and [metrics](../data-modeling/metrics.md).
+The left sidebar lists your databases, [models](../../data-modeling/models.md), and [metrics](../../data-modeling/metrics.md).
 
 [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to filter for [verified models and metrics](./content-verification.md).
 
@@ -67,10 +67,10 @@ To learn more, see [Exploring data with Metabase's data browser](https://www.met
 
 Your teammates might have pinned some items to the top of your collection.
 
-- [dashboards](../dashboards/introduction.md)
-- [models](../data-modeling/models.md)
-- [metrics](../data-modeling/metrics.md)
-- [questions](../questions/start.md)
+- [dashboards](../../dashboards/introduction.md)
+- [models](../../data-modeling/models.md)
+- [metrics](../../data-modeling/metrics.md)
+- [questions](../../questions/start.md)
 
 Collections have a list of any other items that are saved within them, and you can see what other collections are saved inside of the current one by checking out the navigation sidebar.
 
@@ -90,7 +90,7 @@ In this example of orders by product category per month, clicking on a data poin
 - **Automatic insights**: See orders for a particular category over a shorter time range.
 - **Filter by this value**: update the chart based on the value you clicked: equal to, less than, greater than, or not equal to.
 
-> Note that while charts created with SQL currently only have [limited drill-through menu](../questions/native-editor/writing-sql.md#drill-though-in-sql-questions), you can add SQL questions to a dashboard and customize their click behavior. You can send people to a [custom destination](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) (like another dashboard or an external URL), or have the clicked value [update a dashboard filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/cross-filtering).
+> Note that while charts created with SQL currently only have [limited drill-through menu](../../questions/native-editor/writing-sql.md#drill-though-in-sql-questions), you can add SQL questions to a dashboard and customize their click behavior. You can send people to a [custom destination](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) (like another dashboard or an external URL), or have the clicked value [update a dashboard filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/cross-filtering).
 
 Clicking on a table cell will often allow you to filter the results using a comparison operator, like =, >, or <. For example, you can click on a table cell, and select the less than operator `<` to filter for values that are less than the selected value.
 
@@ -100,7 +100,7 @@ Lastly, clicking on the ID of an item in a table gives you the option to go to a
 
 ![Detail view](images/detail-view.png)
 
-When you add questions to a dashboard, you can have even more control over what happens when people click on your chart. In addition to the default drill-through menu, you can add a [custom destination](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) or [update a filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/cross-filtering). Check out [interactive dashboards](../dashboards/interactive.md).
+When you add questions to a dashboard, you can have even more control over what happens when people click on your chart. In addition to the default drill-through menu, you can add a [custom destination](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) or [update a filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/cross-filtering). Check out [interactive dashboards](../../dashboards/interactive.md).
 
 ## Bookmarks
 

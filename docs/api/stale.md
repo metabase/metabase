@@ -32,4 +32,4 @@ A flexible endpoint that returns stale entities, in the same shape as collection
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

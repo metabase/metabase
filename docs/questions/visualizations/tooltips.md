@@ -17,7 +17,7 @@ When you hover over a data point on a chart in Metabase, you'll see a tooltip ab
 
 On line, bar, and area charts, you can display the values from multiple metrics either on the chart, or in the tooltips that Metabase adds to the data points on hover.
 
-For example, if you have a question with two metrics (i.e., two summarizations - they don't have to be Metabase [metrics](../../data-modeling/metrics.md)), like this question that has both the count and average of subtotal:
+For example, if you have a question with two metrics (i.e., two summarizations - they don't have to be Metabase [metrics](../../../data-modeling/metrics.md)), like this question that has both the count and average of subtotal:
 
 ![Question with multiple summarizations](../images/multiple-metrics.png)
 

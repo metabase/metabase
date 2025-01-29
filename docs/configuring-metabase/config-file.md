@@ -98,7 +98,7 @@ To determine which keys you can specify for a database, check out the fields ava
 
 ### Setting up uploads on a database
 
-You can also configure [uploads](../databases/uploads.md) in the config file with the following settings:
+You can also configure [uploads](../../databases/uploads.md) in the config file with the following settings:
 
 - `uploads_enabled`: Boolean
 - `uploads_schema_name`: String
@@ -130,7 +130,7 @@ config:
 {% endraw %}
 ```
 
-See [Uploads](../databases/uploads.md).
+See [Uploads](../../databases/uploads.md).
 
 ## Referring to environment variables in the `config.yml`
 

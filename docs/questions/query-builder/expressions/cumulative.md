@@ -59,11 +59,11 @@ Because cumulative metrics calculate their summaries based on previous rows, Met
 
 If you use a datetime dimension in the **Group by** block, Metabase will accumulate along the datetime dimension, then break out by any other fields in the **Group by** block (in order):
 
-![Cumulative count by category, source, and created at](../../images/cumulative-date-category.png)
+![Cumulative count by category, source, and created at](../../../images/cumulative-date-category.png)
 
 If there are multiple datetime dimensions (including multiple groupings by the same datetime column), Metabase will accumulate along the the more granular dimension, regardless of their order. For example, if you're grouping by "Created At: Month" and "Viewed At: Week", Metabase will accumulate along "Viewed At: Week".
 
-![Cumulative count by two datetime fields](../../images/cumulative-multiple-datetimes.png)
+![Cumulative count by two datetime fields](../../../images/cumulative-multiple-datetimes.png)
 
 In queries with a datetime dimension, **Sort** blocks for non-datetime fields won't affect how Metabase computes the results. Sort blocks will only affect the order of breakouts in the results.
 
@@ -71,11 +71,11 @@ In queries with a datetime dimension, **Sort** blocks for non-datetime fields wo
 
 If there is no datetime field in the **Group by** block, Metabase will accumulate along the _last_ dimension specified in the **Group By** block, and break out by the other fields in their order, from left to right.
 
-![Cumulative count by two categorical dimensions](../../images/cumulative-no-datetime.png)
+![Cumulative count by two categorical dimensions](../../../images/cumulative-no-datetime.png)
 
 By default, Metabase will use ascending sort for the dimension used for accumulation. You can add a **Sort** block for the accumulation dimension to change the order, which will change both how Metabase computes the cumulative metric and, how it presents the results.
 
-![Cumulative count by two categorical dimensions with order of accumulation changed](../../images/cumulative-no-datetime-order.png)
+![Cumulative count by two categorical dimensions with order of accumulation changed](../../../images/cumulative-no-datetime-order.png)
 
 Sorting by any field _other than_ the last (accumulation) field only affects the order of breakouts in the results. It won't change how Metabase computes the results.
 

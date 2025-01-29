@@ -46,7 +46,7 @@ Reuse and share bits of SQL.
 
 ## Sharing results
 
-There are many different ways to share the results of questions. To share the results of a dashboard, see [Dashboard subscriptions](../dashboards/subscriptions.md).
+There are many different ways to share the results of questions. To share the results of a dashboard, see [Dashboard subscriptions](../../dashboards/subscriptions.md).
 
 ### [Visualizing results](./visualizations/visualizing-results.md)
 

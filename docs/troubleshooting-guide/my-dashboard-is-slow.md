@@ -24,8 +24,8 @@ Aside from running faster, a small and focused dashboard is also easier for peop
 
 ## Dashboard used by many people at the same time
 
-1. Optional: use Metabase's [Usage analytics](../usage-and-performance-tools/usage-analytics.md) to look at your Metabase usage stats\*.
-2. Set up [caching](../configuring-metabase/caching.md) for the questions on your popular dashboard.
+1. Optional: use Metabase's [Usage analytics](../../usage-and-performance-tools/usage-analytics.md) to look at your Metabase usage stats\*.
+2. Set up [caching](../../configuring-metabase/caching.md) for the questions on your popular dashboard.
 3. Run the dashboard during off-hours so that people can load the cached results in seconds instead of executing a fresh query to your database.
 
 \* Available on Pro and Enterprise plans.
@@ -38,21 +38,21 @@ Caching takes less effort because it doesn't involve any changes to your schemas
 
 ## Embedded dashboard is slow compared to original dashboard
 
-1. To speed up the embedded dashboard, set up a [locked parameter to pre-filter your data](../embedding/static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters).
+1. To speed up the embedded dashboard, set up a [locked parameter to pre-filter your data](../../embedding/static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters).
 
 **Explanation**
 
-One of the easiest ways to make a question or dashboard run faster is to work with a smaller dataset. Your Metabase admin can apply automatic data limitations using things like [SSO](../people-and-groups/start.md#authentication), [data permissions](../permissions/data.md), and [data sandboxing](../permissions/data-sandboxes.md).
+One of the easiest ways to make a question or dashboard run faster is to work with a smaller dataset. Your Metabase admin can apply automatic data limitations using things like [SSO](../../people-and-groups/start.md#authentication), [data permissions](../../permissions/data.md), and [data sandboxing](../../permissions/data-sandboxes.md).
 
-When someone loads a question or a dashboard in a static embed, however, that question or dashboard will query the full dataset (rather than a smaller dataset limited by permissions). Static, [signed embeds](../embedding/static-embedding.md) don't require people to be logged in, and unauthenticated people viewing the signed embed won't be subject to the permissions and data restrictions set up by your admin.
+When someone loads a question or a dashboard in a static embed, however, that question or dashboard will query the full dataset (rather than a smaller dataset limited by permissions). Static, [signed embeds](../../embedding/static-embedding.md) don't require people to be logged in, and unauthenticated people viewing the signed embed won't be subject to the permissions and data restrictions set up by your admin.
 
 ## Dashboard is slow compared to similar dashboards
 
 1. Remove fields (columns) that you don't need in the final result.
-2. Add a [filter](../questions/query-builder/filters.md) to reduce the amount of data being queried. For example:
+2. Add a [filter](../../questions/query-builder/filters.md) to reduce the amount of data being queried. For example:
    - Narrow down the time frame to the reporting period that you care about.
    - Exclude invalid records, such as: blanks, nulls, or rows with values like "cancelled", "expired", "invalid", and so on.
-3. Remove [joins](../questions/query-builder/join.md) to tables that aren't being used.
+3. Remove [joins](../../questions/query-builder/join.md) to tables that aren't being used.
 4. If you're aggregating data from the query builder, ask your database admin if there's a pre-aggregated [view](https://www.metabase.com/glossary/view) that you can use instead.
 
 **Explanation**

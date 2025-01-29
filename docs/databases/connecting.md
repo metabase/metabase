@@ -40,7 +40,7 @@ The databases listed below have official drivers maintained by the Metabase team
 - [SQLite](./connections/sqlite.md)
 - [Vertica](./connections/vertica.md)
 
-If you don't see your database listed here, see [partner and community drivers](../developers-guide/partner-and-community-drivers.md#partner-drivers).
+If you don't see your database listed here, see [partner and community drivers](../../developers-guide/partner-and-community-drivers.md#partner-drivers).
 
 As of version 46.6.4, Metabase [no longer supports H2 connections](https://www.metabase.com/blog/security-incident-summary). But Metabase still ships with an H2 database to include an embedded application database, as well as to provide some sample data out of the box.
 
@@ -70,13 +70,13 @@ If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossa
 
 ## Troubleshooting
 
-- [Troubleshooting database connections](../troubleshooting-guide/db-connection.md)
-- [Troubleshooting syncs, scans, and fingerprinting](../troubleshooting-guide/sync-fingerprint-scan.md)
+- [Troubleshooting database connections](../../troubleshooting-guide/db-connection.md)
+- [Troubleshooting syncs, scans, and fingerprinting](../../troubleshooting-guide/sync-fingerprint-scan.md)
 - Search or ask the [Metabase community](https://discourse.metabase.com/).
-- Search for [known bugs or limitations](../troubleshooting-guide/known-issues.md).
+- Search for [known bugs or limitations](../../troubleshooting-guide/known-issues.md).
 
 ## Further reading
 
-- [Metadata editing](../data-modeling/metadata-editing.md).
-- [Setting data access permissions](../permissions/data.md).
+- [Metadata editing](../../data-modeling/metadata-editing.md).
+- [Setting data access permissions](../../permissions/data.md).
 - [Metabase at scale](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-at-scale).

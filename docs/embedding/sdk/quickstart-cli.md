@@ -38,7 +38,7 @@ The tool will walk you through the setup. There are a fair number of pieces to p
 
 - Asks you for an email address to create the first admin account in Metabase. Doesn't have to be a real email address (the tool doesn't set up a SMTP server); the email address is just required for login.
 - Spins up a Metabase on Docker. This takes a bit. To see the Docker container's status, use the `docker ps` command. Or use the time to reflect on good choices you've made recently.
-- Generates a new [API key](../../people-and-groups/api-keys.md).
+- Generates a new [API key](../../../people-and-groups/api-keys.md).
 
 ## Connects Metabase to your database
 
@@ -49,7 +49,7 @@ The tool will walk you through the setup. There are a fair number of pieces to p
 
 If you have a Pro/EE license, the tool can set up permissions. To get a license, sign up for a [free trial of self-hosted Metabase Pro](https://www.metabase.com/pricing/).
 
-If you opted to set up multi-tenancy and connected to your own database, the tool will ask you for the column you want to use to sandbox the table (e.g., a user ID column). Metabase will [sandbox data](../../permissions/data-sandboxes.md) based on the values in that column.
+If you opted to set up multi-tenancy and connected to your own database, the tool will ask you for the column you want to use to sandbox the table (e.g., a user ID column). Metabase will [sandbox data](../../../permissions/data-sandboxes.md) based on the values in that column.
 
 The tool will also set up a mock Express server with JWT. It'll ask you where it should save the server code (default: `./mock-server`). It'll install the server's dependencies with `npm install`.
 

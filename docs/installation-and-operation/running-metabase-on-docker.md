@@ -46,7 +46,7 @@ docker run -d -p 12345:3000 --name metabase metabase/metabase
 
 ## Pro or Enterprise quick start
 
-Use this quick start if you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
+Use this quick start if you have a [license token](../../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
 Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
 
@@ -172,7 +172,7 @@ networks:
 
 ### Customizing the Metabase Jetty server
 
-You can use any of the custom settings from [Customizing the Metabase Jetty Webserver](../configuring-metabase/customizing-jetty-webserver.md) by setting environment variables in your Docker run command.
+You can use any of the custom settings from [Customizing the Metabase Jetty Webserver](../../configuring-metabase/customizing-jetty-webserver.md) by setting environment variables in your Docker run command.
 
 ### Docker-specific environment variables
 
@@ -331,7 +331,7 @@ secrets:
     file: db_user.txt
 ```
 
-We currently support the following [environment variables](../configuring-metabase/environment-variables.md) to be used as secrets:
+We currently support the following [environment variables](../../configuring-metabase/environment-variables.md) to be used as secrets:
 
 - `MB_DB_USER`
 - `MB_DB_PASS`
@@ -345,8 +345,8 @@ In order for the Metabase container to read the files and use the contents as a 
 
 ## Troubleshooting
 
-See Running Metabase in the [Troubleshooting guide](../troubleshooting-guide/running.md).
+See Running Metabase in the [Troubleshooting guide](../../troubleshooting-guide/running.md).
 
 ## Continue to setup
 
-Now that you've installed Metabase, it's time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).
+Now that you've installed Metabase, it's time to [set it up and connect it to your database](../../configuring-metabase/setting-up-metabase.md).

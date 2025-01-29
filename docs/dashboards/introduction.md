@@ -14,7 +14,7 @@ redirect_from:
 
 A dashboard comprises a set of cards arranged on a grid. These cards can be:
 
-- [Questions](../questions/introduction.md). You can add questions from collections, or saved questions directly to a dashboard.
+- [Questions](../../questions/introduction.md). You can add questions from collections, or saved questions directly to a dashboard.
 - [Text and header cards](#adding-headings-or-descriptions-with-text-cards)
 - [Iframe cards](#iframe-cards)
 - [Link cards](#link-cards)
@@ -25,7 +25,7 @@ You can make as many dashboards as you want. Go nuts.
 
 ## How to create a dashboard
 
-In the top right of the screen, click the **+ New** > **Dashboard**. Give your new dashboard a name and a description, choose which [collections](../exploration-and-organization/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
+In the top right of the screen, click the **+ New** > **Dashboard**. Give your new dashboard a name and a description, choose which [collections](../../exploration-and-organization/collections.md) the dashboard should go in, then click **Create**, and Metabase will take you to your shiny new dashboard.
 
 ## Adding or saving questions to a dashboard
 
@@ -39,7 +39,7 @@ You can't add questions that are saved to other dashboards. If you want to add a
 
 ### From a question
 
-When creating or editing a question, you can [save the question directly to a dashboard](../questions/introduction.md#saving-questions-to-dashboards). That question can only be used by that dashboard.
+When creating or editing a question, you can [save the question directly to a dashboard](../../questions/introduction.md#saving-questions-to-dashboards). That question can only be used by that dashboard.
 
 ### Adding a question saved to a collection
 
@@ -283,19 +283,19 @@ Combining fullscreen mode and auto refresh is a great way to keep your team in s
 
 {% include plans-blockquote.html feature="Caching dashboard results" %}
 
-See [Caching per dashboard](../configuring-metabase/caching.md#dashboard-caching-policy).
+See [Caching per dashboard](../../configuring-metabase/caching.md#dashboard-caching-policy).
 
 ## Sharing dashboards with public links
 
-If your Metabase administrator has enabled [public sharing](../embedding/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the **sharing** icon to find its public links.
+If your Metabase administrator has enabled [public sharing](../../embedding/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the **sharing** icon to find its public links.
 
 ![Share icon](../images/share-icon.png)
 
-Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics), as well as an article on how to combine branding, Single Sign-On, full app embedding, and data sandboxing to deliver [multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding).
+Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics), as well as an article on how to combine branding, Single Sign-On, full app embedding, and data sandboxing to deliver [multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding).
 
 ## Exporting results from a dashboard
 
-See [Exporting results](../questions/exporting-results.md).
+See [Exporting results](../../questions/exporting-results.md).
 
 ## Configuring a dashboard through its URL
 
@@ -319,17 +319,17 @@ There is one important limitation with the `fullscreen` option: for security rea
 
 ## Dashboard version history
 
-For [questions](../questions/start.md), dashboards, and [models](../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
+For [questions](../../questions/start.md), dashboards, and [models](../../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
 
-See [History](../exploration-and-organization/history.md).
+See [History](../../exploration-and-organization/history.md).
 
 ## Verifying a dashboard
 
-See [content verification](../exploration-and-organization/content-verification.md).
+See [content verification](../../exploration-and-organization/content-verification.md).
 
 ## Deleting a dashboard
 
-See [deleting and restoring](../exploration-and-organization/delete-and-restore.md).
+See [deleting and restoring](../../exploration-and-organization/delete-and-restore.md).
 
 ## Tips on creating helpful dashboards
 

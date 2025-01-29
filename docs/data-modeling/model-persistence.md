@@ -10,7 +10,7 @@ Metabase can persist the results of your models so that your models (and the que
 
 Metabase will store model results in tables in a bespoke schema in your data warehouse (not the Metabase application database). When people ask questions based on your models, Metabase will use the tables with the stored results instead of re-running the model's query.
 
-> Model persistence doesn't work with [data sandboxing](../permissions/data-sandboxes.md).
+> Model persistence doesn't work with [data sandboxing](../../permissions/data-sandboxes.md).
 
 ## Turn on model persistence in Metabase
 
@@ -26,7 +26,7 @@ To turn on model persistence for your Metabase, go to **Admin settings** > **Per
 
 You can set models to refresh based on one of the default frequencies (every 1 hour, 2 hours, etc.), or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own update frequency.
 
-The cron scheduler uses the [Report Timezone](../configuring-metabase/localization.md#report-timezone) if selected. Otherwise the scheduler will use the System Timezone (which defaults to GMT in [Metabase Cloud](https://www.metabase.com/cloud)).
+The cron scheduler uses the [Report Timezone](../../configuring-metabase/localization.md#report-timezone) if selected. Otherwise the scheduler will use the System Timezone (which defaults to GMT in [Metabase Cloud](https://www.metabase.com/cloud)).
 
 We recommend scheduling your models to refresh on a frequency that makes sense with how often your source tables update with new data.
 
@@ -48,7 +48,7 @@ Once you've turned on model persistence for your Metabase, you'll need to set it
 
 {% include plans-blockquote.html feature="Individual model persistence" %}
 
-You can also toggle persistence on or off for individual models. When viewing a model, click on the **...** in the upper right and select **Edit settings**. Toggle **Persist model data** on (you'll need [Curate access](../permissions/collections.md#curate-access) to the model's collection to do this).
+You can also toggle persistence on or off for individual models. When viewing a model, click on the **...** in the upper right and select **Edit settings**. Toggle **Persist model data** on (you'll need [Curate access](../../permissions/collections.md#curate-access) to the model's collection to do this).
 
 Toggling persistence for individual models is useful for models with data that updates at different frequencies than the schedule you set for other models in that database, or for models that are used more or less than other models in that database.
 
@@ -58,11 +58,11 @@ To refresh a model's results, go to the model and click on the three-dot menu (*
 
 ## View model persistence logs
 
-You can view the logs for model persistence by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../usage-and-performance-tools/tools.md).
+You can view the logs for model persistence by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../../usage-and-performance-tools/tools.md).
 
 ## Difference between persisted models and caching
 
-Persisted models differ from [cached results](../configuring-metabase/caching.md):
+Persisted models differ from [cached results](../../configuring-metabase/caching.md):
 
 - **Models are persisted in your data warehouse; cached results are stored in the application database**. Metabase stores cached results in its application database. Metabase persists models in your connected data warehouse as tables.
 - **Metabase refreshes model results and invalidates cached results**. Metabase will refresh results of models according to the schedule you set. That is, Metabase will re-run the model's query and store the results in your data warehouse. For cached results of saved questions and dashboards, Metabase won't run the queries automatically; it will cache results when people view the question or dashboard, and invalidate the cached results according to the caching policy you set.
@@ -70,4 +70,4 @@ Persisted models differ from [cached results](../configuring-metabase/caching.md
 ## Further reading
 
 - [Models](./models.md)
-- [Caching policies](../configuring-metabase/caching.md)
+- [Caching policies](../../configuring-metabase/caching.md)

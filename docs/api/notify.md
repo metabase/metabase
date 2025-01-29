@@ -60,4 +60,4 @@ Sync the attached datawarehouse. Can provide in the body:
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

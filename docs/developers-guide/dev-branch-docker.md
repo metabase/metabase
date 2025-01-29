@@ -6,7 +6,7 @@ title: How to run a development branch of Metabase using Docker
 
 If you want to run a branch of Metabase that's currently in development, the easiest way to get started is to use a pre-built Docker image. You can also [compile Metabase yourself](build.md).
 
-If you're looking to download and run the latest official open source version of Metabase, check the [operations guide](../installation-and-operation/installing-metabase.md).
+If you're looking to download and run the latest official open source version of Metabase, check the [operations guide](../../installation-and-operation/installing-metabase.md).
 
 ## Installing Docker
 

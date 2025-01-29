@@ -17,12 +17,12 @@ You can only link dashboard filters that are wired to database columns (not cust
 Filters can only be linked when they're connected to columns that have an explicit relationship in the table metadata. By relationship, we mean that the columns should be either:
 
 - In the same table.
-- In two different tables that have a foreign key relationship specified in the [table metadata](../data-modeling/metadata-editing.md).
-- In two different tables that have a foreign key relationships to one or more intermediate tables, as specified in the [table metadata](../data-modeling/metadata-editing.md)
+- In two different tables that have a foreign key relationship specified in the [table metadata](../../data-modeling/metadata-editing.md).
+- In two different tables that have a foreign key relationships to one or more intermediate tables, as specified in the [table metadata](../../data-modeling/metadata-editing.md)
 
 ![Setting up foreign key in table metadata](../images/foreign-key-linked-filters.png)
 
-If you try to set up linked filters between two columns that aren't connected, Metabase won't show an error, but you'll see that the values in the child filter aren't restricted by the parent filter. For more troubleshooting tips, see [Troubleshooting link filters](../troubleshooting-guide/linked-filters.md).
+If you try to set up linked filters between two columns that aren't connected, Metabase won't show an error, but you'll see that the values in the child filter aren't restricted by the parent filter. For more troubleshooting tips, see [Troubleshooting link filters](../../troubleshooting-guide/linked-filters.md).
 
 ## Set up linked filters
 
@@ -56,10 +56,10 @@ Metabase uses database column metadata to populate values for linked filters, wh
 
 - You can't create linked filters on custom columns
 
-- Native/SQL questions must have a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Basic SQL variables aren't connected to database columns, so they won't work for linked filters.
+- Native/SQL questions must have a [field filter](../../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Basic SQL variables aren't connected to database columns, so they won't work for linked filters.
 
 - You can't link filters that use "Custom List" or "From another model or question" as their value's source.
 
 ## Troubleshooting linked filters
 
-If you're not seeing what you expect with linked filters, make sure that your table relationships are [set up to support linked filters](#set-up-tables-for linked-filters) . See [Troubleshooting linked filters](../troubleshooting-guide/linked-filters.md) for more troubleshooting information.
+If you're not seeing what you expect with linked filters, make sure that your table relationships are [set up to support linked filters](#set-up-tables-for linked-filters) . See [Troubleshooting linked filters](../../troubleshooting-guide/linked-filters.md) for more troubleshooting information.

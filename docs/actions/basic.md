@@ -10,7 +10,7 @@ If you only want to give people the option to update a subset of columns, or upd
 
 ## Creating basic actions
 
-Once actions are enabled, you can create basic actions on a new or existing [model](../data-modeling/models.md) that only wraps a single database table.
+Once actions are enabled, you can create basic actions on a new or existing [model](../../data-modeling/models.md) that only wraps a single database table.
 
 1. Select a model and click on the **info** button, then click on **Model detail**.
 2. On the model detail page, click on the **Actions** tab.
@@ -54,7 +54,7 @@ When setting up actions on a dashboard, you can either prompt the person to fill
 
 The Update basic action requires you to pass a value for the entity key.
 
-See [Actions in dashboards](../dashboards/actions.md).
+See [Actions in dashboards](../../dashboards/actions.md).
 
 ## Archiving basic actions
 
@@ -70,4 +70,4 @@ If you have basic actions enabled for a model, you can click on an individual re
 
 - [Introduction to actions](./introduction.md)
 - [Custom actions](./custom.md)
-- [Actions in dashboards](../dashboards/actions.md)
+- [Actions in dashboards](../../dashboards/actions.md)

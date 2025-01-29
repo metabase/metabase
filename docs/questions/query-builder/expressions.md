@@ -62,7 +62,7 @@ You can refer to columns in the current table, or to columns that are linked via
 
 ## Referencing Segments and Metrics
 
-You can refer to saved [metrics](../../data-modeling/metrics.md) and [segments](../../data-modeling/segments.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
+You can refer to saved [metrics](../../../data-modeling/metrics.md) and [segments](../../../data-modeling/segments.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
 
 ## Filter expressions and conditionals
 

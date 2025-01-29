@@ -92,13 +92,13 @@ You can manage [user attributes][user-attributes-def] such as names, emails, and
 
 ## Troubleshooting login issues
 
-- [Can't log in](../troubleshooting-guide/cant-log-in.md).
-- [Troubleshooting LDAP](../troubleshooting-guide/ldap.md)
+- [Can't log in](../../troubleshooting-guide/cant-log-in.md).
+- [Troubleshooting LDAP](../../troubleshooting-guide/ldap.md)
 
 ## Further reading
 
 - [Using LDAP for authentication and access control](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control).
-- [Permissions overview](../permissions/start.md).
+- [Permissions overview](../../permissions/start.md).
 
 [data-sandboxing-docs]: ../permissions/data-sandboxes.md
 [google-saml-docs]: ./saml-google.md

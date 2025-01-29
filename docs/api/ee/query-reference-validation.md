@@ -30,4 +30,4 @@ List of cards that have an invalid reference in their query. Shape of each card 
 
 ---
 
-[<< Back to API index](../../api-documentation.md)
+[<< Back to API index](../../../api-documentation.md)

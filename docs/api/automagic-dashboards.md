@@ -184,4 +184,4 @@ Return an automagic dashboard for an entity detail specified by `entity`
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

@@ -42,10 +42,10 @@ Dashboards verification works a little differently (since there's no underlying 
 
 Admins can verify the following items:
 
-- [Questions](../questions/start.md)
-- [Models](../data-modeling/models.md)
-- [Metrics](../data-modeling/metrics.md)
-- [Dashboards](../dashboards/introduction.md)
+- [Questions](../../questions/start.md)
+- [Models](../../data-modeling/models.md)
+- [Metrics](../../data-modeling/metrics.md)
+- [Dashboards](../../dashboards/introduction.md)
 
 Dashboard verification status has no affect on its questions. Questions must be verified independently.
 

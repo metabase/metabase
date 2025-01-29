@@ -14,7 +14,7 @@ This page covers the [View data](./data.md#view-data-permissions) permission lev
 
 ## Setting up connection impersonation
 
-> \*\*For impersonation to work for Redshift databases, the user account Metabase uses to [connect to your Redshift database](../databases/connections/redshift.md) must be a superuser, as Metabase will need to be able to run the [SET SESSION AUTHORIZATION](https://docs.aws.amazon.com/redshift/latest/dg/r_SET_SESSION_AUTHORIZATION) command, which can only be run by a database superuser.
+> \*\*For impersonation to work for Redshift databases, the user account Metabase uses to [connect to your Redshift database](../../databases/connections/redshift.md) must be a superuser, as Metabase will need to be able to run the [SET SESSION AUTHORIZATION](https://docs.aws.amazon.com/redshift/latest/dg/r_SET_SESSION_AUTHORIZATION) command, which can only be run by a database superuser.
 
 For impersonation access to work, you'll first need to set up roles in your database for Metabase to impersonate, then configure Metabase to impersonate those roles when people view or query data.
 
@@ -23,13 +23,13 @@ For impersonation access to work, you'll first need to set up roles in your data
 1. Create a new role (in Redshift, this would be a new user).
 2. Grant that role privileges.
 
-For exactly how to create a new role in your database and grant that role privileges, you'll need to consult your database's documentation. We also have some docs on [users, roles, and privileges](../databases/users-roles-privileges.md) that can help you get started.
+For exactly how to create a new role in your database and grant that role privileges, you'll need to consult your database's documentation. We also have some docs on [users, roles, and privileges](../../databases/users-roles-privileges.md) that can help you get started.
 
 ### In your Metabase, set up impersonation and specify a user attribute
 
-1. **Create a [new group](../people-and-groups/managing.md#groups)**, or select an existing group.
+1. **Create a [new group](../../people-and-groups/managing.md#groups)**, or select an existing group.
 
-2. **Assign a [user attribute](../people-and-groups/managing.md#adding-a-user-attribute) to people in that group.** You'll use this user attribute to associate people in that group with a role that you created in your database. For example, if you created a role named `sales` in your database with access to a subset of tables relevant to the sales team, you would add a user attribute called `db_role` (or whatever you want to call the attribute) and assign the value `sales` to the person's `db_role`. The value of the attribute (`sales` in this case) should match the name of the role in your database. Only some databases enforce case sensitivity, so you might want to make sure the attribute's value and the database's role match exactly.
+2. **Assign a [user attribute](../../people-and-groups/managing.md#adding-a-user-attribute) to people in that group.** You'll use this user attribute to associate people in that group with a role that you created in your database. For example, if you created a role named `sales` in your database with access to a subset of tables relevant to the sales team, you would add a user attribute called `db_role` (or whatever you want to call the attribute) and assign the value `sales` to the person's `db_role`. The value of the attribute (`sales` in this case) should match the name of the role in your database. Only some databases enforce case sensitivity, so you might want to make sure the attribute's value and the database's role match exactly.
 
 3. **Apply the impersonation access to that group.**. Hit Cmd/Ctrl + K to bring up the command palette. Search for **Permissions**. Or go to **Admin settings** > **Permissions** > **Data**.
 

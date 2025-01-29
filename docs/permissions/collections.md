@@ -8,7 +8,7 @@ redirect_from:
 
 ![Collection detail](../images/collection-detail.png)
 
-You can use [collections](../exploration-and-organization/collections.md) to organize questions, dashboards, models, timelines, and other collections. You can set permissions on those collections to determine which groups of people can view and curate collections' items.
+You can use [collections](../../exploration-and-organization/collections.md) to organize questions, dashboards, models, timelines, and other collections. You can set permissions on those collections to determine which groups of people can view and curate collections' items.
 
 Metabase starts out with a default top-level collection which is called **Our analytics**, which every other collection is saved inside of.
 
@@ -32,11 +32,11 @@ There are three permission levels for collections:
 
 ### Curate access
 
-The group can view, edit, move, delete, and pin items saved in this collection, and can save or move new items into it. The group can also create new sub-collections within this collection. The group can also create and edit [events and timelines](../exploration-and-organization/events-and-timelines.md).
+The group can view, edit, move, delete, and pin items saved in this collection, and can save or move new items into it. The group can also create new sub-collections within this collection. The group can also create and edit [events and timelines](../../exploration-and-organization/events-and-timelines.md).
 
 ### View access
 
-The group can see all the questions, dashboards, and models in the collection, as well as [events and timelines](../exploration-and-organization/events-and-timelines.md).
+The group can see all the questions, dashboards, and models in the collection, as well as [events and timelines](../../exploration-and-organization/events-and-timelines.md).
 
 ### No access
 
@@ -74,7 +74,7 @@ A group can be given access to a collection located somewhere within one or more
 
 ## Deleting collections
 
-Users with curate permission for a collection can move collections to Trash, see [Delete and Restore](../exploration-and-organization/delete-and-restore.md).
+Users with curate permission for a collection can move collections to Trash, see [Delete and Restore](../../exploration-and-organization/delete-and-restore.md).
 
 ## Pinning items in collections
 
@@ -94,7 +94,7 @@ The "Our analytics" collection and individual personal collections are invincibl
 
 ### Usage analytics
 
-See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
+See [Usage analytics](../../usage-and-performance-tools/usage-analytics.md).
 
 ### Personal collections
 

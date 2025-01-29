@@ -13,7 +13,7 @@ redirect_from:
 
 **Interactive embedding** is what you want if you want to offer [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
 
-Interactive embedding is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
+Interactive embedding is the only type of embedding that integrates with your [permissions](../../permissions/introduction.md) and [SSO](../../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query_builder) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
 
 ## Interactive embedding demo
 
@@ -27,10 +27,10 @@ Check out the [Interactive embedding quick start](https://www.metabase.com/docs/
 
 ## Prerequisites for interactive embedding
 
-1. Make sure you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise plan](https://store.metabase.com/checkout/login-details).
-2. Organize people into Metabase [groups](../people-and-groups/start.md).
-3. Set up [permissions](../permissions/introduction.md) for each group.
-4. Set up [SSO](../people-and-groups/start.md#authentication) to automatically apply permissions and show people the right data upon sign-in. In general, **we recommend using [SSO with JWT](../people-and-groups/authenticating-with-jwt.md)**.
+1. Make sure you have a [license token](../../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise plan](https://store.metabase.com/checkout/login-details).
+2. Organize people into Metabase [groups](../../people-and-groups/start.md).
+3. Set up [permissions](../../permissions/introduction.md) for each group.
+4. Set up [SSO](../../people-and-groups/start.md#authentication) to automatically apply permissions and show people the right data upon sign-in. In general, **we recommend using [SSO with JWT](../../people-and-groups/authenticating-with-jwt.md)**.
 
 If you're dealing with a [multi-tenant](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics) situation, check out our recommendations for [Configuring permissions for different customer schemas](https://www.metabase.com/learn/metabase-basics/administration/permissions/multi-tenant-permissions).
 
@@ -48,8 +48,8 @@ If you have your app running locally, and you're using the Pro Cloud version, or
 1. Create an iframe with a `src` attribute set to:
    - the [URL](#pointing-an-iframe-to-a-metabase-url) of the Metabase page you want to embed, or
    - an [authentication endpoint](#pointing-an-iframe-to-an-authentication-endpoint) that redirects to your Metabase URL.
-2. Optional: Depending on the way your web app is set up, set [environment variables](../configuring-metabase/environment-variables.md) to:
-   - [Add your license token](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
+2. Optional: Depending on the way your web app is set up, set [environment variables](../../configuring-metabase/environment-variables.md) to:
+   - [Add your license token](../../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
    - [Embed Metabase in a different domain](#embedding-metabase-in-a-different-domain).
    - [Secure your interactive embed](#securing-interactive-embeds).
 3. Optional: Enable communication to and from the embedded Metabase using supported [`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) messages:
@@ -63,7 +63,7 @@ Once you're ready to roll out your interactive embed, make sure that people **al
 
 Go to your Metabase instance and find the page that you want to embed.
 
-For example, to embed your Metabase home page, set the `src` attribute to your [site URL](../configuring-metabase/settings.md#site-url), such as:
+For example, to embed your Metabase home page, set the `src` attribute to your [site URL](../../configuring-metabase/settings.md#site-url), such as:
 
 ```
 http://metabase.yourcompany.com/
@@ -85,7 +85,7 @@ You'll need to set the `src` attribute to your auth endpoint, with a `return_to`
 https://metabase.example.com/auth/sso?return_to=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1
 ```
 
-If you're using [JWT](../people-and-groups/authenticating-with-jwt.md), you can use the relative path for the redirect (i.e., your Metabase URL without the [site URL](../configuring-metabase/settings.md#site-url)). For example, to send people to a Metabase page at `/dashboard/1`:
+If you're using [JWT](../../people-and-groups/authenticating-with-jwt.md), you can use the relative path for the redirect (i.e., your Metabase URL without the [site URL](../../configuring-metabase/settings.md#site-url)). For example, to send people to a Metabase page at `/dashboard/1`:
 
 ```
 https://metabase.example.com/auth/sso?jwt=<token>&return_to=%2Fdashboard%2F1
@@ -117,7 +117,7 @@ SameSite values include:
 - **None**: Allows all cross-site requests. Incompatible with most Safari and iOS browsers, such as Chrome on iOS. If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request.
 - **Strict** (not recommended): Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Metabase.
 
-You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite).
+You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../../configuring-metabase/environment-variables.md#mb_session_cookie_samesite).
 
 If you're using Safari, you'll need to [allow cross-site tracking](https://support.apple.com/en-tj/guide/safari/sfri40732/mac). Depending on the browser, you may also run into issues when viewing emdedded items in private/incognito tabs.
 
@@ -127,7 +127,7 @@ Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web
 
 Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session. If you enjoy diagrammed auth flows, check out [Interactive embedding with SSO](https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds).
 
-To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE`](../configuring-metabase/environment-variables.md#max_session_age) to a number in minutes. The default value is 20,160 (two weeks).
+To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE`](../../configuring-metabase/environment-variables.md#max_session_age) to a number in minutes. The default value is 20,160 (two weeks).
 
 For example, to keep people signed in for 24 hours at most:
 
@@ -147,7 +147,7 @@ To manually log someone out of Metabase, load the following URL (for example, in
 https://metabase.yourcompany.com/auth/logout
 ```
 
-If you're using [JWT](../people-and-groups/authenticating-with-jwt.md) for SSO, we recommend setting the `exp` (expiration time) property to a short duration (e.g., 1 minute).
+If you're using [JWT](../../people-and-groups/authenticating-with-jwt.md) for SSO, we recommend setting the `exp` (expiration time) property to a short duration (e.g., 1 minute).
 
 ## Supported postMessage messages _from_ embedded Metabase
 
@@ -204,15 +204,15 @@ To change an embedding URL, send a "location" message from your app to Metabase:
 
 ## Group strategies with sandboxing
 
-If you want multiple people from a single customer account to collaborate on questions and dashboards, you'll need to set up one [group](../people-and-groups/managing.md#groups) per customer account.
+If you want multiple people from a single customer account to collaborate on questions and dashboards, you'll need to set up one [group](../../people-and-groups/managing.md#groups) per customer account.
 
-You can handle [data sandboxing](../permissions/data-sandboxes.md) with a single, separate group that just sandboxes your data. For example, each person could be part of a customer group that sets up data permissions with sandboxing via a certain attribute that applies to everyone across all your customer accounts.
+You can handle [data sandboxing](../../permissions/data-sandboxes.md) with a single, separate group that just sandboxes your data. For example, each person could be part of a customer group that sets up data permissions with sandboxing via a certain attribute that applies to everyone across all your customer accounts.
 
 Additionally, each person within a single customer account could also be a member of a group specific to that customer account. That way they can collaborate on collections with other people in their organization, without seeing stuff created by people from other customers' accounts.
 
 ## Showing or hiding Metabase UI components
 
-To change the interface of your interactive embed, you can add parameters to the end of your embedding URL. If you want to change the colors or fonts in your embed, see [Customizing appearance](../configuring-metabase/appearance.md).
+To change the interface of your interactive embed, you can add parameters to the end of your embedding URL. If you want to change the colors or fonts in your embed, see [Customizing appearance](../../configuring-metabase/appearance.md).
 
 For example, you can disable Metabase's [top nav bar](#top_nav) and [side nav menu](#side_nav) like this:
 
@@ -281,7 +281,7 @@ You can change the language of the user interface via a parameter. For example, 
 locale=es
 ```
 
-Read more about [localization](../configuring-metabase/localization.md).
+Read more about [localization](../../configuring-metabase/localization.md).
 
 ### `logo`
 
@@ -349,4 +349,4 @@ To build a sample interactive embed using SSO with JWT, see our reference apps:
 - [Interactive embedding quick start](https://www.metabase.com/docs/latest/embedding/interactive-embedding-quick-start-guide)
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).
 - [Permissions strategies](https://www.metabase.com/learn/metabase-basics/administration/permissions/strategy).
-- [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+- [Customizing Metabase's appearance](../../configuring-metabase/appearance.md).

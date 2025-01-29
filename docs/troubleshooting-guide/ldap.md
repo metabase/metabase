@@ -4,7 +4,7 @@ title: Troubleshooting LDAP
 
 # Troubleshooting LDAP
 
-Metabase can use LDAP for authentication. [This article](../people-and-groups/ldap.md) explains how to set it up, and the guide below will help you troubleshoot if anything goes wrong. If your problem isn't specific to LDAP, go to [our troubleshooting guide for logging in](./cant-log-in.md).
+Metabase can use LDAP for authentication. [This article](../../people-and-groups/ldap.md) explains how to set it up, and the guide below will help you troubleshoot if anything goes wrong. If your problem isn't specific to LDAP, go to [our troubleshooting guide for logging in](./cant-log-in.md).
 
 ## LDAP sample configuration
 

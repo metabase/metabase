@@ -58,4 +58,4 @@ Update an existing `NativeQuerySnippet`.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

@@ -19,7 +19,7 @@ When viewing a chart, you can also click through questions to explore the data i
 
 ![Drill-through menu](../images/drill-through-menu.png)
 
-The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. Full drill-through menu is only available for questions built using the query builder. Questions build with SQL/native queries will have only have [limited drill-through actions](../native-editor/writing-sql.md#drill-though-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
+The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. Full drill-through menu is only available for questions built using the query builder. Questions build with SQL/native queries will have only have [limited drill-through actions](../../native-editor/writing-sql.md#drill-though-in-sql-questions). For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
 
 ## Creating a new question with the query builder
 
@@ -27,8 +27,8 @@ From the **+ New** dropdown, select **Question**, then pick your starting data:
 
 You can start a question from:
 
-- **A model**. A [model](../../data-modeling/models.md) is a special kind of saved question meant to be used as a good starting point for questions. Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.
-- **A metric**. [Metrics](../../data-modeling/metrics.md) are pre-defined calculations. If you pick a metric as a starting point for a question, Metabase will create a question with the same data source as the selected metric, and apply the metric. You'll be able to add more joins, filter, and summaries.
+- **A model**. A [model](../../../data-modeling/models.md) is a special kind of saved question meant to be used as a good starting point for questions. Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.
+- **A metric**. [Metrics](../../../data-modeling/metrics.md) are pre-defined calculations. If you pick a metric as a starting point for a question, Metabase will create a question with the same data source as the selected metric, and apply the metric. You'll be able to add more joins, filter, and summaries.
 - **Tables**. You'll need to specify the database and the table in that database as the starting point for your question.
 - A **saved question**. You can use the results of any question as the starting point for a new question.
 
@@ -59,13 +59,13 @@ To the right of each completed step is a **Preview** button (looks like a Play b
 
 ## Picking data
 
-The data section is where you select the data you want to work with. Here you'll pick a [model](../../data-modeling/models.md), a [metric](../../data-modeling/metrics.md), a table from a database, or a saved question.
+The data section is where you select the data you want to work with. Here you'll pick a [model](../../../data-modeling/models.md), a [metric](../../../data-modeling/metrics.md), a table from a database, or a saved question.
 
 ![data picker](../images/data-picker.png)
 
 You can see the data source in a new browser tab by Cmd/Ctrl+Clicking on the data source's name in the query builder.
 
-To choose which columns to include in your query, click on the arrow next to the data source. You'll also be able [hide columns](../visualizations/table.md#add) from the table view once you visualize your results.
+To choose which columns to include in your query, click on the arrow next to the data source. You'll also be able [hide columns](../../visualizations/table.md#add) from the table view once you visualize your results.
 
 ### Adding or removing columns in a table
 
@@ -83,11 +83,11 @@ See [filters](./filters.md).
 
 ## Visualizing your data
 
-Check out [visualizing results](../visualizations/visualizing-results.md).
+Check out [visualizing results](../../visualizations/visualizing-results.md).
 
 ## Column heading drill-through
 
-When viewing a [table](../visualizations/table.md), clicking on the heading of a column gives you different options, depending on the columns data type. See [table](../visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
+When viewing a [table](../../visualizations/table.md), clicking on the heading of a column gives you different options, depending on the columns data type. See [table](../../visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
 
 ## Custom expressions
 
@@ -103,7 +103,7 @@ For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor(
 
 Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Custom columns that you add aren't permanently added to your table; the columns will only be present in the given question.
 
-You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations. See [list of expressions](../query-builder/expressions-list.md).
+You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations. See [list of expressions](../../query-builder/expressions-list.md).
 
 ## Sorting results
 
@@ -123,11 +123,11 @@ Under the hood, all Metabase questions are converted to SQL or another language 
 
 ![SQL sidebar](../images/sql-sidebar.png)
 
-To view the native query, you must have [query builder and native permissions](../../permissions/data.md).
+To view the native query, you must have [query builder and native permissions](../../../permissions/data.md).
 
 ### Convert a query-builder question to SQL
 
-You can also convert the question to a [native editor question](../native-editor/writing-sql.md). From the query builder screen:
+You can also convert the question to a [native editor question](../../native-editor/writing-sql.md). From the query builder screen:
 
 1. Click the **Console** icon in the upper right of the query builder.
 2. Click **Convert the question to SQL** option in the bottom right below the SQL code.

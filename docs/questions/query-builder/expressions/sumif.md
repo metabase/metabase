@@ -18,12 +18,12 @@ Example: in the table below, `SumIf([Payment], [Plan] = "Basic")` would return 2
 | 200     | Business |
 | 400     | Premium  |
 
-> [Aggregation formulas](../expressions-list.md#aggregations) like `sumif` should be added to the query builder's [**Summarize** menu](../../query-builder/summarizing-and-grouping.md) > **Custom Expression** (scroll down in the menu if needed).
+> [Aggregation formulas](../../expressions-list.md#aggregations) like `sumif` should be added to the query builder's [**Summarize** menu](../../../query-builder/summarizing-and-grouping.md) > **Custom Expression** (scroll down in the menu if needed).
 
 ## Parameters
 
-- `column` can be the name of a numeric column, or a [function](../expressions-list.md#functions) that returns a numeric column.
-- `condition` is a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`), like the conditional statement `[Payment] > 100`.
+- `column` can be the name of a numeric column, or a [function](../../expressions-list.md#functions) that returns a numeric column.
+- `condition` is a [function](../../expressions-list.md#functions) or [conditional statement](../../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`), like the conditional statement `[Payment] > 100`.
 
 ## Multiple conditions
 
@@ -74,7 +74,7 @@ Returns 400 on the sample data.
 To get a conditional subtotal for a category or group, such as the total payments per plan, you'll:
 
 1. Write a `sumif` formula with your conditions.
-2. Add a [**Group by**](../../query-builder/summarizing-and-grouping.md) column in the query builder.
+2. Add a [**Group by**](../../../query-builder/summarizing-and-grouping.md) column in the query builder.
 
 | Payment | Plan     | Date Received    |
 | ------- | -------- | ---------------- |
@@ -136,7 +136,7 @@ Different ways to do the same thing, because CSV files still make up 40% of the 
 
 ### case
 
-You can combine [`Sum`](../expressions-list.md#sum) and [`case`](./case.md):
+You can combine [`Sum`](../../expressions-list.md#sum) and [`case`](./case.md):
 
 ```
 Sum(case([Plan] = "Basic", [Payment]))
@@ -159,7 +159,7 @@ sum(case([Plan] = "Basic", [Payment], [Contract]))
 
 ### CumulativeSum
 
-`SumIf` doesn't do running totals. You'll need to combine the [CumulativeSum](../expressions-list.md#cumulativesum) aggregation with the [`case`](./case.md) formula.
+`SumIf` doesn't do running totals. You'll need to combine the [CumulativeSum](../../expressions-list.md#cumulativesum) aggregation with the [`case`](./case.md) formula.
 
 For example, to get the running total of payments for the Business and Premium plans by month (using our [payment sample data](#conditional-subtotals-by-group)):
 
@@ -211,7 +211,7 @@ The `SELECT` part of the SQl query matches the Metabase `SumIf` expression:
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 ```
 
-The `GROUP BY` part of the SQL query maps to a Metabase [**Group by**](../../query-builder/summarizing-and-grouping.md) column set to "Date Received: Month".
+The `GROUP BY` part of the SQL query maps to a Metabase [**Group by**](../../../query-builder/summarizing-and-grouping.md) column set to "Date Received: Month".
 
 ### Spreadsheets
 
@@ -265,7 +265,7 @@ import datetime as dt
     df_filtered.groupby('Date Received: Month')['Payment'].sum()
 ```
 
-These steps will produce the same result as the Metabase `SumIf` expression (with the [**Group by**](../../query-builder/summarizing-and-grouping.md) column set to "Date Received: Month").
+These steps will produce the same result as the Metabase `SumIf` expression (with the [**Group by**](../../../query-builder/summarizing-and-grouping.md) column set to "Date Received: Month").
 
 ```
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
@@ -273,5 +273,5 @@ SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 
 ## Further reading
 
-- [Custom expressions documentation](../expressions.md)
+- [Custom expressions documentation](../../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)

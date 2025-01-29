@@ -38,4 +38,4 @@ Update Slack related settings. You must be a superuser to do this. Also updates 
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

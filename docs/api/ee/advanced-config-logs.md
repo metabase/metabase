@@ -29,4 +29,4 @@ Fetch rows for the month specified by `:yyyy-mm` from the query_execution logs t
 
 ---
 
-[<< Back to API index](../../api-documentation.md)
+[<< Back to API index](../../../api-documentation.md)

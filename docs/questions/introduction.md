@@ -9,7 +9,7 @@ redirect_from:
 
 ![Metabase question](../images/question.png)
 
-Questions in Metabase are queries, their results, and their visualization. Questions are the basic analytical unit in Metabase. You can think about questions as saved queries that you can display as tables or charts. You can organize questions into collections and dashboards. You can [embed questions](../embedding/start.md), share links to them, export their results, and have them alert you when results are interesting.
+Questions in Metabase are queries, their results, and their visualization. Questions are the basic analytical unit in Metabase. You can think about questions as saved queries that you can display as tables or charts. You can organize questions into collections and dashboards. You can [embed questions](../../embedding/start.md), share links to them, export their results, and have them alert you when results are interesting.
 
 ## Creating a new question
 
@@ -42,7 +42,7 @@ Some kinds of saved questions, however, can't be used as source data:
 
 ## Saving questions
 
-Once you've built your query and [visualized its results](./visualizations/visualizing-results.md), you can save a question to a [dashboard](../dashboards/introduction.md) (the default), or to a [collection](../exploration-and-organization/collections.md). You'll need to name the question, include an optional description, and save it to a dashboard or a collection.
+Once you've built your query and [visualized its results](./visualizations/visualizing-results.md), you can save a question to a [dashboard](../../dashboards/introduction.md) (the default), or to a [collection](../../exploration-and-organization/collections.md). You'll need to name the question, include an optional description, and save it to a dashboard or a collection.
 
 ### Saving questions to dashboards
 
@@ -50,7 +50,7 @@ Questions that live in a dashboard are only visible in that dashboard. These que
 
 ### Saving questions to collections
 
-Questions saved to a collection can be added to multiple dashboards. Moving a question from one collection to another collection won't have any effect on the dashboards the question has been added to. In order to save a question to a collection, you'll need to be in a group with [curate access](../permissions/collections.md#curate-access) to that collection.
+Questions saved to a collection can be added to multiple dashboards. Moving a question from one collection to another collection won't have any effect on the dashboards the question has been added to. In order to save a question to a collection, you'll need to be in a group with [curate access](../../permissions/collections.md#curate-access) to that collection.
 
 ## Moving questions from collections to dashboards (and vice versa)
 
@@ -59,7 +59,7 @@ Whether you can move a question in a collection into a dashboard depends on how 
 You can move the question from a collection into a dashboard if either:
 
 - No other dashboards use that question.
-- The other dashboards that use that question live in collections you have [curate access](../permissions/collections.md#curate-access) to. In this case, Metabase will tell you which other dashboards use that question, and you'll have to decide whether you're okay with removing the question from those dashboards.
+- The other dashboards that use that question live in collections you have [curate access](../../permissions/collections.md#curate-access) to. In this case, Metabase will tell you which other dashboards use that question, and you'll have to decide whether you're okay with removing the question from those dashboards.
 
 ## Info about your question
 
@@ -73,11 +73,11 @@ Once you save a question, you can click on the **info** icon in the upper right 
 - Who created the question, and who edited it last
 - The collection or dashboard the question is saved in
 - The data the question is based on.
-- The question's Entity ID (which you can use with [Serialization](../installation-and-operation/serialization.md) to keep IDs consistent across multiple Metabases).
+- The question's Entity ID (which you can use with [Serialization](../../installation-and-operation/serialization.md) to keep IDs consistent across multiple Metabases).
 
 ### History tab
 
-See [history](../exploration-and-organization/history.md).
+See [history](../../exploration-and-organization/history.md).
 
 ## Downloading your question's results
 
@@ -85,21 +85,21 @@ See [exporting results](./exporting-results.md).
 
 ## Verifying a question
 
-See [content verification](../exploration-and-organization/content-verification.md).
+See [content verification](../../exploration-and-organization/content-verification.md).
 
 ## Bookmark a question
 
-Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Bookmarks](../exploration-and-organization/exploration.md#bookmarks).
+Click the **bookmark** icon to pin a question to your Metabase sidebar. See [Bookmarks](../../exploration-and-organization/exploration.md#bookmarks).
 
 ## Turning a question into a model
 
-You can turn a question into a model to let others know that the results make a good starting point for new questions. See [models](../data-modeling/models.md).
+You can turn a question into a model to let others know that the results make a good starting point for new questions. See [models](../../data-modeling/models.md).
 
 ## Caching question results
 
 {% include plans-blockquote.html feature="Caching question results" %}
 
-See [caching per question](../configuring-metabase/caching.md#question-caching-policy).
+See [caching per question](../../configuring-metabase/caching.md#question-caching-policy).
 
 ## Setting up alerts
 
@@ -107,8 +107,8 @@ You can set up questions to run periodically and notify you if the results are i
 
 ## Viewing events on your chart
 
-If your results are a time series, you can display events on along the x-axis. See [events and timelines](../exploration-and-organization/events-and-timelines.md).
+If your results are a time series, you can display events on along the x-axis. See [events and timelines](../../exploration-and-organization/events-and-timelines.md).
 
 ## Deleting a question
 
-See [delete and restore](../exploration-and-organization/delete-and-restore.md).
+See [delete and restore](../../exploration-and-organization/delete-and-restore.md).

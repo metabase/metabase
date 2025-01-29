@@ -93,7 +93,7 @@ Here you set things like:
 
 ![Goal line on chart](../images/goal-line.png)
 
-Goal lines can be used in conjunction with [alerts](../alerts.md) to send an email or a Slack message when your metric cross this line.
+Goal lines can be used in conjunction with [alerts](../../alerts.md) to send an email or a Slack message when your metric cross this line.
 
 ### Trend lines
 

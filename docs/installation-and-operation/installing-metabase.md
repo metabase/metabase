@@ -47,7 +47,7 @@ See [Upgrading Metabase](upgrading-metabase.md).
 ## Other installation options
 
 - [Running on Podman](running-metabase-on-podman.md)
-- [Building Metabase from source](../developers-guide/start.md)
+- [Building Metabase from source](../../developers-guide/start.md)
 - [Running on Azure Web Apps](running-metabase-on-azure.md)
 - [Running on Debian as a service](running-metabase-on-debian.md)
 
