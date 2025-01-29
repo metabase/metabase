@@ -71,6 +71,7 @@ export function WhatsNewNotification() {
           href={url}
           target="_blank"
           rel="noreferrer"
+          color="var(--color-pizza)"
         >
           {t`See what's new`}
         </Anchor>

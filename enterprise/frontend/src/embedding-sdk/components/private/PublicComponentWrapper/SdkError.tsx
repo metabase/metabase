@@ -1,3 +1,4 @@
+import styled from "@emotion/styled";
 import { jt } from "ttag";
 
 import { useSdkSelector } from "embedding-sdk/store";
@@ -6,6 +7,10 @@ import type { SdkErrorComponentProps } from "embedding-sdk/store/types";
 import Alert from "metabase/core/components/Alert";
 import { color } from "metabase/lib/colors";
 import { Box, Center, Code } from "metabase/ui";
+
+export const Something = styled.div`
+  color: var(--color-pizza2);
+`;
 
 export const SdkError = ({ message }: SdkErrorComponentProps) => {
   const CustomError = useSdkSelector(getErrorComponent);

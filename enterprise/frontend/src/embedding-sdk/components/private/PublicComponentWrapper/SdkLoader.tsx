@@ -1,3 +1,5 @@
+import styled from "@emotion/styled";
+
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoaderComponent } from "embedding-sdk/store/selectors";
 import { Center, Loader } from "metabase/ui";
@@ -13,3 +15,7 @@ export const SdkLoader = ({ className }: { className?: string }) => {
     </Center>
   );
 };
+
+export const SomethingElse = styled.div({
+  color: "var(--color-pizza2)",
+});
