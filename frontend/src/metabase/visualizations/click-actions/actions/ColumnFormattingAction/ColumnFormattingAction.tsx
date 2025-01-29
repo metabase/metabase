@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import { updateSettings } from "metabase/visualizations/lib/settings";
@@ -16,7 +17,16 @@ import { PopoverRoot } from "./ColumnFormattingAction.styled";
 export const POPOVER_TEST_ID = "column-formatting-settings";
 
 export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  // HACK: we should pass column's question instance to this function
+  const isVisualizer = _.isEqual(Object.keys(question.card()), [
+    "display",
+    "visualization_settings",
+  ]);
+
+  let isEditable = true;
+  if (!isVisualizer) {
+    isEditable = Lib.queryDisplayInfo(question.query()).isEditable;
+  }
 
   if (
     !clicked ||
