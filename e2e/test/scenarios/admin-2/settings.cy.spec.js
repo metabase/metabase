@@ -287,6 +287,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       cy.findByTestId("admin-list-settings-items").within(() => {
         cy.findAllByTestId("settings-sidebar-link").as("settingsOptions");
         cy.get("@settingsOptions").first().contains("Setup");
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.get("@settingsOptions").last().contains(lastItem);
       });
     },
@@ -416,6 +417,7 @@ describe.skip(
     }
 
     function getCellText() {
+      // eslint-disable-next-line no-unsafe-element-filtering
       return cy.get("[data-testid=cell-data]").eq(-1).invoke("text");
     }
 
@@ -783,7 +785,7 @@ describe("scenarios > admin > localization", () => {
     // summarize: Count by CreatedAt: Week
 
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.createQuestion({
+    H.createQuestion({
       name: "Orders created before June 1st 2022",
       query: {
         "source-table": ORDERS_ID,
@@ -808,7 +810,7 @@ describe("scenarios > admin > localization", () => {
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "13604",
       query: {
         "source-table": ORDERS_ID,
@@ -856,7 +858,7 @@ describe("scenarios > admin > localization", () => {
   // TODO:
   //  - Keep an eye on this test in CI and update the week range as needed.
   it("should respect start of the week in SQL questions with filters (metabase#14294)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "14294",
         native: {
@@ -1021,7 +1023,9 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.wait(2000).findAllByText("Select…").first().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("NAME").click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText("Select…").last().click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText("NAME").last().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add map").click();

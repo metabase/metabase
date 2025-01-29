@@ -199,7 +199,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
     };
 
     it("should work despite it not showing up in the widget type list", () => {
-      cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+      H.createNativeQuestion(questionDetails, { visitQuestion: true });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 42 rows");
 

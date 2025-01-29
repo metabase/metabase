@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import SelectList from "metabase/components/SelectList";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";

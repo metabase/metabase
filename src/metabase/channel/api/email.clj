@@ -4,9 +4,9 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
-   [compojure.core :refer [DELETE POST PUT]]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
    [metabase.models.setting :as setting]
    [metabase.util :as u]
@@ -89,11 +89,11 @@
               :when        (some? value)]
           [setting-name value])))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/"
+(api.macros/defendpoint :put "/"
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
-  [:as {settings :body}]
-  {settings :map}
+  [_route-params
+   _query-params
+   settings :- :map]
   (validation/check-has-application-permission :setting)
   (let [;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
         ;; the obfuscated version
@@ -125,16 +125,14 @@
       {:status 400
        :body   (humanize-error-messages response)})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/"
+(api.macros/defendpoint :delete "/"
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
   []
   (validation/check-has-application-permission :setting)
   (setting/set-many! (zipmap (keys mb-to-smtp-settings) (repeat nil)))
   api/generic-204-no-content)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/test"
+(api.macros/defendpoint :post "/test"
   "Send a test email using the SMTP Settings. You must be a superuser or have `setting` permission to do this.
   Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
   []

@@ -1,9 +1,11 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import cx from "classnames";
-import type { ComponentPropsWithoutRef } from "react";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import {
+  LoadingAndErrorWrapper,
+  type LoadingAndErrorWrapperProps,
+} from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { isEmbeddingSdk } from "metabase/env";
@@ -12,13 +14,20 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
+interface DashboardLoadingAndErrorWrapperProps
+  extends LoadingAndErrorWrapperProps {
+  isFullscreen: boolean;
+  isNightMode: boolean;
+  isFullHeight: boolean;
+}
+
 export const DashboardLoadingAndErrorWrapper = styled(
   ({
     isFullscreen,
     isNightMode,
     className,
     ...props
-  }: ComponentPropsWithoutRef<typeof LoadingAndErrorWrapper>) => {
+  }: DashboardLoadingAndErrorWrapperProps) => {
     return (
       <LoadingAndErrorWrapper
         className={cx(className, DashboardS.Dashboard, {
@@ -141,6 +150,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
 
 export const ParametersAndCardsContainer = styled.div<{
   shouldMakeDashboardHeaderStickyAfterScrolling: boolean;
+  isEmpty: boolean;
 }>`
   flex: auto;
   min-width: 0;
@@ -155,8 +165,8 @@ export const ParametersAndCardsContainer = styled.div<{
 
   padding-bottom: 40px;
   /* Makes sure it doesn't use all the height, so the actual content height could be used in embedding #37437 */
-  align-self: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
-    !shouldMakeDashboardHeaderStickyAfterScrolling && "flex-start"};
+  align-self: ${({ shouldMakeDashboardHeaderStickyAfterScrolling, isEmpty }) =>
+    !shouldMakeDashboardHeaderStickyAfterScrolling && !isEmpty && "flex-start"};
 `;
 
 export const FIXED_WIDTH = "1048px";

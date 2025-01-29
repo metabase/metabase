@@ -129,7 +129,7 @@ describe("issue 33079", () => {
   });
 
   it("underlying records drill should work in a non-English locale (metabase#33079)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
     H.cartesianChartCircle().eq(1).click({ force: true });
     H.popover()
       .findByText(/Order/) // See these Orders
@@ -154,7 +154,7 @@ describe("issue 34414", () => {
   });
 
   it("populate field values after re-adding filter on virtual table field (metabase#34414)", () => {
-    cy.createQuestion(INVOICE_MODEL_DETAILS).then(response => {
+    H.createQuestion(INVOICE_MODEL_DETAILS).then(response => {
       const modelId = response.body.id;
 
       H.visitQuestionAdhoc({
@@ -198,7 +198,7 @@ describe("issue 38176", () => {
   });
 
   it("restoring a question to a previous version should preserve the variables (metabase#38176)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "38176",
         native: {
@@ -253,7 +253,7 @@ describe("issue 38354", { tags: "@external" }, () => {
     H.restore();
     H.restore("postgres-12");
     cy.signInAsAdmin();
-    cy.createQuestion(QUESTION_DETAILS, { visitQuestion: true });
+    H.createQuestion(QUESTION_DETAILS, { visitQuestion: true });
   });
 
   it("should be possible to change source database (metabase#38354)", () => {
@@ -327,7 +327,7 @@ describe("issue 39102", () => {
   });
 
   it("should be able to preview a multi-stage query (metabase#39102)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
 
     H.getNotebookStep("data", { stage: 0 }).icon("play").click();
@@ -509,6 +509,7 @@ describe("issue 40435", () => {
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText("Product ID").click();
     H.queryBuilderHeader().findByText("Save").click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.modal().last().findByText("Save").click();
     cy.wait("@updateCard");
     H.visualize();
@@ -672,6 +673,7 @@ describe("issue 42244", () => {
       cy.findByText(COLUMN_NAME).realHover();
       cy.findByText("by month").should("be.visible").click();
     });
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Year").click();
     H.getNotebookStep("summarize")
       .findByText(`${COLUMN_NAME}: Year`)
@@ -694,7 +696,7 @@ describe("issue 42957", () => {
       },
     });
 
-    cy.createCollection({ name: "Collection without models" }).then(
+    H.createCollection({ name: "Collection without models" }).then(
       ({ body: collection }) => {
         cy.wrap(collection.id).as("collectionId");
       },
@@ -1159,13 +1161,14 @@ describe("issue 31960", () => {
   });
 
   it("should apply a date range filter for a query broken out by week (metabase#31960)", () => {
-    cy.createDashboardWithQuestions({ questions: [questionDetails] }).then(
+    H.createDashboardWithQuestions({ questions: [questionDetails] }).then(
       ({ dashboard }) => {
         H.visitDashboard(dashboard.id);
       },
     );
 
     H.getDashboardCard().within(() => {
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.cartesianChartCircle().eq(dotIndex).realHover();
     });
     H.assertEChartsTooltip({
@@ -1175,6 +1178,7 @@ describe("issue 31960", () => {
       ],
     });
     H.getDashboardCard().within(() => {
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.cartesianChartCircle().eq(dotIndex).click({ force: true });
     });
 
@@ -1486,6 +1490,7 @@ describe("issue 44668", () => {
 
     H.openNotebook();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().button("Custom column").click();
     H.enterCustomColumnDetails({
       formula: 'concat("abc_", [Count])',
@@ -1552,7 +1557,7 @@ describe("issue 44668", () => {
   });
 });
 
-describe("issue 44974", () => {
+describe("issue 44974", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
 
   beforeEach(() => {
@@ -2282,7 +2287,7 @@ describe("issue 48829", () => {
 
   it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after visiting a filtered question from a dashboard click action (metabase#48829)", () => {
     // Set up dashboard
-    cy.createDashboardWithQuestions({ questions: [questionDetails] }).then(
+    H.createDashboardWithQuestions({ questions: [questionDetails] }).then(
       ({ dashboard }) => {
         H.visitDashboard(dashboard.id);
       },

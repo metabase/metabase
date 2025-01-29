@@ -581,8 +581,10 @@
 
         (testing "a non-admin can update table metadata if they have data model perms for the table"
           (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 3"})))))
+            (mt/user-http-request :rasta :put 200 endpoint {:name "Table Test 3"})))))))
 
+(deftest table-rescan-values-test
+  (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
     (testing "POST /api/table/:id/rescan_values"
       (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
         (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
@@ -599,16 +601,20 @@
                                                          :create-queries :no
                                                          :data-model     {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
             (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" (mt/id :venues)))))
-        (is (= [1 2 3 4] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))))
+        (is (= [1 2 3 4] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))))))
 
+(deftest table-discard-values-test
+  (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
     (testing "POST /api/table/:id/discard_values"
       (testing "A non-admin can discard field values if they have data model perms for the table"
         (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
           (mt/user-http-request :rasta :post 403 (format "table/%d/discard_values" table-id)))
 
         (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-          (mt/user-http-request :rasta :post 200 (format "table/%d/discard_values" table-id)))))
+          (mt/user-http-request :rasta :post 200 (format "table/%d/discard_values" table-id)))))))
 
+(deftest table-fields-ordering-test
+  (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
     (testing "POST /api/table/:id/fields/order"
       (testing "A non-admin can set a custom field ordering if they have data model perms for the table"
         (mt/with-temp [:model/Field {field-1-id :id} {:table_id table-id}
@@ -618,8 +624,9 @@
                                   [field-2-id field-1-id]))
 
           (mt/with-all-users-data-perms-graph! {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-            (mt/user-http-request :rasta :put 200 (format "table/%d/fields/order" table-id)
-                                  [field-2-id field-1-id])))))))
+            (is (= {:success true}
+                   (mt/user-http-request :rasta :put 200 (format "table/%d/fields/order" table-id)
+                                         [field-2-id field-1-id])))))))))
 
 (deftest audit-log-generated-when-table-manual-scan
   (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]

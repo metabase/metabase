@@ -7,7 +7,7 @@ import _ from "underscore";
 
 import { deletePermanently } from "metabase/archive/actions";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";

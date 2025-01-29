@@ -1,8 +1,8 @@
 (ns metabase.api.segment
   "/api/segment endpoints."
   (:require
-   [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
@@ -14,14 +14,15 @@
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Create a new `Segment`."
-  [:as {{:keys [name description table_id definition], :as body} :body}]
-  {name        ms/NonBlankString
-   table_id    ms/PositiveInt
-   definition  ms/Map
-   description [:maybe :string]}
+  [_route-params
+   _query-params
+   {:keys [name description table_id definition], :as body} :- [:map
+                                                                [:name        ms/NonBlankString]
+                                                                [:table_id    ms/PositiveInt]
+                                                                [:definition  ms/Map]
+                                                                [:description {:optional true} [:maybe :string]]]]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check :model/Segment body)
   (let [segment (api/check-500
@@ -38,15 +39,13 @@
   (-> (api/read-check (t2/select-one :model/Segment :id id))
       (t2/hydrate :creator)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id"
+(api.macros/defendpoint :get "/:id"
   "Fetch `Segment` with ID."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (hydrated-segment id))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Fetch *all* `Segments`."
   []
   (as-> (t2/select :model/Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
@@ -74,47 +73,46 @@
       (events/publish-event! (if archive? :event/segment-delete :event/segment-update)
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id"
+(api.macros/defendpoint :put "/:id"
   "Update a `Segment` with ID."
-  [id :as {{:keys [name definition revision_message archived caveats description points_of_interest
-                   show_in_getting_started]
-            :as   body} :body}]
-  {id                      ms/PositiveInt
-   name                    [:maybe ms/NonBlankString]
-   definition              [:maybe :map]
-   revision_message        ms/NonBlankString
-   archived                [:maybe :boolean]
-   caveats                 [:maybe :string]
-   description             [:maybe :string]
-   points_of_interest      [:maybe :string]
-   show_in_getting_started [:maybe :boolean]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   body :- [:map
+            [:name                    {:optional true} [:maybe ms/NonBlankString]]
+            [:definition              {:optional true} [:maybe :map]]
+            [:revision_message        ms/NonBlankString]
+            [:archived                {:optional true} [:maybe :boolean]]
+            [:caveats                 {:optional true} [:maybe :string]]
+            [:description             {:optional true} [:maybe :string]]
+            [:points_of_interest      {:optional true} [:maybe :string]]
+            [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
   (write-check-and-update-segment! id body))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/:id"
+(api.macros/defendpoint :delete "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
-  [id revision_message]
-  {id               ms/PositiveInt
-   revision_message ms/NonBlankString}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [revision_message]} :- [:map
+                                  [:revision_message ms/NonBlankString]]]
   (log/warn "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id.")
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/revisions"
+(api.macros/defendpoint :get "/:id/revisions"
   "Fetch `Revisions` for `Segment` with ID."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/read-check :model/Segment id)
   (revision/revisions+details :model/Segment id))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/:id/revert"
+(api.macros/defendpoint :post "/:id/revert"
   "Revert a `Segement` to a prior `Revision`."
-  [id :as {{:keys [revision_id]} :body}]
-  {id          ms/PositiveInt
-   revision_id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [revision_id]} :- [:map
+                             [:revision_id ms/PositiveInt]]]
   (api/write-check :model/Segment id)
   (revision/revert!
    {:entity      :model/Segment
@@ -122,11 +120,10 @@
     :user-id     api/*current-user-id*
     :revision-id revision_id}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/related"
+(api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (-> (t2/select-one :model/Segment :id id) api/read-check xrays/related))
 
 (api/define-routes)

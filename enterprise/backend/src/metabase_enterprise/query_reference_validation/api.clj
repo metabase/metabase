@@ -1,8 +1,8 @@
 (ns metabase-enterprise.query-reference-validation.api
   (:require
-   [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.collection :as collection]
    [metabase.models.query-analysis :as query-analysis]
@@ -98,8 +98,7 @@
            {:limit (request/limit)
             :offset (request/offset)})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/invalid-cards"
+(api.macros/defendpoint :get "/invalid-cards"
   "List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an
   `errors` key. Supports pagination (`offset` and `limit`), so it returns something in the shape:
 
@@ -109,10 +108,11 @@
      :limit  50
      :offset 100
   ```"
-  [sort_column sort_direction collection_id]
-  {sort_column    [:maybe (into [:enum] valid-sort-columns)]
-   sort_direction [:maybe (into [:enum] valid-sort-directions)]
-   collection_id  [:maybe ms/PositiveInt]}
+  [_route-params
+   {:keys [sort_column sort_direction collection_id]} :- [:map
+                                                          [:sort_column    {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                                          [:sort_direction {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                                          [:collection_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (invalid-cards sort_column sort_direction collection_id))
 
 (defn +check-setting

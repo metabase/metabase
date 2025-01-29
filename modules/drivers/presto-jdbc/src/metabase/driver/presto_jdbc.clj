@@ -762,6 +762,8 @@
   ^LocalTime [^java.sql.Time sql-time]
   ;; Java 11 adds a simpler `ofInstant` method, but since we need to run on JDK 8, we can't use it
   ;; https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/LocalTime.html#ofInstant(java.time.Instant,java.time.ZoneId)
+  ;;
+  ;; TODO -- we run on Java 21+ now!!! FIXME !!!!!
   (let [^LocalTime lt (t/local-time sql-time)
         ^Long millis  (mod (.getTime sql-time) 1000)]
     (.with lt ChronoField/MILLI_OF_SECOND millis)))

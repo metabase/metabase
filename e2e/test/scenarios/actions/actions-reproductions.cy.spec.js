@@ -37,6 +37,7 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
+          // eslint-disable-next-line no-unsafe-element-filtering
           const dashCard = cy
             .findAllByTestId("dashcard-container")
             .last()
@@ -64,6 +65,7 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
+          // eslint-disable-next-line no-unsafe-element-filtering
           const dashCard = cy
             .findAllByTestId("dashcard-container")
             .last()
@@ -148,7 +150,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   };
 
   function setupDashboard() {
-    cy.createDashboard(DASHBOARD_DETAILS).then(
+    H.createDashboard(DASHBOARD_DETAILS).then(
       ({ body: { id: dashboardId } }) => {
         cy.wrap(dashboardId).as("dashboardId");
       },
@@ -192,7 +194,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion(MODEL_DETAILS, {
+    H.createQuestion(MODEL_DETAILS, {
       wrapId: true,
       idAlias: "modelId",
     });
@@ -224,18 +226,12 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
 });
 
 describe("issue 51020", () => {
-  function setupBasicActionsInModel() {
-    H.questionInfoButton().click();
-    H.sidesheet().findByText("Actions").click();
-    cy.button(/Create basic actions/).click();
-  }
-
   function setupDashboard({ questionName, modelName, columnName }) {
     H.newButton("Dashboard").click();
     H.modal().findByLabelText("Name").type("Dash");
     H.modal().button("Create").click();
 
-    cy.button("Add a saved question").click();
+    cy.button("Add a chart").click();
     cy.findByTestId("add-card-sidebar").findByText(questionName).click();
 
     cy.findByLabelText("Add a filter or parameter").click();
@@ -308,7 +304,7 @@ describe("issue 51020", () => {
     });
   });
 
-  describe("when primary key is not called 'id'", () => {
+  describe("when primary key is not called 'id'", { tags: "@external" }, () => {
     function createTemporaryTable() {
       H.queryWritableDB(
         "CREATE TABLE IF NOT EXISTS foo (foo INT PRIMARY KEY, name VARCHAR)",
@@ -403,3 +399,64 @@ describe("issue 51020", () => {
     });
   });
 });
+
+describe("issue 32840", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    H.createQuestion(
+      {
+        type: "model",
+        name: "Products model",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+      },
+      {
+        wrapId: true,
+        idAlias: "modelId",
+      },
+    );
+
+    cy.get("@modelId").then(modelId => {
+      H.createAction({
+        type: "implicit",
+        kind: "row/update",
+        name: "Update",
+        model_id: modelId,
+      });
+      H.visitModel(modelId);
+    });
+
+    cy.intercept("POST", "/api/action/*/execute").as("executeAction");
+  });
+
+  it("uses correct timestamp when executing implicit update action (metabase#32840)", () => {
+    cy.findAllByTestId("cell-data").eq(8).click();
+    H.modal().within(() => {
+      cy.findByText("July 19, 2023, 7:44 PM").should("be.visible");
+      cy.findByTestId("actions-menu").click();
+    });
+    H.popover().findByText("Update").should("be.visible").click();
+    H.modal()
+      .eq(1)
+      .within(() => {
+        cy.findByPlaceholderText("Created At").should(
+          "have.value",
+          "2023-07-19T19:44:56",
+        );
+        cy.button("Update").scrollIntoView().click();
+      });
+    cy.wait("@executeAction");
+    H.modal().findByText("July 19, 2023, 7:44 PM").should("be.visible");
+  });
+});
+
+function setupBasicActionsInModel() {
+  H.questionInfoButton().click();
+  H.sidesheet().findByText("Actions").click();
+  cy.button(/Create basic actions/).click();
+}

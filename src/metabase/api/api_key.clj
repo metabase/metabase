@@ -1,7 +1,6 @@
 (ns metabase.api.api-key
   "/api/api-key endpoints for CRUD management of API Keys"
   (:require
-   [compojure.core :refer [POST GET PUT DELETE]]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events :as events]
@@ -84,10 +83,9 @@
                                   :user-id api/*current-user-id*})
           (present-api-key (assoc api-key :unmasked_key unhashed-key)))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/count"
+(api.macros/defendpoint :get "/count"
   "Get the count of API keys in the DB with the default scope."
-  [:as _body]
+  []
   (api/check-superuser)
   (t2/count :model/ApiKey :scope nil))
 

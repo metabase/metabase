@@ -6,9 +6,14 @@ import {
 } from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box } from "metabase/ui";
+import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import Table from "metabase/visualizations/visualizations/Table";
 
 import RAW_SERIES from "./stories-data/table-simple-orders-with-people.json";
+
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(Table);
 
 export default {
   title: "viz/TableSimple",

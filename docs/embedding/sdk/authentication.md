@@ -168,3 +168,8 @@ export default function App() {
     </MetabaseProvider>
   );
 ```
+## Security warning: each end-user _must_ have their own Metabase account
+
+Each end-user _must_ have their own Metabase account. The problem with having end-users share a Metabase account is that, even if you filter data on the client side via the SDK, all end-users will still have access to the session token, which they could use to access Metabase directly via the API to get data they're not supposed to see.
+
+If each end-user has their own Metabase account, however, you can configure permissions in Metabase and everyone will only have access to the data they should.
