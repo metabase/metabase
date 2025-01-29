@@ -22,6 +22,7 @@
    [metabase.api.field :as api.field]
    [metabase.api.geojson :as api.geojson]
    [metabase.api.google :as api.google]
+   [metabase.api.internal-tools :as api.internal-tools]
    [metabase.api.ldap :as api.ldap]
    [metabase.api.login-history :as api.login-history]
    [metabase.api.model-index :as api.model-index]
@@ -93,6 +94,7 @@
   (context "/field"                [] (+auth api.field/routes))
   (context "/geojson"              [] api.geojson/routes)
   (context "/google"               [] (+auth api.google/routes))
+  (context "/internal-tools"       [] api.internal-tools/routes)
   (context "/ldap"                 [] (+auth api.ldap/routes))
   (context "/login-history"        [] (+auth api.login-history/routes))
   (context "/model-index"          [] (+auth api.model-index/routes))

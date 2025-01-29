@@ -210,6 +210,17 @@
   [driver db-id table-name column-definitions]
   (qp.writeback/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
 
+(defn update-row-column!
+  [driver db-id schema table-name pk pk-value column-name value]
+  (qp.writeback/execute-write-sql!
+   db-id
+   (with-quoting driver
+     (sql/format  {:update (keyword schema table-name)
+                     :set    {(keyword column-name) value}
+                     :where  [:= (keyword pk) pk-value]}
+                 :quoted true
+                 :dialect (sql.qp/quote-style driver)))))
+
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options
