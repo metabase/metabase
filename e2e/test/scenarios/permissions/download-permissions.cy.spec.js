@@ -164,7 +164,7 @@ H.describeEE("scenarios > admin > permissions > data > downloads", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "Native Orders",
           native: {

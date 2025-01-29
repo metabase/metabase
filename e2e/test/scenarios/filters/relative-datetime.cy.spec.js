@@ -237,7 +237,7 @@ const nativeSQL = values => {
     return `SELECT '${date.toISOString()}'::timestamp as "testcol"`;
   });
 
-  cy.createNativeQuestion(
+  H.createNativeQuestion(
     {
       name: "datetime",
       native: {

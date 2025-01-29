@@ -83,7 +83,7 @@ describe("Recently Viewed > Entity Picker", () => {
   });
 
   it("shows recently created collection in entity picker", () => {
-    cy.createCollection({
+    H.createCollection({
       name: "My Fresh Collection",
     });
 
