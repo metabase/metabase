@@ -5,7 +5,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Settings } from "metabase-types/api";
-import { createMockSettings } from "metabase-types/api/mocks";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { GsheetsSyncStatus } from "./GsheetsSyncStatus";
@@ -14,9 +14,11 @@ type GsheetsStatus = Settings["gsheets"]["status"];
 const setup = ({
   settingStatus,
   folderStatus,
+  isAdmin = true,
 }: {
   settingStatus: GsheetsStatus;
   folderStatus: GsheetsStatus;
+  isAdmin?: boolean;
 }) => {
   const updatedSettings = createMockSettings({
     gsheets: { status: settingStatus, folder_url: null },
@@ -29,8 +31,12 @@ const setup = ({
   return renderWithProviders(<GsheetsSyncStatus />, {
     storeInitialState: {
       settings: createMockSettingsState({
-        gsheets: { status: settingStatus, folder_url: null },
+        gsheets: {
+          status: settingStatus,
+          folder_url: null,
+        },
       }),
+      currentUser: createMockUser({ is_superuser: isAdmin }),
     },
   });
 };
@@ -40,6 +46,16 @@ describe("GsheetsSyncStatus", () => {
     setup({
       settingStatus: "not-connected",
       folderStatus: "not-connected",
+    });
+
+    expect(screen.queryByText(/Google/i)).not.toBeInTheDocument();
+  });
+
+  it("should not render anything for non-admins", () => {
+    setup({
+      settingStatus: "loading",
+      folderStatus: "loading",
+      isAdmin: false,
     });
 
     expect(screen.queryByText(/Google/i)).not.toBeInTheDocument();
