@@ -285,6 +285,36 @@ describe("scenarios > models", () => {
     assertIsModel();
   });
 
+  it("allows duplicating a model", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.intercept("POST", "/api/card").as("cardCreate");
+    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
+
+    H.openQuestionActions();
+    H.popover().within(() => {
+      cy.findByText("Duplicate").click();
+    });
+
+    H.modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByLabelText(/Where do you want to save this/).click();
+    });
+
+    H.entityPickerModal().within(() => {
+      cy.findByRole("tab", { name: /Collections/ }).click();
+
+      cy.findByText(/Select a collection$/).should("exist"); // title should not have trailing "or dashboard"
+      cy.findByText("Orders in a dashboard").should("not.exist"); // this dashboard would be present if dashboards were an allowed save target
+      cy.findByText("First collection").should("exist").click();
+      cy.findByRole("button", { name: "Select this collection" }).click();
+    });
+
+    H.modal().within(() => {
+      cy.findByText("Duplicate").click();
+      cy.wait("@cardCreate");
+    });
+  });
+
   it("shows 404 when opening a question with a /dataset URL", () => {
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
