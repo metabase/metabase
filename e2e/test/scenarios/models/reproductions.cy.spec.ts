@@ -1388,7 +1388,8 @@ describe("issue 51925", () => {
 
   it('should allow to set "Display as Link" options independently for each column (metabase#51925)', () => {
     H.visitModel(ORDERS_MODEL_ID);
-    H.openQuestionActions("Edit metadata");
+    H.openQuestionActions();
+    H.popover().findByText("Edit metadata").click();
     H.tableInteractive().findByText("User ID").click();
     H.rightSidebar().within(() => {
       setLinkDisplayType();
