@@ -218,8 +218,8 @@ describe("scenarios > question > public link with extension", () => {
   });
 
   it("should download a json file when a public link with .json is shared", () => {
-    downloadPublicFileURL("json", ([response]) => {
-      expect(response).to.deep.eq({ ID: 1 });
+    downloadPublicFileURL("json", response => {
+      expect(response.body[0]).to.deep.eq({ ID: 1 });
     });
   });
 
@@ -325,7 +325,7 @@ const downloadPublicFileURL = (fileType, validationCallback) => {
       followRedirect: true,
       encoding: "binary",
     }).then(response => {
-      validationCallback(response.body);
+      validationCallback(response);
     });
   });
 };
