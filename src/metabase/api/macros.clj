@@ -546,7 +546,9 @@
 (mu/defn- request-body
   [request :- :map]
   (or (some-> (not-empty (:form-params request)) (update-keys keyword))
-      (:body request)))
+      (when-let [body (:body request)]
+        (when-not (instance? org.eclipse.jetty.server.HttpInput body)
+          body))))
 
 (mu/defn- middleware-forms
   "Middleware to apply to base handler. Currently the only option is middleware for handling multipart requests, applied
