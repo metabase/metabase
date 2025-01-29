@@ -98,6 +98,7 @@
    column-type :- :keyword]
   (let [next-unit (if (= column-type :type/Date)
                     unit->next-unit-date
+                    ;; should catch :type/DateTime and :type/DateTimeWithTZ
                     unit->next-unit-datetime)]
     (loop [unit unit]
       (let [num-points      (u.time/unit-diff unit start end)

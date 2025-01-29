@@ -141,9 +141,9 @@
 
 (deftest ^:parallel update-temporal-filter-existing-breakout-change-unit-test
   (testing "Update an existing query with breakout and filter against this column; update the breakout unit"
-    (doseq [[table field type] [[:users    :last-login :type/DateTime]
-                                [:products :created-at :type/DateTimeWithLocalTZ]]]
-      (testing (str type " column, specifically " table " " field)
+    (doseq [[table field field-type] [[:users    :last-login :type/DateTime]
+                                      [:products :created-at :type/DateTimeWithLocalTZ]]]
+      (testing (str field-type " column, specifically " table " " field)
         (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
                         (lib/breakout (-> (meta/field-metadata table field)
                                           (lib/with-temporal-bucket :day)))
@@ -189,7 +189,6 @@
                                               (lib/with-temporal-bucket :day))
                                           "2024-01-01"
                                           "2024-01-03"))))))
-
 
 (deftest ^:parallel update-temporal-filter-equals-test
   (testing "If the resulting start and end values are the same then generate an := filter instead of :between"
