@@ -155,7 +155,11 @@ export function echartsTooltip() {
       visibleTooltip.closest(".echarts-tooltip-container"),
     );
 
-    // metabase#52732: tooltip container must have the correct z-index (200)
+    // (metabase#51904): tooltip container must render above the fold in the Embedding SDK.
+    // ensures that we are using fixed-positioned tooltips.
+    expect(tooltipContainerStyle.position).to.equal("fixed");
+
+    // (metabase#52732): tooltip container must have the correct z-index (200)
     // this assertion prevents the tooltip from being rendered below charts.
     expect(Number(tooltipContainerStyle.zIndex)).to.equal(200);
 

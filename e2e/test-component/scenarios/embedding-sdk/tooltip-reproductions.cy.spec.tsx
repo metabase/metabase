@@ -79,30 +79,28 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
           const tooltipElement = $tooltip[0];
 
           // a fixed-position tooltip should be visible
-          cy.wrap(isFixedPositionElementVisible(tooltipElement)).should(
-            "be.true",
-          );
+          expect(isFixedPositionElementVisible(tooltipElement)).to.be.true;
 
           const tooltipContainer = tooltipElement.closest(
             ".echarts-tooltip-container",
           );
 
           // tooltip container should exist
-          cy.wrap(tooltipContainer).should("exist");
+          expect(tooltipContainer).to.exist;
 
           const tooltipContainerStyle = window.getComputedStyle(
             tooltipContainer!,
           );
 
+          // (metabase#51904): tooltip container must render above the fold in the Embedding SDK.
+          // ensures that we are using fixed-positioned tooltips.
+          expect(tooltipContainerStyle.position).to.equal("fixed");
+
           // (metabase#52732): tooltip container must have the user-supplied z-index
           // prevents the tooltip from being rendered below charts.
-          expect(Number(tooltipContainerStyle.zIndex)).to.be.equal(
+          expect(Number(tooltipContainerStyle.zIndex)).to.equal(
             zIndexTestCase.expected,
           );
-
-          // (metabase#51904): tooltip container must always render above the fold.
-          // ensures that we are using fixed-positioned tooltips.
-          expect(tooltipContainerStyle.position).to.be.equal("fixed");
         });
     });
   });
