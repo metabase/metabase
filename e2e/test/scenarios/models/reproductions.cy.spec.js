@@ -1928,10 +1928,9 @@ describe("issue 45926", () => {
     H.questionInfoButton().click();
     H.sidesheet().within(() => {
       cy.findByRole("tab", { name: "History" }).click();
-      cy.findAllByText(
+      cy.findByText(
         "changed the visualization settings and edited the metadata.",
       )
-        .last()
         .closest("li")
         .findByTestId("question-revert-button")
         .click();
