@@ -1,17 +1,3 @@
----
-title: "Metabase API documentation"
----
-
-# Metabase API documentation
-
-_These reference files were generated from source comments by running:_
-
-```
-clojure -M:ee:doc api-documentation
-```
-
-## About the Metabase API
-
 - **The API is subject to change.** We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.
 - **The API isn't versioned.** So don’t expect to stay on a particular version of Metabase in order to use a “stable” API.
 
@@ -27,6 +13,6 @@ Create keys to authenticate programmatic requests to your Metabase. See [API key
 
 For breaking changes, see the API [changelog](./developers-guide/api-changelog.md).
 
-## API endpoints
+## View the API docs for your Metabase
 
-_* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing)._
+You can view the API docs for your Metabase by visiting https://[your-metabase-host]/api/docs.
