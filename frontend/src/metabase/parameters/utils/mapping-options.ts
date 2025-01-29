@@ -239,11 +239,10 @@ export function getMappingOptionByTarget(
     return undefined;
   }
 
-  const normalizedTarget = normalize(target);
-  const fieldRef = normalizedTarget[1];
-
   const { query, columns } = getParameterColumns(question, parameter);
   const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
+  const normalizedTarget = normalize(target);
+  const fieldRef = normalizedTarget[1];
 
   for (const stageIndex of stageIndexes) {
     const stageColumns = columns
