@@ -49,7 +49,7 @@
     {:model model}))
 
 (defmethod prometheus/known-labels :metabase-search/engine-default
-  [_ {:keys [engine]}]
+  [_]
   (prometheus/known-labels :metabase-search/engine-active))
 
 (defmethod prometheus/known-labels :metabase-search/engine-active

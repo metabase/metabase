@@ -7,7 +7,9 @@
    [iapetos.operations :as ops]
    [iapetos.registry :as registry]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.test.fixtures :as fixtures])
+   [metabase.search.core :as search]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u])
   (:import
    (io.prometheus.client Collector GaugeMetricFamily)
    (org.eclipse.jetty.server Server)))
@@ -192,3 +194,24 @@
     (with-prometheus-system! [_ system]
       (prometheus/inc! :metabase-email/messages)
       (is (approx= 1 (metric-value system :metabase-email/messages))))))
+
+(deftest search-engine-metrics-test
+  (let [metrics       (prometheus/initial-labelled-metric-values)
+        engines       (fn [metric] (map (comp :engine :labels) (filter (comp #{metric} :metric) metrics)))
+        engine->value (fn [metric] (u/index-by (comp :engine :labels) :value (filter (comp #{metric} :metric) metrics)))
+        value         (fn [metric engine] (get (engine->value metric) (name engine)))
+        sum           (fn [metric] (reduce + 0 (vals (engine->value metric))))]
+    (testing "A consistent set of engines is enumerated"
+      (is (= (engines :metabase-search/engine-active)
+             (engines :metabase-search/engine-active))))
+    (testing "The values are boolean"
+      (is (set/superset? #{0 1} (set (vals (engine->value :metabase-search/engine-active)))))
+      (is (set/superset? #{0 1} (set (vals (engine->value :metabase-search/engine-default))))))
+    (testing "Legacy search is always active"
+      (is (= 1 (value :metabase-search/engine-active :in-place))))
+    (testing "There is at least one other active engine iff we support an index."
+      (if (search/supports-index?)
+        (is (< 1 (sum :metabase-search/engine-active)))
+        (is (= 1 (sum :metabase-search/engine-active)))))
+    (testing "There is only one default"
+      (is (= 1 (sum :metabase-search/engine-default))))))

@@ -251,6 +251,13 @@
 
 (defmethod initial-value :default [_ _] 0)
 
+(defn initial-labelled-metric-values []
+  (for [metric (keys (methods known-labels))
+        labels (known-labels metric)]
+    {:metric metric
+     :labels labels
+     :value  (initial-value metric labels)}))
+
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
   will throw."
@@ -263,9 +270,7 @@
                                 (jetty-collectors)
                                 [@c3p0-collector]
                                 (product-collectors)))]
-    (doseq [metric (keys (methods known-labels))
-            labels (known-labels metric)
-            :let [value (initial-value metric labels)]]
+    (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
       (prometheus/inc registry metric labels value))
     registry))
 
