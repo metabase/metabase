@@ -53,45 +53,57 @@ describeEE("scenarios > embedding-sdk > tooltip-reproductions", () => {
   });
 
   it("should have the correct tooltip position and z-index (metabase#51904, metabase#52732)", () => {
-    cy.get("@dashboardId").then(dashboardId => {
-      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
-        theme: { components: { popover: { zIndex: 1337 } } },
+    const testCases = [
+      // should use the user-supplied z-index
+      { input: 1337, expected: 1337 },
+
+      // should use the default z-index of 200
+      { input: undefined, expected: 200 },
+    ];
+
+    testCases.forEach(zIndexTestCase => {
+      cy.get("@dashboardId").then(dashboardId => {
+        mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
+          theme: { components: { popover: { zIndex: zIndexTestCase.input } } },
+        });
       });
-    });
 
-    H.getDashboardCard(0).within(() => {
-      H.chartPathWithFillColor("#509EE3").eq(0).realHover();
-    });
-
-    cy.findAllByTestId("echarts-tooltip")
-      .eq(0)
-      .should("exist")
-      .then($tooltip => {
-        const tooltipElement = $tooltip[0];
-
-        // a fixed-position tooltip should be visible
-        cy.wrap(isFixedPositionElementVisible(tooltipElement)).should(
-          "be.true",
-        );
-
-        const tooltipContainer = tooltipElement.closest(
-          ".echarts-tooltip-container",
-        );
-
-        // tooltip container should exist
-        cy.wrap(tooltipContainer).should("exist");
-
-        const tooltipContainerStyle = window.getComputedStyle(
-          tooltipContainer!,
-        );
-
-        // (metabase#52732): tooltip container must have the user-supplied z-index
-        // prevents the tooltip from being rendered below charts.
-        expect(tooltipContainerStyle.zIndex).to.be.equal(1337);
-
-        // (metabase#51904): tooltip container must always render above the fold.
-        // ensures that we are using fixed-positioned tooltips.
-        expect(tooltipContainerStyle.position).to.be.equal("fixed");
+      H.getDashboardCard(0).within(() => {
+        H.chartPathWithFillColor("#509EE3").eq(0).realHover();
       });
+
+      cy.findAllByTestId("echarts-tooltip")
+        .eq(0)
+        .should("exist")
+        .then($tooltip => {
+          const tooltipElement = $tooltip[0];
+
+          // a fixed-position tooltip should be visible
+          cy.wrap(isFixedPositionElementVisible(tooltipElement)).should(
+            "be.true",
+          );
+
+          const tooltipContainer = tooltipElement.closest(
+            ".echarts-tooltip-container",
+          );
+
+          // tooltip container should exist
+          cy.wrap(tooltipContainer).should("exist");
+
+          const tooltipContainerStyle = window.getComputedStyle(
+            tooltipContainer!,
+          );
+
+          // (metabase#52732): tooltip container must have the user-supplied z-index
+          // prevents the tooltip from being rendered below charts.
+          expect(tooltipContainerStyle.zIndex).to.be.equal(
+            zIndexTestCase.expected,
+          );
+
+          // (metabase#51904): tooltip container must always render above the fold.
+          // ensures that we are using fixed-positioned tooltips.
+          expect(tooltipContainerStyle.position).to.be.equal("fixed");
+        });
+    });
   });
 });
