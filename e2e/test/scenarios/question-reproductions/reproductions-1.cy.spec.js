@@ -137,7 +137,7 @@ describe("issue 9027", () => {
 
     H.startNewNativeQuestion();
 
-    H.focusNativeEditor().type("select 0");
+    H.NativeEditor.focus().type("select 0");
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     H.saveQuestion(QUESTION_NAME, undefined, {
@@ -711,7 +711,7 @@ describe("issue 17963", { tags: "@mongo" }, () => {
       { string: "> quan", field: "Quantity" },
     ]);
 
-    H.blurNativeEditor();
+    cy.get(".ace_text-input").blur();
     cy.button("Done").click();
 
     H.getNotebookStep("filter").findByText("Discount is greater than Quantity");
