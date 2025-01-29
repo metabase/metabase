@@ -796,7 +796,9 @@ function getTableCell(columnName, rowIndex) {
     const columnHeaderIndex = $columnHeaders
       .toArray()
       .findIndex($columnHeader => $columnHeader.textContent === columnName);
+    // eslint-disable-next-line no-unsafe-element-filtering
     const row = cy.findAllByTestId("table-row").eq(rowIndex);
+    // eslint-disable-next-line no-unsafe-element-filtering
     row.findAllByTestId("cell-data").eq(columnHeaderIndex).as("cellData");
   });
 

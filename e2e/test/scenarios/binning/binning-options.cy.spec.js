@@ -325,6 +325,7 @@ function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
   // Custom question has two popovers open.
   // The binning options are in the latest (last) one.
   // Using `.last()` works even when only one popover is open so it covers both scenarios.
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.popover()
     .last()
     .within(() => {
