@@ -36,7 +36,7 @@ describe("NotificationCard", () => {
     );
 
     expect(screen.getByLabelText("mail icon")).toBeInTheDocument();
-    expect(screen.getByText("Daily at 9:00 am")).toBeInTheDocument();
+    expect(screen.getByText("Check daily at 9:00 AM")).toBeInTheDocument();
     expect(
       screen.getByText("Created by you on January 7, 2025"),
     ).toBeInTheDocument();
@@ -59,7 +59,7 @@ describe("NotificationCard", () => {
     );
 
     expect(screen.getByLabelText("slack icon")).toBeInTheDocument();
-    expect(screen.getByText("Daily at 9:00 am")).toBeInTheDocument();
+    expect(screen.getByText("Check daily at 9:00 AM")).toBeInTheDocument();
   });
 
   it("should render an hourly alert", () => {
@@ -82,7 +82,7 @@ describe("NotificationCard", () => {
       />,
     );
 
-    expect(screen.getByText("Hourly")).toBeInTheDocument();
+    expect(screen.getByText("Check hourly")).toBeInTheDocument();
   });
 
   it("should render a weekly alert", () => {
@@ -105,7 +105,7 @@ describe("NotificationCard", () => {
       />,
     );
 
-    expect(screen.getByText("Monday at 9:00 am")).toBeInTheDocument();
+    expect(screen.getByText("Check on Monday at 9:00 AM")).toBeInTheDocument();
   });
 
   it("should render an alert created by another user", () => {

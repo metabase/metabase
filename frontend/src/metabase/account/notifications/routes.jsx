@@ -11,11 +11,12 @@ import UnsubscribePulseModal from "./containers/UnsubscribePulseModal";
 const getRoutes = () => (
   <Route path="notifications" component={NotificationsApp}>
     <ModalRoute path="help" modal={HelpModal} />
-    <ModalRoute path="alert/:alertId/archive" modal={DeleteAlertModal} />
+    <ModalRoute path="alert/:alertId/archive" modal={DeleteAlertModal} noWrap />
     <ModalRoute path="pulse/:pulseId/archive" modal={ArchivePulseModal} />
     <ModalRoute
       path="alert/:alertId/unsubscribe"
       modal={UnsubscribeAlertModal}
+      noWrap
     />
     <ModalRoute
       path="pulse/:pulseId/unsubscribe"

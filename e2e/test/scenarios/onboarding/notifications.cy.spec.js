@@ -127,8 +127,7 @@ describe("scenarios > account > notifications", () => {
       });
 
       cy.wait("@alertDelete");
-      H.undoToastList()
-        .last()
+      H.notificationList()
         .findByText("The alert was successfully deleted.")
         .should("exist");
 
@@ -145,12 +144,10 @@ describe("scenarios > account > notifications", () => {
       cy.findByText("Question");
       clickUnsubscribe();
 
-      H.modal()
-        .last()
-        .within(() => {
-          cy.findByText("Confirm you want to unsubscribe");
-          cy.findByText("Unsubscribe").click();
-        });
+      H.modal().within(() => {
+        cy.findByText("Confirm you want to unsubscribe");
+        cy.findByText("Unsubscribe").click();
+      });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Question").should("not.exist");

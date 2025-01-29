@@ -2,7 +2,7 @@ import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
-import { setupWebhookChannelsEndpoints } from "__support__/server-mocks/channel";
+import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
@@ -92,7 +92,7 @@ function setup({
     http: { configured: isHttpSetup },
   } as ChannelApiResponse["channels"]);
 
-  setupWebhookChannelsEndpoints(webhooksResult);
+  setupWebhookChannelsEndpoint(webhooksResult);
   setupUserRecipientsEndpoint({ users: [] });
 
   renderWithProviders(

@@ -3,20 +3,17 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupNotificationChannelsEndpoints,
+  setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
+import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useSelector } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import Question from "metabase-lib/v1/Question";
-import type {
-  Card,
-  Dashboard,
-  Notification,
-  User,
-  UserListResult,
-} from "metabase-types/api";
+import type { Card, Dashboard, Notification, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -182,8 +179,14 @@ export function setupQuestionSharingMenu({
     card,
   });
 
+  const user = checkNotNull(state.currentUser);
+
   setupListNotificationEndpoints({ card_id: card.id }, alerts);
-  setupUsersEndpoints([state.currentUser] as UserListResult[]);
+  setupUsersEndpoints([user]);
+  setupUserRecipientsEndpoint({
+    users: [user],
+  });
+  setupWebhookChannelsEndpoint();
 
   if (isEnterprise) {
     setupEnterprisePlugins();
