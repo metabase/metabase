@@ -23,12 +23,12 @@
   white-space: pre-wrap;
 }
 
-:global {
-  :local(.editor) {
-    width: 100%;
-    height: 100%;
-    color: var(--mb-color-text-dark);
+.editor {
+  width: 100%;
+  height: 100%;
+  color: var(--mb-color-text-dark);
 
+  :global {
     .cm-editor {
       background: none;
     }
@@ -99,8 +99,10 @@
       display: none;
     }
   }
+}
 
-  :local(.tooltips) {
+.tooltips {
+  :global {
     .cm-tooltip {
       border: none !important;
       background: none !important;
