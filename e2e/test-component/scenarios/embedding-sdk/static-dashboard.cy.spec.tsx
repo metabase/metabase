@@ -4,7 +4,11 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { describeEE, getTextCardDetails } from "e2e/support/helpers";
+import {
+  createDashboard,
+  describeEE,
+  getTextCardDetails,
+} from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,
@@ -29,7 +33,7 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       },
     };
 
-    H.createDashboard({
+    createDashboard({
       name: "Embedding SDK Test Dashboard",
       dashcards: [questionCard, textCard],
     }).then(({ body: dashboard }) => {
