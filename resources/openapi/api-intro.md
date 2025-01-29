@@ -7,12 +7,12 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 
 ## API keys
 
-Create keys to authenticate programmatic requests to your Metabase. See [API keys](./people-and-groups/api-keys.md).
+Create keys to authenticate programmatic requests to your Metabase. See [API keys](./people-and-groups/api-keys).
 
 ## API changelog
 
-For breaking changes, see the API [changelog](./developers-guide/api-changelog.md).
+For breaking changes, see the API [changelog](./developers-guide/api-changelog).
 
 ## View the API docs for your Metabase
 
-You can view the API docs for your Metabase by visiting https://[your-metabase-host]/api/docs.
+You can view the API docs for your Metabase by visiting `https://[your-metabase-url]/api/docs`.
