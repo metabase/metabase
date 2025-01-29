@@ -18,8 +18,7 @@
 
 (def ^:private scalar-info
   "Info to include at the top of the page."
-  {:info {
-          :title "Metabase API documentation"
+  {:info {:title "Metabase API documentation"
           :description (slurp (io/resource "openapi/api-intro.md"))}})
 
 (defn- openapi-object []
