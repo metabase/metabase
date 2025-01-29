@@ -107,8 +107,10 @@ const defaultConfig = {
         launchOptions.args.push("--auto-open-devtools-for-tabs");
 
         if (isVisualTest) {
+          launchOptions.args.push("--hide-scrollbars");
           launchOptions.args.push("--disable-gpu");
           launchOptions.args.push("--force-device-scale-factor=1");
+          launchOptions.args.push("--start-fullscreen");
         }
       }
 

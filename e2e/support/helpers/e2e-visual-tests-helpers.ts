@@ -1,12 +1,6 @@
 export const buildSnapshotName = (name: string) =>
   `${Cypress.currentTest.title} ${name}`.replaceAll(" ", "_").toLowerCase();
 
-const HIDE_SCROLLBARS_STYLES = `
-  *::-webkit-scrollbar {
-    visibility: hidden;
-    width: 15px;
-  }
-`;
 const PREVENT_POINTER_EVENTS_STYLES = `
   *, *::before, *::after {
     pointer-events: none;
@@ -28,8 +22,6 @@ export const captureSnapshot = (
     const style = document.createElement("style");
 
     style.innerHTML = `
-      ${HIDE_SCROLLBARS_STYLES}
-
       ${
         // In most cases we want to disable pointer events to prevent flakiness caused by hover states
         !allowPointerEvents && PREVENT_POINTER_EVENTS_STYLES
