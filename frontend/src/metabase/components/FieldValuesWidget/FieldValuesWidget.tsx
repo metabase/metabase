@@ -449,7 +449,7 @@ export const FieldValuesWidgetInner = forwardRef<
   };
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary ref={ref}>
       <div
         data-testid="field-values-widget"
         style={{

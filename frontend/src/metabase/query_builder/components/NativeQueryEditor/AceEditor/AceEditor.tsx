@@ -1,6 +1,7 @@
+import { mergeRefs } from "@mantine/hooks";
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
-import { Component, createRef, forwardRef } from "react";
+import { Component, type ForwardedRef, createRef, forwardRef } from "react";
 import slugg from "slugg";
 import { t } from "ttag";
 import _ from "underscore";
@@ -76,7 +77,9 @@ type AceEditorProps = EditorProps &
   SizeProps &
   StateProps &
   DispatchProps &
-  SnippetProps;
+  SnippetProps & {
+    sizeRef: ForwardedRef<HTMLDivElement>;
+  };
 
 export class AceEditorInner extends Component<AceEditorProps> {
   editor = createRef<HTMLDivElement>();
@@ -530,7 +533,7 @@ export class AceEditorInner extends Component<AceEditorProps> {
         className={S.editor}
         id={ACE_ELEMENT_ID}
         data-testid="native-query-editor"
-        ref={this.editor}
+        ref={mergeRefs(this.editor, this.props.sizeRef)}
       />
     );
   }
@@ -548,14 +551,29 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
   },
 });
 
+/*
+ * We have to do this so we can pass the ExplicitSize ref into the component while maintaining the
+ * the fact that react attaches refs to class component instances (i.e. the "forwardedRef" here).
+ * The NativeQueryEditor uses the functions exposed by the forwardedRef so we have to keep that.
+ */
 const ConnectedAceEditor = _.compose(
-  ExplicitSize(),
   connect(mapStateToProps, mapDispatchToProps, null, { forwardRef: true }),
-)(AceEditorInner);
+  ExplicitSize(),
+)(
+  forwardRef<
+    HTMLDivElement,
+    AceEditorProps & { forwardedRef: ForwardedRef<AceEditorInner> }
+  >(function ConnectedAceEditorForwardRef(props, ref) {
+    return <AceEditorInner {...props} sizeRef={ref} ref={props.forwardedRef} />;
+  }),
+);
 
 export const AceEditor = forwardRef<EditorRef, EditorProps>(
   function AceEditor(props, ref) {
     const { data: snippets } = useListSnippetsQuery();
-    return <ConnectedAceEditor {...props} snippets={snippets} ref={ref} />;
+    // pass the ref into `forwardedRef` so we can save it before we use ExplicitSize
+    return (
+      <ConnectedAceEditor {...props} snippets={snippets} forwardedRef={ref} />
+    );
   },
 );

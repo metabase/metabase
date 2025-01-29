@@ -1137,9 +1137,7 @@ class TableInteractive extends Component {
     } = this.props;
 
     if (!width || !height) {
-      return (
-        <div ref={el => this.props.forwardedRef(el)} className={className} />
-      );
+      return <div ref={this.props.forwardedRef} className={className} />;
     }
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
@@ -1175,7 +1173,7 @@ class TableInteractive extends Component {
             }
             return (
               <TableInteractiveRoot
-                ref={el => this.props.forwardedRef?.(el)}
+                ref={this.props.forwardedRef}
                 bg={backgroundColor}
                 className={cx(
                   className,

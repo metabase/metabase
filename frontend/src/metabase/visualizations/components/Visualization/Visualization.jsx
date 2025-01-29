@@ -455,7 +455,10 @@ class Visualization extends PureComponent {
       (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
 
     return (
-      <ErrorBoundary onError={this.onErrorBoundaryError}>
+      <ErrorBoundary
+        onError={this.onErrorBoundaryError}
+        ref={this.props.forwardedRef}
+      >
         <VisualizationRoot
           className={className}
           style={style}
@@ -556,16 +559,14 @@ const VisualizationMemoized = memoizeClass("_getQuestionForCardCached")(
   Visualization,
 );
 
-const VisualizationRefWrapper = forwardRef(
-  function _VisualizationRefWrapper(props, ref) {
-    return <VisualizationMemoized {...props} forwardedRef={ref} />;
-  },
-);
-
 export default _.compose(
+  connect(mapStateToProps),
   ExplicitSize({
     selector: ".CardVisualization",
     refreshMode: props => (props.isVisible ? "throttle" : "debounceLeading"),
   }),
-  connect(mapStateToProps, null, null, { forwardRef: true }),
-)(VisualizationRefWrapper);
+)(
+  forwardRef(function VisualizationForwardRef(props, ref) {
+    return <VisualizationMemoized {...props} forwardedRef={ref} />;
+  }),
+);
