@@ -1907,8 +1907,7 @@ describe("issue 45926", () => {
   it("should restore model correctly without refresh (metabase#45926)", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     cy.wait("@dataset");
-    cy.findByLabelText("Move, trash, and more…").click();
-    cy.findByRole("menu").findByText("Edit metadata").click();
+    H.openQuestionActions("Edit metadata");
     H.sidebar().within(() => {
       cy.findByDisplayValue("ID").type(" updated");
     });
@@ -1917,9 +1916,7 @@ describe("issue 45926", () => {
     cy.wait("@dataset");
 
     cy.findByRole("columnheader", { name: "ID updated" }).should("be.visible");
-
-    cy.findByLabelText("Move, trash, and more…").click();
-    cy.findByRole("menu").findByText("Edit query definition").click();
+    H.openQuestionActions("Edit query definition");
     cy.button("Sort").click();
     H.popover().findByText("ID").click();
     cy.button("Save changes").click();
