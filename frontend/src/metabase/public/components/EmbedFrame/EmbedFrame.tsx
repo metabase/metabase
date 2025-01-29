@@ -257,7 +257,8 @@ export const EmbedFrame = ({
       </ContentContainer>
       {isFooterEnabled && (
         <Footer
-          className={cx(EmbedFrameS.EmbedFrameFooter)}
+          data-testid="embed-frame-footer"
+          className={EmbedFrameS.EmbedFrameFooter}
           variant={footerVariant}
         >
           {hasEmbedBranding && <LogoBadge dark={theme === "night"} />}
