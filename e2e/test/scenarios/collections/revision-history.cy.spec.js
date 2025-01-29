@@ -106,7 +106,7 @@ describe("revision history", () => {
 
               // We reverted the dashboard to the state prior to adding any cards to it
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("This dashboard is looking empty.");
+              cy.findByText("This dashboard is empty");
 
               // Should be able to revert back again
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

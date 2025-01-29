@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { getIcon, screen } from "__support__/ui";
 import {
@@ -12,7 +13,10 @@ import { setup } from "./setup";
 const setupPremium = (opts?: SetupOpts) => {
   return setup({
     ...opts,
-    tokenFeatures: createMockTokenFeatures({ official_collections: true }),
+    tokenFeatures: createMockTokenFeatures({
+      official_collections: true,
+      collection_cleanup: true,
+    }),
     hasEnterprisePlugins: true,
   });
 };
@@ -110,5 +114,136 @@ describe("CollectionMenu", () => {
 
     await userEvent.click(getIcon("ellipsis"));
     expect(screen.getByText("Make collection official")).toBeInTheDocument();
+  });
+
+  describe("collection cleanup", () => {
+    it("should show an indicator if the collection has stale items", async () => {
+      setupPremium({
+        collection: createMockCollection({ can_write: true }),
+        isAdmin: true,
+        numberOfStaleItems: 10,
+      });
+
+      expect(
+        fetchMock.called(
+          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
+          { method: "PUT" },
+        ),
+      ).toBe(false);
+
+      expect(await screen.findByTestId("indicator")).toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(
+        fetchMock.calls(
+          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
+          { method: "PUT" },
+        ),
+      ).toHaveLength(1);
+
+      expect(
+        await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
+      ).toHaveTextContent("Recommended");
+    });
+
+    it("should not show an indicator if it has previously been dismissed, even if we recommend cleaning the collection", async () => {
+      setupPremium({
+        collection: createMockCollection({ can_write: true }),
+        isAdmin: true,
+        numberOfStaleItems: 10,
+        collectionMenu: true,
+      });
+
+      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(
+        fetchMock.calls(
+          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
+          { method: "PUT" },
+        ),
+      ).toHaveLength(0);
+
+      expect(
+        await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
+      ).toHaveTextContent("Recommended");
+    });
+
+    it("should recommend cleaning collections to non-admins with write access", async () => {
+      setupPremium({
+        collection: createMockCollection({ can_write: true }),
+        isAdmin: false,
+        numberOfStaleItems: 10,
+        collectionMenu: true,
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(
+        await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
+      ).toHaveTextContent("Recommended");
+    });
+
+    it("should not show an indicator if there are no stale items in the collection", async () => {
+      setupPremium({
+        collection: createMockCollection({ can_write: true }),
+        isAdmin: true,
+        numberOfStaleItems: 0,
+      });
+
+      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(1);
+
+      expect(
+        fetchMock.calls(
+          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
+          { method: "PUT" },
+        ),
+      ).toHaveLength(0);
+
+      expect(
+        await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /Clear out unused items/ }),
+      ).not.toHaveTextContent("Recommended");
+    });
+
+    it("should not make a request for stale items if the user cannot clean up the collection", async () => {
+      setupPremium({
+        collection: createMockCollection({ type: "trash" }),
+        isAdmin: false,
+      });
+
+      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(fetchMock.calls("path:/api/collection/1/items")).toHaveLength(0);
+      expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(0);
+
+      expect(
+        screen.queryByRole("menuitem", { name: /Clear out unused items/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shound not show the clean up collection option if there are no items in the collection", async () => {
+      setupPremium({
+        collection: createMockCollection({ can_write: true }),
+        isAdmin: true,
+        numberOfCollectionItems: 0,
+        numberOfStaleItems: 0,
+      });
+
+      expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(0);
+
+      expect(
+        screen.queryByRole("menuitem", { name: /Clear out unused items/ }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

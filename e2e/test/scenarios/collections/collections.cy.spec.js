@@ -7,6 +7,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   ALL_USERS_GROUP_ID,
+  FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
   ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
@@ -1159,6 +1160,29 @@ describe("scenarios > collection items listing", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`1 - ${PAGE_SIZE}`);
     });
+  });
+});
+
+describe("scenarios > collections > entity id support", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("/collection/entity/${entity_id} should redirect to /collection/${id}", () => {
+    cy.visit(`/collection/entity/${FIRST_COLLECTION_ENTITY_ID}`);
+    cy.url().should("contain", `/collection/${FIRST_COLLECTION_ID}`);
+
+    // Making sure the collection loads
+    H.main().findByText("First collection").should("be.visible");
+  });
+
+  it("/collection/entity/${entity_id}/move should redirect to /collection/${id}/move", () => {
+    cy.visit(`/collection/entity/${FIRST_COLLECTION_ENTITY_ID}/move`);
+    cy.url().should("contain", `/collection/${FIRST_COLLECTION_ID}/move`);
+
+    H.main().findByText("First collection").should("be.visible");
+    H.modal().findByText('Move "First collection"?').should("be.visible");
   });
 });
 
