@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
+import { getMappingOptionByTarget } from "metabase/parameters/utils/mapping-options";
 
 import ParameterTargetList from "../components/ParameterTargetList";
 
@@ -24,11 +25,22 @@ export default class ParameterTargetWidget extends Component {
   };
 
   render() {
-    const { target, onChange, mappingOptions, placeholder, children } =
-      this.props;
+    const {
+      question,
+      target,
+      onChange,
+      mappingOptions,
+      placeholder,
+      children,
+    } = this.props;
 
     const disabled = mappingOptions.length === 0;
-    const selected = _.find(mappingOptions, o => _.isEqual(o.target, target));
+    const selectedMappingOption = getMappingOptionByTarget(
+      mappingOptions,
+      target,
+      question,
+    );
+    const selected = selectedMappingOption != null;
 
     return (
       <PopoverWithTrigger
