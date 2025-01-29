@@ -364,9 +364,9 @@ const createDashboardWithCards = () => {
     visualization_settings: {},
   };
 
-  cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
-    cy.createQuestion(questionDetails).then(({ body: { id: question_id } }) => {
-      cy.createQuestion(modelDetails).then(({ body: { id: model_id } }) => {
+  H.createDashboard().then(({ body: { id: dashboard_id } }) => {
+    H.createQuestion(questionDetails).then(({ body: { id: question_id } }) => {
+      H.createQuestion(modelDetails).then(({ body: { id: model_id } }) => {
         H.createAction({ ...actionDetails, model_id }).then(
           ({ body: { id: action_id } }) => {
             cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -393,7 +393,7 @@ const createDashboardWithNativeCard = () => {
     },
   };
 
-  cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+  H.createNativeQuestionAndDashboard({ questionDetails }).then(
     ({ body: { dashboard_id } }) => cy.wrap(dashboard_id).as("dashboardId"),
   );
 };
@@ -442,7 +442,7 @@ const createDashboardWithSlowCard = () => {
     target: ["variable", ["template-tag", "sleep"]],
   };
 
-  cy.createNativeQuestionAndDashboard({
+  H.createNativeQuestionAndDashboard({
     questionDetails,
     dashboardDetails,
   }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -491,9 +491,9 @@ const createDashboardWithPermissionError = () => {
     size_y: 8,
   };
 
-  cy.createQuestion(question1Details).then(({ body: { id: card_id_1 } }) => {
-    cy.createQuestion(question2Details).then(({ body: { id: card_id_2 } }) => {
-      cy.createDashboard(dashboardDetails).then(
+  H.createQuestion(question1Details).then(({ body: { id: card_id_1 } }) => {
+    H.createQuestion(question2Details).then(({ body: { id: card_id_2 } }) => {
+      H.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboard_id } }) => {
           cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
             dashcards: [

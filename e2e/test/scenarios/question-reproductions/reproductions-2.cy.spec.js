@@ -70,7 +70,7 @@ describe("issue 24839: should be able to summarize a nested question based on th
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createQuestion(questionDetails).then(({ body: { id } }) => {
       // Start ad-hoc nested question based on the saved one
       H.visitQuestionAdhoc({
         dataset_query: {
@@ -324,7 +324,7 @@ describe("issue 28221", () => {
       },
     };
 
-    cy.createQuestion(questionDetails).then(({ body }) => {
+    H.createQuestion(questionDetails).then(({ body }) => {
       const questionId = body.id;
 
       cy.visit(`/question/${questionId}/notebook`);
@@ -342,7 +342,7 @@ describe("issue 28599", () => {
     H.restore();
     cy.signInAsNormalUser();
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "28599",
         query: {
@@ -713,7 +713,7 @@ describe("Custom columns visualization settings", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion(question).then(({ body: { id } }) => {
+    H.createQuestion(question).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);

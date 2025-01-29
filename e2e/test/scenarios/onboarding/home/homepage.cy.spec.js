@@ -347,7 +347,7 @@ describe("scenarios > home > custom homepage", () => {
           description: "nested 2 levels",
           parent_id: body.id,
         }).then(({ body }) => {
-          cy.createDashboard({
+          H.createDashboard({
             name: "nested dash",
             collection_id: body.id,
           });
