@@ -48,6 +48,10 @@
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
+(defmethod prometheus/known-labels :metabase-search/engine-default
+  [_ {:keys [engine]}]
+  (prometheus/known-labels :metabase-search/engine-active))
+
 (defmethod prometheus/known-labels :metabase-search/engine-active
   [_]
   (for [e (search.engine/known-engines)]
