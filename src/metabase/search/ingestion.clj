@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.task :as task]
@@ -10,12 +11,14 @@
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize])
+  (:import
+   (java.util Queue)))
 
 (set! *warn-on-reflection* true)
 
 ;; Currently we use a single queue, even if multiple engines are enabled, but may want to revisit this.
-(defonce ^:private queue (queue/delay-queue))
+(defonce ^:private ^Queue queue (queue/delay-queue))
 
 ;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
 
@@ -47,7 +50,7 @@
       (update :archived boolean)
       (assoc
        :display_data (display-data m)
-       :legacy_input m
+       :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
        :searchable_text (searchable-text m))))
 
 (defn- attrs->select-items [attrs]
@@ -132,6 +135,9 @@
        query->documents
        consume!))
 
+(defn- track-queue-size! []
+  (prometheus/set! :metabase-search/queue-size (.size queue)))
+
 (defn get-next-batch!
   "Wait up for a batch to become ready, and take it off the queue.
   Used `first-delay-ms` to determine how long it will wait for any updates.
@@ -139,7 +145,8 @@
   maximum batch size.
   Will return nil if there is a timeout waiting for any updates."
   [first-delay-ms next-delay-ms]
-  (queue/take-delayed-batch! queue batch-max first-delay-ms next-delay-ms))
+  (u/prog1 (queue/take-delayed-batch! queue batch-max first-delay-ms next-delay-ms)
+    (track-queue-size!)))
 
 (defn- index-worker-exists? []
   (task/job-exists? @(requiring-resolve 'metabase.task.search-index/update-job-key)))
@@ -154,6 +161,9 @@
    (when-not *disable-updates*
      (if sync?
        (bulk-ingest! updates)
-       (doseq [update updates]
-         (log/trace "Queuing update" update)
-         (queue/put-with-delay! queue delay-ms update))))))
+       (do
+         (doseq [update updates]
+           (log/trace "Queuing update" update)
+           (queue/put-with-delay! queue delay-ms update))
+         (track-queue-size!)
+         true)))))

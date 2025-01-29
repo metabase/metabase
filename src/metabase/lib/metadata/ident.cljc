@@ -48,3 +48,17 @@
    (map #(attach-ident (prefix-fn (:table-id %)) %)))
   ([prefix-fn columns]
    (sequence (attach-idents prefix-fn) columns)))
+
+(defn implicitly-joined-ident
+  "Returns the ident for an implicitly joined column, given the idents of the foreign key column and the target column.
+
+  Remember that `:ident` strings should never be parsed - they are opaque, but should be legible during debugging."
+  [fk-ident target-ident]
+  (str "implicit_via__" fk-ident "__->__" target-ident))
+
+(defn explicitly-joined-ident
+  "Returns the ident for an explicitly joined column, given the idents of the join clause and the target column.
+
+  Remember that `:ident` strings should never be parsed - they are opaque, but should be legible during debugging."
+  [join-ident target-ident]
+  (str "join__" join-ident "__" target-ident))

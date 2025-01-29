@@ -16,7 +16,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
   describe("required tag", () => {
     beforeEach(() => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE {{filter}}",
       );
@@ -90,7 +90,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
   context("ID filter", () => {
     beforeEach(() => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion({ display: "table" });
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE {{filter}}",
       );
@@ -128,7 +128,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
   context("None", () => {
     beforeEach(() => {
-      H.openNativeEditor();
+      H.startNewNativeQuestion({ display: "table" });
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM people WHERE {{filter}}",
       );

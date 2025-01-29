@@ -352,7 +352,7 @@ describe("issue 20963", () => {
   it("should allow converting questions with static snippets to models (metabase#20963)", () => {
     cy.visit("/");
 
-    H.openNativeEditor();
+    H.startNewNativeQuestion().as("editor");
 
     // Creat a snippet
     cy.icon("snippet").click();
@@ -879,6 +879,7 @@ describe("issue 28193", () => {
 
   function assertOnColumns() {
     cy.findAllByText("2.07").should("be.visible").and("have.length", 2);
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell")
       .should("be.visible")
       .last()
@@ -1031,7 +1032,6 @@ describe("issue 29378", () => {
     H.createAction(ACTION_DETAILS);
 
     cy.visit(`/model/${ORDERS_QUESTION_ID}/detail`);
-    cy.findByRole("tab", { name: "Actions" }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1039,14 +1039,12 @@ describe("issue 29378", () => {
       "be.visible",
     );
 
-    cy.findByRole("tab", { name: "Used by" }).click();
     H.commandPaletteSearch(ACTION_DETAILS.name, false);
     H.commandPalette()
       .findByRole("option", { name: ACTION_DETAILS.name })
       .should("exist");
     H.closeCommandPalette();
 
-    cy.findByRole("tab", { name: "Actions" }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1223,6 +1221,7 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
     cy.button("Get Answer").should("be.visible");
     H.saveMetadataChanges();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
 
     dragColumn(0, 100);
@@ -1666,6 +1665,7 @@ describe("issue 37009", () => {
       .button("Save")
       .should("be.enabled")
       .click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.modal()
       .last()
       .within(() => {

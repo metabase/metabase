@@ -2,13 +2,13 @@
   "/api/permissions endpoints."
   (:require
    [clojure.data :as data]
-   [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.macros :as api.macros]
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
@@ -74,26 +74,23 @@
 
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/graph"
+(api.macros/defendpoint :get "/graph"
   "Fetch a graph of all Permissions."
   []
   (api/check-superuser)
   (data-perms.graph/api-graph))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/graph/db/:db-id"
+(api.macros/defendpoint :get "/graph/db/:db-id"
   "Fetch a graph of all Permissions for db-id `db-id`."
-  [db-id]
-  {db-id ms/PositiveInt}
+  [{:keys [db-id]} :- [:map
+                       [:db-id ms/PositiveInt]]]
   (api/check-superuser)
   (data-perms.graph/api-graph {:db-id db-id}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/graph/group/:group-id"
+(api.macros/defendpoint :get "/graph/group/:group-id"
   "Fetch a graph of all Permissions for group-id `group-id`."
-  [group-id]
-  {group-id ms/PositiveInt}
+  [{:keys [group-id]} :- [:map
+                          [:group-id ms/PositiveInt]]]
   (api/check-superuser)
   (data-perms.graph/api-graph {:group-id group-id}))
 
@@ -109,8 +106,7 @@
   [_impersonations]
   (throw (premium-features/ee-feature-error (tru "Connection impersonation"))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/graph"
+(api.macros/defendpoint :put "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
   format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
   modified graph must correspond to the `PermissionsGraph` schema. If successful, this endpoint returns the updated
@@ -126,12 +122,11 @@
   `:sandboxes` feature flag is not present.
 
   If the skip-graph query param is truthy, then the graph will not be returned."
-  [:as {body :body
-        {skip-graph :skip-graph
-         force      :force} :params}]
-  {body :map
-   skip-graph [:maybe ms/BooleanValue]
-   force      [:maybe ms/BooleanValue]}
+  [_route-params
+   {:keys [skip-graph force]} :- [:map
+                                  [:skip-graph {:default false} [:maybe ms/BooleanValue]]
+                                  [:force      {:default false} [:maybe ms/BooleanValue]]]
+   body :- :map]
   (api/check-superuser)
   (let [new-graph (mc/decode api.permission-graph/StrictApiPermissionsGraph
                              body
@@ -200,8 +195,7 @@
     (for [group groups]
       (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/group"
+(api.macros/defendpoint :get "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.
   This API requires superuser or group manager of more than one group.
   Group manager is only available if `advanced-permissions` is enabled and returns only groups that user
@@ -222,31 +216,32 @@
     (-> (ordered-groups (request/limit) (request/offset) query)
         (t2/hydrate :member_count))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/group/:id"
+(api.macros/defendpoint :get "/group/:id"
   "Fetch the details for a certain permissions group."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (validation/check-group-manager id)
   (api/check-404
    (-> (t2/select-one :model/PermissionsGroup :id id)
        (t2/hydrate :members))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/group"
+(api.macros/defendpoint :post "/group"
   "Create a new `PermissionsGroup`."
-  [:as {{:keys [name]} :body}]
-  {name ms/NonBlankString}
+  [_route-params
+   _query-params
+   {:keys [name]} :- [:map
+                      [:name ms/NonBlankString]]]
   (api/check-superuser)
   (first (t2/insert-returning-instances! :model/PermissionsGroup
                                          :name name)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/group/:group-id"
+(api.macros/defendpoint :put "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
-  [group-id :as {{:keys [name]} :body}]
-  {group-id ms/PositiveInt
-   name     ms/NonBlankString}
+  [{:keys [group-id]} :- [:map
+                          [:group-id ms/PositiveInt]]
+   _query-params
+   {:keys [name]} :- [:map
+                      [:name ms/NonBlankString]]]
   (validation/check-manager-of-group group-id)
   (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
   (t2/update! :model/PermissionsGroup group-id
@@ -254,19 +249,17 @@
   ;; return the updated group
   (t2/select-one :model/PermissionsGroup :id group-id))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/group/:group-id"
+(api.macros/defendpoint :delete "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
-  [group-id]
-  {group-id ms/PositiveInt}
+  [{:keys [group-id]} :- [:map
+                          [:group-id ms/PositiveInt]]]
   (validation/check-manager-of-group group-id)
   (t2/delete! :model/PermissionsGroup :id group-id)
   api/generic-204-no-content)
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/membership"
+(api.macros/defendpoint :get "/membership"
   "Fetch a map describing the group memberships of various users.
    This map's format is:
 
@@ -286,13 +279,14 @@
                                                             [:= :user_id api/*current-user-id*]
                                                             [:= :is_group_manager true]]}])))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/membership"
+(api.macros/defendpoint :post "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
-  [:as {{:keys [group_id user_id is_group_manager]} :body}]
-  {group_id         ms/PositiveInt
-   user_id          ms/PositiveInt
-   is_group_manager [:maybe :boolean]}
+  [_route-params
+   _query-params
+   {:keys [group_id user_id is_group_manager]} :- [:map
+                                                   [:group_id         ms/PositiveInt]
+                                                   [:user_id          ms/PositiveInt]
+                                                   [:is_group_manager {:default false} [:maybe :boolean]]]]
   (let [is_group_manager (boolean is_group_manager)]
     (validation/check-manager-of-group group_id)
     (when is_group_manager
@@ -310,12 +304,13 @@
     (:members (t2/hydrate (t2/instance :model/PermissionsGroup {:id group_id})
                           :members))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/membership/:id"
+(api.macros/defendpoint :put "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
-  [id :as {{:keys [is_group_manager]} :body}]
-  {id ms/PositiveInt
-   is_group_manager :boolean}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [is_group_manager]} :- [:map
+                                  [:is_group_manager :boolean]]]
   ;; currently this API is only used to update the `is_group_manager` flag and it requires advanced-permissions
   (validation/check-advanced-permissions-enabled :group-manager)
   ;; Make sure only Super user or Group Managers can call this
@@ -330,22 +325,20 @@
                 {:is_group_manager is_group_manager})
     (t2/select-one :model/PermissionsGroupMembership :id (:id old))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/membership/:group-id/clear"
+(api.macros/defendpoint :put "/membership/:group-id/clear"
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
-  [group-id]
-  {group-id ms/PositiveInt}
+  [{:keys [group-id]} :- [:map
+                          [:group-id ms/PositiveInt]]]
   (validation/check-manager-of-group group-id)
   (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
   (api/check-400 (not= group-id (u/the-id (perms-group/admin))))
   (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
   api/generic-204-no-content)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/membership/:id"
+(api.macros/defendpoint :delete "/membership/:id"
   "Remove a User from a PermissionsGroup (delete their membership)."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (let [membership (t2/select-one :model/PermissionsGroupMembership :id id)]
     (api/check-404 membership)
     (validation/check-manager-of-group (:group_id membership))

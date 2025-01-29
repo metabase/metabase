@@ -10,7 +10,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
     cy.signInAsAdmin();
 
-    H.openNativeEditor();
+    H.startNewNativeQuestion();
   });
 
   describe("should work for text", () => {
@@ -199,10 +199,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       cy.findByTestId("sidebar-content")
         .findByText("Select a default value…")
         .click();
-      H.popover().within(() => {
-        DateFilter.setSingleDate(`${month}/${day}/${year}`);
-        cy.findByText("Add filter").click();
-      });
+      DateFilter.setSingleDate(`${month}/${day}/${year}`);
+      H.popover().findByText("Add filter").click();
     }
 
     describe("required tag", () => {

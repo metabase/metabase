@@ -65,6 +65,7 @@ export function filterFieldPopover(
   { value, placeholder, order } = {},
 ) {
   getFilterField(fieldName, order).within(() => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("input").last().click();
   });
 
@@ -75,6 +76,7 @@ export function filterFieldPopover(
 }
 
 function getFilterField(fieldName, order = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy.findAllByTestId(`filter-column-${fieldName}`).eq(order);
 }
 

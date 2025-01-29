@@ -1796,9 +1796,8 @@ describe("issue 48878", () => {
     cy.log("create model action");
 
     cy.findByTestId("qb-header-info-button").click();
-    H.modal().findByText("See more about this model").click();
+    H.sidesheet().findByText("Actions").click();
 
-    cy.findByRole("tab", { name: "Actions" }).click();
     cy.findByTestId("model-actions-header").findByText("New action").click();
 
     H.modal().within(() => {
@@ -1808,6 +1807,7 @@ describe("issue 48878", () => {
       cy.button("Save").click();
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.modal()
       .last()
       .within(() => {

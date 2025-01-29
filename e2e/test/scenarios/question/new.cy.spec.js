@@ -284,6 +284,74 @@ describe("scenarios > question > new", () => {
     });
   });
 
+  it("should not suggest recent items where can_write=false when saving a question", () => {
+    // SETUP TEST - prevent normal user from having access to third collection w/ added content
+    cy.log("setup restricted permissions scenario");
+    cy.signInAsAdmin();
+
+    // create dashboard that will have restricted access
+    H.createDashboard(
+      {
+        name: "Third collection dashboard",
+        collection_id: THIRD_COLLECTION_ID,
+      },
+      { wrapId: true },
+    );
+
+    // restrict access to a collection
+    cy.visit(`/admin/permissions/collections/${THIRD_COLLECTION_ID}`);
+    H.selectPermissionRow("collection", 0);
+    H.popover().within(() => {
+      cy.findByText("View").click();
+    });
+
+    cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
+      "saveGraph",
+    );
+    cy.button("Save changes").click();
+    H.modal().within(() => {
+      cy.findByText("Save permissions?");
+      cy.button("Yes").click();
+    });
+    cy.wait("@saveGraph");
+
+    // TEST STARTS HERE
+    cy.log("start testing proper enforcement");
+    cy.signIn("normal");
+    cy.visit("/");
+
+    // log recents
+    cy.log("log recent views to items with can_write access");
+    cy.log("visit valid recent item");
+    logRecent("collection", SECOND_COLLECTION_ID); // report recent interaction for collection w/ write access
+    logRecent("collection", THIRD_COLLECTION_ID); // report recent interaction for collection w/o write access
+    logRecent("dashboard", ORDERS_DASHBOARD_ID); // report recent interaction for dashboard w/ write access
+    cy.get("@dashboardId").then(id => {
+      logRecent("dashboard", id); // report recent interaction for dashboard w/o write access
+    });
+
+    // test recent items do not exist
+    H.startNewNativeQuestion();
+    cy.realType("select 'hi'");
+    cy.findByTestId("native-query-editor-sidebar").button("Get Answer").click();
+    cy.findByRole("button", { name: "Save" }).click();
+
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByLabelText(/Where do you want to save this/).click();
+    });
+
+    H.pickEntity({ tab: "Recents" });
+    H.entityPickerModal().within(() => {
+      cy.log("test valid recents appear");
+      cy.findByText("Second collection").should("exist");
+      cy.findByText("Orders in a dashboard").should("exist");
+
+      cy.log("test invalid recents do not appear");
+      cy.findByText("Third collection").should("not.exist");
+      cy.findByText("Third collection dashboard").should("not.exist");
+    });
+  });
+
   it(
     "should be able to save a question to a collection created on the go",
     { tags: "@smoke" },
@@ -718,4 +786,12 @@ function assertDataPickerEntitySelected(level, name) {
     "data-active",
     "true",
   );
+}
+
+function logRecent(model, model_id) {
+  cy.request("POST", "/api/activity/recents", {
+    context: "selection",
+    model,
+    model_id,
+  });
 }

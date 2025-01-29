@@ -55,7 +55,10 @@
         :people       70
         :reviews      80
         :ic/accounts  90
-        :ic/reports  100)))
+        :ic/reports  100
+        :gh/issues   110
+        :gh/users    120
+        :gh/comments 130)))
 
   ([table-name field-name]
    (+ random-id-offset
@@ -125,8 +128,25 @@
                        :name      901)       ; :type/Text
         :ic/reports  (case field-name        ;
                        :id         1000      ; :type/Integer
-                       :created-by 1100      ; :type/Integer
-                       :updated-by 1200))))) ; :type/Integer
+                       :created-by 1001      ; :type/Integer
+                       :updated-by 1002)     ; :type/Integer
+        :gh/issues   (case field-name
+                       :id          1100     ; :type/UUID
+                       :reporter-id 1101     ; :type/Text (FK to :gh/users)
+                       :assignee-id 1102     ; :type/Text (FK to :gh/users)
+                       :is-open     1103     ; :type/Integer (but it wants to be :type/Boolean)
+                       :reported-at 1104     ; :type/DateTime
+                       :closed-at   1105)    ; :type/DateTime
+        :gh/users    (case field-name
+                       :id           1200    ; :type/Text (Github usernames eg. camsaul, bshepherdson)
+                       :birthday     1202    ; :type/Date
+                       :email        1203)   ; :type/Text
+        :gh/comments (case field-name
+                       :id            1300   ; :type/UUID
+                       :author-id     1301   ; :type/Text
+                       :posted-at     1302   ; :type/DateTime
+                       :reply-to      1303   ; :type/UUID (FK to the same table)
+                       :body-markdown 1304))))) ;type/Text
 
 (defmulti ^:private table-metadata-method
   {:arglists '([table-name])}
@@ -2356,6 +2376,567 @@
                              (field-metadata-method :ic/reports :created-by)
                              (field-metadata-method :ic/reports :updated-by)]})
 
+(defmethod field-metadata-method [:gh/issues :id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "UUID"
+   :base-type                  :type/UUID
+   :effective-type             :type/UUID
+   :semantic-type              :type/PK
+   :table-id                   (id :gh/issues)
+   :id                         (id :gh/issues :id)
+   :name                       "ID"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :position                   0
+   :custom-position            0
+   :database-position          0
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :visibility-type            :normal
+   :preview-display            true
+   :display-name               "ID"
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 2, :nil% 0.0}
+                                :type   {:type/UUID {}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/issues :reporter-id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "CHARACTER VARYING"
+   :base-type                  :type/Text
+   :effective-type             :type/Text
+   :semantic-type              :type/FK
+   :table-id                   (id :gh/issues)
+   :id                         (id :gh/issues :reporter-id)
+   :name                       "REPORTER_ID"
+   :display-name               "Reporter ID"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         (id :gh/users :id)
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   2
+   :custom-position            2
+   :database-position          2
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 11.4}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/issues :assignee-id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "CHARACTER VARYING"
+   :base-type                  :type/Text
+   :effective-type             :type/Text
+   :semantic-type              :type/FK
+   :table-id                   (id :gh/issues)
+   :id                         (id :gh/issues :assignee-id)
+   :name                       "ASSIGNEE_ID"
+   :display-name               "Assignee ID"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         (id :gh/users :id)
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   2
+   :custom-position            2
+   :database-position          2
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          false
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.4}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 11.4}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/issues :is-open]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "int4"
+   :base-type                  :type/Integer
+   :effective-type             :type/Integer
+   :semantic-type              :type/Category
+   :table-id                   (id :gh/issues)
+   :id                         (id :gh/issues :is-open)
+   :name                       "IS_OPEN"
+   :display-name               "Is Open"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   3
+   :custom-position            3
+   :database-position          3
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 2, :nil% 0.0}
+                                :type   {:type/Number {:min 0, :q1 0, :q3 0
+                                                       :max 1, :sd 0.7071067811865476, :avg 0.5}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/issues :reported-at]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "TIMESTAMP"
+   :base-type                  :type/DateTime
+   :effective-type             :type/DateTime
+   :semantic-type              nil
+   :table-id                   (id :gh/issues)
+   :id                         (id :gh/issues :reported-at)
+   :name                       "REPORTED_AT"
+   :display-name               "Reported At"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   4
+   :custom-position            4
+   :database-position          4
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}
+                                :type   {:type/DateTime {:earliest "2016-06-03T00:37:05.818Z"
+                                                         :latest   "2020-04-19T14:15:25.677Z"}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/issues :closed-at]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "TIMESTAMP"
+   :base-type                  :type/DateTime
+   :effective-type             :type/DateTime
+   :semantic-type              nil
+   :table-id                   (id :gh/issues)
+   :id                         (id :gh/issues :closed-at)
+   :name                       "CLOSED_AT"
+   :display-name               "Closed At"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   5
+   :custom-position            5
+   :database-position          5
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          false
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.6}
+                                :type   {:type/DateTime {:earliest "2016-06-03T00:37:05.818Z"
+                                                         :latest   "2020-04-19T14:15:25.677Z"}}}
+   :lib/type                   :metadata/column})
+
+(defmethod table-metadata-method :gh/issues
+  [_table-name]
+  {:description             nil
+   :entity-type             :entity/GenericTable
+   :schema                  "public"
+   :show-in-getting-started false
+   :name                    "GH_ISSUES"
+   :caveats                 nil
+   :active                  true
+   :id                      (id :gh/issues)
+   :db-id                   (id)
+   :visibility-type         nil
+   :field-order             :database
+   :is-upload               false
+   :initial-sync-status     :complete
+   :display-name            "GH Issues"
+   :points-of-interest      nil
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata-method :gh/issues :id)
+                             (field-metadata-method :gh/issues :reporter-id)
+                             (field-metadata-method :gh/issues :assignee-id)
+                             (field-metadata-method :gh/issues :is-open)
+                             (field-metadata-method :gh/issues :reported-at)
+                             (field-metadata-method :gh/issues :closed-at)]})
+
+(defmethod field-metadata-method [:gh/users :id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "CHARACTER VARYING"
+   :base-type                  :type/Text
+   :effective-type             :type/Text
+   :semantic-type              :type/PK
+   :table-id                   (id :gh/users)
+   :id                         (id :gh/users :id)
+   :name                       "ID"
+   :display-name               "Username"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   0
+   :custom-position            0
+   :database-position          0
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.6}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 11.4}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/users :birthday]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "DATE"
+   :base-type                  :type/Date
+   :effective-type             :type/Date
+   :semantic-type              nil
+   :table-id                   (id :gh/users)
+   :id                         (id :gh/users :birthday)
+   :name                       "BIRTHDAY"
+   :display-name               "Birthday"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   1
+   :custom-position            1
+   :database-position          1
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          false
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 105, :nil% 0.3}
+                                :type   {:type/Date {:earliest "2013-01-03", :latest "2015-12-29"}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/users :email]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "CHARACTER VARYING"
+   :base-type                  :type/Text
+   :effective-type             :type/Text
+   :semantic-type              :type/Email
+   :table-id                   (id :gh/users)
+   :id                         (id :gh/users :email)
+   :name                       "EMAIL"
+   :display-name               "Email"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   2
+   :custom-position            2
+   :database-position          2
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  1.0
+                                                     :percent-state  0.0
+                                                     :average-length 26.1}}}
+   :lib/type                   :metadata/column})
+
+(defmethod table-metadata-method :gh/users
+  [_table-name]
+  {:description             nil
+   :entity-type             :entity/GenericTable
+   :schema                  "public"
+   :show-in-getting-started false
+   :name                    "GH_USERS"
+   :caveats                 nil
+   :active                  true
+   :id                      (id :gh/users)
+   :db-id                   (id)
+   :visibility-type         nil
+   :field-order             :database
+   :is-upload               false
+   :initial-sync-status     :complete
+   :display-name            "GH Users"
+   :points-of-interest      nil
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata-method :gh/users :id)
+                             (field-metadata-method :gh/users :birthday)
+                             (field-metadata-method :gh/users :email)]})
+
+(defmethod field-metadata-method [:gh/comments :id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "UUID"
+   :base-type                  :type/UUID
+   :effective-type             :type/UUID
+   :semantic-type              :type/PK
+   :table-id                   (id :gh/comments)
+   :id                         (id :gh/comments :id)
+   :name                       "ID"
+   :display-name               "ID"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   0
+   :custom-position            0
+   :database-position          0
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}
+                                :type   {:type/UUID {}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/comments :author-id]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "CHARACTER VARYING"
+   :base-type                  :type/Text
+   :effective-type             :type/Text
+   :semantic-type              :type/FK
+   :table-id                   (id :gh/comments)
+   :id                         (id :gh/comments :author-id)
+   :name                       "AUTHOR_ID"
+   :display-name               "Author ID"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         (id :gh/users :id)
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   1
+   :custom-position            1
+   :database-position          1
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 11.4}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/comments :posted-at]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "TIMESTAMP"
+   :base-type                  :type/DateTime
+   :effective-type             :type/DateTime
+   :semantic-type              :type/CreationDate
+   :table-id                   (id :gh/comments)
+   :id                         (id :gh/comments :posted-at)
+   :name                       "POSTED_AT"
+   :display-name               "Posted At"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   2
+   :custom-position            2
+   :database-position          2
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}
+                                :type   {:type/DateTime {:earliest "2016-06-03T00:37:05.818Z"
+                                                         :latest   "2020-04-19T14:15:25.677Z"}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/comments :reply-to]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "UUID"
+   :base-type                  :type/UUID
+   :effective-type             :type/UUID
+   :semantic-type              :type/FK
+   :table-id                   (id :gh/comments)
+   :id                         (id :gh/comments :reply-to)
+   :name                       "REPLY_TO"
+   :display-name               "Reply To"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         (id :gh/comments :id)
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   4
+   :custom-position            4
+   :database-position          4
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 200, :nil% 0.0}
+                                :type   {:type/UUID {}}}
+   :lib/type                   :metadata/column})
+
+(defmethod field-metadata-method [:gh/comments :body-markdown]
+  [_table-name _field-name]
+  {:description                nil
+   :database-type              "CHARACTER VARYING"
+   :base-type                  :type/Text
+   :effective-type             :type/Text
+   :semantic-type              nil
+   :table-id                   (id :gh/comments)
+   :id                         (id :gh/comments :body-markdown)
+   :name                       "BODY_MARKDOWN"
+   :display-name               "Body Markdown"
+   :coercion-strategy          nil
+   :fingerprint-version        5
+   :has-field-values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk-target-field-id         nil
+   :active                     true
+   :nfc-path                   nil
+   :parent-id                  nil
+   :database-is-auto-increment false
+   :json-unfolding             false
+   :position                   4
+   :custom-position            4
+   :database-position          4
+   :visibility-type            :normal
+   :preview-display            true
+   :database-required          true
+   :points-of-interest         nil
+   :fingerprint                {:global {:distinct-count 150, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 301.9}}}
+   :lib/type                   :metadata/column})
+
+(defmethod table-metadata-method :gh/comments
+  [_table-name]
+  {:description             nil
+   :entity-type             :entity/GenericTable
+   :schema                  "public"
+   :show-in-getting-started false
+   :name                    "GH_COMMENTS"
+   :caveats                 nil
+   :active                  true
+   :id                      (id :gh/comments)
+   :db-id                   (id)
+   :visibility-type         nil
+   :field-order             :database
+   :is-upload               false
+   :initial-sync-status     :complete
+   :display-name            "GH Comments"
+   :points-of-interest      nil
+   :lib/type                :metadata/table
+   :fields                  [(field-metadata-method :gh/comments :id)
+                             (field-metadata-method :gh/comments :author-id)
+                             (field-metadata-method :gh/comments :posted-at)
+                             (field-metadata-method :gh/comments :reply-to)
+                             (field-metadata-method :gh/comments :body-markdown)]})
+
 (def metadata
   "Complete Database metadata for testing, captured from a call to `GET /api/database/:id/metadata`. For the H2 version
   of `test-data`. This is a representative example of the metadata the FE Query Builder would have available to it.
@@ -2403,7 +2984,10 @@
                                  (table-metadata-method :people)
                                  (table-metadata-method :reviews)
                                  (table-metadata-method :ic/accounts)
-                                 (table-metadata-method :ic/reports)]
+                                 (table-metadata-method :ic/reports)
+                                 (table-metadata-method :gh/issues)
+                                 (table-metadata-method :gh/users)
+                                 (table-metadata-method :gh/comments)]
    :creator-id                  nil
    :is-full-sync                true
    :cache-ttl                   nil
@@ -2437,7 +3021,7 @@
 (mu/defn tables :- [:set :keyword]
   "Set of valid table names."
   []
-  (set (keys (methods table-metadata-method))))
+  (into (sorted-set) (keys (methods table-metadata-method))))
 
 (mu/defn fields :- [:set :keyword]
   "Set of valid table names for a `:table-name`."

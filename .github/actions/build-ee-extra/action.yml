@@ -4,9 +4,7 @@ description: Build Metabase Enterprise Edition with extra features
 inputs:
   java-version:
     required: true
-    # build with Java 11 since that's still officially what we target as a minimum and we don't want Java >11 bytecode
-    # sneaking in.
-    default: 11
+    default: 21
   iam-role:
     description: "The IAM role to assume"
     required: true

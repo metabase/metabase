@@ -213,7 +213,7 @@
 (defn- document->entry [entity]
   (-> entity
       (select-keys
-       ;; remove attrs that get aliased
+       ;; remove attrs that get explicitly aliased below
        (remove #{:id :created_at :updated_at :native_query}
                (conj search.spec/attr-columns :model :display_data :legacy_input)))
       (update :display_data json/encode)
@@ -234,8 +234,10 @@
         ;; TODO we should handle the MySQL and MariaDB flavors here too
         (if (or (instance? PSQLException (ex-cause e))
                 (instance? JdbcSQLSyntaxErrorException (ex-cause e)))
-          ;; Suppress database errors, which are likely due to stale tracking data.
-          (sync-tracking-atoms!)
+          ;; If resetting tracking atoms resolves the issue (which is likely happened because of stale tracking data),
+          ;; suppress the issue - but throw it all the way to the caller if the issue persists
+          (do (sync-tracking-atoms!)
+              (specialization/batch-upsert! table-name entries))
           (throw e))))))
 
 (defn- batch-update!
@@ -311,13 +313,15 @@
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
-  "Create a temporary index table for the duration of the body."
+  "Create a temporary index table for the duration of the body. Uses the existing index if we're already mocking."
   [& body]
-  `(let [table-name# (gen-table-name)]
-     (binding [*mocking-tables* true
-               *indexes*        (atom {:active table-name#})]
-       (try
-         (create-table! table-name#)
-         ~@body
-         (finally
-           (#'drop-table! table-name#))))))
+  `(if @#'*mocking-tables*
+     ~@body
+     (let [table-name# (gen-table-name)]
+       (binding [*mocking-tables* true
+                 *indexes*        (atom {:active table-name#})]
+         (try
+           (create-table! table-name#)
+           ~@body
+           (finally
+             (#'drop-table! table-name#)))))))

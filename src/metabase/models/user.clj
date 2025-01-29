@@ -228,14 +228,6 @@
   (when user-or-id
     (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (u/the-id user-or-id))))
 
-(def UserGroupMembership
-  "Group Membership info of a User.
-  In which :is_group_manager is only included if `advanced-permissions` is enabled."
-  [:map
-   [:id ms/PositiveInt]
-   ;; is_group_manager only included if `advanced-permissions` is enabled
-   [:is_group_manager {:optional true} :boolean]])
-
 (defmethod mi/exclude-internal-content-hsql :model/User
   [_model & {:keys [table-alias]}]
   [:and [:not= (h2x/identifier :field table-alias :type) [:inline "internal"]]])

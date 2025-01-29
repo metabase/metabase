@@ -10,6 +10,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
    [metabase.api.card :as api.card]
+   [metabase.api.common.openapi]
    [metabase.api.test-util :as api.test-util]
    [metabase.config :as config]
    [metabase.driver :as driver]
@@ -702,13 +703,29 @@
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest ^:parallel docstring-test
+(deftest ^:parallel doc-test
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
-    (let [doc (-> #'api.card/POST_ meta :doc)]
+    (let [openapi-object             (metabase.api.common.openapi/openapi-object #'api.card/routes)
+          schemas                    (get-in openapi-object [:components :schemas])
+          body-properties            (get-in openapi-object [:paths "/" :post :requestBody :content "application/json" :schema :properties])
+          type-schema-ref            (some-> (get-in body-properties [:type :$ref])
+                                             (str/replace #"^#/components/schemas/" "")
+                                             (str/replace #"\Q~1\E" "/"))
+          type-schema                (get schemas type-schema-ref)
+          result-metadata-schema-ref (some-> (get-in body-properties [:result_metadata :$ref])
+                                             (str/replace #"^#/components/schemas/" "")
+                                             (str/replace #"\Q~1\E" "/"))
+          result-metadata-schema     (get schemas result-metadata-schema-ref)]
       (testing 'type
-        (is (str/includes? doc "**`type`** nullable enum of :question, :metric, :model.")))
+        (testing type-schema-ref
+          (is (=? {:type "string", :enum [:question :metric :model]}
+                  type-schema))))
       (testing 'result_metadata
-        (is (str/includes? doc "**`result_metadata`** nullable value must be an array of valid results column metadata maps."))))))
+        (testing (pr-str result-metadata-schema-ref)
+          (is (=? {:type        "array"
+                   :description "value must be an array of valid results column metadata maps."
+                   :optional    true}
+                  result-metadata-schema)))))))
 
 (deftest create-a-card
   (testing "POST /api/card"
@@ -770,14 +787,28 @@
 
 (deftest ^:parallel create-card-validation-test
   (testing "POST /api/card"
-    (is (= {:errors          {:visualization_settings "Value must be a map."}
-            :specific-errors {:visualization_settings ["Value must be a map., received: \"ABC\""]}}
-           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
+    (is (=? {:errors {:name                   "value must be a non-blank string."
+                      :dataset_query          "Value must be a map."
+                      :display                "value must be a non-blank string."
+                      :visualization_settings "Value must be a map."}
+             :specific-errors {:name                   ["missing required key, received: nil"]
+                               :dataset_query          ["missing required key, received: nil"]
+                               :display                ["missing required key, received: nil"]
+                               :visualization_settings ["Value must be a map., received: \"ABC\""]}}
+            (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))))
 
-    (is (= {:errors          {:parameters "nullable sequence of parameter must be a map with :id and :type keys"}
-            :specific-errors {:parameters ["invalid type, received: \"abc\""]}}
-           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
-                                                              :parameters             "abc"})))))
+(deftest ^:parallel create-card-validation-test-1b
+  (testing "POST /api/card"
+    (is (=? {:errors {:name          "value must be a non-blank string."
+                      :dataset_query "Value must be a map."
+                      :parameters    "nullable sequence of parameter must be a map with :id and :type keys"
+                      :display       "value must be a non-blank string."}
+             :specific-errors {:name          ["missing required key, received: nil"]
+                               :dataset_query ["missing required key, received: nil"]
+                               :parameters    ["invalid type, received: \"abc\""]
+                               :display       ["missing required key, received: nil"]}}
+            (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
+                                                               :parameters             "abc"})))))
 
 (deftest create-card-validation-test-2
   (testing "POST /api/card"
@@ -2019,42 +2050,46 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
-(def ^:private ^:const ^String encoded-params
-  (json/encode [{:type   :number
-                 :target [:variable [:template-tag :category]]
-                 :value  2}]))
+(def ^:private ^String test-params
+  [{:type   :number
+    :target [:variable [:template-tag :category]]
+    :value  2}])
 
 (deftest csv-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection! card
-        (is (= ["COUNT(*)"
-                "75"]
-               (str/split-lines
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
-                                                               (u/the-id card)))))))))
+        (let [response (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card)))]
+          (is (= ["COUNT(*)"
+                  "75"]
+                 (cond-> response
+                   (string? response) str/split-lines))))))))
+
+(deftest csv-download-test-2
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
-        (is (= ["COUNT(*)"
-                "8"]
-               (str/split-lines
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
-                                                               (u/the-id card))
-                                      :parameters encoded-params))))))))
+        (let [response (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))
+                                             {:parameters test-params})]
+          (is (= ["COUNT(*)"
+                  "8"]
+                 (cond-> response
+                   (string? response) str/split-lines))))))))
 
 (deftest json-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "75"}]
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) :format_rows true))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) {:format_rows true})))))))
+
+(deftest json-download-test-2
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "8"}]
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) :format_rows true
-                                     :parameters encoded-params)))))))
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
+                                     {:format_rows true, :parameters test-params})))))))
 
 (deftest renamed-column-names-are-applied-to-json-test
   (testing "JSON downloads should have the same columns as displayed in Metabase (#18572)"
@@ -2129,7 +2164,7 @@
           (letfn [(col-names [card-id]
                     (->> (mt/user-http-request :crowberto :post 200
                                                (format "card/%d/query/json" card-id)
-                                               :format_rows true)
+                                               {:format_rows true})
                          first keys (map name) set))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= #{"THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"}
@@ -2157,14 +2192,16 @@
       (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
-                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+
+(deftest xlsx-download-test-2
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 8.0}]
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      :parameters encoded-params))))))))
+                                      {:parameters test-params}))))))))
 
 (defn- parse-xlsx-results-to-strings
   "Parse an excel response into a 2-D array of formatted values"
@@ -2192,7 +2229,7 @@
         (is (= [["T"] ["2023-1-1"]]
                (parse-xlsx-results-to-strings
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      :format_rows true))))))))
+                                      {:format_rows true}))))))))
 
 (deftest xlsx-default-currency-formatting-test
   (testing "The default currency is USD"
@@ -2207,7 +2244,7 @@
               ["[$$]123.45"]]
              (parse-xlsx-results-to-strings
               (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                    :format_rows true)))))))
+                                    {:format_rows true})))))))
 
 (deftest xlsx-default-currency-formatting-test-2
   (testing "Default localization settings take effect"
@@ -2224,7 +2261,7 @@
                 ["[$€]123.45"]]
                (parse-xlsx-results-to-strings
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                      :format_rows true))))))))
+                                      {:format_rows true}))))))))
 
 (deftest xlsx-currency-formatting-test
   (testing "Currencies are applied correctly in Excel files"
@@ -2247,7 +2284,7 @@
                   ["[$$]123.45" "[$CA$]123.45" "[$€]123.45" "[$¥]123.45"]]
                  (parse-xlsx-results-to-strings
                   (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                        :format_rows true)))))))))
+                                        {:format_rows true})))))))))
 
 (def ^:private excel-data-query
   "with t1 as (
@@ -2389,7 +2426,7 @@
                     ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
                    (parse-xlsx-results-to-strings
                     (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                          :format_rows true))))))))))
+                                          {:format_rows true}))))))))))
 
 (deftest xlsx-full-formatting-test-2
   (testing "Formatting should be applied correctly for all types, including numbers, currencies, exponents, and times. (relates to #14393)"
@@ -2408,10 +2445,10 @@
                     ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$€]3,456.00" "[$EUR] 2300.00" "2,250.00 euros" "12.7181E+4" "95.40%" "11.580%"]]
                    (parse-xlsx-results-to-strings
                     (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                          :format_rows true)))))
+                                          {:format_rows true})))))
           (parse-xlsx-results-to-strings
            (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
-                                 :format_rows true)))))))
+                                 {:format_rows true})))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -3395,7 +3432,7 @@
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
 
-(defn upload-example-csv-via-api!
+(defn- upload-example-csv-via-api!
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
   [& {:as args}]
   (mt/with-current-user (mt/user->id :rasta)
@@ -3604,7 +3641,7 @@
                    (->> (mt/user-http-request
                          :crowberto :post 200
                          (format "card/%s/query/%s" card-id (name export-format))
-                         :format_rows apply-formatting?)
+                         {:format_rows apply-formatting?})
                         ((get output-helper export-format)))))))))))
 
 (deftest ^:parallel can-restore
@@ -3696,7 +3733,7 @@
               (is (mi/can-read? card)))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
 
-(deftest query-metadata-test
+(deftest ^:parallel query-metadata-test
   (mt/with-temp
     [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
                                   :database_id (mt/id)}
@@ -3902,7 +3939,7 @@
       (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false})
       (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :dashboard_tab_id dt-id :card_id card-id)))))
 
-(deftest moving-dashboard-questions
+(deftest move-question-to-collection-test
   (testing "We can move a dashboard question to a collection"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3914,8 +3951,9 @@
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:collection_id coll-id
                                                                            :dashboard_id  nil})))
       (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
-      ;; the old dashboardcard is still there (we don't remove the card from the dashboard it was in)
-      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))
+      (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+
+(deftest move-question-to-collection-remove-reference-test
   (testing "We can move a dashboard question to a collection and remove the old reference to it"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3924,11 +3962,13 @@
                                            :card_id      card-id}]
       (is (=? {:collection_id coll-id
                :dashboard_id  nil}
-              (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:collection_id coll-id
-                                                                                                        :dashboard_id  nil})))
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true")
+                                    {:collection_id coll-id
+                                     :dashboard_id  nil})))
       (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
-      ;; we remove the card from the dashboard it was in
-      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+      (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))))
+
+(deftest move-question-to-existing-dashboard-test
   (testing "We can move a question from a collection to a dashboard it is already in"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3937,7 +3977,9 @@
                                            :card_id      card-id}]
       (is (=? {:collection_id coll-id
                :dashboard_id  dash-id}
-              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))))
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id}))))))
+
+(deftest move-question-to-new-dashboard-test
   (testing "We can move a question from a collection to a dashboard it is NOT already in"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3947,7 +3989,9 @@
                :dashboard_id  dash-id}
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
       (is (=? {:dashboard_id dash-id :card_id card-id}
-              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id))))))
+
+(deftest move-question-to-dashboard-with-tabs
   (testing "We can move a question from a collection to a dashboard with tabs"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3958,7 +4002,9 @@
                :dashboard_id  dash-id}
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
       (is (=? {:dashboard_id dash-id :card_id card-id :dashboard_tab_id dash-tab-id}
-              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
+              (t2/select-one :model/DashboardCard :dashboard_id dash-id :card_id card-id))))))
+
+(deftest move-question-between-dashboards-test
   (testing "We can move a question from one dashboard to another"
     (mt/with-temp [:model/Collection {source-coll-id :id} {}
                    :model/Collection {dest-coll-id :id} {}
@@ -3971,7 +4017,9 @@
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dest-dash-id})))
       (testing "old dashcards are deleted, a new one is created"
         (is (=? #{dest-dash-id}
-                (set (map :dashboard_id (t2/select :model/DashboardCard :card_id card-id))))))))
+                (set (map :dashboard_id (t2/select :model/DashboardCard :card_id card-id)))))))))
+
+(deftest cant-move-question-to-dashboard-if-in-another-test
   (testing "We can't move a question from a collection to a dashboard if it's in another dashboard"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3979,7 +4027,9 @@
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id other-dash-id
                                            :card_id      card-id}]
-      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id})))
+      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id}))))
+
+(deftest can-move-with-delete-old-dashcards-test
   (testing "... unless we pass `delete_old_dashcards=true`"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3988,8 +4038,9 @@
                    :model/DashboardCard _ {:dashboard_id other-dash-id
                                            :card_id      card-id}]
       (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
-      (is (= #{dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))
+      (is (= #{dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))
 
+(deftest cant-move-question-if-in-dashboard-as-series-test
   (testing "We can't move a question from a collection to a dashboard if it's in another dashboard AS A SERIES"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -3999,8 +4050,9 @@
                    :model/DashboardCardSeries _ {:dashboardcard_id dc-id :card_id card-id}]
       (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id})
       (testing "... again, unless we pass `delete_old_dashcards=true`"
-        (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id}))))
+        (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})))))
 
+(deftest move-fails-without-permissions-test
   (testing "And, if we don't have permissions on the other dashboard, it fails even when we pass `delete_old_dashcards`"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Collection {forbidden-coll-id :id} {}
@@ -4012,11 +4064,13 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
         (testing "We get a 403 back, because we don't have permissions"
           (is (= "You don't have permissions to do that."
-                 ;; regardless of the `delete_old_dashcards` value, same response
+                ;; regardless of the `delete_old_dashcards` value, same response
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
         (testing "The card is still in the old dashboard and not the new one"
-          (is (= #{other-dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))))
+          (is (= #{other-dash-id} (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))))
+
+(deftest move-fails-without-permissions-series-test
   (testing "The above includes when a card is 'in' a dashboard in a series"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Collection {forbidden-coll-id :id} {}
@@ -4029,13 +4083,19 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) forbidden-coll-id)
         (testing "We get a 403 back, because we don't have permissions"
           (is (= "You don't have permissions to do that."
-                 ;; regardless of the `delete_old_dashcards` value, same response
+                ;; regardless of the `delete_old_dashcards` value, same response
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id "?delete_old_dashcards=true") {:dashboard_id dash-id})
                  (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id}))))
         (testing "The card is still in the old dashboard and not the new one"
-          (is (= [{:name other-dash-name :collection_id forbidden-coll-id :id other-dash-id}]
+          (is (= [{:name other-dash-name
+                   :collection_id forbidden-coll-id
+                   :id other-dash-id
+                   :description nil
+                   :archived false}]
                  (:in_dashboards (t2/hydrate (t2/select-one :model/Card :id card-id) :in_dashboards))))
-          (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id)))))))
+          (is (nil? (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))))))))
+
+(deftest moving-archived-card-test
   (testing "Moving an archived card to a Dashboard unarchives and autoplaces it"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:archived true}]
@@ -4046,7 +4106,9 @@
       (testing "it got unarchived"
         (is (not (:archived (t2/select-one :model/Card :id card-id)))))
       (testing "it got autoplaced"
-        (is (= dash-id (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :card_id card-id))))))
+        (is (= dash-id (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :card_id card-id)))))))
+
+(deftest cant-archive-and-move-test
   (testing "You can't mark a card as archived *and* move it to a dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {}]
@@ -4057,7 +4119,8 @@
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Dashboard"}
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-      (is (= [{:id dash-id :name "My Dashboard"}]
+      (is (= [{:id dash-id
+               :name "My Dashboard"}]
              (mt/user-http-request :rasta :get 200 (str "card/" card-id "/dashboards"))))))
 
   (testing "card in no dashboards"

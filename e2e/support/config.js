@@ -3,6 +3,7 @@ import path from "node:path";
 
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
+import * as ciTasks from "./ci_tasks";
 import {
   removeDirectory,
   verifyDownloadTasks,
@@ -118,6 +119,7 @@ const defaultConfig = {
         return null; // tasks must have a return value
       },
       ...dbTasks,
+      ...ciTasks,
       ...verifyDownloadTasks,
       removeDirectory,
       signJwt,

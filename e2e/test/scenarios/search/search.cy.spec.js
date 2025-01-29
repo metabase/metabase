@@ -100,8 +100,11 @@ describe("scenarios > search", () => {
       cy.findByTestId("app-bar").findByDisplayValue("ord");
       cy.findAllByTestId("search-result-item-name")
         .first()
-        .should("have.text", "Orders");
+        .should("have.text", "Orders in a dashboard");
 
+      cy.realPress("ArrowDown");
+      cy.realPress("ArrowDown");
+      cy.realPress("ArrowDown");
       cy.realPress("ArrowDown");
       cy.realPress("Enter");
 

@@ -38,6 +38,10 @@ jobs:
       MB_EDITION: ${{ inputs.edition }}
       DISPLAY: ""
       QA_DB_ENABLED: true
+      PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+      JOB_NAME: ${{ inputs.name }}
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
@@ -110,6 +114,8 @@ jobs:
           SPLIT_FILE: "./e2e/support/timings.json"
           SPLIT_OUTPUT_FILE: "newTimes.json"
           SPLIT_TIME_THRESHOLD: 5.0
+          # do not write cypress-split summary to github
+          SPLIT_SUMMARY: false
         shell: bash
         run: |
           node e2e/runner/run_cypress_ci.js test \

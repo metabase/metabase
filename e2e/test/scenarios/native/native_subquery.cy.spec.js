@@ -80,7 +80,7 @@ describe("scenarios > question > native subquery", () => {
             cy.button("Move").click();
           });
 
-          H.openNativeEditor();
+          H.startNewNativeQuestion();
           cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
           H.focusNativeEditor();
           cy.wait(1000); // attempt to decrease flakiness
@@ -308,7 +308,7 @@ describe("scenarios > question > native subquery", () => {
       ({ body: { id: baseQuestionId } }) => {
         const tagID = `#${baseQuestionId}`;
 
-        H.startNewNativeQuestion();
+        H.startNewNativeQuestion({ display: "table" });
         H.focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
 
         H.runNativeQuery();

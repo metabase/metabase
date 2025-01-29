@@ -1,5 +1,6 @@
 (ns metabase.search.appdb.core
   (:require
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.config :as config]
    [metabase.db :as mdb]
@@ -40,11 +41,16 @@
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
 
+(defn- collapse-id [{:keys [id] :as row}]
+  (assoc row :id (if (number? id) id (parse-long (last (str/split (:id row) #":"))))))
+
 (defn- rehydrate [weights active-scorers index-row]
-  (-> (merge
-       (json/decode+kw (:legacy_input index-row))
-       (select-keys index-row [:pinned]))
+  (-> (json/decode+kw (:legacy_input index-row))
+      collapse-id
       (assoc
+       ;; this relies on the corresponding scorer, which is not great coupling.
+       ;; ideally we would make per-user computed attributes part of the spec itself.
+       :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (mapv (fn [k]
                            ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)

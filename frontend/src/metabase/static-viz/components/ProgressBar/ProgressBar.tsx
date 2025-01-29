@@ -112,7 +112,7 @@ const ProgressBar = ({
             <Text
               fontSize={layout.fontSize}
               textAnchor="start"
-              color="#ffffff"
+              color="text-white"
               x={layout.iconSize + 16}
               y={layout.barHeight / 2}
               verticalAnchor="middle"

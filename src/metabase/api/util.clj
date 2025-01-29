@@ -3,7 +3,6 @@
   page tasks."
   (:require
    [clj-http.client :as http]
-   [compojure.core :refer [GET POST]]
    [crypto.random :as crypto-random]
    [environ.core :refer [env]]
    [metabase.analytics.prometheus :as prometheus]
@@ -11,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.embed.common :as api.embed.common]
+   [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -26,30 +26,29 @@
 
 (set! *warn-on-reflection* true)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/password_check"
+(api.macros/defendpoint :post "/password_check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
-  [:as {{:keys [password]} :body}]
-  {password ms/ValidPassword} ;; if we pass the su/ValidPassword test we're g2g
+  [_route-params
+   _query-params
+   _body :- [:map
+             [:password ms/ValidPassword]]]
+  ;; if we pass the su/ValidPassword test we're g2g
   {:valid true})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/logs"
+(api.macros/defendpoint :get "/logs"
   "Logs."
   []
   (validation/check-has-application-permission :monitoring)
   (logger/messages))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/stats"
+(api.macros/defendpoint :get "/stats"
   "Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see
   what is being phoned home."
   []
   (validation/check-has-application-permission :monitoring)
   (stats/legacy-anonymous-usage-stats))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/random_token"
+(api.macros/defendpoint :get "/random_token"
   "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
    Intended for use when creating a value for `embedding-secret-key`."
   []
@@ -77,13 +76,14 @@
          (log/warn e)
          (throw e))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/product-feedback"
+(api.macros/defendpoint :post "/product-feedback"
   "Endpoint to provide feedback from the product"
-  [:as {{:keys [comments source email]} :body}]
-  {comments [:maybe ms/NonBlankString]
-   source ms/NonBlankString
-   email [:maybe ms/NonBlankString]}
+  [_route-params
+   _query-params
+   {:keys [comments source email]} :- [:map
+                                       [:comments {:optional true} [:maybe ms/NonBlankString]]
+                                       [:source   ms/NonBlankString]
+                                       [:email    {:optional true} [:maybe ms/NonBlankString]]]]
   (future (send-feedback! comments source email))
   api/generic-204-no-content)
 
@@ -111,8 +111,7 @@
       :current-user-count (premium-features/active-users-count)
       :valid-thru         (:valid-thru (premium-features/token-status))})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/bug_report_details"
+(api.macros/defendpoint :get "/bug_report_details"
   "Returns version and system information relevant to filing a bug report against Metabase."
   []
   (validation/check-has-application-permission :monitoring)
@@ -120,8 +119,7 @@
     (not (premium-features/is-hosted?))
     (assoc :system-info (u.system-info/system-info))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/diagnostic_info/connection_pool_info"
+(api.macros/defendpoint :get "/diagnostic_info/connection_pool_info"
   "Returns database connection pool info for the current Metabase instance."
   []
   (validation/check-has-application-permission :monitoring)
@@ -129,11 +127,12 @@
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
     (assoc (response/response {:connection-pools pool-info}) :headers headers, :status 200)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/entity_id"
+(api.macros/defendpoint :post "/entity_id"
   "Translate entity IDs to model IDs."
-  [:as {{:keys [entity_ids]} :body}]
-  {entity_ids :map}
+  [_route-params
+   _query-params
+   {:keys [entity_ids]} :- [:map
+                            [:entity_ids :map]]]
   {:entity_ids (api.embed.common/model->entity-ids->ids entity_ids)})
 
 (api/define-routes)

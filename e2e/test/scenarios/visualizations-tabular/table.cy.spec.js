@@ -18,6 +18,7 @@ describe("scenarios > visualizations > table", () => {
   }
 
   function selectFromDropdown(option, clickOpts) {
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText(option).click(clickOpts);
   }
 
@@ -39,6 +40,7 @@ describe("scenarios > visualizations > table", () => {
       cy.findByText("Column title").click();
     });
     // click somewhere else to close the popover
+    // eslint-disable-next-line no-unsafe-element-filtering
     headerCells().last().click();
     headerCells().findAllByText("ID updated").should("have.length", 1);
   });
@@ -268,7 +270,10 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should show field metadata hovercards for native query tables", () => {
-    H.startNewNativeQuestion({ query: "select * from products limit 1" });
+    H.startNewNativeQuestion({
+      query: "select * from products limit 1",
+      display: "table",
+    });
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.log("Wait for the table to load");

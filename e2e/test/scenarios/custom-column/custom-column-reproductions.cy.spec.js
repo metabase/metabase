@@ -71,6 +71,7 @@ describe("issue 13289", () => {
 
     H.popover().findByText(CC_NAME).click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.icon("add").last().click();
 
     H.popover().within(() => {
@@ -938,6 +939,7 @@ describe("issue 42949", () => {
     cy.button("Add column").click();
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -983,6 +985,7 @@ describe("issue 42949", () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("N").should("be.visible");
   });
 
@@ -1010,6 +1013,7 @@ describe("issue 42949", () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("'abc'").should("be.visible");
   });
 });
@@ -1062,7 +1066,7 @@ describe("issue 49882", () => {
       .should("not.exist");
   });
 
-  it("does not clear expression input when expression is invalid (metabase#49882-2)", () => {
+  it("does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)", () => {
     const selectTax = `{leftarrow}${"{shift+leftarrow}".repeat(5)}`;
     const moveCursorBefore2ndCase = "{leftarrow}".repeat(41);
     H.enterCustomColumnDetails({
@@ -1084,7 +1088,9 @@ describe("issue 49882", () => {
         'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )\n\n',
       );
 
-    H.popover().findByText("Invalid expression").should("be.visible");
+    H.popover()
+      .findByText("Expecting comma but got case instead")
+      .should("be.visible");
   });
 
   it("should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)", () => {

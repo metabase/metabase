@@ -1202,3 +1202,8 @@
     (if res
       (assoc m k res)
       (dissoc m k))))
+
+(defn not-blank
+  "Like not-empty, but for strings"
+  [s]
+  (when-not (str/blank? s) s))

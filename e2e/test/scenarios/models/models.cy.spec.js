@@ -231,6 +231,21 @@ describe("scenarios > models", () => {
     H.echartsContainer().should("not.exist");
   });
 
+  it("only shows model info modal once when turning a question into a model", () => {
+    H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+    H.echartsContainer();
+
+    turnIntoModel();
+    H.undoToast().findByText("This is a model now.").should("exist");
+    H.undo();
+
+    H.openQuestionActions();
+    H.popover().within(() => {
+      cy.icon("model").click();
+    });
+    H.modal().should("not.exist");
+  });
+
   it("allows to undo turning a question into a model", () => {
     H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
     H.echartsContainer();
@@ -268,6 +283,36 @@ describe("scenarios > models", () => {
     cy.wait("@cardUpdate");
     H.openQuestionActions();
     assertIsModel();
+  });
+
+  it("allows duplicating a model", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.intercept("POST", "/api/card").as("cardCreate");
+    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
+
+    H.openQuestionActions();
+    H.popover().within(() => {
+      cy.findByText("Duplicate").click();
+    });
+
+    H.modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByLabelText(/Where do you want to save this/).click();
+    });
+
+    H.entityPickerModal().within(() => {
+      cy.findByRole("tab", { name: /Collections/ }).click();
+
+      cy.findByText(/Select a collection$/).should("exist"); // title should not have trailing "or dashboard"
+      cy.findByText("Orders in a dashboard").should("not.exist"); // this dashboard would be present if dashboards were an allowed save target
+      cy.findByText("First collection").should("exist").click();
+      cy.findByRole("button", { name: "Select this collection" }).click();
+    });
+
+    H.modal().within(() => {
+      cy.findByText("Duplicate").click();
+      cy.wait("@cardCreate");
+    });
   });
 
   it("shows 404 when opening a question with a /dataset URL", () => {
@@ -325,28 +370,32 @@ describe("scenarios > models", () => {
           .and("contain.text", "Orders");
 
         cy.findByText("Everywhere").click();
-        getResults().should("have.length", 5);
-        cy.findByText("5 results").should("be.visible");
+        getResults().should("have.length", 6);
+        cy.findByText("6 results").should("be.visible");
         getResults()
           .eq(0)
           .should("have.attr", "data-model-type", "dataset")
-          .and("contain.text", "Orders");
+          .and("contain.text", "Orders Model");
         getResults()
           .eq(1)
-          .should("have.attr", "data-model-type", "table")
+          .should("have.attr", "data-model-type", "dataset")
           .and("contain.text", "Orders");
         getResults()
           .eq(2)
           .should("have.attr", "data-model-type", "card")
-          .and("contain.text", "Orders, Count");
+          .and("contain.text", "Orders, Count, Grouped by Created At (year)");
         getResults()
           .eq(3)
-          .should("have.attr", "data-model-type", "dataset")
-          .and("contain.text", "Orders Model");
+          .should("have.attr", "data-model-type", "card")
+          .and("contain.text", "Orders, Count");
         getResults()
           .eq(4)
           .should("have.attr", "data-model-type", "card")
-          .and("contain.text", "Orders, Count, Grouped by Created At (year)");
+          .and("contain.text", "Orders");
+        getResults()
+          .eq(5)
+          .should("have.attr", "data-model-type", "table")
+          .and("contain.text", "Orders");
       });
     });
 
@@ -653,7 +702,7 @@ describe("scenarios > models", () => {
     it("should allow using models in native queries", () => {
       cy.intercept("POST", "/api/dataset").as("query");
       cy.get("@modelId").then(id => {
-        H.openNativeEditor().type(`select * from {{#${id}}}`, {
+        H.startNewNativeQuestion().type(`select * from {{#${id}}}`, {
           parseSpecialCharSequences: false,
         });
       });

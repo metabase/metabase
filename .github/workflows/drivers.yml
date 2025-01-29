@@ -378,7 +378,7 @@ jobs:
             image: metabase/qa-databases:mongo-sample-5.0
           - name: MongoDB Latest
             junit-name: be-tests-mongo-latest-ee
-            image: circleci/mongo:latest
+            image: mongo:latest
     env:
       CI: 'true'
       DRIVERS: mongo

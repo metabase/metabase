@@ -10,6 +10,9 @@
 ;; directly?
 ;;
 ;; TODO -- we need to feature-flag this based on the `:sso-` feature flags
+
+;; NOTE: there is a wrapper in metabase.server.auth-wrapper to ensure that oss versions give nice error
+;; messages. These must be kept in sync manually since compojure are opaque functions.
 (compojure/defroutes ^{:doc "Ring routes for auth (SAML) API endpoints.", :arglists '([request] [request respond raise])} routes
   (compojure/context
     "/auth"

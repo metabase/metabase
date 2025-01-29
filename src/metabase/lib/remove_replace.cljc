@@ -246,7 +246,7 @@
                        query
                        stage-number
                        target-clause
-                       (select-keys (second replacement-clause) [:binning :temporal-unit]))
+                       (dissoc (second replacement-clause) :lib/uuid :ident))
 
                       changing-breakout?
                       (remove-breakout-order-by query stage-number target-clause)

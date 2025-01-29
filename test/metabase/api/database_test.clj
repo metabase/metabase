@@ -879,7 +879,8 @@
         (mt/with-temp [:model/Database _ {:engine ::test-driver}
                        :model/Database _ {:engine ::test-driver}
                        :model/Database _ {:engine ::test-driver}]
-          (is (< 1 (count (:data (mt/user-http-request :rasta :get 200 "database" :limit 1 :offset 0))))))))))
+          (is (=? {:data #(> (count %) 1)}
+                  (mt/user-http-request :rasta :get 200 "database" :limit 1 :offset 0))))))))
 
 (deftest ^:parallel databases-list-test-3
   (testing "GET /api/database"
@@ -1447,23 +1448,32 @@
     (testing "Should require superuser permissions"
       (is (= "You don't have permissions to do that."
              (api-validate-database! {:user :rasta, :expected-status-code 403}
-                                     {:details {:engine :h2, :details (:details (mt/db))}}))))
+                                     {:details {:engine :h2, :details (:details (mt/db))}}))))))
 
+(deftest validate-database-test-1b
+  (testing "POST /api/database/validate"
     (testing "Underlying `test-connection-details` function should work"
       (is (= (:details (mt/db))
-             (test-connection-details! "h2" (:details (mt/db))))))
+             (test-connection-details! "h2" (:details (mt/db))))))))
 
+(deftest validate-database-test-1c
+  (testing "POST /api/database/validate"
     (testing "Valid database connection details"
       (is (= (merge (:details (mt/db)) {:valid true})
-             (api-validate-database! {:details {:engine :h2, :details (:details (mt/db))}}))))
+             (api-validate-database! {:details {:engine :h2, :details (:details (mt/db))}}))))))
 
+(deftest validate-database-test-1d
+  (testing "POST /api/database/validate"
     (testing "invalid database connection details"
       (testing "calling test-connection-details directly"
         (is (= {:errors  {:db "check your connection string"}
                 :message "Implicitly relative file paths are not allowed."
                 :valid   false}
-               (test-connection-details! "h2" {:db "ABC"}))))
+               (test-connection-details! "h2" {:db "ABC"})))))))
 
+(deftest validate-database-test-1e
+  (testing "POST /api/database/validate"
+    (testing "invalid database connection details"
       (testing "via the API endpoint"
         (is (= {:errors  {:db "check your connection string"}
                 :message "Implicitly relative file paths are not allowed."

@@ -62,7 +62,6 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save changes").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("button", "Yes").click();
 
     // see error modal

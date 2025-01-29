@@ -2,10 +2,10 @@
   "/api/database endpoints."
   (:require
    [clojure.string :as str]
-   [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.api.table :as api.table]
    [metabase.config :as config]
    [metabase.db :as mdb]
@@ -268,8 +268,7 @@
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
       include-only-uploadable?     (#(filter uploadable-db? %)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/"
+(api.macros/defendpoint :get "/"
   "Fetch all `Databases`.
 
   * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.
@@ -289,15 +288,17 @@
   [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
   in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
   database details."
-  [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]
-  {include                       (mu/with-api-error-message
-                                  [:maybe [:= "tables"]]
-                                  (deferred-tru "include must be either empty or the value 'tables'"))
-   include_analytics             [:maybe :boolean]
-   saved                         [:maybe :boolean]
-   include_editable_data_model   [:maybe :boolean]
-   exclude_uneditable_details    [:maybe :boolean]
-   include_only_uploadable       [:maybe :boolean]}
+  [_route-params
+   {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]}
+   :- [:map
+       [:include                     {:optional true} (mu/with-api-error-message
+                                                       [:maybe [:= "tables"]]
+                                                       (deferred-tru "include must be either empty or the value 'tables'"))]
+       [:include_analytics           {:default false} [:maybe :boolean]]
+       [:saved                       {:default false} [:maybe :boolean]]
+       [:include_editable_data_model {:default false} [:maybe :boolean]]
+       [:exclude_uneditable_details  {:default false} [:maybe :boolean]]
+       [:include_only_uploadable     {:default false} [:maybe :boolean]]]]
   (let [include-tables?                 (= include "tables")
         include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
@@ -359,8 +360,7 @@
       (mi/can-write? database)     (->
                                     (assoc :can-manage true)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id"
+(api.macros/defendpoint :get "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
    belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
    (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the
@@ -375,9 +375,10 @@
    [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
    in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
    database details."
-  [id include include_editable_data_model exclude_uneditable_details]
-  {id      ms/PositiveInt
-   include [:maybe [:enum "tables" "tables.fields"]]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [include include_editable_data_model exclude_uneditable_details]}
+   :- [:map [:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]]]
   (get-database id {:include include
                     :include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
                     :exclude-uneditable-details? (Boolean/parseBoolean exclude_uneditable_details)}))
@@ -426,12 +427,11 @@
              [:in :table_id table-ids]
              always-false-hsql-expr)})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/usage_info"
+(api.macros/defendpoint :get "/:id/usage_info"
   "Get usage info for a database.
   Returns a map with keys are models and values are the number of entities that use this database."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Database :id id))
   (let [table-ids (t2/select-pks-set :model/Table :db_id id)]
@@ -448,8 +448,7 @@
 ;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
 ;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
 ;; match the virtual ID (and nothing else).
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
+(api.macros/defendpoint :get ["/:virtual-db/metadata" :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
@@ -489,8 +488,7 @@
                             (filter :active tables))
                           identity)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/metadata"
+(api.macros/defendpoint :get "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
 
@@ -498,12 +496,14 @@
   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata."
-  [id include_hidden include_editable_data_model remove_inactive skip_fields]
-  {id                          ms/PositiveInt
-   include_hidden              [:maybe ms/BooleanValue]
-   include_editable_data_model [:maybe ms/BooleanValue]
-   remove_inactive             [:maybe ms/BooleanValue]
-   skip_fields                 [:maybe ms/BooleanValue]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [include_hidden include_editable_data_model remove_inactive skip_fields]}
+   :- [:map
+       [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+       [:remove_inactive             {:default false} [:maybe ms/BooleanValue]]
+       [:skip_fields                 {:default false} [:maybe ms/BooleanValue]]]]
   (db-metadata id
                include_hidden
                include_editable_data_model
@@ -629,8 +629,7 @@
                                     {:option v
                                      :valid-options autocomplete-matching-options}))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/autocomplete_suggestions"
+(api.macros/defendpoint :get "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but
   `substring` will have priority if both are present.
 
@@ -640,10 +639,11 @@
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
-  [id prefix substring]
-  {id        ms/PositiveInt
-   prefix    [:maybe ms/NonBlankString]
-   substring [:maybe ms/NonBlankString]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [prefix substring]} :- [:map
+                                  [:prefix    {:optional true} [:maybe ms/NonBlankString]]
+                                  [:substring {:optional true} [:maybe ms/NonBlankString]]]]
   (api/read-check :model/Database id)
   (when (and (str/blank? prefix) (str/blank? substring))
     (throw (ex-info (tru "Must include prefix or search") {:status-code 400})))
@@ -661,15 +661,15 @@
     (catch Throwable e
       (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/card_autocomplete_suggestions"
+(api.macros/defendpoint :get "/:id/card_autocomplete_suggestions"
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
-  [id query include_dashboard_questions]
-  {id                          ms/PositiveInt
-   query                       ms/NonBlankString
-   include_dashboard_questions ms/MaybeBooleanValue}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [query include_dashboard_questions]} :- [:map
+                                                   [:query                       ms/NonBlankString]
+                                                   [:include_dashboard_questions {:optional true} ms/BooleanValue]]]
   (api/read-check :model/Database id)
   (try
     (->> (autocomplete-cards id query include_dashboard_questions)
@@ -680,11 +680,10 @@
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/fields"
+(api.macros/defendpoint :get "/:id/fields"
   "Get a list of all `Fields` in `Database`."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/read-check :model/Database id)
   (let [fields (filter mi/can-read? (-> (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
                                                    :table_id        [:in (t2/select-fn-set :id :model/Table, :db_id id)]
@@ -702,11 +701,11 @@
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/idfields"
+(api.macros/defendpoint :get "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
-  [id include_editable_data_model]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [include_editable_data_model]}]
   (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
                                            [check-db-data-model-perms mi/can-write?]
                                            [api/read-check mi/can-read?])]
@@ -785,19 +784,21 @@
              (assoc :valid false))
      details)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/"
+(api.macros/defendpoint :post "/"
   "Add a new `Database`."
-  [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]} :body}]
-  {name              ms/NonBlankString
-   engine            DBEngineString
-   details           ms/Map
-   is_full_sync      [:maybe {:default true} ms/BooleanValue]
-   is_on_demand      [:maybe {:default false} ms/BooleanValue]
-   schedules         [:maybe sync.schedules/ExpandedSchedulesMap]
-   auto_run_queries  [:maybe :boolean]
-   cache_ttl         [:maybe ms/PositiveInt]
-   connection_source [:maybe {:default :admin} [:enum :admin :setup]]}
+  [_route-params
+   _query-params
+   {:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries cache_ttl connection_source]}
+   :- [:map
+       [:name              ms/NonBlankString]
+       [:engine            DBEngineString]
+       [:details           ms/Map]
+       [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
+       [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
+       [:schedules         {:optional true}  [:maybe sync.schedules/ExpandedSchedulesMap]]
+       [:auto_run_queries  {:optional true}  [:maybe :boolean]]
+       [:cache_ttl         {:optional true}  [:maybe ms/PositiveInt]]
+       [:connection_source {:default :admin} [:maybe [:enum :admin :setup]]]]]
   (api/check-superuser)
   (when cache_ttl
     (api/check (premium-features/enable-cache-granular-controls?)
@@ -838,13 +839,15 @@
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/validate"
+(api.macros/defendpoint :post "/validate"
   "Validate that we can connect to a database given a set of details."
   ;; TODO - why do we pass the DB in under the key `details`?
-  [:as {{{:keys [engine details]} :details} :body}]
-  {engine  DBEngineString
-   details :map}
+  [_route-params
+   _query-params
+   {{:keys [engine details]} :details} :- [:map
+                                           [:details [:map
+                                                      [:engine  DBEngineString]
+                                                      [:details :map]]]]]
   (api/check-superuser)
   (let [details-or-error (test-connection-details engine details)]
     ;; details that come back without a `:valid` key at all are... valid!
@@ -852,8 +855,7 @@
 
 ;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/sample_database"
+(api.macros/defendpoint :post "/sample_database"
   "Add the sample database as a new `Database`."
   []
   (api/check-superuser)
@@ -875,11 +877,10 @@
             details
             (database/sensitive-fields-for-db database)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/:id/persist"
+(api.macros/defendpoint :post "/:id/persist"
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/check (public-settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
@@ -901,11 +902,10 @@
                           {:error error
                            :database (:name database)})))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/:id/unpersist"
+(api.macros/defendpoint :post "/:id/unpersist"
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/let-404 [database (t2/select-one :model/Database :id id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
@@ -916,23 +916,24 @@
       ;; todo: a response saying this was a no-op? an error? same on the post to persist
       api/generic-204-no-content)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint PUT "/:id"
+(api.macros/defendpoint :put "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-                   auto_run_queries refingerprint cache_ttl settings]} :body}]
-  {id                 ms/PositiveInt
-   name               [:maybe ms/NonBlankString]
-   engine             [:maybe DBEngineString]
-   refingerprint      [:maybe :boolean]
-   details            [:maybe ms/Map]
-   schedules          [:maybe sync.schedules/ExpandedSchedulesMap]
-   description        [:maybe :string]   ; :string instead of ms/NonBlankString because we don't care
-   caveats            [:maybe :string]   ; whether someone sets these to blank strings
-   points_of_interest [:maybe :string]
-   auto_run_queries   [:maybe :boolean]
-   cache_ttl          [:maybe ms/PositiveInt]
-   settings           [:maybe ms/Map]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
+           auto_run_queries refingerprint cache_ttl settings]} :- [:map
+                                                                   [:name               {:optional true} [:maybe ms/NonBlankString]]
+                                                                   [:engine             {:optional true} [:maybe DBEngineString]]
+                                                                   [:refingerprint      {:optional true} [:maybe :boolean]]
+                                                                   [:details            {:optional true} [:maybe ms/Map]]
+                                                                   [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+                                                                   [:description        {:optional true} [:maybe :string]]
+                                                                   [:caveats            {:optional true} [:maybe :string]]
+                                                                   [:points_of_interest {:optional true} [:maybe :string]]
+                                                                   [:auto_run_queries   {:optional true} [:maybe :boolean]]
+                                                                   [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
+                                                                   [:settings           {:optional true} [:maybe ms/Map]]]]
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (t2/select-one :model/Database :id id))
         incoming-details  details
@@ -995,11 +996,10 @@
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint DELETE "/:id"
+(api.macros/defendpoint :delete "/:id"
   "Delete a `Database`."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/let-404 [db (t2/select-one :model/Database :id id)]
     (api/check-403 (mi/can-write? db))
@@ -1010,11 +1010,10 @@
 ;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------
 
 ;; Should somehow trigger sync-database/sync-database!
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/:id/sync_schema"
+(api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   ;; just wrap this in a future so it happens async
   (let [db (api/write-check (t2/select-one :model/Database :id id))]
     (events/publish-event! :event/database-manual-sync {:object db :user-id api/*current-user-id*})
@@ -1034,12 +1033,11 @@
            (sync/analyze-db! db)))
         {:status :ok}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/:id/dismiss_spinner"
+(api.macros/defendpoint :post "/:id/dismiss_spinner"
   "Manually set the initial sync status of the `Database` and corresponding
   tables to be `complete` (see #20863)"
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   ;; manual full sync needs to be async, but this is a simple update of `Database`
   (let [db     (api/write-check (t2/select-one :model/Database :id id))
         tables (map api/write-check (:tables (first (add-tables [db]))))]
@@ -1059,11 +1057,10 @@
   true)
 
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/:id/rescan_values"
+(api.macros/defendpoint :post "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (t2/select-one :model/Database :id id))]
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
@@ -1087,11 +1084,10 @@
                                :where      [:= :t.db_id (u/the-id database-or-id)]}]}))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint POST "/:id/discard_values"
+(api.macros/defendpoint :post "/:id/discard_values"
   "Discards all saved field values for this `Database`."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (let [db (api/write-check (t2/select-one :model/Database :id id))]
     (events/publish-event! :event/database-discard-field-values {:object db :user-id api/*current-user-id*})
     (delete-all-field-values-for-database! db))
@@ -1118,11 +1114,10 @@
                                                      schema-name))
    (current-user-can-manage-schema-metadata? database-id schema-name)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/syncable_schemas"
+(api.macros/defendpoint :get "/:id/syncable_schemas"
   "Returns a list of all syncable schemas found for the database `id`."
-  [id]
-  {id ms/PositiveInt}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
   (let [db (api/check-404 (t2/select-one :model/Database id))]
     (api/check-403 (mi/can-write? db))
     (->> db
@@ -1157,19 +1152,18 @@
          distinct
          sort)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/schemas"
+(api.macros/defendpoint :get "/:id/schemas"
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
-  [id include_editable_data_model include_hidden]
-  {id                          ms/PositiveInt
-   include_editable_data_model [:maybe ms/BooleanValue]
-   include_hidden              [:maybe ms/BooleanValue]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [include_editable_data_model include_hidden]} :- [:map
+                                                            [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                                            [:include_hidden              {:default false} [:maybe ms/BooleanValue]]]]
   (database-schemas id {:include-editable-data-model? include_editable_data_model
                         :include-hidden? include_hidden}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET ["/:virtual-db/schemas"
-                      :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
+(api.macros/defendpoint :get ["/:virtual-db/schemas"
+                              :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
@@ -1178,9 +1172,8 @@
          distinct
          (sort-by u/lower-case-en))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET ["/:virtual-db/datasets"
-                      :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
+(api.macros/defendpoint :get ["/:virtual-db/datasets"
+                              :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the datasets found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
@@ -1218,34 +1211,33 @@
          tables)
        (filter mi/can-read? tables)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/schema/:schema"
+(api.macros/defendpoint :get "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
-  [id include_hidden include_editable_data_model schema]
-  {id                          ms/PositiveInt
-   include_hidden              [:maybe ms/BooleanValue]
-   include_editable_data_model [:maybe ms/BooleanValue]}
+  [{:keys [id schema]} :- [:map
+                           [:id ms/PositiveInt]]
+   {:keys [include_hidden include_editable_data_model]} :- [:map
+                                                            [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                                            [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
   (api/check-404 (seq (schema-tables-list
                        id
                        schema
                        include_hidden
                        include_editable_data_model))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET "/:id/schema/"
+(api.macros/defendpoint :get "/:id/schema/"
   "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
-  [id include_hidden include_editable_data_model]
-  {id                          ms/PositiveInt
-   include_hidden              [:maybe ms/BooleanValue]
-   include_editable_data_model [:maybe ms/BooleanValue]}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   {:keys [include_hidden include_editable_data_model]} :- [:map
+                                                            [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                                            [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
   (api/check-404 (seq (concat (schema-tables-list id nil include_hidden include_editable_data_model)
                               (schema-tables-list id "" include_hidden include_editable_data_model)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET ["/:virtual-db/schema/:schema"
-                      :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
+(api.macros/defendpoint :get ["/:virtual-db/schema/:schema"
+                              :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
-  [schema]
+  [{:keys [schema]}]
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
           :question
@@ -1254,11 +1246,10 @@
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint GET ["/:virtual-db/datasets/:schema"
-                      :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
+(api.macros/defendpoint :get ["/:virtual-db/datasets/:schema"
+                              :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
-  [schema]
+  [{:keys [schema]}]
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
           :model

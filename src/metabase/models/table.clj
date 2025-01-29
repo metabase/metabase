@@ -163,12 +163,13 @@
   "Set field order to `field-order`."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
-  (t2/update! :model/Table (u/the-id table) {:field_order :custom})
-  (doall
-   (map-indexed (fn [position field-id]
-                  (t2/update! :model/Field field-id {:position        position
-                                                     :custom_position position}))
-                field-order)))
+  (t2/with-transaction [_]
+    (t2/update! :model/Table (u/the-id table) {:field_order :custom})
+    (dorun
+     (map-indexed (fn [position field-id]
+                    (t2/update! :model/Field field-id {:position        position
+                                                       :custom_position position}))
+                  field-order))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 

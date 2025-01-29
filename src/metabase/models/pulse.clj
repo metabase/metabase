@@ -378,10 +378,13 @@
           hydrate-notification
           notification->pulse))))
 
-(defn retrieve-user-alerts-for-card
+(mu/defn retrieve-user-alerts-for-card
   "Find all alerts for `card-id` that `user-id` is set to receive"
   [{:keys [archived? card-id user-id]
-    :or   {archived? false}}]
+    :or   {archived? false}} :- [:map
+                                 [:card-id pos-int?]
+                                 [:user-id pos-int?]
+                                 [:archived? {:optional true} boolean?]]]
   (assert boolean? archived?)
   (map (comp notification->alert hydrate-notification)
        (query-as :model/Pulse
@@ -396,10 +399,14 @@
                            [:= :pcr.user_id user-id]
                            [:= :p.archived archived?]]})))
 
-(defn retrieve-alerts-for-cards
+(mu/defn retrieve-alerts-for-cards
   "Find all alerts for `card-ids`, used for admin users"
   [{:keys [archived? card-ids]
-    :or   {archived? false}}]
+    :or   {archived? false}} :- [:map
+                                 [:card-ids [:maybe [:or
+                                                     [:sequential pos-int?]
+                                                     [:set pos-int?]]]]
+                                 [:archived? {:optional true} boolean?]]]
   (when (seq card-ids)
     (map (comp notification->alert hydrate-notification)
          (query-as :model/Pulse

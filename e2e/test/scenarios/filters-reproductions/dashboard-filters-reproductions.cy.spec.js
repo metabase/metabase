@@ -879,6 +879,7 @@ describe("issue 19494", () => {
   function connectFilterToCard({ filterName, cardPosition }) {
     cy.findByText(filterName).find(".Icon-gear").click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText("Select…").eq(cardPosition).click();
 
     H.popover().contains("Category").click();
@@ -2095,19 +2096,19 @@ describe("issue 27356", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(paramDashboard.name).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
+    cy.findByText("This dashboard is empty");
 
     H.openNavigationSidebar();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(regularDashboard.name).click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
+    cy.findByText("This dashboard is empty");
 
     H.openNavigationSidebar();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(paramDashboard.name).click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
+    cy.findByText("This dashboard is empty");
   });
 });
 
@@ -3613,9 +3614,11 @@ describe("issue 34955", () => {
 
       H.saveDashboard();
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("column-header")
         .eq(-2)
         .should("have.text", "Created At");
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("column-header").eq(-1).should("have.text", ccName);
       cy.findAllByTestId("cell-data")
         .filter(":contains(May 15, 2024, 8:04 AM)")
@@ -3627,6 +3630,7 @@ describe("issue 34955", () => {
     cy.get("@dashboardId").then(dashboard_id => {
       // Apply filter through URL to prevent the typing flakes
       cy.visit(`/dashboard/${dashboard_id}?on=&between=2024-01-01~2024-03-01`);
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("field-set-content")
         .last()
         .should("contain", "January 1, 2024 - March 1, 2024");
@@ -4039,5 +4043,191 @@ describe("issue 48351", () => {
       "Dashboard 1",
     );
     H.assertTabSelected("Tab 2");
+  });
+});
+
+describe("issue 52484", () => {
+  const questionDetails = {
+    native: {
+      query: "SELECT ID, RATING FROM PRODUCTS [[WHERE RATING = {{rating}}]]",
+      "template-tags": {
+        rating: {
+          id: "56708d23-6f01-42b7-98ed-f930295d31b9",
+          name: "rating",
+          type: "number",
+          "display-name": "Rating",
+        },
+      },
+    },
+    parameters: [
+      {
+        id: "56708d23-6f01-42b7-98ed-f930295d31b9",
+        name: "Rating",
+        slug: "rating",
+        type: "number/=",
+        target: ["dimension", ["template-tag", "rating"]],
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to use click behaviors with numeric columns that are not database fields (metabase#52484)", () => {
+    H.createNativeQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+      },
+    );
+
+    cy.log("setup a dashboard with a click behavior");
+    H.editDashboard();
+    H.setFilter("Number", "Equal to");
+    H.selectDashboardFilter(H.getDashboardCard(), "Rating");
+    H.dashboardParametersDoneButton().click();
+    H.showDashboardCardActions();
+    cy.findByLabelText("Click behavior").click();
+    H.sidebar().within(() => {
+      cy.findByText("ID").click();
+      cy.findByText("Update a dashboard filter").click();
+      cy.findByText("Number").click();
+    });
+    H.popover().findByText("ID").click();
+    H.saveDashboard();
+
+    cy.log("update a dashboard filter by clicking on a ID column value");
+    H.getDashboardCard().findByText("2").click();
+    H.filterWidget().findByDisplayValue("2").should("be.visible");
+
+    cy.log("verify query results for the new filter");
+    H.getDashboardCard().within(() => {
+      cy.findByText("27").should("be.visible");
+      cy.findByText("123").should("be.visible");
+    });
+  });
+});
+
+describe("issue 40396", { tags: "@external " }, () => {
+  const tableName = "many_data_types";
+
+  beforeEach(() => {
+    H.resetTestTable({ type: "postgres", table: tableName });
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+  });
+
+  it("should be possible to use dashboard filters with native enum fields (metabase#40396)", () => {
+    cy.log("create a dashboard with a question with a type/Enum field");
+    cy.request("GET", "/api/table").then(({ body: tables }) => {
+      const table = tables.find(table => table.name === tableName);
+      cy.request("GET", `/api/table/${table.id}/query_metadata`).then(
+        ({ body: metadata }) => {
+          const field = metadata.fields.find(field => field.name === "enum");
+          cy.request("PUT", `/api/field/${field.id}`, {
+            semantic_type: "type/Enum",
+          });
+
+          H.createQuestionAndDashboard({
+            questionDetails: {
+              database: table.db_id,
+              query: { "source-table": table.id },
+            },
+          }).then(({ body: { dashboard_id } }) => {
+            H.visitDashboard(dashboard_id);
+            cy.wait("@dashcardQuery");
+          });
+        },
+      );
+    });
+
+    cy.log("verify that a enum field can be mapped to a parameter");
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Enum");
+    H.saveDashboard();
+
+    cy.log("verify that filtering on a enum field works");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("beta").click();
+      cy.button("Add filter").click();
+    });
+    cy.wait("@dashcardQuery");
+    H.getDashboardCard().findAllByText("beta").should("have.length.gte", 1);
+  });
+});
+
+describe("issue 52627", () => {
+  const questionDetails = {
+    display: "bar",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["avg", ["field", ORDERS.TOTAL, null]],
+        ["avg", ["field", ORDERS.DISCOUNT, null]],
+      ],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    },
+  };
+
+  const parameterDetails = {
+    name: "Category",
+    slug: "category",
+    id: "b6ed2d71",
+    type: "string/=",
+    sectionId: "string",
+    default: ["Gadget"],
+  };
+
+  const parameterTarget = [
+    "dimension",
+    ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+    { "stage-number": 0 },
+  ];
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should remove an empty query stage after a dashboard drill-thru (metabase#52627)", () => {
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        H.addOrUpdateDashboardCard({
+          dashboard_id,
+          card_id,
+          card: {
+            id,
+            parameter_mappings: [
+              {
+                card_id: card_id,
+                parameter_id: parameterDetails.id,
+                target: parameterTarget,
+              },
+            ],
+          },
+        });
+        H.visitDashboard(dashboard_id);
+      },
+    );
+    H.chartPathWithFillColor("#A989C5").first().click();
+    H.popover().findByText("See this month by week").click();
+    cy.wait("@dataset");
+    cy.findByTestId("qb-filters-panel").findByText(
+      "Product → Category is Gadget",
+    );
+    H.summarize();
+    H.rightSidebar().findByText("Average of Total").should("be.visible");
   });
 });

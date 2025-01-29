@@ -15,6 +15,7 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -239,6 +240,14 @@
                                                     (:alias join)
                                                     ((some-fn :lib/source-column-alias :name) col)))))
 
+(mu/defn- adjust-ident :- :map
+  [join :- [:map
+            [:ident
+             {:error/message "Join must have an ident to determine column idents"}
+             ::lib.schema.common/non-blank-string]]
+   col  :- :map]
+  (update col :ident #(lib.metadata.ident/explicitly-joined-ident (:ident join) %)))
+
 (mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join
   [query
    stage-number
@@ -257,6 +266,7 @@
                               (lib.metadata.calculation/metadata join-query -1 join-field)))]
       (mapv (fn [field-metadata]
               (->> (column-from-join-fields query stage-number field-metadata join-alias)
+                   (adjust-ident join)
                    (add-source-and-desired-aliases join unique-name-fn)))
             field-metadatas))))
 

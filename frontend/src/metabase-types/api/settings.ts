@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { InputSettingType } from "./actions";
+
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -214,6 +216,7 @@ export const tokenFeatures = [
   "upload_management",
   "collection_cleanup",
   "query_reference_validation",
+  "cache_preemptive",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -232,7 +235,9 @@ export interface SettingDefinition<Key extends SettingKey = SettingKey> {
   is_env_setting?: boolean;
   value?: SettingValue<Key>;
   default?: SettingValue<Key>;
+  display_name?: string;
   description?: string | ReactNode | null;
+  type?: InputSettingType;
 }
 
 export type UpdateChannel = "latest" | "beta" | "nightly";

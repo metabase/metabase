@@ -10,7 +10,7 @@ import { ChartSettingColorPicker } from "../ChartSettingColorPicker";
 
 import ColumnItemS from "./ColumnItem.module.css";
 
-interface ColumnItemProps {
+export interface ColumnItemProps {
   className?: string;
   title: string;
   color?: string;
@@ -84,7 +84,7 @@ export const ColumnItem = ({
     </Group>
     <Group className={CS.flex1} px="xs" noWrap>
       {icon && <Icon name={icon} className={CS.flexNoShrink} />}
-      <Text lh="normal" fw="bold">
+      <Text lh="normal" fw="bold" className={CS.textWrap}>
         {title}
       </Text>
     </Group>

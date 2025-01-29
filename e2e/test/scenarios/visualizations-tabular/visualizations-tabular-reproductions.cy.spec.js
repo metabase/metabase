@@ -122,6 +122,7 @@ describe("issue 11435", () => {
     },
   };
   const hoverLineDot = ({ index } = {}) => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().eq(index).realHover();
   };
 
@@ -332,16 +333,19 @@ describe.skip("issue 19373", () => {
     cy.findAllByRole("grid").eq(2).as("tableCells");
 
     // Sanity check before we start asserting on this column
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@columnTitles")
       .findAllByTestId("pivot-table-cell")
       .eq(ROW_TOTALS_INDEX)
       .should("contain", "Row totals");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@rowTitles")
       .findAllByTestId("pivot-table-cell")
       .eq(GRAND_TOTALS_INDEX)
       .should("contain", "Grand totals");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@tableCells")
       .findAllByTestId("pivot-table-cell")
       .eq(ROW_TOTALS_INDEX)
@@ -523,7 +527,10 @@ describe("issue 28304", () => {
     H.leftSidebar().should("not.contain", "[Unknown]");
     H.leftSidebar().should("contain", "Created At");
     H.leftSidebar().should("contain", "Count");
-    cy.findAllByTestId("mini-bar").should("have.length.greaterThan", 0);
+    cy.findAllByTestId("mini-bar-container").should(
+      "have.length.greaterThan",
+      0,
+    );
     H.getDraggableElements().should("have.length", 2);
   });
 });
@@ -1192,6 +1199,44 @@ describe("issue 50346", () => {
     cy.findByTestId("pivot-table").within(() => {
       cy.findByTestId(`${groupValue}-toggle-button`).click();
       cy.findByText(totalValue).should("be.visible");
+    });
+  });
+});
+
+describe("issue 50686", () => {
+  const questionDetails = {
+    name: "50686",
+    display: "smartscalar",
+    native: {
+      query:
+        "select 100 as total, 110 as forecast, 80 as last_year, now() as now",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow selecting more than 1 comparison (metabase#50686)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+    // Default comparison
+    H.queryBuilderMain().findByText("N/A");
+
+    // Add another comparison
+    H.openVizSettingsSidebar();
+    cy.button("Add comparison").click();
+    H.popover().findByText("Value from another column…").click();
+    H.popover().findByText("FORECAST").click();
+    cy.button("Done").click();
+
+    H.queryBuilderMain().within(() => {
+      // First comparison still exists
+      cy.findByText("N/A");
+
+      // New comparison has been added
+      cy.findByText("9.09%");
+      cy.contains("vs. FORECAST");
     });
   });
 });

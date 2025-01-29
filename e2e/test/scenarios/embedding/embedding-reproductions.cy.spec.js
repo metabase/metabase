@@ -486,7 +486,7 @@ describe("issues 20845, 25031", () => {
 // - Add tests for embedding previews in both cases
 // - Add tests for disabled, editable and locked parameters in both cases
 // BONUS: Ideally add tests for email subscriptions with the filter applied
-describe("issue 27643", () => {
+describe("issue 27643", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
   const TEMPLATE_TAG_NAME = "expected_invoice";
   const getQuestionDetails = fieldId => {
@@ -570,36 +570,40 @@ describe("issue 27643", () => {
         });
     });
 
-    it("in static embedding and in public dashboard scenarios (metabase#27643-1)", () => {
-      cy.log("Test the dashboard");
-      H.visitDashboard("@dashboardId");
-      H.getDashboardCard().should("contain", "true");
-      H.toggleFilterWidgetValues(["false"]);
-      H.getDashboardCard().should("contain", "false");
+    it(
+      "in static embedding and in public dashboard scenarios (metabase#27643-1)",
+      { tags: "@flaky" },
+      () => {
+        cy.log("Test the dashboard");
+        H.visitDashboard("@dashboardId");
+        H.getDashboardCard().should("contain", "true");
+        H.toggleFilterWidgetValues(["false"]);
+        H.getDashboardCard().should("contain", "false");
 
-      cy.log("Test the embedded dashboard");
-      cy.get("@dashboardId").then(dashboard => {
-        H.visitEmbeddedPage({
-          resource: { dashboard },
-          params: {},
+        cy.log("Test the embedded dashboard");
+        cy.get("@dashboardId").then(dashboard => {
+          H.visitEmbeddedPage({
+            resource: { dashboard },
+            params: {},
+          });
+
+          H.getDashboardCard().should("contain", "true");
+          H.toggleFilterWidgetValues(["false"]);
+          H.getDashboardCard().should("contain", "false");
         });
 
-        H.getDashboardCard().should("contain", "true");
-        H.toggleFilterWidgetValues(["false"]);
-        H.getDashboardCard().should("contain", "false");
-      });
+        cy.log("Test the public dashboard");
+        cy.get("@dashboardId").then(dashboardId => {
+          // We were signed out due to the previous visitEmbeddedPage
+          cy.signInAsAdmin();
+          H.visitPublicDashboard(dashboardId);
 
-      cy.log("Test the public dashboard");
-      cy.get("@dashboardId").then(dashboardId => {
-        // We were signed out due to the previous visitEmbeddedPage
-        cy.signInAsAdmin();
-        H.visitPublicDashboard(dashboardId);
-
-        H.getDashboardCard().should("contain", "true");
-        H.toggleFilterWidgetValues(["false"]);
-        H.getDashboardCard().should("contain", "false");
-      });
-    });
+          H.getDashboardCard().should("contain", "true");
+          H.toggleFilterWidgetValues(["false"]);
+          H.getDashboardCard().should("contain", "false");
+        });
+      },
+    );
   });
 
   describe("should allow a native question filter to map to a boolean field filter parameter (metabase#27643)", () => {

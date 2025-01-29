@@ -113,7 +113,7 @@
   (doseq [[input expected-error]
           {{}
            {:errors {:name "value must be a non-blank string."}
-            :specific-errors {:name ["should be a string, received: nil" "non-blank string, received: nil"]}}
+            :specific-errors {:name ["missing required key, received: nil"]}}
 
            {:name "abc"}
            default-post-card-ref-validation-error

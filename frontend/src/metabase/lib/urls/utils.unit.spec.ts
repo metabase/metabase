@@ -25,6 +25,16 @@ describe("utils", () => {
     it("should return subpath-safe url", () => {
       expect(getSubpathSafeUrl("/baz")).toBe(`${fakeBasename}/baz`);
     });
+
+    it("should return subpath-safe url if url does not have leading `/` character", () => {
+      expect(getSubpathSafeUrl("baz")).toBe(`${fakeBasename}/baz`);
+    });
+
+    it("should return original url if `api.basename ` is empty", () => {
+      api.basename = "";
+
+      expect(getSubpathSafeUrl("baz")).toBe("baz");
+    });
   });
 
   describe("openInNewTab", () => {

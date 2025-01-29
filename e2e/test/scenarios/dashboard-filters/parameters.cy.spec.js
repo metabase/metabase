@@ -68,6 +68,7 @@ describe("scenarios > dashboard > parameters", () => {
     // After typing "Ga", you should see this name!
     H.popover().within(() => cy.findByPlaceholderText("Search").type("Ga"));
     cy.wait("@dashboard");
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().contains("Gabrielle Considine");
 
     // Continue typing a "d" and you see "Gadget"
@@ -76,6 +77,7 @@ describe("scenarios > dashboard > parameters", () => {
       .within(() => cy.findByPlaceholderText("Search").type("d"));
     cy.wait("@dashboard");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -90,6 +92,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should("eq", "?text=Gadget");
     cy.findAllByTestId("dashcard-container").first().should("contain", "0");
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("dashcard-container").last().should("contain", "4,939");
   });
 
@@ -623,7 +626,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.editDashboard();
 
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("All Options")
+        .findByText("Date")
         .click();
 
       H.selectDashboardFilter(H.getDashboardCard(0), "Created At");
@@ -639,7 +642,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.editDashboard();
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("All Options")
+        .findByText("Date")
         .click();
       H.selectDashboardFilter(H.getDashboardCard(0), "Created At");
 
@@ -652,7 +655,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.editDashboard();
 
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("All Options")
+        .findByText("Date")
         .click();
 
       H.disconnectDashboardFilter(H.getDashboardCard(0));

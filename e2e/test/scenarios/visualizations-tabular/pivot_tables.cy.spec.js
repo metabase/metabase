@@ -935,7 +935,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("is less than or equal to").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("[data-testid=pivot-table-cell]", "65.09").should(
       "have.css",
       "background-color",
@@ -1067,6 +1066,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       const leftHeaderColHandle = cy
         .findAllByTestId("pivot-table-resize-handle")
         .first();
+      // eslint-disable-next-line no-unsafe-element-filtering
       const totalHeaderColHandle = cy
         .findAllByTestId("pivot-table-resize-handle")
         .last();
@@ -1520,6 +1520,7 @@ function sortColumnResults(column, direction) {
 }
 
 function getPivotTableBodyCell(index) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy
     .findByLabelText("pivot-table-body-grid")
     .findAllByTestId("pivot-table-cell")

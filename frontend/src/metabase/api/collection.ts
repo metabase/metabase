@@ -2,10 +2,14 @@ import type {
   Collection,
   CreateCollectionRequest,
   DeleteCollectionRequest,
+  GetCollectionDashboardQuestionCandidatesRequest,
+  GetCollectionDashboardQuestionCandidatesResult,
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
   ListCollectionsRequest,
   ListCollectionsTreeRequest,
+  MoveCollectionDashboardCandidatesRequest,
+  MoveCollectionDashboardCandidatesResult,
   UpdateCollectionRequest,
   getCollectionRequest,
 } from "metabase-types/api";
@@ -109,6 +113,41 @@ export const collectionApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("collection"), idTag("collection", id)]),
     }),
+    listCollectionDashboardQuestionCandidates: builder.query<
+      GetCollectionDashboardQuestionCandidatesResult,
+      GetCollectionDashboardQuestionCandidatesRequest
+    >({
+      query: ({ collectionId, ...params }) => ({
+        method: "GET",
+        url: `/api/collection/${collectionId}/dashboard-question-candidates`,
+        params,
+      }),
+      providesTags: (_, __, { collectionId }) => [
+        idTag("dashboard-question-candidates", collectionId),
+        idTag("collection", collectionId),
+        // HACK: instead of making all dashboard operations aware of dq candidates
+        // rely on the fact that all dashboard mutation operation invalidate the
+        // dashboard list cache tag
+        listTag("dashboard"),
+      ],
+    }),
+    moveCollectionDashboardQuestionCandidates: builder.mutation<
+      MoveCollectionDashboardCandidatesResult,
+      MoveCollectionDashboardCandidatesRequest
+    >({
+      query: ({ collectionId, cardIds }) => ({
+        method: "POST",
+        url: `/api/collection/${collectionId}/move-dashboard-question-candidates`,
+        body: { card_ids: cardIds },
+      }),
+      invalidatesTags: (result, error, { collectionId }) =>
+        invalidateTags(error, [
+          idTag("dashboard-question-candidates", collectionId),
+          idTag("collection", collectionId),
+          listTag("card"),
+          ...(result ? result.moved.map(id => idTag("card", id)) : []),
+        ]),
+    }),
   }),
 });
 
@@ -120,4 +159,6 @@ export const {
   useCreateCollectionMutation,
   useUpdateCollectionMutation,
   useDeleteCollectionMutation,
+  useListCollectionDashboardQuestionCandidatesQuery,
+  useMoveCollectionDashboardQuestionCandidatesMutation,
 } = collectionApi;
