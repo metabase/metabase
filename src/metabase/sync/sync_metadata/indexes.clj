@@ -1,7 +1,6 @@
 (ns metabase.sync.sync-metadata.indexes
   (:require
    [clojure.data :as data]
-   [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.field :as field]
