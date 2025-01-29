@@ -303,8 +303,9 @@
          (adjust query)))))
 
 (deftest ^:parallel adjust-mixed-multi-source-test
-  (let [[first-metric mp] (mock-metric lib.tu/metadata-provider-with-mock-cards
-                                       (-> (lib/query lib.tu/metadata-provider-with-mock-cards (:products lib.tu/mock-cards))
+  (let [mp                (lib.tu/metadata-provider-with-mock-cards)
+        [first-metric mp] (mock-metric mp
+                                       (-> (lib/query mp (:products (lib.tu/mock-cards)))
                                            (lib/aggregate (update (lib/avg (meta/field-metadata :products :rating)) 1 assoc :name (u/slugify "Mock metric")))
                                            (lib/filter (lib/> (meta/field-metadata :products :price) 1))))
         [second-metric mp] (mock-metric mp (-> (lib/query mp first-metric)
@@ -433,7 +434,7 @@
 (deftest ^:parallel metric-question-on-native-model-test
   (let [mp meta/metadata-provider
         sum-pred (comp #{"sum"} :name)
-        query lib.tu/native-query
+        query (lib.tu/native-query)
         question (model-based-metric-question mp query sum-pred)]
     (is (=? {:stages
              [{:lib/type :mbql.stage/native,
