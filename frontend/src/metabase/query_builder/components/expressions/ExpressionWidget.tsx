@@ -221,6 +221,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           <ExpressionWidgetInfo />
         </Box>
         <ExpressionEditorTextfield
+          id="expression-content"
           expression={expression}
           expressionIndex={expressionIndex}
           /**

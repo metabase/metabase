@@ -21,6 +21,7 @@ import type { Shortcut } from "./suggestions";
 import { tokenAtPos } from "./util";
 
 type EditorProps = {
+  id?: string;
   expression: Expression | undefined | null;
   clause: Lib.ExpressionClause | undefined | null;
   error: ErrorWithMessage | null;
@@ -42,6 +43,7 @@ type EditorProps = {
 
 export function Editor(props: EditorProps) {
   const {
+    id,
     name,
     startRule = "expression",
     stageIndex,
@@ -93,6 +95,7 @@ export function Editor(props: EditorProps) {
       <div className={S.wrapper}>
         <div className={S.prefix}>=</div>
         <CodeMirror
+          id={id}
           ref={ref}
           data-testid="custom-expression-query-editor"
           className={S.editor}
