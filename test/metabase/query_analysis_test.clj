@@ -1,7 +1,7 @@
 (ns metabase.query-analysis-test
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -15,6 +15,10 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [query-analysis-enabled true]
+                        (thunk))))
 
 (deftest native-query-enabled-test
   (mt/discard-setting-changes [sql-parsing-enabled]

@@ -540,19 +540,21 @@ describe("issue 17514", () => {
       cy.location("search").should("eq", "?date_filter=past30years");
       cy.wait("@cardQuery");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Previous 30 Years");
+      cy.findByTestId("parameter-value-widget-target")
+        .findByText("Previous 30 Years")
+        .should("be.visible");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("17514").click();
+      cy.findByTestId("legend-caption").findByText("17514").click();
       cy.wait("@dataset");
       cy.findByTextEnsureVisible("Subtotal");
 
-      // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("79.37").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this value");
+      cy.findByTestId("view-footer")
+        .findByText("Showing first 2,000 rows")
+        .should("be.visible");
+
+      cy.findByTestId("query-builder-main").findByText("79.37").click();
+
+      cy.findByTestId("click-actions-view").findByText("Filter by this value");
     });
   });
 

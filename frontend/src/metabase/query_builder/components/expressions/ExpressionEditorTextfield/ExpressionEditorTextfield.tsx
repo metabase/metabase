@@ -1,5 +1,6 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
+import cx from "classnames";
 import * as React from "react";
 import type { ICommand, IMarker } from "react-ace";
 import AceEditor from "react-ace";
@@ -11,7 +12,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import type { IconName } from "metabase/ui";
+import { Box, Flex, type IconName, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import {
@@ -39,11 +40,7 @@ import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
 import { ExpressionEditorSuggestions } from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
 
-import {
-  EditorContainer,
-  EditorEqualsSign,
-  ErrorMessageContainer,
-} from "./ExpressionEditorTextfield.styled";
+import ExpressionEditorTextfieldS from "./ExpressionEditorTextfield.module.css";
 
 ace.config.set("basePath", "/assets/ui/");
 ace.config.set("useStrictCSP", true);
@@ -782,52 +779,65 @@ class ExpressionEditorTextfieldInner extends React.Component<
     } = this.state;
 
     return (
-      <div ref={this.helpTextTarget}>
-        <ExpressionEditorSuggestions
-          query={query}
-          stageIndex={stageIndex}
-          suggestions={suggestions}
-          onSuggestionMouseDown={this.onSuggestionSelected}
-          highlightedIndex={highlightedSuggestionIndex}
-          onHighlightSuggestion={this.handleHighlightSuggestion}
-          open={isFocused}
-          ref={this.popupMenuTarget}
-        >
-          <EditorContainer
-            isFocused={isFocused}
-            hasError={Boolean(errorMessage)}
-            ref={this.suggestionTarget}
-            data-testid="expression-editor-textfield"
-          >
-            <EditorEqualsSign>=</EditorEqualsSign>
-            <AceEditor
-              commands={this.commands}
-              mode="text"
-              ref={this.input}
-              value={source}
-              markers={this.errorAsMarkers(errorMessage)}
-              focus={true}
-              highlightActiveLine={false}
-              wrapEnabled={true}
-              fontSize={12}
-              onBlur={this.handleInputBlur}
-              onFocus={this.handleFocus}
-              setOptions={ACE_OPTIONS}
-              onChange={this.handleExpressionChange}
-              onCursorChange={this.handleCursorChange}
-              width="100%"
-            />
-          </EditorContainer>
-        </ExpressionEditorSuggestions>
-        {errorMessage && hasChanges && (
-          <ErrorMessageContainer>{errorMessage.message}</ErrorMessageContainer>
-        )}
-        <ExpressionEditorHelpText
-          target={this.helpTextTarget}
-          helpText={helpText}
-          width={width}
-        />
-      </div>
+      <Popover opened={!!helpText} position="bottom-start">
+        <Popover.Target>
+          <Box>
+            <ExpressionEditorSuggestions
+              query={query}
+              stageIndex={stageIndex}
+              suggestions={suggestions}
+              onSuggestionMouseDown={this.onSuggestionSelected}
+              highlightedIndex={highlightedSuggestionIndex}
+              onHighlightSuggestion={this.handleHighlightSuggestion}
+              open={isFocused}
+              ref={this.popupMenuTarget}
+            >
+              <Flex
+                className={cx(
+                  "expression-editor-textfield",
+                  ExpressionEditorTextfieldS.EditorContainer,
+                  {
+                    [ExpressionEditorTextfieldS.isFocused]: isFocused,
+                    [ExpressionEditorTextfieldS.hasError]: errorMessage,
+                  },
+                )}
+                ref={this.suggestionTarget}
+                data-testid="expression-editor-textfield"
+              >
+                <Box className={ExpressionEditorTextfieldS.EditorEqualsSign}>
+                  =
+                </Box>
+                <AceEditor
+                  commands={this.commands}
+                  mode="text"
+                  ref={this.input}
+                  value={source}
+                  markers={this.errorAsMarkers(errorMessage)}
+                  focus={true}
+                  highlightActiveLine={false}
+                  wrapEnabled={true}
+                  fontSize={12}
+                  onBlur={this.handleInputBlur}
+                  onFocus={this.handleFocus}
+                  setOptions={ACE_OPTIONS}
+                  onChange={this.handleExpressionChange}
+                  onCursorChange={this.handleCursorChange}
+                  width="100%"
+                />
+              </Flex>
+            </ExpressionEditorSuggestions>
+            {errorMessage && hasChanges && (
+              <Box className={ExpressionEditorTextfieldS.ErrorMessageContainer}>
+                {errorMessage.message}
+              </Box>
+            )}
+          </Box>
+        </Popover.Target>
+        {/* similar to overlays,  Mantine keeps overriding the max-width property on the `style` attribute */}
+        <Popover.Dropdown maw={`${width}px !important`}>
+          <ExpressionEditorHelpText helpText={helpText} />
+        </Popover.Dropdown>
+      </Popover>
     );
   }
 }

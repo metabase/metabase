@@ -269,6 +269,7 @@
  [lib.native
   engine
   extract-template-tags
+  has-template-tag-variables?
   has-write-permission
   native-extras
   native-query
