@@ -275,4 +275,72 @@ describe("FilterModal", () => {
       1,
     );
   });
+
+  it("should update column filter state when clearing all filters", async () => {
+    setup({ query: createQuery() });
+    await userEvent.click(screen.getByRole("tab", { name: "Product" }));
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Doohickey" }));
+    expect(screen.getByRole("checkbox", { name: "Doohickey" })).toBeChecked();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear all filters" }),
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Doohickey" }),
+    ).not.toBeChecked();
+  });
+
+  it("does not mix up column filter state when changing search query (metabase#48319)", async () => {
+    setup({ query: createQuery() });
+
+    const searchInput = screen.getByPlaceholderText("Search for a column…");
+    await userEvent.type(searchInput, "category");
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", { name: "Doohickey" }),
+      ).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Doohickey" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Filter operator" }),
+    );
+    await userEvent.click(screen.getByText("Is not"));
+
+    await userEvent.type(
+      searchInput,
+      `${"{backspace}".repeat("category".length)}source`,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", { name: "Affiliate" }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("button", { name: "Filter operator" }),
+    ).toHaveTextContent("is");
+    expect(
+      screen.queryByRole("checkbox", { name: "Doohickey" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Affiliate" }));
+    await userEvent.type(
+      searchInput,
+      `${"{backspace}".repeat("source".length)}category`,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("checkbox", { name: "Doohickey" }),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByRole("checkbox", { name: "Doohickey" })).toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "Filter operator" }),
+    ).toHaveTextContent("is not");
+    expect(
+      screen.queryByRole("checkbox", { name: "Affiliate" }),
+    ).not.toBeInTheDocument();
+  });
 });

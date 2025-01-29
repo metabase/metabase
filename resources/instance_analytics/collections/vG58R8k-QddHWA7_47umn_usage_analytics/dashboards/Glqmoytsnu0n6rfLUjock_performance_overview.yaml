@@ -61,6 +61,7 @@ dashcards:
         - public
         - v_query_log
         - database_qualified_id
+    - stage-number: 0
   - card_id: mm8k37Rgk7ChMNwAUdXK2
     parameter_id: dbeeb776
     target:
@@ -71,6 +72,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -107,6 +109,7 @@ dashcards:
         - public
         - v_query_log
         - database_qualified_id
+    - stage-number: 0
   - card_id: 5gASJxNKdQCmkiGXb5kRP
     parameter_id: dbeeb776
     target:
@@ -117,6 +120,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -149,11 +153,11 @@ dashcards:
     model: DashboardTab
   - id: I6pKZnuNRduK6inlhtJG8
     model: DashboardCard
-- entity_id: GuplD3L8-SZv_or20dYNI
-  card_id: zdVQGoMs__No_3l_amEWV
+- entity_id: YmdWBHC1EHgN0VI06DiDP
+  card_id: OCkxXZM5KPJ9zOjYVEnqY
   created_at: '2023-11-13T20:40:42.614766Z'
   row: 0
-  col: 12
+  col: 0
   size_x: 12
   size_y: 7
   action_id: null
@@ -161,7 +165,7 @@ dashcards:
   - Glqmoytsnu0n6rfLUjock
   - 4cbECWHJ2N1_nIPXQ186S
   parameter_mappings:
-  - card_id: zdVQGoMs__No_3l_amEWV
+  - card_id: OCkxXZM5KPJ9zOjYVEnqY
     parameter_id: dbeeb776
     target:
     - dimension
@@ -170,8 +174,9 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Group Members - User
-  - card_id: zdVQGoMs__No_3l_amEWV
+      - join-alias: Group Members - Entity
+    - stage-number: 0
+  - card_id: OCkxXZM5KPJ9zOjYVEnqY
     parameter_id: cbef6d30
     target:
     - dimension
@@ -185,6 +190,7 @@ dashcards:
         - public
         - v_query_log
         - database_qualified_id
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -193,7 +199,7 @@ dashcards:
     model: Dashboard
   - id: 4cbECWHJ2N1_nIPXQ186S
     model: DashboardTab
-  - id: GuplD3L8-SZv_or20dYNI
+  - id: YmdWBHC1EHgN0VI06DiDP
     model: DashboardCard
 - entity_id: aBpCVPlOAxucmmKrdx9VM
   card_id: DuL1yrlkmnqOgz4drGiG4
@@ -217,6 +223,7 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Group Members - User
+    - stage-number: 0
   - card_id: DuL1yrlkmnqOgz4drGiG4
     parameter_id: cbef6d30
     target:
@@ -231,6 +238,7 @@ dashcards:
         - public
         - v_query_log
         - database_qualified_id
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -241,11 +249,11 @@ dashcards:
     model: DashboardTab
   - id: aBpCVPlOAxucmmKrdx9VM
     model: DashboardCard
-- entity_id: YmdWBHC1EHgN0VI06DiDP
-  card_id: OCkxXZM5KPJ9zOjYVEnqY
+- entity_id: GuplD3L8-SZv_or20dYNI
+  card_id: zdVQGoMs__No_3l_amEWV
   created_at: '2023-11-13T20:40:42.614766Z'
   row: 0
-  col: 0
+  col: 12
   size_x: 12
   size_y: 7
   action_id: null
@@ -253,7 +261,7 @@ dashcards:
   - Glqmoytsnu0n6rfLUjock
   - 4cbECWHJ2N1_nIPXQ186S
   parameter_mappings:
-  - card_id: OCkxXZM5KPJ9zOjYVEnqY
+  - card_id: zdVQGoMs__No_3l_amEWV
     parameter_id: dbeeb776
     target:
     - dimension
@@ -262,8 +270,9 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Group Members - Entity
-  - card_id: OCkxXZM5KPJ9zOjYVEnqY
+      - join-alias: Group Members - User
+    - stage-number: 0
+  - card_id: zdVQGoMs__No_3l_amEWV
     parameter_id: cbef6d30
     target:
     - dimension
@@ -277,6 +286,7 @@ dashcards:
         - public
         - v_query_log
         - database_qualified_id
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -285,7 +295,7 @@ dashcards:
     model: Dashboard
   - id: 4cbECWHJ2N1_nIPXQ186S
     model: DashboardTab
-  - id: YmdWBHC1EHgN0VI06DiDP
+  - id: GuplD3L8-SZv_or20dYNI
     model: DashboardCard
 - entity_id: K2iosE8HMewiHs5tJAKIB
   card_id: KXNGLyYyS1pO_9wMguHIB
@@ -309,6 +319,7 @@ dashcards:
         - v_databases
         - name
       - join-alias: Databases - Database Qualified
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -341,6 +352,7 @@ dashcards:
         - v_databases
         - name
       - join-alias: Databases - Database Qualified
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -378,6 +390,7 @@ dashcards:
         - public
         - v_query_log
         - database_qualified_id
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -415,6 +428,7 @@ dashcards:
         - public
         - v_query_log
         - database_qualified_id
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -452,6 +466,7 @@ dashcards:
         - public
         - v_query_log
         - database_qualified_id
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
@@ -489,6 +504,7 @@ dashcards:
         - public
         - v_query_log
         - database_qualified_id
+    - stage-number: 0
   series: []
   visualization_settings:
     column_settings: null
