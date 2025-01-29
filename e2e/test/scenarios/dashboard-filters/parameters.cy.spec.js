@@ -36,7 +36,7 @@ describe("scenarios > dashboard > parameters", () => {
   it("one filter should search across multiple fields", () => {
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
 
-    cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
+    H.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
       // add the same question twice
       H.updateDashboardCards({
         dashboard_id: id,
@@ -123,7 +123,7 @@ describe("scenarios > dashboard > parameters", () => {
       parameters: [startsWith, endsWith],
     };
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           dashcards: [
@@ -266,7 +266,7 @@ describe("scenarios > dashboard > parameters", () => {
       parameters: [matchingFilterType],
     };
 
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -388,7 +388,7 @@ describe("scenarios > dashboard > parameters", () => {
       cy.spy().as("fetchAllCategories"),
     ).as("filterValues");
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.log("Connect all filters to the card");
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -551,7 +551,7 @@ describe("scenarios > dashboard > parameters", () => {
       parameters: [parameter1Details, parameter2Details],
     };
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
       },
@@ -683,7 +683,7 @@ describe("scenarios > dashboard > parameters", () => {
         query: { "source-table": PEOPLE_ID, limit: 5 },
       };
 
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails: {
           parameters: [textFilter],
         },
@@ -787,14 +787,12 @@ function createDashboardWithCards({
   dashboardName = "my dash",
   cards = [],
 } = {}) {
-  return cy
-    .createDashboard({ name: dashboardName })
-    .then(({ body: { id } }) => {
-      H.updateDashboardCards({
-        dashboard_id: id,
-        cards,
-      });
-
-      cy.wrap(id).as("dashboardId");
+  return H.createDashboard({ name: dashboardName }).then(({ body: { id } }) => {
+    H.updateDashboardCards({
+      dashboard_id: id,
+      cards,
     });
+
+    cy.wrap(id).as("dashboardId");
+  });
 }

@@ -23,7 +23,7 @@ describe("issue 23851", () => {
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
       semantic_type: null,
     });
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,

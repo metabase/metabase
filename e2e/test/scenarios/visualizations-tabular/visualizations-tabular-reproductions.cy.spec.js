@@ -8,7 +8,7 @@ const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
 
 describe("issue 6010", () => {
   const createMetric = () => {
-    return cy.createQuestion({
+    return H.createQuestion({
       name: "Metric",
       description: "Metric with a filter",
       type: "metric",
@@ -21,7 +21,7 @@ describe("issue 6010", () => {
   };
 
   const createQuestion = metric_id => {
-    return cy.createQuestion({
+    return H.createQuestion({
       name: "Question",
       display: "line",
       query: {
@@ -131,7 +131,7 @@ describe("issue 11435", () => {
   });
 
   it("should use time formatting settings in tooltips for native questions (metabase#11435)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
     hoverLineDot({ index: 1 });
     H.assertEChartsTooltip({
       header: "March 11, 2025, 8:45:17.010 PM",
@@ -163,7 +163,7 @@ describe("issue 15353", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should be able to change field name used for values (metabase#15353)", () => {
@@ -215,7 +215,7 @@ describe("issue 18976, 18817", () => {
   });
 
   it("should not keep orphan columns rendered after switching from pivot to regular table (metabase#18817)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": PEOPLE_ID,
@@ -282,7 +282,7 @@ describe("issue 18996", () => {
   });
 
   it("should navigate between pages in a table with images in a dashboard (metabase#18996)", () => {
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
     }).then(({ body: { dashboard_id } }) => {
       H.visitDashboard(dashboard_id);
@@ -318,7 +318,7 @@ describe.skip("issue 19373", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questiondDetails, { visitQuestion: true });
+    H.createQuestion(questiondDetails, { visitQuestion: true });
   });
 
   it("should return correct sum of the distinct values in row totals (metabase#19373)", () => {
@@ -450,7 +450,7 @@ describe("issue 23076", () => {
       locale: "de",
     });
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should correctly translate dates (metabase#23076)", () => {
@@ -654,7 +654,7 @@ describe("issue 37726", { tags: "@flaky" }, () => {
 
     // The important data point in this question is that it has custom
     // leftHeaderWidths as if a user had dragged them to change the defaults.
-    cy.createQuestion(PIVOT_QUESTION, { visitQuestion: true });
+    H.createQuestion(PIVOT_QUESTION, { visitQuestion: true });
 
     // Now, add in another column to the pivot table
     cy.button(/Summarize/).click();
@@ -877,7 +877,7 @@ describe.skip("issue 25415", () => {
   });
 
   it("should allow to drill-through aggregated query with a custom column on top level (metabase#25415)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "Aggregated query with custom column",
         display: "line",
