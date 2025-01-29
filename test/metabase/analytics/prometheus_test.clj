@@ -197,8 +197,8 @@
 
 (deftest search-engine-metrics-test
   (let [metrics       (prometheus/initial-labelled-metric-values)
-        engines       (fn [metric] (map (comp :engine :labels) (filter (comp #{metric} :metric) metrics)))
         engine->value (fn [metric] (u/index-by (comp :engine :labels) :value (filter (comp #{metric} :metric) metrics)))
+        engines       (fn [metric] (keys (engine->value metric)))
         value         (fn [metric engine] (get (engine->value metric) (name engine)))
         sum           (fn [metric] (reduce + 0 (vals (engine->value metric))))]
     (testing "A consistent set of engines is enumerated"
