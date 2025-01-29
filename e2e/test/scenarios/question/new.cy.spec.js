@@ -493,7 +493,7 @@ describe("scenarios > question > new", () => {
 
     beforeEach(() => {
       cy.intercept("POST", "/api/card").as("createQuestion");
-      cy.createCollection(collectionInRoot).then(({ body: { id } }) => {
+      H.createCollection(collectionInRoot).then(({ body: { id } }) => {
         H.createDashboard({
           name: "Extra Dashboard",
           collection_id: id,

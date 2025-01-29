@@ -41,6 +41,7 @@ H.describeEE("scenarios > admin > permissions > view data > blocked", () => {
     cy.log(
       "assert that user properly sees native query warning related to table level blocking",
     );
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.getPermissionRowPermissions("All Users")
       .eq(DATA_ACCESS_PERM_IDX)
       .findByLabelText("warning icon")
@@ -340,6 +341,7 @@ H.describeEE(
       H.saveImpersonationSettings();
       H.savePermissions();
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.getPermissionRowPermissions("QA Postgres12")
         .eq(DATA_ACCESS_PERM_IDX)
         .findByLabelText("warning icon")

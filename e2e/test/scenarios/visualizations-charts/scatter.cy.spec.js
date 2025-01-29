@@ -240,6 +240,7 @@ function triggerPopoverForBubble(index = 13, force = false) {
     cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.cartesianChartCircle()
     .eq(index) // Random bubble
     .trigger("mousemove", { force });

@@ -268,7 +268,7 @@ describe("issue 19451", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(question, { visitQuestion: true });
+    H.createNativeQuestion(question, { visitQuestion: true });
   });
 
   it("question field filter shows all tables from a selected database (metabase#19451)", () => {
@@ -304,7 +304,7 @@ describe("issue 20044", () => {
   });
 
   it("nodata user should not see 'Explore results' (metabase#20044)", () => {
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.signIn("nodata");
 
       H.visitQuestion(id);
@@ -553,7 +553,7 @@ describe("issue 23510", () => {
   });
 
   it("loads metadata when it is not cached (metabase#23510)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         database: 1,
         name: "Q23510",
@@ -673,7 +673,7 @@ describe("issue 35344", () => {
   });
 
   it("should not allow the user to undo to the empty editor (metabase#35344)", () => {
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     cy.findByTestId("query-builder-main").findByText("Open Editor").click();
 
@@ -724,7 +724,7 @@ describe("issue 35785", () => {
     H.restore();
     cy.signInAsNormalUser();
 
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
 
     cy.intercept("GET", "/api/search?*").as("getSearchResults");
   });
@@ -762,7 +762,7 @@ describe("issue 22991", () => {
       },
     };
 
-    cy.createCollection({ name: "Restricted Collection" }).then(
+    H.createCollection({ name: "Restricted Collection" }).then(
       ({ body: restrictedCollection }) => {
         cy.updateCollectionGraph({
           [USER_GROUPS.COLLECTION_GROUP]: {
@@ -822,7 +822,7 @@ describe("issue 46308", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("should persist viz settings when saving a question without a required filter selected (metabase#46308)", () => {

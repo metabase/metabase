@@ -56,7 +56,7 @@ describe("issue 35954", () => {
         H.restore();
         cy.signInAsAdmin();
 
-        cy.createQuestionAndDashboard({
+        H.createQuestionAndDashboard({
           questionDetails,
           cardDetails: {
             size_x: 16,
@@ -288,6 +288,7 @@ function connectFilterToColumn(column, index = 0) {
   });
 
   H.popover().within(() => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText(column).eq(index).click();
   });
 }

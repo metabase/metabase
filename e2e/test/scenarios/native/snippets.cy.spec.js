@@ -103,7 +103,7 @@ describe("scenarios > question > snippets", () => {
       });
 
       // Create native question using snippet 1
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "15387",
           native: {

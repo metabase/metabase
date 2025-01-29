@@ -25,6 +25,8 @@ dataset_query:
   query:
     aggregation:
     - - count
+    aggregation-idents:
+      0: aggregation_HyPss6g8k1a6kSx_ErtVg@0__0
     breakout:
     - - field
       - cache_hit
@@ -33,6 +35,9 @@ dataset_query:
       - started_at
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: week
+    breakout-idents:
+      0: breakout_HyPss6g8k1a6kSx_ErtVg@0__0
+      1: breakout_HyPss6g8k1a6kSx_ErtVg@0__1
     filter:
     - and
     - - not-null
@@ -64,7 +69,7 @@ result_metadata:
   semantic_type: type/Category
   visibility_type: normal
 - base_type: type/DateTime
-  display_name: Started At
+  display_name: 'Started At: Week'
   effective_type: type/DateTime
   field_ref:
   - field
@@ -111,6 +116,7 @@ serdes/meta:
   label: weekly_cache_hit_rate
   model: Card
 archived_directly: false
+dashboard_id: Glqmoytsnu0n6rfLUjock
 metabase_version: vUNKNOWN (9aa572c)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question
