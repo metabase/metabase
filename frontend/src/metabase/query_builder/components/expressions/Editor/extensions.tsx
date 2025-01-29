@@ -1,3 +1,4 @@
+import { acceptCompletion } from "@codemirror/autocomplete";
 import { bracketMatching, syntaxHighlighting } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { EditorView, drawSelection, keymap, tooltips } from "@codemirror/view";
@@ -87,6 +88,10 @@ export function useExtensions(options: Options): Extension[] {
               onCommit(source);
               return true;
             },
+          },
+          {
+            key: "Tab",
+            run: acceptCompletion,
           },
         ]),
       ),
