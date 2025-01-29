@@ -1,6 +1,9 @@
 /**
  * Using `.filter(":visible")` or `.should("be.visible")` fails here as Cypress
  * is not able to reliably detect a fixed-position element as visible.
+ *
+ * WARNING: It does not assert the element's stacking order for obscured elements though,
+ * so you will need to assert that separately.
  */
 export function isFixedPositionElementVisible(element: HTMLElement): boolean {
   const style = window.getComputedStyle(element);
