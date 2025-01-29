@@ -106,7 +106,7 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should handle duplicate column names in nested queries (metabase#10511)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "10511",
         query: {
@@ -147,7 +147,7 @@ describe("scenarios > question > nested", () => {
     };
 
     cy.log("Create a metric with a filter");
-    cy.createQuestion(metric, {
+    H.createQuestion(metric, {
       wrapId: true,
       idAlias: "metricId",
     });
@@ -283,7 +283,7 @@ describe("scenarios > question > nested", () => {
   });
 
   it("should be able to use aggregation functions on saved native question (metabase#15397)", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "15397",
       native: {
         query:
@@ -347,7 +347,7 @@ describe("scenarios > question > nested", () => {
     });
 
     function assertOnFilter({ name, filter, value } = {}) {
-      cy.createQuestion({
+      H.createQuestion({
         name,
         query: {
           "source-table": ORDERS_ID,
@@ -369,7 +369,7 @@ describe("scenarios > question > nested", () => {
   describe("should not remove user defined metric when summarizing based on saved question (metabase#15725)", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "15725",
         native: { query: "select 'A' as cat, 5 as val" },
       });
@@ -569,7 +569,7 @@ function createNestedQuestion(
       ...details,
     };
 
-    return cy.createQuestion(composite, {
+    return H.createQuestion(composite, {
       visitQuestion: visitNestedQuestion,
       wrapId: true,
       idAlias: "nestedQuestionId",
@@ -578,8 +578,8 @@ function createNestedQuestion(
 
   function createBaseQuestion(query) {
     return query.native
-      ? cy.createNativeQuestion(query)
-      : cy.createQuestion(query);
+      ? H.createNativeQuestion(query)
+      : H.createQuestion(query);
   }
 }
 

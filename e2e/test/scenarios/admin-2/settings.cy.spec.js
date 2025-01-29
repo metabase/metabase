@@ -785,7 +785,7 @@ describe("scenarios > admin > localization", () => {
     // summarize: Count by CreatedAt: Week
 
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.createQuestion({
+    H.createQuestion({
       name: "Orders created before June 1st 2022",
       query: {
         "source-table": ORDERS_ID,
@@ -810,7 +810,7 @@ describe("scenarios > admin > localization", () => {
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "13604",
       query: {
         "source-table": ORDERS_ID,
@@ -858,7 +858,7 @@ describe("scenarios > admin > localization", () => {
   // TODO:
   //  - Keep an eye on this test in CI and update the week range as needed.
   it("should respect start of the week in SQL questions with filters (metabase#14294)", () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "14294",
         native: {

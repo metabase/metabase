@@ -99,11 +99,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
       ],
     };
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+    H.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: dashboardCard }) => {
         const { dashboard_id } = dashboardCard;
 
-        cy.editDashboardCard(dashboardCard, {
+        H.editDashboardCard(dashboardCard, {
           visualization_settings: clickBehavior,
         });
 
@@ -366,7 +366,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         semantic_type: "type/Category",
       });
 
-      cy.createQuestionAndDashboard({ questionDetails }).then(
+      H.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
           // Add filter to the dashboard
           cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -558,7 +558,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   it("should apply correct date range on a graph drill-through (metabase#13785)", () => {
     cy.log("Create a question");
 
-    cy.createQuestion({
+    H.createQuestion({
       name: "13785",
       query: {
         "source-table": REVIEWS_ID,
@@ -567,7 +567,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       },
       display: "bar",
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+      H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         cy.log("Add filter to the dashboard");
 
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
@@ -658,7 +658,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       name: "38307",
     };
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { dashboard_id } }) => {
         H.visitDashboard(dashboard_id);
 
@@ -713,11 +713,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
   it("should not remove click behavior on 'reset to defaults' (metabase#14919)", () => {
     const LINK_NAME = "Home";
 
-    cy.createQuestion({
+    H.createQuestion({
       name: "14919",
       query: { "source-table": PRODUCTS_ID },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+      H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add previously added question to the dashboard
         H.addOrUpdateDashboardCard({
           card_id: QUESTION_ID,
@@ -760,7 +760,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   it('should drill-through on PK/FK to the "object detail" when filtered by explicit joined column (metabase#15331)', () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.createQuestion({
+    H.createQuestion({
       name: "15331",
       query: {
         "source-table": ORDERS_ID,
@@ -778,7 +778,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ],
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+      H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add filter to the dashboard
         cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
           parameters: [
@@ -836,7 +836,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should display correct tooltip value for multiple series charts on dashboard (metabase#15612)", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "15612_1",
       native: { query: 'select 1 as AXIS, 5 as "VALUE"' },
       display: "bar",
@@ -845,7 +845,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         "graph.metrics": ["VALUE"],
       },
     }).then(({ body: { id: QUESTION1_ID } }) => {
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "15612_2",
         native: { query: 'select 1 as AXIS, 10 as "VALUE"' },
         display: "bar",
@@ -854,7 +854,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           "graph.metrics": ["VALUE"],
         },
       }).then(({ body: { id: QUESTION2_ID } }) => {
-        cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+        H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           // Add the first question to the dashboard
           H.addOrUpdateDashboardCard({
             card_id: QUESTION1_ID,
@@ -1034,7 +1034,7 @@ function createDashboard(
   { dashboardName = "dashboard", questionId, visualization_settings },
   callback,
 ) {
-  cy.createDashboard({ name: dashboardName }).then(
+  H.createDashboard({ name: dashboardName }).then(
     ({ body: { id: dashboardId } }) => {
       cy.request("PUT", `/api/dashboard/${dashboardId}`, {
         parameters: [
