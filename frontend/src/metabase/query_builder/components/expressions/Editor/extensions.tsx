@@ -10,7 +10,7 @@ import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import css from "./Editor.module.css";
+import S from "./Editor.module.css";
 import { highlightStyle } from "./Highlight";
 import { customExpression } from "./language";
 import { suggestions } from "./suggestions";
@@ -35,7 +35,7 @@ function getTooltipParent() {
 
   el = document.createElement("div");
   el.id = "query-builder-tooltip-parent";
-  el.className = css.tooltips;
+  el.className = S.tooltips;
   document.body.append(el);
   return el;
 }
