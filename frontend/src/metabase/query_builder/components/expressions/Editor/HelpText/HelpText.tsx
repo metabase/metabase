@@ -25,7 +25,7 @@ function wrapPlaceholder(name: string) {
   return `⟨${name}⟩`;
 }
 
-type HelpTextProps = {
+export type HelpTextProps = {
   enclosingFunction?: {
     name: string;
     arg: {
@@ -77,7 +77,11 @@ export function HelpText({
 
   return (
     <Box className={S.helpText}>
-      <Box className={S.usage} onMouseDown={handleMouseDown}>
+      <Box
+        className={S.usage}
+        onMouseDown={handleMouseDown}
+        data-testid="expression-helper-popover-structure"
+      >
         {structure}
         {args != null && (
           <>
