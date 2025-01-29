@@ -18,6 +18,11 @@ describe("Transform Embedding Theme Override", () => {
           "text-tertiary": "green",
           "background-disabled": "pink",
         },
+        components: {
+          popover: {
+            zIndex: undefined,
+          },
+        },
       },
       "Roboto",
     );
