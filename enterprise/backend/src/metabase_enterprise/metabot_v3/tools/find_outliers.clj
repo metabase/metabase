@@ -21,8 +21,11 @@
 (defn- find-dataset-query
   [{:keys [query_id report_id metric_id] :as data-source} env]
   (cond
-    metric_id [(metabot-v3.tools.u/card-field-id-prefix metric_id)
-               (checked-card-dataset-query metric_id)]
+    metric_id (if (int? metric_id)
+                [(metabot-v3.tools.u/card-field-id-prefix metric_id)
+                 (checked-card-dataset-query metric_id)]
+                (throw (ex-info "Invalid metric_id as data_source" {:agent-error? true
+                                                                    :data_source data-source})))
     report_id (if (int? report_id)
                 [(metabot-v3.tools.u/card-field-id-prefix report_id)
                  (checked-card-dataset-query report_id)]
@@ -56,13 +59,18 @@
                                   (throw (ex-info "No temporal dimension found. Outliers can only be detected when a temporal dimension is available."
                                                   {:agent-error? true})))
             value-col-idx (if metric_id
-                            (->> data
-                                 :cols
-                                 (map-indexed vector)
-                                 (m/find-first (fn [[_i col]]
-                                                 (lib.types.isa/numeric? (u/normalize-map col))))
-                                 first)
+                            (or (->> data
+                                     :cols
+                                     (map-indexed vector)
+                                     (m/find-first (fn [[_i col]]
+                                                     (lib.types.isa/numeric? (u/normalize-map col))))
+                                     first)
+                                (throw (ex-info "Could not determine result field."
+                                                {:agent-error? true})))
                             (metabot-v3.tools.u/resolve-column-index result_field_id field-id-prefix))]
+        (when-not (< -1 value-col-idx (-> data :rows first count))
+          (throw (ex-info (str "Invalid result_field_id " result_field_id)
+                          {:agent-error? true})))
         {:structured-output (->> data
                                  :rows
                                  (map (fn [row]

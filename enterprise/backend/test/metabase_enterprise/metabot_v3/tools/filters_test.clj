@@ -23,11 +23,11 @@
                          (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :orders :subtotal))))
                          (lib/breakout (lib/with-temporal-bucket created-at-meta :month)))
         legacy-metric-query (lib.convert/->legacy-MBQL metric-query)]
-    (mt/with-temp [:model/Card {metric-id :id :as metric} {:dataset_query legacy-metric-query
-                                                           :database_id (mt/id)
-                                                           :name "Average Order Value"
-                                                           :description "The average subtotal of orders."
-                                                           :type :metric}]
+    (mt/with-temp [:model/Card {metric-id :id} {:dataset_query legacy-metric-query
+                                                :database_id (mt/id)
+                                                :name "Average Order Value"
+                                                :description "The average subtotal of orders."
+                                                :type :metric}]
       (testing "User has to have execution rights."
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                               (metabot-v3.tools.interface/*invoke-tool*
@@ -37,8 +37,7 @@
                                 :group-by []}
                                {}))))
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [metric-id (:id metric)
-              metric-details (metabot-v3.dummy-tools/metric-details metric-id)
+        (let [metric-details (metabot-v3.dummy-tools/metric-details metric-id)
               ->field-id #(u/prog1 (-> metric-details :queryable_dimensions (name->dimension %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
