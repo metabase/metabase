@@ -8,9 +8,9 @@ export type FilterModalResult = {
   isChanged: boolean;
   isSearching: boolean;
   query: Lib.Query;
+  remountKey: number;
   searchText: string;
   tab: string | null;
-  version: number;
   visibleItems: GroupItem[];
   onInput: () => void;
   onQueryChange: (query: Lib.Query) => void;
