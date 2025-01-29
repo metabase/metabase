@@ -8,6 +8,7 @@
   align-items: center;
   justify-content: end;
   cursor: pointer;
+  font-size: 13px;
 }
 
 .rowNumber {

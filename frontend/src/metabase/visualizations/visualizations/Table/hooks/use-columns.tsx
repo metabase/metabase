@@ -1,17 +1,13 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Root } from "react-dom/client";
-import { type CSSProperties, type MouseEvent, type TouchEvent } from "react";
+import { type CSSProperties } from "react";
 
 import { formatValue } from "metabase/lib/formatting";
 import { renderRoot } from "metabase/lib/react-compat";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 import { cachedFormatter } from "metabase/visualizations/echarts/cartesian/utils/formatter";
-import {
-  getTableCellClickedObject,
-  getTableClickedObjectRowData,
-  getTableHeaderClickedObject,
-} from "metabase/visualizations/lib/table";
+import { getTableHeaderClickedObject } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
@@ -44,8 +40,13 @@ declare module "@tanstack/react-table" {
 }
 
 import type { CellMeasurer } from "./use-cell-measure";
-import { ColumnDef, RowData, createColumnHelper } from "@tanstack/react-table";
-import { MIN_COLUMN_WIDTH } from "../constants";
+import {
+  ColumnDef,
+  ColumnSizingState,
+  RowData,
+  createColumnHelper,
+} from "@tanstack/react-table";
+import { INDEX_COLUMN_ID, MIN_COLUMN_WIDTH } from "../constants";
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -55,6 +56,8 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import styles from "../Table.module.css";
+import { IndexCell } from "../cell/IndexCell";
+import { IndexHeaderCell } from "../cell/IndexHeaderCell";
 
 // approximately 120 chars
 const TRUNCATE_WIDTH = 780;
@@ -116,9 +119,6 @@ const TableHeader = memo(function TableHeader({
   align,
   sortDirection,
   isPivoted,
-  isTruncated,
-  columnWidth,
-  measuredColumnWidth,
   onVisualizationClick,
   clicked,
   col,
@@ -141,7 +141,6 @@ const TableHeader = memo(function TableHeader({
     transform: isDragging ? CSS.Translate.toString(transform) : undefined,
     transition: "width transform 0.2s ease-in-out",
     whiteSpace: "nowrap",
-    width: isTruncated ? TRUNCATE_WIDTH : columnWidth || measuredColumnWidth,
     zIndex: isDragging ? 2 : 0,
     cursor: isPivoted ? "default" : "grab",
     outline: "none",
@@ -216,6 +215,32 @@ const TableHeader = memo(function TableHeader({
 
 const columnHelper = createColumnHelper<RowValues>();
 
+const getColumnSizing = (
+  cols: DatasetColumn[],
+  widths: number[] = [],
+  expandedState?: ExpandedColumnsState,
+): ColumnSizingState => {
+  return cols.reduce((acc: ColumnSizingState, column, index) => {
+    const width = widths[index];
+    if (width != null) {
+      acc[column.name] =
+        expandedState == null || expandedState[column.name]
+          ? width
+          : Math.min(width, TRUNCATE_WIDTH);
+    }
+    return acc;
+  }, {});
+};
+
+const getColumnWidthsForSettings = (
+  cols: DatasetColumn[],
+  columnSizing: ColumnSizingState,
+) => {
+  return cols.map(col => columnSizing[col.name] ?? 0);
+};
+
+export type ExpandedColumnsState = Record<string, boolean>;
+
 export const useColumns = ({
   settings,
   onVisualizationClick,
@@ -226,9 +251,27 @@ export const useColumns = ({
   question,
   hasMetadataPopovers = false,
 }: UseColumnsProps) => {
-  const [columnIsExpanded, setColumnIsExpanded] = useState<boolean[]>([]);
-
   const { cols, rows } = data;
+
+  const [expandedColumns, setExpandedColumns] = useState<ExpandedColumnsState>(
+    () => {
+      return cols.reduce((acc: ExpandedColumnsState, col) => {
+        acc[col.name] = false;
+        return acc;
+      }, {});
+    },
+  );
+
+  const savedColumnSizing = useMemo(
+    () =>
+      getColumnSizing(cols, settings["table.column_widths"], expandedColumns),
+    [settings],
+  );
+  const [columnSizing, setColumnSizing] =
+    useState<ColumnSizingState>(savedColumnSizing);
+  const [measuredColumnSizing, setMeasuredColumnSizing] =
+    useState<ColumnSizingState>({});
+
   const columnFormatters = useMemo(() => {
     return cols.map(col => {
       const columnSettings = settings.column?.(col);
@@ -244,72 +287,76 @@ export const useColumns = ({
     });
   }, [cols, settings]);
 
-  const savedColumnWidths = useMemo(
-    () => settings["table.column_widths"] || [],
-    [settings],
-  );
-
-  const [measuredColumnWidths, setMeasuredColumnWidths] = useState<number[]>(
-    [],
-  );
-  const [columnWidths, setColumnWidths] = useState(savedColumnWidths);
-
   const handleExpandButtonClick = useCallback(
-    (columnIndex: number, content: string) => {
-      const newColumnWidth = measureBodyCellDimensions(content).width;
-      const newWidths = columnWidths.slice();
-      newWidths[columnIndex] = newColumnWidth;
+    (columnName: string, content: string) => {
+      const newColumnWidth = Math.max(
+        measureBodyCellDimensions(content).width,
+        measuredColumnSizing[columnName],
+      );
+      const newColumnSizing = { ...columnSizing, [columnName]: newColumnWidth };
 
-      setColumnWidths(newWidths);
-      onUpdateColumnExpanded(columnIndex);
+      setColumnSizing(newColumnSizing);
+
+      onUpdateColumnExpanded(columnName);
     },
-    [columnWidths, measureBodyCellDimensions],
+    [columnSizing, measureBodyCellDimensions, measuredColumnSizing],
   );
 
   const onUpdateColumnExpanded = useCallback(
-    (columnIndex: number, isExapnded = true) => {
-      setColumnIsExpanded(prev => {
-        const updated = prev.slice();
-        updated[columnIndex] = isExapnded;
-        return updated;
+    (columnName: string, isExpanded = true) => {
+      setExpandedColumns(prev => {
+        return { ...prev, [columnName]: isExpanded };
       });
     },
-    [columnIsExpanded],
+    [expandedColumns],
   );
 
   const onResizeColumn = useCallback(
-    (columnId: string, width: number) => {
-      const columnIndex = cols.findIndex(col => col.name === columnId);
-      const newWidths = columnWidths.slice();
-      newWidths[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
+    (columnName: string, width: number) => {
+      const newWidth = Math.max(MIN_COLUMN_WIDTH, width);
+      const newColumnSizing = { ...columnSizing, [columnName]: newWidth };
+      setColumnSizing(newColumnSizing);
 
-      if (width > TRUNCATE_WIDTH) {
-        onUpdateColumnExpanded(columnIndex, true);
+      if (newWidth > TRUNCATE_WIDTH) {
+        onUpdateColumnExpanded(columnName);
       }
 
-      setColumnWidths(newWidths);
-
-      return newWidths;
+      return getColumnWidthsForSettings(cols, columnSizing);
     },
-    [onUpdateColumnExpanded, columnWidths],
+    [onUpdateColumnExpanded, columnSizing, cols],
   );
 
   const columns: ColumnDef<RowValues, RowValue>[] = useMemo(() => {
-    return cols.map((col, index) => {
-      const columnWidth = columnWidths[index] ?? 0;
-      const measuredColumnWidth = measuredColumnWidths[index] ?? 0;
+    const indexColumn = columnHelper.display({
+      id: INDEX_COLUMN_ID,
+      size: 46,
+      enableResizing: false,
+      cell: props => {
+        return <IndexCell rowNumber={props.row.index} />;
+      },
+      header: () => {
+        return <IndexHeaderCell />;
+      },
+    });
+    const dataColumns = cols.map((col, index) => {
+      const columnWidth = columnSizing[col.name] ?? 0;
+      const measuredColumnWidth = measuredColumnSizing[col.name] ?? 0;
+
+      const isTruncated =
+        !expandedColumns[col.name] &&
+        columnWidth < measuredColumnWidth &&
+        measuredColumnWidth > TRUNCATE_WIDTH;
+
       const columnSettings = settings.column?.(col) ?? {};
       const columnName = columnSettings["column_title"];
       const wrap = Boolean(columnSettings["text_wrapping"]);
       const align = columnSettings["text_align"] ?? "left";
       const variant = getBodyCellVariant(col, columnSettings);
-      const isTruncated =
-        !columnIsExpanded[index] &&
-        Math.min(columnWidth, measuredColumnWidth) > TRUNCATE_WIDTH;
 
+      const id = isPivoted ? `${index}:${col.name}` : col.name;
       return columnHelper.accessor(row => row[index], {
-        id: col.name,
-        header: props => {
+        id,
+        header: memo(props => {
           const sortDirection = getColumnSortDirection(index);
           const clicked = getTableHeaderClickedObject(data, index, isPivoted);
 
@@ -332,7 +379,7 @@ export const useColumns = ({
               resizeHandler={props.header.getResizeHandler()}
             />
           );
-        },
+        }),
         cell: memo(
           (props: { getValue: () => RowValue; row: { index: number } }) => {
             const value = props.getValue();
@@ -342,30 +389,13 @@ export const useColumns = ({
               col.name,
             );
 
-            const clickedRowData = getTableClickedObjectRowData(
-              [{ data }],
-              props.row.index,
-              index,
-              isPivoted,
-              data,
-            );
-
-            const clicked = getTableCellClickedObject(
-              data,
-              settings,
-              props.row.index,
-              index,
-              isPivoted,
-              clickedRowData,
-            );
-
             if (variant === "minibar") {
               return (
                 <MiniBar
                   backgroundColor={backgroundColor}
                   value={value}
                   formatter={columnFormatters[index]}
-                  extent={getColumnExtent(data.cols, data.rows, index)}
+                  extent={getColumnExtent(cols, rows, index)}
                 />
               );
             }
@@ -377,16 +407,10 @@ export const useColumns = ({
                 canExpand={!wrap && isTruncated}
                 formatter={columnFormatters[index]}
                 backgroundColor={backgroundColor}
-                onClick={event => {
-                  onVisualizationClick?.({
-                    ...clicked,
-                    element: event.currentTarget,
-                  });
-                }}
                 onExpand={() => {
                   const formatter = columnFormatters[index];
                   const formattedValue = formatter(value);
-                  handleExpandButtonClick(index, formattedValue);
+                  handleExpandButtonClick(col.name, formattedValue);
                 }}
                 variant={variant}
                 wrap={wrap}
@@ -394,7 +418,6 @@ export const useColumns = ({
             );
           },
         ),
-        size: isTruncated ? TRUNCATE_WIDTH : columnWidth,
         meta: {
           isPivoted,
           column: col,
@@ -403,12 +426,13 @@ export const useColumns = ({
         },
       });
     });
+
+    return [indexColumn, ...dataColumns];
   }, [
     cols,
-    columnWidths,
-    measuredColumnWidths,
+    expandedColumns,
+    measuredColumnSizing,
     settings,
-    columnIsExpanded,
     isPivoted,
     getColumnSortDirection,
     data,
@@ -436,9 +460,12 @@ export const useColumns = ({
         );
 
         if (updateCurrent) {
-          setColumnWidths(contentWidths);
+          setColumnSizing(
+            getColumnSizing(cols, contentWidths, expandedColumns),
+          );
         }
-        setMeasuredColumnWidths(contentWidths);
+
+        setMeasuredColumnSizing(getColumnSizing(cols, contentWidths));
       };
 
       const content = (
@@ -488,7 +515,7 @@ export const useColumns = ({
     }
 
     const shouldUpdateCurrentWidths =
-      !savedColumnWidths || savedColumnWidths.length === 0;
+      !savedColumnSizing || Object.values(savedColumnSizing).length === 0;
     measureColumnWidths(shouldUpdateCurrentWidths);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -496,7 +523,8 @@ export const useColumns = ({
   return {
     columns,
     columnFormatters,
-    columnWidths,
+    columnSizing,
+    setColumnSizing,
     measureColumnWidths,
     onResizeColumn,
   };
