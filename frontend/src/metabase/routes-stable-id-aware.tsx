@@ -131,14 +131,12 @@ function handleResults({
       if (mappedEntityId?.id) {
         shouldRedirect = true;
         url = url.replace(value, String(mappedEntityId.id));
-      } else if (!canBeNormalId(value)) {
-        // if it's found and cannot be a normal slug (ie: it doesn't start with a number)
-        if (required) {
-          // if it's required, then we show an error, this is needed because at this time some endpoints
-          // become stuck in infinite loading if they fail to parse the numeric id from the slug
-          notFound = true;
-        } else {
-          // if it's not required then we remove it from the url
+      } else if (required) {
+        // if it's not found and it's required, then we render a not found
+        notFound = true;
+      } else {
+        // if it's not found and can't be a normal slug, but wasn't required, then we remove it from the url
+        if (!canBeNormalId(value)) {
           url = url.replace(value, "");
         }
       }
