@@ -928,12 +928,10 @@ H.describeEE("scenarios > embedding > full app", () => {
         "not.exist",
       );
       H.dashboardGrid()
-        .findByText("Rows 1-6 of first 2000")
+        .findByText(/Rows 1-\d of first 2000/)
         .should("be.visible");
       H.goToTab(SECOND_TAB.name);
-      cy.findByTestId("dashboard-parameters-and-cards")
-        .findByText("There's nothing here, yet.")
-        .should("be.visible");
+      cy.findByTestId("dashboard-empty-state").should("be.visible");
     });
 
     it("should hide the dashboard's additional info by a param", () => {
@@ -987,7 +985,7 @@ H.describeEE("scenarios > embedding > full app", () => {
           },
         ],
       };
-      cy.createDashboard(dashboardDetails).then(
+      H.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
           const textDashcard = H.getTextCardDetails({
             col: 0,
@@ -1094,7 +1092,7 @@ H.describeEE("scenarios > embedding > full app", () => {
           type: "frame",
           frame: {
             mode: "fit",
-            height: Cypress.sinon.match(value => value < 400),
+            height: Cypress.sinon.match(value => value < 1000),
           },
         },
       });

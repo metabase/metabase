@@ -32,7 +32,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
         parameters: [filter],
       };
 
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
           cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
             dashcards: [
@@ -93,7 +93,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       const dashboardDetails = { parameters: [filter] };
 
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
           cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
             dashcards: [
@@ -164,7 +164,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       const dashboardDetails = { parameters: [filter] };
 
-      cy.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboard({
         questionDetails,
         dashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {

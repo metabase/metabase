@@ -120,7 +120,7 @@ describe("personal collections", () => {
     });
 
     it("should be able view other users' personal sub-collections (metabase#15339)", () => {
-      cy.createCollection({
+      H.createCollection({
         name: "Foo",
         parent_id: NO_DATA_PERSONAL_COLLECTION_ID,
       });
