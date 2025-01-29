@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -14,9 +15,11 @@
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
+   [metabase.sync.concurrent :as sync.concurrent]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task :as task]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -57,6 +60,29 @@
           (t2/delete! :model/Database :id db-id)
           (is (= nil
                  (trigger-for-db db-id))))))))
+
+(deftest health-check-database-test
+  (mt/test-drivers (mt/normal-drivers)
+    (let [metrics (atom {})]
+      (with-redefs [sync.concurrent/submit-task! (fn [task] (task))
+                    prometheus/inc! (fn [k {:keys [driver]}] (swap! metrics update-in [k driver] (fnil inc 0)))]
+        (testing "successes"
+          (database/health-check-database! (mt/db))
+          (is (= 1 (get-in @metrics [:metabase-database/healthy driver/*driver*])))
+          (is (= nil (get-in @metrics [:metabase-database/unhealthy driver/*driver*]))))
+
+        (testing "failures for bad connections"
+          (reset! metrics {})
+          (database/health-check-database! (update (mt/db) :details merge (tx/bad-connection-details driver/*driver*)))
+          (is (= nil (get-in @metrics [:metabase-database/healthy driver/*driver*])))
+          (is (= 1 (get-in @metrics [:metabase-database/unhealthy driver/*driver*]))))
+
+        (testing "failures for exception"
+          (with-redefs [driver/can-connect? (fn [& args] (throw (Exception. "boom")))]
+            (reset! metrics {})
+            (database/health-check-database! (mt/db))
+            (is (= nil (get-in @metrics [:metabase-database/healthy driver/*driver*])))
+            (is (= 1 (get-in @metrics [:metabase-database/unhealthy driver/*driver*])))))))))
 
 (deftest can-read-database-setting-test
   (let [encode-decode (comp json/decode json/encode)
