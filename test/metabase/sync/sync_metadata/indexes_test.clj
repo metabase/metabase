@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.util :as driver.u]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.indexes :as sync.indexes]
    [metabase.test :as mt]
@@ -50,7 +49,7 @@
 (deftest all-indexes->fields-ids-many-indexes-test
   (testing "no exception is thrown when there are very many indexes"
     (mt/test-drivers (mt/normal-drivers-with-feature :describe-indexes)
-      (let [indexes (into [] (driver/describe-indexes (driver.u/database->driver (mt/db)) (mt/db)))
+      (let [indexes (into [] (driver/describe-indexes driver/*driver* (mt/db)))
             many-indexes (into indexes (repeat 100000 {:table-schema "public",
                                                        :table-name "fake_table",
                                                        :field-name "id"}))

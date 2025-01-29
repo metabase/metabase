@@ -61,6 +61,8 @@
                                               [:= :parent_id nil]]})]
        (into accum (keep :id) query)))
    #{}
+   ;; break the indexes up in groups of 5000 to avoid max
+   ;; parameter limit of 65,535. See #52746 for details.
    (partition-all 5000 indexes)))
 
 (defn- sync-all-indexes!
