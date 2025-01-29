@@ -146,17 +146,17 @@ H.describeEE("official collections", () => {
 });
 
 function testOfficialBadgePresence(expectBadge = true) {
-  cy.createCollection({
+  H.createCollection({
     name: COLLECTION_NAME,
     authority_level: "official",
   }).then(response => {
     const { id: collectionId } = response.body;
-    cy.createQuestion({
+    H.createQuestion({
       name: "Official Question",
       collection_id: collectionId,
       query: TEST_QUESTION_QUERY,
     });
-    cy.createDashboard({
+    H.createDashboard({
       name: "Official Dashboard",
       collection_id: collectionId,
     });
@@ -206,12 +206,12 @@ function testOfficialBadgeInSearch({
 }
 
 function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
-  cy.createCollection({
+  H.createCollection({
     name: COLLECTION_NAME,
     authority_level: "official",
   }).then(response => {
     const { id: collectionId } = response.body;
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         name: "Official Question",
         collection_id: collectionId,

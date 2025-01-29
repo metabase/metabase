@@ -89,12 +89,12 @@ describe("scenarios > question > joined questions", () => {
   });
 
   it("should join a native question (metabase#37100)", () => {
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "question a",
       native: { query: "select ID, PRODUCT_ID, TOTAL from orders" },
     });
 
-    cy.createNativeQuestion({
+    H.createNativeQuestion({
       name: "question b",
       native: { query: "select * from products" },
     });
@@ -161,7 +161,7 @@ describe("scenarios > question > joined questions", () => {
       "metadata",
     );
 
-    cy.createQuestion({
+    H.createQuestion({
       name: "Q1",
       query: {
         aggregation: ["sum", ["field", ORDERS.TOTAL, null]],
@@ -172,7 +172,7 @@ describe("scenarios > question > joined questions", () => {
       },
     });
 
-    cy.createQuestion({
+    H.createQuestion({
       name: "Q2",
       query: {
         aggregation: ["sum", ["field", PRODUCTS.RATING, null]],

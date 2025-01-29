@@ -229,7 +229,7 @@ describe("scenarios > dashboard", () => {
     const originalDashboardName = "Amazing Dashboard";
 
     beforeEach(() => {
-      cy.createDashboard({ name: originalDashboardName }).then(
+      H.createDashboard({ name: originalDashboardName }).then(
         ({ body: { id } }) => {
           H.visitDashboard(id);
         },
@@ -281,9 +281,9 @@ describe("scenarios > dashboard", () => {
         const collectionInRoot = {
           name: "Collection in root collection",
         };
-        cy.createCollection(collectionInRoot);
+        H.createCollection(collectionInRoot);
         const myPersonalCollection = "My personal collection";
-        cy.createDashboard({
+        H.createDashboard({
           name: "dashboard in root collection",
         }).then(({ body: { id: dashboardId } }) => {
           H.visitDashboard(dashboardId);
@@ -577,7 +577,7 @@ describe("scenarios > dashboard", () => {
       "shows sorted cards on mobile screens",
       { viewportWidth: 400, viewportHeight: 800 },
       () => {
-        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+        H.createDashboard().then(({ body: { id: dashboard_id } }) => {
           const cards = [
             // the bottom card intentionally goes first to have unsorted cards coming from the BE
             H.getTextCardDetails({
@@ -641,7 +641,7 @@ describe("scenarios > dashboard", () => {
 
       H.updateSetting("allowed-iframe-hosts", "*");
 
-      cy.createDashboard().then(({ body: { id } }) => {
+      H.createDashboard().then(({ body: { id } }) => {
         H.visitDashboard(id);
       });
 
@@ -662,7 +662,7 @@ describe("scenarios > dashboard", () => {
         ["youtube.com", "player.videos.com"].join("\n"),
       );
 
-      cy.createDashboard().then(({ body: { id } }) => H.visitDashboard(id));
+      H.createDashboard().then(({ body: { id } }) => H.visitDashboard(id));
       H.editDashboard();
 
       // Test allowed domain with subdomains
@@ -759,7 +759,7 @@ describe("scenarios > dashboard", () => {
       visualization_settings: {},
     });
 
-    cy.createDashboard({ name: "dash:11007" });
+    H.createDashboard({ name: "dash:11007" });
 
     cy.visit("/collection/root");
     // enter newly created dashboard
@@ -802,7 +802,7 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should update a dashboard filter by clicking on a map pin (metabase#13597)", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "13597",
       query: {
         "source-table": PEOPLE_ID,
@@ -810,7 +810,7 @@ describe("scenarios > dashboard", () => {
       },
       display: "map",
     }).then(({ body: { id: questionId } }) => {
-      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+      H.createDashboard().then(({ body: { id: dashboardId } }) => {
         // add filter (ID) to the dashboard
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           parameters: [
@@ -868,7 +868,7 @@ describe("scenarios > dashboard", () => {
       native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
     };
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+    H.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { dashboard_id } }) => {
         cy.log("Add 4 filters to the dashboard");
 
@@ -1401,7 +1401,7 @@ describe("LOCAL TESTING ONLY > dashboard", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
     });
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         name: "15694",
         query: { "source-table": PEOPLE_ID },
@@ -1561,7 +1561,7 @@ describe("scenarios > dashboard > permissions", () => {
       }).then(({ body: { id } }) => (secondQuestionId = id));
     });
 
-    cy.createDashboard().then(({ body: { id: dashId } }) => {
+    H.createDashboard().then(({ body: { id: dashId } }) => {
       dashboardId = dashId;
 
       H.updateDashboardCards({

@@ -93,7 +93,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
   });
 
   it("adds and removes bookmarks from Model in collection", () => {
-    cy.createQuestion({
+    H.createQuestion({
       name: "Orders Model",
       query: { "source-table": STATIC_ORDERS_ID, aggregation: [["count"]] },
       type: "model",

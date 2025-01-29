@@ -40,7 +40,7 @@ describe("issues 34688 and 34690", () => {
   });
 
   it("shows time series footer when category breakout is before temporal breakout (metabase#34688)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         database: SAMPLE_DB_ID,
         type: "query",
@@ -57,7 +57,7 @@ describe("issues 34688 and 34690", () => {
   });
 
   it("shows time series footer when there is a category breakout (metabase#34690)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         database: SAMPLE_DB_ID,
         type: "query",

@@ -7,7 +7,7 @@ describe("scenarios > question > trendline", () => {
   function setup(questionDetails) {
     H.restore();
     cy.signInAsNormalUser();
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
   }
 
   it("displays trendline when there are multiple numeric outputs (for simple question) (metabase#12781)", () => {
