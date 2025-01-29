@@ -12,7 +12,9 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [malli.core :as mc]
+   [malli.util :as mut]))
 
 (comment api/keep-me)
 
@@ -137,3 +139,72 @@
     (when (field-is-sandboxed? field)
       (str (hash (concat [field-id]
                          (field->gtap-attributes-for-current-user field)))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(comment
+
+
+  #_:clj-kondo/ignore ;;nocommit
+  (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
+           '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
+           '[malli.transform :as mtx] '[metabase.util.malli.registry :as mr] '[clojure.walk :as walk]
+           '[me.flowthing.pp :as pp])
+
+  (mc/validate
+   :metabase.lib.schema.parameter/dimension
+   [:dimension [:field 1 {}] {:stage-number 7}])
+
+  #_:clj-kondo/ignore ;;nocommit
+  (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
+           '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
+           '[malli.transform :as mtx])
+
+
+  ;; This returns nil, but when we start adding :stage-number in :options, we want it to break instead
+  (lib.util.match/match-one [:dimension [:field 1 :_] {:options "x"}]
+                            [:dimension [:field field-id _]] field-id)
+  ;; => nil
+
+
+  ;; here's how it got fixed: we add another branch to somewhere (but it's not obvious you needed to + far from the schema definition)
+  (lib.util.match/match-one [:dimension [:field 1 :_] :_]
+                            ;; new style with {:stage-number }
+                            [:dimension [:field field-id _] _] field-id
+                            ;; old style without stage number
+                            [:dimension [:field field-id _]] field-id)
+
+  ;; How can we avoid those kinds of issues?
+  ;;
+  ;; ## mc/parse
+  ;;
+  ;; To use mc/parse, function validators inside of :and schemas Must come first, (current limitation, may change in the future)
+  ;; otherwise it will fail because it sends the PARSED value into the validator, which is expecting a non-parsed value,
+  ;; and [fails](https://github.com/metosin/malli/issues/1166).
+  ;;
+  ;; So, there are some caveats with getting mc/parse to even work in the first place, but we can always make sure a
+  ;; schema is parsable via tests.
+  ;;
+  ;; I went through the definition of :metabase.lib.schema.parameter/dimension and _reordered_ all `:and`s so the fn
+  ;; validation w/ catn, so the fn validation happens first.
+
+  (some-> (mc/parse :metabase.lib.schema.parameter/dimension
+                    [:dimension [:field 1 {}] {:stage-number 7}])
+          ;; => {:tag :dimension, :target [:field {"tag" :field, "id-or-name" 1, "options" {}}], :options {:stage-number 7}}
+          :target
+          second
+          (get "id-or-name"))
+  ;; => 1
+
+  (some-> (mc/parse :metabase.lib.schema.parameter/dimension
+                    [:dimension [:field 1 {}]])
+          ;; => {:tag :dimension, :target [:field {"tag" :field, "id-or-name" 1, "options" {}}], :options nil}
+          :target
+          second
+          (get "id-or-name"))
+  ;; => 1
+
+  )

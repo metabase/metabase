@@ -320,13 +320,15 @@
 (mr/def ::field
   [:and
    {:doc/title [:span [:code ":field"] " clause"]}
+   ;; pull the fn validation to the top of the and:
+   [:fn #:error{:message "must be a `:field` clause"} (partial is-clause? :field)]
+   [:ref
+    {:description "Fields using names rather than integer IDs are required to specify `:base-type`."}
+    ::require-base-type-for-field-name]
    (helpers/clause
     :field
     "id-or-name" [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
-    "options"    [:maybe [:ref ::FieldOptions]])
-   [:ref
-    {:description "Fields using names rather than integer IDs are required to specify `:base-type`."}
-    ::require-base-type-for-field-name]])
+    "options"    [:maybe [:ref ::FieldOptions]])])
 
 (def ^{:clause-name :field, :added "0.39.0"} field
   "Schema for a `:field` clause."
