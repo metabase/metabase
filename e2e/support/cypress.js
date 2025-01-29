@@ -9,6 +9,7 @@ import compareSnapshotCommand from "cypress-image-diff-js";
 import addContext from "mochawesome/addContext";
 
 import "./commands";
+import { H } from "e2e/support";
 
 compareSnapshotCommand();
 
@@ -116,6 +117,10 @@ Cypress.on("window:load", window => {
 
     return addEventListener.apply(this, arguments);
   };
+});
+
+beforeEach(function () {
+  H.prepareVisualTest(this.currentTest);
 });
 
 if (isCI) {

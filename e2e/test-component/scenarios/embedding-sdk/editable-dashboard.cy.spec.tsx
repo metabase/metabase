@@ -2,7 +2,11 @@ import { EditableDashboard } from "@metabase/embedding-sdk-react";
 
 import { H } from "e2e/support";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestionAndDashboard, createDashboard, describeEE } from "e2e/support/helpers";
+import {
+  createDashboard,
+  createQuestionAndDashboard,
+  describeEE,
+} from "e2e/support/helpers";
 import {
   mockAuthProviderAndJwtSignIn,
   mountSdkContent,

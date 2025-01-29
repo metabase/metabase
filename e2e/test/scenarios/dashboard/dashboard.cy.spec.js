@@ -1604,36 +1604,6 @@ describe("scenarios > dashboard > permissions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don’t have permission to see that.");
   });
-
-  describe("Visual regression tests", { tags: "@visual" }, () => {
-    it("existing dashboard UI", () => {
-      createQuestionAndDashboard({
-        questionDetails: {
-          name: "orders",
-          type: "model",
-          query: {
-            "source-table": ORDERS_ID,
-          },
-        },
-        dashboardDetails: {
-          name: "Dashboard",
-        },
-      }).then(({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
-      });
-
-      H.captureSnapshot("existing dashboard");
-
-      H.editDashboard();
-
-      H.captureSnapshot("existing dashboard editing");
-
-      H.openQuestionsSidebar();
-      cy.focused().blur();
-
-      H.captureSnapshot("existing dashboard with questions sidebar");
-    });
-  });
 });
 
 describe("scenarios > dashboard > entity id support", () => {
@@ -1769,6 +1739,41 @@ describe("scenarios > dashboard > entity id support", () => {
       H.main().findByText("Dashboard with 2 tabs").should("be.visible");
       cy.url().should("contain", `tab=${tabId}`);
     });
+  });
+});
+
+describe("Visual regression tests", { tags: "@visual" }, () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("existing dashboard UI", () => {
+    createQuestionAndDashboard({
+      questionDetails: {
+        name: "orders",
+        type: "model",
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      dashboardDetails: {
+        name: "Dashboard",
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    H.captureSnapshot("existing dashboard");
+
+    H.editDashboard();
+
+    H.captureSnapshot("existing dashboard editing");
+
+    H.openQuestionsSidebar();
+    cy.focused().blur();
+
+    H.captureSnapshot("existing dashboard with questions sidebar");
   });
 });
 
