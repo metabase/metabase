@@ -40,7 +40,7 @@ type CopyQuestionFormProps = {
   onSubmit: (vals: CopyQuestionProperties) => Promise<Question>;
   onSaved: (newQuestion: Question) => void;
   model?: string;
-}
+};
 
 export const CopyQuestionForm = ({
   initialValues,
