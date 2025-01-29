@@ -504,11 +504,9 @@
     stage-number   :- :int
     x
     options        :- [:maybe ReturnedColumnsOptions]]
-   (let [options (merge (default-returned-columns-options query) options)
-         unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider query))]
-     (->> (binding [*propagate-binning-and-bucketing* true]
-            (returned-columns-method query stage-number x options))
-          (mapv #(update % :name unique-name-fn))))))
+   (let [options (merge (default-returned-columns-options query) options)]
+     (binding [*propagate-binning-and-bucketing* true]
+       (returned-columns-method query stage-number x options)))))
 
 (def VisibleColumnsOptions
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."

@@ -362,7 +362,7 @@
         query              (lib/query metadata-provider query)
         unique-name-fn     (lib.util/unique-name-generator (lib.metadata/->metadata-provider query))
         returned-columns   (->> (lib/returned-columns query)
-                                #_(mapv #(update % :name unique-name-fn)))
+                                (mapv #(update % :name unique-name-fn)))
         {:source/keys [aggregations breakouts]} (group-by :lib/source returned-columns)
         column-alias->index (into {}
                                   (map-indexed (fn [i column] [(:lib/desired-column-alias column) i]))
