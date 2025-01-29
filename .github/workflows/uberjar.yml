@@ -2,10 +2,10 @@ name: Build + Docker Uberjar
 
 on:
   push:
-    branches:
-      - "master"
-      - metabot-v3-second-try
-      - feature-visualizer
+    # branches: FIXME: uncomment when ready
+    #   - "master"
+    #   - metabot-v3-second-try
+    #   - feature-visualizer
     paths-ignore:
       # config files
       - ".**"
