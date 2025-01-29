@@ -128,9 +128,9 @@ describe("scenarios > notebook > data source", () => {
         const schemaName = "Wild";
         const tableName = "Animals";
 
+        H.restore(`${dialect}-writable`);
         H.resetTestTable({ type: dialect, table: testTable1 });
         H.resetTestTable({ type: dialect, table: testTable2 });
-        H.restore(`${dialect}-writable`);
 
         cy.signInAsAdmin();
 
@@ -384,8 +384,8 @@ describe("issue 28106", () => {
   beforeEach(() => {
     const dialect = "postgres";
 
-    H.resetTestTable({ type: dialect, table: "many_schemas" });
     H.restore(`${dialect}-writable`);
+    H.resetTestTable({ type: dialect, table: "many_schemas" });
     cy.signInAsAdmin();
 
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
