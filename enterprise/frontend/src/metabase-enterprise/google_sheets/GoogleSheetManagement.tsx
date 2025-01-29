@@ -27,6 +27,7 @@ import {
   useSaveGsheetsFolderLinkMutation,
 } from "metabase-enterprise/api";
 
+import { trackSheetConnectionClick, trackSheetImportClick } from "./analytics";
 import disconnectIllustration from "./disconnect.svg?component";
 
 export function GsheetConnectButton() {
@@ -82,7 +83,10 @@ export function GsheetConnectButton() {
       <Button
         p={0}
         variant="subtle"
-        onClick={() => setShowModal(true)}
+        onClick={() => {
+          setShowModal(true)
+          trackSheetConnectionClick({ from: "db-page" });
+        }}
         disabled={status === "loading"}
         leftIcon={status === "complete" ? undefined : <Icon name="google_sheet" />}
       >
@@ -114,6 +118,11 @@ export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
   //   return null;
   // }
 
+  const handleClick = () => {
+    trackSheetConnectionClick({ from: "left-nav" });
+    onClick();
+  };
+
   const buttonText = match(status)
     .with("not-connected", () => t`Connect Google Sheets`)
     .with("loading", () => t`Google Sheets`)
@@ -128,7 +137,7 @@ export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
 
   return (
     <Menu.Item
-      onClick={onClick}
+      onClick={handleClick}
       disabled={status === "loading"}
     >
       <Flex gap="sm" align="flex-start" justify="space-between" w="100%">
@@ -149,7 +158,7 @@ export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
           </div>
         </Flex>
         {status === "complete" && (
-          <Button variant="subtle" onClick={onClick}>
+          <Button variant="subtle" onClick={handleClick}>
             {t`Add New`}
           </Button>
         )}
@@ -231,6 +240,7 @@ function GoogleSheetsConnectModal({
   const onSave = async (event: FormEvent) => {
     event.preventDefault();
     setErrorMessage("");
+    trackSheetImportClick();
     await saveFolderLink({
       url: folderLink.trim(),
     })
