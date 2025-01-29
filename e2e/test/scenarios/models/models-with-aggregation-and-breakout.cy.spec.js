@@ -11,7 +11,7 @@ describe("scenarios > models with aggregation and breakout", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "model with aggregation & breakout",
         display: "line",

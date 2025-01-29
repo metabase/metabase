@@ -8,6 +8,8 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 
+import { createQuestion } from "./api";
+
 /*****************************************
  **            QA DATABASES             **
  ******************************************/
@@ -247,7 +249,7 @@ export const createModelFromTableName = ({
   idAlias = "modelId",
 }) => {
   getTableId({ name: tableName }).then(tableId => {
-    cy.createQuestion(
+    createQuestion(
       {
         database: WRITABLE_DB_ID,
         name: modelName,

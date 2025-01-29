@@ -121,7 +121,7 @@ function setup(test: TestCase) {
       ...parameterSource(test, otherCardId),
     };
 
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       dashboardDetails: {
         parameters: [parameter],
       },
