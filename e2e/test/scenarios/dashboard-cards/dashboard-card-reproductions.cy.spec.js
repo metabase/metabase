@@ -372,59 +372,57 @@ describe("issue 17160", () => {
   }
 
   function createTargetDashboard() {
-    return cy
-      .createQuestionAndDashboard({
-        dashboardDetails: {
-          name: TARGET_DASHBOARD_NAME,
+    return H.createQuestionAndDashboard({
+      dashboardDetails: {
+        name: TARGET_DASHBOARD_NAME,
+      },
+      questionDetails: {
+        query: {
+          "source-table": PRODUCTS_ID,
         },
-        questionDetails: {
-          query: {
-            "source-table": PRODUCTS_ID,
-          },
-        },
-      })
-      .then(({ body: { id, card_id, dashboard_id } }) => {
-        // Share the dashboard
-        cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`);
+      },
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      // Share the dashboard
+      cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`);
 
-        // Add a filter
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          parameters: [
+      // Add a filter
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        parameters: [
+          {
+            name: "Category",
+            slug: "category",
+            id: "dd19ec03",
+            type: "string/=",
+            sectionId: "string",
+          },
+        ],
+      });
+
+      // Resize the question card and connect the filter to it
+      return cy
+        .request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
-              name: "Category",
-              slug: "category",
-              id: "dd19ec03",
-              type: "string/=",
-              sectionId: "string",
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 10,
+              parameter_mappings: [
+                {
+                  parameter_id: "dd19ec03",
+                  card_id,
+                  target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                },
+              ],
             },
           ],
+        })
+        .then(() => {
+          return dashboard_id;
         });
-
-        // Resize the question card and connect the filter to it
-        return cy
-          .request("PUT", `/api/dashboard/${dashboard_id}`, {
-            dashcards: [
-              {
-                id,
-                card_id,
-                row: 0,
-                col: 0,
-                size_x: 16,
-                size_y: 10,
-                parameter_mappings: [
-                  {
-                    parameter_id: "dd19ec03",
-                    card_id,
-                    target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
-                  },
-                ],
-              },
-            ],
-          })
-          .then(() => {
-            return dashboard_id;
-          });
-      });
+    });
   }
 
   function visitSourceDashboard() {

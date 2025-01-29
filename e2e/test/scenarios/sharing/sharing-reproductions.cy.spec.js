@@ -233,17 +233,15 @@ describe("issue 20393", () => {
       name: "Q1",
       native: { query: 'SELECT * FROM "ORDERS"', "template-tags": {} },
     }).then(({ body }) =>
-      cy
-        .createQuestionAndDashboard({
-          questionDetails: {
-            name: "Q2",
-            query: { "source-table": `card__${body.id}` },
-          },
-          dashboardDetails: {
-            name: "Q2 in a dashboard",
-          },
-        })
-        .then(({ body: { dashboard_id } }) => H.visitDashboard(dashboard_id)),
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Q2",
+          query: { "source-table": `card__${body.id}` },
+        },
+        dashboardDetails: {
+          name: "Q2 in a dashboard",
+        },
+      }).then(({ body: { dashboard_id } }) => H.visitDashboard(dashboard_id)),
     );
   }
 

@@ -870,8 +870,7 @@ function toggleEllipsisMenuFor(item) {
 }
 
 function createCollection(collectionInfo, archive) {
-  return cy
-    .createCollection(collectionInfo)
+  return H.createCollection(collectionInfo)
     .then(({ body: collection }) => {
       return Promise.all([
         collection,
@@ -898,8 +897,7 @@ function createNativeQuestion(questionInfo, archive) {
 }
 
 function createDashboard(dashboardInfo, archive) {
-  return cy
-    .createDashboard(dashboardInfo)
+  return H.createDashboard(dashboardInfo)
     .then(({ body: dashboard }) =>
       Promise.all([dashboard, archive && H.archiveDashboard(dashboard.id)]),
     )

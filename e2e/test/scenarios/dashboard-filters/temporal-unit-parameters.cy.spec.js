@@ -1047,26 +1047,24 @@ function createDashboardWithMappedQuestion({
   dashboardDetails = {},
   extraQuestions = [],
 } = {}) {
-  return cy
-    .createDashboardWithQuestions({
-      dashboardDetails: {
-        parameters: [parameterDetails],
-        ...dashboardDetails,
-      },
-      questions: [singleBreakoutQuestionDetails, ...extraQuestions],
-    })
-    .then(({ dashboard, questions: [card, ...extraCards] }) => {
-      return H.updateDashboardCards({
-        dashboard_id: dashboard.id,
-        cards: [
-          {
-            card_id: card.id,
-            parameter_mappings: [getParameterMapping(card)],
-          },
-          ...extraCards.map(({ id }) => ({ card_id: id })),
-        ],
-      }).then(() => dashboard);
-    });
+  return H.createDashboardWithQuestions({
+    dashboardDetails: {
+      parameters: [parameterDetails],
+      ...dashboardDetails,
+    },
+    questions: [singleBreakoutQuestionDetails, ...extraQuestions],
+  }).then(({ dashboard, questions: [card, ...extraCards] }) => {
+    return H.updateDashboardCards({
+      dashboard_id: dashboard.id,
+      cards: [
+        {
+          card_id: card.id,
+          parameter_mappings: [getParameterMapping(card)],
+        },
+        ...extraCards.map(({ id }) => ({ card_id: id })),
+      ],
+    }).then(() => dashboard);
+  });
 }
 
 function createDashboardWithMultiSeriesCard() {

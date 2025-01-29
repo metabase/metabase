@@ -306,9 +306,8 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
   it("should be able to open x-ray on a dashcard from a dashboard with multiple tabs", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    return cy
-      .createDashboard({ name: "my dashboard" })
-      .then(({ body: { id: dashboard_id } }) => {
+    return H.createDashboard({ name: "my dashboard" }).then(
+      ({ body: { id: dashboard_id } }) => {
         H.addOrUpdateDashboardCard({
           card_id: ORDERS_BY_YEAR_QUESTION_ID,
           dashboard_id,
@@ -334,7 +333,8 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
         // Ensure charts actually got rendered
         cy.get("text").contains("Created At");
-      });
+      },
+    );
   });
 
   it("should default x-ray dashboard width to 'fixed'", () => {

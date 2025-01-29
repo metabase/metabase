@@ -79,16 +79,14 @@ describe("issue 24660", () => {
   };
 
   function createParentCollectionAndMoveQuestionToIt(questionId) {
-    return cy
-      .createCollection({
-        name: collectionName,
-        parent_id: null,
-      })
-      .then(({ body: { id } }) => {
-        cy.request("PUT", `/api/card/${questionId}`, {
-          collection_id: id,
-        });
+    return H.createCollection({
+      name: collectionName,
+      parent_id: null,
+    }).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${questionId}`, {
+        collection_id: id,
       });
+    });
   }
 
   beforeEach(() => {

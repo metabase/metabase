@@ -64,19 +64,19 @@ describe("issue 8030 + 32444", () => {
     parameters: [filterDetails],
   };
   const createQuestionsAndDashboard = () => {
-    return cy
-      .createQuestion(question1Details)
-      .then(({ body: { id: card1_id } }) => {
-        return cy
-          .createQuestion(question2Details)
-          .then(({ body: { id: card2_id } }) => {
-            return cy
-              .createDashboard(dashboardDetails)
-              .then(({ body: { id: dashboard_id } }) => {
+    return H.createQuestion(question1Details).then(
+      ({ body: { id: card1_id } }) => {
+        return H.createQuestion(question2Details).then(
+          ({ body: { id: card2_id } }) => {
+            return H.createDashboard(dashboardDetails).then(
+              ({ body: { id: dashboard_id } }) => {
                 return { dashboard_id, card1_id, card2_id };
-              });
-          });
-      });
+              },
+            );
+          },
+        );
+      },
+    );
   };
 
   const setFilterMapping = ({ dashboard_id, card1_id, card2_id }) => {
@@ -1552,9 +1552,8 @@ describe("issue 25322", () => {
   };
 
   const createDashboard = () => {
-    return cy
-      .createQuestion(questionDetails)
-      .then(({ body: { id: card_id } }) => {
+    return H.createQuestion(questionDetails).then(
+      ({ body: { id: card_id } }) => {
         H.createDashboard(dashboardDetails).then(
           ({ body: { id: dashboard_id } }) => {
             H.addOrUpdateDashboardCard({
@@ -1572,7 +1571,8 @@ describe("issue 25322", () => {
             }).then(() => ({ dashboard_id }));
           },
         );
-      });
+      },
+    );
   };
 
   const throttleFieldValuesRequest = dashboard_id => {
@@ -3352,29 +3352,27 @@ describe("issue 45659", () => {
   };
 
   function createDashboard() {
-    return cy
-      .createDashboardWithQuestions({
-        dashboardDetails,
-        questions: [questionDetails],
-      })
-      .then(({ dashboard, questions: [card] }) => {
-        H.addOrUpdateDashboardCard({
-          dashboard_id: dashboard.id,
-          card_id: card.id,
-          card: {
-            parameter_mappings: [
-              {
-                card_id: card.id,
-                parameter_id: parameterDetails.id,
-                target: [
-                  "dimension",
-                  ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
-                ],
-              },
-            ],
-          },
-        }).then(() => ({ dashboard }));
-      });
+    return H.createDashboardWithQuestions({
+      dashboardDetails,
+      questions: [questionDetails],
+    }).then(({ dashboard, questions: [card] }) => {
+      H.addOrUpdateDashboardCard({
+        dashboard_id: dashboard.id,
+        card_id: card.id,
+        card: {
+          parameter_mappings: [
+            {
+              card_id: card.id,
+              parameter_id: parameterDetails.id,
+              target: [
+                "dimension",
+                ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+              ],
+            },
+          ],
+        },
+      }).then(() => ({ dashboard }));
+    });
   }
 
   function verifyFilterWithRemapping() {
