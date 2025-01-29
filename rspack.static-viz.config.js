@@ -1,6 +1,5 @@
 const YAML = require("json-to-pretty-yaml");
-const TerserPlugin = require("terser-webpack-plugin");
-const webpack = require("webpack");
+const rspack = require("@rspack/core");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
@@ -52,7 +51,7 @@ module.exports = env => {
           exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
           use: [
             {
-              loader: "swc-loader",
+              loader: "builtin:swc-loader",
               options: {
                 jsc: {
                   loose: true,
@@ -106,7 +105,7 @@ module.exports = env => {
       ],
     },
     resolve: {
-      extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".ts", ".tsx"],
+      extensions: [".web.js", ".js", ".jsx", ".ts", ".tsx"],
       alias: {
         assets: ASSETS_PATH,
         metabase: SRC_PATH,
@@ -125,22 +124,17 @@ module.exports = env => {
     },
     optimization: {
       minimize: false,
-      minimizer: [
-        new TerserPlugin({
-          minify: TerserPlugin.swcMinify,
-        }),
-      ],
     },
     plugins: [
-      new webpack.EnvironmentPlugin({
+      new rspack.EnvironmentPlugin({
         EMBEDDING_SDK_VERSION: null,
         IS_EMBEDDING_SDK_BUILD: false,
       }),
-      new webpack.NormalModuleReplacementPlugin(
+      new rspack.NormalModuleReplacementPlugin(
         /node_modules\/@reduxjs\/toolkit\/.*\/process$/,
         "process/browser",
       ),
-      new webpack.ProvidePlugin({
+      new rspack.ProvidePlugin({
         process: "process/browser",
         Buffer: ["buffer", "Buffer"],
       }),
