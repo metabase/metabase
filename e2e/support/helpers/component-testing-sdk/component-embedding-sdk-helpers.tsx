@@ -4,6 +4,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 import * as jose from "jose";
 import type { JSX } from "react";
+import React from "react";
 
 import { USERS } from "e2e/support/cypress_data";
 import { signInAsAdminAndEnableEmbeddingSdkForE2e } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -60,15 +61,18 @@ export function mountSdkContent(
   cy.intercept("GET", "/api/user/current").as("getUser");
 
   cy.mount(
-    <MetabaseProvider
-      {...sdkProviderProps}
-      authConfig={{
-        ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-        ...sdkProviderProps?.authConfig,
-      }}
-    >
-      {children}
-    </MetabaseProvider>,
+    <React.StrictMode>
+      <MetabaseProvider
+        {...sdkProviderProps}
+        authConfig={{
+          ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+          ...sdkProviderProps?.authConfig,
+        }}
+      >
+        {children}
+      </MetabaseProvider>
+      ,
+    </React.StrictMode>,
   );
 
   cy.wait("@getUser").then(({ response }) => {
