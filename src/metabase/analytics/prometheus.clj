@@ -251,7 +251,7 @@
 
 (defmethod initial-value :default [_ _] 0)
 
-(defn initial-labelled-metric-values []
+(defn- initial-labelled-metric-values []
   (for [metric (keys (methods known-labels))
         labels (known-labels metric)]
     {:metric metric

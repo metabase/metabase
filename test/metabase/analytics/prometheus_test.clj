@@ -196,7 +196,7 @@
       (is (approx= 1 (metric-value system :metabase-email/messages))))))
 
 (deftest search-engine-metrics-test
-  (let [metrics       (prometheus/initial-labelled-metric-values)
+  (let [metrics       (#'prometheus/initial-labelled-metric-values)
         engine->value (fn [metric] (u/index-by (comp :engine :labels) :value (filter (comp #{metric} :metric) metrics)))
         engines       (fn [metric] (keys (engine->value metric)))
         value         (fn [metric engine] (get (engine->value metric) (name engine)))
