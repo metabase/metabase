@@ -116,6 +116,7 @@ export const DwhUploadMenu = () => {
       <PLUGIN_UPLOAD_MANAGEMENT.GsheetConnectionModal
         isModalOpen={isGsheetModalOpen}
         onClose={closeGsheetModal}
+        reconnect={true}
       />
     </Box>
   );

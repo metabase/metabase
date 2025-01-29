@@ -95,6 +95,7 @@ export function GsheetConnectButton() {
       <GsheetConnectionModal
         isModalOpen={showModal}
         onClose={() => setShowModal(false)}
+        reconnect={false}
       />
     </Flex>
   );
@@ -170,9 +171,11 @@ export function GsheetMenuItem({ onClick }: { onClick: () => void }) {
 export function GsheetConnectionModal({
   isModalOpen,
   onClose,
+  reconnect,
 }: {
   isModalOpen: boolean;
   onClose: () => void;
+  reconnect: boolean;
 }) {
   const gSheetsSetting = useSetting("gsheets");
   const userIsAdmin = useSelector(getUserIsAdmin);
@@ -202,7 +205,7 @@ export function GsheetConnectionModal({
         folderUrl={folder_url}
       />
     ) : (
-      <GoogleSheetsDisconnectModal onClose={onClose} reconnect={true} />
+      <GoogleSheetsDisconnectModal onClose={onClose} reconnect={reconnect} />
     ))
   );
 }
