@@ -1,7 +1,10 @@
+import PropTypes from "prop-types";
+
 import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { color } from "metabase/lib/colors";
+import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import registerVisualizations from "metabase/visualizations/register";
 import {
@@ -10,6 +13,24 @@ import {
 } from "metabase-types/api/mocks";
 
 registerVisualizations();
+
+const MockedVisualization = props => {
+  props.onRenderError("This is an error message");
+
+  return <div>Hello, I am mocked</div>;
+};
+
+MockedVisualization.propTypes = {
+  onRenderError: PropTypes.func.isRequired,
+};
+
+Object.assign(MockedVisualization, {
+  identifier: "mocked-visualization",
+  noHeader: true,
+  supportsSeries: true,
+});
+
+registerVisualization(MockedVisualization);
 
 describe("Visualization", () => {
   const renderViz = async (series, props = {}) => {
@@ -25,8 +46,7 @@ describe("Visualization", () => {
   };
 
   describe("with an error", () => {
-    // https://github.com/metabase/metabase/issues/49348
-    it("should render the error message and the proper title", async () => {
+    it("should render the error message and the proper title (metabase#49348)", async () => {
       await renderViz(
         [
           {
@@ -44,7 +64,7 @@ describe("Visualization", () => {
             },
             card: createMockCard({
               name: "Products, Count, Grouped by Category and Vendor",
-              display: "bar",
+              display: "mocked-visualization",
               visualization_settings: createMockVisualizationSettings({
                 "graph.dimensions": ["CATEGORY", "VENDOR"],
                 "graph.metrics": ["count"],
@@ -58,7 +78,7 @@ describe("Visualization", () => {
         },
       );
 
-      // expect(screen.getByText("Ths is an error message")).toBeInTheDocument();
+      expect(screen.getByText("This is an error message")).toBeInTheDocument();
       expect(screen.getByTestId("legend-caption-title")).toHaveTextContent(
         "Products, Count, Grouped by Category and Vendor",
       );
