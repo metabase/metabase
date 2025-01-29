@@ -132,9 +132,9 @@
                (-> (lib.aggregation/aggregations query stage-number) count pos?))
       (let [breakout-pivot-types (permitted-pivot-types query stage-number)
             pivots               (into {} (for [pivot-type breakout-pivot-types
-                                                :let       [pred    (get pivot-type-predicates pivot-type)
-                                                            columns (pivot-drill-pred query stage-number context pred)]
-                                                :when      (not-empty columns)]
+                                                :let [pred    (get pivot-type-predicates pivot-type)
+                                                      columns (pivot-drill-pred query stage-number context pred)]
+                                                :when (not-empty columns)]
                                             [pivot-type columns]))]
         (when-not (empty? pivots)
           {:lib/type     :metabase.lib.drill-thru/drill-thru
