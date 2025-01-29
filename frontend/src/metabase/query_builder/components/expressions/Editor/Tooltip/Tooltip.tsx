@@ -1,5 +1,4 @@
 import {
-  type Completion,
   acceptCompletion,
   completionStatus,
   currentCompletions,
@@ -16,6 +15,7 @@ import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { HelpText } from "../HelpText";
+import type { Completion } from "../types";
 import { enclosingFunction } from "../util";
 
 import S from "./Tooltip.module.css";
@@ -78,7 +78,7 @@ function useCompletions(state: EditorState) {
   const completions = useMemo(() => {
     return {
       status: completionStatus(state),
-      options: currentCompletions(state) ?? [],
+      options: (currentCompletions(state) ?? []) as readonly Completion[],
       selectedOption: selectedCompletionIndex(state),
     };
   }, [state]);

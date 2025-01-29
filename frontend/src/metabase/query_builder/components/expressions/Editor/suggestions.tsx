@@ -1,16 +1,12 @@
 import {
-  type Completion,
   type CompletionContext,
-  type CompletionResult,
   autocompletion,
   snippetCompletion,
 } from "@codemirror/autocomplete";
-import { renderToString } from "react-dom/server";
 import _ from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isNotNull } from "metabase/lib/types";
-import { Icon, type IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { formatIdentifier } from "metabase-lib/v1/expressions";
 import {
@@ -30,6 +26,7 @@ import type {
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
+import type { Completion, CompletionResult } from "./types";
 import { isFieldReference, isIdentifier, tokenAtPos } from "./util";
 
 type SuggestOptions = Omit<
@@ -56,20 +53,6 @@ export function suggestions(options: SuggestOptions) {
       suggestAggregations(options),
       null && suggestPopular(options),
     ].filter(isNotNull),
-    addToOptions: [
-      {
-        position: 25,
-        render(completion: Completion & { icon?: IconName }) {
-          if (completion.type !== "field" || !completion.icon) {
-            return null;
-          }
-          const span = document.createElement("span");
-          span.className = "cm-columnIcon";
-          span.innerHTML = renderToString(<Icon name={completion.icon} />);
-          return span;
-        },
-      },
-    ],
   });
 }
 
@@ -369,13 +352,13 @@ function expressionClauseCompletion(
     getHelpText(clause.name, database, reportTimezone);
 
   if (helpText) {
-    return snippetCompletion(getSnippet(helpText), {
+    const completion = snippetCompletion(getSnippet(helpText), {
       type,
       label: clause.displayName,
       displayLabel: clause.displayName,
       detail: helpText.description,
-      icon: "function",
     });
+    return { ...completion, icon: "function" };
   }
 
   return {
