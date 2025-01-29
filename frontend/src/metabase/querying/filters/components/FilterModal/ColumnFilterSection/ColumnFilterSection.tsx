@@ -10,38 +10,30 @@ import { StringFilterEditor } from "../StringFilterEditor";
 import { TimeFilterEditor } from "../TimeFilterEditor";
 
 interface ColumnFilterSectionProps {
-  query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter: Lib.FilterClause | undefined;
-  isSearching: boolean;
   onChange: (filter: Lib.ExpressionClause | undefined) => void;
-  onInput: () => void;
 }
 
 export function ColumnFilterSection({
-  query,
   stageIndex,
   column,
   filter,
-  isSearching,
   onChange,
-  onInput,
 }: ColumnFilterSectionProps) {
   const FilterWidget = getFilterWidget(column);
+
   if (!FilterWidget) {
     return null;
   }
 
   return (
     <FilterWidget
-      query={query}
       stageIndex={stageIndex}
       column={column}
       filter={filter}
-      isSearching={isSearching}
       onChange={onChange}
-      onInput={onInput}
     />
   );
 }

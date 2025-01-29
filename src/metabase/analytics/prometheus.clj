@@ -5,6 +5,7 @@
 
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
+  (:refer-clojure :exclude [set!])
   (:require
    [clojure.java.jmx :as jmx]
    [iapetos.collector :as collector]
@@ -224,23 +225,34 @@
                        {:description "Number of errors encountered when indexing for search"})
    (prometheus/counter :metabase-search/index-ms
                        {:description "Total number of ms indexing took"})
+   (prometheus/gauge :metabase-search/queue-size
+                     {:description "Number of updates on the search indexing queue."})
    (prometheus/counter :metabase-search/response-ok
                        {:description "Number of successful search requests."})
    (prometheus/counter :metabase-search/response-error
                        {:description "Number of errors when responding to search requests."})])
+
+(defmulti known-labels
+  "Implement this for a given metric to initialize zeros for the given set of label values."
+  {:arglists '([metric]), :added "0.52.0"}
+  identity)
 
 (defn- setup-metrics!
   "Instrument the application. Conditionally done when some setting is set. If [[prometheus-server-port]] is not set it
   will throw."
   [registry-name]
   (log/info "Starting prometheus metrics collector")
-  (let [registry (prometheus/collector-registry registry-name)]
-    (apply prometheus/register
-           (collector.ring/initialize registry)
-           (concat (jvm-collectors)
-                   (jetty-collectors)
-                   [@c3p0-collector]
-                   (product-collectors)))))
+  (let [registry (prometheus/collector-registry registry-name)
+        registry (apply prometheus/register
+                        (collector.ring/initialize registry)
+                        (concat (jvm-collectors)
+                                (jetty-collectors)
+                                [@c3p0-collector]
+                                (product-collectors)))]
+    (doseq [metric (keys (methods known-labels))
+            labels (known-labels metric)]
+      (prometheus/inc registry metric labels 0))
+    registry))
 
 (defn- start-web-server!
   "Start the prometheus web-server. If [[prometheus-server-port]] is not set it will throw."
@@ -294,6 +306,18 @@
    (when-not system
      (setup!))
    (prometheus/inc (:registry system) metric labels amount)))
+
+(defn set!
+  "Call iapetos.core/set on the metric in the global registry.
+   Inits registry if it's not been initialized yet."
+  ([metric amount]
+   (assert (not (seq? amount)) "Cannot only provide labels")
+   ;; Escape var to avoid confusing it with the special form of the same name.
+   (#'set! metric nil amount))
+  ([metric labels amount]
+   (when-not system
+     (setup!))
+   (prometheus/set (:registry system) metric labels amount)))
 
 (comment
   (require 'iapetos.export)

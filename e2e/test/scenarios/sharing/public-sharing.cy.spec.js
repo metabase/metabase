@@ -312,9 +312,8 @@ H.describeEE(
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.openSharingMenu("Subscriptions");
 
-      cy.findByRole("heading", { name: "Email it" }).click();
-
       H.sidebar().within(() => {
+        cy.findByText("Email it").click();
         addEmailRecipient(deniedEmail);
 
         // Reproduces metabase#17977
