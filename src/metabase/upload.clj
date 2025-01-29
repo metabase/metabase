@@ -690,29 +690,43 @@
     (when-let [error-message (extra-and-missing-error-markdown extra missing)]
       (throw (ex-info error-message {:status-code 422})))))
 
-(defn- changed-columns
-  "Returns column definitions that have been added or changed.
+(defn- field-changes
+  "Given existing and newly inferred types for the given `field-names`, calculate which fields need to be added or updated, along with their new types."
+  [field-names existing-types new-types]
+  (reduce
+   (fn [m [f e n]]
+     (cond
+       (nil? e)   (assoc-in m [:added f] n)
+       (not= e n) (assoc-in m [:updated f] n)
+       :else      m))
+   {:added {}, :updated {}}
+   (map vector field-names existing-types new-types)))
 
-  The schema of the maps are as documented in [[driver/add-columns!]] or [[driver/alter-columns!]].
-  If a column already exists its previous type will be present as the key :old-column-type."
-  [driver column-names existing-types new-types]
-  (->> [column-names existing-types new-types]
-       (apply map (fn [f e n]
-                    (when (not= e n)
-                      (cond-> {:column      (keyword f)
-                               :column-type (database-type driver n)}
-                              e (assoc :old-type (database-type driver e))))))
-       (remove nil?)))
+(defn- old-column-types
+  [driver field-names existing-types]
+  (->> (for [[field-name col-type] (map vector field-names existing-types)
+             :when col-type]
+         [(keyword field-name) (database-type driver col-type)])
+       (into {})))
 
-(defn- add-columns! [driver database table column-definitions & args]
-  (when (seq column-definitions)
+(defn- field->db-type [driver field->col-type]
+  (m/map-kv
+   (fn [field-name col-type]
+     [(keyword field-name)
+      (database-type driver col-type)])
+   field->col-type))
+
+(defn- add-columns! [driver database table field->type & args]
+  (when (seq field->type)
     (apply driver/add-columns! driver (:id database) (table-identifier table)
-           column-definitions
+           (field->db-type driver field->type)
            args)))
 
-(defn- alter-columns! [driver database table column-definitions]
-  (when (seq column-definitions)
-    (driver/alter-columns! driver (:id database) (table-identifier table) column-definitions)))
+(defn- alter-columns! [driver database table field->new-type & args]
+  (when (seq field->new-type)
+    (apply driver/alter-upload-columns! driver (:id database) (table-identifier table)
+           (field->db-type driver field->new-type)
+           args)))
 
 (defn- mbql? [model]
   (= "query" (name (:query_type model "query"))))
@@ -779,11 +793,10 @@
               ;; be parsed as its existing type - there is scope to improve these error messages in the future.
               modify-schema?     (and (not= old-types new-types) (= detected-types new-types))
               _                  (when modify-schema?
-                                   (let [[alter-cols add-cols]
-                                         (->> (changed-columns driver column-names old-types new-types)
-                                              ((juxt filter remove) :old-type))]
-                                     (add-columns! driver database table add-cols)
-                                     (alter-columns! driver database table alter-cols)))
+                                   (let [changes (field-changes column-names old-types new-types)
+                                         old-types (old-column-types driver column-names old-types)]
+                                     (add-columns! driver database table (:added changes))
+                                     (alter-columns! driver database table (:updated changes) :old-types old-types)))
               ;; this will fail if any of our required relaxations were rejected.
               parsed-rows        (parse-rows settings new-types rows)
               row-count          (count parsed-rows)
@@ -801,8 +814,7 @@
 
           (when create-auto-pk?
             (add-columns! driver database table
-                          [{:column      auto-pk-column-keyword
-                            :column-type (database-type driver ::upload-types/auto-incrementing-int-pk)}]
+                          {auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk}
                           :primary-key [auto-pk-column-keyword]))
 
           (scan-and-sync-table! database table)

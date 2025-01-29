@@ -1191,10 +1191,42 @@
 
 (defmulti alter-columns!
   "Alter columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
-  Currently we do not currently support changing the the primary key, or take any guidance on how to coerce values."
-  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
+  Currently, we do not currently support changing the primary key, or take any guidance on how to coerce values."
+  {:added "0.49.0"
+   :arglists '([driver db-id table-name column-definitions])
+   :deprecated "0.54.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti alter-upload-columns!
+  "Alter columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
+  Currently, we do not currently support changing the primary key.
+
+  Used to change the types of columns when appending to or replacing uploads with a new .csv that infers a different type.
+
+  `column-definitions` should be supplied as a map of column-name keyword to column type.
+  e.g. `{:my-column [:varchar 255]}`
+
+  Note: column types may be supplied as honeysql vectors (e.g. `[:varchar 255]`) or a raw string.
+  Both should be handled by implementations.
+
+  Options:
+
+  - `:old-types`: a map of the existing column definitions, e.g `{:my-column [:bigint]}`
+     Can be useful to infer an expression to convert old values to the new type
+     where the database engine does not support it natively.
+     Implementations are free to ignore this parameter if they cannot do anything with it.
+
+  Replaces `alter-columns!` that was previously used for the same purpose in versions < `0.54.0`"
+  {:added "0.54.0", :arglists '([driver db-id table-name column-definitions & opts])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+;; used for compatibility with drivers only implementing alter-columns!
+;; remove once alter-columns! is deleted (v0.57+)
+(defmethod alter-upload-columns! :default
+  [driver db-id table-name column-definitions & _opts]
+  (alter-columns! driver db-id table-name column-definitions))
 
 (defmulti syncable-schemas
   "Returns the set of syncable schemas in the database (as strings)."

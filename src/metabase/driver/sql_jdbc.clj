@@ -193,21 +193,34 @@
   (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
   (with-quoting driver
     (let [primary-key-column (first primary-key)
-          [sql]              (sql/format {:alter-table (keyword table-name)
-                                          :add-column  (for [{:keys [column column-type]} column-definitions]
-                                                         (cond-> (vec (cons (quote-identifier column)
-                                                                            (if (string? column-type)
-                                                                              [[:raw column-type]]
-                                                                              column-type)))
-                                                           (= primary-key-column column)
-                                                           (conj :primary-key)))}
-                                         :quoted true
-                                         :dialect (sql.qp/quote-style driver))]
+          sql                (first (sql/format {:alter-table (keyword table-name)
+                                                 :add-column  (map (fn [[column-name type-and-constraints]]
+                                                                     (cond-> (vec (cons (quote-identifier column-name)
+                                                                                        (if (string? type-and-constraints)
+                                                                                          [[:raw type-and-constraints]]
+                                                                                          type-and-constraints)))
+                                                                       (= primary-key-column column-name)
+                                                                       (conj :primary-key)))
+                                                                   column-definitions)}
+                                                :quoted true
+                                                :dialect (sql.qp/quote-style driver)))]
       (qp.writeback/execute-write-sql! db-id sql))))
 
+;; kept for get-method driver compatibility
 (defmethod driver/alter-columns! :sql-jdbc
   [driver db-id table-name column-definitions]
   (qp.writeback/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
+
+(defmethod driver/alter-upload-columns! :sql-jdbc
+  [driver db-id table-name column-definitions & opts]
+  (let [deprecated-default-method (get-method driver/alter-columns! :sql-jdbc)
+        deprecated-driver-method  (get-method driver/alter-columns! driver)
+        deprecated-method-specialised (not (identical? deprecated-default-method deprecated-driver-method))]
+    ;; compatibility: continue to use the old method if it has been overridden
+    (if deprecated-method-specialised
+      (deprecated-driver-method driver db-id table-name column-definitions)
+      (->> (apply sql-jdbc.sync/alter-upload-columns-sql driver table-name column-definitions opts)
+           (qp.writeback/execute-write-sql! db-id)))))
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]

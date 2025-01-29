@@ -133,18 +133,39 @@
 
 (defmulti alter-columns-sql
   "Generate the query to be used with [[driver/alter-columns!]]."
-  {:added "0.49.0", :arglists '([driver table-name column-definitions])}
+  {:added "0.49.0",
+   :arglists '([driver table-name column-definitions])
+   :deprecated "0.54.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti alter-upload-columns-sql
+  "Generate the query to be used with [[driver/alter-upload-columns!]]."
+  {:added "0.54.0"
+   :arglists '([driver table-name column-definitions & opts])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+;; used for compatibility with drivers only implementing alter-columns-sql
+;; remove when alter-columns-sql is deleted (v0.57+)
+(defmethod alter-upload-columns-sql :default
+  [driver table-name column-definitions & _opts]
+  (alter-columns-sql driver table-name column-definitions))
+
+;; default :sql-jdbc implementation kept here rather than on alter-upload-columns-sql
+;; to maximize compatibility:
+;; a. get-method for superclass type calls still pick up this impl
+;; b. existing specialisation of sql-jdbc should remain preferred when alter-uploads-column-sql is called
+;; we can move this impl to alter-upload-columns-sql when alter-columns-sql is deleted (v0.57+)
 (defmethod alter-columns-sql :sql-jdbc
   [driver table-name column-definitions]
   (with-quoting driver
     (first (sql/format {:alter-table  (keyword table-name)
-                        :alter-column (for [{:keys [column column-type]} column-definitions]
-                                        (vec (cons (quote-identifier column)
-                                                   (if (string? column-type)
-                                                     [[:raw column-type]]
-                                                     column-type))))}
+                        :alter-column (map (fn [[column-name type-and-constraints]]
+                                             (vec (cons (quote-identifier column-name)
+                                                        (if (string? type-and-constraints)
+                                                          [[:raw type-and-constraints]]
+                                                          type-and-constraints))))
+                                           column-definitions)}
                        :quoted true
                        :dialect (sql.qp/quote-style driver)))))
