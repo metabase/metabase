@@ -13,7 +13,7 @@ Admins can create and share public links (URLs) for questions and dashboards. Pe
 
 ## Create a public link for a question
 
-![Create a public link for a question](./images/create-a-public-link.png)
+![Create a public link for a question](../images/create-a-public-link.png)
 
 To create a public link for a question, admins can click on the **Sharing** icon at the top right of a question and select **Create a public link**. Copy the link and test it out by viewing the link in a private/incognito browser session.
 
@@ -27,7 +27,7 @@ To create a public link that people can use to download the results of a questio
 2. Select **Create a public link**.
 3. Click on the file format you want (below the **Public link** URL): CSV, XLSX, or JSON.
 
-![Public export](./images/public-export.png)
+![Public export](../images/public-export.png)
 
 Open the public link in a new tab to test the download.
 
@@ -35,7 +35,7 @@ Open the public link in a new tab to test the download.
 
 To share a dashboard via a public link, admins can click on the **Sharing** button in the top right menu.
 
-![Sharing a dashboard](./images/dashboard-sharing.png)
+![Sharing a dashboard](../images/dashboard-sharing.png)
 
 To embed a dashboard, see [static embedding](./static-embedding.md).
 
@@ -72,11 +72,11 @@ You can simulate drill-through on a public dashboard by setting up a [custom cli
 
 For example, if you have a primary public dashboard that displays **Invoices** data, you can pass the **Plan** name (on click) to a destination public dashboard that displays **Accounts** data:
 
-![Public link with custom destination](./images/public-link-custom-destination.png)
+![Public link with custom destination](../images/public-link-custom-destination.png)
 
 ## Public embeds
 
-![Public embed](./images/public-embed.png)
+![Public embed](../images/public-embed.png)
 
 If you want to embed your question or dashboard as an iframe in a simple web page or app:
 
@@ -146,7 +146,7 @@ Note that the name of the filter in the URL should be specified in lower case, a
 
 Public sharing is enabled by default.
 
-![Enable public sharing](./images/enable-public-sharing.png)
+![Enable public sharing](../images/enable-public-sharing.png)
 
 To disable public sharing:
 
@@ -182,7 +182,7 @@ Admins can view and deactivate all public links for a Metabase.
 
 Admins can see all publicly shared questions, dashboards, and actions in **Admin Settings > Public Sharing**.
 
-![See shared content](./images/see-shared-content.png)
+![See shared content](../images/see-shared-content.png)
 
 ## Further reading
 

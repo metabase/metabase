@@ -4,7 +4,7 @@ title: Dashboards overview
 
 # Dashboards overview
 
-![Example dashboard](./images/dashboard.png)
+![Example dashboard](../images/dashboard.png)
 
 ## [Introduction to dashboards](./introduction.md)
 

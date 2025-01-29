@@ -14,15 +14,15 @@ With [some databases](#databases-that-support-json-unfolding), Metabase can unfo
 
 Here is a table with a column that contains JSON.
 
-![A table with a JSON column](./images/table-with-json-column.png)
+![A table with a JSON column](../images/table-with-json-column.png)
 
 Metabase can unfold that JSON column so that each key in the JSON object gets its own column in the table. Here are the unfolded fields of the table with the JSON column pictured above:
 
-![Unfolded fields](./images/unfolded-fields.png)
+![Unfolded fields](../images/unfolded-fields.png)
 
 And here are the values as seen in the table:
 
-![Unfolded values](./images/unfolded-values.png)
+![Unfolded values](../images/unfolded-values.png)
 
 This unfolding allows you to filter for values found in the original JSON object.
 
@@ -57,7 +57,7 @@ If performance degrades, or you'd rather keep the JSON contained in the original
 7. Scroll to the **Unfold JSON** option and select **Yes** or **No**. If the column was unfolded, Metabase will have hidden this JSON columnn from view, so if you want the JSON column to be visible again, you'll need to change the column's visibility to **Everywhere**.
 8. Scroll down and click on the **Re-scan this field**.
 
-![Unfolded JSON setting](./images/unfold-json-setting.png)
+![Unfolded JSON setting](../images/unfold-json-setting.png)
 
 ## For JSON unfolding to work, the column's data type must be JSON
 

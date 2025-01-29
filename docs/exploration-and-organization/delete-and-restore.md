@@ -6,7 +6,7 @@ title: Delete and restore
 
 Sometimes your questions, dashboards, models, or collections outlive their usefulness. You can send outdated items to **Trash**.
 
-![Move to trash](./images/move-to-trash.png)
+![Move to trash](../images/move-to-trash.png)
 
 Items in **Trash** won't show up in search (unless you use [advanced search filters](./exploration.md)), and you won't be able to use them to create new questions and dashboards.
 
@@ -18,7 +18,7 @@ Deleting an item will affect any [dashboards](../dashboards/introduction.md), [s
 
 You can find Trash at the bottom of the left navigation sidebar below all the collections:
 
-![Trash](./images/trash.png)
+![Trash](../images/trash.png)
 
 You can think of Trash as a special type of collection. In **Trash**, you can see deleted items from the collections that you have [Curate permissions](../permissions/collections.md#collection-permission-levels) on. You can order deleted items by type (questions, dashboards, etc), time it was deleted, and who deleted it.
 

@@ -26,7 +26,7 @@ Basic actions are only available for "basic" models:
 
 ## Basic action types
 
-![Basic actions](./images/basic-actions.png)
+![Basic actions](../images/basic-actions.png)
 
 Basic actions include:
 
@@ -64,7 +64,7 @@ Because basic actions are made of magic, you cannot archive them. You can just t
 
 If you have basic actions enabled for a model, you can click on an individual record to view its object detail. From that object detail model, you can click on the ellipses (**...**) and select update or delete to modify that specific record.
 
-![Update record from object detail view](./images/update-record.png)
+![Update record from object detail view](../images/update-record.png)
 
 ## Further reading
 

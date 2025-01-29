@@ -20,7 +20,7 @@ To view the audit logs, go to the top right of the screen and click on the **gea
 
 Use the **People** section to gain a better understanding of how people are interacting with Metabase. You'll want to pay attention to the **Overview** tab, especially when you first launch Metabase at your organization — it will give you data around how many active and newly created accounts you have each day. Further down the page, you'll see charts showing you which people are most engaged.
 
-![Team Members](./images/audit-team.png)
+![Team Members](../images/audit-team.png)
 
 The **Team Members** panel has a view of other options for viewing your team's usage data. The **All Members** tab will give you a list of your team members, and stats about their activity, such as when they were last active.
 
@@ -33,13 +33,13 @@ Throughout the People section, names can be clicked to access the profile of a s
 - Downloads
 - Subscriptions and Alerts
 
-![Team Members](./images/audit-teammember.png)
+![Team Members](../images/audit-teammember.png)
 
 ## Data
 
 The Data section focuses on your databases, schemas and tables, and is divided into corresponding sections. Look here if you're trying to uncover queries and schemas that need optimization. Each section provides visualizations around the use and speed of querying against your databases, schemas or tables. You will also be able to view lists of stats about all of your databases, schemas and tables.
 
-![Data](./images/audit-data.png)
+![Data](../images/audit-data.png)
 
 ## Items
 
@@ -51,7 +51,7 @@ The Questions section will show you your most popular queries, as well as your s
 
 If important queries are appearing on the list of slowest queries, you will want to look at optimizing them. One option is to adjust your [caching settings](../configuring-metabase/caching.md), but there are plenty of other options as well. To help you determine if your optimization efforts are heading in the right direction, use the `Query views and speed per day` visualization at the bottom of the page.
 
-![Items](./images/audit-questions.png)
+![Items](../images/audit-questions.png)
 
 A list of all of your questions is available as well, and you can see various data points about each question at a glance:
 
@@ -74,7 +74,7 @@ You can also click on any question to drill into a more detailed profile showing
 
 The **Dashboards** section helps you understand what dashboards people are looking at, and to make sure they're having a smooth experience. If you notice that a popular dashboard has a high average question loading time, you can investigate further using the Questions section outlined above.
 
-![Items](./images/audit-dashboards.png)
+![Items](../images/audit-dashboards.png)
 
 A list of all of your dashboards is available as well, and you can see various data points about each dashboard at a glance, such as:
 

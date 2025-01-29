@@ -16,7 +16,7 @@ See if your error details contain any of:
 
 For example, this SQL error tells you that the function `DATEFROMPARTS` does not work on a BigQuery database:
 
-![Sample SQL error message](./images/sample-error-sql.png)
+![Sample SQL error message](../images/sample-error-sql.png)
 
 ## Questions and dashboards
 

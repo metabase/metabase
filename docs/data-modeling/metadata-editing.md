@@ -22,7 +22,7 @@ Click on a table name in the left sidebar to view the table's settings in Metaba
 
 If you've got more than one database connected to Metabase, click on the database name (for example, "Sample Database") and select another database from the dropdown menu. Once you select a database, the tables in that database will appear in the sidebar.
 
-![Table metadata](./images/table-metadata.png)
+![Table metadata](../images/table-metadata.png)
 
 - [Change the display name](#table-display-name).
 - [Add or edit the description](#table-description).
@@ -50,7 +50,7 @@ Tip: To hide all of the tables in a database (say, if you've migrated to a new d
 
 To remind yourself of column names and data types as they're stored in your database, click **Original schema** (below **Visibility**).
 
-![Original schema](./images/original-schema.png)
+![Original schema](../images/original-schema.png)
 
 ## Column (field) settings
 
@@ -64,7 +64,7 @@ Select a database and click on a table's name in the sidebar to bring up basic c
 
 For extra column settings, click on the **gear** icon at the right of a column's settings box:
 
-![Column settings](./images/column-settings.png)
+![Column settings](../images/column-settings.png)
 
 - [Cast text or numbers to dates](#casting-to-a-specific-data-type)
 - [Change the filter widget](#changing-the-filter-widget) (for example, to a dropdown menu)
@@ -201,7 +201,7 @@ Say you have a column with the values 1, 2, and 3, and you want to map each numb
 7. Enter the URL in the **Link URL** field.
 8. Optional: create a dynamic URL by adding the column name as a `{% raw %}{{parameter}}{% endraw %}`.
 
-![Format as URL](./images/format-as-url.png)
+![Format as URL](../images/format-as-url.png)
 
 For example, if you set the **Link URL** for an "Adjective" column to:
 

@@ -220,7 +220,7 @@ For example, you can disable Metabase's [top nav bar](#top_nav) and [side nav me
 your_embedding_url?top_nav=false&side_nav=false
 ```
 
-![Top nav and side nav disabled](./images/no-top-no-side.png)
+![Top nav and side nav disabled](../images/no-top-no-side.png)
 
 Options include:
 
@@ -245,7 +245,7 @@ To hide the action buttons such as **Filter**, **Summarize**, the query builder 
 header=false&action_buttons=false
 ```
 
-![Action buttons](./images/action-buttons.png)
+![Action buttons](../images/action-buttons.png)
 
 ### `additional_info`
 
@@ -255,7 +255,7 @@ To hide the gray text "Edited X days ago by FirstName LastName", as well as the 
 
 `header=false&additional_info=false`
 
-![Additional info](./images/additional-info.png)
+![Additional info](../images/additional-info.png)
 
 ### `breadcrumbs`
 
@@ -323,7 +323,7 @@ To allow people to minimize the sidebar:
 top_nav=true&side_nav=true
 ```
 
-![Side nav](./images/side-nav.png)
+![Side nav](../images/side-nav.png)
 
 ### `top_nav`
 
@@ -333,7 +333,7 @@ Shown by default. To hide the top navigation bar:
 top_nav=false
 ```
 
-![Top nav bar](./images/top-nav.png)
+![Top nav bar](../images/top-nav.png)
 
 `search`, `new_button`, and `breadcrumbs` all depend on `top_nav` being set to `true`. If these three children (`search`, `new_button`, and `breadcrumbs`) are all false, Metabase will hide the top nav bar.
 

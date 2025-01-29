@@ -107,7 +107,7 @@ Click on the button next to **Default policy**, and select a [cache invalidation
 
 {% include plans-blockquote.html feature="Database caching" %}
 
-![Database caching settings in the Admin settings under the Performance tab](./images/data-caching-settings.png)
+![Database caching settings in the Admin settings under the Performance tab](../images/data-caching-settings.png)
 
 Same as the default caching policy, though you can set a caching policy for specific databases.
 

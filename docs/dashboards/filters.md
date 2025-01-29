@@ -6,7 +6,7 @@ redirect_from:
 
 # Dashboard filters and parameters
 
-![Dashboard Filters](./images/filters.png)
+![Dashboard Filters](../images/filters.png)
 
 Have you ever found yourself in a situation where it seems like you need to create nearly identical copies of the same dashboard, with just one different variable? Maybe you have an Earnings dashboard, but you want to see the data for each city your business is in, or maybe you have a KPI dashboard that you want to see broken out by month.
 
@@ -14,7 +14,7 @@ Instead of creating duplicate dashboards, you can add filter or parameter widget
 
 ## Adding a filter or parameter
 
-![Add a Filter](./images/add-filter.png)
+![Add a Filter](../images/add-filter.png)
 
 - Click the **pencil icon** to enter dashboard editing mode.
 - Click the **filter icon** that appears in the top-right to add a filter.
@@ -56,7 +56,7 @@ Single Date and Date Range will provide a calendar widget, while the other optio
 
 ## Time grouping parameter
 
-![Time grouping](./images/time-grouping.png)
+![Time grouping](../images/time-grouping.png)
 
 You can add a time grouping widget to a dashboard to change how charts are grouped by time. For example, you may want to look at the time series charts grouped by month by default, but give people the option to view the results by other groupings: by week, by quarter, and so on.
 
@@ -118,7 +118,7 @@ Click on a card's dropdown menu to select the field that you want the widget to 
 
 Here we've wired up a Text filter to the "Event types" card, telling Metabase that the column to filter on should be the `Analytics.Event.Button.Label` field:
 
-![Wiring up a dashboard filter to a card](./images/wiring-cards.png)
+![Wiring up a dashboard filter to a card](../images/wiring-cards.png)
 
 ## Auto-connecting filters to cards
 
@@ -234,7 +234,7 @@ A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [S
    - From another model or question
    - Custom list
 
-![Selectable values](./images/selectable-values.png)
+![Selectable values](../images/selectable-values.png)
 
 \* If you don't see "Dropdown list" as an option, go to [Filter widgets: Dropdown list](#dropdown-list) for more info.
 
@@ -250,7 +250,7 @@ If a dashboard is particularly large or slow, or you have multiple filters that 
 
 To turn off the automatic application of filters, click on the info **i** icon, and toggle the **Auto-apply filters** option. With auto-apply turned off, each time you change a value in a filter, you'll need to click the **Apply** button to refresh the dashboard with the new filter value.
 
-![Click Apply to apply the filters and refresh the dashboard](./images/apply-button.png)
+![Click Apply to apply the filters and refresh the dashboard](../images/apply-button.png)
 
 ## Using filter widgets
 
@@ -258,7 +258,7 @@ Once you’ve added a filter to your dashboard, just click on the filter widget 
 
 Your active filter will only apply to your view of the dashboard. If someone else is viewing the same dashboard link at the same time, they won't see your filter.
 
-![Using a filter](./images/use-filter.png)
+![Using a filter](../images/use-filter.png)
 
 You can also set up a dashboard question to [update a filter on click](./interactive.md#use-a-chart-to-filter-a-dashboard).
 

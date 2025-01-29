@@ -18,7 +18,7 @@ You need to set up your LDAP directory with these attributes:
 
 If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form.
 
-![Attributes](./images/ldap-attributes.png)
+![Attributes](../images/ldap-attributes.png)
 
 Your LDAP directory must have the email field populated for each entry that will become a Metabase user, otherwise Metabase won't be able to create the account, nor will that person be able to log in. If either name field is missing, Metabase will use a default of "Unknown," and the person can change their name in their [account settings](./account-settings.md).
 

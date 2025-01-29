@@ -64,7 +64,7 @@ You can use your JWT to assign Metabase users to custom groups.
 1. Under **Group Schema**, turn on the toggle **Synchronize Group Memberships**
 1. Click **New mapping** and add the name of a JWT group.
 1. In the row that appears, click the dropdown to pick the Metabase group(s) that this should map to.
-   ![Metabase JWT group mappings](./images/jwt-groups.png)
+   ![Metabase JWT group mappings](../images/jwt-groups.png)
 1. Repeat this for each of the groups you want to map.
 
 Alternatively, you can define the mappings between JWT and Metabase groups using the [environment variable `MB_JWT_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_jwt_group_mappings). It accepts a JSON object where the keys are JWT groups and the values are lists of Metabase groups IDs. For example:

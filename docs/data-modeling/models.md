@@ -51,7 +51,7 @@ Models you create are automatically [pinned to the current collection](../explor
 2. Save the question.
 3. Click on the **...** > **Turn this into a model**.
 
-![Turn a saved question into a model](./images/turn-into-a-model.png)
+![Turn a saved question into a model](../images/turn-into-a-model.png)
 
 ## Model detail page
 
@@ -60,7 +60,7 @@ To view a model's detail page:
 - From a collection: click on the **book** icon next to a model.
 - From a model: click on the **info** button in the upper right, then click **Model details**.
 
-![Model detail page](./images/model-detail.png)
+![Model detail page](../images/model-detail.png)
 
 Here you'll see several tabs:
 

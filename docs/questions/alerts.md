@@ -9,7 +9,7 @@ redirect_from:
 
 Set up an alert to send the results of questions to people via email or Slack, or to a webhook.
 
-![The wide world of alerts](./images/the-wide-world-of-alerts.png)
+![The wide world of alerts](../images/the-wide-world-of-alerts.png)
 
 Alerts are for questions only. If you instead want to get the results of a dashboard sent to you, check out [dashboard subscriptions](../dashboards/subscriptions.md).
 
@@ -29,7 +29,7 @@ To create an alert:
 2. Click on the sharing icon in the top-right of the screen
 3. Select **Create alert**.
 
-![Get alerts](./images/get-alerts-about-this.png)
+![Get alerts](../images/get-alerts-about-this.png)
 
 Available types of alerts will depend on the visualization you selected.
 
@@ -57,7 +57,7 @@ You can choose:
 - Whether you want Metabase to alert you every time the time series crosses a goal line, or only the first time it crosses the goal line.
 - How often you want Metabase to check to see if the goal line has been crossed.
 
-![Goal line alert options](./images/goal-line-options.png)
+![Goal line alert options](../images/goal-line-options.png)
 
 Click Done, and your alert will be all set up! You'll get an email confirmation, too. If you need to edit or unsubscribe from the alert you set up, just click that same icon. You'll see the Edit and Unsubscribe buttons. This is also where you'll see alerts about this question that administrators might have added you to.
 

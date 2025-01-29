@@ -6,7 +6,7 @@ title: Introduction to actions
 
 > For now, actions are only available for PostgreSQL and MySQL.
 
-![Example action](./images/example-action.png)
+![Example action](../images/example-action.png)
 
 ## What are actions?
 

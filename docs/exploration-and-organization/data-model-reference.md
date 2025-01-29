@@ -25,7 +25,7 @@ To bring up the data reference panel in the native/SQL editor, click on the open
 
 This panel lists all the databases you have access to, and the [models](../data-modeling/models.md) and tables, and the fields inside of them.
 
-![Data reference sidebar](./images/DataReference.png)
+![Data reference sidebar](../images/DataReference.png)
 
 Click on the model or table you would like to explore further to see a description of it and a list of all the columns it has. Each table or column will only contain a description if your admin wrote something in the Table Metadata section of the Admin Panel.
 

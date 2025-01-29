@@ -12,7 +12,7 @@ X-rays are a way to get automatic insights and explorations of your data.
 
 One great way to explore your data in general in Metabase is to click on points of interest in charts and selecting **Automatic insights**.
 
-![Automatic insights in the drill-through menu](./images/automatic-insights.png)
+![Automatic insights in the drill-through menu](../images/automatic-insights.png)
 
 Metabase will give you some options:
 
@@ -23,11 +23,11 @@ In both cases, Metabase will take a look at the fields in that table or model, a
 
 Here's an example X-ray:
 
-![Example X-ray of the products table](./images/x-ray-example.png)
+![Example X-ray of the products table](../images/x-ray-example.png)
 
 ## X-raying models and tables
 
-![Browse data X-ray](./images/browse-data-x-ray.png)
+![Browse data X-ray](../images/browse-data-x-ray.png)
 
 Another great way to get to know your data is by X-raying your models and tables.
 
@@ -40,7 +40,7 @@ You can also view an X-ray by browsing to a table and clicking on the lightning 
 
 From the Browse Data page, you can also click on `Learn about our data` to view the Data Reference section. From here you can navigate through databases, tables, columns, metrics, or segments, and you can click on the X-ray link in the left sidebar to see an X-ray of the item you're currently viewing.
 
-![Data Reference X-ray](./images/data-reference.png)
+![Data Reference X-ray](../images/data-reference.png)
 
 ## Exploring newly added data sources
 

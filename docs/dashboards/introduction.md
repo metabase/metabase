@@ -6,7 +6,7 @@ redirect_from:
 
 # Introduction to dashboards
 
-![Interactive dashboard](./images/interactive-dashboard.png)
+![Interactive dashboard](../images/interactive-dashboard.png)
 
 ## What is a dashboard?
 
@@ -98,7 +98,7 @@ To see how to wire up a filter to a card, see [dashboard filters](./filters.md).
 
 ## Link cards
 
-![Dashboards with link cards](./images/dashboard-with-link-cards.png)
+![Dashboards with link cards](../images/dashboard-with-link-cards.png)
 
 Link cards are specialized cards that let you search and link to other items in your Metabase. You can also use them for external links. Useful for pointing people to other resources relevant to your dashboard.
 
@@ -139,7 +139,7 @@ To add an iframe card to a dashboard, click the **pencil** icon to enter dashboa
 
 And behold, a dashboard with an embedded video:
 
-![Dashboard with iframe of video](./images/dashboard-with-iframe.png)
+![Dashboard with iframe of video](../images/dashboard-with-iframe.png)
 
 Iframe cards support variables so that you can use a filter widget to update values in the iframe. For example, you could include a variable in the iframe's `src` URL with double braces, like so:
 
@@ -155,7 +155,7 @@ To provide values for the variable, you'll need to add a filter to the dashboard
 
 You can add multiple tabs to a dashboard to keep your cards organized.
 
-![Dashboard tabs](./images/dashboard-tabs.png)
+![Dashboard tabs](../images/dashboard-tabs.png)
 
 ### Duplicate a tab
 
@@ -200,7 +200,7 @@ Metabase will automatically update a question's display to make sure your data l
 
 To speed up card arrangement, you can add **sections** to your dashboards.
 
-![Add section](./images/add-section.png)
+![Add section](../images/add-section.png)
 
 Sections are templates with headings and pre-arranged cards. Once you add a section to a dashboard, you can pick questions for each card, and make any other changes you like. You can only pick questions for cards, not another type of card (like a text card).
 
@@ -210,21 +210,21 @@ Sections include:
 
 **KPI Grid**
 
-![KPI Grid](./images/kpi-grid.png)
+![KPI Grid](../images/kpi-grid.png)
 
 **Large chart with KPIs to the right**
 
-![Large chart with KPIS to the right**](./images/large-chart-with-kpis-to-the-right.png)
+![Large chart with KPIS to the right**](../images/large-chart-with-kpis-to-the-right.png)
 
 **KPIs with large chart below**
 
-![KPIs with large chart below](./images/kpis-with-large-chart-below.png)
+![KPIs with large chart below](../images/kpis-with-large-chart-below.png)
 
 ## Dashboard width
 
 You can change the width of a dashboard by going into the three dots menu in the upper right:
 
-![Change dashboard width](./images/toggle-width.png)
+![Change dashboard width](../images/toggle-width.png)
 
 - **Fixed width** (default). Metabase will restrict the layout to a fixed width in the center of the screen. This fixed width can keep dashboard layouts consistent between smaller laptop screens and larger desktop screens.
 - **Full width**. The layout and cards will expand to take up the full width of the screen.
@@ -271,7 +271,7 @@ To enter fullscreen mode, click the **fullscreen** icon in the top right of the 
 
 If your data updates frequently, you can set up your dashboard to refresh automatically by clicking on the **clock** icon.
 
-![Autorefresh](./images/autorefresh.png)
+![Autorefresh](../images/autorefresh.png)
 
 You can set your dashboard to update in 1, 5, 10, 15, 30, and 60 minute intervals, depending on how fresh you need the data to be.
 
@@ -289,7 +289,7 @@ See [Caching per dashboard](../configuring-metabase/caching.md#dashboard-caching
 
 If your Metabase administrator has enabled [public sharing](../embedding/public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the **sharing** icon to find its public links.
 
-![Share icon](./images/share-icon.png)
+![Share icon](../images/share-icon.png)
 
 Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/blog/external-facing-analytics), as well as an article on how to combine branding, Single Sign-On, full app embedding, and data sandboxing to deliver [multi-tenant, self-service analytics](https://www.metabase.com/blog/embedding).
 

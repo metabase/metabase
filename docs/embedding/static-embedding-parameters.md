@@ -170,7 +170,7 @@ Because Metabase doesn't display locked parameters as filter widgets, you can us
 
 ## Customizing the appearance of a static embed
 
-![Look and feel: appearance settings on static embed](./images/04-preview.png)
+![Look and feel: appearance settings on static embed](../images/04-preview.png)
 
 You can change the appearance of an embedded item by adding hash parameters (e.g., `#theme=night`) to the end of the URL in your iframe's `src` attribute.
 

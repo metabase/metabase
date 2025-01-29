@@ -6,7 +6,7 @@ title: Custom actions
 
 Write SQL to update records in your databases.
 
-![Custom action](./images/custom-action.png)
+![Custom action](../images/custom-action.png)
 
 ## Creating a custom action
 
@@ -49,13 +49,13 @@ You can include placeholder text for all fields in the action form.
 
 For both **Dropdown** and **Inline select**, you can specify a list of options to present on the form, with each option on its own line.
 
-![Dropdown select](./images/dropdown.png)
+![Dropdown select](../images/dropdown.png)
 
 ## Appearance
 
 The appearance tab in the action editor modal will display a preview of the variable's form element. In the image below, we've clicked on the variable's **gear** and set the variable to use a text > dropdown list. The appearance section gives a preview for what the form element would look like:
 
-![Appearance gives a preview of the form element](./images/appearance.png)
+![Appearance gives a preview of the form element](../images/appearance.png)
 
 ## Action settings
 
@@ -65,7 +65,7 @@ From the model detail page, click on the **three dot menu** (...) next to the ac
 
 Creates a publicly shareable link to the action form. Anyone with access to that link can fill out the form and run the action. Useful for creating surveys.
 
-![Public action form](./images/public-form.png)
+![Public action form](../images/public-form.png)
 
 ### Set a success message
 
@@ -93,7 +93,7 @@ The above code will create a form that prompts people to input updated values fo
 
 The code in brackets `[[ ]]` makes the statement optional: the bracket-enclosed statement will only run if someone inserts a value in the payment field. Note the comma that separates the statements is _inside_ the brackets.
 
-![Example action form](./images/form.png)
+![Example action form](../images/form.png)
 
 ### Example `INSERT` action
 

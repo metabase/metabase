@@ -19,11 +19,11 @@ To enable dashboard subscriptions, your administrators will need to have set up 
 
 To set up a subscription to a dashboard, click on the **Sharing** icon and select **Subscriptions**. Metabase will slide out a sidebar on the right, with an option to set up a subscription via email or Slack:
 
-![Set up a dashboard subscription with email or slack](./images/email-or-slack.png)
+![Set up a dashboard subscription with email or slack](../images/email-or-slack.png)
 
 Let's say we want to email a dashboard. We'll click on the **Email it** option in the sidebar, and Metabase will give us some options:
 
-![Dashboard subscription email options](./images/email-options.png)
+![Dashboard subscription email options](../images/email-options.png)
 
 ## Email subscription options
 
@@ -88,7 +88,7 @@ For Slack subscriptions, you can set up a subscription for a channel (like #gene
 
 > Note that Slack username can be different from Slack display name.
 
-![slack subscription options](./images/slack-subscription-options.png)
+![slack subscription options](../images/slack-subscription-options.png)
 
 > If you rename the subscribed channel in Slack, you'll need to update the subscription to point to the new Slack channel name.
 
@@ -124,7 +124,7 @@ You can set values for each filter on the dashboard. If you have any dashboard f
 
 Here's the sidebar where you can set the filter values:
 
-![Setting a filter value](./images/set-filter-values.png)
+![Setting a filter value](../images/set-filter-values.png)
 
 The section to call out here is the **Set filter values for when this gets sent**. Here we've set "VT" as the value for the dashboard's State filter to scope results to records from Vermont. We didn't set a value for the Created_At filter, so the subscription will send the results without a filter applied. If you've set a default value for the filter, the subscription will list the value here.
 

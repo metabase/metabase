@@ -30,7 +30,7 @@ So anytime you want to do or find anything in Metabase, just hit `cmd/ctrl + k` 
 
 To filter your search results, hit `cmd/ctrl + k` to bring up the command palette and enter your search term. The first result is a link to "Search and filter all X results".
 
-![Search results](./images/search-results.png)
+![Search results](../images/search-results.png)
 
 Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in that are in collections you have permission to view.
 
@@ -49,7 +49,7 @@ You can search by:
 
 > Whether a group has access to the database browser depends on the group's [Create queries permission](../permissions/data.md#create-queries-permissions).
 
-![Browse databases](./images/browse-data.png)
+![Browse databases](../images/browse-data.png)
 
 The left sidebar lists your databases, [models](../data-modeling/models.md), and [metrics](../data-modeling/metrics.md).
 
@@ -63,7 +63,7 @@ To learn more, see [Exploring data with Metabase's data browser](https://www.met
 
 [Collections][collections] in Metabase are a lot like folders. They're where Metabase keeps all your team's dashboards and charts.
 
-![A collection](./images/collection-detail.png)
+![A collection](../images/collection-detail.png)
 
 Your teammates might have pinned some items to the top of your collection.
 

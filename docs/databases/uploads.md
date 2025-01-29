@@ -6,7 +6,7 @@ title: Setting up data uploads
 
 This page covers how admins can set up data uploads so people can upload CSVs to your Metabase. For _how_ to upload data once this is set up, check out [Uploading data](../exploration-and-organization/uploads.md).
 
-![Upload CSV data to a collection in Metabase](./images/upload-to-collection.png)
+![Upload CSV data to a collection in Metabase](../images/upload-to-collection.png)
 
 Uploading CSV data is best suited for ad hoc analysis of spreadsheet data. If you have a lot of data, or will need to update or add to that data regularly, we recommend setting up a way to load that data into a database directly, then connecting Metabase to that database.
 

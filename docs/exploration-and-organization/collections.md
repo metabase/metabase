@@ -8,7 +8,7 @@ redirect_from:
 
 After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions and dashboards.
 
-![Our analytics](./images/our-analytics-page.png)
+![Our analytics](../images/our-analytics-page.png)
 
 Collections are the main way to organize questions, dashboards, and [models][models]. You can think of them like folders or directories. You can nest collections in other collections, and move collections around. One thing to note is that a single item, like a question or dashboard, can only be in one collection at a time (excluding parent collections).
 
@@ -22,7 +22,7 @@ They're like file-system folders. You can put stuff in them.
 
 {% include plans-blockquote.html feature="Official collections" %}
 
-![Official collections](./images/official-collection.png)
+![Official collections](../images/official-collection.png)
 
 Metabase admins can designate collections as "official" with the following effects:
 
@@ -54,7 +54,7 @@ To share items in your personal collection, for example to add a question in you
 
 In each collection, you can pin important or useful dashboards, models, and questions to make them stick to the top of the screen. Pinned items will also be displayed as large cards to make them stand out well.
 
-![Pins](./images/pinned-items.png)
+![Pins](../images/pinned-items.png)
 
 To pin and un-pin things in a collection, you need to have **Curate** permissions for that collection.
 
@@ -64,7 +64,7 @@ To pin and un-pin things in a collection, you need to have **Curate** permission
 
 For pinned questions, you can also choose whether to display the visualization from the three dot menu (**...**).
 
-![Show pinned viz](./images/pinned-show-viz.png)
+![Show pinned viz](../images/pinned-show-viz.png)
 
 Pinned items will appear pinned for all people looking at the collection. If you just want to organize _your_ favorite items, you should [bookmark them](./exploration.md#bookmarks) (only you can see your bookmarks).
 
@@ -74,7 +74,7 @@ To move an item from one collection to another, just click and drag it onto the 
 
 If you're trying to move several things at once, click on the checkboxes next to the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
 
-![Selecting questions](./images/question-checkbox.png)
+![Selecting questions](../images/question-checkbox.png)
 
 Note that you have to have Curate permission for the collection that you're moving a question into _and_ the collection you're moving the question out of. Metabase admins can move items into (and out of) anyone's [personal collection](#your-personal-collection).
 

@@ -10,7 +10,7 @@ You can export the results of a question or dashboard.
 
 To export the results of a questions, click on the **Download** button in the lower right of a question.
 
-![Exporting results of a question](./images/exporting-the-results-of-a-question.png)
+![Exporting results of a question](../images/exporting-the-results-of-a-question.png)
 You can export the results of a question as:
 
 - .csv
@@ -59,7 +59,7 @@ You can export the results of a dashboard and its cards in different ways.
 
 You can export a dashboard as a PDF. Click on the **Sharing** button, then select **Export as PDF**.
 
-![Exporting a dashboard as a PDF](./images/export-dashboard-as-pdf.png)
+![Exporting a dashboard as a PDF](../images/export-dashboard-as-pdf.png)
 
 The PDF will only include screenshots of the charts as they are visible on the dashboard.
 
@@ -67,7 +67,7 @@ The PDF will only include screenshots of the charts as they are visible on the d
 
 To export the results of a particular card, hover over the dashboard card, click on the three dot menu (**...**), and select **Download results**.
 
-![Export results of a dashboard card](./images/download-card-results.png)
+![Export results of a dashboard card](../images/download-card-results.png)
 
 From here you can select:
 

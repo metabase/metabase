@@ -26,7 +26,7 @@ Uploads will only be available if your admin has enabled uploads for your Metaba
 
 You can upload additional CSV data to an existing model created by a previous CSV upload.
 
-![Append data to existing upload model](./images/append-data.png)
+![Append data to existing upload model](../images/append-data.png)
 
 The uploaded CSV must have the same column name, order, and type as the columns in the model. Metabase will look for a header row to check that the column names are the same. So if you split a large CSV into multiple CSVs, make sure to include header rows for all of the files.
 

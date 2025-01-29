@@ -8,7 +8,7 @@ title: Usage analytics
 
 The **Usage analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase.
 
-![Usage analytics collection](./images/metabase-analytics.png)
+![Usage analytics collection](../images/metabase-analytics.png)
 
 These resources are useful for:
 

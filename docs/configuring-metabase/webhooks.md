@@ -34,11 +34,11 @@ Metabase will send the results of an alert in JSON. The JSON will include some m
 
 Metabase will send the "attached" visualization as a base64-encoded PNG in the `data` key, under `visualization`.
 
-![The encoded PNG chart](./images/payload-chart.png)
+![The encoded PNG chart](../images/payload-chart.png)
 
 And the data as seen in the table view, which Metabase will send as a `raw_data`.
 
-![Results as table view](./images/table-view.png)
+![Results as table view](../images/table-view.png)
 
 Here's an example payload for an alert (we truncated the PNG encoding because it's long and extremely boring):
 

@@ -43,7 +43,7 @@ While still in the Admin panel's **Settings** section, click on **Authentication
 
 On the card that says **JWT**, click the **Setup** button (you may have to scroll down to view the JWT card).
 
-![Admin settings: Authentication > JTW setup.](./images/jwt-setup.png)
+![Admin settings: Authentication > JTW setup.](../images/jwt-setup.png)
 
 #### Set JWT Identity provider URI
 
@@ -210,7 +210,7 @@ In Metabase's admin section, go to **Settings** > **Authentication**. Scroll to 
 
 In the **Group schema** section, toggle on **Synchronize group memberships**. For each group you want to sync, add a group mapping. When you click **New mapping**, enter "Customer-Acme", the string that you included in the `groups` array in your JWT payload. You can then associate that group name with the Metabase group "Customer Acme" that we created earlier.
 
-![Mapping user attributes to groups.](./images/sync-groups.png)
+![Mapping user attributes to groups.](../images/sync-groups.png)
 
 Be sure to **Save changes**.
 
@@ -232,7 +232,7 @@ Metabase ships with two initial groups: "Admins" and "All Users". By default, Me
 
 To reset permissions for the All users group, click on the **gear** icon and go to **Admin settings** > **Permissions**. Under the **Data** tab, go to **Groups** and select **All Users**. For the **Sample Database** in the **View data** column, select "Blocked". Click **Save changes** and a modal will pop up summarizing what you're changing. Click **Yes**.
 
-![Resetting permissions of the All Users group to](./images/all-users.png)
+![Resetting permissions of the All Users group to](../images/all-users.png)
 
 ### Allow view access to the automatically generated dashboards collection
 
@@ -273,13 +273,13 @@ In Metabase, go to **Admin settings** > **Permissions**. Under the **Data** tab 
 
 Metabase will display a list of the tables in the database. Next, change **Data access** for the "Invoices" table to **Sandboxed**.
 
-![Sandboxing a table.](./images/sandboxed-invoices-table.png)
+![Sandboxing a table.](../images/sandboxed-invoices-table.png)
 
 Next, Metabase will prompt you with a modal to associate a column in that table with a user attribute.
 
 Leave the **Filter by a column in a table** option checked, and associate the "Account ID" column in the Invoices table with the user attribute `account_id`. (Note that Metabase will only display the user attributes if the user has signed in through SSO before.)
 
-![Mapping a column in the sandboxed table to a user attribute.](./images/map-user-attribute.png)
+![Mapping a column in the sandboxed table to a user attribute.](../images/map-user-attribute.png)
 
 Click **Save** to confirm your select. Then click the **Save changes** button in the upper right.
 

@@ -6,7 +6,7 @@ title: Content verification
 
 {% include plans-blockquote.html feature="Content verification" %}
 
-![Verified icon](./images/verified-icon.png)
+![Verified icon](../images/verified-icon.png)
 
 Admins can verify items to let others know that the content is accurate and up to date.
 
@@ -16,13 +16,13 @@ Admins can verify items to let others know that the content is accurate and up t
 - They show up higher in search suggestions and results.
 - The models and metrics browsers allow you to filter for verified items.
 
-![Verified models toggle](./images/verified-only.png)
+![Verified models toggle](../images/verified-only.png)
 
 ## Verifying items
 
 To verify an item, an admin can click on the three-dot menu (**...**) in the upper right when viewing that item and select: **Verify this item**.
 
-![Verify this dashboard](./images/verify-this-dashboard.png)
+![Verify this dashboard](../images/verify-this-dashboard.png)
 
 ## Removing verification status
 

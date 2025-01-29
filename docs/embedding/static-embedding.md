@@ -43,7 +43,7 @@ If you want to embed charts with additional interactive features, like [drill-do
 
 ## Making a question or dashboard embeddable
 
-![Sharing button to embed dashboard](./images/sharing-embed.png)
+![Sharing button to embed dashboard](../images/sharing-embed.png)
 
 To create a static embed:
 
@@ -55,7 +55,7 @@ To create a static embed:
 6. Optional: [Add parameters to the embed](./static-embedding-parameters.md).
 7. Click **Publish**.
 
-![Preview](./images/04-preview.png)
+![Preview](../images/04-preview.png)
 
 ## Adding the embedding URL to your website
 
@@ -83,7 +83,7 @@ For more examples, see our [reference apps repo](https://github.com/metabase/emb
 
 When you make changes to the look and feel or parameter preview settings, Metabase will update the code and highlight the changes. Make sure to copy these changes to your actual server code.
 
-![Code samples for embedding](./images/05-code.png)
+![Code samples for embedding](../images/05-code.png)
 
 Metabase generates server code for:
 
@@ -138,7 +138,7 @@ For the full list options you can parameterize, see [customizing the appearance 
 
 ## Removing the "Powered by Metabase" banner
 
-![Powered by Metabase](./images/powered-by-metabase.png)
+![Powered by Metabase](../images/powered-by-metabase.png)
 
 The banner appears on static embeds created with Metabase's open-source version. To remove the banner, you'll need to upgrade to a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
 

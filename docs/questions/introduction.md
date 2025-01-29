@@ -7,7 +7,7 @@ redirect_from:
 
 # Questions
 
-![Metabase question](./images/question.png)
+![Metabase question](../images/question.png)
 
 Questions in Metabase are queries, their results, and their visualization. Questions are the basic analytical unit in Metabase. You can think about questions as saved queries that you can display as tables or charts. You can organize questions into collections and dashboards. You can [embed questions](../embedding/start.md), share links to them, export their results, and have them alert you when results are interesting.
 
@@ -17,13 +17,13 @@ You can create a new question from scratch, or build off of an existing question
 
 ### Query builder
 
-![Query builder editor](./images/editor.png)
+![Query builder editor](../images/editor.png)
 
 Selecting **Question** will take you to the [editor in the graphical query builder](./query-builder/editor.md).
 
 ### Native editor
 
-![Native editor](./images/native-editor.png)
+![Native editor](../images/native-editor.png)
 
 Selecting **SQL/native code** will open the [native code editor](./native-editor/writing-sql.md).
 
@@ -65,7 +65,7 @@ You can move the question from a collection into a dashboard if either:
 
 Once you save a question, you can click on the **info** icon in the upper right to see some metadata about your question:
 
-![Info sidesheet](./images/info-sidesheet.png)
+![Info sidesheet](../images/info-sidesheet.png)
 
 ### Overview tab
 
