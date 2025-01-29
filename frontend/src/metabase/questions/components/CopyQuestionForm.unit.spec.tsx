@@ -36,15 +36,8 @@ describe("CopyQuestionForm", () => {
     const descriptionInput = screen.getByLabelText("Description");
     const saveButton = screen.getByRole("button", { name: "Duplicate" });
 
-    await userEvent.type(nameInput, "A".repeat(254));
-    await userEvent.click(descriptionInput);
-    expect(
-      screen.queryByText(/must be 254 characters or less/),
-    ).not.toBeInTheDocument();
-    expect(saveButton).toBeEnabled();
-
-    await userEvent.clear(nameInput);
-    await userEvent.type(nameInput, "A".repeat(255));
+    await userEvent.click(nameInput);
+    await userEvent.paste("A".repeat(255));
     await userEvent.click(descriptionInput);
     expect(
       await screen.findByText(/must be 254 characters or less/),

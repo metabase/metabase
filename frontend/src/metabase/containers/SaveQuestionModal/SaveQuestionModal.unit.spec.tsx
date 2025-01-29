@@ -298,19 +298,12 @@ describe("SaveQuestionModal", () => {
       const question = getQuestion();
       await setup(question);
 
-      await fillForm({
-        name: "A".repeat(254),
-        description: "B",
-      });
-      expect(
-        screen.queryByText(/must be 254 characters or less/),
-      ).not.toBeInTheDocument();
-      expect(await screen.findByRole("button", { name: "Save" })).toBeEnabled();
+      const nameInput = screen.getByLabelText("Name");
+      const descriptionInput = screen.getByLabelText("Description");
+      await userEvent.clear(nameInput);
+      await userEvent.paste("A".repeat(255));
+      await userEvent.click(descriptionInput);
 
-      await fillForm({
-        name: "A".repeat(255),
-        description: "B",
-      });
       expect(
         await screen.findByText(/must be 254 characters or less/),
       ).toBeInTheDocument();

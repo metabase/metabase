@@ -54,7 +54,7 @@ describe("SavedQuestionHeaderButton", () => {
 
     const titleInput = screen.getByTestId("saved-question-header-title");
     await userEvent.clear(titleInput);
-    await userEvent.type(titleInput, "A".repeat(300));
+    await userEvent.paste("A".repeat(300));
     titleInput.blur();
 
     expect(onSave).toHaveBeenCalledWith("A".repeat(254));
