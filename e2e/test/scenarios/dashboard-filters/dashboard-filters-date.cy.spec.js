@@ -35,6 +35,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // Go through each of the filters and make sure they work individually
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
 
         dateFilterSelector({

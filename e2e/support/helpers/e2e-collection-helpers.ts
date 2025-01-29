@@ -48,6 +48,7 @@ export function getPersonalCollectionName(
 }
 
 export function openCollectionItemMenu(item: string, index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByText(item).eq(index).closest("tr").icon("ellipsis").click();
 }
 

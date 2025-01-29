@@ -756,7 +756,7 @@
          (is (= #{{:type :normal-column-index :value "id"}}
                 (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index))))))))))
 
-(defmethod driver/database-supports? [::driver/driver ::materialized-view-fields]
+(defmethod driver/database-supports? [::driver/driver ::describe-materialized-view-fields]
   [_driver _feature _database]
   true)
 
@@ -783,7 +783,8 @@
                 :mongo
                 :sparksql
                 :sqlite
-                :athena]]
+                :athena
+                :vertica]]
   (defmethod driver/database-supports? [driver ::describe-materialized-view-fields]
     [_driver _feature _database]
     false))
@@ -804,7 +805,8 @@
           (tx/create-view-of-table! driver/*driver* (mt/db) view-name table-name {:materialized? materialized?})
           (sync/sync-database! (mt/db) {:scan :schema})
           (let [orders-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name table-name}) (mt/db)))
-                orders-m-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db)))
+                view-instance (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db))
+                orders-m-id (:id view-instance)
                 non-view-fields (t2/select-fn-vec
                                  (juxt (comp u/lower-case-en :name) :base_type :database_position)
                                  :model/Field
@@ -815,6 +817,8 @@
                              :model/Field
                              :table_id orders-m-id
                              {:order-by [:database_position]})]
+            (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db))))
+                           (:name view-instance)))
             (is (some? orders-m-id))
             (is (some? orders-id))
             (is (= 9 (count view-fields)))

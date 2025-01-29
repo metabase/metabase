@@ -16,7 +16,7 @@ describe("scenarios > dashboard > filters > location", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+    H.createNativeQuestionAndDashboard({ questionDetails }).then(
       ({ body: { card_id, dashboard_id } }) => {
         H.visitQuestion(card_id);
 
@@ -39,6 +39,7 @@ describe("scenarios > dashboard > filters > location", () => {
 
     Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
+        // eslint-disable-next-line no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         addWidgetStringFilter(value);
 

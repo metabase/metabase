@@ -24,7 +24,6 @@
    [metabase.pulse.core :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
-   [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)
@@ -56,7 +55,8 @@
   [pivot export-format results]
   (when (seq results)
     (case export-format
-      :csv  (csv/read-csv results)
+      :csv  (cond-> results
+              (not (map? results)) csv/read-csv)
       :xlsx (read-xlsx pivot results)
       :json (tabulate-maps results))))
 
@@ -64,26 +64,29 @@
   "Provides the result of the card download via the card api in `export-format`,
   formatting rows if `format-rows` is true, and pivoting the results if `pivot` is true."
   [{:keys [id] :as _card} {:keys [export-format format-rows pivot]}]
-  (->> (mt/user-http-request :crowberto :post 200
-                             (format "card/%d/query/%s" id (name export-format))
-                             :format_rows   format-rows
-                             :pivot_results pivot)
-       (process-results pivot export-format)))
+  (let [results (mt/user-http-request :crowberto :post 200
+                                      (format "card/%d/query/%s" id (name export-format))
+                                      {:format_rows   format-rows
+                                       :pivot_results pivot})]
+    (try
+      (process-results pivot export-format results)
+      (catch Throwable e
+        (throw (ex-info (format "Error processing results: %s" (ex-message e))
+                        {:results results}
+                        e))))))
 
 (defn- unsaved-card-download
   [card {:keys [export-format format-rows pivot]}]
   (->> (mt/user-http-request :crowberto :post 200
                              (format "dataset/%s" (name export-format))
-                             :visualization_settings (json/encode
-                                                      (:visualization_settings card))
-                             :query (json/encode
-                                     (assoc (:dataset_query card)
+                             {:visualization_settings (:visualization_settings card)
+                              :query (assoc (:dataset_query card)
                                             :was-pivot (boolean pivot)
                                             :info {:visualization-settings (:visualization_settings card)}
                                             :middleware
-                                            {:userland-query? true}))
-                             :format_rows   format-rows
-                             :pivot_results (boolean pivot))
+                                            {:userland-query? true})
+                              :format_rows   format-rows
+                              :pivot_results (boolean pivot)})
        (process-results pivot export-format)))
 
 (defn public-question-download
@@ -107,8 +110,8 @@
                                 dashboard-id :dashboard_id}]
             (->> (mt/user-http-request :crowberto :post 200
                                        (format "dashboard/%d/dashcard/%d/card/%d/query/%s" dashboard-id dashcard-id card-id (name export-format))
-                                       :format_rows   format-rows
-                                       :pivot_results pivot)
+                                       {:format_rows   format-rows
+                                        :pivot_results pivot})
                  (process-results pivot export-format)))]
     (if (= (t2/model card-or-dashcard) :model/DashboardCard)
       (dashcard-download* card-or-dashcard)
@@ -125,8 +128,8 @@
               (->> (mt/user-http-request :crowberto :post 200
                                          (format "public/dashboard/%s/dashcard/%d/card/%d/%s"
                                                  public-uuid dashcard-id card-id (name export-format))
-                                         :format_rows   format-rows
-                                         :pivot_results pivot)
+                                         {:format_rows   format-rows
+                                          :pivot_results pivot})
                    (process-results pivot export-format)))]
       (if (= :model/DashboardCard (t2/model card-or-dashcard))
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid public-uuid}]
@@ -467,8 +470,8 @@
             (testing "the xlsx export has a pivot table"
               (let [result (mt/user-http-request :crowberto :post 200
                                                  (format "card/%d/query/xlsx" (:id card))
-                                                 :format_rows   true
-                                                 :pivot_results true)
+                                                 {:format_rows   true
+                                                  :pivot_results true})
                     pivot  (with-open [in (io/input-stream result)]
                              (->> (spreadsheet/load-workbook in)
                                   (spreadsheet/select-sheet "pivot")
@@ -588,8 +591,8 @@
                                                  :breakout    [$category !year.created_at]})}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
-                                                :format_rows   true
-                                                :pivot_results true)
+                                                {:format_rows   true
+                                                 :pivot_results true})
                           csv/read-csv)]
           (is (= [["Created At: Year"
                    "Doohickey" "Doohickey"
@@ -662,8 +665,8 @@
                                                  :breakout    [$category !month.created_at]})}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
-                                                :format_rows   true
-                                                :pivot_results true)
+                                                {:format_rows   true
+                                                 :pivot_results true})
                           csv/read-csv)]
           (is (= [["Created At: Month" "Category" "Sum of Price"]
                   ["May, 2016" "Doohickey" "144.12"]
@@ -687,8 +690,8 @@
                                                  :breakout    [$category]})}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
-                                                :format_rows   false
-                                                :pivot_results true)
+                                                {:format_rows   false
+                                                 :pivot_results true})
                           csv/read-csv)]
           (is (= [["Category" "Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
                   ["Grand totals" "2185.89" "3019.2" "2834.88" "3109.31" "11149.28"]]
@@ -709,8 +712,8 @@
                                                  :breakout    [$category !year.created_at]})}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
-                                                :format_rows   true
-                                                :pivot_results true)
+                                                {:format_rows   true
+                                                 :pivot_results true})
                           csv/read-csv)]
           (is (= [["Category" "Created At: Year" "Sum of Price" "Count"]
                   ["Doohickey" "2016" "632.14" "13"]
@@ -752,8 +755,8 @@
                                                                !month.created_at]})}]
         (let [result (mt/user-http-request :crowberto :post 200
                                            (format "card/%d/query/xlsx" pivot-card-id)
-                                           :format_rows   true
-                                           :pivot_results true)
+                                           {:format_rows   true
+                                            :pivot_results true})
               pivot  (with-open [in (io/input-stream result)]
                        (->> (spreadsheet/load-workbook in)
                             (spreadsheet/select-sheet "pivot")
@@ -788,8 +791,8 @@
                                                                !month.created_at]})}]
         (let [result       (mt/user-http-request :crowberto :post 200
                                                  (format "card/%d/query/xlsx" pivot-card-id)
-                                                 :format_rows   true
-                                                 :pivot_results true)
+                                                 {:format_rows   true
+                                                  :pivot_results true})
               [pivot data] (with-open [in (io/input-stream result)]
                              (let [wb    (spreadsheet/load-workbook in)
                                    pivot (.getPivotTables ^XSSFSheet (spreadsheet/select-sheet "pivot" wb))
@@ -821,8 +824,8 @@
                                                  :breakout    [$category]})}]
         (let [result       (mt/user-http-request :crowberto :post 200
                                                  (format "card/%d/query/xlsx" pivot-card-id)
-                                                 :format_rows   true
-                                                 :pivot_results true)
+                                                 {:format_rows   true
+                                                  :pivot_results true})
               [pivot data] (with-open [in (io/input-stream result)]
                              (let [wb    (spreadsheet/load-workbook in)
                                    pivot (.getPivotTables ^XSSFSheet (spreadsheet/select-sheet "pivot" wb))
@@ -855,7 +858,7 @@
                                                                  !month.created_at]})}]
           (let [result (->> (mt/user-http-request :crowberto :post 200
                                                   (format "card/%d/query/csv" pivot-card-id)
-                                                  :format_rows true)
+                                                  {:format_rows true})
                             csv/read-csv)]
             (is (= [["Category" "Created At: Month" "Sum of Price"]
                     ["Doohickey" "May, 2016" "144.12"]
@@ -863,7 +866,10 @@
                     ["Doohickey" "July, 2016" "78.22"]
                     ["Doohickey" "August, 2016" "71.09"]
                     ["Doohickey" "September, 2016" "45.65"]]
-                   (take 6 result)))))))
+                   (take 6 result)))))))))
+
+(deftest ^:parallel pivot-table-questions-can-export-unpivoted-2
+  (testing "Pivot tables will export the 'classic' way by default"
     (testing "for xlsx"
       (mt/dataset test-data
         (mt/with-temp [:model/Card {pivot-card-id :id}
@@ -1079,16 +1085,17 @@
             ;; for now, don't try to read xlsx back in, it will not be correct since we end up writing
             ;; a json blob to the output stream, it creates an invalid xlsx anyway.
             ;; This is not new behaviour, we'll just fix it when a better solution to 'errors in downloaded files' comes along
-            (let [results (mt/user-http-request :rasta :post 200 (format "card/%d/query/%s" card-id export-format) :format_rows true)
+            (let [results (mt/user-http-request :rasta :post 200 (format "card/%d/query/%s" card-id export-format)
+                                                {:format_rows true})
                   results-string (if (= "xlsx" export-format)
                                    (read-xlsx false results)
                                    (str results))]
               (testing (format "Testing export format: %s" export-format)
                 (doseq [illegal illegal-strings]
-                  (is (false? (str/blank? results-string)))
-                  (is (true? (str/includes? results-string "Test Exception")))
+                  (is (not (str/blank? results-string)))
+                  (is (str/includes? results-string "Test Exception"))
                   (testing (format "String \"%s\" is not in the error message." illegal)
-                    (is (false? (str/includes? results-string illegal)))))))))))))
+                    (is (not (str/includes? results-string illegal)))))))))))))
 
 (deftest unpivoted-pivot-results-do-not-include-pivot-grouping
   (testing "If a pivot question is downloaded or exported unpivoted, the results do not include 'pivot-grouping' column"
@@ -1127,8 +1134,8 @@
                                                 {:aggregation [[:count] #_[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
                                                  :breakout    [$category]})}]
         (let [result   (mt/user-http-request :crowberto :post 200
-                                             (format "card/%d/query/xlsx?format_rows=true" pivot-card-id)
-                                             {})
+                                             (format "card/%d/query/xlsx" pivot-card-id)
+                                             {:format_rows true})
               data   (process-results false :xlsx result)]
           (is (= ["Doohickey" "4,200.00%"] (second data))))))))
 

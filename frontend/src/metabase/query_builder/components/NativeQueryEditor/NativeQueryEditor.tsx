@@ -25,8 +25,12 @@ import type {
 
 import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
+import {
+  CodeMirrorEditor,
+  type CodeMirrorEditorProps,
+  type CodeMirrorEditorRef,
+} from "./CodeMirrorEditor";
 import DataSourceSelectors from "./DataSourceSelectors";
-import { Editor, type EditorProps, type EditorRef } from "./Editor";
 import S from "./NativeQueryEditor.module.css";
 import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
 import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
@@ -104,7 +108,10 @@ interface EntityLoaderProps {
   snippetCollections?: Collection[];
 }
 
-type Props = OwnProps & ExplicitSizeProps & EntityLoaderProps & EditorProps;
+type Props = OwnProps &
+  ExplicitSizeProps &
+  EntityLoaderProps &
+  Omit<CodeMirrorEditorProps, "query">;
 
 interface NativeQueryEditorState {
   initialHeight: number;
@@ -118,7 +125,7 @@ export class NativeQueryEditor extends Component<
   NativeQueryEditorState
 > {
   resizeBox = createRef<HTMLDivElement & ResizableBox>();
-  editor = createRef<EditorRef>();
+  editor = createRef<CodeMirrorEditorRef>();
 
   constructor(props: Props) {
     super(props);
@@ -289,7 +296,6 @@ export class NativeQueryEditor extends Component<
 
     if (newHeight > element.offsetHeight) {
       element.style.height = `${newHeight}px`;
-      this.editor.current?.resize();
     }
   }
 
@@ -303,6 +309,11 @@ export class NativeQueryEditor extends Component<
     const query = question.query();
     const engine = Lib.engine(query);
     const queryText = Lib.rawNativeQuery(query);
+
+    if (!engine) {
+      // no engine found, do nothing
+      return;
+    }
 
     const formattedQuery = await formatQuery(queryText, engine);
     this.onChange(formattedQuery);
@@ -397,13 +408,12 @@ export class NativeQueryEditor extends Component<
             if (typeof resizableBoxProps?.onResizeStop === "function") {
               resizableBoxProps.onResizeStop(e, data);
             }
-            this.editor.current?.resize();
           }}
         >
           <>
-            <Editor
+            <CodeMirrorEditor
               ref={this.editor}
-              query={query}
+              query={question.query()}
               readOnly={readOnly}
               onChange={this.onChange}
               onSelectionChange={setNativeEditorSelectedRange}

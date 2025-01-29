@@ -199,6 +199,7 @@ describe("scenarios > question > settings", () => {
        */
 
       function findColumnAtIndex(column_name, index) {
+        // eslint-disable-next-line no-unsafe-element-filtering
         return getVisibleSidebarColumns().eq(index).contains(column_name);
       }
     });
@@ -356,7 +357,7 @@ describe("scenarios > question > settings", () => {
 
     it.skip("should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)", () => {
       // products joined to orders with breakouts on 3 product columns followed by a custom column
-      cy.createQuestion(
+      H.createQuestion(
         {
           name: "repro 22563",
           query: {

@@ -25,7 +25,7 @@ describe("scenarios > search", () => {
     H.getSearchBar().type(" ");
   });
 
-  it("should allow users to paginate results", () => {
+  it("should allow users to paginate results", { tags: "@flaky" }, () => {
     generateQuestions(TOTAL_ITEMS);
 
     cy.visit("/");
@@ -59,7 +59,7 @@ describe("scenarios > search", () => {
 
 const generateQuestions = count => {
   _.range(count).map(i =>
-    cy.createQuestion({
+    H.createQuestion({
       name: `generated_question ${i}`,
       query: {
         "source-table": ORDERS_ID,

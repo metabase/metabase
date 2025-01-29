@@ -111,6 +111,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       H.filterWidget().contains("AK").click();
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.popover()
         .last()
         .within(() => {
@@ -144,6 +145,7 @@ describe("scenarios > dashboard > chained filter", () => {
       }
 
       H.filterWidget().contains("GA").click();
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.popover()
         .last()
         .within(() => {
@@ -211,12 +213,12 @@ describe("scenarios > dashboard > chained filter", () => {
         const TEST_TABLE_ID = this.testTableId;
         const UUID_FIELD_ID = this.uuidFieldId;
 
-        cy.createQuestion({
+        H.createQuestion({
           name: "15170",
           database: WRITABLE_DB_ID,
           query: { "source-table": TEST_TABLE_ID },
         }).then(({ body: { id: QUESTION_ID } }) => {
-          cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+          H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
             // Add filter to the dashboard
             cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
               parameters: [
