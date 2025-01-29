@@ -264,7 +264,7 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
 
     describe("with the existing broken questions", () => {
       beforeEach(() => {
-        cy.createNativeQuestion(brokenQuestionDetails, {
+        H.createNativeQuestion(brokenQuestionDetails, {
           loadMetadata: true,
         });
 

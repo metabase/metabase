@@ -108,7 +108,7 @@ describe("scenarios > visualizations > legend", () => {
   });
 
   it("should toggle series visibility on a dashboard", () => {
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       questions: [
         SINGLE_AGGREGATION_QUESTION,
         MANY_LEGEND_ITEMS_QUESTION,
@@ -410,7 +410,7 @@ describe("scenarios > visualizations > legend", () => {
   });
 
   it("should toggle series visibility on a public dashboard", () => {
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       questions: [SINGLE_AGGREGATION_QUESTION],
       cards: [{ col: 0, row: 0, size_x: 24, size_y: 6 }],
     }).then(({ dashboard }) => {

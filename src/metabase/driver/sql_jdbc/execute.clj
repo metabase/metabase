@@ -529,8 +529,9 @@
   (when canceled-chan
     (a/go
       (when (a/<! canceled-chan)
-        (log/debug "Query canceled, calling Statement.cancel()")
-        (.cancel stmt)))))
+        (when-not (.isClosed stmt)
+          (log/debug "Query canceled, calling Statement.cancel()")
+          (.cancel stmt))))))
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]

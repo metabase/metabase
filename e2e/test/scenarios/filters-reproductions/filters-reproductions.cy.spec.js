@@ -52,7 +52,7 @@ describe.skip("issue 12496", () => {
       .find("input")
       .eq(input);
   const setup = unit => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: `Orders by Created At: ${unit}`,
         query: {
@@ -387,7 +387,7 @@ describe("issue 22730", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "22730",
         native: {
@@ -495,7 +495,7 @@ describe("issue 24994", () => {
   });
 
   it("should allow updating filters (metabase#24994)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     // Three filters
     cy.findByTestId("filters-visibility-control").contains("3").click();
@@ -753,7 +753,7 @@ describe.skip("issue 26861", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(nativeQuery, { visitQuestion: true });
+    H.createNativeQuestion(nativeQuery, { visitQuestion: true });
   });
 
   it("exclude filter shouldn't break native questions with field filters (metabase#26861)", () => {
@@ -790,7 +790,7 @@ describe("issue 27123", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("exclude filter should not resolve to 'Days of the week' regardless of the chosen granularity  (metabase#27123)", () => {
@@ -853,7 +853,7 @@ describe("issue 30312", () => {
   });
 
   it("can use a drill filter on an aggregated column (metabase#30312)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": ORDERS_ID,
@@ -905,7 +905,7 @@ describe("issue 31340", () => {
 
     cy.wait("@fieldUpdate");
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": PEOPLE_ID,
@@ -1022,7 +1022,7 @@ describe("metabase#32985", () => {
       fk_target_field_id: REVIEWS.REVIEWER,
     });
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.tableHeaderClick("Email");
 
