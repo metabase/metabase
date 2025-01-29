@@ -42,13 +42,13 @@ describe.skip("issue 13347", { tags: "@external" }, () => {
     H.withDatabase(
       PG_DB_ID,
       ({ ORDERS_ID }) =>
-        cy.createQuestion({
+        H.createQuestion({
           name: "Q1",
           query: { "source-table": ORDERS_ID },
           database: PG_DB_ID,
         }),
 
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         name: "Q2",
         native: { query: "SELECT * FROM ORDERS" },
         database: PG_DB_ID,
@@ -112,7 +112,7 @@ H.describeEE("postgres > user > query", { tags: "@external" }, () => {
 
     H.withDatabase(PG_DB_ID, ({ PEOPLE, PEOPLE_ID }) => {
       // Question with a custom column created with `regextract`
-      cy.createQuestion({
+      H.createQuestion({
         name: "14873",
         query: {
           "source-table": PEOPLE_ID,
@@ -198,7 +198,7 @@ describe("issue 19603", () => {
     cy.request("GET", "/api/collection/").then(({ body }) => {
       const { id } = body.find(c => c.slug === "second_collection");
 
-      cy.archiveCollection(id);
+      H.archiveCollection(id);
     });
   });
 
@@ -595,7 +595,7 @@ H.describeEE("issue 24966", () => {
       login_attributes: { attr_cat: "Gizmo" },
     });
 
-    cy.createNativeQuestion(sandboxingQuestion).then(({ body: { id } }) => {
+    H.createNativeQuestion(sandboxingQuestion).then(({ body: { id } }) => {
       H.visitQuestion(id);
 
       cy.sandboxTable({
@@ -608,7 +608,7 @@ H.describeEE("issue 24966", () => {
     });
 
     // Add the saved products table to the dashboard
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         query: {
           "source-table": PRODUCTS_ID,

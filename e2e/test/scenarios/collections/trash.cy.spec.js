@@ -292,7 +292,7 @@ describe("scenarios > collections > trash", () => {
       .then(a => createCollection({ name: "Collection B", parent_id: a.id }));
 
     cy.get("@collectionA").then(collectionA => {
-      cy.archiveCollection(collectionA.id);
+      H.archiveCollection(collectionA.id);
     });
 
     cy.log("only shows restore in root trash collection");
@@ -665,7 +665,7 @@ describe("scenarios > collections > trash", () => {
         cy.button("Yes").click();
       });
 
-      cy.archiveCollection(collection.id);
+      H.archiveCollection(collection.id);
     });
 
     cy.signInAsNormalUser();
@@ -875,7 +875,7 @@ function createCollection(collectionInfo, archive) {
     .then(({ body: collection }) => {
       return Promise.all([
         collection,
-        archive && cy.archiveCollection(collection.id),
+        archive && H.archiveCollection(collection.id),
       ]);
     })
     .then(([collection]) => collection);
@@ -901,7 +901,7 @@ function createDashboard(dashboardInfo, archive) {
   return cy
     .createDashboard(dashboardInfo)
     .then(({ body: dashboard }) =>
-      Promise.all([dashboard, archive && cy.archiveDashboard(dashboard.id)]),
+      Promise.all([dashboard, archive && H.archiveDashboard(dashboard.id)]),
     )
     .then(([dashboard]) => dashboard);
 }

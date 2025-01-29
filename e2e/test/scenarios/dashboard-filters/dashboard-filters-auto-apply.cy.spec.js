@@ -666,14 +666,14 @@ const createDashboard = ({
   parameter = FILTER,
 } = {}) => {
   const parameters = [parameter];
-  cy.createQuestionAndDashboard({
+  H.createQuestionAndDashboard({
     questionDetails: QUESTION_DETAILS,
     dashboardDetails: {
       ...createDashboardDetails({ parameters }),
       ...dashboardOpts,
     },
   }).then(({ body: card }) => {
-    cy.editDashboardCard(card, getParameterMapping(card, parameters));
+    H.editDashboardCard(card, getParameterMapping(card, parameters));
     cy.wrap(card.dashboard_id).as("dashboardId");
   });
 };

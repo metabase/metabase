@@ -12,7 +12,7 @@ describeEE("scenarios > embedding-sdk > editable-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    cy.createDashboard({
+    H.createDashboard({
       name: "Embedding SDK Test Dashboard",
     }).then(({ body: dashboard }) => {
       cy.wrap(dashboard.id).as("dashboardId");

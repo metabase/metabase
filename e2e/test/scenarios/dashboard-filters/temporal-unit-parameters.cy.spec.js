@@ -222,7 +222,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.createQuestion(expressionBreakoutQuestionDetails);
       H.createQuestion(binningBreakoutQuestionDetails);
       H.createNativeQuestion(nativeQuestionWithDateParameterDetails);
-      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+      H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );
       H.editDashboard();
@@ -329,7 +329,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     it("should connect a parameter to a model", () => {
       H.createQuestion({ ...singleBreakoutQuestionDetails, type: "model" });
       H.createNativeQuestion({ ...nativeQuestionDetails, type: "model" });
-      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+      H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );
       H.editDashboard();
@@ -345,7 +345,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
     it("should connect a parameter to a metric", () => {
       H.createQuestion({ ...singleBreakoutQuestionDetails, type: "metric" });
-      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+      H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );
       H.editDashboard();
@@ -369,7 +369,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
     it("should connect multiple parameters to a card with multiple breakouts and drill thru", () => {
       H.createQuestion(multiBreakoutQuestionDetails);
-      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+      H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -404,7 +404,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
     it("should connect multiple parameters to the same column in a card and drill thru, with the last parameter taking priority", () => {
       H.createQuestion(singleBreakoutQuestionDetails);
-      cy.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
+      H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -555,7 +555,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
           name: "Target dashboard",
         },
       });
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails: {
           name: "Source dashboard",
         },
@@ -600,7 +600,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
           name: "Target dashboard",
         },
       }).then(dashboard => cy.wrap(dashboard.id).as("targetDashboardId"));
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails: {
           name: "Source dashboard",
         },
@@ -689,7 +689,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
   describe("auto-wiring", () => {
     it("should not auto-wire to cards without breakout columns", () => {
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails,
         questions: [noBreakoutQuestionDetails, singleBreakoutQuestionDetails],
       }).then(({ dashboard }) => H.visitDashboard(dashboard.id));
@@ -706,7 +706,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should auto-wire to cards with breakouts on column selection", () => {
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails,
         questions: [
           noBreakoutQuestionDetails,
@@ -729,7 +729,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
     it("should auto-wire to cards with breakouts after a new card is added", () => {
       H.createQuestion(multiBreakoutQuestionDetails);
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails,
         questions: [noBreakoutQuestionDetails, singleBreakoutQuestionDetails],
       }).then(({ dashboard }) => H.visitDashboard(dashboard.id));
@@ -749,7 +749,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should not overwrite parameter mappings for a card when doing auto-wiring", () => {
-      cy.createDashboardWithQuestions({
+      H.createDashboardWithQuestions({
         dashboardDetails,
         questions: [
           noBreakoutQuestionDetails,
@@ -895,7 +895,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.log("setup dashboard with a time column");
       H.createNativeQuestion(nativeTimeQuestionDetails).then(
         ({ body: card }) => {
-          cy.createDashboardWithQuestions({
+          H.createDashboardWithQuestions({
             questions: [getNativeTimeQuestionBasedQuestionDetails(card)],
           }).then(({ dashboard }) => {
             H.visitDashboard(dashboard.id);
@@ -1070,7 +1070,7 @@ function createDashboardWithMappedQuestion({
 }
 
 function createDashboardWithMultiSeriesCard() {
-  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+  return H.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
     return H.createQuestion({
       ...singleBreakoutQuestionDetails,
       name: "Question 1",

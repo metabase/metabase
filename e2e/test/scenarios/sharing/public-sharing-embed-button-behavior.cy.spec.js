@@ -769,7 +769,7 @@ function toSecond(milliseconds) {
 
 function createResource(resource) {
   if (resource === "question") {
-    return cy.createNativeQuestion({
+    return H.createNativeQuestion({
       name: "Question",
       native: {
         query: `
@@ -826,7 +826,7 @@ function createResource(resource) {
       type: "string/contains",
     };
 
-    return cy.createDashboard({
+    return H.createDashboard({
       name: "Dashboard",
       parameters: [dateFilter, numberFilter, textFilter],
     });

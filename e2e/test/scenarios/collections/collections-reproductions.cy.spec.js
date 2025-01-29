@@ -121,7 +121,7 @@ H.describeEE("issue 30235", () => {
   it("should allow to turn to official collection after moving it from personal to root parent collection (metabase#30235)", () => {
     const COLLECTION_NAME = "C30235";
 
-    cy.createCollection({
+    H.createCollection({
       name: COLLECTION_NAME,
       parent_id: ADMIN_PERSONAL_COLLECTION_ID,
     }).then(({ body: { id } }) => {

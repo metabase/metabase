@@ -92,7 +92,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   });
 
   it("should display proper drills on cell click for query aggregated by category", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": REVIEWS_ID,
@@ -145,7 +145,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
   });
 
   it("should display proper drills on cell click for query aggregated by date", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         query: {
           "source-table": REVIEWS_ID,
@@ -190,7 +190,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
 
   describe("native query", () => {
     it("should display proper drills on cell click for unaggregated query", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "table_drills",
           native: { query: "select * from reviews limit 3" },
@@ -276,7 +276,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     it("should display proper drills on cell click for query aggregated by category", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "table_drills",
           native: {
@@ -335,7 +335,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", () => {
     });
 
     it("should display proper drills on cell click for query aggregated by date", () => {
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "table_drills",
           native: {

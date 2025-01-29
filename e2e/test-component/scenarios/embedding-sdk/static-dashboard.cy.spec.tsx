@@ -29,7 +29,7 @@ describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       },
     };
 
-    cy.createDashboard({
+    H.createDashboard({
       name: "Embedding SDK Test Dashboard",
       dashcards: [questionCard, textCard],
     }).then(({ body: dashboard }) => {

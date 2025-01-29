@@ -30,7 +30,7 @@ describeEE("scenarios > embedding-sdk > interactive-dashboard", () => {
       size_y: 8,
     };
 
-    cy.createDashboard({
+    H.createDashboard({
       name: "Orders in a dashboard",
       dashcards: [questionCard, textCard],
     }).then(({ body: dashboard }) => {
