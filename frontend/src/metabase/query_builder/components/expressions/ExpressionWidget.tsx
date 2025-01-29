@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import DeprecatedButton from "metabase/core/components/Button";
@@ -17,8 +17,7 @@ import {
 } from "../../analytics";
 
 import { CombineColumns, hasCombinations } from "./CombineColumns";
-import { Editor as ExpressionEditorTextfield } from "./Editor";
-import type { SuggestionShortcut } from "./ExpressionEditorTextfield";
+import { Editor as ExpressionEditorTextfield, type Shortcut } from "./Editor";
 import ExpressionWidgetS from "./ExpressionWidget.module.css";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
@@ -129,6 +128,25 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     setError(null);
   };
 
+  const shortcuts = useMemo(
+    () =>
+      [
+        !startRule &&
+          hasCombinations(query, stageIndex) && {
+            name: t`Combine columns`,
+            icon: "combine",
+            action: () => setIsCombiningColumns(true),
+          },
+        !startRule &&
+          hasExtractions(query, stageIndex) && {
+            name: t`Extract columns`,
+            icon: "arrow_split",
+            action: () => setIsExtractingColumn(true),
+          },
+      ].filter((x): x is Shortcut => Boolean(x)),
+    [startRule, query, stageIndex],
+  );
+
   if (isCombiningColumns) {
     const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
       trackColumnCombineViaShortcut(query);
@@ -215,31 +233,10 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           query={query}
           stageIndex={stageIndex}
           reportTimezone={reportTimezone}
-          textAreaId="expression-content"
           onChange={handleExpressionChange}
-          onCommit={handleCommit}
           error={error}
           onError={handleError}
-          shortcuts={[
-            !startRule &&
-              hasCombinations(query, stageIndex) && {
-                shortcut: true,
-                name: t`Combine columns`,
-                action: () => setIsCombiningColumns(true),
-                group: "shortcuts",
-                icon: "combine",
-              },
-            !startRule &&
-              hasExtractions(query, stageIndex) && {
-                shortcut: true,
-                name: t`Extract columns`,
-                icon: "arrow_split",
-                group: "shortcuts",
-                action: () => setIsExtractingColumn(true),
-              },
-          ].filter((shortcut): shortcut is SuggestionShortcut => {
-            return Boolean(shortcut);
-          })}
+          shortcuts={shortcuts}
         />
       </Box>
       {withName && (

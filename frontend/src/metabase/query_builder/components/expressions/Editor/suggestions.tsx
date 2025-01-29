@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isNotNull } from "metabase/lib/types";
+import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { formatIdentifier } from "metabase-lib/v1/expressions";
 import {
@@ -29,10 +30,18 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Completion, CompletionResult } from "./types";
 import { isFieldReference, isIdentifier, tokenAtPos } from "./util";
 
+export type Shortcut = {
+  name: string;
+  icon: IconName;
+  action: () => void;
+};
+
 type SuggestOptions = Omit<
   SuggestArgs,
   "source" | "targetOffset" | "getColumnIcon"
->;
+> & {
+  shortcuts?: Shortcut[];
+};
 
 // TODO: tests
 // TODO: render better help texts
@@ -52,6 +61,7 @@ export function suggestions(options: SuggestOptions) {
       suggestFunctions(options),
       suggestAggregations(options),
       suggestPopular(options),
+      suggestShortcuts(options),
     ].filter(isNotNull),
   });
 }
@@ -212,6 +222,7 @@ function suggestPopular({
           database &&
           getHelpText(clause.name, database, reportTimezone)?.description) ??
         undefined,
+      icon: "function",
     }));
 
   return function (context: CompletionContext) {
@@ -366,5 +377,31 @@ function expressionClauseCompletion(
     label: suggestionText(clause),
     displayLabel: clause.displayName,
     icon: "function",
+  };
+}
+
+function suggestShortcuts(options: SuggestOptions) {
+  const { shortcuts = [] } = options;
+
+  const completions: Completion[] = shortcuts.map(shortcut => ({
+    label: shortcut.name,
+    icon: shortcut.icon,
+    apply: shortcut.action,
+    section: "shortcuts",
+  }));
+
+  if (completions.length === 0) {
+    return null;
+  }
+
+  return function (context: CompletionContext): CompletionResult | null {
+    if (context.state.doc.toString() !== "") {
+      return null;
+    }
+
+    return {
+      from: context.pos,
+      options: completions,
+    };
   };
 }

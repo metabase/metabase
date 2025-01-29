@@ -17,6 +17,7 @@ import S from "./Editor.module.css";
 import { Tooltip } from "./Tooltip";
 import { useCustomTooltip } from "./custom-tooltip";
 import { useExtensions } from "./extensions";
+import type { Shortcut } from "./suggestions";
 import { tokenAtPos } from "./util";
 
 type EditorProps = {
@@ -36,6 +37,7 @@ type EditorProps = {
     expressionClause: Lib.ExpressionClause | null,
   ) => void;
   onError: (error: ErrorWithMessage | null) => void;
+  shortcuts?: Shortcut[];
 };
 
 export function Editor(props: EditorProps) {
@@ -48,6 +50,7 @@ export function Editor(props: EditorProps) {
     readOnly,
     error,
     reportTimezone,
+    shortcuts = [],
   } = props;
 
   const ref = useRef<ReactCodeMirrorRef>(null);
@@ -78,6 +81,7 @@ export function Editor(props: EditorProps) {
     reportTimezone,
     metadata,
     extensions: [customTooltip],
+    shortcuts,
   });
 
   const handleBlur = useCallback(() => {

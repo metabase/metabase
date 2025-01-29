@@ -13,7 +13,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import S from "./Editor.module.css";
 import { highlightStyle } from "./Highlight";
 import { customExpression } from "./language";
-import { suggestions } from "./suggestions";
+import { type Shortcut, suggestions } from "./suggestions";
 
 type Options = {
   startRule: "expression" | "aggregation" | "boolean";
@@ -25,6 +25,7 @@ type Options = {
   metadata: Metadata;
   reportTimezone?: string;
   extensions?: Extension[];
+  shortcuts?: Shortcut[];
 };
 
 function getTooltipParent() {
@@ -51,6 +52,7 @@ export function useExtensions(options: Options): Extension[] {
     reportTimezone,
     metadata,
     extensions: extra = [],
+    shortcuts,
   } = options;
 
   return useMemo(() => {
@@ -114,6 +116,7 @@ export function useExtensions(options: Options): Extension[] {
         startRule,
         expressionIndex,
         metadata,
+        shortcuts,
       }),
       tooltips({
         position: "fixed",
@@ -133,6 +136,7 @@ export function useExtensions(options: Options): Extension[] {
     onCommit,
     metadata,
     reportTimezone,
+    shortcuts,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);
