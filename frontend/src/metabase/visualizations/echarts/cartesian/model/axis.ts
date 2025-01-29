@@ -399,6 +399,8 @@ function calculateNonStackedExtent(
   return [min, max];
 }
 
+const NORMALIZED_RANGE: Extent = [0, 1];
+
 const getYAxisFormatter = (
   column: DatasetColumn,
   settings: ComputedVisualizationSettings,
@@ -482,9 +484,14 @@ function getYAxisExtent(
   seriesKeys: DataKey[],
   stackModels: StackModel[],
   dataset: ChartDataset,
+  stackType: StackType,
 ): Extent {
   if (dataset.length === 0) {
     return [0, 0];
+  }
+
+  if (stackType === "normalized") {
+    return NORMALIZED_RANGE;
   }
 
   const stacksExtents = stackModels.map(stackModel =>
@@ -517,7 +524,12 @@ export function getYAxisModel(
     return null;
   }
 
-  const extent = getYAxisExtent(seriesKeys, stackModels, transformedDataset);
+  const extent = getYAxisExtent(
+    seriesKeys,
+    stackModels,
+    transformedDataset,
+    stackType,
+  );
   const column = columnByDataKey[seriesKeys[0]];
   const label = getYAxisLabel(seriesNames, settings);
   const formatter = getYAxisFormatter(
@@ -911,8 +923,8 @@ export function getScaledMinAndMax(
 
   const { toEChartsAxisValue } = yAxisScaleTransforms;
 
-  const customMin = min ? (toEChartsAxisValue(min) as number) : null;
-  const customMax = max ? (toEChartsAxisValue(max) as number) : null;
+  const customMin = min != null ? (toEChartsAxisValue(min) as number) : null;
+  const customMax = max != null ? (toEChartsAxisValue(max) as number) : null;
 
   return { customMin, customMax };
 }

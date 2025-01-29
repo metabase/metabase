@@ -33,8 +33,19 @@ const getCustomAxisRange = (
   axisExtent: Extent,
   customMin: number | null,
   customMax: number | null,
+  settings: ComputedVisualizationSettings,
 ) => {
   const [extentMin, extentMax] = axisExtent;
+
+  // Accomodate non-normalized custom min & max
+  // Allows users to supply e.g. 10 for 10% min as opposed to 0.1
+  if (settings["stackable.stack_type"] === "normalized") {
+    return {
+      min: customMin != null ? customMin / 100 : undefined,
+      max: customMax != null ? customMax / 100 : undefined,
+    };
+  }
+
   // if min/max are not specified or within series extents return `undefined`
   // so that ECharts compute a rounded range automatically
   const finalMin =
@@ -60,7 +71,7 @@ export const getYAxisRange = (
     yAxisScaleTransforms,
   );
 
-  return getCustomAxisRange(axisModel.extent, customMin, customMax);
+  return getCustomAxisRange(axisModel.extent, customMin, customMax, settings);
 };
 
 export const getAxisNameDefaultOption = (
