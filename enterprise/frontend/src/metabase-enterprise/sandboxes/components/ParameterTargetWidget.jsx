@@ -33,12 +33,7 @@ export default class ParameterTargetWidget extends Component {
     } = this.props;
 
     const disabled = mappingOptions.length === 0;
-    const selectedMappingOption = getMappingOptionByTarget(
-      mappingOptions,
-      target,
-      question,
-    );
-    const selected = selectedMappingOption != null;
+    const selected = getMappingOptionByTarget(mappingOptions, target, question);
 
     return (
       <PopoverWithTrigger
