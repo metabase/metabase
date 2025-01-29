@@ -327,7 +327,7 @@ export const revertToRevision = createThunkAction(
     return async dispatch => {
       await dispatch(Revisions.objectActions.revert(revision));
       await dispatch(reloadCard());
-      dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
+      await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
     };
   },
 );
