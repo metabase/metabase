@@ -1066,6 +1066,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       const leftHeaderColHandle = cy
         .findAllByTestId("pivot-table-resize-handle")
         .first();
+      // eslint-disable-next-line no-unsafe-element-filtering
       const totalHeaderColHandle = cy
         .findAllByTestId("pivot-table-resize-handle")
         .last();
@@ -1519,6 +1520,7 @@ function sortColumnResults(column, direction) {
 }
 
 function getPivotTableBodyCell(index) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy
     .findByLabelText("pivot-table-body-grid")
     .findAllByTestId("pivot-table-cell")

@@ -307,6 +307,7 @@ describe("scenarios > visualizations > pie chart", () => {
 
     H.openVizSettingsSidebar();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
@@ -318,6 +319,7 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
@@ -694,6 +696,7 @@ function confirmSliceClickBehavior(sliceLabel, value, elementIndex) {
     if (elementIndex == null) {
       cy.findByText(sliceLabel).click({ force: true });
     } else {
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByText(sliceLabel).eq(elementIndex).click({ force: true });
     }
   });

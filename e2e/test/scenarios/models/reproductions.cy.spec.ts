@@ -39,6 +39,7 @@ describe("issue 29943", () => {
   }
 
   function getHeaderCell(columnIndex: number, name: string) {
+    // eslint-disable-next-line no-unsafe-element-filtering
     return cy
       .findAllByTestId("header-cell")
       .eq(columnIndex)
@@ -535,6 +536,7 @@ describe.skip("issue 40635", () => {
   }
 
   function assertTableHeader(index: number, name: string) {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 
@@ -1195,6 +1197,7 @@ describe.skip("issues 28270, 33708", () => {
     H.tableHeaderClick("Title");
     H.popover().findByText("Filter by this column").click();
     H.popover().findByLabelText("Filter operator").click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Contains").click();
     H.popover().findByLabelText("Filter value").type("a,");
     H.popover().button("Add filter").click();
