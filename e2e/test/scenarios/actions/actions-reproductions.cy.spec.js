@@ -148,7 +148,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   };
 
   function setupDashboard() {
-    cy.createDashboard(DASHBOARD_DETAILS).then(
+    H.createDashboard(DASHBOARD_DETAILS).then(
       ({ body: { id: dashboardId } }) => {
         cy.wrap(dashboardId).as("dashboardId");
       },
@@ -192,7 +192,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion(MODEL_DETAILS, {
+    H.createQuestion(MODEL_DETAILS, {
       wrapId: true,
       idAlias: "modelId",
     });

@@ -30,7 +30,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
           describe(`${user} user`, () => {
             beforeEach(() => {
               cy.signInAsAdmin();
-              cy.createNativeQuestionAndDashboard({
+              H.createNativeQuestionAndDashboard({
                 questionDetails,
                 dashboardDetails: { name: dashboardName },
               }).then(({ body: { dashboard_id } }) => {
