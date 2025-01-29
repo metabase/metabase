@@ -223,7 +223,7 @@ Metabase's reference documentation.
 
 ### Metabase API
 
-- [Metabase API documentation](./api-documentation.md)
+- [Metabase API documentation](./api.html)
 - [API tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api)
 
 ### Troubleshooting
@@ -252,9 +252,7 @@ Metabase's reference documentation.
 
 Share and connect with other Metabasers.
 
-### [Metabase Cloud](https://www.metabase.com/cloud/docs)
-
-For docs specific to Metabase Cloud plans.
+### [Metabase Cloud](https://www.metabase.com/cloud/docs)r docs specific to Metabase Cloud plans.
 
 ### [Community stories](https://www.metabase.com/community)
 
