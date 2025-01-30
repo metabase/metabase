@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.sso.api.saml]
    [metabase-enterprise.sso.api.sso]
-   [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]))
 
 (comment metabase-enterprise.sso.api.saml/keep-me
