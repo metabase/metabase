@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -170,9 +170,7 @@ describe("scenarios > public > question", () => {
     }).then(({ body: { id } }) => {
       H.startNewNativeQuestion({ display: "table" }).as("editor");
 
-      cy.get("@editor")
-        .type("select * from {{#")
-        .type(`{leftarrow}{leftarrow}${id}`);
+      H.NativeEditor.type(`select * from {{#${id}`);
 
       H.saveQuestion(
         "test question",

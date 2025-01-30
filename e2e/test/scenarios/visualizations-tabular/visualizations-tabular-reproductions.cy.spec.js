@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
@@ -603,7 +603,7 @@ describe("issue 30039", () => {
 
   it("should not trigger object detail navigation after the modal was closed (metabase#30039)", () => {
     H.startNewNativeQuestion();
-    H.focusNativeEditor().as("editor").type("select * from ORDERS LIMIT 2");
+    H.NativeEditor.type("select * from ORDERS LIMIT 2");
     H.runNativeQuery();
     cy.findAllByTestId("detail-shortcut").first().click();
     cy.findByTestId("object-detail").should("be.visible");
@@ -611,7 +611,7 @@ describe("issue 30039", () => {
     cy.realPress("{esc}");
     cy.findByTestId("object-detail").should("not.exist");
 
-    cy.get("@editor").type("{downArrow};");
+    H.NativeEditor.type("{downArrow};");
     H.runNativeQuery();
     cy.findByTestId("object-detail").should("not.exist");
   });
