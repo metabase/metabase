@@ -1,14 +1,17 @@
 import { c, t } from "ttag";
 
+import { getPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/lib/redux";
-import { getIsHosted } from "metabase/setup/selectors";
+import { getSetting } from "metabase/selectors/settings";
 
 import { UpsellCard } from "./components";
 
 export const UpsellBetterSupport = ({ source }: { source: string }) => {
-  const isHosted = useSelector(getIsHosted);
+  const plan = useSelector(state =>
+    getPlan(getSetting(state, "token-features")),
+  );
 
-  if (isHosted) {
+  if (plan !== "oss") {
     return null;
   }
 
