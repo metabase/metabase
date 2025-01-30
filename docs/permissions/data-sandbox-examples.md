@@ -23,7 +23,7 @@ The examples below use the Sample database included with Metabase. Here's the ba
 
 4. **Add a user attribute to the account**: We'll add a user attribute to Cloyd's account. Since we want to be able to filter the data by user ID, we'll grab Cloyd's ID from the Sample database's `People` table and add the ID as a [user attribute](../../people-and-groups/managing.md#adding-a-user-attribute): `user_id: 2499` (`2499` is Mr. Beer's ID in the Sample database).
 
-![User details](images/edit-user-details.png)
+![User details](../images/edit-user-details.png)
 
 5. **Add Mr. Beer to the Customers group**: See [adding people to groups](../../people-and-groups/managing.md#adding-people-to-groups).
 
@@ -39,11 +39,11 @@ In this example, we’ll sandbox our `Orders` table so that anyone in our Custom
 
 3. **Sandbox the Orders and People tables**. Here, we'll set the View data permissions on the `Orders` and `People` tables to "Sandboxed". And since we want people to self-serve their data (by asking questions, creating dashboards, etc.), we'll also set their [Create queries](../../permissions/data.md#create-queries-permissions) permission to "Query builder only."
 
-![Grant sandboxed access](images/grant-sandboxed-access.png)
+![Grant sandboxed access](../images/grant-sandboxed-access.png)
 
 4. **Filter by a column for each table.** For each table, Metabase will ask us "How do you want to filter this table for users in this group?". In each case, we'll keep the default selection: "Filter by a column on this table." For the `Orders` table, we'll filter by the `User ID` column, which we'll set equal to the `user_id` attribute for people in the Customers group.
 
-![Sandbox settings](images/select-user-attribute.png)
+![Sandbox settings](../images/select-user-attribute.png)
 
 For the `People` table, we'll filter by the `ID` column, which we'll set equal to that same `user_id` attribute.
 
@@ -73,7 +73,7 @@ You can:
 
 In this example, we have a table called `People` that we want to trim down so that Mr. Beer and other Customers can view any row, but only some columns.
 
-![Original People table](images/advanced-example-1-people-table.png)
+![Original People table](../images/advanced-example-1-people-table.png)
 
 1. **Create a query that limits the columns in the People table.** Using the native/SQL editor, we'll write a query that only returns the columns in that table that we _do_ want our Customers group to see, like this:
 
@@ -88,13 +88,13 @@ FROM
 
 Here are the results:
 
-![Filtering question](images/advanced-example-1-filtering-question.png)
+![Filtering question](../images/advanced-example-1-filtering-question.png)
 
 We'll call this question "Filtered people table". Save it to the "Admins collection" you created in the setup (or any collection that only Admins have access to).
 
 2. **Use a saved question to create a custom view for this table**: We'll go to the Permissions section and grant this group sandboxed access to this table. This time we'll select the second option, "Use a saved question to create a custom view for this table", and select the saved question we just created ("Filtered people table"), like so:
 
-![Sandbox options](images/advanced-example-1-sandbox-modal.png)
+![Sandbox options](../images/advanced-example-1-sandbox-modal.png)
 
 3. **Save changes**, lest our toil matter not.
 

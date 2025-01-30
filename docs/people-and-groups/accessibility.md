@@ -19,4 +19,4 @@ Metabase is not yet fully compliant with [the US federal government's Section 50
 If you'd like to help us address these accessibility gaps, please see [our developers' guide][developers-guide].
 
 [508-accessibility]: https://www.section508.gov/
-[developers-guide]: ../developers-guide/start.md
+[developers-guide]: ../../developers-guide/start.md

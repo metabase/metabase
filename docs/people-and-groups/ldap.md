@@ -100,9 +100,9 @@ You can manage [user attributes][user-attributes-def] such as names, emails, and
 - [Using LDAP for authentication and access control](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control).
 - [Permissions overview](../../permissions/start.md).
 
-[data-sandboxing-docs]: ../permissions/data-sandboxes.md
+[data-sandboxing-docs]: ../../permissions/data-sandboxes.md
 [google-saml-docs]: ./saml-google.md
 [jwt-docs]: ./authenticating-with-jwt.md
 [saml-docs]: ./authenticating-with-saml.md
-[user-attributes-docs]: ../permissions/data-sandboxes.md#choosing-user-attributes-for-data-sandboxes
+[user-attributes-docs]: ../../permissions/data-sandboxes.md#choosing-user-attributes-for-data-sandboxes
 [user-attributes-def]: https://www.metabase.com/glossary/attribute#user-attributes-in-metabase

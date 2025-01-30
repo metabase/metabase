@@ -36,7 +36,7 @@ Assuming your site is localhost serving on port 3000:
 
 Navigate to the **Admin**>**Settings** section of the Admin area, then click on the **Authentication** tab. Click the **Configure** button in the JWT section of this page, and you'll see this form:
 
-![JWT form](images/JWT-auth-form.png)
+![JWT form](../images/JWT-auth-form.png)
 
 Here's a breakdown of each of the settings:
 
@@ -97,7 +97,7 @@ Metabase accounts created with an external identity provider login don't have pa
 
 To require people to log in with SSO, disable password authentication from **Admin settings** > **Authentication**.
 
-![Password disable](images/password-disable.png)
+![Password disable](../images/password-disable.png)
 
 ## Note about Azure
 
