@@ -18,7 +18,7 @@
 
 (defn- openapi-object []
   (merge
-   (metabase.api.common/openapi-object #'metabase.api.routes/routes)
+   (metabase.api.common/root-open-api-object #'metabase.api.routes/routes)
    scalar-config))
 
 (defn generate-dox!

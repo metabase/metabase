@@ -125,4 +125,6 @@
        (respond {:status 429 :body "Query Analysis must be enabled to use the Query Reference Validator"})))
    (meta handler)))
 
-(api/define-routes api/+check-superuser +auth +check-setting)
+(def ^{:arglists '([request respond raise])} routes
+  "/api/ee/query-reference-validation routes."
+  (api.macros/ns-handler *ns* api/+check-superuser +auth +check-setting))

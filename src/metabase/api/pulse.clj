@@ -296,9 +296,9 @@
 (api.macros/defendpoint :get "/preview_dashboard/:id"
   "Get HTML rendering of a Dashboard with `id`.
 
-  This endpoint relies on a custom middleware defined in `metabase.channel.render.core/style-tag-nonce-middleware` to
-  allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these
-  routes at the bottom of this namespace using `metabase.api.common/define-routes`."
+  This endpoint relies on a custom middleware defined in [[metabase.channel.render.core/style-tag-nonce-middleware]]
+  to allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to
+  these routes at the bottom of this namespace using [[api.macros/ns-handler]]."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Dashboard id)
@@ -387,4 +387,6 @@
 (def ^:private style-nonce-middleware
   (partial channel.render/style-tag-nonce-middleware "/api/pulse/preview_dashboard"))
 
-(api/define-routes style-nonce-middleware)
+(def ^{:arglists '([request respond raise])} routes
+  "/api/pulse routes."
+  (api.macros/ns-handler *ns* style-nonce-middleware))

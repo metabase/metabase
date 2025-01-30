@@ -79,10 +79,7 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
-   [clojure.tools.macro :as macro]
-   [compojure.core :as compojure]
-   [metabase.api.common.openapi :as openapi]
-   [metabase.config :as config]
+   [metabase.api.open-api :as open-api]
    [metabase.events :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -94,7 +91,8 @@
 
 (declare check-403 check-404)
 
-(p/import-vars [openapi openapi-object])
+#_{:clj-kondo/ignore [:aliased-namespace-symbol]}
+(p/import-vars [metabase.api.open-api root-open-api-object])
 
 ;;; ----------------------------------------------- DYNAMIC VARIABLES ------------------------------------------------
 ;; These get bound by middleware for each HTTP request.
@@ -289,88 +287,22 @@
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
 
-(defn- pass-thru-handler
-  ([_request] nil)
-  ([_request respond _raise] (respond nil)))
-
-(defn defendpoint-2-handler
-  "Get the combined handler created by [[metabase.api.macros/defendpoint-build-ns-handler]] for all the routes defined
-  by [[metabase.api.macros/defendpoint]]."
-  [nmspace]
-  ;; this fetches the handler from the namespace
-  (let [nmspace    (the-ns nmspace)
-        handler-fn #(:api/handler (meta nmspace))]
-    ;; for dev, fetch the handler from the metadata on every request so we get nice live reloading if the endpoints in a
-    ;; namespace change.
-    (if config/is-dev?
-      (fn [request respond raise]
-        (if-let [handler (handler-fn)]
-          (handler request respond raise)
-          (respond nil)))
-      ;; For prod, fetching the handler on each request gives us nothing since it shouldn't change; fetch it once and if
-      ;; it's not defined just use the [[pass-thru-handler]] above instead.
-      (or (handler-fn) pass-thru-handler))))
-
-(defmacro define-routes
-  "Create a `(defroutes routes ...)` form that automatically includes all functions created with `defendpoint` in the
-  current namespace. Optionally specify middleware that will apply to all of the endpoints in the current namespace.
-
-    (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
-  {:style/indent 0}
-  [& middleware]
-  (let [routes        `(-> (defendpoint-2-handler '~(ns-name *ns*))
-                           (with-meta {:api/defendpoint-2-namespace '~(ns-name *ns*)}))
-        docstring     (str "Routes for " *ns*)]
-    `(def ~(vary-meta 'routes assoc
-                      ;; not really super clear whether the expectation is someone should be looking at the metadata on
-                      ;; the varr
-                      ;;
-                      ;;    (meta #'metabase.api.timeline/routes)
-                      ;;
-                      ;; or on the handler e.g.
-                      ;;
-                      ;;    (meta metabase.api.timeline/routes)
-                      ;;
-                      ;; ... the [[metabase.api.common.openapi]] code seems to do a little of both, so just support both
-                      ;; for right now.
-                      :api/defendpoint-2-namespace (list 'quote (ns-name *ns*)))
-       ~docstring
-       ~(if (seq middleware)
-          `(-> ~routes ~@middleware)
-          routes))))
-
-(defmacro context
-  "Replacement for `compojure.core/context`, but with metadata"
-  [path args & routes]
-  `(with-meta (compojure/context ~path ~args ~@routes) {:routes (vector ~@routes)
-                                                        :path   ~path}))
-
-(defmacro defroutes
-  "Replacement for [[compojure.core/defroutes]], but with metadata"
-  [name & routes]
-  (let [[name routes] (macro/name-with-attributes name routes)
-        name          (vary-meta name assoc :routes (vec routes))]
-    `(def ~name (compojure/routes ~@routes))))
-
 (defn +check-superuser
   "Wrap a Ring handler to make sure the current user is a superuser before handling any requests.
 
     (api/+check-superuser routes)"
   [handler]
-  (with-meta
-   (fn
-     ([request]
-      (check-superuser)
-      (handler request))
-     ([request respond raise]
-      (if-let [e (try
-                   (check-superuser)
-                   nil
-                   (catch Throwable e
-                     e))]
-        (raise e)
-        (handler request respond raise))))
-   (meta handler)))
+  (open-api/handler-with-open-api-spec
+   (fn [request respond raise]
+     (if-let [e (try
+                  (check-superuser)
+                  nil
+                  (catch Throwable e
+                    e))]
+       (raise e)
+       (handler request respond raise)))
+   (fn [prefix]
+     (open-api/open-api-spec handler prefix))))
 
 ;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------
 

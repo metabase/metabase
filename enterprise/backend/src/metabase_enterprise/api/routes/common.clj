@@ -8,7 +8,7 @@
   "Wraps Ring `handler`. Check that we have a premium token with `feature` (a keyword; see
   [[metabase.premium-features.core]] for a list of current features) or return a 401 if it is not.
 
-    (context \"/whatever\" [] (+require-premium-feature :sandboxes (deferred-tru \"Sandboxes\") whatever/routes))
+    (compojure/context \"/whatever\" [] (+require-premium-feature :sandboxes (deferred-tru \"Sandboxes\") whatever/routes))
 
   Very important! Make sure you only wrap handlers inside [[compojure.core/context]] forms with this middleware (as in
   example above). Otherwise it can end up causing requests the handler would not have handled anyway to fail.
