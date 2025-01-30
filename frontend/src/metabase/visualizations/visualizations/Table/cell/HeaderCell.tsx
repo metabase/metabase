@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type React from "react";
-import { type MouseEvent, memo } from "react";
+import { memo } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/ui";
@@ -11,14 +11,12 @@ export type HeaderCellProps = {
   align?: "left" | "right";
   name?: React.ReactNode;
   sort?: "asc" | "desc";
-  onClick?: (event: MouseEvent<HTMLDivElement>) => void;
 };
 
 export const HeaderCell = memo(function HeaderCell({
   name,
   align = "left",
   sort,
-  onClick,
 }: HeaderCellProps) {
   return (
     <div
@@ -27,11 +25,7 @@ export const HeaderCell = memo(function HeaderCell({
         [styles.rightAligned]: align === "right",
       })}
     >
-      <div
-        data-grid-header-cell-content
-        className={styles.content}
-        onClick={onClick}
-      >
+      <div data-grid-header-cell-content className={styles.content}>
         {sort != null ? (
           <Icon
             mr="0.25rem"

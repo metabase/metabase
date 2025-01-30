@@ -9,6 +9,7 @@
   justify-content: end;
   cursor: pointer;
   font-size: 13px;
+  border-bottom: 1px solid var(--mb-color-border-alpha-30);
 }
 
 .rowNumber {

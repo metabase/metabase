@@ -77,9 +77,14 @@
 }
 
 .td:hover {
-  background-color: var(--mb-color-bg-light);
+  background-color: color-mix(in srgb, var(--mb-color-brand), #fff 90%);
 }
 
 .headerWrapper {
-  margin: 0 0.75em;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+.headerWrapper:hover {
+  cursor: grab;
 }
