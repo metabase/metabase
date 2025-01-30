@@ -35,6 +35,10 @@
   border-bottom: 1px solid var(--mb-color-border-alpha-30);
 }
 
+.TableInteractive .TableInteractiveEditingCell {
+  overflow: visible;
+}
+
 .TableInteractive .TableInteractiveHeader,
 .TableInteractive .TableInteractiveHeader .TableInteractiveCellWrapper,
 .TableInteractive .TableInteractiveHeader .TableInteractiveCellWrapper:hover {

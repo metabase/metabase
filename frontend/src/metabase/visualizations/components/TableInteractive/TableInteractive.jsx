@@ -16,6 +16,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
+import { PUT } from "metabase/lib/api";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
@@ -34,9 +35,9 @@ import {
   Checkbox,
   DateInput,
   DelayGroup,
-  Group,
   Icon,
   Input,
+  Stack,
   ThemeProvider,
   Button as UIButton,
 } from "metabase/ui";
@@ -154,7 +155,7 @@ class TableInteractive extends Component {
     },
   };
 
-  renderTableCellWrapper(children, { isIDColumn, isEdited } = {}) {
+  renderTableCellWrapper(children, { isIDColumn } = {}) {
     const { theme } = this.props;
 
     const hasChildren = children != null && children !== "";
@@ -222,18 +223,32 @@ class TableInteractive extends Component {
     }
 
     return (
-      <Group gap="1rem" noWrap>
-        <Box>{input}</Box>
-        <UIButton
-          leftIcon={<Icon name="check" />}
-          size="xs"
-          onClick={e => {
-            e.stopPropagation();
+      <Box>
+        {input}
+        <Box pos="absolute" right="0" top="-0.5rem">
+          <Stack style={{ zIndex: 10 }} spacing={0}>
+            <UIButton
+              leftIcon={<Icon name="check" />}
+              compact
+              disabled={inputValue === value}
+              onClick={e => {
+                e.stopPropagation();
 
-            this.handleCellEditConfirm(clicked, cellProps);
-          }}
-        />
-      </Group>
+                this.handleCellEditConfirm(clicked, cellProps);
+              }}
+            />
+            <UIButton
+              leftIcon={<Icon name="close" />}
+              compact
+              onClick={e => {
+                e.stopPropagation();
+
+                this.handleCellEditCancel(clicked, cellProps);
+              }}
+            />
+          </Stack>
+        </Box>
+      </Box>
     );
   }
 
@@ -756,6 +771,7 @@ class TableInteractive extends Component {
             "test-Table-ID": isIDColumn,
             "test-Table-FK": value != null && isFK(column),
             link: isClickable && isID(column),
+            [TableS.TableInteractiveEditingCell]: isEdited,
           },
         )}
         onClick={handleClick}
@@ -770,7 +786,7 @@ class TableInteractive extends Component {
       >
         {this.renderTableCellWrapper(
           !isEdited ? cellData : this.renderEditingCell(clicked, cellProps),
-          { isIDColumn },
+          { isIDColumn, isEdited },
         )}
 
         {isCollapsed && (
@@ -1114,19 +1130,58 @@ class TableInteractive extends Component {
     });
   };
 
-  handleCellEditConfirm = (clicked, cellProps) => {
-    const newDataValue = this.state.editingCellsValuesMap[cellProps.key];
+  handleCellEditConfirm = async (clicked, cellProps) => {
+    const cellKey = cellProps.key;
+    const newDataValue = this.state.editingCellsValuesMap[cellKey];
 
     // eslint-disable-next-line no-console
     console.log("handleCellEditConfirm", clicked, newDataValue);
 
+    const fieldId = clicked.column.id;
+    const rowId = clicked.data.find(
+      ({ col }) => col.semantic_type === "type/PK",
+    )?.value;
+
+    // eslint-disable-next-line no-console
+    console.log("handleCellEditConfirm", this.props.data);
+
+    await PUT(`/api/internal-tools/field/${fieldId}/${rowId}`)({
+      value: newDataValue,
+    });
+
+    // FIXME: mutate local state after successful api request
+    this.props.data.rows[clicked.rowIndex][clicked.columnIndex] = newDataValue;
+
     this.setState(prevState => {
       const editingCellsMap = {
         ...prevState.editingCellsMap,
-        [cellProps.key]: false,
+        [cellKey]: false,
       };
 
-      return { editingCellsMap };
+      const editingCellsValuesMap = {
+        ...prevState.editingCellsValuesMap,
+      };
+      delete editingCellsValuesMap[cellKey];
+
+      return { editingCellsMap, editingCellsValuesMap };
+    });
+  };
+
+  handleCellEditCancel = async (clicked, cellProps) => {
+    const cellKey = cellProps.key;
+
+    this.setState(prevState => {
+      const editingCellsMap = {
+        ...prevState.editingCellsMap,
+        [cellKey]: false,
+      };
+
+      const editingCellsValuesMap = {
+        ...prevState.editingCellsValuesMap,
+      };
+      delete editingCellsValuesMap[cellKey];
+
+      return { editingCellsMap, editingCellsValuesMap };
     });
   };
 
