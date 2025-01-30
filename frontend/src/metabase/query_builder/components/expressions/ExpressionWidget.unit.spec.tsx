@@ -8,6 +8,7 @@ import type { Expression } from "metabase-types/api";
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
+import type { StartRule } from "./types";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", () => {
@@ -222,7 +223,9 @@ describe("ExpressionWidget", () => {
   });
 });
 
-function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
+function setup<S extends StartRule = "expression">(
+  additionalProps?: Partial<ExpressionWidgetProps<S>>,
+) {
   const query = createQuery();
   const stageIndex = 0;
   const onChangeExpression = jest.fn();

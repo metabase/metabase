@@ -21,10 +21,13 @@ import ExpressionWidgetS from "./ExpressionWidget.module.css";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
 import { ExtractColumn, hasExtractions } from "./ExtractColumn";
+import type { ClauseType, StartRule } from "./types";
 
 const WIDGET_WIDTH = 472;
 
-export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
+export type ExpressionWidgetProps<S extends StartRule = "expression"> = {
+  startRule?: S;
+
   query: Lib.Query;
   stageIndex: number;
   /**
@@ -35,25 +38,23 @@ export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
    * Presence of this prop is not enforced due to backwards-compatibility
    * with ExpressionWidget usages outside of GUI editor.
    */
-  clause?: Clause | undefined;
+  clause?: ClauseType<S> | undefined;
   name?: string;
   withName?: boolean;
-  startRule?: "expression" | "aggregation" | "boolean";
   reportTimezone?: string;
   header?: ReactNode;
   expressionIndex?: number;
 
   onChangeExpression?: (name: string, expression: Expression) => void;
-  onChangeClause?: (
-    name: string,
-    clause: Clause | Lib.ExpressionClause,
-  ) => void;
+  onChangeClause?: (name: string, clause: ClauseType<S>) => void;
   onClose?: () => void;
 };
 
-export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
-  props: ExpressionWidgetProps<Clause>,
-): JSX.Element => {
+export const ExpressionWidget = <S extends StartRule = "expression">(
+  props: ExpressionWidgetProps<S>,
+) => {
+  type Clause = ClauseType<S>;
+
   const {
     query,
     stageIndex,
@@ -61,7 +62,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     expression: initialExpression,
     clause: initialClause,
     withName = false,
-    startRule,
+    startRule = "expression",
     reportTimezone,
     header,
     expressionIndex,
@@ -74,9 +75,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   const [expression, setExpression] = useState<Expression | null>(
     initialExpression ?? null,
   );
-  const [clause, setClause] = useState<Clause | Lib.ExpressionClause | null>(
-    initialClause ?? null,
-  );
+  const [clause, setClause] = useState<Clause | null>(initialClause ?? null);
   const [error, setError] = useState<ErrorWithMessage | null>(null);
   const [isCombiningColumns, setIsCombiningColumns] = useState(false);
 
@@ -90,7 +89,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
 
   const handleCommit = (
     expression: Expression | null,
-    clause: Clause | Lib.ExpressionClause | null,
+    clause: Clause | null,
   ) => {
     const isValidExpression = isNotNull(expression) && isExpression(expression);
     const isValidExpressionClause = isNotNull(clause);
@@ -118,7 +117,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
 
   const handleExpressionChange = (
     expression: Expression | null,
-    clause: Lib.ExpressionClause | null,
+    clause: Clause | null,
   ) => {
     setExpression(expression);
     setClause(clause);
@@ -128,13 +127,13 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   const shortcuts = useMemo(
     () =>
       [
-        !startRule &&
+        startRule === "expression" &&
           hasCombinations(query, stageIndex) && {
             name: t`Combine columns`,
             icon: "combine",
             action: () => setIsCombiningColumns(true),
           },
-        !startRule &&
+        startRule === "expression" &&
           hasExtractions(query, stageIndex) && {
             name: t`Extract columns`,
             icon: "arrow_split",
@@ -144,7 +143,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     [startRule, query, stageIndex],
   );
 
-  if (isCombiningColumns) {
+  if (startRule === "expression" && isCombiningColumns) {
     const handleSubmit = (name: string, clause: Lib.ExpressionClause) => {
       trackColumnCombineViaShortcut(query);
       const expression = Lib.legacyExpressionForExpressionClause(
@@ -152,7 +151,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
         stageIndex,
         clause,
       );
-      handleExpressionChange(expression, clause);
+      handleExpressionChange(expression, clause as Clause);
       setName(name);
       setIsCombiningColumns(false);
     };
@@ -188,7 +187,7 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
         stageIndex,
         clause,
       );
-      handleExpressionChange(expression, clause);
+      handleExpressionChange(expression, clause as Clause);
       setName(name);
       setIsExtractingColumn(false);
     };
@@ -221,12 +220,8 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           id="expression-content"
           expression={expression}
           expressionIndex={expressionIndex}
-          /**
-           * TODO: Ideally ExpressionEditorTextfield should be generic and support all
-           * three: Lib.ExpressionClause, Lib.AggregationClause, and Lib.FilterableClause.
-           */
-          clause={clause as Lib.ExpressionClause | null}
-          startRule={startRule}
+          startRule={startRule as S}
+          clause={clause}
           name={name}
           query={query}
           stageIndex={stageIndex}

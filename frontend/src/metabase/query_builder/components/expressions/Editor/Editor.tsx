@@ -13,6 +13,8 @@ import { processSource } from "metabase-lib/v1/expressions/process";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
 import type { Expression } from "metabase-types/api";
 
+import type { ClauseType, StartRule } from "../types";
+
 import S from "./Editor.module.css";
 import { Tooltip } from "./Tooltip";
 import { useCustomTooltip } from "./custom-tooltip";
@@ -20,28 +22,30 @@ import { useExtensions } from "./extensions";
 import type { Shortcut } from "./suggestions";
 import { tokenAtPos } from "./util";
 
-type EditorProps = {
+type EditorProps<S extends StartRule> = {
   id?: string;
-  expression: Expression | undefined | null;
-  clause: Lib.ExpressionClause | undefined | null;
+  expression?: Expression | null;
+  clause?: ClauseType<S> | null;
   error: ErrorWithMessage | null;
   name: string;
   query: Lib.Query;
   stageIndex: number;
-  startRule?: "expression" | "aggregation" | "boolean";
+  startRule: S;
   expressionIndex?: number;
   reportTimezone?: string;
   readOnly?: boolean;
 
   onChange: (
     expression: Expression | null,
-    expressionClause: Lib.ExpressionClause | null,
+    expressionClause: ClauseType<S> | null,
   ) => void;
   onError: (error: ErrorWithMessage | null) => void;
   shortcuts?: Shortcut[];
 };
 
-export function Editor(props: EditorProps) {
+export function Editor<S extends StartRule = "expression">(
+  props: EditorProps<S>,
+) {
   const {
     id,
     name,
@@ -115,17 +119,17 @@ export function Editor(props: EditorProps) {
   );
 }
 
-function useExpression({
+function useExpression<S extends StartRule = "expression">({
   name,
   expression: legacyExpression = null,
   clause,
-  startRule = "expression",
+  startRule,
   stageIndex,
   query,
   expressionIndex,
   onChange,
   onError,
-}: EditorProps) {
+}: EditorProps<S>) {
   const expression = useMemo(() => {
     const expressionFromClause =
       clause &&
@@ -193,7 +197,9 @@ function useExpression({
 
       const { expression, expressionClause } = compiledExpression;
       onError(null);
-      onChange(expression, expressionClause);
+
+      // TODO: can this be typed so we don't need to cast?
+      onChange(expression, expressionClause as ClauseType<S>);
     },
     [name, query, stageIndex, startRule, expressionIndex, onChange, onError],
   );
