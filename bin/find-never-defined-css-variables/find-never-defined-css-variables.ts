@@ -13,16 +13,9 @@ import { glob } from "glob";
  * that doesn't exist in the release branch.
  */
 
-const isMantineCssVariable = (variable: string) => {
-  return variable.startsWith("--mantine-");
-};
-
 const shouldWhiteList = (variable: string) => {
   // Use this for whitelisting some variables if we know they're defined by a 3rd party, such as mantine
   // Note: for be sure to not backport changes to this function that would whitelist variables not on the release branch
-  if (isMantineCssVariable(variable)) {
-    return true;
-  }
 
   if (knownIssues.includes(variable)) {
     return true;
@@ -33,14 +26,12 @@ const shouldWhiteList = (variable: string) => {
 
 // These are variables that were found by the script but were temporarily allowed to get this script + mantine v7 merged
 const knownIssues = [
-  "--alert-color",
   "--mb-bolor-text-error",
   "--mb-bolor-text-medium",
   "--mb-color-accent-3",
   "--mb-spacing-xs",
   "--mb-text-text-dark",
   "--multiselect-pill-font-size",
-  "--right-section-end",
   "--select-item-font-size",
   "--select-item-line-height",
 ];
@@ -101,6 +92,14 @@ const main = () => {
   const allDefinitions = new Set<string>();
   const allUsages = new Set<string>();
   const usageLocations: UsageMap = {};
+
+  const mantineDefinitions = extractVariableDefinitions(
+    "node_modules/@mantine/core/styles.css",
+  );
+
+  for (const definition of mantineDefinitions) {
+    allDefinitions.add(definition);
+  }
 
   // Find all variable definitions
   files.forEach(file => {
