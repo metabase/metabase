@@ -22,6 +22,7 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
+   (java.util Queue)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -122,7 +123,7 @@
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
-  (.clear @#'search.ingestion/queue)
+  (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
   (search/reindex!)
   nil)
