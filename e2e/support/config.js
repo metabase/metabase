@@ -71,6 +71,9 @@ function getSplittableSpecs(specs) {
   });
 }
 
+const SCREEN_WIDTH = 1280;
+const SCREEN_HEIGHT = 800;
+
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(originalOn, config) {
@@ -111,6 +114,9 @@ const defaultConfig = {
           launchOptions.args.push("--disable-gpu");
           launchOptions.args.push("--force-device-scale-factor=1");
           launchOptions.args.push("--start-fullscreen");
+          launchOptions.args.push(
+            `--window-size=${SCREEN_WIDTH},${SCREEN_HEIGHT}`,
+          );
         }
       }
 
@@ -210,8 +216,8 @@ const defaultConfig = {
   //   1. testFiles and
   //   2. integrationFolder
   specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
-  viewportHeight: 800,
-  viewportWidth: 1280,
+  viewportWidth: SCREEN_WIDTH,
+  viewportHeight: SCREEN_HEIGHT,
   // enable video recording in run mode
   video: true,
   videoCompression: true,

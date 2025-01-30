@@ -2,6 +2,7 @@ import { H } from "e2e/support";
 
 const overrideTimers = () => {
   cy.clock(NaN, ["setTimeout", "clearTimeout"]);
+  cy.tick(999999);
 };
 
 export const isVisualTestTags = (tags: string | string[]) => {
@@ -27,21 +28,92 @@ export const prepareVisualTest = (test: {
     H.isVisualTestTags(test._testConfig.unverifiedTestConfig?.tags) ||
     H.isVisualTestTags(test._testConfig.parent?._testConfig?.tags);
 
-  if (isVisualTestEnvRunOrTag) {
-    overrideTimers();
+  if (!isVisualTestEnvRunOrTag) {
+    return;
   }
+
+  overrideTimers();
 };
 
 export const buildSnapshotName = (name: string) =>
   `${Cypress.currentTest.title} ${name}`.replaceAll(" ", "_").toLowerCase();
 
-const PREVENT_POINTER_EVENTS_STYLES = `
+const appendSupportStyles = ({
+  document,
+  allowPointerEvents,
+}: {
+  document: Document;
+  allowPointerEvents: boolean | undefined;
+}) => {
+  const PREVENT_ANIMATION_STYLES = `
   *, *::before, *::after {
-    pointer-events: none;
     transition: none !important;
     animation: none !important;
+  }`;
+  const PREVENT_POINTER_EVENTS_STYLES = `
+  *, *::before, *::after {
+    pointer-events: none;
   }
 `;
+
+  const style = document.createElement("style");
+
+  style.innerHTML = `
+      ${PREVENT_ANIMATION_STYLES}
+
+      ${
+        // In most cases we want to disable pointer events to prevent flakiness caused by hover states
+        !allowPointerEvents && PREVENT_POINTER_EVENTS_STYLES
+      }
+    `;
+
+  // Hide scrollbars visually and make its width constant before taking a snapshot
+  document.head.appendChild(style);
+
+  return () => {
+    style.remove();
+  };
+};
+
+const mockServerDates = () => {
+  const originalDates = new WeakMap<Element, string>();
+  const dateElements = document.querySelectorAll("[data-server-date]");
+
+  // Replace dates that came from server
+  dateElements.forEach(element => {
+    originalDates.set(element, element.innerHTML);
+
+    element.innerHTML = "mocked";
+  });
+
+  return () => {
+    dateElements.forEach(element => {
+      const originalDate = originalDates.get(element);
+
+      if (originalDate) {
+        element.innerHTML = originalDate;
+      }
+    });
+  };
+};
+
+const unfocusElement = (document: Document) => {
+  const activeElement = document.activeElement;
+
+  if (!activeElement || activeElement === document.body) {
+    return;
+  }
+
+  const focusedElement = cy.focused();
+
+  if (focusedElement) {
+    focusedElement.blur();
+  }
+
+  return () => {
+    focusedElement.focus();
+  };
+};
 
 export const captureSnapshot = (
   name: string,
@@ -52,23 +124,15 @@ export const captureSnapshot = (
   const isInteractive = Cypress.config("isInteractive");
   const doNotFail = isInteractive || Cypress.env("DO_NOT_FAIL");
 
-  // The `cy.clock` call here does not move timers. We need it just to not throw an error when calling `cy.tick`
-  // The proper `cy.clock` call that affects visual tests is done in `e2e/support/cypress.js` in `beforeEach` hook
   overrideTimers();
-  cy.tick(999999);
 
   cy.document().then(document => {
-    const style = document.createElement("style");
-
-    style.innerHTML = `
-      ${
-        // In most cases we want to disable pointer events to prevent flakiness caused by hover states
-        !allowPointerEvents && PREVENT_POINTER_EVENTS_STYLES
-      }
-    `;
-
-    // Hide scrollbars visually and make its width constant before taking a snapshot
-    document.head.appendChild(style);
+    const restoreServerDates = mockServerDates();
+    const removeSupportStyles = appendSupportStyles({
+      document,
+      allowPointerEvents,
+    });
+    const restoreFocus = unfocusElement(document);
 
     cy.compareSnapshot({
       name: buildSnapshotName(name),
@@ -77,8 +141,9 @@ export const captureSnapshot = (
         disableTimersAndAnimations: true,
       },
     }).then(() => {
-      // Restore styles back to default
-      style.remove();
+      restoreServerDates();
+      removeSupportStyles();
+      restoreFocus?.();
     });
   });
 };
