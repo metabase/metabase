@@ -58,7 +58,10 @@ export function Tooltip({
   );
 
   return (
-    <Box className={S.tooltip}>
+    <Box
+      className={S.tooltip}
+      data-testid="custom-expression-editor-suggestions"
+    >
       <HelpText
         enclosingFunction={enclosingFn}
         query={query}

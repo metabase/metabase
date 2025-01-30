@@ -25,8 +25,7 @@ export function enterCustomColumnDetails({
   CustomExpressionEditor.clear().type(formula);
 
   if (blur) {
-    // click outside the expression editor
-    cy.get("label[for='expression-content']").click();
+    CustomExpressionEditor.blur();
   }
 
   if (name) {
@@ -56,16 +55,112 @@ export const CustomExpressionEditor = {
   get() {
     return cy.findByTestId("custom-expression-query-editor");
   },
-  type(text: string) {
-    // Enter the formula.
-    // HACK: we do invoke("text") instead of type() because type() does not work on
-    // CodeMirror elements in Cypress. realType() would work but some of the formulas
-    // contain special characters that are not supported by realType().
-    CustomExpressionEditor.get().findByRole("textbox").invoke("text", text);
+  type(
+    text: string,
+    {
+      allowFastSet = false,
+      focus = true,
+    }: {
+      focus?: boolean;
+      allowFastSet?: boolean;
+    } = {},
+  ) {
+    if (focus) {
+      CustomExpressionEditor.focus();
+    }
+
+    if (allowFastSet) {
+      // Enter the formula in one go
+      // HACK: we do invoke("text") instead of type() because type() does not work on
+      // CodeMirror elements in Cypress. realType() would work but some of the formulas
+      // contain special characters that are not supported by realType().
+      CustomExpressionEditor.get().findByRole("textbox").invoke("text", text);
+      return CustomExpressionEditor;
+    }
+
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+
+    const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
+
+    parts.forEach(part => {
+      switch (part.toLowerCase()) {
+        case "":
+          return;
+
+        case "{clear}":
+          return CustomExpressionEditor.clear();
+
+        case "{selectall}":
+          return CustomExpressionEditor.selectAll();
+
+        case "{leftarrow}":
+          return cy.realPress(["ArrowLeft"]);
+
+        case "{rightarrow}":
+          return cy.realPress(["ArrowRight"]);
+
+        case "{downarrow}":
+          return cy.realPress(["ArrowDown"]);
+
+        case "{uparrow}":
+          return cy.realPress(["ArrowUp"]);
+
+        case "{enter}":
+          return cy.realPress(["Enter"]);
+
+        case "{home}":
+        case "{movetostart}":
+          return cy.realPress(["Control", "A"]);
+
+        case "{end}":
+        case "{movetoend}":
+          return cy.realPress(["Control", "E"]);
+
+        case "{backspace}":
+          return cy.realPress(["Backspace"]);
+
+        case "{tab}":
+          return cy.realPress(["Tab"]);
+
+        case "{nextcompletion}":
+          cy.wait(50);
+          return cy.realPress([metaKey, "j"]);
+
+        case "{prevcompletion}":
+          cy.wait(50);
+          return cy.realPress([metaKey, "k"]);
+
+        case "{{}":
+          return cy.realType("{");
+      }
+
+      if (part.startsWith("{") && part.endsWith("}")) {
+        // unknown escape sequence, let's try typing it
+        throw new Error(
+          `unknown escape sequence in CustomExpressionEditor.type: ${part}`,
+        );
+      }
+
+      const alphabet =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789[]()-,.;_!@#$%&*+=/<>\" ':;";
+      if (part.split("").some(char => !alphabet.includes(char))) {
+        throw new Error(
+          `unknown character in CustomExpressionEditor.type in ${part}`,
+        );
+      }
+
+      cy.realType(part);
+    });
     return CustomExpressionEditor;
   },
   focus() {
     CustomExpressionEditor.get().click();
+    return CustomExpressionEditor;
+  },
+  blur() {
+    // click outside the expression editor
+    cy.get("label[for='expression-content']").click();
     return CustomExpressionEditor;
   },
   selectAll() {
@@ -82,5 +177,9 @@ export const CustomExpressionEditor = {
     return expressionEditorTextfield()
       .get(".cm-content")
       .should("contain", formula);
+  },
+
+  completions() {
+    return cy.findByTestId("custom-expression-editor-suggestions");
   },
 };
