@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 describe("issue 26470", { tags: "@external" }, () => {
@@ -55,7 +55,7 @@ describe("issue 21532", () => {
   });
 });
 
-describe("issue 41765", { tags: ["@external", "@flaky"] }, () => {
+describe("issue 41765", { tags: "@external" }, () => {
   // In this test we are testing the in-browser cache that metabase uses,
   // so we need to navigate by clicking trough the UI without reloading the page.
 
@@ -68,8 +68,8 @@ describe("issue 41765", { tags: ["@external", "@flaky"] }, () => {
   const COLUMN_DISPLAY_NAME = "Another Column";
 
   beforeEach(() => {
-    H.resetTestTable({ type: "postgres", table: TEST_TABLE });
     H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: TEST_TABLE });
     cy.signInAsAdmin();
 
     H.resyncDatabase({

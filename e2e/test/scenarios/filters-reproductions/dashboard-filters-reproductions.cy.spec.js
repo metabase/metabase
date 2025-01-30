@@ -1,6 +1,6 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -3920,8 +3920,8 @@ describe("issue 45670", { tags: ["@external"] }, () => {
   }
 
   beforeEach(() => {
-    H.resetTestTable({ type: dialect, table: tableName });
     H.restore(`${dialect}-writable`);
+    H.resetTestTable({ type: dialect, table: tableName });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName });
     cy.intercept("PUT", "/api/card/*").as("updateCard");
@@ -4107,8 +4107,8 @@ describe("issue 40396", { tags: "@external " }, () => {
   const tableName = "many_data_types";
 
   beforeEach(() => {
-    H.resetTestTable({ type: "postgres", table: tableName });
     H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: tableName });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(

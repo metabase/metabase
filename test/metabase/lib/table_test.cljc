@@ -12,7 +12,7 @@
 
 (deftest ^:parallel join-table-metadata-test
   (testing "You should be able to pass :metadata/table to lib/join INDIRECTLY VIA join-clause"
-    (let [query (-> lib.tu/venues-query
+    (let [query (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause (meta/table-metadata :categories))
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all)
