@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 it("should generate metadata", () => {
   cy.signInAsAdmin();

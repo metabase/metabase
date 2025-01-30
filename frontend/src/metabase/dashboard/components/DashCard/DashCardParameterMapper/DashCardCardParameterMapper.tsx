@@ -9,7 +9,10 @@ import {
 } from "metabase/dashboard/selectors";
 import { isNativeDashCard, isQuestionDashCard } from "metabase/dashboard/utils";
 import { connect } from "metabase/lib/redux";
-import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import {
+  type ParameterMappingOption,
+  getMappingOptionByTarget,
+} from "metabase/parameters/utils/mapping-options";
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { Flex, Icon, Text, Transition } from "metabase/ui";
 import { getMobileHeight } from "metabase/visualizations/shared/utils/sizes";
@@ -23,8 +26,6 @@ import type {
   ParameterTarget,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import { getMappingOptionByTarget } from "../utils";
 
 import {
   CardLabel,
@@ -81,7 +82,6 @@ export function DashCardCardParameterMapper({
 
   const selectedMappingOption = getMappingOptionByTarget(
     mappingOptions,
-    dashcard,
     target,
     question,
     editingParameter ?? undefined,

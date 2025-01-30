@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -292,8 +292,8 @@ describe("Unfold JSON", { tags: "@external" }, () => {
   }
 
   beforeEach(() => {
-    H.resetTestTable({ type: "postgres", table: "many_data_types" });
     H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_data_types" });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
   });
