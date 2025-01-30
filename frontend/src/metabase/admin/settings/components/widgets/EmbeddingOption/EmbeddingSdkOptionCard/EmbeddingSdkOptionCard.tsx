@@ -5,9 +5,9 @@ import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { Flex, Group } from "metabase/ui";
 
+import { EmbeddingSdkEnvVarSwitch } from "../../../EmbeddingSettings/EmbeddingSdkEnvVarSwitch";
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
-import { SwitchWithSetByEnvVar } from "../SwitchWithSetByEnvVar";
 import type { EmbeddingOptionCardProps } from "../types";
 
 import { SdkIcon } from "./SdkIcon";
@@ -44,10 +44,7 @@ export function EmbeddingSdkOptionCard({ onToggle }: EmbeddingOptionCardProps) {
         <LinkButton to={"/admin/settings/embedding-in-other-applications/sdk"}>
           {!isEE ? t`Try it out` : t`Configure`}
         </LinkButton>
-        <SwitchWithSetByEnvVar
-          settingKey="enable-embedding-sdk"
-          onChange={onToggle}
-        />
+        <EmbeddingSdkEnvVarSwitch onChange={onToggle} />
       </Group>
     </EmbeddingOption>
   );

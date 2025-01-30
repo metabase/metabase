@@ -16,9 +16,9 @@ import { Alert, Box, Button, Icon, Stack, Text } from "metabase/ui";
 
 import SettingHeader from "../SettingHeader";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
-import { SwitchWithSetByEnvVar } from "../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { SettingTextInput } from "../widgets/SettingTextInput";
 
+import { EmbeddingSdkEnvVarSwitch } from "./EmbeddingSdkEnvVarSwitch";
 import type { AdminSettingComponentProps } from "./types";
 
 const utmTags = {
@@ -147,9 +147,8 @@ export function EmbeddingSdkSettings({
             [t`Embedding SDK for React`],
           ]}
         />
-        <SwitchWithSetByEnvVar
+        <EmbeddingSdkEnvVarSwitch
           label={t`Enable Embedded analytics SDK`}
-          settingKey="enable-embedding-sdk"
           onChange={handleToggleEmbeddingSdk}
         />
 
