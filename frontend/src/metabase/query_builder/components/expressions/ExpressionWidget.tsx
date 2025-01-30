@@ -227,6 +227,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
           stageIndex={stageIndex}
           reportTimezone={reportTimezone}
           onChange={handleExpressionChange}
+          onCommit={handleCommit}
           error={error}
           onError={handleError}
           shortcuts={shortcuts}

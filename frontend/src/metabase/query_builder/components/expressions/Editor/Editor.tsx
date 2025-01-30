@@ -7,6 +7,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { isExpression } from "metabase-lib/v1/expressions";
 import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 import { format } from "metabase-lib/v1/expressions/format";
 import { processSource } from "metabase-lib/v1/expressions/process";
@@ -39,6 +40,10 @@ type EditorProps<S extends StartRule> = {
     expression: Expression | null,
     expressionClause: ClauseType<S> | null,
   ) => void;
+  onCommit: (
+    expression: Expression | null,
+    expressionClause: ClauseType<S> | null,
+  ) => void;
   onError: (error: ErrorWithMessage | null) => void;
   shortcuts?: Shortcut[];
 };
@@ -62,7 +67,7 @@ export function Editor<S extends StartRule = "expression">(
   const ref = useRef<ReactCodeMirrorRef>(null);
   const metadata = useSelector(getMetadata);
 
-  const { source, onSourceChange, commitExpression, hasChanges } =
+  const { source, onSourceChange, onChange, onCommit, hasChanges } =
     useExpression(props);
 
   const [customTooltip, portal] = useCustomTooltip({
@@ -83,7 +88,7 @@ export function Editor<S extends StartRule = "expression">(
     stageIndex,
     name,
     expressionIndex,
-    onCommit: commitExpression,
+    onCommit,
     reportTimezone,
     metadata,
     extensions: [customTooltip],
@@ -91,8 +96,8 @@ export function Editor<S extends StartRule = "expression">(
   });
 
   const handleBlur = useCallback(() => {
-    commitExpression(source);
-  }, [source, commitExpression]);
+    onChange(source);
+  }, [source, onChange]);
 
   return (
     <>
@@ -128,6 +133,7 @@ function useExpression<S extends StartRule = "expression">({
   query,
   expressionIndex,
   onChange,
+  onCommit,
   onError,
 }: EditorProps<S>) {
   const expression = useMemo(() => {
@@ -158,8 +164,8 @@ function useExpression<S extends StartRule = "expression">({
     setHasChanges(true);
   }, []);
 
-  const commitExpression = useCallback(
-    function (source: string) {
+  const handleUpdate = useCallback(
+    function (source: string, commit: boolean) {
       if (source.trim() === "") {
         onError({ message: t`Invalid expression` });
         return;
@@ -175,7 +181,7 @@ function useExpression<S extends StartRule = "expression">({
 
       if (error) {
         onError(error);
-        return null;
+        return;
       }
 
       const compiledExpression = processSource({
@@ -187,28 +193,63 @@ function useExpression<S extends StartRule = "expression">({
         expressionIndex,
       });
 
+      const { expression, expressionClause, compileError } = compiledExpression;
       if (
-        !compiledExpression?.expression ||
-        !compiledExpression.expressionClause
+        compileError &&
+        typeof compileError === "object" &&
+        "message" in compileError &&
+        typeof compileError.message === "string"
       ) {
+        onError({ message: compileError.message });
+      } else if (compileError) {
+        onError({ message: t`Invalid expression` });
+      }
+
+      if (!expression || !isExpression(expression) || !expressionClause) {
         onError({ message: t`Invalid expression` });
         return;
       }
 
-      const { expression, expressionClause } = compiledExpression;
-      onError(null);
-
       // TODO: can this be typed so we don't need to cast?
-      onChange(expression, expressionClause as ClauseType<S>);
+      const clause = expressionClause as ClauseType<S>;
+
+      if (commit) {
+        onCommit(expression, clause);
+      } else {
+        onChange(expression, clause);
+      }
+      onError(null);
+      setHasChanges(false);
+      setSource(formatExpression(expression));
     },
-    [name, query, stageIndex, startRule, expressionIndex, onChange, onError],
+    [
+      name,
+      query,
+      stageIndex,
+      startRule,
+      expressionIndex,
+      formatExpression,
+      onChange,
+      onCommit,
+      onError,
+    ],
+  );
+
+  const handleChange = useCallback(
+    (source: string) => handleUpdate(source, false),
+    [handleUpdate],
+  );
+  const handleCommit = useCallback(
+    (source: string) => handleUpdate(source, true),
+    [handleUpdate],
   );
 
   return {
     expression,
-    commitExpression,
     source,
     onSourceChange: handleSourceChange,
+    onChange: handleChange,
+    onCommit: handleCommit,
     hasChanges,
   };
 }
