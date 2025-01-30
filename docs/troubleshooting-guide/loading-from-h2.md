@@ -129,7 +129,7 @@ Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to co
 2.  Go to the **Admin Panel** and increase the timeout setting for the app database.
 3.  Move Metabase to a faster server (in particular, a server with faster disks).
 
-[backup]: ../installation-and-operation/backing-up-metabase-application-data.md
+[backup]: ../../installation-and-operation/backing-up-metabase-application-data.md
 [enterprise]: https://www.metabase.com/pricing
-[serialization-docs]: ../installation-and-operation/serialization.md
+[serialization-docs]: ../../installation-and-operation/serialization.md
 [serialization-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/serialization

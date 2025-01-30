@@ -63,12 +63,12 @@ If you can’t solve your problem using the troubleshooting guides:
 [discourse]: https://discourse.metabase.com/
 [flatten-json-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#pull-data-out-of-json-and-slot-its-keys-into-columns
 [indexes-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#index-frequently-queried-columns
-[known-issues]: ./known-issues.md
+[known-issues]: ../known-issues.md
 [known-issues-models]: https://github.com/metabase/metabase/labels/Querying%2FModels
 [limit-data-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#ask-for-less-data
 [materialize-views-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#materialize-views-create-new-tables-to-store-query-results
 [model-button-image]: https://www.metabase.com/learn/images/models/model-icon.png
-[model-docs]: ../data-modeling/models.md
+[model-docs]: ../../data-modeling/models.md
 [replicate-database-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#replicate-your-database
 [sql-explain-learn]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-best-practices#explain
 [summary-tables-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#aggregate-data-ahead-of-time-with-summary-tables

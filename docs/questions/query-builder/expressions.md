@@ -79,7 +79,7 @@ See a full list of [expressions][expression-list].
 
 For a tutorial on expressions, see [Custom expressions in the query builder][custom-expressions].
 
-[aggregations]: ./expressions-list.md#aggregations
+[aggregations]: ../expressions-list.md#aggregations
 [custom-expressions]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions
-[expression-list]: ./expressions-list.md
-[functions]: ./expressions-list.md#functions
+[expression-list]: ../expressions-list.md
+[functions]: ../expressions-list.md#functions
