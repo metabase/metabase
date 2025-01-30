@@ -68,7 +68,7 @@ export function Editor<S extends StartRule = "expression">(
   const metadata = useSelector(getMetadata);
 
   const { source, onSourceChange, onChange, onCommit, hasChanges } =
-    useExpression(props);
+    useExpression({ ...props, metadata });
 
   const [customTooltip, portal] = useCustomTooltip({
     getPosition: getTooltipPosition,
@@ -132,10 +132,13 @@ function useExpression<S extends StartRule = "expression">({
   stageIndex,
   query,
   expressionIndex,
+  metadata,
   onChange,
   onCommit,
   onError,
-}: EditorProps<S>) {
+}: EditorProps<S> & {
+  metadata: Metadata;
+}) {
   const expression = useMemo(() => {
     const expressionFromClause =
       clause &&
@@ -177,6 +180,7 @@ function useExpression<S extends StartRule = "expression">({
         query,
         stageIndex,
         expressionIndex,
+        metadata,
       });
 
       if (error) {
@@ -227,6 +231,7 @@ function useExpression<S extends StartRule = "expression">({
       query,
       stageIndex,
       startRule,
+      metadata,
       expressionIndex,
       formatExpression,
       onChange,
