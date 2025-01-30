@@ -6,8 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.models.setting :as setting :refer [defsetting Setting]]
-   [metabase.models.user :refer [User]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -109,7 +108,7 @@
 (defn- first-user-creation
   "Returns the earliest user creation timestamp in the database"
   []
-  (:min (t2/select-one [User [:%min.date_joined :min]])))
+  (:min (t2/select-one [:model/User [:%min.date_joined :min]])))
 
 ;; We need to declare `track-event!` up front so that we can use it in the custom getter of `instance-creation`.
 ;; We can't move `instance-creation` below `track-event!` because it has to be defined before `context`, which is called
@@ -121,7 +120,7 @@
   :visibility :public
   :setter     :none
   :getter     (fn []
-                (when-not (t2/exists? Setting :key "instance-creation")
+                (when-not (t2/exists? :model/Setting :key "instance-creation")
                   ;; For instances that were started before this setting was added (in 0.41.3), use the creation
                   ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
                   ;; is first read.
