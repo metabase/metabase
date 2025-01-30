@@ -35,8 +35,25 @@ export const prepareVisualTest = (test: {
   overrideTimers();
 };
 
-export const buildSnapshotName = (name: string) =>
-  `${Cypress.currentTest.title} ${name}`.replaceAll(" ", "_").toLowerCase();
+export const buildSnapshotName = ({
+  name,
+  isInteractive,
+}: {
+  name: string;
+  isInteractive: boolean;
+}) =>
+  [
+    Cypress.currentTest.title,
+    name,
+    // We should not commit snapshots made in `Interactive` mode
+    // Such snapshots depend on the local machine environment
+    // Because there's no option to not generate `baseline` snapshots,
+    // we add a special suffix to the snapshot name and ignore such snapshots in `.gitignore`
+    isInteractive ? "preview" : "",
+  ]
+    .join("_")
+    .replaceAll(" ", "_")
+    .toLowerCase();
 
 const appendSupportStyles = ({
   document,
@@ -135,7 +152,7 @@ export const captureSnapshot = (
     const restoreFocus = unfocusElement(document);
 
     cy.compareSnapshot({
-      name: buildSnapshotName(name),
+      name: buildSnapshotName({ name, isInteractive }),
       retryOptions: { doNotFail },
       cypressScreenshotOptions: {
         disableTimersAndAnimations: true,
