@@ -78,11 +78,11 @@
     {:tables
      (let [[inclusion-patterns
             exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
-           syncable? (fn [schema]
+           included? (fn [schema]
                        (driver.s/include-schema? inclusion-patterns exclusion-patterns schema))]
        (into
         #{}
-        (filter (comp syncable? :schema))
+        (filter (comp included? :schema))
         (sql-jdbc.execute/reducible-query database (get-tables-sql (-> database :details :catalog)))))}
     (catch Throwable e
       (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
