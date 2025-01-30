@@ -1,6 +1,6 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
-import { H } from "e2e/support";
+const { H } = cy;
 
 const STARTING_FROM_UNITS = [
   "minutes",
@@ -237,7 +237,7 @@ const nativeSQL = values => {
     return `SELECT '${date.toISOString()}'::timestamp as "testcol"`;
   });
 
-  cy.createNativeQuestion(
+  H.createNativeQuestion(
     {
       name: "datetime",
       native: {
@@ -268,6 +268,7 @@ const addStartingFrom = () => {
 
 const setRelativeDatetimeUnit = unit => {
   cy.findByLabelText("Unit").click();
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByText(unit).last().click();
 };
 
@@ -277,6 +278,7 @@ const setRelativeDatetimeValue = value => {
 
 const setStartingFromUnit = unit => {
   cy.findByLabelText("Starting from unit").click();
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByText(unit).last().click();
 };
 

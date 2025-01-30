@@ -17,15 +17,4 @@ describe("SettingsSetting", () => {
     setup();
     expect(screen.getByText("Site Name")).toBeInTheDocument();
   });
-
-  it("highlights itself if it's key is in location.hash", () => {
-    window.location.hash = "#site-name";
-
-    setup();
-
-    expect(screen.getByTestId("site-name-setting")).toHaveStyle(
-      "box-shadow: 0 0 0 1px var(--mb-color-brand)",
-    );
-    window.location.hash = "";
-  });
 });

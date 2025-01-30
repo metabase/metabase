@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 describe("metabase > scenarios > navbar > new menu", () => {
   beforeEach(() => {
@@ -24,7 +24,7 @@ describe("metabase > scenarios > navbar > new menu", () => {
     });
 
     cy.url("should.contain", "/question#");
-    H.nativeEditor().should("be.visible");
+    H.NativeEditor.get().should("be.visible");
   });
 
   it("collection opens modal and redirects to a created collection after saving", () => {

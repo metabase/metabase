@@ -44,9 +44,6 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
 ///////////////////////////
 // QUERY TEXT TAG UTILS
 
-export const CARD_TAG_REGEX: RegExp =
-  /\{\{\s*(#([0-9]*)(-[a-z0-9-]*)?)\s*\}\}/g;
-
 function tagRegex(tagName: string): RegExp {
   return new RegExp(`{{\\s*${tagName}\\s*}}`, "g");
 }

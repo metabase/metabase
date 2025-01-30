@@ -18,6 +18,7 @@ import { DashboardHeaderButtonRow } from "metabase/dashboard/components/Dashboar
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import type {
+  DashboardFooterControls,
   DashboardFullscreenControls,
   DashboardNightModeControls,
   DashboardRefreshPeriodControls,
@@ -72,7 +73,8 @@ export type PublicOrEmbeddedDashboardViewProps =
   InnerPublicOrEmbeddedDashboardViewProps &
     DashboardRefreshPeriodControls &
     DashboardNightModeControls &
-    DashboardFullscreenControls;
+    DashboardFullscreenControls &
+    DashboardFooterControls;
 
 export function PublicOrEmbeddedDashboardView({
   dashboard,
@@ -96,14 +98,12 @@ export function PublicOrEmbeddedDashboardView({
   titled,
   theme,
   hideParameters,
+  withFooter,
   navigateToNewCardFromDashboard,
   slowCards,
   cardTitled,
   downloadsEnabled,
-}: InnerPublicOrEmbeddedDashboardViewProps &
-  DashboardRefreshPeriodControls &
-  DashboardNightModeControls &
-  DashboardFullscreenControls) {
+}: PublicOrEmbeddedDashboardViewProps) {
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
       canResetFilters={false}
@@ -166,6 +166,7 @@ export function PublicOrEmbeddedDashboardView({
       theme={normalizedTheme}
       hide_parameters={hideParameters}
       downloadsEnabled={downloadsEnabled}
+      withFooter={withFooter}
     >
       <LoadingAndErrorWrapper
         className={cx({
@@ -181,9 +182,21 @@ export function PublicOrEmbeddedDashboardView({
             return null;
           }
 
-          if (!dashboardHasCards || !tabHasCards) {
+          if (!dashboardHasCards) {
             return (
-              <DashboardEmptyStateWithoutAddPrompt isNightMode={isNightMode} />
+              <DashboardEmptyStateWithoutAddPrompt
+                isNightMode={isNightMode}
+                isDashboardEmpty={true}
+              />
+            );
+          }
+
+          if (dashboardHasCards && !tabHasCards) {
+            return (
+              <DashboardEmptyStateWithoutAddPrompt
+                isNightMode={isNightMode}
+                isDashboardEmpty={false}
+              />
             );
           }
 

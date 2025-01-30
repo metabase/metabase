@@ -12,6 +12,9 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { FilterModalProvider } from "../context";
+import { createMockFilterModalContext } from "../test-utils";
+
 import { TimeFilterEditor } from "./TimeFilterEditor";
 
 const TIME_FIELD = createMockField({
@@ -48,15 +51,16 @@ function setup({ query, stageIndex, column, filter }: SetupOpts) {
   const onInput = jest.fn();
 
   renderWithProviders(
-    <TimeFilterEditor
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      filter={filter}
-      isSearching={false}
-      onChange={onChange}
-      onInput={onInput}
-    />,
+    <FilterModalProvider
+      value={createMockFilterModalContext({ query, onInput })}
+    >
+      <TimeFilterEditor
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        onChange={onChange}
+      />
+    </FilterModalProvider>,
   );
 
   const getNextFilterName = () => {

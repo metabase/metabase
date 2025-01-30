@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 import { createNativeQuestion } from "../../../support/helpers/api/createNativeQuestion";
@@ -7,7 +7,7 @@ const SCOREBOARD_TABLE = "scoreboard_actions";
 const COLORS_TABLE = "colors27745";
 
 H.describeEE("query validator", { tags: "@external" }, () => {
-  describe("feature disbaled", () => {
+  describe("feature disabled", () => {
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
@@ -32,6 +32,7 @@ H.describeEE("query validator", { tags: "@external" }, () => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.setTokenFeatures("all");
+      H.updateSetting("query-analysis-enabled", true);
     });
 
     it("enable query analysis setting", () => {

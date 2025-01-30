@@ -39,6 +39,7 @@ If instead you're wondering about what data Metabase the company can see, check 
 - Questions
 - Dashboards
 - Models
+- Metrics
 - Events
 - Timelines
 

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
@@ -689,7 +689,7 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     // metric
-    cy.createQuestion({
+    H.createQuestion({
       name: "Revenue",
       description: "Sum of orders subtotal",
       type: "metric",
@@ -865,6 +865,7 @@ H.describeWithSnowplow("add database card", () => {
   it("should track the click on the card", () => {
     cy.visit("/browse/databases");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findByTestId("database-browser")
       .findAllByRole("link")
       .last()
