@@ -215,7 +215,6 @@ describe("issue 12581", () => {
       cy.findByText(/You created this/i);
 
       cy.findByTestId("question-revert-button").click(); // Revert to the first revision
-      cy.wait("@dataset");
 
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/You reverted to an earlier version/i);
