@@ -284,6 +284,7 @@ export const ParameterValueWidget = ({
       </Popover.Target>
       <Popover.Dropdown
         // Removes `maxWidth` so that `floating-ui` can detect the new element size. See metabase#52918 for details.
+        // Use `size` middleware options when we upgrade to mantine v7.
         maw={isDateParameter(parameter) ? "100vw !important" : undefined}
         data-testid="parameter-value-dropdown"
       >
