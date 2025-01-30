@@ -795,10 +795,10 @@
                 (t2/delete! :model/DataPermissions :id (:id existing-db-perm))
                 (batch-insert-permissions! (concat other-new-perms new-perms))))
             (let [existing-table-perms (t2/select :model/DataPermissions
-                                                  :perm_type (u/qualified-name perm-type)
-                                                  :group_id  group-id
-                                                  :db_id     db-id
                                                   {:where [:and
+                                                           [:= :group_id group-id]
+                                                           [:= :db_id db-id]
+                                                           [:= :perm_type (u/qualified-name perm-type)]
                                                            [:not= :table_id nil]
                                                            [:not [:in :table_id table-ids]]]})
                   existing-table-values (set (map :perm_value existing-table-perms))]
@@ -866,10 +866,12 @@
             db-id                  (:db_id table)
             schema-name            (:schema table)
             db-level-perms         (t2/select :model/DataPermissions
-                                              :perm_type (u/qualified-name perm-type)
-                                              :db_id db-id
-                                              :table_id nil
-                                              {:where [:in :group_id group-ids]})
+                                              {:where
+                                               [:and
+                                                [:= :db_id db-id]
+                                                [:= :table_id nil]
+                                                [:= :perm_type (u/qualified-name perm-type)]
+                                                [:in :group_id group-ids]]})
             db-level-group-ids     (set (map :group_id db-level-perms))
             new-perms              (reduce
                                     (fn [new-perms group-id]
