@@ -5,25 +5,80 @@ import { Popover } from "metabase/ui";
 
 import { SimpleDataPicker } from "./SimpleDataPicker";
 
+const SHORT_OPTIONS = createOptions([
+  "Accounts",
+  "Analytic Events",
+  "Feedback",
+  "Invoices",
+  "Orders",
+  "People",
+  "Products",
+  "Reviews",
+]);
+
+const LONG_OPTIONS = createOptions([
+  "Accounts",
+  "Analytic Events",
+  "Feedback",
+  "Invoices",
+  "Orders",
+  "People",
+  "Products",
+  "Reviews",
+  "Accounts 2",
+  "Analytic Events 2",
+  "Feedback 2",
+  "Invoices 2",
+]);
+
+const SUPER_LONG_OPTIONS = createOptions([
+  "Accounts",
+  "Analytic Events",
+  "Feedback",
+  "Invoices",
+  "Orders",
+  "People",
+  "Products",
+  "Reviews",
+  "Accounts 2",
+  "Analytic Events 2",
+  "Feedback 2",
+  "Invoices 2",
+  "Orders 2",
+  "People 2",
+  "Products 2",
+  "Reviews 2",
+  "Accounts 3",
+  "Analytic Events 3",
+  "Feedback 3",
+  "Invoices 3",
+  "Orders 3",
+  "People 3",
+  "Products 3",
+  "Reviews 3",
+]);
+
+function createOptions(optionNames: string[]): Option[] {
+  return optionNames.map((name, index) => ({
+    id: index + 1,
+    display_name: name,
+  }));
+}
+interface Option {
+  id: number;
+  display_name: string;
+}
+
 const meta: Meta<typeof SimpleDataPicker> = {
   title: "embedding/SimpleDataPicker",
   component: SimpleDataPicker,
   args: {
     onClick: action("on-click"),
-    options: [
-      {
-        id: 1,
-        display_name: "Accounts",
-      },
-      {
-        id: 2,
-        display_name: "Orders",
-      },
-    ],
+    options: SHORT_OPTIONS,
   },
   render: args => {
     return (
-      <Popover opened>
+      <Popover opened trapFocus>
         <Popover.Dropdown>
           <SimpleDataPicker {...args} />
         </Popover.Dropdown>
@@ -40,4 +95,22 @@ export const WithoutPopover: Story = {
   render: args => <SimpleDataPicker {...args} />,
 };
 
-export const Primary: Story = {};
+export const ShortOptions: Story = {};
+
+export const TenOptions: Story = {
+  args: {
+    options: LONG_OPTIONS.filter((_, index) => index < 10),
+  },
+};
+
+export const LongOptions: Story = {
+  args: {
+    options: LONG_OPTIONS,
+  },
+};
+
+export const SuperLongOptions: Story = {
+  args: {
+    options: SUPER_LONG_OPTIONS,
+  },
+};
