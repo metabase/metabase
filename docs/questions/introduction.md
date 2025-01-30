@@ -3,6 +3,7 @@ title: Questions
 redirect_from:
   - /docs/latest/users-guide/04-asking-questions
   - /docs/latest/users-guide/06-sharing-answers
+  - /docs/latest/questions/query-builder/introduction
 ---
 
 # Questions
