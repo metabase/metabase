@@ -148,7 +148,8 @@ const PublicOrEmbeddedDashboardInner = ({
   const previousSelectedTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
 
-  const shouldFetchCardData = dashboard?.tabs?.length === 0;
+  const isDashboardLoaded = dashboard != null;
+  const isDashboardWithoutTabs = dashboard?.tabs?.length === 0;
 
   useDashboardLoadHandlers({ dashboard, onLoad, onLoadWithoutCards });
 
@@ -175,13 +176,15 @@ const PublicOrEmbeddedDashboardInner = ({
       return;
     }
 
-    if (selectedTabId && selectedTabId !== previousSelectedTabId) {
-      fetchDashboardCardData();
-      return;
-    }
+    if (isDashboardLoaded) {
+      if (selectedTabId && selectedTabId !== previousSelectedTabId) {
+        fetchDashboardCardData();
+        return;
+      }
 
-    if (!_.isEqual(parameterValues, previousParameterValues)) {
-      fetchDashboardCardData({ reload: false, clearCache: true });
+      if (!_.isEqual(parameterValues, previousParameterValues)) {
+        fetchDashboardCardData({ reload: false, clearCache: true });
+      }
     }
   }, [
     dashboardId,
@@ -194,7 +197,8 @@ const PublicOrEmbeddedDashboardInner = ({
     previousParameterValues,
     previousSelectedTabId,
     selectedTabId,
-    shouldFetchCardData,
+    isDashboardWithoutTabs,
+    isDashboardLoaded,
   ]);
 
   useUnmount(() => {
