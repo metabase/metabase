@@ -1443,6 +1443,19 @@
                                    (u/qualified-name %)
                                    %))))
 
+(defn- legacy-ref->pMBQL [a-legacy-ref]
+  (-> a-legacy-ref
+      (js->clj :keywordize-keys true)
+      (update 0 keyword)
+      (->> (mbql.normalize/normalize-fragment nil))
+      lib.convert/->pMBQL))
+
+(defn- ref->legacy-ref
+  [a-ref]
+  (-> a-ref
+      lib.convert/->legacy-MBQL
+      normalize-legacy-ref))
+
 (defn ^:export legacy-ref
   "Given a column, metric or segment metadata from eg. [[fieldable-columns]] or [[available-segments]],
   return it as a legacy JSON field ref.
@@ -1455,16 +1468,8 @@
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
     (-> column
         lib.core/ref
-        lib.convert/->legacy-MBQL
-        normalize-legacy-ref
+        ref->legacy-ref
         clj->js)))
-
-(defn- legacy-ref->pMBQL [a-legacy-ref]
-  (-> a-legacy-ref
-      (js->clj :keywordize-keys true)
-      (update 0 keyword)
-      (->> (mbql.normalize/normalize-fragment nil))
-      lib.convert/->pMBQL))
 
 (defn- ->column-or-ref [column]
   (if-let [^js legacy-column (when (object? column) column)]
@@ -1880,7 +1885,7 @@
 
   > **Code health:** Healthy"
   [a-query]
-  (clj->js (lib.core/template-tags a-query)))
+  (clj->js (m/map-vals #(m/update-existing % :dimension ref->legacy-ref) (lib.core/template-tags a-query))))
 
 (defn ^:export required-native-extras
   "Returns a JS array of the extra keys that are required for this database's native queries.
