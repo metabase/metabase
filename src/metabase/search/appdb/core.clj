@@ -106,6 +106,13 @@
                        :index-metadata     (t2/select :model/SearchIndexMetadata :engine :appdb)}))))
 
   (try
+    ;; wait for a bit for queue to be drained
+    (when-not (u/poll {:thunk       (fn [] (.size #'search.ingestion/queue))
+                   :done        zero?
+                   :timeout-ms  2000
+                   :interval-ms 100})
+      (log/warn "Returning search results even though they may be stale"))
+
     (let [weights (search.config/weights search-ctx)
           scorers (search.scoring/scorers search-ctx)]
       (->> (search.index/search-query search-string search-ctx [:legacy_input])

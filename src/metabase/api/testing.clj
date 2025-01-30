@@ -11,6 +11,7 @@
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -119,6 +120,7 @@
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
+  (search.ingestion/clear-queue!)
   (restore-snapshot! snapshot-name)
   (search/reindex!)
   nil)

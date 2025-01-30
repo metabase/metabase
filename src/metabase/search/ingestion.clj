@@ -138,6 +138,9 @@
 (defn- track-queue-size! []
   (prometheus/set! :metabase-search/queue-size (.size queue)))
 
+(defn clear-queue! []
+  (.clear queue))
+
 (defn get-next-batch!
   "Wait up for a batch to become ready, and take it off the queue.
   Used `first-delay-ms` to determine how long it will wait for any updates.
