@@ -12,6 +12,7 @@ import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 import { format } from "metabase-lib/v1/expressions/format";
 import { processSource } from "metabase-lib/v1/expressions/process";
 import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 
 import type { ClauseType, StartRule } from "../types";
