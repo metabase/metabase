@@ -16,6 +16,7 @@ import {
   Box,
   Group,
   Icon,
+  SimpleGrid,
   Stack,
   type StackProps,
   Text,
@@ -24,7 +25,6 @@ import {
 
 import {
   BrowseContainer,
-  BrowseGrid,
   BrowseMain,
   BrowseSection,
   CenteredEmptyState,
@@ -66,7 +66,7 @@ export const BrowseDatabases = () => {
       <BrowseDataHeader />
       <BrowseMain>
         <BrowseSection>
-          <BrowseGrid data-testid="database-browser">
+          <SimpleGrid data-testid="database-browser" cols={3}>
             {databases &&
               databases.length > 0 &&
               databases.map(database => (
@@ -107,7 +107,7 @@ export const BrowseDatabases = () => {
                 </DatabaseCard>
               </Link>
             )}
-          </BrowseGrid>
+          </SimpleGrid>
         </BrowseSection>
       </BrowseMain>
     </BrowseContainer>

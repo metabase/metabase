@@ -365,7 +365,7 @@ export function EntityPickerModal<
       yOffset="10dvh"
     >
       <Modal.Overlay />
-      <ModalContent aria-labelledby={titleId}>
+      <ModalContent aria-labelledby={titleId} w="57.5rem">
         <Modal.Header
           px="2.5rem"
           pt="1rem"
