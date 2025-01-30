@@ -5,7 +5,6 @@ import type React from "react";
 import { type CSSProperties, memo, useCallback, useRef } from "react";
 
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
-import CS from "metabase/css/core/index.css";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
@@ -84,8 +83,6 @@ export const SortableHeader = memo(function SortableHeader({
   const resizeHandler: (e: React.MouseEvent | React.TouchEvent) => void =
     useCallback(
       e => {
-        e.preventDefault();
-        e.stopPropagation();
         header.getResizeHandler()(e);
       },
       [header],
@@ -95,27 +92,26 @@ export const SortableHeader = memo(function SortableHeader({
   const stageIndex = -1;
 
   return (
-    <div className={S.th} style={style}>
-      <div
-        ref={setNodeRef}
-        className={S.headerWrapper}
-        onMouseDown={handleDragStart}
-        onMouseUp={handleDragEnd}
-      >
-        <div className={S.headerWrapper} {...attributes} {...listeners}>
-          <QueryColumnInfoPopover
-            position="bottom-start"
-            query={query}
-            stageIndex={-1}
-            column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
-            timezone={data.results_timezone}
-            disabled={!hasMetadataPopovers || isDragging}
-            openDelay={500}
-            showFingerprintInfo
-          >
-            {children}
-          </QueryColumnInfoPopover>
-        </div>
+    <div
+      ref={setNodeRef}
+      className={S.th}
+      style={style}
+      onMouseDown={handleDragStart}
+      onMouseUp={handleDragEnd}
+    >
+      <div className={S.headerWrapper} {...attributes} {...listeners}>
+        <QueryColumnInfoPopover
+          position="bottom-start"
+          query={query}
+          stageIndex={-1}
+          column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
+          timezone={data.results_timezone}
+          disabled={!hasMetadataPopovers || isDragging}
+          openDelay={500}
+          showFingerprintInfo
+        >
+          {children}
+        </QueryColumnInfoPopover>
       </div>
       <div
         className={S.resizer}
