@@ -111,7 +111,12 @@ export const Help = () => {
 
   return (
     <HelpRoot>
-      <Flex justify="space-between">
+      <Flex
+        align="flex-start"
+        justify="space-between"
+        direction={{ base: "column", md: "row" }}
+        gap={{ base: 0, md: "md" }}
+      >
         <Box>
           <AdminHeader title={t`Help`} className={CS.mb2} />
           <HelpLinks>
