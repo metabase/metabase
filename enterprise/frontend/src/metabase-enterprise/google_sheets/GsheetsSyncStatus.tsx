@@ -71,7 +71,6 @@ export const GsheetsSyncStatus = () => {
   })
     .returnType<GsheetsStatus>()
     .with({ folderSyncError: true }, () => "error")
-    .with({ settingStatus: "error" }, () => "error")
     .with({ folderSyncStatus: "complete" }, () => "complete")
     .with({ settingStatus: "complete" }, () => "complete")
     .with({ folderSyncStatus: "loading" }, () => "loading")
