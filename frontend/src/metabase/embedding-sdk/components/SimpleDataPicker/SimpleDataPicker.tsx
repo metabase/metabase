@@ -2,8 +2,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Icon, NavLink, Paper, ScrollArea, TextInput } from "metabase/ui";
+import type { TableId } from "metabase-types/api";
 
 interface SimpleDataPickerProps {
+  selectedEntity?: TableId;
   options: Options[];
   onClick: (option: any) => void;
 }
@@ -15,7 +17,11 @@ interface Options {
 
 const TEN_OPTIONS_HEIGHT = 10 * 33;
 
-export function SimpleDataPicker({ options, onClick }: SimpleDataPickerProps) {
+export function SimpleDataPicker({
+  selectedEntity,
+  options,
+  onClick,
+}: SimpleDataPickerProps) {
   const shouldShowSearchBar = options.length > 10;
   const [searchText, setSearchText] = useState("");
   function filterSearch(option: Options): boolean {
@@ -54,6 +60,7 @@ export function SimpleDataPicker({ options, onClick }: SimpleDataPickerProps) {
           return (
             <NavLink
               key={option.id}
+              active={selectedEntity === option.id}
               icon={<Icon c="var(--mb-color-icon-primary)" name="table" />}
               label={option.display_name}
               onClick={() => {

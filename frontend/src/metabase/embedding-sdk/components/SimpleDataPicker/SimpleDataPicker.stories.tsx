@@ -97,6 +97,12 @@ export const WithoutPopover: Story = {
 
 export const ShortOptions: Story = {};
 
+export const SelectedOption: Story = {
+  args: {
+    selectedEntity: 3,
+  },
+};
+
 export const TenOptions: Story = {
   args: {
     options: LONG_OPTIONS.filter((_, index) => index < 10),
