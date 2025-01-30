@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -347,7 +347,7 @@ describe("scenarios > home > custom homepage", () => {
           description: "nested 2 levels",
           parent_id: body.id,
         }).then(({ body }) => {
-          cy.createDashboard({
+          H.createDashboard({
             name: "nested dash",
             collection_id: body.id,
           });

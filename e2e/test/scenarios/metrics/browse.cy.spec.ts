@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -445,6 +445,7 @@ function findMetric(name: string) {
 }
 
 function getMetricsTableItem(index: number) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return metricsTable().findAllByTestId("metric-name").eq(index);
 }
 

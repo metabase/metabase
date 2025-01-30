@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { createMockParameter } from "metabase-types/api/mocks";
@@ -236,7 +236,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+    H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       H.visitDashboard(DASHBOARD_ID);
     });
   });
@@ -366,7 +366,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     H.updateSetting("site-locale", "fr");
 
     // Create dashboard with a single date parameter, and a single question
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: { query: { "source-table": PRODUCTS_ID } },
     }).then(({ body: card }) => {
       const { dashboard_id } = card;
@@ -385,7 +385,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
         size_x: 11,
         size_y: 6,
       };
-      cy.editDashboardCard(card, updatedSize);
+      H.editDashboardCard(card, updatedSize);
       H.visitDashboard(dashboard_id);
 
       H.editDashboard();

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 
@@ -84,6 +84,7 @@ describe("issue 39487", () => {
     H.popover().findByText("Filter by this column").click();
     H.popover().findByText("Specific dates…").click();
     H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
     previousButton().click();
     checkDateRangeFilter();

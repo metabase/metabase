@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -83,6 +83,7 @@ describe("issue 11480", () => {
 describe("issue 11580", () => {
   function assertVariablesOrder() {
     cy.get("@variableLabels").first().should("have.text", "foo");
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@variableLabels").last().should("have.text", "bar");
   }
 
@@ -141,7 +142,7 @@ describe("issue 12228", () => {
   });
 
   it("can load a question with a date filter (metabase#12228)", () => {
-    cy.createNativeQuestion(nativeQuery).then(({ body: { id } }) => {
+    H.createNativeQuestion(nativeQuery).then(({ body: { id } }) => {
       cy.visit(`/question/${id}?created_at=2026-01`);
       cy.contains("580");
     });
@@ -177,7 +178,7 @@ describe("issue 12581", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(nativeQuery, { visitQuestion: true });
+    H.createNativeQuestion(nativeQuery, { visitQuestion: true });
   });
 
   it("should correctly display a revision state after a restore (metabase#12581)", () => {
@@ -191,12 +192,7 @@ describe("issue 12581", () => {
 
     // Both delay and a repeated sequence of `{selectall}{backspace}` are there to prevent typing flakes
     // Without them at least 1 in 10 test runs locally didn't fully clear the field or type correctly
-    H.focusNativeEditor()
-      .as("editor")
-      .click()
-      .type("{selectall}{backspace}", { delay: 50 })
-      .click()
-      .type("{selectall}{backspace}SELECT 1");
+    H.NativeEditor.clear().type("SELECT 1");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -215,7 +211,6 @@ describe("issue 12581", () => {
       cy.findByText(/You created this/i);
 
       cy.findByTestId("question-revert-button").click(); // Revert to the first revision
-      cy.wait("@dataset");
 
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/You reverted to an earlier version/i);
@@ -228,7 +223,7 @@ describe("issue 12581", () => {
       .click();
 
     cy.log("Reported failing on v0.35.3");
-    H.focusNativeEditor().should("be.visible").and("contain", ORIGINAL_QUERY);
+    H.NativeEditor.get().should("be.visible").and("contain", ORIGINAL_QUERY);
 
     H.tableInteractive().findByText("37.65");
 
@@ -272,7 +267,7 @@ describe.skip("issue 13961", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(nativeQuery, { visitQuestion: true });
+    H.createNativeQuestion(nativeQuery, { visitQuestion: true });
   });
 
   it("should clear default filter value in native questions (metabase#13961)", () => {
@@ -328,7 +323,7 @@ describe("issue 14302", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(nativeQuery, { visitQuestion: true });
+    H.createNativeQuestion(nativeQuery, { visitQuestion: true });
   });
 
   it("should not make the question dirty when there are no changes (metabase#14302)", () => {
@@ -378,7 +373,7 @@ describe("issue 14302", () => {
       H.restore();
       cy.signInAsAdmin();
 
-      cy.createNativeQuestionAndDashboard({
+      H.createNativeQuestionAndDashboard({
         questionDetails: nativeQuery,
         dashboardDetails,
       }).then(({ body: { id, card_id, dashboard_id } }) => {
@@ -433,7 +428,7 @@ describe("issue 14302", () => {
         expect(xhr.response.body.error).not.to.exist;
       });
 
-      H.nativeEditor().should("not.be.visible");
+      H.NativeEditor.get().should("not.be.visible");
       cy.get("[data-testid=cell-data]").should("contain", "51");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
@@ -618,7 +613,7 @@ describe("issue 16739", () => {
   ["normal", "nodata"].forEach(user => {
     //Very related to the metabase#15981, only this time the issue happens with the "Field Filter" without the value being set.
     it(`filter feature flag shouldn't cause run-overlay of results in native editor for ${user} user (metabase#16739)`, () => {
-      cy.createNativeQuestion({
+      H.createNativeQuestion({
         native: {
           query: "select * from PRODUCTS where {{ filter }}",
           "template-tags": { filter },
@@ -662,7 +657,7 @@ describe("issue 16756", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.intercept("POST", `/api/card/**/${id}/query`).as("cardQuery");
 
       cy.visit(`/question/${id}?filter=2024-03-31~2025-03-31`);
@@ -721,7 +716,7 @@ describe("issue 17019", { tags: "@flaky" }, () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(question).then(({ body: { id } }) => {
+    H.createNativeQuestion(question).then(({ body: { id } }) => {
       // Enable sharing
       cy.request("POST", `/api/card/${id}/public_link`);
 
@@ -824,7 +819,7 @@ describe("issue 21160", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("number filter should work with values separated by comma (metabase#21160)", () => {
@@ -854,7 +849,7 @@ describe("issue 21246", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createQuestion(questionDetails).then(({ body: { id } }) => {
       const cardTagName = "#" + id;
 
       const nativeQuestionDetails = {
@@ -889,7 +884,7 @@ describe("issue 21246", () => {
         display: "scalar",
       };
 
-      cy.createNativeQuestion(nativeQuestionDetails, {
+      H.createNativeQuestion(nativeQuestionDetails, {
         wrapId: true,
       });
 
@@ -978,7 +973,7 @@ describe("issue 29786", { tags: "@external" }, () => {
       });
 
       // type a space to trigger fields
-      cy.focused().type(" ");
+      H.NativeEditor.type(" ");
 
       cy.findByTestId("tag-editor-variable-f1")
         .findByTestId("variable-type-select")
@@ -1166,13 +1161,13 @@ describe("issue 34129", () => {
   });
 
   it("should support mismatching date filter parameter values when navigating from a dashboard (metabase#34129)", () => {
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: card }) => {
       const { card_id, dashboard_id } = card;
       const mapping = getParameterMapping(card_id, parameter.id);
-      cy.editDashboardCard(card, { parameter_mappings: [mapping] });
+      H.editDashboardCard(card, { parameter_mappings: [mapping] });
       H.visitDashboard(dashboard_id);
       cy.wait("@dashcardQuery");
     });
@@ -1221,6 +1216,7 @@ describe("issue 49577", () => {
 
   it("should not show the values initially when using a single select search box (metabase#49577)", () => {
     H.startNewNativeQuestion().type("select * from {{param");
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar()
       .last()
       .within(() => {
@@ -1246,6 +1242,7 @@ describe("issue 49577", () => {
       cy.findByText("foo").should("be.visible");
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar().last().findByText("Dropdown list").click();
 
     H.filterWidget().click();

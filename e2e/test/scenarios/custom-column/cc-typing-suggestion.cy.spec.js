@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 describe("scenarios > question > custom column > typing suggestion", () => {
   beforeEach(() => {
@@ -83,6 +83,29 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.enterCustomColumnDetails({ formula: "Count{enter}" });
     H.popover().findByLabelText("Name").focus();
     cy.findByTestId("expression-suggestions-list").should("not.exist");
+  });
+
+  it("should always show the help text popover on top of the custom expression widget (metabase#52711)", () => {
+    addCustomColumn();
+    H.enterCustomColumnDetails({ formula: "endsWith(", blur: false });
+
+    /* It seems like cypress considers that this popover and its contents are visible,
+     * even when it's under its parent popover because it is in a portal, so technically it's not being clipped by any element.
+     * Weirdly enough, it refuses to click `Learn more` because it's covered, but should("be.visible") passes.
+     *
+     * So, the (hacky) solution for now is to click all 5 elements of the popover, and we will check if the
+     * popover is still there at the end. Since the popover has onClickOutside behavior, the popover will
+     * close if the user clicks on anything outside it, so we can use that to our advantage.
+     * */
+    cy.findByTestId("expression-helper-popover").within(() => {
+      cy.findByTestId("expression-helper-popover-structure").click();
+      cy.findByTestId("expression-helper-popover-arguments").click();
+      cy.findByText("Example").click();
+
+      // We want to trigger the "covered element" error if this is true without actually clicking the external link
+      cy.findByText("Learn more").trigger("mousemove");
+    });
+    cy.findByTestId("expression-helper-popover").should("exist");
   });
 });
 

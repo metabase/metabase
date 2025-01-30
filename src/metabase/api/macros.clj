@@ -543,6 +543,13 @@
     :route (:route-params request)
     :query (some-> (:query-params request) (update-keys keyword))))
 
+(mu/defn- request-body
+  [request :- :map]
+  (or (some-> (not-empty (:form-params request)) (update-keys keyword))
+      (when-let [body (:body request)]
+        (when-not (instance? org.eclipse.jetty.server.HttpInput body)
+          body))))
+
 (mu/defn- middleware-forms
   "Middleware to apply to base handler. Currently the only option is middleware for handling multipart requests, applied
   if the handler metadata contains
@@ -564,13 +571,13 @@
                   (fn async-handler [request respond raise]
                     (let [route-params (defendpoint-params request :route)
                           query-params (defendpoint-params request :query)
-                          body-params  (:body request)]
+                          body-params  (request-body request)]
                       (core-fn respond raise route-params query-params body-params request)))
                   (fn handler [request respond raise]
                     (try
                       (let [route-params (defendpoint-params request :route)
                             query-params (defendpoint-params request :query)
-                            body-params  (:body request)]
+                            body-params  (request-body request)]
                         (respond (core-fn route-params query-params body-params request)))
                       (catch Throwable e
                         (raise e)))))]

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -70,7 +70,7 @@ describe("issue 24839: should be able to summarize a nested question based on th
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+    H.createQuestion(questionDetails).then(({ body: { id } }) => {
       // Start ad-hoc nested question based on the saved one
       H.visitQuestionAdhoc({
         dataset_query: {
@@ -235,6 +235,7 @@ describe("issue 27104", () => {
   });
 
   it("should correctly format the filter operator after the aggregation (metabase#27104)", () => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
     H.popover().findByText("Count").click();
     // The following line is the main assertion.
@@ -323,7 +324,7 @@ describe("issue 28221", () => {
       },
     };
 
-    cy.createQuestion(questionDetails).then(({ body }) => {
+    H.createQuestion(questionDetails).then(({ body }) => {
       const questionId = body.id;
 
       cy.visit(`/question/${questionId}/notebook`);
@@ -341,7 +342,7 @@ describe("issue 28599", () => {
     H.restore();
     cy.signInAsNormalUser();
 
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "28599",
         query: {
@@ -480,17 +481,17 @@ describe("issue 30165", () => {
 
   it("should not autorun native queries after updating a question (metabase#30165)", () => {
     H.startNewNativeQuestion();
-    cy.findByTestId("native-query-editor").type("SELECT * FROM ORDERS");
+    H.NativeEditor.type("SELECT * FROM ORDERS");
     H.saveQuestionToCollection("Q1");
 
-    H.focusNativeEditor().type(" WHERE TOTAL < 20");
+    H.NativeEditor.focus().type(" WHERE TOTAL < 20");
     H.queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save").click();
     });
     cy.wait("@updateQuestion");
 
-    H.focusNativeEditor().type(" LIMIT 10");
+    H.NativeEditor.focus().type(" LIMIT 10");
     H.queryBuilderHeader().findByText("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
       cy.findByText("Save").click();
@@ -650,7 +651,7 @@ describe("issue 43216", () => {
     cy.findByTestId("native-query-editor-container")
       .findByText("Open Editor")
       .click();
-    H.focusNativeEditor().should("be.visible").type(" , 4 as D");
+    H.NativeEditor.focus().type(" , 4 as D");
     H.saveSavedQuestion();
 
     cy.log("Assert updated metadata in target question");
@@ -712,7 +713,7 @@ describe("Custom columns visualization settings", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion(question).then(({ body: { id } }) => {
+    H.createQuestion(question).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
