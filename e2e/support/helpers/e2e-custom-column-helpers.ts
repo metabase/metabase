@@ -2,6 +2,10 @@ export function expressionEditorWidget() {
   return cy.findByTestId("expression-editor");
 }
 
+export function expressionEditorTextfield() {
+  return CustomExpressionEditor.get();
+}
+
 /**
  * @param {Object} option
  * @param {string} option.formula
@@ -17,20 +21,8 @@ export function enterCustomColumnDetails({
   name?: string;
   blur?: boolean;
 }) {
-  cy.findByTestId("custom-expression-query-editor")
-    .first()
-    .as("formula")
-    .click();
-
-  // clear the expression editor
-  cy.realPress(["Meta", "A"]);
-  cy.realPress(["Backspace"]);
-
-  // Enter the formula.
-  // HACK: we do invoke("text") instead of type() because type() does not work on
-  // CodeMirror elements in Cypress. realType() would work but some of the formulas
-  // contain special characters that are not supported by realType().
-  cy.get("@formula").findByRole("textbox").invoke("text", formula);
+  CustomExpressionEditor.get().as("formula");
+  CustomExpressionEditor.clear().type(formula);
 
   if (blur) {
     // click outside the expression editor
@@ -46,7 +38,7 @@ export function enterCustomColumnDetails({
 }
 
 export function checkExpressionEditorHelperPopoverPosition() {
-  cy.findByTestId("expression-editor-textfield").then($target => {
+  expressionEditorTextfield().then($target => {
     const textfieldPosition = $target[0].getBoundingClientRect();
 
     cy.findByTestId("expression-helper-popover").then($target => {
@@ -59,3 +51,36 @@ export function checkExpressionEditorHelperPopoverPosition() {
     });
   });
 }
+
+export const CustomExpressionEditor = {
+  get() {
+    return cy.findByTestId("custom-expression-query-editor");
+  },
+  type(text: string) {
+    // Enter the formula.
+    // HACK: we do invoke("text") instead of type() because type() does not work on
+    // CodeMirror elements in Cypress. realType() would work but some of the formulas
+    // contain special characters that are not supported by realType().
+    CustomExpressionEditor.get().findByRole("textbox").invoke("text", text);
+    return CustomExpressionEditor;
+  },
+  focus() {
+    CustomExpressionEditor.get().click();
+    return CustomExpressionEditor;
+  },
+  selectAll() {
+    CustomExpressionEditor.focus();
+    cy.realPress(["Meta", "A"]);
+    return CustomExpressionEditor;
+  },
+  clear() {
+    CustomExpressionEditor.selectAll();
+    cy.realPress(["Backspace"]);
+    return CustomExpressionEditor;
+  },
+  shouldContain(formula: string) {
+    return expressionEditorTextfield()
+      .get(".cm-content")
+      .should("contain", formula);
+  },
+};
