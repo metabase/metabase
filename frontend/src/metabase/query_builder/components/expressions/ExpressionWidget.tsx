@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import DeprecatedButton from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { isNotNull } from "metabase/lib/types";
 import { Box, Button, Flex, TextInput } from "metabase/ui";
@@ -49,7 +48,6 @@ export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
     name: string,
     clause: Clause | Lib.ExpressionClause,
   ) => void;
-  onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
 };
 
@@ -69,7 +67,6 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     expressionIndex,
     onChangeExpression,
     onChangeClause,
-    onRemoveExpression,
     onClose,
   } = props;
 
@@ -278,17 +275,6 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
           >
             {initialName ? t`Update` : t`Done`}
           </Button>
-
-          {initialName && onRemoveExpression ? (
-            <DeprecatedButton
-              className={ExpressionWidgetS.RemoveLink}
-              onlyText
-              onClick={() => {
-                onRemoveExpression(initialName);
-                onClose && onClose();
-              }}
-            >{t`Remove`}</DeprecatedButton>
-          ) : null}
         </Flex>
       </Flex>
     </Box>
