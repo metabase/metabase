@@ -40,6 +40,7 @@
     for logging purposes by higher-level sync logic."
   (:require
    [metabase.driver.util :as driver.u]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -64,7 +65,7 @@
    db-metadata :- [:set i/TableMetadataField]]
   (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
      ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
-     ;; Re-fetch our metadata because there might be somethings that have changed after calling
+     ;; Re-fetch our metadata because there might be some things that have changed after calling
      ;; `sync-instances`
      (sync-metadata/update-metadata! table db-metadata (fields.our-metadata/our-metadata table))))
 
@@ -124,3 +125,11 @@
            db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)]
        {:total-fields   (count db-metadata)
         :updated-fields (sync-and-update! table db-metadata)}))))
+
+(defsetting auto-cruft-columns
+  "A list of pattern strings that get converted into additional regexes that match Fields that should automatically be
+  marked as `:hidden`."
+  :type :json
+  :visibility :internal
+  :export? false
+  :encryption :no)
