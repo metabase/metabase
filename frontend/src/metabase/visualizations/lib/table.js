@@ -74,6 +74,9 @@ export function getTableCellClickedObject(
       settings,
       origin: { rowIndex, row, cols },
       data: clickedRowData,
+
+      rowIndex,
+      columnIndex,
     };
   }
 }

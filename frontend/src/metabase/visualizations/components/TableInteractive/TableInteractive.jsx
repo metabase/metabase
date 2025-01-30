@@ -31,8 +31,12 @@ import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import {
   Box,
+  Checkbox,
+  DateInput,
   DelayGroup,
+  Group,
   Icon,
+  Input,
   ThemeProvider,
   Button as UIButton,
 } from "metabase/ui";
@@ -110,6 +114,8 @@ class TableInteractive extends Component {
       columnWidths: [],
       contentWidths: null,
       showDetailShortcut: true,
+      editingCellsMap: {},
+      editingCellsValuesMap: {},
     };
     this.columnHasResized = {};
     this.headerRefs = [];
@@ -148,7 +154,7 @@ class TableInteractive extends Component {
     },
   };
 
-  renderTableCellWrapper(children, { isIDColumn } = {}) {
+  renderTableCellWrapper(children, { isIDColumn, isEdited } = {}) {
     const { theme } = this.props;
 
     const hasChildren = children != null && children !== "";
@@ -167,6 +173,67 @@ class TableInteractive extends Component {
       >
         {children}
       </Box>
+    );
+  }
+
+  renderEditingCell(clicked, cellProps) {
+    const { column, value } = clicked;
+
+    const inputValue = this.state.editingCellsValuesMap[cellProps.key] ?? value;
+
+    const handleInputValueChange = newVal => {
+      // eslint-disable-next-line no-console
+      console.log("handleInputValueChange", newVal);
+      this.setState(prevState => {
+        const editingCellsValuesMap = {
+          ...prevState.editingCellsValuesMap,
+          [cellProps.key]: newVal,
+        };
+
+        return { editingCellsValuesMap };
+      });
+    };
+
+    let input = (
+      <Input
+        value={inputValue}
+        variant="unstyled"
+        size="xs"
+        onChange={e => handleInputValueChange(e.target.value)}
+      />
+    );
+
+    if (column.database_type === "TIMESTAMP") {
+      input = (
+        <DateInput
+          value={new Date(inputValue)}
+          onChange={e => handleInputValueChange(e.toISOString())}
+        />
+      );
+    }
+
+    if (column.database_type === "BOOLEAN") {
+      input = (
+        <Checkbox
+          checked={inputValue}
+          onChange={e => handleInputValueChange(e.target.checked)}
+        />
+      );
+    }
+
+    return (
+      <Group gap="1rem" noWrap>
+        <Box>{input}</Box>
+        <UIButton
+          leftIcon={<Icon name="check" />}
+          size="xs"
+          onClick={e => {
+            e.stopPropagation();
+
+            this.handleCellEditConfirm(clicked, cellProps);
+          }}
+        />
+      </Group>
     );
   }
 
@@ -459,11 +526,13 @@ class TableInteractive extends Component {
     });
   }
 
-  onVisualizationClick(clicked, element) {
-    const { onVisualizationClick } = this.props;
-    if (this.visualizationIsClickable(clicked)) {
-      onVisualizationClick({ ...clicked, element });
-    }
+  onVisualizationClick(clicked, element, cellProps) {
+    // const { onVisualizationClick } = this.props;
+    // if (this.visualizationIsClickable(clicked)) {
+    //   onVisualizationClick({ ...clicked, element });
+    // }
+
+    this.handleCellClickToEdit(clicked, element, cellProps);
   }
 
   getCellClickedObject(rowIndex, columnIndex) {
@@ -596,9 +665,10 @@ class TableInteractive extends Component {
     }
   };
 
-  cellRenderer = ({ key, style, rowIndex, columnIndex, isScrolling }) => {
+  cellRenderer = cellProps => {
+    const { key, style, rowIndex, columnIndex, isScrolling } = cellProps;
     const { data, settings, theme } = this.props;
-    const { dragColIndex, showDetailShortcut } = this.state;
+    const { dragColIndex, showDetailShortcut, editingCellsMap } = this.state;
     const { rows, cols } = data;
 
     const column = cols[columnIndex];
@@ -616,7 +686,11 @@ class TableInteractive extends Component {
         cellHeight={ROW_HEIGHT}
       />
     ) : (
-      this.getCellFormattedValue(value, columnSettings, clicked)
+      this.getCellFormattedValue(
+        this.state.editingCellsValuesMap[cellProps.key] ?? value,
+        columnSettings,
+        clicked,
+      )
       /* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */
     );
 
@@ -624,6 +698,7 @@ class TableInteractive extends Component {
     const isClickable = !isLink && !isScrolling;
 
     const isIDColumn = value != null && isID(column);
+    const isEdited = !!editingCellsMap[key];
 
     // Theme options from embedding SDK.
     const tableTheme = theme?.other?.table;
@@ -635,10 +710,10 @@ class TableInteractive extends Component {
     const isCollapsed = this.isColumnWidthTruncated(columnIndex);
 
     const handleClick = e => {
-      if (!isClickable || !this.visualizationIsClickable(clicked)) {
-        return;
-      }
-      this.onVisualizationClick(clicked, e.currentTarget);
+      // if (!isClickable || !this.visualizationIsClickable(clicked)) {
+      //   return;
+      // }
+      this.onVisualizationClick(clicked, e.currentTarget, cellProps);
     };
 
     const handleKeyUp = e => {
@@ -693,7 +768,10 @@ class TableInteractive extends Component {
         }
         tabIndex="0"
       >
-        {this.renderTableCellWrapper(cellData, { isIDColumn })}
+        {this.renderTableCellWrapper(
+          !isEdited ? cellData : this.renderEditingCell(clicked, cellProps),
+          { isIDColumn },
+        )}
 
         {isCollapsed && (
           <ExpandButton
@@ -1021,6 +1099,36 @@ class TableInteractive extends Component {
       },
       () => this.recomputeGridSize(),
     );
+
+  handleCellClickToEdit = (clicked, element, cellProps) => {
+    // eslint-disable-next-line no-console
+    console.log("handleCellClickToEdit", clicked, element, cellProps);
+
+    this.setState(prevState => {
+      const editingCellsMap = {
+        ...prevState.editingCellsMap,
+        [cellProps.key]: true,
+      };
+
+      return { editingCellsMap };
+    });
+  };
+
+  handleCellEditConfirm = (clicked, cellProps) => {
+    const newDataValue = this.state.editingCellsValuesMap[cellProps.key];
+
+    // eslint-disable-next-line no-console
+    console.log("handleCellEditConfirm", clicked, newDataValue);
+
+    this.setState(prevState => {
+      const editingCellsMap = {
+        ...prevState.editingCellsMap,
+        [cellProps.key]: false,
+      };
+
+      return { editingCellsMap };
+    });
+  };
 
   isColumnWidthTruncated = index => {
     const { columnIsExpanded } = this.state;
