@@ -67,7 +67,7 @@ Say you want to check if the current datetime falls between a [start date](#calc
 datetimeSubtract([Arrive By], 30, "minute")
 ```
 
-**On My Way** uses [case](../expressions/case.md) to check if the current datetime ([now](../expressions/now.md)) is [between](../expressions-list.md#between) the datetimes in **Arrive By** and **Depart At**:
+**On My Way** uses [case](../../expressions/case.md) to check if the current datetime ([now](../../expressions/now.md)) is [between](../../expressions-list.md#between) the datetimes in **Arrive By** and **Depart At**:
 
 ```
 case(between(now, [Depart At], [Arrive By]), "Yes", "No")
@@ -83,9 +83,9 @@ case(between(now, [Depart At], [Arrive By]), "Yes", "No")
 | Boolean                                                                                                                        | ❌                            |
 | JSON                                                                                                                           | ❌                            |
 
-We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
+We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../../configuring-metabase/timezones.md#data-types).
 
-If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page.
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page.
 
 ## Limitations
 
@@ -95,7 +95,7 @@ If you're using MongoDB, `datetimeSubtract` will only work on versions 5 and up.
 
 This section covers functions and formulas that work the same way as the Metabase `datetimeSubtract` expression, with notes on how to choose the best option for your use case.
 
-**[Metabase expressions](../expressions-list.md)**
+**[Metabase expressions](../../expressions-list.md)**
 
 - [datetimeAdd](#datetimeadd)
 
@@ -168,6 +168,6 @@ datetimeSubtract([Arrive By], 30, "minute")
 
 ## Further reading
 
-- [Custom expressions documentation](../expressions.md)
+- [Custom expressions documentation](../../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
 - [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start)

@@ -4,9 +4,9 @@ title: Setting up data uploads
 
 # Setting up data uploads
 
-This page covers how admins can set up data uploads so people can upload CSVs to your Metabase. For _how_ to upload data once this is set up, check out [Uploading data](../exploration-and-organization/uploads.md).
+This page covers how admins can set up data uploads so people can upload CSVs to your Metabase. For _how_ to upload data once this is set up, check out [Uploading data](../../exploration-and-organization/uploads.md).
 
-![Upload CSV data to a collection in Metabase](./images/upload-to-collection.png)
+![Upload CSV data to a collection in Metabase](../images/upload-to-collection.png)
 
 Uploading CSV data is best suited for ad hoc analysis of spreadsheet data. If you have a lot of data, or will need to update or add to that data regularly, we recommend setting up a way to load that data into a database directly, then connecting Metabase to that database.
 
@@ -16,10 +16,10 @@ To manage upload settings, admins can hit cmd/ctrl + K and search for "Settings 
 
 ## Databases that support uploads
 
-- [PostgreSQL](../databases/connections/postgresql.md)
-- [MySQL](../databases/connections/mysql.md)
-- [Redshift](../databases/connections/redshift.md)
-- [ClickHouse](../developers-guide/partner-and-community-drivers.md#partner-drivers)
+- [PostgreSQL](../../databases/connections/postgresql.md)
+- [MySQL](../../databases/connections/mysql.md)
+- [Redshift](../../databases/connections/redshift.md)
+- [ClickHouse](../../developers-guide/partner-and-community-drivers.md#partner-drivers)
 
 ## Setting up uploads
 
@@ -38,8 +38,8 @@ You can also upload data to the Sample Database included with Metabase (an H2 da
 
 For more, check out:
 
-- [Adding and managing databases](./connecting.md)
-- [Database users, roles, and privileges](./users-roles-privileges.md#privileges-to-enable-uploads)
+- [Adding and managing databases](../connecting.md)
+- [Database users, roles, and privileges](../users-roles-privileges.md#privileges-to-enable-uploads)
 
 ## Select the database and schema that you want to store the data in
 
@@ -51,7 +51,7 @@ If Metabase is connected to a database using a database user account with write 
 When people upload a CSV to a collection, Metabase will:
 
 - Create a table to store that data in the database and schema that the Admin selected to store uploads.
-- Create a [model](../data-modeling/models.md) that wraps the uploaded table, and save that model to the collection the person uploaded the CSV data to.
+- Create a [model](../../data-modeling/models.md) that wraps the uploaded table, and save that model to the collection the person uploaded the CSV data to.
 
 ## Specify a prefix for Metabase to prepend to the uploaded tables
 
@@ -59,7 +59,7 @@ Admins can optionally specify a string of text to add in front of the table that
 
 ## Add people to a group with data access to the upload schema
 
-In order to upload CSVs, a person must be in a group with **View data** access of "Can view" and **Create queries** of Query builder access or higher to the schema you've selected to store your uploaded data. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
+In order to upload CSVs, a person must be in a group with **View data** access of "Can view" and **Create queries** of Query builder access or higher to the schema you've selected to store your uploaded data. See [groups](../../people-and-groups/managing.md) and [data permissions](../../permissions/data.md).
 
 ## Primary key auto-generation
 
@@ -77,7 +77,7 @@ CSV files cannot exceed 50 MB in size.
 
 > While Metabase limits uploads to 50 MB, the server you use to run your Metabase may impose a lower limit. For example, the default client upload limit for [NGINX is 1 MB](https://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size). So you may need to change your server settings to allow uploads up to 50 MB. People on Metabase Cloud don't have to worry about this.
 
-If you have a file larger than 50 MB, the workaround here is to split the data into multiple and [append those files to an existing model](../exploration-and-organization/uploads.md#appending-to-a-model-created-by-an-upload)
+If you have a file larger than 50 MB, the workaround here is to split the data into multiple and [append those files to an existing model](../../exploration-and-organization/uploads.md#appending-to-a-model-created-by-an-upload)
 
 ## Date formats
 
@@ -138,7 +138,7 @@ Offsets:
 
 You can move a model to Trash by clicking on the three dots in the upper right and selecting **Move to Trash**.
 
-For deleting models completely, see [Deleting items permanently](../exploration-and-organization/delete-and-restore.md).
+For deleting models completely, see [Deleting items permanently](../../exploration-and-organization/delete-and-restore.md).
 
 ### Deleting tables created by uploads
 

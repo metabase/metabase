@@ -6,27 +6,27 @@ title: Delete and restore
 
 Sometimes your questions, dashboards, models, or collections outlive their usefulness. You can send outdated items to **Trash**.
 
-![Move to trash](./images/move-to-trash.png)
+![Move to trash](../images/move-to-trash.png)
 
-Items in **Trash** won't show up in search (unless you use [advanced search filters](./exploration.md)), and you won't be able to use them to create new questions and dashboards.
+Items in **Trash** won't show up in search (unless you use [advanced search filters](../exploration.md)), and you won't be able to use them to create new questions and dashboards.
 
 Moving items to Trash isn't permanent; you'll be able to restore them to their original parent collection, or move them to another collection. But if you'd like to delete items permanently, [you can do that too](#permanently-deleting-items).
 
-Deleting an item will affect any [dashboards](../dashboards/introduction.md), [subscriptions](../dashboards/subscriptions.md), or [SQL questions](../questions/native-editor/referencing-saved-questions-in-queries.md) that depend on that item, so be careful!
+Deleting an item will affect any [dashboards](../../dashboards/introduction.md), [subscriptions](../../dashboards/subscriptions.md), or [SQL questions](../../questions/native-editor/referencing-saved-questions-in-queries.md) that depend on that item, so be careful!
 
 ## See items in Trash
 
 You can find Trash at the bottom of the left navigation sidebar below all the collections:
 
-![Trash](./images/trash.png)
+![Trash](../images/trash.png)
 
-You can think of Trash as a special type of collection. In **Trash**, you can see deleted items from the collections that you have [Curate permissions](../permissions/collections.md#collection-permission-levels) on. You can order deleted items by type (questions, dashboards, etc), time it was deleted, and who deleted it.
+You can think of Trash as a special type of collection. In **Trash**, you can see deleted items from the collections that you have [Curate permissions](../../permissions/collections.md#collection-permission-levels) on. You can order deleted items by type (questions, dashboards, etc), time it was deleted, and who deleted it.
 
 You;'ll be able to see the contents of deleted dashboards, questions, and models in Trash, but you won't be able to modify them.
 
 ## Search in Trash
 
-To find items in Trash, you can use [advanced search](./exploration.md) with a "Search items in trash" toggle.
+To find items in Trash, you can use [advanced search](../exploration.md) with a "Search items in trash" toggle.
 
 ## Deleting and restoring items
 
@@ -59,7 +59,7 @@ If the item's original parent collection has been deleted as well, you won't see
 
 ### Cleaning up collections
 
-To move older, unused items in bulk to the trash, check out [cleaning up collections](./collections.md#cleaning-up-collections).
+To move older, unused items in bulk to the trash, check out [cleaning up collections](../collections.md#cleaning-up-collections).
 
 ## How deleting an item affects related items
 
@@ -121,20 +121,20 @@ You won't see archived Events and Timelines in Trash. To see archived events and
 
 ## Deleting and restoring SQL snippets
 
-SQL snippets can be archived and unarchived. See [Archiving SQL snippets](../questions/native-editor/sql-snippets.md#archiving-snippets).
+SQL snippets can be archived and unarchived. See [Archiving SQL snippets](../../questions/native-editor/sql-snippets.md#archiving-snippets).
 
-You won't see archived SQL snippets in Trash. To see archived SQL Snippets, you need to [access them from the Snippet menu](../questions/native-editor/sql-snippets.md#snippet-menu).
+You won't see archived SQL snippets in Trash. To see archived SQL Snippets, you need to [access them from the Snippet menu](../../questions/native-editor/sql-snippets.md#snippet-menu).
 
 ## Deleting segments
 
-Segments can be retired. See [Retiring Segments](../data-modeling/segments.md#editing-and-retiring-segments).
+Segments can be retired. See [Retiring Segments](../../data-modeling/segments.md#editing-and-retiring-segments).
 
 You won't see retired Segments in Trash.
 
 ## Deleting subscriptions and alerts
 
-See [Deleting a subscription](../dashboards/subscriptions.md#deleting-a-subscription) and [Deleting alerts](../questions/sharing/alerts.md#editing-and-deleting-alerts).
+See [Deleting a subscription](../../dashboards/subscriptions.md#deleting-a-subscription) and [Deleting alerts](../../questions/sharing/alerts.md#editing-and-deleting-alerts).
 
 ## Deleting databases
 
-See [Deleting databases](../databases/connecting.md#deleting-databases).
+See [Deleting databases](../../databases/connecting.md#deleting-databases).

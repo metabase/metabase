@@ -24,7 +24,7 @@ concat(value1, value2, ...)
 
 ### Metabase will use unformatted values for non-string columns
 
-When you use non-string columns in `concat`, Metabase will ignore any [formatting](../../../data-modeling/formatting.md) that you applied to the columns when converting the column to a string.
+When you use non-string columns in `concat`, Metabase will ignore any [formatting](../../../../data-modeling/formatting.md) that you applied to the columns when converting the column to a string.
 
 For example, if you formatted a number to display only the first two decimal digits in the table results, the results of `concat` would still include additional decimal digits (if any) found in the raw results.
 
@@ -105,5 +105,5 @@ concat([City], ", ", [Country])
 
 ## Further reading
 
-- [Custom expressions documentation](../expressions.md)
+- [Custom expressions documentation](../../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)

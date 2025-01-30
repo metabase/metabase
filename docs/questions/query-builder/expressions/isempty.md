@@ -12,7 +12,7 @@ title: Isempty
 isempty(text column)
 ```
 
-You can use `isempty` in [custom filters](../expressions.md#filter-expressions-and-conditionals), or as the condition for conditional aggregations [`CountIf`](../expressions/countif.md) and [`SumIf`](../expressions/sumif.md). To create a custom column using `isempty`, you must combine `isempty` with another function that accepts boolean values, like [`case`](./case.md).
+You can use `isempty` in [custom filters](../../expressions.md#filter-expressions-and-conditionals), or as the condition for conditional aggregations [`CountIf`](../../expressions/countif.md) and [`SumIf`](../../expressions/sumif.md). To create a custom column using `isempty`, you must combine `isempty` with another function that accepts boolean values, like [`case`](../case.md).
 
 ## How Metabase handles empty strings and null values
 
@@ -29,7 +29,7 @@ The table below shows you examples of the output of `isempty`.
 ## Creating a boolean custom column
 
 To create a custom column using `isempty`, you must combine `isempty` with another function.
-For example, if you want to create a custom column that contains `true` when the `Feedback` column is empty or null, and `false` otherwise, you can use the [`case expression`](./case.md) :
+For example, if you want to create a custom column that contains `true` when the `Feedback` column is empty or null, and `false` otherwise, you can use the [`case expression`](../case.md) :
 
 ```
 case(isempty([Feedback]), true, false)
@@ -37,7 +37,7 @@ case(isempty([Feedback]), true, false)
 
 ## Replacing empty strings with another value
 
-You can combine `isempty` with the [`case` expression](./case.md) to replace empty strings with something more descriptive.
+You can combine `isempty` with the [`case` expression](../case.md) to replace empty strings with something more descriptive.
 
 For example, you can create a new custom column that will contain `"No feedback"` when the original `[Feedback]` column is empty or null, and the feedback value when `[Feedback]` is has a non-empty value. The custom expression to do it is:
 
@@ -64,7 +64,7 @@ case(isempty([Feedback]), "No feedback.", [Feedback])
 ## Limitations
 
 - To create a custom column you must combine `isempty` with another expression that accepts boolean arguments (i.e., `true` or `false`).
-- `isempty` only accepts one value at a time. If you need to deal with empty strings from multiple columns, you'll need to use multiple `isempty` expressions with the [case expression](./case.md).
+- `isempty` only accepts one value at a time. If you need to deal with empty strings from multiple columns, you'll need to use multiple `isempty` expressions with the [case expression](../case.md).
 
 ## Related functions
 

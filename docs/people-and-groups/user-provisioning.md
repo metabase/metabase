@@ -15,7 +15,7 @@ Metabase supports user provisioning via the System for Cross-domain Identity Man
 
 ## Setting up user provisioning
 
-![Setting up user provisioning with SCIM in Metabase](./images/user-provisioning.png)
+![Setting up user provisioning with SCIM in Metabase](../images/user-provisioning.png)
 
 To set up user provisioning. Click on the settings **Gear** icon in the upper right and navigate to **Admin settings** > **Settings**> **Authentication**.
 
@@ -61,6 +61,6 @@ If you're not using SCIM to provision user accounts, you can optionally have Met
 
 ## Further reading
 
-- [Authenticating with SAML](./authenticating-with-saml.md)
-- [SAML with Okta](./saml-okta.md)
-- [SAML with Microsoft Entra ID](./saml-azure.md)
+- [Authenticating with SAML](../authenticating-with-saml.md)
+- [SAML with Okta](../saml-okta.md)
+- [SAML with Microsoft Entra ID](../saml-azure.md)

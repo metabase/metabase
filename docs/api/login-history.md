@@ -14,4 +14,4 @@ Fetch recent logins for the current user.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

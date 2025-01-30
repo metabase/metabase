@@ -66,15 +66,15 @@ substring([Mission ID], (1 + length([Mission ID]) - 3), 3)
 
 ## Limitations
 
-`substring` extracts text by counting a fixed number of characters. If you need to extract text based on some more complicated logic, try [`regexextract`](../expressions-list.md#regexextract).
+`substring` extracts text by counting a fixed number of characters. If you need to extract text based on some more complicated logic, try [`regexextract`](../../expressions-list.md#regexextract).
 
-And if you only need to clean up extra whitespace around your text, you can use the [`trim`](../expressions-list.md#trim), [`ltrim`](../expressions-list.md#ltrim), or [`rtrim`](../expressions-list.md#rtrim) expressions instead.
+And if you only need to clean up extra whitespace around your text, you can use the [`trim`](../../expressions-list.md#trim), [`ltrim`](../../expressions-list.md#ltrim), or [`rtrim`](../../expressions-list.md#rtrim) expressions instead.
 
 ## Related functions
 
 This section covers functions and formulas that work the same way as the Metabase `substring` expression, with notes on how to choose the best option for your use case.
 
-**[Metabase expressions](../expressions-list.md)**
+**[Metabase expressions](../../expressions-list.md)**
 
 - [regexextract](#regexextract)
 
@@ -86,7 +86,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 ### Regexextract
 
-Use [regexextract](./regexextract.md) if you need to extract text based on more specific rules. For example, you could get the agent ID with a regex pattern that finds the last occurrence of "00" (and everything after it):
+Use [regexextract](../regexextract.md) if you need to extract text based on more specific rules. For example, you could get the agent ID with a regex pattern that finds the last occurrence of "00" (and everything after it):
 
 ```
 regexextract([Mission ID], ".+(00.+)$")
@@ -148,5 +148,5 @@ substring([Mission ID], 9, 3)
 
 ## Further reading
 
-- [Custom expressions documentation](../expressions.md)
+- [Custom expressions documentation](../../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)

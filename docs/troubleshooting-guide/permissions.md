@@ -32,12 +32,12 @@ If you have a different issue, see [related problems](#do-you-have-a-different-p
 
 - [A user group has the wrong access to a table or schema][table-schema-access].
 - [Getting a "permission denied" error message][permission-denied].
-- [Checking someone's access to a table or schema](./data-permissions.md#checking-someones-access-to-a-table-or-schema)
+- [Checking someone's access to a table or schema](../data-permissions.md#checking-someones-access-to-a-table-or-schema)
 
 ## Do you have a different problem?
 
 - [I can't save my question or dashboard][proxies].
-- [I can't see my tables](./cant-see-tables.md).
+- [I can't see my tables](../cant-see-tables.md).
 
 ## Are you still stuck?
 

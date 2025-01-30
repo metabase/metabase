@@ -64,7 +64,7 @@ Use a query’s average execution time to determine how long to cache the query'
 
 Metabase will recalculate a query's average execution time whenever it runs the query against the database to refresh the cached results. So if the first time Metabase runs the query against the database, it takes 5 minutes to return results, the average execution time will be 5 minutes. If the next query against the database takes 7 minutes to return, Metabase will update the average to 6 minutes (the average of 5 and 7 is 6).
 
-On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, you can view querying and caching stats in the [Usage analytics](../usage-and-performance-tools/usage-analytics.md) collection.
+On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, you can view querying and caching stats in the [Usage analytics](../../usage-and-performance-tools/usage-analytics.md) collection.
 
 ### Don’t cache results
 
@@ -91,7 +91,7 @@ Click on the button next to **Default policy**, and select a [cache invalidation
 
 {% include plans-blockquote.html feature="Database caching" %}
 
-![Database caching settings in the Admin settings under the Performance tab](./images/data-caching-settings.png)
+![Database caching settings in the Admin settings under the Performance tab](../images/data-caching-settings.png)
 
 Same as the default caching policy, though you can set a caching policy for specific databases.
 
@@ -101,7 +101,7 @@ If you have databases connected to Metabase that are set to **Use default** poli
 
 {% include plans-blockquote.html feature="Dashboard caching" %}
 
-To set a caching policy for a dashboard, you must have [curate access](../permissions/collections.md#curate-access) to the dashboard's collection.
+To set a caching policy for a dashboard, you must have [curate access](../../permissions/collections.md#curate-access) to the dashboard's collection.
 
 1. Go to your dashboard.
 2. Click on the **info** icon.
@@ -113,7 +113,7 @@ To set a caching policy for a dashboard, you must have [curate access](../permis
 
 {% include plans-blockquote.html feature="Question caching" %}
 
-To set a caching policy for a question, you must have [curate access](../permissions/collections.md#curate-access) to the question's collection.
+To set a caching policy for a question, you must have [curate access](../../permissions/collections.md#curate-access) to the question's collection.
 
 1. Go to your question.
 2. Click on the **info** icon.
@@ -141,10 +141,10 @@ To clear the cache and refresh the results:
 
 ## Caching location
 
-If you're self-hosting Metabase, cached question results will be saved to your [application database](../installation-and-operation/configuring-application-database.md).
+If you're self-hosting Metabase, cached question results will be saved to your [application database](../../installation-and-operation/configuring-application-database.md).
 
 If you're using Metabase Cloud, cached question results will be saved to Metabase's servers in the United States (as our Cloud service manages your application database for you.)
 
 ## Further reading
 
-- [Model persistence](../data-modeling/model-persistence.md)
+- [Model persistence](../../data-modeling/model-persistence.md)

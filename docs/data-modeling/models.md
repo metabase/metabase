@@ -14,7 +14,7 @@ Models:
 - Show up higher in search results and get highlighted when other users start new questions to promote reuse.
 - Live in collections to keep them separate from messy database schemas.
 - Can [surface individual records in search results](#surface-individual-records-in-search-by-matching-against-this-column).
-- Can be [persisted for faster loading](./model-persistence.md).
+- Can be [persisted for faster loading](../model-persistence.md).
 
 For a deep dive on why and how to use models, check out our [Learn article on models][learn-models].
 
@@ -36,7 +36,7 @@ First, search for models that already exist. If you can't find one that meets yo
 - [from scratch](#create-a-model-from-scratch), or
 - [from a saved question](#create-a-model-from-a-saved-question).
 
-Models you create are automatically [pinned to the current collection](../exploration-and-organization/collections.md#pinned-items).
+Models you create are automatically [pinned to the current collection](../../exploration-and-organization/collections.md#pinned-items).
 
 ### Create a model from scratch
 
@@ -51,7 +51,7 @@ Models you create are automatically [pinned to the current collection](../explor
 2. Save the question.
 3. Click on the **...** > **Turn this into a model**.
 
-![Turn a saved question into a model](./images/turn-into-a-model.png)
+![Turn a saved question into a model](../images/turn-into-a-model.png)
 
 ## Model detail page
 
@@ -60,13 +60,13 @@ To view a model's detail page:
 - From a collection: click on the **book** icon next to a model.
 - From a model: click on the **info** button in the upper right, then click **Model details**.
 
-![Model detail page](./images/model-detail.png)
+![Model detail page](../images/model-detail.png)
 
 Here you'll see several tabs:
 
 - **Used by**: lists the items based on the model.
 - **Schema**: lists the fields in the model.
-- **Actions**: lists the actions in the model, and allows you to create new [actions](../actions/start.md).
+- **Actions**: lists the actions in the model, and allows you to create new [actions](../../actions/start.md).
 
 The model detail page also shows some basic info about the model:
 
@@ -102,7 +102,7 @@ For models based on SQL queries, you can tell Metabase if the column has the sam
 
 You can set the [column type][column-type]. The default is "No special type".
 
-If your model is based on a SQL query and you want people to be able to explore the results with the query builder, you'll need to set the [column type](./field-types.md) for each column in your model.
+If your model is based on a SQL query and you want people to be able to explore the results with the query builder, you'll need to set the [column type](../field-types.md) for each column in your model.
 
 ### This column should appear in...
 
@@ -136,7 +136,7 @@ You can edit a model's query by clicking on the down arrow next to the model's n
 
 See [asking questions][question].
 
-## [Refer to a model in the SQL query editor](../questions/native-editor/referencing-saved-questions-in-queries.md)
+## [Refer to a model in the SQL query editor](../../questions/native-editor/referencing-saved-questions-in-queries.md)
 
 You can refer to a model in a SQL query just like you can refer to a saved question:
 
@@ -162,23 +162,23 @@ You can also use the data reference sidebar to browse the models available. To o
 
 ## Model version history
 
-For [questions](../questions/start.md), [dashboards](../dashboards/start.md), and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes and revert to previous versions.
+For [questions](../../questions/start.md), [dashboards](../../dashboards/start.md), and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes and revert to previous versions.
 
-See [History](../exploration-and-organization/history.md).
+See [History](../../exploration-and-organization/history.md).
 
 ## Delete a model
 
 You can move outdated or unneeded models to trash, or delete them permanently. Deleting a model will affect questions that use it as a data source.
 
-See [Deleting and restoring items](../exploration-and-organization/delete-and-restore.md).
+See [Deleting and restoring items](../../exploration-and-organization/delete-and-restore.md).
 
 ## Verifying a model
 
-See [content verification](../exploration-and-organization/content-verification.md).
+See [content verification](../../exploration-and-organization/content-verification.md).
 
 ## Model persistence
 
-See [Model persistence](./model-persistence.md)
+See [Model persistence](../model-persistence.md)
 
 ## Further reading
 

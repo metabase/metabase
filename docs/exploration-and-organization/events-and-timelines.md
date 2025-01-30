@@ -12,7 +12,7 @@ Events and timelines are a way to capture that chronological knowledge and make 
 
 ## Events
 
-![An event on a time series](./images/event-on-a-time-series.png)
+![An event on a time series](../images/event-on-a-time-series.png)
 
 An event is basically a date + a title + a description + an icon. You can add events to Metabase to show important milestones, launches, or anything else, right alongside your data.
 
@@ -22,7 +22,7 @@ Metabase will only display events on time series charts when viewing an individu
 
 Timelines are groups of events associated with a [collection](collections.md).
 
-![Timeline sidebar](./images/timeline-sidebar.png)
+![Timeline sidebar](../images/timeline-sidebar.png)
 
 For example, you may want to have a timeline that contains important email or sales dates, or an outages timeline that tracks downtime. You can move events between timelines, and move timelines from collection to collection.
 
@@ -36,7 +36,7 @@ Collections can have timelines, and timelines can contain events. In practice wh
 
 When viewing a [collection](collections.md), you can view, add, or edit events by clicking on the **calendar** icon in the upper right.
 
-![In a collection, view or add events by clicking on the calendar icon](./images/event-calendar.png)
+![In a collection, view or add events by clicking on the calendar icon](../images/event-calendar.png)
 
 Once you create an event, the event will show up in charts in the collection, provided:
 
@@ -45,7 +45,7 @@ Once you create an event, the event will show up in charts in the collection, pr
 
 You'll see an icon along the x-axis that plots the event. A vertical line will extend from the event to show when the data plotted on the chart intersects with the event.
 
-![An event on a chart](./images/example-event.png)
+![An event on a chart](../images/example-event.png)
 
 ## Adding events when viewing a question
 
@@ -74,7 +74,7 @@ To permanently hide the timeline and its events, you'll need to [archive the tim
 
 ## Edit an event
 
-![Edit an event](./images/edit-an-event.png)
+![Edit an event](../images/edit-an-event.png)
 
 To edit an event:
 
@@ -96,7 +96,7 @@ To archive a timeline:
 
 ### View archived events and timelines
 
-> Archived events and timelines can only be viewed from the collection. They don't show up in the [Trash](../exploration-and-organization/delete-and-restore.md).
+> Archived events and timelines can only be viewed from the collection. They don't show up in the [Trash](../../exploration-and-organization/delete-and-restore.md).
 
 To view (and resurrect) archived timelines and events:
 
@@ -111,14 +111,14 @@ Then you can delete the archived events from the **View archived events** modal,
 
 ## Event and timeline permissions
 
-Event and timeline permissions depend on your [collection permissions](../permissions/collections.md).
+Event and timeline permissions depend on your [collection permissions](../../permissions/collections.md).
 
 - **View access**: you can view the collection's events and timelines. You can also temporarily apply timelines and events to time series in other collections.
 - **Curate access**. Anyone with curate access to a collection can add events and timelines to that collection.
 
 ### Make a timeline and its events available for everyone
 
-If you want the event and timeline to be available to everyone, create the timeline in a collection that the [All Users group](../people-and-groups/managing.md#all-users) has access to, as by default everyone is in the All Users group.
+If you want the event and timeline to be available to everyone, create the timeline in a collection that the [All Users group](../../people-and-groups/managing.md#all-users) has access to, as by default everyone is in the All Users group.
 
 Note that for questions outside of that collection, you can only temporarily apply those timelines to charts. The timelines won't appear automatically when you reload the chart.
 

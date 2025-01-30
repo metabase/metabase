@@ -8,7 +8,7 @@ title: Regexextract
 
 `regexextract` uses [regular expressions (regex)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) to get a specific part of your text.
 
-`regexextract` is ideal for text that has little to no structure, like URLs or freeform survey responses. If you're working with strings in predictable formats like SKU numbers, IDs, or other types of codes, check out the simpler [substring](../expressions/substring.md) expression instead.
+`regexextract` is ideal for text that has little to no structure, like URLs or freeform survey responses. If you're working with strings in predictable formats like SKU numbers, IDs, or other types of codes, check out the simpler [substring](../../expressions/substring.md) expression instead.
 
 Use `regexextract` to create custom columns with shorter, more readable labels for things like:
 
@@ -39,7 +39,7 @@ regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 
 Here, the regex pattern [`^[^?#]+\?` matches all valid URL strings](https://www.oreilly.com/library/view/regular-expressions-cookbook/9780596802837/ch07s13.html). You can replace `utm_campaign=` with whatever query parameter you like. At the end of the regex pattern, the [capturing group](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Groups_and_Backreferences) `(.*)` gets all of the characters that appear after the query parameter `utm_campaign=`.
 
-Now, you can use **Campaign Name** in places where you need clean labels, such as [filter dropdown menus](../../../dashboards/filters.md), [charts](../../sharing/visualizing-results.md), and [embedding parameters](../../../embedding/static-embedding-parameters.md).
+Now, you can use **Campaign Name** in places where you need clean labels, such as [filter dropdown menus](../../../../dashboards/filters.md), [charts](../../../sharing/visualizing-results.md), and [embedding parameters](../../../../embedding/static-embedding-parameters.md).
 
 ## Accepted data types
 
@@ -61,7 +61,7 @@ Regex can be a dark art. You have been warned.
 
 This section covers functions and formulas that work the same way as the Metabase `regexextract` expression, with notes on how to choose the best option for your use case.
 
-**[Metabase expressions](../expressions-list.md)**
+**[Metabase expressions](../../expressions-list.md)**
 
 - [substring](#substring)
 
@@ -73,7 +73,7 @@ This section covers functions and formulas that work the same way as the Metabas
 
 ### Substring
 
-Use [substring](../expressions/substring.md) when you want to search text that has a consistent format (the same number of characters, and the same relative order of those characters).
+Use [substring](../../expressions/substring.md) when you want to search text that has a consistent format (the same number of characters, and the same relative order of those characters).
 
 For example, you wouldn't be able to use `substring` to get the query parameter from the [URL sample data](#searching-and-cleaning-text), because the URL paths and the parameter names both have variable lengths.
 
@@ -138,5 +138,5 @@ regexextract([URL], "^[^?#]+\?utm_campaign=(.*)")
 
 ## Further reading
 
-- [Custom expressions documentation](../expressions.md)
+- [Custom expressions documentation](../../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)

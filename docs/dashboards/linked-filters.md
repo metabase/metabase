@@ -8,7 +8,7 @@ You can **link filters** on a dashboard so that a child filter limits its values
 
 For example, let's say you want a filter for the state column to restrict the values available to a filter on the city column, so that if someone selects a state, they'll only be able to select cities in that state. To do this, you can link the city filter (child) to a (parent) state filter.
 
-![Linked filters](./images/field-values-linked-filters.png)
+![Linked filters](../images/field-values-linked-filters.png)
 
 ## Set up tables for linked filters
 
@@ -17,16 +17,16 @@ You can only link dashboard filters that are wired to database columns (not cust
 Filters can only be linked when they're connected to columns that have an explicit relationship in the table metadata. By relationship, we mean that the columns should be either:
 
 - In the same table.
-- In two different tables that have a foreign key relationship specified in the [table metadata](../data-modeling/metadata-editing.md).
-- In two different tables that have a foreign key relationships to one or more intermediate tables, as specified in the [table metadata](../data-modeling/metadata-editing.md)
+- In two different tables that have a foreign key relationship specified in the [table metadata](../../data-modeling/metadata-editing.md).
+- In two different tables that have a foreign key relationships to one or more intermediate tables, as specified in the [table metadata](../../data-modeling/metadata-editing.md)
 
-![Setting up foreign key in table metadata](./images/foreign-key-linked-filters.png)
+![Setting up foreign key in table metadata](../images/foreign-key-linked-filters.png)
 
-If you try to set up linked filters between two columns that aren't connected, Metabase won't show an error, but you'll see that the values in the child filter aren't restricted by the parent filter. For more troubleshooting tips, see [Troubleshooting link filters](../troubleshooting-guide/linked-filters.md).
+If you try to set up linked filters between two columns that aren't connected, Metabase won't show an error, but you'll see that the values in the child filter aren't restricted by the parent filter. For more troubleshooting tips, see [Troubleshooting link filters](../../troubleshooting-guide/linked-filters.md).
 
 ## Set up linked filters
 
-You can link a child filter to one or more parent filters. The child filter must be either an ID, Location, or Text or Category filter. Parent filters can be any [filter type](./filters.md).
+You can link a child filter to one or more parent filters. The child filter must be either an ID, Location, or Text or Category filter. Parent filters can be any [filter type](../filters.md).
 
 To link a child filter on a dashboard to one or more parent filters:
 
@@ -35,7 +35,7 @@ To link a child filter on a dashboard to one or more parent filters:
 3. In the filter settings sidebar, switch to **Linked filters** tab.
 4. Select the parent filter(s).
 
-![Linked filters](./images/linked-filter.png)
+![Linked filters](../images/linked-filter.png)
 
 The filter(s) you select in the **linked filters** tab will be the parent filter(s), that is, the filter(s) that limit the values this (child) filter that you're currently editing.
 
@@ -56,10 +56,10 @@ Metabase uses database column metadata to populate values for linked filters, wh
 
 - You can't create linked filters on custom columns
 
-- Native/SQL questions must have a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Basic SQL variables aren't connected to database columns, so they won't work for linked filters.
+- Native/SQL questions must have a [field filter](../../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Basic SQL variables aren't connected to database columns, so they won't work for linked filters.
 
 - You can't link filters that use "Custom List" or "From another model or question" as their value's source.
 
 ## Troubleshooting linked filters
 
-If you're not seeing what you expect with linked filters, make sure that your table relationships are [set up to support linked filters](#set-up-tables-for linked-filters) . See [Troubleshooting linked filters](../troubleshooting-guide/linked-filters.md) for more troubleshooting information.
+If you're not seeing what you expect with linked filters, make sure that your table relationships are [set up to support linked filters](#set-up-tables-for linked-filters) . See [Troubleshooting linked filters](../../troubleshooting-guide/linked-filters.md) for more troubleshooting information.

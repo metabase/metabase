@@ -86,4 +86,4 @@ Update the [[Timeline]] with `id`. Returns the timeline without events. Archivin
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

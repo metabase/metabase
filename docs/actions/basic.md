@@ -4,13 +4,13 @@ title: Basic actions
 
 # Basic actions
 
-Basic actions are "implicit" [actions](./introduction.md) that do things that people typically want to do when interacting with a database: Create, Update, Delete. Basic actions auto-track the schema of the source table backing the model. By auto-track the schema, we mean that Metabase will create action forms for people to fill out that include all of the fields from the primary source table that underlies that model.
+Basic actions are "implicit" [actions](../introduction.md) that do things that people typically want to do when interacting with a database: Create, Update, Delete. Basic actions auto-track the schema of the source table backing the model. By auto-track the schema, we mean that Metabase will create action forms for people to fill out that include all of the fields from the primary source table that underlies that model.
 
-If you only want to give people the option to update a subset of columns, or update columns in multiple tables, you can write a [custom action](./custom.md).
+If you only want to give people the option to update a subset of columns, or update columns in multiple tables, you can write a [custom action](../custom.md).
 
 ## Creating basic actions
 
-Once actions are enabled, you can create basic actions on a new or existing [model](../data-modeling/models.md) that only wraps a single database table.
+Once actions are enabled, you can create basic actions on a new or existing [model](../../data-modeling/models.md) that only wraps a single database table.
 
 1. Select a model and click on the **info** button, then click on **Model detail**.
 2. On the model detail page, click on the **Actions** tab.
@@ -26,7 +26,7 @@ Basic actions are only available for "basic" models:
 
 ## Basic action types
 
-![Basic actions](./images/basic-actions.png)
+![Basic actions](../images/basic-actions.png)
 
 Basic actions include:
 
@@ -54,7 +54,7 @@ When setting up actions on a dashboard, you can either prompt the person to fill
 
 The Update basic action requires you to pass a value for the entity key.
 
-See [Actions in dashboards](../dashboards/actions.md).
+See [Actions in dashboards](../../dashboards/actions.md).
 
 ## Archiving basic actions
 
@@ -64,10 +64,10 @@ Because basic actions are made of magic, you cannot archive them. You can just t
 
 If you have basic actions enabled for a model, you can click on an individual record to view its object detail. From that object detail model, you can click on the ellipses (**...**) and select update or delete to modify that specific record.
 
-![Update record from object detail view](./images/update-record.png)
+![Update record from object detail view](../images/update-record.png)
 
 ## Further reading
 
-- [Introduction to actions](./introduction.md)
-- [Custom actions](./custom.md)
-- [Actions in dashboards](../dashboards/actions.md)
+- [Introduction to actions](../introduction.md)
+- [Custom actions](../custom.md)
+- [Actions in dashboards](../../dashboards/actions.md)

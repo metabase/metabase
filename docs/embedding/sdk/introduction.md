@@ -16,7 +16,7 @@ The Embedded analytics SDK is currently in beta, but you should check it out and
 
 To give you and idea of what's possible with the SDK, we've put together example sites at [metaba.se/sdk-demo](https://metaba.se/sdk-demo). Navigate between three different shop websites: The Stitch, Luminara Beauty, and Pug & Play. Check them out and poke around their products and analytics sections, as well as the New Question and New Dashboard options.
 
-![Pug and play example app built with embedding SDK](../images/pug-and-play.png)
+![Pug and play example app built with embedding SDK](../../images/pug-and-play.png)
 
 ## Embedded analytics SDK prerequisites
 
@@ -39,9 +39,9 @@ npx @metabase/embedding-sdk-react@latest start
 
 Only works locally, and you don't need a license key (but you can use one to demo more features).
 
-See more about the [CLI quickstart](./quickstart-cli.md).
+See more about the [CLI quickstart](../quickstart-cli.md).
 
-We also have a [quickstart with a sample app that uses JWT](./quickstart.md).
+We also have a [quickstart with a sample app that uses JWT](../quickstart.md).
 
 ## Installation
 
@@ -67,17 +67,17 @@ yarn add @metabase/embedding-sdk-react@51-stable
 
 ## Developing with the embedded analytics SDK
 
-- [Quickstart with sample app and JWT](./quickstart.md)
-- [Quickstart with CLI and your data](./quickstart-cli.md)
-- [Questions](./questions.md)
-- [Dashboards](./dashboards.md)
-- [Collections](./collections.md)
-- [Appearance](./appearance.md)
-- [Plugins](./plugins.md)
-- [Versioning](./version.md)
-- [Authentication](./authentication.md)
-- [Config](./config.md)
-- [Notes on Next.js](./next-js.md)
+- [Quickstart with sample app and JWT](../quickstart.md)
+- [Quickstart with CLI and your data](../quickstart-cli.md)
+- [Questions](../questions.md)
+- [Dashboards](../dashboards.md)
+- [Collections](../collections.md)
+- [Appearance](../appearance.md)
+- [Plugins](../plugins.md)
+- [Versioning](../version.md)
+- [Authentication](../authentication.md)
+- [Config](../config.md)
+- [Notes on Next.js](../next-js.md)
 
 ## Embedding SDK source code
 

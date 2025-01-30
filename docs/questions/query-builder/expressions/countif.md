@@ -18,11 +18,11 @@ Example: in the table below, `CountIf([Plan] = "Basic")` would return 3.
 | 4   | Business |
 | 5   | Premium  |
 
-> [Aggregations](../expressions-list.md#aggregations) like `CountIf` should be added to the query builder's [**Summarize** menu](../../query-builder/introduction.md#summarizing-and-grouping-by) > **Custom Expression** (scroll down in the menu if needed).
+> [Aggregations](../../expressions-list.md#aggregations) like `CountIf` should be added to the query builder's [**Summarize** menu](../../../query-builder/introduction.md#summarizing-and-grouping-by) > **Custom Expression** (scroll down in the menu if needed).
 
 ## Parameters
 
-`CountIf` accepts a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
+`CountIf` accepts a [function](../../expressions-list.md#functions) or [conditional statement](../../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
 
 ## Multiple conditions
 
@@ -73,7 +73,7 @@ Returns 2 on the sample data: there are only two Basic or Business plans that la
 In general, to get a conditional count for a category or group, such as the number of inactive subscriptions per plan, you'll:
 
 1. Write a `CountIf` expression with your conditions.
-2. Add a [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column in the query builder.
+2. Add a [**Group by**](../../../query-builder/introduction.md#summarizing-and-grouping-by) column in the query builder.
 
 Using the sample data:
 
@@ -119,7 +119,7 @@ To view your conditional counts by plan, set the **Group by** column to "Plan".
 | Boolean                                                                                                                        | ✅                   |
 | JSON                                                                                                                           | ❌                   |
 
-`CountIf` accepts a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
+`CountIf` accepts a [function](../../expressions-list.md#functions) or [conditional statement](../../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`).
 
 ## Related functions
 
@@ -138,7 +138,7 @@ Different ways to do the same thing, because it's fun to try new things.
 
 ### case
 
-You can combine [`Count`](../expressions-list.md#count) with [`case`](./case.md):
+You can combine [`Count`](../../expressions-list.md#count) with [`case`](../case.md):
 
 ```
 Count(case([Plan] = "Basic", [ID]))
@@ -172,7 +172,7 @@ Count(case([Plan: Source A] = "Basic", [ID: Source A],
 
 ### CumulativeCount
 
-`CountIf` doesn't do running counts. You'll need to combine [CumulativeCount](../expressions-list.md#cumulativecount) with [`case`](./case.md).
+`CountIf` doesn't do running counts. You'll need to combine [CumulativeCount](../../expressions-list.md#cumulativecount) with [`case`](../case.md).
 
 If our sample data is a time series:
 
@@ -233,7 +233,7 @@ The `SELECT` part of the SQl query matches the Metabase expression:
 CountIf([Active Subscription] = false)
 ```
 
-The `GROUP BY` part of the SQL query matches a Metabase [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) set to the "Plan" column.
+The `GROUP BY` part of the SQL query matches a Metabase [**Group by**](../../../query-builder/introduction.md#summarizing-and-grouping-by) set to the "Plan" column.
 
 ### Spreadsheets
 
@@ -275,7 +275,7 @@ To get a [conditional count with a grouping column](#conditional-counts-by-group
     len(df_filtered.groupby('Plan'))
 ```
 
-The Python code above will produce the same result as the Metabase `CountIf` expression (with the [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column set to "Plan").
+The Python code above will produce the same result as the Metabase `CountIf` expression (with the [**Group by**](../../../query-builder/introduction.md#summarizing-and-grouping-by) column set to "Plan").
 
 ```
 CountIf([Active Subscription] = false)
@@ -283,5 +283,5 @@ CountIf([Active Subscription] = false)
 
 ## Further reading
 
-- [Custom expressions documentation](../expressions.md)
+- [Custom expressions documentation](../../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)

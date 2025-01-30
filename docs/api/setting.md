@@ -42,4 +42,4 @@ Create/update a `Setting`. If called by a non-admin, only user-local settings ca
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

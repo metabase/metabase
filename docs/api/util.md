@@ -62,4 +62,4 @@ Endpoint to provide feedback from the product.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

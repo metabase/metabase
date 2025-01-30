@@ -70,4 +70,4 @@ If you want to send the user group membership to Metabase, then you need to add 
 
 ## Further reading
 
-- [User provisioning](./user-provisioning.md)
+- [User provisioning](../user-provisioning.md)

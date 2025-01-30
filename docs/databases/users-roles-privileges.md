@@ -88,7 +88,7 @@ This is a good option if you're connecting to a local database for development o
 
 ## Privileges to enable actions
 
-[Actions](../actions/introduction.md) let Metabase write back to specific tables in your database.
+[Actions](../../actions/introduction.md) let Metabase write back to specific tables in your database.
 
 In addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables used with actions:
 
@@ -109,7 +109,7 @@ GRANT metabase_actions TO metabase;
 
 ## Privileges to enable model persistence
 
-[Model persistence](../data-modeling/model-persistence.md) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model caching, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
+[Model persistence](../../data-modeling/model-persistence.md) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model caching, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
 
 In addition to the [minimum database privileges](#minimum-database-privileges):
 
@@ -136,9 +136,9 @@ GRANT metabase_model_persistence TO metabase;
 
 ## Privileges to enable uploads
 
-You can [upload CSVs](../databases/uploads.md) to supported databases. Metabase's database user should have write access (`INSERT`, `UPDATE`, `DELETE`) to the schema where you want to store the uploads.
+You can [upload CSVs](../../databases/uploads.md) to supported databases. Metabase's database user should have write access (`INSERT`, `UPDATE`, `DELETE`) to the schema where you want to store the uploads.
 
-You'll first need to create a schema to store uploads (or use an existing schema) and tell Metabase that you want to [use that schema to store uploads](./uploads.md#select-the-database-and-schema-that-you-want-to-store-the-data-in).
+You'll first need to create a schema to store uploads (or use an existing schema) and tell Metabase that you want to [use that schema to store uploads](../uploads.md#select-the-database-and-schema-that-you-want-to-store-the-data-in).
 
 In addition to the [minimum database privileges](#minimum-database-privileges):
 
@@ -208,5 +208,5 @@ We recommend bundling privileges into roles based on use cases per customer. Tha
 ## Further reading
 
 - [Permissions strategies](https://www.metabase.com/learn/metabase-basics/administration/permissions/strategy)
-- [Permissions introduction](../permissions/introduction.md)
-- [People overview](../people-and-groups/start.md)
+- [Permissions introduction](../../permissions/introduction.md)
+- [People overview](../../people-and-groups/start.md)

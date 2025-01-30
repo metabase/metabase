@@ -24,4 +24,4 @@ Gets audit info for the current user if he has permissions to access the audit c
 
 ---
 
-[<< Back to API index](../../api-documentation.md)
+[<< Back to API index](../../../api-documentation.md)

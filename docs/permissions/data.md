@@ -34,13 +34,13 @@ You can set the following types of permissions on a database, schema, or table:
 - [Manage table metadata](#manage-table-metadata-permissions)
 - [Manage database](#manage-database-permissions)
 
-> If you're upgrading from a version below Metabase 50, your permission levels may look different, but the data access hasn't changed. See [what's changed with data permissions and why](./no-self-service-deprecation.md).
+> If you're upgrading from a version below Metabase 50, your permission levels may look different, but the data access hasn't changed. See [what's changed with data permissions and why](../no-self-service-deprecation.md).
 
 ## View data permissions
 
 {% include plans-blockquote.html feature="View data permissions" %}
 
-The **View data** permission determines what data people can see when viewing questions, dashboards, models, and metrics. View data permissions also determine whether a group can view the models and metrics browsers in the sidebar. To [browse databases](../exploration-and-organization/exploration.md#browse-your-databases), a group will also need [Create queries](#create-queries-permissions) permissions for the relevant data.
+The **View data** permission determines what data people can see when viewing questions, dashboards, models, and metrics. View data permissions also determine whether a group can view the models and metrics browsers in the sidebar. To [browse databases](../../exploration-and-organization/exploration.md#browse-your-databases), a group will also need [Create queries](#create-queries-permissions) permissions for the relevant data.
 
 Permission levels include:
 
@@ -70,9 +70,9 @@ For _which_ questions, models, and dashboards a group can view, instead see [col
 
 {% include plans-blockquote.html feature="Can view data permission" %}
 
-Setting to **Can view** means the group can view all the data for the data source, provided they have [collection permissions](./collections.md) to view questions, models, and dashboards.
+Setting to **Can view** means the group can view all the data for the data source, provided they have [collection permissions](../collections.md) to view questions, models, and dashboards.
 
-In order to view the data in the [Browse databases](../exploration-and-organization/exploration.md#browse-your-databases) section, the group would additionally need to be able to [Create queries](#create-queries-permissions).
+In order to view the data in the [Browse databases](../../exploration-and-organization/exploration.md#browse-your-databases) section, the group would additionally need to be able to [Create queries](#create-queries-permissions).
 
 ### Granular view data permission
 
@@ -88,7 +88,7 @@ For tables, you have the option to set either **Can view** or **Sandboxed**.
 
 Allows you to set row-level permissions based on user attributes. Can only be configured at the table level.
 
-See [Data sandboxes](./data-sandboxes.md).
+See [Data sandboxes](../data-sandboxes.md).
 
 ### Impersonated view data permission
 
@@ -96,7 +96,7 @@ See [Data sandboxes](./data-sandboxes.md).
 
 The **Impersonated** option lets you use a role in your database to specify what data people can view and query. Impersonation can only be set at the database level, as Metabase will defer to the permissions granted to the database role.
 
-See [impersonated view data permissions](./impersonation.md)
+See [impersonated view data permissions](../impersonation.md)
 
 ### Blocked view data permission
 
@@ -112,7 +112,7 @@ If a person in a Blocked group belongs to _another_ group that has its View data
 
 ## Create queries permissions
 
-Specifies whether a group can create new questions based on the data source. Creating queries includes the ability to drill-through and filter questions, or anything that involves changing the results. This permission also determines whether a group will get access to the [database browser](../exploration-and-organization/exploration.md#browse-your-databases) to explore that data source.
+Specifies whether a group can create new questions based on the data source. Creating queries includes the ability to drill-through and filter questions, or anything that involves changing the results. This permission also determines whether a group will get access to the [database browser](../../exploration-and-organization/exploration.md#browse-your-databases) to explore that data source.
 
 To enable Create queries permissions for a group, that group must be able to view the data source ("Can view" permission.)
 
@@ -145,7 +145,7 @@ You can set permissions on whether people in a group can download results (and h
 
 {% include plans-blockquote.html feature="Data model permissions" %}
 
-You can define whether a group can [edit table metadata](../data-modeling/metadata-editing.md). Options are:
+You can define whether a group can [edit table metadata](../../data-modeling/metadata-editing.md). Options are:
 
 - Yes (meaning, they can edit metadata for that data source).
 - No
@@ -159,9 +159,9 @@ The **Manage database** permission grants access to the settings page for a give
 
 On the database settings page, you can:
 
-- Edit any of the [connection options](../databases/connecting.md) for the data source.
-- [Sync schemas](../databases/sync-scan.md#manually-syncing-tables-and-columns).
-- [Scan field values](../databases/sync-scan.md#manually-scanning-column-values).
+- Edit any of the [connection options](../../databases/connecting.md) for the data source.
+- [Sync schemas](../../databases/sync-scan.md#manually-syncing-tables-and-columns).
+- [Scan field values](../../databases/sync-scan.md#manually-scanning-column-values).
 
 Note that only admins can delete database connections in your Metabase, so people with **Manage database** permissions won't see the **Remove database** button.
 
@@ -171,17 +171,17 @@ If you see this modal pop-up, Metabase is telling you that the people in the All
 
 ## Upload permissions
 
-See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data-access-to-the-upload-schema).
+See [Upload permissions](../../databases/uploads.md#add-people-to-a-group-with-data-access-to-the-upload-schema).
 
 ## Further reading
 
-- [Permissions introduction](./introduction.md)
-- [Impersonation](./impersonation.md)
+- [Permissions introduction](../introduction.md)
+- [Impersonation](../impersonation.md)
 - [Learn permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions)
-- [Troubleshooting permissions](../troubleshooting-guide/permissions.md)
+- [Troubleshooting permissions](../../troubleshooting-guide/permissions.md)
 - [Data sandboxing: setting row-level permissions][sandbox-rows]
 - [Advanced data sandboxing: limiting access to columns][sandbox-columns]
-- [Users, roles, and privileges](../databases/users-roles-privileges.md)
+- [Users, roles, and privileges](../../databases/users-roles-privileges.md)
 
 [collections]: ./collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md

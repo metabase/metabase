@@ -24,7 +24,7 @@ You can select and rerun multiple questions at a time while you troubleshoot to 
 
 Here you can view the:
 
-- [Models](../data-modeling/models.md) being persisted
+- [Models](../../data-modeling/models.md) being persisted
 - The status of the last model query refresh
 - When the model was last refreshed
 - And who created the persisted model

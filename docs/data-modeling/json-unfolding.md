@@ -6,7 +6,7 @@ title: Working with JSON
 
 ## Filtering JSON
 
-In the [query builder](../questions/query-builder/introduction.md), Metabase can't parse JSON in columns, so you can only filter by "Is empty" or "Not empty".
+In the [query builder](../../questions/query-builder/introduction.md), Metabase can't parse JSON in columns, so you can only filter by "Is empty" or "Not empty".
 
 ## JSON unfolding
 
@@ -14,19 +14,19 @@ With [some databases](#databases-that-support-json-unfolding), Metabase can unfo
 
 Here is a table with a column that contains JSON.
 
-![A table with a JSON column](./images/table-with-json-column.png)
+![A table with a JSON column](../images/table-with-json-column.png)
 
 Metabase can unfold that JSON column so that each key in the JSON object gets its own column in the table. Here are the unfolded fields of the table with the JSON column pictured above:
 
-![Unfolded fields](./images/unfolded-fields.png)
+![Unfolded fields](../images/unfolded-fields.png)
 
 And here are the values as seen in the table:
 
-![Unfolded values](./images/unfolded-values.png)
+![Unfolded values](../images/unfolded-values.png)
 
 This unfolding allows you to filter for values found in the original JSON object.
 
-Metabase will prefix the unfolded column names with the name of the original column that contained the JSON. You can change the column names in **Admin settings** > [Table metadata](metadata-editing.md), or by creating a [model](./models.md) and editing the column metadata.
+Metabase will prefix the unfolded column names with the name of the original column that contained the JSON. You can change the column names in **Admin settings** > [Table metadata](metadata-editing.md), or by creating a [model](../models.md) and editing the column metadata.
 
 ## Toggling JSON unfolding for a database
 
@@ -57,7 +57,7 @@ If performance degrades, or you'd rather keep the JSON contained in the original
 7. Scroll to the **Unfold JSON** option and select **Yes** or **No**. If the column was unfolded, Metabase will have hidden this JSON columnn from view, so if you want the JSON column to be visible again, you'll need to change the column's visibility to **Everywhere**.
 8. Scroll down and click on the **Re-scan this field**.
 
-![Unfolded JSON setting](./images/unfold-json-setting.png)
+![Unfolded JSON setting](../images/unfold-json-setting.png)
 
 ## For JSON unfolding to work, the column's data type must be JSON
 
@@ -65,8 +65,8 @@ For example, if you upload a CSV with JSON in it, you might need to update the d
 
 ## Databases that support JSON unfolding
 
-- [PostgreSQL](../databases/connections/postgresql.md)
-- [MySQL](../databases/connections/mysql.md)
-- [Druid (JDBC)](../databases/connections/druid.md)
+- [PostgreSQL](../../databases/connections/postgresql.md)
+- [MySQL](../../databases/connections/mysql.md)
+- [Druid (JDBC)](../../databases/connections/druid.md)
 
-A note on [BigQuery](../databases/connections/bigquery.md): Metabase supports the [STRUCT data type](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#struct_type) in BigQuery, but it won't unfold JSON stored in BigQuery as the `JSON` type. If your data is stored in the `STRUCT` type in BigQuery, you can query the table's nested fields. Some background here: BigQuery differs from other databases in that nested fields are _part of the table definition itself_. So when Metabase syncs with your BigQuery database, it'll be able to get metadata about any of your tables, including tables with nested fields. Querying nested fields, however, doesn't extend to arrays (REPEATED (STRUCT)) in BigQuery.
+A note on [BigQuery](../../databases/connections/bigquery.md): Metabase supports the [STRUCT data type](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#struct_type) in BigQuery, but it won't unfold JSON stored in BigQuery as the `JSON` type. If your data is stored in the `STRUCT` type in BigQuery, you can query the table's nested fields. Some background here: BigQuery differs from other databases in that nested fields are _part of the table definition itself_. So when Metabase syncs with your BigQuery database, it'll be able to get metadata about any of your tables, including tables with nested fields. Querying nested fields, however, doesn't extend to arrays (REPEATED (STRUCT)) in BigQuery.

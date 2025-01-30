@@ -6,9 +6,9 @@ redirect_from:
 
 # SQL snippets
 
-![Highlight and save as snippet](../images/highlight_and_save_as_snippet.gif)
+![Highlight and save as snippet](../../images/highlight_and_save_as_snippet.gif)
 
-**SQL snippets** are reusable bits of SQL or native queries. Anyone with permissions to the [SQL editor](./writing-sql.md) can create and edit snippets, which are then available for all SQL authors.
+**SQL snippets** are reusable bits of SQL or native queries. Anyone with permissions to the [SQL editor](../writing-sql.md) can create and edit snippets, which are then available for all SQL authors.
 
 For example, if you frequently perform queries that involve multiple tables, you can save the SQL code that joins those tables as a snippet so that you (and others in your organization) can reuse that code in multiple questions.
 
@@ -52,7 +52,7 @@ Note: if you use aliases in a snippet, you'll need to observe those aliases outs
 
 ## Snippet menu
 
-![Snippet sidebar and insertion](../images/snippet_sidebar_and_insertion.gif)
+![Snippet sidebar and insertion](../../images/snippet_sidebar_and_insertion.gif)
 
 The SQL editor **sidebar** has a **SQL Snippets** menu to list available and archived snippets.
 
@@ -95,10 +95,10 @@ Note: two snippets cannot share the same name, as even if a snippet is archived,
 
 Any user who has SQL editor permissions to at least one of your connected databases will be able to view the snippets sidebar, and will be able to create, edit, and archive or unarchive any and all snippets — even snippets intended to be used with databases the user lacks SQL editing access to.
 
-Some plans contain additional functionality for organizing snippets into folders and setting permissions on those folders. See our [docs on SQL snippet folders and permissions](../../permissions/snippets.md).
+Some plans contain additional functionality for organizing snippets into folders and setting permissions on those folders. See our [docs on SQL snippet folders and permissions](../../../permissions/snippets.md).
 
 ## Learn more
 
 - [SQL snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-snippets)
 - [SQL Snippets vs Saved Questions vs Views](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/organizing-sql).
-- If you're having trouble with your SQL query, go to the [SQL troubleshooting guide](../../troubleshooting-guide/sql.md).
+- If you're having trouble with your SQL query, go to the [SQL troubleshooting guide](../../../troubleshooting-guide/sql.md).

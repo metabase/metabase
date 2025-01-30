@@ -4,7 +4,7 @@ title: Trend
 
 # Trend
 
-![Trend settings](../../images/trend-settings.png)
+![Trend settings](../../../images/trend-settings.png)
 
 The **Trend** visualization is great for displaying how a single number compares with:
 
@@ -20,7 +20,7 @@ By default, Trends will display increases as green (i.e., "good") and decreases 
 
 ## Adding comparisons
 
-![Add comparison to a trend chart](../../images/add-comparison.png)
+![Add comparison to a trend chart](../../../images/add-comparison.png)
 
 To add a comparison, click on the **gear** icon in the lower left (next to Visualization). In the **Data** tab in the left sidebar, click **Add comparison**. You can select from:
 

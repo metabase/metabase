@@ -9,15 +9,15 @@ title: "Configuration file"
 On self-hosted [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, Metabase supports initialization on launch from a config file named `config.yml`. The config file should be located at:
 
 - The current directory (the directory where the running Metabase JAR is located).
-- The path specified by the `MB_CONFIG_FILE_PATH` [environment variable](./environment-variables.md).
+- The path specified by the `MB_CONFIG_FILE_PATH` [environment variable](../environment-variables.md).
 
 The settings as defined in the config file work the same as if you set these settings in the Admin Settings in your Metabase. Settings defined in this configuration file will update any existing settings. If, for example, a database already exists (that is, you'd already added it via the initial set up or **Admin settings** > **Databases**, Metabase will update the database entry based on the data in the config file). Which means: if you define a setting in the config file, and then later change that setting in your Metabase application, keep in mind that the config file will overwrite that change whenever Metabase restarts.
 
-The config file settings are NOT treated as a hardcoded source of truth (like [environment variables](./environment-variables.md) are). Settings set by environment variables cannot be changed, even in the Admin settings in the application itself.
+The config file settings are NOT treated as a hardcoded source of truth (like [environment variables](../environment-variables.md) are). Settings set by environment variables cannot be changed, even in the Admin settings in the application itself.
 
 ## Example config template
 
-See [Config template](./config-template.md).
+See [Config template](../config-template.md).
 
 ## Config setup
 
@@ -98,7 +98,7 @@ To determine which keys you can specify for a database, check out the fields ava
 
 ### Setting up uploads on a database
 
-You can also configure [uploads](../databases/uploads.md) in the config file with the following settings:
+You can also configure [uploads](../../databases/uploads.md) in the config file with the following settings:
 
 - `uploads_enabled`: Boolean
 - `uploads_schema_name`: String
@@ -130,7 +130,7 @@ config:
 {% endraw %}
 ```
 
-See [Uploads](../databases/uploads.md).
+See [Uploads](../../databases/uploads.md).
 
 ## Referring to environment variables in the `config.yml`
 
@@ -159,7 +159,7 @@ config:
 
 In this config file, you can specify _any_ Admin setting.
 
-In general, the settings you can set in the `settings` section of this config file map to the [environment variables](./environment-variables.md), so check them out to see which settings you can use in your config file. The actual key that you include in the config file differs slightly from the format used for environment variables. For environment variables, the form is in screaming snake case, prefixed by an `MB`:
+In general, the settings you can set in the `settings` section of this config file map to the [environment variables](../environment-variables.md), so check them out to see which settings you can use in your config file. The actual key that you include in the config file differs slightly from the format used for environment variables. For environment variables, the form is in screaming snake case, prefixed by an `MB`:
 
 ```txt
 MB_NAME_OF_VARIABLE
@@ -185,7 +185,7 @@ config:
       details: ...
 ```
 
-But you can set any of the Admin settings with the config file (for a list of settings, check out the [config file template](./config-template.md)). You can also browse the list of [environment variable](./environment-variables.md) to see what you can configure (though note that not all environment variables can be set via the config file.)
+But you can set any of the Admin settings with the config file (for a list of settings, check out the [config file template](../config-template.md)). You can also browse the list of [environment variable](../environment-variables.md) to see what you can configure (though note that not all environment variables can be set via the config file.)
 
 ## Loading a new Metabase from a config file
 
@@ -197,5 +197,5 @@ MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java --add-opens java.base/java.nio=AL
 
 ## Further reading
 
-- [Config file template](./config-template.md)
-- [Environment variables](./environment-variables.md)
+- [Config file template](../config-template.md)
+- [Environment variables](../environment-variables.md)

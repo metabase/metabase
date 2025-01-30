@@ -67,7 +67,7 @@ Let's say you want to check if today's date falls between a start date and an [e
 datetimeAdd([Opened On], 14, 'day')
 ```
 
-**Still Fresh Today** uses [case](../expressions/case.md) to check if the current date ([now](../expressions/now.md)) is [between](../expressions-list.md#between) the dates in **Opened On** and **Finish By**:
+**Still Fresh Today** uses [case](../../expressions/case.md) to check if the current date ([now](../../expressions/now.md)) is [between](../../expressions-list.md#between) the dates in **Opened On** and **Finish By**:
 
 ```
 case(between(now, [Opened On], [Finish By]), "Yes", "No")
@@ -83,9 +83,9 @@ case(between(now, [Opened On], [Finish By]), "Yes", "No")
 | Boolean                                                                                                                        | ❌                       |
 | JSON                                                                                                                           | ❌                       |
 
-We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
+We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../../configuring-metabase/timezones.md#data-types).
 
-If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page.
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page.
 
 ## Limitations
 
@@ -95,7 +95,7 @@ If you're using MongoDB, `datetimeAdd` will only work on versions 5 and up.
 
 This section covers functions and formulas that work the same way as the Metabase `datetimeAdd` expression, with notes on how to choose the best option for your use case.
 
-**[Metabase expressions](../expressions-list.md)**
+**[Metabase expressions](../../expressions-list.md)**
 
 - [datetimeSubtract](#datetimesubtract)
 
@@ -168,6 +168,6 @@ datetimeAdd([Opened On], 14, "day")
 
 ## Further reading
 
-- [Custom expressions documentation](../expressions.md)
+- [Custom expressions documentation](../../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
 - [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start)

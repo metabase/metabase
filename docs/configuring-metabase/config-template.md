@@ -10,7 +10,7 @@ You can generate the following config file template by changing into the top-lev
 clojure -M:doc:ee config-template
 ```
 
-The template lists example `database`, `user`, and `settings` sections for the [config file](./config-file.md).
+The template lists example `database`, `user`, and `settings` sections for the [config file](../config-file.md).
 
 
 ```yaml

@@ -11,7 +11,7 @@ redirect_from:
 Integrating your SSO with Metabase allows you to:
 
 - Provision a Metabase account when someone logs in to Metabase.
-- Automatically pass user attributes from your SSO to Metabase in order to power [data sandboxes](../permissions/data-sandboxes.md).
+- Automatically pass user attributes from your SSO to Metabase in order to power [data sandboxes](../../permissions/data-sandboxes.md).
 - Let people access Metabase without re-authenticating.
 
 ## Confirm the password for your Metabase admin account
@@ -52,7 +52,7 @@ If you don't see your IdP listed here:
 
 By default, Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via SAML SSO.
 
-If you've set up [User provisioning with SCIM](./user-provisioning.md), you'll want to turn this setting off so that Metabase doesn't automatically create a new account for anyone who authenticates successfully, as you may want to use SCIM to determine who can and can't create an account in Metabase.
+If you've set up [User provisioning with SCIM](../user-provisioning.md), you'll want to turn this setting off so that Metabase doesn't automatically create a new account for anyone who authenticates successfully, as you may want to use SCIM to determine who can and can't create an account in Metabase.
 
 ## Generic SAML configuration
 
@@ -62,7 +62,7 @@ The names of the fields in the Metabase SAML form won't always match the names u
 
 ### URL the IdP should redirect back to
 
-The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../configuring-metabase/settings.md#site-url), with `/auth/sso` at the end.
+The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../../configuring-metabase/settings.md#site-url), with `/auth/sso` at the end.
 
 For example, if your Metabase Site URL is `https://metabase.yourcompany.com`, you'll use
 
@@ -84,7 +84,7 @@ Different IdPs use different names for the redirect URL. Here are some common ex
 
 Metabase will automatically log in people who've been authenticated by your SAML identity provider. In order to do so, the first assertion returned in the identity provider's SAML response _must_ contain attributes for each person's first name, last name, and email.
 
-Most IdPs already include these assertions by default, but some (such as [Okta](./saml-okta.md)) must be configured to include them.
+Most IdPs already include these assertions by default, but some (such as [Okta](../saml-okta.md)) must be configured to include them.
 
 Generally you'll need to paste these user attributes (first name, last name, and email) into fields labelled "Name", "Attributes" or "Parameters".
 
@@ -206,4 +206,4 @@ You can find example code that uses SAML authentication in the [SSO examples rep
 
 ## Troubleshooting SAML issues
 
-- [Troubleshooting SAML](../troubleshooting-guide/saml.md).
+- [Troubleshooting SAML](../../troubleshooting-guide/saml.md).

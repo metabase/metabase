@@ -44,7 +44,7 @@ Once you've done that, you can go to **Admin** > **Databases** and select your d
 
 ## Step 3: Add your database
 
-For example, let's say you want to secure a connection to a PostgreSQL database. Follow the instructions in the app to add the database. For more on setting up a database connection, check out our docs for [adding a database](./connecting.md).
+For example, let's say you want to secure a connection to a PostgreSQL database. Follow the instructions in the app to add the database. For more on setting up a database connection, check out our docs for [adding a database](../connecting.md).
 
 ## Step 4: Toggle on the "Use a secure connection (SSL)" option
 
@@ -71,9 +71,9 @@ You can learn more about [SSL support for PostgreSQL](https://www.postgresql.org
 
 ## Securing connection to application database using environment variables
 
-If you're self-hosting Metabase, you can secure the connection to your application database using [environment variables](../configuring-metabase/environment-variables.md).
+If you're self-hosting Metabase, you can secure the connection to your application database using [environment variables](../../configuring-metabase/environment-variables.md).
 
-The environment variable to use is [`MB_DB_CONNECTION_URI`](../configuring-metabase/environment-variables.md#mb_db_connection_uri).
+The environment variable to use is [`MB_DB_CONNECTION_URI`](../../configuring-metabase/environment-variables.md#mb_db_connection_uri).
 
 You'll need to include the full connection string here, including the db host, port, db name and user info, as well as the additional connection parameters to include the certificate. For example,
 

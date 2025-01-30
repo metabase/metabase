@@ -10,17 +10,17 @@ You have created a [linked filter][linked-filter-gloss] so that (for example) if
 - your linked filter seems to have no effect, or
 - your linked filter widget does not display a dropdown of filtered values.
 
-If you are having problems with a regular [filter widget][filter-widget-gloss], please see [this guide](./filters.md). In order to fix problems with linked filters, you need a clear understanding of how they work:
+If you are having problems with a regular [filter widget][filter-widget-gloss], please see [this guide](../filters.md). In order to fix problems with linked filters, you need a clear understanding of how they work:
 
 ## Does a connected dashboard card use a SQL variable?
 
-**Root cause**: Native/SQL questions must have a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Regular SQL variables won't work.
+**Root cause**: Native/SQL questions must have a [field filter](../../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Regular SQL variables won't work.
 
 **Steps to take**:
 
-1. Update the card's query to change the regular variable to a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable.
+1. Update the card's query to change the regular variable to a [field filter](../../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable.
 
-See [Limitations of linking filters](../dashboards/filters.md#limitations-of-linking-filters)
+See [Limitations of linking filters](../../dashboards/filters.md#limitations-of-linking-filters)
 
 ## Do you understand the directionality of linked filters?
 

@@ -6,7 +6,7 @@ redirect_from:
 
 # Configuring the Metabase application database
 
-The application database is where Metabase stores information about user accounts, questions, dashboards, and any other data needed to run the Metabase application. This app DB is distinct from the database where you store your data, also known as your data warehouse. For connecting to your data warehouse, see [Connecting to a supported database](../databases/connecting.md).
+The application database is where Metabase stores information about user accounts, questions, dashboards, and any other data needed to run the Metabase application. This app DB is distinct from the database where you store your data, also known as your data warehouse. For connecting to your data warehouse, see [Connecting to a supported database](../../databases/connecting.md).
 
 For production, we recommend using PostgreSQL as your Metabase application database.
 
@@ -20,7 +20,7 @@ Metabase will read the connection configuration information when the application
 
 We recommend that you use [PostgreSQL](https://www.postgresql.org/) for your Metabase application database. The minimum Postgres version Metabase supports is 12, but we always recommend that you use the latest Postgres version that you can.
 
-You can use [environment variables](../configuring-metabase/environment-variables.md) to set a Postgres database as Metabase's application database. For example, the following commands tell Metabase to use a Postgres database as its application database:
+You can use [environment variables](../../configuring-metabase/environment-variables.md) to set a Postgres database as Metabase's application database. For example, the following commands tell Metabase to use a Postgres database as its application database:
 
 ```sh
 export MB_DB_TYPE=postgres
@@ -45,7 +45,7 @@ export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase?user=<use
 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
-If you want to pass the connection URI, user, and password credentials separately from the JDBC connection string (useful if the password contains special characters), you can use the `MB_DB_CONNECTION_URI` [environment variable](../configuring-metabase/environment-variables.md) in combination with `MB_DB_USER` and `MB_DB_PASS` variables:
+If you want to pass the connection URI, user, and password credentials separately from the JDBC connection string (useful if the password contains special characters), you can use the `MB_DB_CONNECTION_URI` [environment variable](../../configuring-metabase/environment-variables.md) in combination with `MB_DB_USER` and `MB_DB_PASS` variables:
 
 ```sh
 export MB_DB_CONNECTION_URI="jdbc:postgresql://localhost:5432/metabase"
@@ -99,7 +99,7 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 
 ## H2 application database
 
-> **For production installations of Metabase we recommend that people [replace the default H2 database with PostgreSQL](./migrating-from-h2.md)**. Postgres offers a greater degree of performance and reliability.
+> **For production installations of Metabase we recommend that people [replace the default H2 database with PostgreSQL](../migrating-from-h2.md)**. Postgres offers a greater degree of performance and reliability.
 
 By default, Metabase ships with an [H2 database](https://www.h2database.com/) to make it easy to demo Metabase on your local machine. **Avoid using this default database in production**.
 
@@ -175,4 +175,4 @@ For more options to further tune the SSL connection parameters, see the [Postgre
 
 ## Further reading
 
-- [Environment variables](../configuring-metabase/environment-variables.md)
+- [Environment variables](../../configuring-metabase/environment-variables.md)

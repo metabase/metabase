@@ -88,5 +88,5 @@ Another useful picture of a running Metabase system is a Thread Dump. In cases w
 
 ## Further reading
 
-- [Running Metabase](../troubleshooting-guide/running.md)
-- [Observability with Prometheus](./observability-with-prometheus.md)
+- [Running Metabase](../../troubleshooting-guide/running.md)
+- [Observability with Prometheus](../observability-with-prometheus.md)

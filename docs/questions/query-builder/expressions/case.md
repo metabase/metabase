@@ -132,7 +132,7 @@ This section covers functions and formulas that can be used interchangeably with
 
 ### Coalesce
 
-Using the table from the [Coalesce: Consolidating values](./coalesce.md#consolidating-values-from-different-columns) example:
+Using the table from the [Coalesce: Consolidating values](../coalesce.md#consolidating-values-from-different-columns) example:
 
 | Notes          | Comments          | `coalesce([Notes], [Comments] "No notes or comments.")` |
 | -------------- | ----------------- | ------------------------------------------------------- |
@@ -141,7 +141,7 @@ Using the table from the [Coalesce: Consolidating values](./coalesce.md#consolid
 | I have a note. |                   | I have a note.                                          |
 |                |                   | No notes or comments.                                   |
 
-The [Metabase `coalesce` expression](./coalesce.md)
+The [Metabase `coalesce` expression](../coalesce.md)
 
 ```
 coalesce([Notes], [Comments] "No notes or comments.")

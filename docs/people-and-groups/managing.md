@@ -6,7 +6,7 @@ redirect_from:
 
 # People and groups
 
-People can have [accounts](#creating-an-account) in Metabase, and those accounts can be members of [groups](#groups). These groups are used to define [permissions](../permissions/introduction.md). People can be in multiple groups.
+People can have [accounts](#creating-an-account) in Metabase, and those accounts can be members of [groups](#groups). These groups are used to define [permissions](../../permissions/introduction.md). People can be in multiple groups.
 
 > This page covers accounts people use to log in to _your_ Metabase(s). These accounts are distinct from [Metabase _store_ accounts](https://store.metabase.com), which are used to manage paid Metabase plans.
 
@@ -28,9 +28,9 @@ Admins can add people to their Metabase. To add a new person manually, click on 
 
 Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a Pro or Enterprise Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](https://www.metabase.com/pricing/how-billing-works)).
 
-If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet setup email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
+If you’ve already [configured Metabase to use email](../../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet setup email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
 
-To create accounts with SSO, check out [authentication options](./start.md#authentication).
+To create accounts with SSO, check out [authentication options](../start.md#authentication).
 
 ## Editing an account
 
@@ -53,11 +53,11 @@ To add a user attribute manually:
 7. Optional: if a group for sandboxed people doesn't exist, [create a group](#creating-a-group) to organize people who will get sandboxed table permissions, such as "Sandboxed people".
 8. Add the person to the group.
 
-You can also sync user attributes from your identity provider [via SSO](./start.md#authentication).
+You can also sync user attributes from your identity provider [via SSO](../start.md#authentication).
 
-User attributes are required for [data sandbox](../permissions/data-sandboxes.md) permissions.
+User attributes are required for [data sandbox](../../permissions/data-sandboxes.md) permissions.
 
-You can also employ user attributes to specify what database role Metabase should use when that person queries a database. Check out [impersonation access](../permissions/data.md#impersonated-view-data-permission).
+You can also employ user attributes to specify what database role Metabase should use when that person queries a database. Check out [impersonation access](../../permissions/data.md#impersonated-view-data-permission).
 
 ## Deactivating an account
 
@@ -90,9 +90,9 @@ Note that the type of user is set when the account is first created: if you crea
 
 ## Resetting someone’s password
 
-If you've already [configured your email settings](../configuring-metabase/email.md), people can reset their passwords using the "forgot password" link on the login screen. If you haven't yet configured your email settings, they will see a message telling them to ask an admin to reset their password for them.
+If you've already [configured your email settings](../../configuring-metabase/email.md), people can reset their passwords using the "forgot password" link on the login screen. If you haven't yet configured your email settings, they will see a message telling them to ask an admin to reset their password for them.
 
-To reset a password for someone, just click the three dots icon next to their account and choose **Reset Password**. If you haven’t [configured your email settings](../configuring-metabase/email.md) yet, you’ll be given a temporary password that you’ll have to share with that person. Otherwise, they’ll receive a password reset email.
+To reset a password for someone, just click the three dots icon next to their account and choose **Reset Password**. If you haven’t [configured your email settings](../../configuring-metabase/email.md) yet, you’ll be given a temporary password that you’ll have to share with that person. Otherwise, they’ll receive a password reset email.
 
 ## Resetting the admin password
 
@@ -142,7 +142,7 @@ Metabase includes default user accounts to handle various tasks. We're documenti
 - Last name: User
 - Email: null
 
-Metabase uses this anonymous user account to identify anonymous views, for example views of a [public question or dashboard](../questions/sharing/public-links.md). This account is a virtual user: the account doesn't exist in the application database. You'll see this account show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md).
+Metabase uses this anonymous user account to identify anonymous views, for example views of a [public question or dashboard](../../questions/sharing/public-links.md). This account is a virtual user: the account doesn't exist in the application database. You'll see this account show up in [usage analytics](../../usage-and-performance-tools/usage-analytics.md).
 
 ### Metabase internal account
 
@@ -151,11 +151,11 @@ Metabase uses this anonymous user account to identify anonymous views, for examp
 - Last name: Metabase
 - Email: internal@metabase.com
 
-Metabase uses this account to load content into Metabase (like the [Usage analytics](../usage-and-performance-tools/usage-analytics.md) collection). You may see this `internal@metabase.com` account in the logs.
+Metabase uses this account to load content into Metabase (like the [Usage analytics](../../usage-and-performance-tools/usage-analytics.md) collection). You may see this `internal@metabase.com` account in the logs.
 
 ## Groups
 
-To determine [who has access to what](../permissions/start.md), you’ll need to
+To determine [who has access to what](../../permissions/start.md), you’ll need to
 
 - Create one or more groups.
 - Choose which level of access that group has to different databases, collections, and so on.
@@ -176,9 +176,9 @@ To make someone an admin of Metabase, you just need to add them to the Administr
 
 #### All users
 
-The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](./google-sign-in.md) enabled, new users who join that way will be automatically added to the All Users group.
+The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](../google-sign-in.md) enabled, new users who join that way will be automatically added to the All Users group.
 
-It's important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. See [Setting permissions](../permissions/start.md).
+It's important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. See [Setting permissions](../../permissions/start.md).
 
 ## Creating a group
 
@@ -221,6 +221,6 @@ To promote someone to become a group manager:
 
 ## Further reading
 
-- [Configure Single Sign-On (SSO)](./start.md#authentication).
+- [Configure Single Sign-On (SSO)](../start.md#authentication).
 - [Permissions strategies](https://www.metabase.com/learn/metabase-basics/administration/permissions/strategy).
 - [Multi-tenant permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions/multi-tenant-permissions).

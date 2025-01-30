@@ -68,4 +68,4 @@ Go to your Metabase login page. If SAML is working correctly, you should see [a 
 If you can’t solve your problem using the troubleshooting guides:
 
 - Search or ask the [Metabase community](https://discourse.metabase.com/).
-- Search for [known bugs or limitations](./known-issues.md).
+- Search for [known bugs or limitations](../known-issues.md).

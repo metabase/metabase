@@ -8,7 +8,7 @@ redirect_from:
 
 You can create SQL templates by adding variables to your SQL queries in the [Native/SQL editor][sql-editor]. These variables will create filter widgets that you can use to change the variable's value in the query. You can also add parameters to your question's URL to set the filters' values, so that when the question loads, those values are inserted into the variables.
 
-![Variables](../images/02-widget.png)
+![Variables](../../images/02-widget.png)
 
 ## Defining variables
 
@@ -104,13 +104,13 @@ Field Filters ONLY work with the following field types:
 - State
 - ZIP or Postal Code
 
-The field can also be a date or timestamp, which can be left as "No semantic type" in the [Table Metadata](../../data-modeling/metadata-editing.md).
+The field can also be a date or timestamp, which can be left as "No semantic type" in the [Table Metadata](../../../data-modeling/metadata-editing.md).
 
 When you set the **Variable type** to "Field Filter", Metabase will present an option to set the **Field to map to**, as well as the **Filter widget type**. The options available for the Filter widget type depend on the field's type. For example, if you map to a field of type Category, you'll see options for either "Category" or None. If you map to a Date Field, you'll see options for None, Month and year, Quarter and year, Single date, Date range, or Date filter.
 
 If you're not seeing the option to display a filter widget, make sure the mapped field is set to one of the above types, and then try manually syncing your database from the "Databases" section of the Admin Panel to force Metabase to scan and cache the field's values.
 
-If you want to map a Field Filter to a field that isn't one of the compatible types listed above, you'll need an Admin to change the field type for that column. See [metadata editing](../../data-modeling/metadata-editing.md).
+If you want to map a Field Filter to a field that isn't one of the compatible types listed above, you'll need an Admin to change the field type for that column. See [metadata editing](../../../data-modeling/metadata-editing.md).
 
 ## Field Filter syntax
 
@@ -150,7 +150,7 @@ Make sure your SQL dialect matches the database you've selected. Common issues i
 | BigQuery | Schemas and tables must be quoted with backticks.   | `` FROM `dataset.table` `` |
 | Oracle   | Schemas and tables must be quoted in double quotes. | `FROM schema.table`        |
 
-For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
+For more help, see [Troubleshooting SQL error messages](../../../troubleshooting-guide/error-message.md#sql-editor).
 
 ## How to create different types of filter widgets
 
@@ -162,7 +162,7 @@ The kind of filter widget that Metabase displays when you create a Field Filter 
 
 Date fields will either have a simple date filter (for Date variables) or a dynamic date picker (for Field Filters mapped to a date field).
 
-If you want to change the filter widget for a particular field, you'll need to ask an Admin to update that field in [the Table Metadata](../../data-modeling/metadata-editing.md) and set the desired "Filtering on this field" option.
+If you want to change the filter widget for a particular field, you'll need to ask an Admin to update that field in [the Table Metadata](../../../data-modeling/metadata-editing.md) and set the desired "Filtering on this field" option.
 
 ### Filter widget with plain input box
 
@@ -249,7 +249,7 @@ You can choose:
 - **From another model or question**. If you select this option, you'll need to pick a model or question, then a field from that model or question that Metabase will use to supply the values for that dropdown or search box. For example, if you want the dropdown to list the different plans an account could be on, you could select an "Account" model you created, and select the field "Plan" to power that dropdown. The dropdown would then list all of the distinct plan options that appear in the "Plan" column in the Accounts model.
 - **Custom list**. Enter each item on a line. You can enter any string values you like.
 
-You can also [change a dashboard filter's selectable values](../../dashboards/filters.md#change-a-filters-selectable-values).
+You can also [change a dashboard filter's selectable values](../../../dashboards/filters.md#change-a-filters-selectable-values).
 
 ## Setting a default value in the filter widget
 
@@ -421,7 +421,7 @@ The kind of dashboard filter that can be used with the SQL question depends on t
 
 If you add a **Date** variable to the question, then it's only possible to use the dashboard filter option **Single Date**. So if you are trying to use one of the other Time options on the dashboard, you'll need to change the variable to a [Field Filter](#the-field-filter-variable-type) variable and map it to a date column.
 
-![Field filter](../images/state-field-filter.png)
+![Field filter](../../images/state-field-filter.png)
 
 More on [Dashboard filters][dashboard-filters].
 

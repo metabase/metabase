@@ -24,4 +24,4 @@ Get all `Tables` visible to the current user which were created by uploading a f
 
 ---
 
-[<< Back to API index](../../api-documentation.md)
+[<< Back to API index](../../../api-documentation.md)

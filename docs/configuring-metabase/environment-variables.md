@@ -56,7 +56,7 @@ If you're running Metabase Cloud, you can [contact support](https://www.metabase
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `admin-email`
+- [Configuration file name](../config-file.md): `admin-email`
 
 The email address users should be referred to if they encounter a problem.
 
@@ -64,8 +64,8 @@ The email address users should be referred to if they encounter a problem.
 
 - Type: integer
 - Default: `10000`
-- [Exported as](../installation-and-operation/serialization.md): `aggregated-query-row-limit`.
-- [Configuration file name](./config-file.md): `aggregated-query-row-limit`
+- [Exported as](../../installation-and-operation/serialization.md): `aggregated-query-row-limit`.
+- [Configuration file name](../config-file.md): `aggregated-query-row-limit`
 
 Maximum number of rows to return for aggregated queries via the API.
 
@@ -98,8 +98,8 @@ gist.github.com,
 linkedin.com,
 twitter.com,
 x.com`
-- [Exported as](../installation-and-operation/serialization.md): `allowed-iframe-hosts`.
-- [Configuration file name](./config-file.md): `allowed-iframe-hosts`
+- [Exported as](../../installation-and-operation/serialization.md): `allowed-iframe-hosts`.
+- [Configuration file name](../config-file.md): `allowed-iframe-hosts`
 
 Allowed iframe hosts.
 
@@ -107,7 +107,7 @@ Allowed iframe hosts.
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `anon-tracking-enabled`
+- [Configuration file name](../config-file.md): `anon-tracking-enabled`
 
 Enable the collection of anonymous usage data in order to help Metabase improve.
 
@@ -128,8 +128,8 @@ Middleware that enforces validation of the client via the request header X-Metab
 
 - Type: json
 - Default: `{}`
-- [Exported as](../installation-and-operation/serialization.md): `application-colors`.
-- [Configuration file name](./config-file.md): `application-colors`
+- [Exported as](../../installation-and-operation/serialization.md): `application-colors`.
+- [Configuration file name](../config-file.md): `application-colors`
 
 Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.
 
@@ -164,8 +164,8 @@ To change the chart colors:
 
 - Type: string
 - Default: `app/assets/img/favicon.ico`
-- [Exported as](../installation-and-operation/serialization.md): `application-favicon-url`.
-- [Configuration file name](./config-file.md): `application-favicon-url`
+- [Exported as](../../installation-and-operation/serialization.md): `application-favicon-url`.
+- [Configuration file name](../config-file.md): `application-favicon-url`
 
 Upload a file to use as the favicon.
 
@@ -175,8 +175,8 @@ Upload a file to use as the favicon.
 
 - Type: string
 - Default: `Lato`
-- [Exported as](../installation-and-operation/serialization.md): `application-font`.
-- [Configuration file name](./config-file.md): `application-font`
+- [Exported as](../../installation-and-operation/serialization.md): `application-font`.
+- [Configuration file name](../config-file.md): `application-font`
 
 Replace “Lato” as the font family.
 
@@ -186,8 +186,8 @@ Replace “Lato” as the font family.
 
 - Type: json
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `application-font-files`.
-- [Configuration file name](./config-file.md): `application-font-files`
+- [Exported as](../../installation-and-operation/serialization.md): `application-font-files`.
+- [Configuration file name](../config-file.md): `application-font-files`
 
 Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.
 
@@ -208,7 +208,7 @@ Example value:
 ]
 ```
 
-See [fonts](../configuring-metabase/fonts.md).
+See [fonts](../../configuring-metabase/fonts.md).
 
 ### `MB_APPLICATION_LOGO_URL`
 
@@ -216,8 +216,8 @@ See [fonts](../configuring-metabase/fonts.md).
 
 - Type: string
 - Default: `app/assets/img/logo.svg`
-- [Exported as](../installation-and-operation/serialization.md): `application-logo-url`.
-- [Configuration file name](./config-file.md): `application-logo-url`
+- [Exported as](../../installation-and-operation/serialization.md): `application-logo-url`.
+- [Configuration file name](../config-file.md): `application-logo-url`
 
 Upload a file to replace the Metabase logo on the top bar.
 
@@ -229,8 +229,8 @@ Inline styling and inline scripts are not supported.
 
 - Type: string
 - Default: `Metabase`
-- [Exported as](../installation-and-operation/serialization.md): `application-name`.
-- [Configuration file name](./config-file.md): `application-name`
+- [Exported as](../../installation-and-operation/serialization.md): `application-name`.
+- [Configuration file name](../config-file.md): `application-name`
 
 Replace the word “Metabase” wherever it appears.
 
@@ -248,7 +248,7 @@ Range: 1-100. To limit the total number of rows included in the file attachment
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `bcc-enabled`
+- [Configuration file name](../config-file.md): `bcc-enabled`
 
 Whether or not bcc emails are enabled, default behavior is that it is.
 
@@ -256,7 +256,7 @@ Whether or not bcc emails are enabled, default behavior is that it is.
 
 - Type: double
 - Default: `10.0`
-- [Configuration file name](./config-file.md): `breakout-bin-width`
+- [Configuration file name](../config-file.md): `breakout-bin-width`
 
 When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), this number will be used as the default bin width (in degrees).
 
@@ -264,8 +264,8 @@ When using the default binning strategy for a field of type Coordinate (such as 
 
 - Type: integer
 - Default: `8`
-- [Exported as](../installation-and-operation/serialization.md): `breakout-bins-num`.
-- [Configuration file name](./config-file.md): `breakout-bins-num`
+- [Exported as](../../installation-and-operation/serialization.md): `breakout-bins-num`.
+- [Configuration file name](../config-file.md): `breakout-bins-num`
 
 When using the default binning strategy and a number of bins is not provided, this number will be used as the default.
 
@@ -273,7 +273,7 @@ When using the default binning strategy and a number of bins is not provided, th
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `check-for-updates`
+- [Configuration file name](../config-file.md): `check-for-updates`
 
 Identify when new versions of Metabase are available.
 
@@ -289,8 +289,8 @@ Whether to (asynchronously) sync newly created Databases during config-from-file
 
 - Type: json
 - Default: `{}`
-- [Exported as](../installation-and-operation/serialization.md): `custom-formatting`.
-- [Configuration file name](./config-file.md): `custom-formatting`
+- [Exported as](../../installation-and-operation/serialization.md): `custom-formatting`.
+- [Configuration file name](../config-file.md): `custom-formatting`
 
 Object keyed by type, containing formatting settings.
 
@@ -298,8 +298,8 @@ Object keyed by type, containing formatting settings.
 
 - Type: json
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `custom-geojson`.
-- [Configuration file name](./config-file.md): `custom-geojson`
+- [Exported as](../../installation-and-operation/serialization.md): `custom-geojson`.
+- [Configuration file name](../config-file.md): `custom-geojson`
 
 JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.
 
@@ -307,8 +307,8 @@ JSON containing information about custom GeoJSON files for use in map visualizat
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `custom-geojson-enabled`.
-- [Configuration file name](./config-file.md): `custom-geojson-enabled`
+- [Exported as](../../installation-and-operation/serialization.md): `custom-geojson-enabled`.
+- [Configuration file name](../config-file.md): `custom-geojson-enabled`
 
 Whether or not the use of custom GeoJSON is enabled.
 
@@ -316,7 +316,7 @@ Whether or not the use of custom GeoJSON is enabled.
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `custom-homepage`
+- [Configuration file name](../config-file.md): `custom-homepage`
 
 Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.
 
@@ -324,7 +324,7 @@ Pick one of your dashboards to serve as homepage. Users without dashboard access
 
 - Type: integer
 - Default: `null`
-- [Configuration file name](./config-file.md): `custom-homepage-dashboard`
+- [Configuration file name](../config-file.md): `custom-homepage-dashboard`
 
 ID of dashboard to use as a homepage.
 
@@ -356,8 +356,8 @@ Timeout in minutes for databases query execution, both Metabase application data
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `default-maps-enabled`.
-- [Configuration file name](./config-file.md): `default-maps-enabled`
+- [Exported as](../../installation-and-operation/serialization.md): `default-maps-enabled`.
+- [Configuration file name](../config-file.md): `default-maps-enabled`
 
 Whether or not the default GeoJSON maps are enabled.
 
@@ -365,7 +365,7 @@ Whether or not the default GeoJSON maps are enabled.
 
 - Type: integer
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `download-row-limit`.
+- [Exported as](../../installation-and-operation/serialization.md): `download-row-limit`.
 
 Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.
 
@@ -373,7 +373,7 @@ Exports row limit excluding the header. xlsx downloads are limited to 1048575 ro
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `ee-ai-features-enabled`
+- [Configuration file name](../config-file.md): `ee-ai-features-enabled`
 
 Enable AI features.
 
@@ -383,7 +383,7 @@ This feature is experimental.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `ee-openai-api-key`
+- [Configuration file name](../config-file.md): `ee-openai-api-key`
 
 The OpenAI API Key used in Metabase Enterprise.
 
@@ -393,7 +393,7 @@ This feature is experimental.
 
 - Type: string
 - Default: `gpt-4-turbo-preview`
-- [Configuration file name](./config-file.md): `ee-openai-model`
+- [Configuration file name](../config-file.md): `ee-openai-model`
 
 The OpenAI Model (e.g. gpt-4, gpt-3.5-turbo).
 
@@ -403,7 +403,7 @@ This feature is experimental.
 
 - Type: string
 - Default: `notifications@metabase.com`
-- [Configuration file name](./config-file.md): `email-from-address`
+- [Configuration file name](../config-file.md): `email-from-address`
 
 The email address you want to use for the sender of emails.
 
@@ -411,7 +411,7 @@ The email address you want to use for the sender of emails.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `email-from-name`
+- [Configuration file name](../config-file.md): `email-from-name`
 
 The name you want to use for the sender of emails.
 
@@ -419,8 +419,8 @@ The name you want to use for the sender of emails.
 
 - Type: integer
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `email-max-recipients-per-second`.
-- [Configuration file name](./config-file.md): `email-max-recipients-per-second`
+- [Exported as](../../installation-and-operation/serialization.md): `email-max-recipients-per-second`.
+- [Configuration file name](../config-file.md): `email-max-recipients-per-second`
 
 The maximum number of recipients, summed across emails, that can be sent per second.
                 Note that the final email sent before reaching the limit is able to exceed it, if it has multiple recipients.
@@ -429,7 +429,7 @@ The maximum number of recipients, summed across emails, that can be sent per sec
 
 - Type: json
 - Default: `null`
-- [Configuration file name](./config-file.md): `email-reply-to`
+- [Configuration file name](../config-file.md): `email-reply-to`
 
 The email address you want the replies to go to, if different from the from address.
 
@@ -437,7 +437,7 @@ The email address you want the replies to go to, if different from the from addr
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `email-smtp-host`
+- [Configuration file name](../config-file.md): `email-smtp-host`
 
 The address of the SMTP server that handles your emails.
 
@@ -445,7 +445,7 @@ The address of the SMTP server that handles your emails.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `email-smtp-password`
+- [Configuration file name](../config-file.md): `email-smtp-password`
 
 SMTP password.
 
@@ -453,7 +453,7 @@ SMTP password.
 
 - Type: integer
 - Default: `null`
-- [Configuration file name](./config-file.md): `email-smtp-port`
+- [Configuration file name](../config-file.md): `email-smtp-port`
 
 The port your SMTP server uses for outgoing emails.
 
@@ -461,7 +461,7 @@ The port your SMTP server uses for outgoing emails.
 
 - Type: keyword
 - Default: `:none`
-- [Configuration file name](./config-file.md): `email-smtp-security`
+- [Configuration file name](../config-file.md): `email-smtp-security`
 
 SMTP secure connection protocol. (tls, ssl, starttls, or none).
 
@@ -469,7 +469,7 @@ SMTP secure connection protocol. (tls, ssl, starttls, or none).
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `email-smtp-username`
+- [Configuration file name](../config-file.md): `email-smtp-username`
 
 SMTP username.
 
@@ -479,7 +479,7 @@ SMTP username.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `embedding-app-origins-interactive`
+- [Configuration file name](../config-file.md): `embedding-app-origins-interactive`
 
 Allow these space delimited origins to embed Metabase interactive.
 
@@ -489,7 +489,7 @@ Allow these space delimited origins to embed Metabase interactive.
 
 - Type: string
 - Default: `localhost:*`
-- [Configuration file name](./config-file.md): `embedding-app-origins-sdk`
+- [Configuration file name](../config-file.md): `embedding-app-origins-sdk`
 
 Allow Metabase SDK access to these space delimited origins.
 
@@ -497,8 +497,8 @@ Allow Metabase SDK access to these space delimited origins.
 
 - Type: keyword
 - Default: `:hidden`
-- [Exported as](../installation-and-operation/serialization.md): `embedding-homepage`.
-- [Configuration file name](./config-file.md): `embedding-homepage`
+- [Exported as](../../installation-and-operation/serialization.md): `embedding-homepage`.
+- [Configuration file name](../config-file.md): `embedding-homepage`
 
 Embedding homepage status, indicating if its visible, hidden or has been dismissed.
 
@@ -506,7 +506,7 @@ Embedding homepage status, indicating if its visible, hidden or has been dismiss
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `embedding-secret-key`
+- [Configuration file name](../config-file.md): `embedding-secret-key`
 
 Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.
 
@@ -514,7 +514,7 @@ Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `enable-embedding-interactive`
+- [Configuration file name](../config-file.md): `enable-embedding-interactive`
 
 Allow admins to embed Metabase via interactive embedding?
 
@@ -522,7 +522,7 @@ Allow admins to embed Metabase via interactive embedding?
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `enable-embedding-sdk`
+- [Configuration file name](../config-file.md): `enable-embedding-sdk`
 
 Allow admins to embed Metabase via the SDK?
 
@@ -530,7 +530,7 @@ Allow admins to embed Metabase via the SDK?
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `enable-embedding-static`
+- [Configuration file name](../config-file.md): `enable-embedding-static`
 
 Allow admins to embed Metabase via static embedding?
 
@@ -540,7 +540,7 @@ Allow admins to embed Metabase via static embedding?
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `enable-password-login`
+- [Configuration file name](../config-file.md): `enable-password-login`
 
 Allow logging in by email and password.
 
@@ -548,8 +548,8 @@ Allow logging in by email and password.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `enable-pivoted-exports`.
-- [Configuration file name](./config-file.md): `enable-pivoted-exports`
+- [Exported as](../../installation-and-operation/serialization.md): `enable-pivoted-exports`.
+- [Configuration file name](../config-file.md): `enable-pivoted-exports`
 
 Enable pivoted exports and pivoted subscriptions.
 
@@ -557,7 +557,7 @@ Enable pivoted exports and pivoted subscriptions.
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `enable-public-sharing`
+- [Configuration file name](../config-file.md): `enable-public-sharing`
 
 Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?
 
@@ -565,7 +565,7 @@ Enable admins to create publicly viewable links (and embeddable iframes) for Que
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `enable-query-caching`
+- [Configuration file name](../config-file.md): `enable-query-caching`
 
 Allow caching results of queries that take a long time to run.
 
@@ -573,8 +573,8 @@ Allow caching results of queries that take a long time to run.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `enable-xrays`.
-- [Configuration file name](./config-file.md): `enable-xrays`
+- [Exported as](../../installation-and-operation/serialization.md): `enable-xrays`.
+- [Configuration file name](../config-file.md): `enable-xrays`
 
 Allow users to explore data using X-rays.
 
@@ -596,7 +596,7 @@ Have we sent a follow up email to the instance admin?
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `google-auth-auto-create-accounts-domain`
+- [Configuration file name](../config-file.md): `google-auth-auto-create-accounts-domain`
 
 When set, allow users to sign up on their own if their Google account email address is from this domain.
 
@@ -604,7 +604,7 @@ When set, allow users to sign up on their own if their Google account email addr
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `google-auth-client-id`
+- [Configuration file name](../config-file.md): `google-auth-client-id`
 
 Client ID for Google Sign-In.
 
@@ -612,7 +612,7 @@ Client ID for Google Sign-In.
 
 - Type: boolean
 - Default: `null`
-- [Configuration file name](./config-file.md): `google-auth-enabled`
+- [Configuration file name](../config-file.md): `google-auth-enabled`
 
 Is Google Sign-in currently enabled?
 
@@ -629,7 +629,7 @@ Whether to log health check requests from session middleware.
 
 - Type: keyword
 - Default: `:metabase`
-- [Configuration file name](./config-file.md): `help-link`
+- [Configuration file name](../config-file.md): `help-link`
 
 Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and `:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, or be hidden if it is not set.
 
@@ -639,7 +639,7 @@ Keyword setting to control whitelabeling of the help link. Valid values are `:me
 
 - Type: string
 - Default: `https://www.metabase.com/help/premium`
-- [Configuration file name](./config-file.md): `help-link-custom-destination`
+- [Configuration file name](../config-file.md): `help-link-custom-destination`
 
 Custom URL for the help link.
 
@@ -647,8 +647,8 @@ Custom URL for the help link.
 
 - Type: keyword
 - Default: `:simple`
-- [Exported as](../installation-and-operation/serialization.md): `humanization-strategy`.
-- [Configuration file name](./config-file.md): `humanization-strategy`
+- [Exported as](../../installation-and-operation/serialization.md): `humanization-strategy`.
+- [Configuration file name](../config-file.md): `humanization-strategy`
 
 To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’.
 
@@ -656,7 +656,7 @@ To make table and field names more human-friendly, Metabase will replace dashes 
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `is-metabot-enabled`
+- [Configuration file name](../config-file.md): `is-metabot-enabled`
 
 Is Metabot enabled?
 
@@ -679,7 +679,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
 
 - Type: string
 - Default: `email`
-- [Configuration file name](./config-file.md): `jwt-attribute-email`
+- [Configuration file name](../config-file.md): `jwt-attribute-email`
 
 Key to retrieve the JWT users email address.
 
@@ -689,7 +689,7 @@ Key to retrieve the JWT users email address.
 
 - Type: string
 - Default: `first_name`
-- [Configuration file name](./config-file.md): `jwt-attribute-firstname`
+- [Configuration file name](../config-file.md): `jwt-attribute-firstname`
 
 Key to retrieve the JWT users first name.
 
@@ -699,7 +699,7 @@ Key to retrieve the JWT users first name.
 
 - Type: string
 - Default: `groups`
-- [Configuration file name](./config-file.md): `jwt-attribute-groups`
+- [Configuration file name](../config-file.md): `jwt-attribute-groups`
 
 Key to retrieve the JWT users groups.
 
@@ -709,7 +709,7 @@ Key to retrieve the JWT users groups.
 
 - Type: string
 - Default: `last_name`
-- [Configuration file name](./config-file.md): `jwt-attribute-lastname`
+- [Configuration file name](../config-file.md): `jwt-attribute-lastname`
 
 Key to retrieve the JWT users last name.
 
@@ -719,7 +719,7 @@ Key to retrieve the JWT users last name.
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `jwt-enabled`
+- [Configuration file name](../config-file.md): `jwt-enabled`
 
 Is JWT authentication configured and enabled?
 
@@ -732,7 +732,7 @@ When set to true, will enable JWT authentication with the options configured in 
 
 - Type: json
 - Default: `{}`
-- [Configuration file name](./config-file.md): `jwt-group-mappings`
+- [Configuration file name](../config-file.md): `jwt-group-mappings`
 
 JSON containing JWT to Metabase group mappings.
 
@@ -744,7 +744,7 @@ JSON object containing JWT to Metabase group mappings, where keys are JWT groups
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `jwt-group-sync`
+- [Configuration file name](../config-file.md): `jwt-group-sync`
 
 Enable group membership synchronization with JWT.
 
@@ -754,7 +754,7 @@ Enable group membership synchronization with JWT.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `jwt-identity-provider-uri`
+- [Configuration file name](../config-file.md): `jwt-identity-provider-uri`
 
 URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK.
 
@@ -764,7 +764,7 @@ URL for JWT-based login page. Optional if using JWT SSO only with the embedded a
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `jwt-shared-secret`
+- [Configuration file name](../config-file.md): `jwt-shared-secret`
 
 String used to seed the private key used to validate JWT messages. A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended.
 
@@ -774,7 +774,7 @@ String used to seed the private key used to validate JWT messages. A hexadecimal
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `jwt-user-provisioning-enabled`
+- [Configuration file name](../config-file.md): `jwt-user-provisioning-enabled`
 
 When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who
 don't have one.
@@ -783,8 +783,8 @@ don't have one.
 
 - Type: string
 - Default: ``
-- [Exported as](../installation-and-operation/serialization.md): `landing-page`.
-- [Configuration file name](./config-file.md): `landing-page`
+- [Exported as](../../installation-and-operation/serialization.md): `landing-page`.
+- [Configuration file name](../config-file.md): `landing-page`
 
 Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.
 
@@ -794,8 +794,8 @@ Enter a URL of the landing page to show the user. This overrides the custom home
 
 - Type: string
 - Default: `default`
-- [Exported as](../installation-and-operation/serialization.md): `landing-page-illustration`.
-- [Configuration file name](./config-file.md): `landing-page-illustration`
+- [Exported as](../../installation-and-operation/serialization.md): `landing-page-illustration`.
+- [Configuration file name](../config-file.md): `landing-page-illustration`
 
 Options for displaying the illustration on the landing page.
 
@@ -805,8 +805,8 @@ Options for displaying the illustration on the landing page.
 
 - Type: string
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `landing-page-illustration-custom`.
-- [Configuration file name](./config-file.md): `landing-page-illustration-custom`
+- [Exported as](../../installation-and-operation/serialization.md): `landing-page-illustration-custom`.
+- [Configuration file name](../config-file.md): `landing-page-illustration-custom`
 
 The custom illustration for the landing page.
 
@@ -814,7 +814,7 @@ The custom illustration for the landing page.
 
 - Type: string
 - Default: `mail`
-- [Configuration file name](./config-file.md): `ldap-attribute-email`
+- [Configuration file name](../config-file.md): `ldap-attribute-email`
 
 Attribute to use for the user's email. (usually 'mail', 'email' or 'userPrincipalName').
 
@@ -822,7 +822,7 @@ Attribute to use for the user's email. (usually 'mail', 'email' or 'userPrincipa
 
 - Type: string
 - Default: `givenName`
-- [Configuration file name](./config-file.md): `ldap-attribute-firstname`
+- [Configuration file name](../config-file.md): `ldap-attribute-firstname`
 
 Attribute to use for the user's first name. (usually 'givenName').
 
@@ -830,7 +830,7 @@ Attribute to use for the user's first name. (usually 'givenName').
 
 - Type: string
 - Default: `sn`
-- [Configuration file name](./config-file.md): `ldap-attribute-lastname`
+- [Configuration file name](../config-file.md): `ldap-attribute-lastname`
 
 Attribute to use for the user's last name. (usually 'sn').
 
@@ -838,7 +838,7 @@ Attribute to use for the user's last name. (usually 'sn').
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `ldap-bind-dn`
+- [Configuration file name](../config-file.md): `ldap-bind-dn`
 
 The Distinguished Name to bind as (if any), this user will be used to lookup information about other users.
 
@@ -846,7 +846,7 @@ The Distinguished Name to bind as (if any), this user will be used to lookup inf
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `ldap-enabled`
+- [Configuration file name](../config-file.md): `ldap-enabled`
 
 Is LDAP currently enabled?
 
@@ -854,7 +854,7 @@ Is LDAP currently enabled?
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `ldap-group-base`
+- [Configuration file name](../config-file.md): `ldap-group-base`
 
 Search base for groups. Not required for LDAP directories that provide a 'memberOf' overlay, such as Active Directory. (Will be searched recursively).
 
@@ -862,7 +862,7 @@ Search base for groups. Not required for LDAP directories that provide a 'member
 
 - Type: json
 - Default: `{}`
-- [Configuration file name](./config-file.md): `ldap-group-mappings`
+- [Configuration file name](../config-file.md): `ldap-group-mappings`
 
 JSON containing LDAP to Metabase group mappings.
 
@@ -870,7 +870,7 @@ JSON containing LDAP to Metabase group mappings.
 
 - Type: string
 - Default: `(member={dn})`
-- [Configuration file name](./config-file.md): `ldap-group-membership-filter`
+- [Configuration file name](../config-file.md): `ldap-group-membership-filter`
 
 Group membership lookup filter. The placeholders {dn} and {uid} will be replaced by the user's Distinguished Name and UID, respectively.
 
@@ -878,7 +878,7 @@ Group membership lookup filter. The placeholders {dn} and {uid} will be replaced
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `ldap-group-sync`
+- [Configuration file name](../config-file.md): `ldap-group-sync`
 
 Enable group membership synchronization with LDAP.
 
@@ -886,7 +886,7 @@ Enable group membership synchronization with LDAP.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `ldap-host`
+- [Configuration file name](../config-file.md): `ldap-host`
 
 Server hostname.
 
@@ -894,7 +894,7 @@ Server hostname.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `ldap-password`
+- [Configuration file name](../config-file.md): `ldap-password`
 
 The password to bind with for the lookup user.
 
@@ -902,7 +902,7 @@ The password to bind with for the lookup user.
 
 - Type: integer
 - Default: `389`
-- [Configuration file name](./config-file.md): `ldap-port`
+- [Configuration file name](../config-file.md): `ldap-port`
 
 Server port, usually 389 or 636 if SSL is used.
 
@@ -910,7 +910,7 @@ Server port, usually 389 or 636 if SSL is used.
 
 - Type: keyword
 - Default: `:none`
-- [Configuration file name](./config-file.md): `ldap-security`
+- [Configuration file name](../config-file.md): `ldap-security`
 
 Use SSL, TLS or plain text.
 
@@ -918,7 +918,7 @@ Use SSL, TLS or plain text.
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `ldap-sync-user-attributes`
+- [Configuration file name](../config-file.md): `ldap-sync-user-attributes`
 
 Should we sync user attributes when someone logs in via LDAP?
 
@@ -926,7 +926,7 @@ Should we sync user attributes when someone logs in via LDAP?
 
 - Type: csv
 - Default: `userPassword,dn,distinguishedName`
-- [Configuration file name](./config-file.md): `ldap-sync-user-attributes-blacklist`
+- [Configuration file name](../config-file.md): `ldap-sync-user-attributes-blacklist`
 
 Comma-separated list of user attributes to skip syncing for LDAP users.
 
@@ -934,7 +934,7 @@ Comma-separated list of user attributes to skip syncing for LDAP users.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `ldap-user-base`
+- [Configuration file name](../config-file.md): `ldap-user-base`
 
 Search base for users. (Will be searched recursively).
 
@@ -942,7 +942,7 @@ Search base for users. (Will be searched recursively).
 
 - Type: string
 - Default: `(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))`
-- [Configuration file name](./config-file.md): `ldap-user-filter`
+- [Configuration file name](../config-file.md): `ldap-user-filter`
 
 User lookup filter. The placeholder {login} will be replaced by the user supplied login.
 
@@ -950,7 +950,7 @@ User lookup filter. The placeholder {login} will be replaced by the user supplie
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `ldap-user-provisioning-enabled`
+- [Configuration file name](../config-file.md): `ldap-user-provisioning-enabled`
 
 When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who
 don't have one.
@@ -961,8 +961,8 @@ don't have one.
 
 - Type: keyword
 - Default: `:doing-science`
-- [Exported as](../installation-and-operation/serialization.md): `loading-message`.
-- [Configuration file name](./config-file.md): `loading-message`
+- [Exported as](../../installation-and-operation/serialization.md): `loading-message`.
+- [Configuration file name](../config-file.md): `loading-message`
 
 Choose the message to show while a query is running. Possible values are "doing-science", "running-query", or "loading-results".
 
@@ -972,8 +972,8 @@ Choose the message to show while a query is running. Possible values are "doing-
 
 - Type: string
 - Default: `default`
-- [Exported as](../installation-and-operation/serialization.md): `login-page-illustration`.
-- [Configuration file name](./config-file.md): `login-page-illustration`
+- [Exported as](../../installation-and-operation/serialization.md): `login-page-illustration`.
+- [Configuration file name](../config-file.md): `login-page-illustration`
 
 Options for displaying the illustration on the login page.
 
@@ -983,8 +983,8 @@ Options for displaying the illustration on the login page.
 
 - Type: string
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `login-page-illustration-custom`.
-- [Configuration file name](./config-file.md): `login-page-illustration-custom`
+- [Exported as](../../installation-and-operation/serialization.md): `login-page-illustration-custom`.
+- [Configuration file name](../config-file.md): `login-page-illustration-custom`
 
 The custom illustration for the login page.
 
@@ -992,7 +992,7 @@ The custom illustration for the login page.
 
 - Type: string
 - Default: `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`
-- [Configuration file name](./config-file.md): `map-tile-server-url`
+- [Configuration file name](../config-file.md): `map-tile-server-url`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
@@ -1007,7 +1007,7 @@ The default embeddings model to be used for metabot.
 
 - Type: string
 - Default: `https://amtix3l3qvitb2qxstaqtcoqby0monuf.lambda-url.us-east-1.on.aws/`
-- [Configuration file name](./config-file.md): `metabot-feedback-url`
+- [Configuration file name](../config-file.md): `metabot-feedback-url`
 
 The URL to which metabot feedback is posted.
 
@@ -1015,7 +1015,7 @@ The URL to which metabot feedback is posted.
 
 - Type: string
 - Default: `https://stkxezsr2kcnkhusi3fgcc5nqm0ttgfx.lambda-url.us-east-1.on.aws/`
-- [Configuration file name](./config-file.md): `metabot-get-prompt-templates-url`
+- [Configuration file name](../config-file.md): `metabot-get-prompt-templates-url`
 
 The URL in which metabot versioned prompt templates are stored.
 
@@ -1030,8 +1030,8 @@ When attempting to assemble prompts, the threshold at which prompt will no longe
 
 - Type: keyword
 - Default: `:substring`
-- [Exported as](../installation-and-operation/serialization.md): `native-query-autocomplete-match-style`.
-- [Configuration file name](./config-file.md): `native-query-autocomplete-match-style`
+- [Exported as](../../installation-and-operation/serialization.md): `native-query-autocomplete-match-style`.
+- [Configuration file name](../config-file.md): `native-query-autocomplete-match-style`
 
 Matching style for native query editors autocomplete. Can be "substring", "prefix", or "off". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off.
 
@@ -1039,7 +1039,7 @@ Matching style for native query editors autocomplete. Can be "substring", "prefi
 
 - Type: integer
 - Default: `50000`
-- [Exported as](../installation-and-operation/serialization.md): `nested-field-columns-value-length-limit`.
+- [Exported as](../../installation-and-operation/serialization.md): `nested-field-columns-value-length-limit`.
 
 Maximum length of a JSON string before skipping it during sync for JSON unfolding. If this is set too high it could lead to slow syncs or out of memory errors.
 
@@ -1049,8 +1049,8 @@ Maximum length of a JSON string before skipping it during sync for JSON unfoldin
 
 - Type: string
 - Default: `default`
-- [Exported as](../installation-and-operation/serialization.md): `no-data-illustration`.
-- [Configuration file name](./config-file.md): `no-data-illustration`
+- [Exported as](../../installation-and-operation/serialization.md): `no-data-illustration`.
+- [Configuration file name](../config-file.md): `no-data-illustration`
 
 Options for displaying the illustration when there are no results after running a question.
 
@@ -1060,8 +1060,8 @@ Options for displaying the illustration when there are no results after running 
 
 - Type: string
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `no-data-illustration-custom`.
-- [Configuration file name](./config-file.md): `no-data-illustration-custom`
+- [Exported as](../../installation-and-operation/serialization.md): `no-data-illustration-custom`.
+- [Configuration file name](../config-file.md): `no-data-illustration-custom`
 
 The custom illustration for when there are no results after running a question.
 
@@ -1071,8 +1071,8 @@ The custom illustration for when there are no results after running a question.
 
 - Type: string
 - Default: `default`
-- [Exported as](../installation-and-operation/serialization.md): `no-object-illustration`.
-- [Configuration file name](./config-file.md): `no-object-illustration`
+- [Exported as](../../installation-and-operation/serialization.md): `no-object-illustration`.
+- [Configuration file name](../config-file.md): `no-object-illustration`
 
 Options for displaying the illustration when there are no results after searching.
 
@@ -1082,8 +1082,8 @@ Options for displaying the illustration when there are no results after searchin
 
 - Type: string
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `no-object-illustration-custom`.
-- [Configuration file name](./config-file.md): `no-object-illustration-custom`
+- [Exported as](../../installation-and-operation/serialization.md): `no-object-illustration-custom`.
+- [Configuration file name](../config-file.md): `no-object-illustration-custom`
 
 The custom illustration for when there are no results after searching.
 
@@ -1124,7 +1124,7 @@ Number of potential responses metabot will request. The first valid response is 
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `openai-api-key`
+- [Configuration file name](../config-file.md): `openai-api-key`
 
 The OpenAI API Key.
 
@@ -1132,7 +1132,7 @@ The OpenAI API Key.
 
 - Type: string
 - Default: `gpt-4-turbo-preview`
-- [Configuration file name](./config-file.md): `openai-model`
+- [Configuration file name](../config-file.md): `openai-model`
 
 The OpenAI Model (e.g. gpt-4-turbo-preview, gpt-4, gpt-3.5-turbo).
 
@@ -1140,7 +1140,7 @@ The OpenAI Model (e.g. gpt-4-turbo-preview, gpt-4, gpt-3.5-turbo).
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `openai-organization`
+- [Configuration file name](../config-file.md): `openai-organization`
 
 The OpenAI Organization ID.
 
@@ -1148,7 +1148,7 @@ The OpenAI Organization ID.
 
 - Type: string
 - Default: `0 0 0/6 * * ? *`
-- [Configuration file name](./config-file.md): `persisted-model-refresh-cron-schedule`
+- [Configuration file name](../config-file.md): `persisted-model-refresh-cron-schedule`
 
 cron syntax string to schedule refreshing persisted models.
 
@@ -1156,8 +1156,8 @@ cron syntax string to schedule refreshing persisted models.
 
 - Type: boolean
 - Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `persisted-models-enabled`.
-- [Configuration file name](./config-file.md): `persisted-models-enabled`
+- [Exported as](../../installation-and-operation/serialization.md): `persisted-models-enabled`.
+- [Configuration file name](../config-file.md): `persisted-models-enabled`
 
 Allow persisting models into the source database.
 
@@ -1165,7 +1165,7 @@ Allow persisting models into the source database.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `premium-embedding-token`
+- [Configuration file name](../config-file.md): `premium-embedding-token`
 
 Token for premium features. Go to the MetaStore to get yours!
 
@@ -1173,7 +1173,7 @@ Token for premium features. Go to the MetaStore to get yours!
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `query-analysis-enabled`
+- [Configuration file name](../config-file.md): `query-analysis-enabled`
 
 Whether or not we analyze any queries at all.
 
@@ -1181,7 +1181,7 @@ Whether or not we analyze any queries at all.
 
 - Type: integer
 - Default: `2000`
-- [Configuration file name](./config-file.md): `query-caching-max-kb`
+- [Configuration file name](../config-file.md): `query-caching-max-kb`
 
 The maximum size of the cache, per saved question, in kilobytes.
 
@@ -1189,7 +1189,7 @@ The maximum size of the cache, per saved question, in kilobytes.
 
 - Type: double
 - Default: `3024000.0`
-- [Configuration file name](./config-file.md): `query-caching-max-ttl`
+- [Configuration file name](../config-file.md): `query-caching-max-ttl`
 
 The absolute maximum time to keep any cached query results, in seconds.
 
@@ -1197,7 +1197,7 @@ The absolute maximum time to keep any cached query results, in seconds.
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `redirect-all-requests-to-https`
+- [Configuration file name](../config-file.md): `redirect-all-requests-to-https`
 
 Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 
@@ -1205,8 +1205,8 @@ Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 
 - Type: string
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `report-timezone`.
-- [Configuration file name](./config-file.md): `report-timezone`
+- [Exported as](../../installation-and-operation/serialization.md): `report-timezone`.
+- [Configuration file name](../config-file.md): `report-timezone`
 
 Connection timezone to use when executing queries. Defaults to system timezone.
 
@@ -1221,7 +1221,7 @@ Number of hours a password reset is considered valid.
 
 - Type: integer
 - Default: `500`
-- [Configuration file name](./config-file.md): `retry-initial-interval`
+- [Configuration file name](../config-file.md): `retry-initial-interval`
 
 The initial retry delay in milliseconds.
 
@@ -1229,7 +1229,7 @@ The initial retry delay in milliseconds.
 
 - Type: integer
 - Default: `7`
-- [Configuration file name](./config-file.md): `retry-max-attempts`
+- [Configuration file name](../config-file.md): `retry-max-attempts`
 
 The maximum number of attempts for an event.
 
@@ -1237,7 +1237,7 @@ The maximum number of attempts for an event.
 
 - Type: integer
 - Default: `30000`
-- [Configuration file name](./config-file.md): `retry-max-interval-millis`
+- [Configuration file name](../config-file.md): `retry-max-interval-millis`
 
 The maximum delay between attempts.
 
@@ -1245,7 +1245,7 @@ The maximum delay between attempts.
 
 - Type: double
 - Default: `2.0`
-- [Configuration file name](./config-file.md): `retry-multiplier`
+- [Configuration file name](../config-file.md): `retry-multiplier`
 
 The delay multiplier between attempts.
 
@@ -1253,7 +1253,7 @@ The delay multiplier between attempts.
 
 - Type: double
 - Default: `0.1`
-- [Configuration file name](./config-file.md): `retry-randomization-factor`
+- [Configuration file name](../config-file.md): `retry-randomization-factor`
 
 The randomization factor of the retry delay.
 
@@ -1263,7 +1263,7 @@ The randomization factor of the retry delay.
 
 - Type: string
 - Default: `Metabase`
-- [Configuration file name](./config-file.md): `saml-application-name`
+- [Configuration file name](../config-file.md): `saml-application-name`
 
 This application name will be used for requests to the Identity Provider.
 
@@ -1273,7 +1273,7 @@ This application name will be used for requests to the Identity Provider.
 
 - Type: string
 - Default: `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress`
-- [Configuration file name](./config-file.md): `saml-attribute-email`
+- [Configuration file name](../config-file.md): `saml-attribute-email`
 
 SAML attribute for the user's email address.
 
@@ -1283,7 +1283,7 @@ SAML attribute for the user's email address.
 
 - Type: string
 - Default: `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname`
-- [Configuration file name](./config-file.md): `saml-attribute-firstname`
+- [Configuration file name](../config-file.md): `saml-attribute-firstname`
 
 SAML attribute for the user's first name.
 
@@ -1293,7 +1293,7 @@ SAML attribute for the user's first name.
 
 - Type: string
 - Default: `member_of`
-- [Configuration file name](./config-file.md): `saml-attribute-group`
+- [Configuration file name](../config-file.md): `saml-attribute-group`
 
 SAML attribute for group syncing.
 
@@ -1303,7 +1303,7 @@ SAML attribute for group syncing.
 
 - Type: string
 - Default: `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname`
-- [Configuration file name](./config-file.md): `saml-attribute-lastname`
+- [Configuration file name](../config-file.md): `saml-attribute-lastname`
 
 SAML attribute for the user's last name.
 
@@ -1313,7 +1313,7 @@ SAML attribute for the user's last name.
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `saml-enabled`
+- [Configuration file name](../config-file.md): `saml-enabled`
 
 Is SAML authentication configured and enabled?
 
@@ -1323,7 +1323,7 @@ Is SAML authentication configured and enabled?
 
 - Type: json
 - Default: `{}`
-- [Configuration file name](./config-file.md): `saml-group-mappings`
+- [Configuration file name](../config-file.md): `saml-group-mappings`
 
 JSON containing SAML to Metabase group mappings.
 
@@ -1333,7 +1333,7 @@ JSON containing SAML to Metabase group mappings.
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `saml-group-sync`
+- [Configuration file name](../config-file.md): `saml-group-sync`
 
 Enable group membership synchronization with SAML.
 
@@ -1343,7 +1343,7 @@ Enable group membership synchronization with SAML.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `saml-identity-provider-certificate`
+- [Configuration file name](../config-file.md): `saml-identity-provider-certificate`
 
 Encoded certificate for the identity provider. Depending on your IdP, you might need to download this,
 open it in a text editor, then copy and paste the certificates contents here.
@@ -1354,7 +1354,7 @@ open it in a text editor, then copy and paste the certificates contents here.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `saml-identity-provider-issuer`
+- [Configuration file name](../config-file.md): `saml-identity-provider-issuer`
 
 This is a unique identifier for the IdP. Often referred to as Entity ID or simply Issuer. Depending
 on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`.
@@ -1365,7 +1365,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `saml-identity-provider-uri`
+- [Configuration file name](../config-file.md): `saml-identity-provider-uri`
 
 This is the URL where your users go to log in to your identity provider. Depending on which IdP you're
 using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`.
@@ -1376,7 +1376,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
 
 - Type: string
 - Default: `metabase`
-- [Configuration file name](./config-file.md): `saml-keystore-alias`
+- [Configuration file name](../config-file.md): `saml-keystore-alias`
 
 Alias for the key that Metabase should use for signing SAML requests.
 
@@ -1386,7 +1386,7 @@ Alias for the key that Metabase should use for signing SAML requests.
 
 - Type: string
 - Default: `changeit`
-- [Configuration file name](./config-file.md): `saml-keystore-password`
+- [Configuration file name](../config-file.md): `saml-keystore-password`
 
 Password for opening the keystore.
 
@@ -1396,7 +1396,7 @@ Password for opening the keystore.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `saml-keystore-path`
+- [Configuration file name](../config-file.md): `saml-keystore-path`
 
 Absolute path to the Keystore file to use for signing SAML requests.
 
@@ -1406,7 +1406,7 @@ Absolute path to the Keystore file to use for signing SAML requests.
 
 - Type: boolean
 - Default: `false`
-- [Configuration file name](./config-file.md): `saml-slo-enabled`
+- [Configuration file name](../config-file.md): `saml-slo-enabled`
 
 Is SAML Single Log Out enabled?
 
@@ -1416,7 +1416,7 @@ Is SAML Single Log Out enabled?
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `saml-user-provisioning-enabled`
+- [Configuration file name](../config-file.md): `saml-user-provisioning-enabled`
 
 When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who
 don't have one.
@@ -1425,7 +1425,7 @@ don't have one.
 
 - Type: boolean
 - Default: `null`
-- [Configuration file name](./config-file.md): `scim-enabled`
+- [Configuration file name](../config-file.md): `scim-enabled`
 
 Is SCIM currently enabled?
 
@@ -1440,8 +1440,8 @@ Which engine to use when performing search. Supported values are :in-place and :
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `search-typeahead-enabled`.
-- [Configuration file name](./config-file.md): `search-typeahead-enabled`
+- [Exported as](../../installation-and-operation/serialization.md): `search-typeahead-enabled`.
+- [Configuration file name](../config-file.md): `search-typeahead-enabled`
 
 Enable typeahead search in the Metabase navbar?
 
@@ -1449,7 +1449,7 @@ Enable typeahead search in the Metabase navbar?
 
 - Type: boolean
 - Default: `null`
-- [Configuration file name](./config-file.md): `send-new-sso-user-admin-email`
+- [Configuration file name](../config-file.md): `send-new-sso-user-admin-email`
 
 Should new email notifications be sent to admins, for all new SSO users?
 
@@ -1457,19 +1457,19 @@ Should new email notifications be sent to admins, for all new SSO users?
 
 - Type: keyword
 - Default: `:lax`
-- [Configuration file name](./config-file.md): `session-cookie-samesite`
+- [Configuration file name](../config-file.md): `session-cookie-samesite`
 
 Value for the session cookies `SameSite` directive.
 
-See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
-        Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+See [Embedding Metabase in a different domain](../../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
+        Read more about [interactive Embedding](../../embedding/interactive-embedding.md).
         Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 
 ### `MB_SESSION_COOKIES`
 
 - Type: boolean
 - Default: `null`
-- [Configuration file name](./config-file.md): `session-cookies`
+- [Configuration file name](../config-file.md): `session-cookies`
 
 When set, enforces the use of session cookies for all users which expire when the browser is closed.
 
@@ -1481,7 +1481,7 @@ The user login session will always expire after the amount of time defined in MA
 
 - Type: json
 - Default: `null`
-- [Configuration file name](./config-file.md): `session-timeout`
+- [Configuration file name](../config-file.md): `session-timeout`
 
 Time before inactive users are logged out. By default, sessions last indefinitely.
 
@@ -1491,8 +1491,8 @@ Has to be in the JSON format `"{"amount":120,"unit":"minutes"}"` where the unit 
 
 - Type: boolean
 - Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `setup-embedding-autoenabled`.
-- [Configuration file name](./config-file.md): `setup-embedding-autoenabled`
+- [Exported as](../../installation-and-operation/serialization.md): `setup-embedding-autoenabled`.
+- [Configuration file name](../config-file.md): `setup-embedding-autoenabled`
 
 Indicates if embedding has enabled automatically during the setup because the user was interested in embedding.
 
@@ -1500,8 +1500,8 @@ Indicates if embedding has enabled automatically during the setup because the us
 
 - Type: boolean
 - Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `setup-license-active-at-setup`.
-- [Configuration file name](./config-file.md): `setup-license-active-at-setup`
+- [Exported as](../../installation-and-operation/serialization.md): `setup-license-active-at-setup`.
+- [Configuration file name](../config-file.md): `setup-license-active-at-setup`
 
 Indicates if at the end of the setup a valid license was active.
 
@@ -1509,7 +1509,7 @@ Indicates if at the end of the setup a valid license was active.
 
 - Type: boolean
 - Default: `null`
-- [Configuration file name](./config-file.md): `show-database-syncing-modal`
+- [Configuration file name](../config-file.md): `show-database-syncing-modal`
 
 Whether an introductory modal should be shown after the next database connection is added. Defaults to false if any non-default database has already finished syncing for this instance.
 
@@ -1517,8 +1517,8 @@ Whether an introductory modal should be shown after the next database connection
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-homepage-data`.
-- [Configuration file name](./config-file.md): `show-homepage-data`
+- [Exported as](../../installation-and-operation/serialization.md): `show-homepage-data`.
+- [Configuration file name](../config-file.md): `show-homepage-data`
 
 Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data.
 
@@ -1526,8 +1526,8 @@ Whether or not to display data on the homepage. Admins might turn this off in or
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-homepage-xrays`.
-- [Configuration file name](./config-file.md): `show-homepage-xrays`
+- [Exported as](../../installation-and-operation/serialization.md): `show-homepage-xrays`.
+- [Configuration file name](../config-file.md): `show-homepage-xrays`
 
 Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data.
 
@@ -1537,7 +1537,7 @@ Whether or not to display x-ray suggestions on the homepage. They will also be h
 
 - Type: boolean
 - Default: `true`
-- [Configuration file name](./config-file.md): `show-metabase-links`
+- [Configuration file name](../config-file.md): `show-metabase-links`
 
 Whether or not to display Metabase links outside admin settings.
 
@@ -1547,8 +1547,8 @@ Whether or not to display Metabase links outside admin settings.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-metabot`.
-- [Configuration file name](./config-file.md): `show-metabot`
+- [Exported as](../../installation-and-operation/serialization.md): `show-metabot`.
+- [Configuration file name](../config-file.md): `show-metabot`
 
 Enables Metabot character on the home page.
 
@@ -1556,8 +1556,8 @@ Enables Metabot character on the home page.
 
 - Type: boolean
 - Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-static-embed-terms`.
-- [Configuration file name](./config-file.md): `show-static-embed-terms`
+- [Exported as](../../installation-and-operation/serialization.md): `show-static-embed-terms`.
+- [Configuration file name](../config-file.md): `show-static-embed-terms`
 
 Check if the static embedding licensing should be hidden in the static embedding flow.
 
@@ -1565,8 +1565,8 @@ Check if the static embedding licensing should be hidden in the static embedding
 
 - Type: string
 - Default: `en`
-- [Exported as](../installation-and-operation/serialization.md): `site-locale`.
-- [Configuration file name](./config-file.md): `site-locale`
+- [Exported as](../../installation-and-operation/serialization.md): `site-locale`.
+- [Configuration file name](../config-file.md): `site-locale`
 
 The default language for all users across the Metabase UI, system emails, pulses, and alerts. Users can individually override this default language from their own account settings.
 
@@ -1574,8 +1574,8 @@ The default language for all users across the Metabase UI, system emails, pulses
 
 - Type: string
 - Default: `Metabase`
-- [Exported as](../installation-and-operation/serialization.md): `site-name`.
-- [Configuration file name](./config-file.md): `site-name`
+- [Exported as](../../installation-and-operation/serialization.md): `site-name`.
+- [Configuration file name](../config-file.md): `site-name`
 
 The name used for this instance of Metabase.
 
@@ -1583,7 +1583,7 @@ The name used for this instance of Metabase.
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `site-url`
+- [Configuration file name](../config-file.md): `site-url`
 
 This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance.
 
@@ -1595,7 +1595,7 @@ This URL is critical for things like SSO authentication, email links, embedding 
 
 - Type: string
 - Default: `null`
-- [Configuration file name](./config-file.md): `slack-app-token`
+- [Configuration file name](../config-file.md): `slack-app-token`
 
 Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0.
 
@@ -1603,7 +1603,7 @@ Bot user OAuth token for connecting the Metabase Slack app. This should be used 
 
 - Type: string
 - Default: `metabase-bugs`
-- [Configuration file name](./config-file.md): `slack-bug-report-channel`
+- [Configuration file name](../config-file.md): `slack-bug-report-channel`
 
 The name of the channel where bug reports should be posted.
 
@@ -1611,7 +1611,7 @@ The name of the channel where bug reports should be posted.
 
 - Type: string
 - Default: `metabase_files`
-- [Configuration file name](./config-file.md): `slack-files-channel`
+- [Configuration file name](../config-file.md): `slack-files-channel`
 
 The name of the channel to which Metabase files should be initially uploaded.
 
@@ -1619,8 +1619,8 @@ The name of the channel to which Metabase files should be initially uploaded.
 
 - Type: string
 - Default: `X-Forwarded-For`
-- [Exported as](../installation-and-operation/serialization.md): `source-address-header`.
-- [Configuration file name](./config-file.md): `source-address-header`
+- [Exported as](../../installation-and-operation/serialization.md): `source-address-header`.
+- [Configuration file name](../config-file.md): `source-address-header`
 
 Identify the source of HTTP requests by this headers value, instead of its remote address.
 
@@ -1643,7 +1643,7 @@ SQL Parsing is disabled.
 
 - Type: integer
 - Default: `180`
-- [Configuration file name](./config-file.md): `ssh-heartbeat-interval-sec`
+- [Configuration file name](../config-file.md): `ssh-heartbeat-interval-sec`
 
 Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).
 
@@ -1651,8 +1651,8 @@ Controls how often the heartbeats are sent when an SSH tunnel is established (in
 
 - Type: keyword
 - Default: `:sunday`
-- [Exported as](../installation-and-operation/serialization.md): `start-of-week`.
-- [Configuration file name](./config-file.md): `start-of-week`
+- [Exported as](../../installation-and-operation/serialization.md): `start-of-week`.
+- [Configuration file name](../config-file.md): `start-of-week`
 
 This will affect things like grouping by week or filtering in GUI queries. It won't affect most SQL queries, although it is used to set the WEEK_START session variable in Snowflake.
 
@@ -1662,8 +1662,8 @@ This will affect things like grouping by week or filtering in GUI queries. It wo
 
 - Type: string
 - Default: `null`
-- [Exported as](../installation-and-operation/serialization.md): `subscription-allowed-domains`.
-- [Configuration file name](./config-file.md): `subscription-allowed-domains`
+- [Exported as](../../installation-and-operation/serialization.md): `subscription-allowed-domains`.
+- [Configuration file name](../config-file.md): `subscription-allowed-domains`
 
 Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. To specify multiple domains, separate each domain with a comma, with no space in between. To allow all domains, leave the field empty. This setting doesn’t affect existing subscriptions.
 
@@ -1678,8 +1678,8 @@ Enable or disable surveys.
 
 - Type: boolean
 - Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `synchronous-batch-updates`.
-- [Configuration file name](./config-file.md): `synchronous-batch-updates`
+- [Exported as](../../installation-and-operation/serialization.md): `synchronous-batch-updates`.
+- [Configuration file name](../config-file.md): `synchronous-batch-updates`
 
 Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.
 
@@ -1687,8 +1687,8 @@ Process batches updates synchronously. If true, all `submit!` calls will be proc
 
 - Type: integer
 - Default: `2000`
-- [Exported as](../installation-and-operation/serialization.md): `unaggregated-query-row-limit`.
-- [Configuration file name](./config-file.md): `unaggregated-query-row-limit`
+- [Exported as](../../installation-and-operation/serialization.md): `unaggregated-query-row-limit`.
+- [Configuration file name](../config-file.md): `unaggregated-query-row-limit`
 
 Maximum number of rows to return specifically on :rows type queries via the API.
 
@@ -1700,8 +1700,8 @@ Must be less than 1048575, and less than the number configured in MB_AGGREGATED_
 
 - Type: string
 - Default: `latest`
-- [Exported as](../installation-and-operation/serialization.md): `update-channel`.
-- [Configuration file name](./config-file.md): `update-channel`
+- [Exported as](../../installation-and-operation/serialization.md): `update-channel`.
+- [Configuration file name](../config-file.md): `update-channel`
 
 Well notify you here when theres a new version of this type of release.
 
@@ -1709,7 +1709,7 @@ Well notify you here when theres a new version of this type of release.
 
 - Type: json
 - Default: `null`
-- [Configuration file name](./config-file.md): `uploads-settings`
+- [Configuration file name](../config-file.md): `uploads-settings`
 
 Upload settings.
 
@@ -1719,7 +1719,7 @@ Upload settings.
 
 - Type: keyword
 - Default: `:all`
-- [Configuration file name](./config-file.md): `user-visibility`
+- [Configuration file name](../config-file.md): `user-visibility`
 
 Note: Sandboxed users will never see suggestions.
 
@@ -1738,7 +1738,7 @@ Note: This setting is not an idle/inactivity timeout. If you set this to 15 minu
 
 Use [MB_SESSION_COOKIES](#mb_session_cookies) to also expire sessions, when browser is closed.
 
-Also see the [Changing session expiration](../people-and-groups/changing-session-expiration.md) documentation page.
+Also see the [Changing session expiration](../../people-and-groups/changing-session-expiration.md) documentation page.
 
 ### `MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE`
 
@@ -1941,7 +1941,7 @@ Default: `null`
 
 When set, this will encrypt database credentials stored in the application database. Requirement: minimum 16 characters base64-encoded string.
 
-Also see documentation page [Encrypting database details at rest](../databases/encrypting-details-at-rest.md).
+Also see documentation page [Encrypting database details at rest](../../databases/encrypting-details-at-rest.md).
 
 ### `MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS`
 
@@ -1963,7 +1963,7 @@ Since: v51.3
 
 If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
 
-In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
+In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](../log-configuration.md).
 
 To set a timeout for how long Metabase should wait before it kills unreturned connections, see [MB_JDBC_DATA_WAREHOUSE_UNRETURNED_CONNECTION_TIMEOUT_SECONDS](#mb_jdbc_data_warehouse_unreturned_connection_timeout_seconds).
 
@@ -2102,7 +2102,7 @@ Default page to show people when they log in.
 Type: Boolean<br>
 Default: True
 
-If you want to exclude the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
+If you want to exclude the [Metabase analytics](../../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
 
 ### `MB_LOAD_SAMPLE_CONTENT`
 

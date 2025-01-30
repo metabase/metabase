@@ -150,7 +150,7 @@ const config = { fetchRequestToken };
 
 For developing locally to try out the SDK, you can authenticate using an API key.
 
-First, create an [API key](../../people-and-groups/api-keys.md).
+First, create an [API key](../../../people-and-groups/api-keys.md).
 
 Then you can then use the API key to authenticate with Metabase in your application. All you need to do is include your API key in the config object using the key: `apiKey`.
 

@@ -18,9 +18,9 @@ You need to set up your LDAP directory with these attributes:
 
 If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form.
 
-![Attributes](./images/ldap-attributes.png)
+![Attributes](../images/ldap-attributes.png)
 
-Your LDAP directory must have the email field populated for each entry that will become a Metabase user, otherwise Metabase won't be able to create the account, nor will that person be able to log in. If either name field is missing, Metabase will use a default of "Unknown," and the person can change their name in their [account settings](./account-settings.md).
+Your LDAP directory must have the email field populated for each entry that will become a Metabase user, otherwise Metabase won't be able to create the account, nor will that person be able to log in. If either name field is missing, Metabase will use a default of "Unknown," and the person can change their name in their [account settings](../account-settings.md).
 
 ## Enabling LDAP authentication
 
@@ -64,7 +64,7 @@ This default command will work for most LDAP servers, since `inetOrgPerson` is a
 
 ## LDAP group mapping
 
-Manually assigning people to [groups](./managing.md#groups) in Metabase after they've logged in via SSO can get tedious. Instead, you can take advantage of the groups that already exist in your LDAP directory by enabling [group mappings](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control#group-management).
+Manually assigning people to [groups](../managing.md#groups) in Metabase after they've logged in via SSO can get tedious. Instead, you can take advantage of the groups that already exist in your LDAP directory by enabling [group mappings](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control#group-management).
 
 Scroll to **Group Schema** on the same LDAP settings page, and click the toggle to enable group mapping. Selecting **Edit Mapping** will bring up a modal where you can create and edit mappings, specifying which LDAP group corresponds to which Metabase group.
 
@@ -92,13 +92,13 @@ You can manage [user attributes][user-attributes-def] such as names, emails, and
 
 ## Troubleshooting login issues
 
-- [Can't log in](../troubleshooting-guide/cant-log-in.md).
-- [Troubleshooting LDAP](../troubleshooting-guide/ldap.md)
+- [Can't log in](../../troubleshooting-guide/cant-log-in.md).
+- [Troubleshooting LDAP](../../troubleshooting-guide/ldap.md)
 
 ## Further reading
 
 - [Using LDAP for authentication and access control](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control).
-- [Permissions overview](../permissions/start.md).
+- [Permissions overview](../../permissions/start.md).
 
 [data-sandboxing-docs]: ../permissions/data-sandboxes.md
 [google-saml-docs]: ./saml-google.md

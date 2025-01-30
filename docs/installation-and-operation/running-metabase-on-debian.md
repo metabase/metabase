@@ -91,7 +91,7 @@ sudo systemctl restart rsyslog.service
 
 ## Environment variables for Metabase
 
-[Environment variables](../configuring-metabase/environment-variables.md) provide a good way to customize and configure your Metabase instance on your server. On Debian systems, services typically expect to have accompanying configs inside `etc/default/<service-name>`.
+[Environment variables](../../configuring-metabase/environment-variables.md) provide a good way to customize and configure your Metabase instance on your server. On Debian systems, services typically expect to have accompanying configs inside `etc/default/<service-name>`.
 
 ### The Metabase config file
 

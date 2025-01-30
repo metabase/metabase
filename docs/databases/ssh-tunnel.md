@@ -85,4 +85,4 @@ This allows you to use the full array of features included in SSH. If you find y
 
 ## Further reading
 
-- [Adding and managing databases](./connecting.md).
+- [Adding and managing databases](../connecting.md).

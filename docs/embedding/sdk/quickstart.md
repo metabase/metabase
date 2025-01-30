@@ -55,7 +55,7 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 
 By default, Metabase will run at `http://localhost:3000`.
 
-If you get stuck, check out our [installation docs](../../installation-and-operation/installing-metabase.md).
+If you get stuck, check out our [installation docs](../../../installation-and-operation/installing-metabase.md).
 
 ## Activate your license
 
@@ -196,6 +196,6 @@ In your app, you'll see an embedded `InteractiveQuestion` component.
 </MetabaseProvider>
 ```
 
-![Embedded Metabase components](../images/embedded-components.png)
+![Embedded Metabase components](../../images/embedded-components.png)
 
 Try changing some of the `theme` options in the [client app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/blob/main/client/src/App.jsx) to style the components.

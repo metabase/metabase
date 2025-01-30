@@ -8,7 +8,7 @@ title: Usage analytics
 
 The **Usage analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase.
 
-![Usage analytics collection](./images/metabase-analytics.png)
+![Usage analytics collection](../images/metabase-analytics.png)
 
 These resources are useful for:
 
@@ -19,9 +19,9 @@ These resources are useful for:
 Some things to keep in mind with this special Usage analytics collection:
 
 - Usage analytics is a view-only collection. Even admins can't curate it. It is eternal.
-- By default, only admins can view the Usage analytics collection (though admins can grant other groups view access to it). If you're upgrading from a version older than 48, people in groups with [monitoring access](../usage-and-performance-tools/usage-analytics.md) will also get access to the Usage analytics collection. But after that initial grandfathering in, the monitoring access privilege is unrelated to the Usage analytics collection; you'll need to specifically grant groups access to the Usage analytics collection.
+- By default, only admins can view the Usage analytics collection (though admins can grant other groups view access to it). If you're upgrading from a version older than 48, people in groups with [monitoring access](../../usage-and-performance-tools/usage-analytics.md) will also get access to the Usage analytics collection. But after that initial grandfathering in, the monitoring access privilege is unrelated to the Usage analytics collection; you'll need to specifically grant groups access to the Usage analytics collection.
 - You can duplicate any item in the Usage analytics collection, modify the item to your liking, and save the item to another collection.
-- Metabase creates some default user accounts that you might see in your usage analytics, like `internal@metabase.com`. See [Default accounts](../people-and-groups/managing.md#default-user-accounts) for more information.
+- Metabase creates some default user accounts that you might see in your usage analytics, like `internal@metabase.com`. See [Default accounts](../../people-and-groups/managing.md#default-user-accounts) for more information.
 
 ## Permissions
 

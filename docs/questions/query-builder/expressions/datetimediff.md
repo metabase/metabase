@@ -46,7 +46,7 @@ Let's say you're a cheesemaker, and you want to keep track of your ripening proc
 datetimeDiff([Aging Start], [Aging End], "month")
 ```
 
-To calculate the _current_ age of a cheese in months, you use [`now`](../expressions/now.md) as the second datetime parameter, like this:
+To calculate the _current_ age of a cheese in months, you use [`now`](../../expressions/now.md) as the second datetime parameter, like this:
 
 ```
 datetimeDiff([Aging Start], now, "month")
@@ -68,9 +68,9 @@ datetimeDiff([Aging Start], now, "day")
 | Boolean                                                                                                                        | ❌                        |
 | JSON                                                                                                                           | ❌                        |
 
-We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
+We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../../configuring-metabase/timezones.md#data-types).
 
-If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page.
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page.
 
 ## Limitations
 
@@ -137,6 +137,6 @@ datetimeDiff([Aging Start], [Aging End], "month")
 
 ## Further reading
 
-- [Custom expressions documentation](../expressions.md)
+- [Custom expressions documentation](../../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)
 - [Time series analysis](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/time-series/start)

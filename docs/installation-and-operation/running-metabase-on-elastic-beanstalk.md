@@ -30,7 +30,7 @@ If you'd like help with setting up Metabase (or building out your data stack in 
 
 ## Decouple your RDS database from the Elastic Beanstalk deployment
 
-If you're using AWS's Relational Database Service to store your Metabase application data, you can continue to do so (though you should still move your Metabase installation away from Elastic Beanstalk). You can use [environment variables](../configuring-metabase/environment-variables.md) to connect to your RDS host from wherever you move your Metabase installation to.
+If you're using AWS's Relational Database Service to store your Metabase application data, you can continue to do so (though you should still move your Metabase installation away from Elastic Beanstalk). You can use [environment variables](../../configuring-metabase/environment-variables.md) to connect to your RDS host from wherever you move your Metabase installation to.
 
 ### Notify people that your Metabase will be down for a bit
 
@@ -65,7 +65,7 @@ Return to RDS and select the **Snapshots** option on the left of the page. You s
 
 Select that snapshot and click on **Actions** > **Restore Snapshot**.
 
-From this step on, you can follow the same steps as the [Configuring RDS for Metabase](./creating-RDS-database-on-AWS.md).
+From this step on, you can follow the same steps as the [Configuring RDS for Metabase](../creating-RDS-database-on-AWS.md).
 
 ## Upgrade your Elastic Beanstalk deployment
 

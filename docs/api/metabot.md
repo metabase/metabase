@@ -48,4 +48,4 @@ Ask Metabot to generate a SQL query given a prompt about a given model.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

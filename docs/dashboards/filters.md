@@ -6,7 +6,7 @@ redirect_from:
 
 # Dashboard filters and parameters
 
-![Dashboard Filters](./images/filters.png)
+![Dashboard Filters](../images/filters.png)
 
 Have you ever found yourself in a situation where it seems like you need to create nearly identical copies of the same dashboard, with just one different variable? Maybe you have an Earnings dashboard, but you want to see the data for each city your business is in, or maybe you have a KPI dashboard that you want to see broken out by month.
 
@@ -14,7 +14,7 @@ Instead of creating duplicate dashboards, you can add filter or parameter widget
 
 ## Adding a filter or parameter
 
-![Add a Filter](./images/add-filter.png)
+![Add a Filter](../images/add-filter.png)
 
 - Click the **pencil icon** to enter dashboard editing mode.
 - Click the **filter icon** that appears in the top-right to add a filter.
@@ -56,11 +56,11 @@ Single Date and Date Range will provide a calendar widget, while the other optio
 
 ## Time grouping parameter
 
-![Time grouping](./images/time-grouping.png)
+![Time grouping](../images/time-grouping.png)
 
 You can add a time grouping widget to a dashboard to change how charts are grouped by time. For example, you may want to look at the time series charts grouped by month by default, but give people the option to view the results by other groupings: by week, by quarter, and so on.
 
-> Time grouping parameter widget can only be connected to questions built with the [graphical query builder](../questions/query-builder/introduction.md).
+> Time grouping parameter widget can only be connected to questions built with the [graphical query builder](../../questions/query-builder/introduction.md).
 
 This widget doesn't filter data in the charts; the widget just changes the time granularity for any cards that have a datetime field connected to the widget.
 
@@ -101,7 +101,7 @@ You can choose from:
 
 A flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards. Options include:
 
-- **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be either a question built using the query builder, or a native/SQL question using a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type).
+- **Is**. Select one or more values from a list or search box. Use **Is** when you just want to plug a value into a variable. For multiple values, the card must be either a question built using the query builder, or a native/SQL question using a [field filter](../../questions/native-editor/sql-parameters.md#the-field-filter-variable-type).
 - **Is not**. Exclude one or more specific values.
 - **Contains**. Match values that contain the entered text.
 - **Does not contain**. Filter out values that contain the entered text.
@@ -110,7 +110,7 @@ A flexible filter type that will let you create either a dropdown menu or an inp
 
 ## Connecting a filter or parameter widget to dashboard cards
 
-Dashboard widgets apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though they'll only be displayed when a tab has cards connected to the widget.
+Dashboard widgets apply across all [dashboard tabs](../introduction.md#dashboard-tabs), though they'll only be displayed when a tab has cards connected to the widget.
 
 For each widget that you add, you'll need to tell Metabase which column the filter should update for each card.
 
@@ -118,7 +118,7 @@ Click on a card's dropdown menu to select the field that you want the widget to 
 
 Here we've wired up a Text filter to the "Event types" card, telling Metabase that the column to filter on should be the `Analytics.Event.Button.Label` field:
 
-![Wiring up a dashboard filter to a card](./images/wiring-cards.png)
+![Wiring up a dashboard filter to a card](../images/wiring-cards.png)
 
 ## Auto-connecting filters to cards
 
@@ -128,13 +128,13 @@ To undo this auto-connecting of cards, click on the toast that pops up when Meta
 
 ## Filtering dashboards with native/SQL questions
 
-If you're trying to connect a filter to a card with a native/SQL questions, you'll need to [add a variable or field filter to your query](../questions/native-editor/sql-parameters.md). For an in-depth article, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/filters).
+If you're trying to connect a filter to a card with a native/SQL questions, you'll need to [add a variable or field filter to your query](../../questions/native-editor/sql-parameters.md). For an in-depth article, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/filters).
 
 You can't connect a time grouping parameter widget to a card with a SQL question.
 
 ## Wiring up dashboard filters to text cards
 
-You can even wire up filters to text cards, but only if [the text card includes a variable](./introduction.md#including-variables-in-text-cards).
+You can even wire up filters to text cards, but only if [the text card includes a variable](../introduction.md#including-variables-in-text-cards).
 
 ## Requiring a filter or parameter
 
@@ -184,8 +184,8 @@ A list of all of the possible values in a column. People can use checkboxes to s
 
 If you're not seeing the **Dropdown list** option, and your dashboard filter is based on a column from a:
 
-- Table or GUI model: an admin will need to [enable the dropdown widget](../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
-- SQL model: go to your [model's metadata settings](../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
+- Table or GUI model: an admin will need to [enable the dropdown widget](../../data-modeling/metadata-editing.md#changing-a-search-box-filter-to-a-dropdown-filter) for that column from Metabase's **Admin settings**.
+- SQL model: go to your [model's metadata settings](../../data-modeling/models.md#add-metadata-to-columns-in-a-model), find your column, and set the **Database column this maps to**.
 
 #### Search box
 
@@ -234,7 +234,7 @@ A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [S
    - From another model or question
    - Custom list
 
-![Selectable values](./images/selectable-values.png)
+![Selectable values](../images/selectable-values.png)
 
 \* If you don't see "Dropdown list" as an option, go to [Filter widgets: Dropdown list](#dropdown-list) for more info.
 
@@ -250,7 +250,7 @@ If a dashboard is particularly large or slow, or you have multiple filters that 
 
 To turn off the automatic application of filters, click on the info **i** icon, and toggle the **Auto-apply filters** option. With auto-apply turned off, each time you change a value in a filter, you'll need to click the **Apply** button to refresh the dashboard with the new filter value.
 
-![Click Apply to apply the filters and refresh the dashboard](./images/apply-button.png)
+![Click Apply to apply the filters and refresh the dashboard](../images/apply-button.png)
 
 ## Using filter widgets
 
@@ -258,14 +258,14 @@ Once you’ve added a filter to your dashboard, just click on the filter widget 
 
 Your active filter will only apply to your view of the dashboard. If someone else is viewing the same dashboard link at the same time, they won't see your filter.
 
-![Using a filter](./images/use-filter.png)
+![Using a filter](../images/use-filter.png)
 
-You can also set up a dashboard question to [update a filter on click](./interactive.md#use-a-chart-to-filter-a-dashboard).
+You can also set up a dashboard question to [update a filter on click](../interactive.md#use-a-chart-to-filter-a-dashboard).
 
 ## Further reading
 
-- [Introduction to dashboards](./introduction.md)
-- [Interactive dashboards](./interactive.md)
-- [Dashboard subscriptions](./subscriptions.md)
-- [Charts with multiple series](./multiple-series.md)
+- [Introduction to dashboards](../introduction.md)
+- [Interactive dashboards](../interactive.md)
+- [Dashboard subscriptions](../subscriptions.md)
+- [Charts with multiple series](../multiple-series.md)
 - [Learn dashboards](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards)

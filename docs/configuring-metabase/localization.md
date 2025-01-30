@@ -10,7 +10,7 @@ The **Localization** settings allow you to set global defaults for your Metabase
 
 ## Default language
 
-Here you can set the default language (also called the "instance language") across your Metabase UI, system [emails](./email.md), [dashboard subscriptions](../dashboards/subscriptions.md), and [alerts](../questions/sharing/alerts.md). People can pick a different language from their own [account settings](../people-and-groups/account-settings.md).
+Here you can set the default language (also called the "instance language") across your Metabase UI, system [emails](../email.md), [dashboard subscriptions](../../dashboards/subscriptions.md), and [alerts](../../questions/sharing/alerts.md). People can pick a different language from their own [account settings](../../people-and-groups/account-settings.md).
 
 ## Supported languages
 
@@ -56,7 +56,7 @@ Supported languages include:
 | Ukrainian              | `uk`    |
 | Vietnamese             | `vi`    |
 
-The locale codes are relevant for setting the language in [static embeds](../embedding/static-embedding-parameters.md#setting-the-language-for-a-static-embed).
+The locale codes are relevant for setting the language in [static embeds](../../embedding/static-embedding-parameters.md#setting-the-language-for-a-static-embed).
 
 > While Metabase can support languages that read right to left, the Metabase UI is designed around languages that read left to right.
 
@@ -74,7 +74,7 @@ Note that while we only remove languages in major releases, we are happy to add 
 
 Use **report timezone** to set a default display time zone for dates and times in Metabase. The report timezone setting is a display setting only, so changing the report timezone won't affect the time zone of any data in your database.
 
-Report timezone doesn't apply to `timestamp without time zone` data types, including the output of [`convertTimezone`](../questions/query-builder/expressions/converttimezone.md) expressions. For example:
+Report timezone doesn't apply to `timestamp without time zone` data types, including the output of [`convertTimezone`](../../questions/query-builder/expressions/converttimezone.md) expressions. For example:
 
 | Raw timestamp in your database           | Data type                     | Report time zone | Displayed as           |
 | ---------------------------------------- | ----------------------------- | ---------------- | ---------------------- |
@@ -95,13 +95,13 @@ Report timezone is only supported for the following databases:
 
 ## First day of the week
 
-If you need to, you can change the first day of the week for your instance (the default is Sunday). Setting the first day of the week affects things like grouping by week and filtering in questions built using the [query builder](../questions/query-builder/introduction.md). This setting doesn't affect [SQL queries](../questions/native-editor/writing-sql.md).
+If you need to, you can change the first day of the week for your instance (the default is Sunday). Setting the first day of the week affects things like grouping by week and filtering in questions built using the [query builder](../../questions/query-builder/introduction.md). This setting doesn't affect [SQL queries](../../questions/native-editor/writing-sql.md).
 
 ## Localization options
 
 **Localization options** allow you to set global default display formats for dates, times, numbers, and currencies.
 
-You can also override these localization options for specific fields or questions. For more info, see [Formatting](../data-modeling/formatting.md).
+You can also override these localization options for specific fields or questions. For more info, see [Formatting](../../data-modeling/formatting.md).
 
 ### Dates and times
 

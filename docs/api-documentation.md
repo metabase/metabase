@@ -21,11 +21,11 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 
 ## API keys
 
-Create keys to authenticate programmatic requests to your Metabase. See [API keys](./people-and-groups/api-keys.md).
+Create keys to authenticate programmatic requests to your Metabase. See [API keys](../people-and-groups/api-keys.md).
 
 ## API changelog
 
-For breaking changes, see the API [changelog](./developers-guide/api-changelog.md).
+For breaking changes, see the API [changelog](../developers-guide/api-changelog.md).
 
 ## API endpoints
 

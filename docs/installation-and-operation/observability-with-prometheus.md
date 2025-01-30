@@ -79,7 +79,7 @@ In a new terminal process in the Prometheus directory, run:
 
 Then check `http://localhost:9090`. You should see the Prometheus app, and be able to search for various metrics emitted by Metabase.
 
-![Prometheus page showing `jvm_thread_state` graph](./images/prometheus.png)
+![Prometheus page showing `jvm_thread_state` graph](../images/prometheus.png)
 
 ## Sample metrics output
 
@@ -165,5 +165,5 @@ Metrics exported by Metabase include:
 
 ## Further reading
 
-- [Running Metabase](../troubleshooting-guide/running.md)
-- [Monitoring Metabase](./monitoring-metabase.md)
+- [Running Metabase](../../troubleshooting-guide/running.md)
+- [Monitoring Metabase](../monitoring-metabase.md)

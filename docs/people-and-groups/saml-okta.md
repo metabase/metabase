@@ -12,7 +12,7 @@ title: SAML with Okta
 
 You can also optionally [configure group mappings](#configure-group-mappings) to automatically assign Okta users to Metabase groups.
 
-See [authenticating with SAML](./authenticating-with-saml.md) for general SAML info.
+See [authenticating with SAML](../authenticating-with-saml.md) for general SAML info.
 
 ## Turn on SAML-based SSO in Metabase
 
@@ -202,4 +202,4 @@ For common issues, go to [Troubleshooting SAML][troubleshooting-saml].
 
 ## Further reading
 
-- [User provisioning](./user-provisioning.md)
+- [User provisioning](../user-provisioning.md)

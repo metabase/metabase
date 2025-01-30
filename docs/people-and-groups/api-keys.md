@@ -4,11 +4,11 @@ title: API keys
 
 # API keys
 
-Metabase can create API keys to authenticate programmatic requests to the API. To set the permissions for an API key, you can assign the key to a [group](./managing.md#groups).
+Metabase can create API keys to authenticate programmatic requests to the API. To set the permissions for an API key, you can assign the key to a [group](../managing.md#groups).
 
 ## Fair warning about Metabase's API
 
-We don't version the [Metabase API](../api-documentation.md). We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.
+We don't version the [Metabase API](../../api-documentation.md). We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.
 
 That said, there are times when it's nice to work with the API, like when managing permissions with a large number of people and groups, or bulk archiving, or content creation. So we added the ability to create API keys to authenticate your programmatic requests.
 
@@ -23,7 +23,7 @@ To create an API key:
 5. Scroll to **API Keys** and click **Manage**.
 6. Click the **Create API Key** button.
 7. Enter a **Key name**. You can have multiple API keys, so give it a name that will help you remember what you're using the key for.
-8. Select a **[Group](./managing.md#groups)**. The key will have the same permissions granted to that group.
+8. Select a **[Group](../managing.md#groups)**. The key will have the same permissions granted to that group.
 9. Click **Create**.
 10. Copy the generated API key and save it somewhere safe. Metabase won't be able to show you the key again. If you lose the key, you'll need to regenerate a new key.
 
@@ -111,5 +111,5 @@ getGroups().then(groups => console.log("Groups in your Metabase:", groups));
 
 ## Further reading
 
-- [Metabase API reference](../api-documentation.md).
+- [Metabase API reference](../../api-documentation.md).
 - [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).

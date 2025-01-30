@@ -18,11 +18,11 @@ For an overview on how to self-host Metabase, check out [how to run Metabase in 
 
 ### Running on Docker (Recommended for self-hosting)
 
-Run Metabase in a [Docker container](./running-metabase-on-docker.md).
+Run Metabase in a [Docker container](../running-metabase-on-docker.md).
 
 ### Running the Jar file
 
-If you're self-hosting but don’t use Docker, the JAR is the easiest way to get started, but it might make it more challenging to move to production. See [running the Metabase Jar](./running-the-metabase-jar-file.md).
+If you're self-hosting but don’t use Docker, the JAR is the easiest way to get started, but it might make it more challenging to move to production. See [running the Metabase Jar](../running-the-metabase-jar-file.md).
 
 ## Air-gapped Metabase
 
@@ -47,7 +47,7 @@ See [Upgrading Metabase](upgrading-metabase.md).
 ## Other installation options
 
 - [Running on Podman](running-metabase-on-podman.md)
-- [Building Metabase from source](../developers-guide/start.md)
+- [Building Metabase from source](../../developers-guide/start.md)
 - [Running on Azure Web Apps](running-metabase-on-azure.md)
 - [Running on Debian as a service](running-metabase-on-debian.md)
 

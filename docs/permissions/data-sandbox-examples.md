@@ -6,28 +6,28 @@ title: Data sandbox examples
 
 {% include plans-blockquote.html feature="Data sandboxes" %}
 
-[Data sandboxes](./data-sandboxes.md) let you:
+[Data sandboxes](../data-sandboxes.md) let you:
 
-- Restrict **rows** using a [basic sandbox](./data-sandboxes.md#basic-data-sandboxes-filter-by-a-column-in-the-table).
-- Restrict **columns** (and rows) using a [custom sandbox](./data-sandboxes.md#custom-data-sandboxes-use-a-saved-question-to-create-a-custom-view-of-a-table).
+- Restrict **rows** using a [basic sandbox](../data-sandboxes.md#basic-data-sandboxes-filter-by-a-column-in-the-table).
+- Restrict **columns** (and rows) using a [custom sandbox](../data-sandboxes.md#custom-data-sandboxes-use-a-saved-question-to-create-a-custom-view-of-a-table).
 
 ## Setup for all examples below
 
 The examples below use the Sample database included with Metabase. Here's the basic setup:
 
-1. **Block permissions for the All users group**: Hit cmd/ctrl + k to bring up the command palette and search for "Permissions". In the **Permissions** > **Data** tab. Click on the **All users** group. For the Sample database, set the All User's [View data](./data.md#view-data-permissions) permission to "Blocked".
+1. **Block permissions for the All users group**: Hit cmd/ctrl + k to bring up the command palette and search for "Permissions". In the **Permissions** > **Data** tab. Click on the **All users** group. For the Sample database, set the All User's [View data](../data.md#view-data-permissions) permission to "Blocked".
 
 2. **Create a group called Customers**. Hit cmd/ctrl + k and search for the People settings. [Create a group called "Customers".
 
-3. **Create a user account for Cloyd Beer**. We'll [create a user account](../people-and-groups/managing.md#creating-an-account) for a random person from the People table in our Sample Database. Let's go with `Cloyd Beer` from the Sample database's `People` table.
+3. **Create a user account for Cloyd Beer**. We'll [create a user account](../../people-and-groups/managing.md#creating-an-account) for a random person from the People table in our Sample Database. Let's go with `Cloyd Beer` from the Sample database's `People` table.
 
-4. **Add a user attribute to the account**: We'll add a user attribute to Cloyd's account. Since we want to be able to filter the data by user ID, we'll grab Cloyd's ID from the Sample database's `People` table and add the ID as a [user attribute](../people-and-groups/managing.md#adding-a-user-attribute): `user_id: 2499` (`2499` is Mr. Beer's ID in the Sample database).
+4. **Add a user attribute to the account**: We'll add a user attribute to Cloyd's account. Since we want to be able to filter the data by user ID, we'll grab Cloyd's ID from the Sample database's `People` table and add the ID as a [user attribute](../../people-and-groups/managing.md#adding-a-user-attribute): `user_id: 2499` (`2499` is Mr. Beer's ID in the Sample database).
 
 ![User details](images/edit-user-details.png)
 
-5. **Add Mr. Beer to the Customers group**: See [adding people to groups](../people-and-groups/managing.md#adding-people-to-groups).
+5. **Add Mr. Beer to the Customers group**: See [adding people to groups](../../people-and-groups/managing.md#adding-people-to-groups).
 
-6. **Create a collection that is only viewable by Admins.**. Call it "Admin collection". We'll use this collection to store SQL questions that we use to sandbox tables in examples 2 and 3. See [Collection permissions](./collections.md).
+6. **Create a collection that is only viewable by Admins.**. Call it "Admin collection". We'll use this collection to store SQL questions that we use to sandbox tables in examples 2 and 3. See [Collection permissions](../collections.md).
 
 ## Basic sandbox setup - filtering rows based on user attributes
 
@@ -35,9 +35,9 @@ In this example, we’ll sandbox our `Orders` table so that anyone in our Custom
 
 1. **Go to the Admin settings > Permissions > data**. Click on the "Customers" group.
 
-2. **Set View data to Granular**. For the Sample Database, set the Customer group's [View data](./data.md#view-data-permissions) to "Granular". Setting to "Granular" will allow us to set up permissions on individual tables for the Customer group.
+2. **Set View data to Granular**. For the Sample Database, set the Customer group's [View data](../data.md#view-data-permissions) to "Granular". Setting to "Granular" will allow us to set up permissions on individual tables for the Customer group.
 
-3. **Sandbox the Orders and People tables**. Here, we'll set the View data permissions on the `Orders` and `People` tables to "Sandboxed". And since we want people to self-serve their data (by asking questions, creating dashboards, etc.), we'll also set their [Create queries](../permissions/data.md#create-queries-permissions) permission to "Query builder only."
+3. **Sandbox the Orders and People tables**. Here, we'll set the View data permissions on the `Orders` and `People` tables to "Sandboxed". And since we want people to self-serve their data (by asking questions, creating dashboards, etc.), we'll also set their [Create queries](../../permissions/data.md#create-queries-permissions) permission to "Query builder only."
 
 ![Grant sandboxed access](images/grant-sandboxed-access.png)
 
@@ -58,7 +58,7 @@ To test out Mr. Beer's sandbox, we’ll open up a new incognito/private browser 
 3. Click on the **Orders** table.
 4. Confirm that Metabase displays only the orders that Mr. Beer placed, that is, orders associated with the User ID of `2499`.
 
-If Mr. Beer views any charts, dashboards, or even automated [X-ray explorations](../exploration-and-organization/x-rays.md) that include the sandboxed `Orders` data, Metabase will also filter those results to show only the data Mr. Beer is permitted to see. When Mr. Beer uses the query builder to ask new questions, his results will be limited to the sandboxed data.
+If Mr. Beer views any charts, dashboards, or even automated [X-ray explorations](../../exploration-and-organization/x-rays.md) that include the sandboxed `Orders` data, Metabase will also filter those results to show only the data Mr. Beer is permitted to see. When Mr. Beer uses the query builder to ask new questions, his results will be limited to the sandboxed data.
 
 ## Custom sandbox setups
 

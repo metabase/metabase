@@ -6,7 +6,7 @@ redirect_from:
 
 # Field types
 
-While data types indicate to a database how it should interpret the values in a field, **field types** or **semantic types** describe the _meaning_ of a field. For example, a column's data type could be `type/text` but the semantic type may be **Email**. Field types are just one example of metadata—information about data—that [Admins can change](./metadata-editing.md) in Metabase.
+While data types indicate to a database how it should interpret the values in a field, **field types** or **semantic types** describe the _meaning_ of a field. For example, a column's data type could be `type/text` but the semantic type may be **Email**. Field types are just one example of metadata—information about data—that [Admins can change](../metadata-editing.md) in Metabase.
 
 Field types dictate how Metabase displays its data, as well as the column’s special functionality, if any. By marking columns in a table as **Latitude** and **Longitude**, Metabase can use the columns to create pin and heat maps. Similarly, designating a column as a **URL** allows users to click on the link to visit that URL.
 
@@ -20,18 +20,18 @@ Field types dictate how Metabase displays its data, as well as the column’s sp
 
 Common field types are text/varchar types.
 
-- **Category**: If set to category, Metabase will know that it can use this field to group results when creating questions for automatic insights like [X-rays](../exploration-and-organization/x-rays.md).
+- **Category**: If set to category, Metabase will know that it can use this field to group results when creating questions for automatic insights like [X-rays](../../exploration-and-organization/x-rays.md).
 - **Comment**
 - **Description**
 - **Title**
 
 ## Location
 
-Marking fields as locations tell Metabase that it can use the field to display data on a [map chart](../questions/sharing/visualizations/map.md).
+Marking fields as locations tell Metabase that it can use the field to display data on a [map chart](../../questions/sharing/visualizations/map.md).
 
 - **City**
 - **Country**
-- **Latitude**: Tells Metabase that the data could be plotted on a [pin map](../questions/sharing/visualizations/map.md).
+- **Latitude**: Tells Metabase that the data could be plotted on a [pin map](../../questions/sharing/visualizations/map.md).
 - **Longitude**: Did you know that you can use the moons of Jupiter to calculate longitude?
 - **State**
 - **Zip Code**
@@ -47,18 +47,18 @@ Financial field types tell Metabase to treat the field's values as money. If you
 - **Income**
 - **Price**
 
-See [Currency formatting options](../questions/sharing/visualizations/table.md#currency-formatting-options).
+See [Currency formatting options](../../questions/sharing/visualizations/table.md#currency-formatting-options).
 
 ## Numeric
 
-Metabase will treat numeric field types as [numbers](../questions/sharing/visualizations/table.md#number-formatting-options).
+Metabase will treat numeric field types as [numbers](../../questions/sharing/visualizations/table.md#number-formatting-options).
 
 - **Percentage**: Displays the number as a percentage by default.
 - **Quantity**: Displays the number as normal by default.
 - **Score**: Displays the number as normal by default.
 - **Share**: The same as percentage, so prefer "Percentage".
 
-See [Number formatting options](../questions/sharing/visualizations/table.md#number-formatting-options).
+See [Number formatting options](../../questions/sharing/visualizations/table.md#number-formatting-options).
 
 ## Profile
 
@@ -75,7 +75,7 @@ Fields that deal with people.
 
 Date and time field types tell Metabase the field contains datetime values, so it can use date pickers and display time series (e.g., a line chart).
 
-If your database stores datetimes as a number or string, you can [cast that column to a datetime](./metadata-editing.md#casting-to-a-specific-data-type).
+If your database stores datetimes as a number or string, you can [cast that column to a datetime](../metadata-editing.md#casting-to-a-specific-data-type).
 
 - **Cancelation date**
 - **Cancelation time**
@@ -95,7 +95,7 @@ If your database stores datetimes as a number or string, you can [cast that colu
 - **UNIX Timestamp (Milliseconds)**
 - **UNIX Timestamp (Seconds)**
 
-See [Date formatting options](../questions/sharing/visualizations/table.md#date-formatting-options).
+See [Date formatting options](../../questions/sharing/visualizations/table.md#date-formatting-options).
 
 ## Categorical
 
@@ -113,36 +113,36 @@ Metabase can display fields with URLs as images or links.
 
 ## Other
 
-- **Field containing JSON**. See [Working with JSON](./json-unfolding.md)
+- **Field containing JSON**. See [Working with JSON](../json-unfolding.md)
 - **No semantic type** – Used for fields that don't fall into any of the above field types.
 
 ## Using field types in Metabase
 
 ### Set column types in models to enable people to explore results with the query builder
 
-You can set field types for [models](./models.md), which helps Metabase understand how to work with data in models built using SQL. If you set each column type in a SQL model, people will be able to explore that model using the query builder and drill-through menus.
+You can set field types for [models](../models.md), which helps Metabase understand how to work with data in models built using SQL. If you set each column type in a SQL model, people will be able to explore that model using the query builder and drill-through menus.
 
-With records that include integer entity keys, you can also configure text fields in models to [surface individual records in search](./models.md#surface-individual-records-in-search-by-matching-against-this-column).
+With records that include integer entity keys, you can also configure text fields in models to [surface individual records in search](../models.md#surface-individual-records-in-search-by-matching-against-this-column).
 
 ### X-rays
 
-When you [X-ray](../exploration-and-organization/x-rays.md) a table, model, or entity, Metabase considers both the data type and the field type to display different charts that summarize that data.
+When you [X-ray](../../exploration-and-organization/x-rays.md) a table, model, or entity, Metabase considers both the data type and the field type to display different charts that summarize that data.
 
 ### Field Filters
 
-Knowing what field types are and how they work is helpful when using [field filters](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters), as you can only create field filters for [certain field types](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
+Knowing what field types are and how they work is helpful when using [field filters](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters), as you can only create field filters for [certain field types](../../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
 
 ### Editing types in the Table Metadata page
 
-If you're an administrator, you can edit field types using the [Table Metadata page](./metadata-editing.md) in the Admin Panel.
+If you're an administrator, you can edit field types using the [Table Metadata page](../metadata-editing.md) in the Admin Panel.
 
-While data types themselves can't be edited in Metabase, admins can manually [cast certain data types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
+While data types themselves can't be edited in Metabase, admins can manually [cast certain data types](../metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
 
 > Metabase currently supports only casting to a datetime type in Metadata settings.
 
 ### JSON unfolding
 
-See [Working with JSON](./json-unfolding.md).
+See [Working with JSON](../json-unfolding.md).
 
 ### Arrays
 
@@ -151,5 +151,5 @@ Metabase currently does not support array types with any database. You'll only b
 ## Further Reading
 
 - [Exploring data with Metabase's data browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser).
-- [The Table Metadata page: editing metadata](./metadata-editing.md).
+- [The Table Metadata page: editing metadata](../metadata-editing.md).
 - [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters).

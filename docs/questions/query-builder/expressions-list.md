@@ -12,7 +12,7 @@ For an introduction to expressions, check out the [overview of custom expression
 
   - [Average](#average)
   - [Count](#count)
-  - [CountIf](./expressions/countif.md)
+  - [CountIf](../expressions/countif.md)
   - [Distinct](#distinct)
   - [Max](#max)
   - [Median](#median)
@@ -21,19 +21,19 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Share](#share)
   - [StandardDeviation](#standarddeviation)
   - [Sum](#sum)
-  - [SumIf](./expressions/sumif.md)
+  - [SumIf](../expressions/sumif.md)
   - [Variance](#variance)
-  - [CumulativeSum](./expressions/cumulative.md)
-  - [CumulativeCount](./expressions/cumulative.md)
+  - [CumulativeSum](../expressions/cumulative.md)
+  - [CumulativeCount](../expressions/cumulative.md)
 
 - Functions
 
   - [Logical functions](#logical-functions)
 
     - [between](#between)
-    - [case](./expressions/case.md)
-    - [coalesce](./expressions/coalesce.md)
-    - [isnull](./expressions/isnull.md)
+    - [case](../expressions/case.md)
+    - [coalesce](../expressions/coalesce.md)
+    - [isnull](../expressions/isnull.md)
     - [notnull](#notnull)
 
   - [Math functions](#math-functions)
@@ -49,32 +49,32 @@ For an introduction to expressions, check out the [overview of custom expression
 
   - [String functions](#string-functions)
 
-    - [concat](./expressions/concat.md)
+    - [concat](../expressions/concat.md)
     - [contains](#contains)
     - [doesNotContain](#doesnotcontain)
     - [domain](#domain)
     - [endsWith](#endswith)
     - [host](#host)
-    - [isempty](./expressions/isempty.md)
+    - [isempty](../expressions/isempty.md)
     - [ltrim](#ltrim)
     - [length](#length)
     - [lower](#lower)
     - [notempty](#notempty)
-    - [regexextract](./expressions/regexextract.md)
+    - [regexextract](../expressions/regexextract.md)
     - [replace](#replace)
     - [rtrim](#rtrim)
     - [startsWith](#startswith)
     - [subdomain](#subdomain)
-    - [substring](./expressions/substring.md)
+    - [substring](../expressions/substring.md)
     - [trim](#trim)
     - [upper](#upper)
 
   - [Date functions](#date-functions)
 
-    - [convertTimezone](./expressions/converttimezone.md)
-    - [datetimeAdd](./expressions/datetimeadd.md)
-    - [datetimeDiff](./expressions/datetimediff.md)
-    - [datetimeSubtract](./expressions/datetimesubtract.md)
+    - [convertTimezone](../expressions/converttimezone.md)
+    - [datetimeAdd](../expressions/datetimeadd.md)
+    - [datetimeDiff](../expressions/datetimediff.md)
+    - [datetimeSubtract](../expressions/datetimesubtract.md)
     - [day](#day)
     - [dayName](#dayname)
     - [hour](#hour)
@@ -82,7 +82,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [minute](#minute)
     - [month](#month)
     - [monthName](#monthname)
-    - [now](./expressions/now.md)
+    - [now](../expressions/now.md)
     - [quarter](#quarter)
     - [quarterName](#quartername)
     - [relativeDateTime](#relativedatetime)
@@ -92,9 +92,9 @@ For an introduction to expressions, check out the [overview of custom expression
     - [year](#year)
 
   - [Window functions](#window-functions)
-    - [Offset](./expressions/offset.md)
-    - [CumulativeCount](./expressions/cumulative.md)
-    - [CumulativeSum](./expressions/cumulative.md)
+    - [Offset](../expressions/offset.md)
+    - [CumulativeCount](../expressions/cumulative.md)
+    - [CumulativeSum](../expressions/cumulative.md)
 
 - [Limitations](#limitations)
   - [Database limitations](#database-limitations)
@@ -119,7 +119,7 @@ Syntax: `Count`
 
 Example: `Count` If a table or result returns 10 rows, `Count` will return `10`.
 
-### [CountIf](./expressions/countif.md)
+### [CountIf](../expressions/countif.md)
 
 Only counts rows where the condition is true.
 
@@ -203,7 +203,7 @@ Syntax: `Sum(column)`
 
 Example: `Sum([Subtotal])` would add up all the values in the `Subtotal` column.
 
-### [SumIf](./expressions/sumif.md)
+### [SumIf](../expressions/sumif.md)
 
 Sums up the specified column only for rows where the condition is true.
 
@@ -241,7 +241,7 @@ Example: If you filtered with the expression `between([Created At], "2019-01-01"
 
 Related: [interval](#interval).
 
-### [case](./expressions/case.md)
+### [case](../expressions/case.md)
 
 Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.
 
@@ -249,7 +249,7 @@ Syntax: `case(condition, output, …)`
 
 Example: `case([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a `Weight` is 250, the expression would return "Large". In this case, the default value is "Small", so any `Weight` 150 or less would return "Small".
 
-### [coalesce](./expressions/coalesce.md)
+### [coalesce](../expressions/coalesce.md)
 
 Looks at the values in each argument in order and returns the first non-null value for each row.
 
@@ -257,7 +257,7 @@ Syntax: `coalesce(value1, value2, …)`
 
 Example: `coalesce([Comments], [Notes], "No comments")`. If both the `Comments` and `Notes` columns are null for that row, the expression will return the string "No comments".
 
-### [isnull](./expressions/isnull.md)
+### [isnull](../expressions/isnull.md)
 
 Returns true if the column is null.
 
@@ -365,7 +365,7 @@ Related: [Power](#power).
 
 String functions manipulate or validate string data.
 
-### [concat](./expressions/concat.md)
+### [concat](../expressions/concat.md)
 
 Combine two or more strings together.
 
@@ -440,7 +440,7 @@ Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://
 
 Related: [domain](#domain), [subdomain](#subdomain).
 
-### [isempty](./expressions/isempty.md)
+### [isempty](../expressions/isempty.md)
 
 Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error. You can use [isnull](#isnull) for non-string columns.
 
@@ -488,7 +488,7 @@ Example: `notempty([Feedback])` would return true if `Feedback` contains a value
 
 Related: [isempty](#isempty), [isnull](#isnull), [notnull](#notnull)
 
-### [regexextract](./expressions/regexextract.md)
+### [regexextract](../expressions/regexextract.md)
 
 > ⚠️ `regexextract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexextract` is only available for the Druid-JDBC driver.
 
@@ -547,7 +547,7 @@ Example: `subdomain([Page URL])`. If the `[Page URL]` column had a value of `htt
 
 Related: [host](#host), [domain](#domain).
 
-### [substring](./expressions/substring.md)
+### [substring](../expressions/substring.md)
 
 Returns a portion of the supplied text, specified by a starting position and a length.
 
@@ -577,7 +577,7 @@ Example: `upper([Status])`. If status were "hyper", `upper("hyper")` would retur
 
 Date functions manipulate, extract, or create date and time values.
 
-### [convertTimezone](./expressions/converttimezone.md)
+### [convertTimezone](../expressions/converttimezone.md)
 
 Shifts a date or timestamp value into a specified time zone.
 
@@ -585,9 +585,9 @@ Syntax: `convertTimezone(column, target, source)`.
 
 Example: `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
 
-See the [database limitations](./expressions/converttimezone.md#limitations) for `convertTimezone`.
+See the [database limitations](../expressions/converttimezone.md#limitations) for `convertTimezone`.
 
-### [datetimeAdd](./expressions/datetimeadd.md)
+### [datetimeAdd](../expressions/datetimeadd.md)
 
 Adds some unit of time to a date or timestamp value.
 
@@ -599,7 +599,7 @@ Example: `datetimeAdd("2021-03-25", 1, "month")` would return the value `2021-04
 
 Related: [between](#between), [datetimeSubtract](#datetimesubtract).
 
-### [datetimeDiff](./expressions/datetimediff.md)
+### [datetimeDiff](../expressions/datetimediff.md)
 
 Returns the difference between two datetimes in some unit of time. For example, `datetimeDiff(d1, d2, "day") ` will return the number of days between `d1` and `d2`.
 
@@ -607,9 +607,9 @@ Syntax: `datetimeDiff(datetime1, datetime2, unit)`.
 
 Example: `datetimeDiff("2022-02-01", "2022-03-01", "month")` would return `1`.
 
-See the [database limitations](./expressions/datetimediff.md#limitations) for `datetimediff`.
+See the [database limitations](../expressions/datetimediff.md#limitations) for `datetimediff`.
 
-### [datetimeSubtract](./expressions/datetimesubtract.md)
+### [datetimeSubtract](../expressions/datetimesubtract.md)
 
 Subtracts some unit of time from a date or timestamp value.
 
@@ -631,11 +631,11 @@ Example: `day("2021-03-25T12:52:37")` would return the day as an integer, `25`.
 
 ### dayName
 
-Returns the localized name of a day of the week, given the day's number (1-7). Respects the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
+Returns the localized name of a day of the week, given the day's number (1-7). Respects the [first day of the week setting](../../../configuring-metabase/localization.md#first-day-of-the-week).
 
 Syntax: `dayName(dayNumber)`.
 
-Example: `dayName(1)` would return `Sunday`, unless you change the [first day of the week setting](../../configuring-metabase/localization.md#first-day-of-the-week).
+Example: `dayName(1)` would return `Sunday`, unless you change the [first day of the week setting](../../../configuring-metabase/localization.md#first-day-of-the-week).
 
 Related: [quarterName](#quartername), [monthName](#monthname).
 
@@ -685,9 +685,9 @@ Example: `monthName(10)` would return `Oct` for October.
 
 Related: [dayName](#dayname), [quarterName](#quartername).
 
-### [now](./expressions/now.md)
+### [now](../expressions/now.md)
 
-Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
+Returns the current date and time using your Metabase [report timezone](../../../configuring-metabase/localization.md#report-timezone).
 
 Syntax: `now`.
 
@@ -794,7 +794,7 @@ Window functions can only be used in the **Summarize** section. They cannot be u
 
 ### CumulativeCount
 
-For more info, check out our page on [cumulative functions](./expressions/cumulative.md).
+For more info, check out our page on [cumulative functions](../expressions/cumulative.md).
 
 The additive total of rows across a breakout.
 
@@ -804,7 +804,7 @@ Example: `CumulativeCount`.
 
 ### CumulativeSum
 
-For more info, check out our page on [cumulative functions](./expressions/cumulative.md).
+For more info, check out our page on [cumulative functions](../expressions/cumulative.md).
 
 The rolling sum of a column across a breakout.
 
@@ -818,7 +818,7 @@ Related: [Sum](#sum) and [SumIf](#sumif).
 
 > ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, MongoDB, and Druid.
 
-For more info, check out our page on [Offset](./expressions/offset.md).
+For more info, check out our page on [Offset](../expressions/offset.md).
 
 Returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 

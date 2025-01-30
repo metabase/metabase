@@ -13,17 +13,17 @@ If your Metabase has email or Slack set up, all you need to do is create a dashb
 
 ## Enabling dashboard subscriptions
 
-To enable dashboard subscriptions, your administrators will need to have set up email or Slack for your Metabase. See [Setting up email](../configuring-metabase/email.md) or [Setting up Slack](../configuring-metabase/slack.md).
+To enable dashboard subscriptions, your administrators will need to have set up email or Slack for your Metabase. See [Setting up email](../../configuring-metabase/email.md) or [Setting up Slack](../../configuring-metabase/slack.md).
 
 ## Setting up a dashboard subscription
 
 To set up a subscription to a dashboard, click on the **Sharing** icon and select **Subscriptions**. Metabase will slide out a sidebar on the right, with an option to set up a subscription via email or Slack:
 
-![Set up a dashboard subscription with email or slack](./images/email-or-slack.png)
+![Set up a dashboard subscription with email or slack](../images/email-or-slack.png)
 
 Let's say we want to email a dashboard. We'll click on the **Email it** option in the sidebar, and Metabase will give us some options:
 
-![Dashboard subscription email options](./images/email-options.png)
+![Dashboard subscription email options](../images/email-options.png)
 
 ## Email subscription options
 
@@ -31,7 +31,7 @@ For emails, we can:
 
 ### Add subscribers
 
-Add email addresses to register subscribers. On Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise), admins can limit email recipients to [approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications) and [configure which recipients Metabase suggests](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts).
+Add email addresses to register subscribers. On Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise), admins can limit email recipients to [approved domains for notifications](../../configuring-metabase/email.md#approved-domains-for-notifications) and [configure which recipients Metabase suggests](../../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts).
 
 ### Determine frequency and timing
 
@@ -62,7 +62,7 @@ Here you can set filters to apply when Metabase sends the subscription.
 
 Tell Metabase if it should attach results to the email as a file, in addition to displaying the table in the email body.
 
-If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](./filters.md).
+If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](../filters.md).
 
 #### File format
 
@@ -80,7 +80,7 @@ If you check this box, Metabase will drop any visualization settings applied to 
 
 Here you can specify which questions Metabase should attach results for.
 
-The attached files will include up to 2000 rows by default. If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [MB_UNAGGREGATED_QUERY_ROW_LIMIT](../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). To change this row limit on your Metabase Cloud instance, you can [contact us](https://www.metabase.com/help/premium) and request a different row limit.
+The attached files will include up to 2000 rows by default. If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [MB_UNAGGREGATED_QUERY_ROW_LIMIT](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). To change this row limit on your Metabase Cloud instance, you can [contact us](https://www.metabase.com/help/premium) and request a different row limit.
 
 ## Slack subscription options
 
@@ -88,7 +88,7 @@ For Slack subscriptions, you can set up a subscription for a channel (like #gene
 
 > Note that Slack username can be different from Slack display name.
 
-![slack subscription options](./images/slack-subscription-options.png)
+![slack subscription options](../images/slack-subscription-options.png)
 
 > If you rename the subscribed channel in Slack, you'll need to update the subscription to point to the new Slack channel name.
 
@@ -96,7 +96,7 @@ You can specify how often Metabase sends a Slack message (hourly, daily, weekly,
 
 ### Sending subscriptions to private channels
 
-See [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
+See [Sending alerts and subscriptions to private Slack channels](../../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
 
 ## Adding multiple subscriptions
 
@@ -110,7 +110,7 @@ To remove a subscription from a dashboard, select the subscription you'd like to
 
 {% include plans-blockquote.html feature="Usage analytics" %}
 
-You can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in **Usage analytics** collection. See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
+You can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in **Usage analytics** collection. See [Usage analytics](../../usage-and-performance-tools/usage-analytics.md).
 
 ## Customize filter values for each dashboard subscription
 
@@ -124,17 +124,17 @@ You can set values for each filter on the dashboard. If you have any dashboard f
 
 Here's the sidebar where you can set the filter values:
 
-![Setting a filter value](./images/set-filter-values.png)
+![Setting a filter value](../images/set-filter-values.png)
 
 The section to call out here is the **Set filter values for when this gets sent**. Here we've set "VT" as the value for the dashboard's State filter to scope results to records from Vermont. We didn't set a value for the Created_At filter, so the subscription will send the results without a filter applied. If you've set a default value for the filter, the subscription will list the value here.
 
 ## How permissions work with dashboard subscriptions
 
-See [Notification permissions](../permissions/notifications.md).
+See [Notification permissions](../../permissions/notifications.md).
 
 ## Further reading
 
-- [Alerts](../questions/sharing/alerts.md)
-- [Setting up email](../configuring-metabase/email.md)
-- [Setting up Slack](../configuring-metabase/slack.md)
-- [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
+- [Alerts](../../questions/sharing/alerts.md)
+- [Setting up email](../../configuring-metabase/email.md)
+- [Setting up Slack](../../configuring-metabase/slack.md)
+- [Usage analytics](../../usage-and-performance-tools/usage-analytics.md)

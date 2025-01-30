@@ -4,7 +4,7 @@ title: Legacy metrics
 
 # Legacy metrics
 
-Metabase upgraded [metrics](./metrics.md) starting in version 51.
+Metabase upgraded [metrics](../metrics.md) starting in version 51.
 
 If you're upgrading from Metabase 50 or earlier, all of your existing metrics will be migrated to the new metrics, which you can find in the Migrated Metrics V1 collection with curate access only for admins. You can leave the metrics there, or move them into different collections.
 

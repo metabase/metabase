@@ -58,13 +58,13 @@ Offset(Sum([Total]), -1)
 
 Then group the results by `Created At` by year:
 
-![Comparing year over year](../../images/sum-of-totals-for-previous-period.png)
+![Comparing year over year](../../../images/sum-of-totals-for-previous-period.png)
 
 Which yields:
 
-![Year over year order sum of order totals](../../images/year-over-year-sum-totals.png)
+![Year over year order sum of order totals](../../../images/year-over-year-sum-totals.png)
 
-With these offsets (the Sums in the "Previous period" column), we can then create [custom columns](../introduction.md#creating-custom-columns) to calculate things like the difference between yearly Sums:
+With these offsets (the Sums in the "Previous period" column), we can then create [custom columns](../../introduction.md#creating-custom-columns) to calculate things like the difference between yearly Sums:
 
 ```
 [Sum of total] - [Previous period]
@@ -76,7 +76,7 @@ And the percentage change year to year:
 [Difference] / [Previous period] * 100
 ```
 
-![Difference and percentage change](../../images/diff-and-percentage.png)
+![Difference and percentage change](../../../images/diff-and-percentage.png)
 
 ## Example rolling average using `Offset`
 
@@ -90,7 +90,7 @@ For example, let's say you want to calculate the rolling average sum of order to
 
 The above expression adds up this period's total, plus the totals for the previous two periods (offset by `-1` and `-2`), and then divides by three to get the average across those periods.
 
-![Rolling average](../../images/rolling-average.png)
+![Rolling average](../../../images/rolling-average.png)
 
 ## Related functions
 
@@ -130,5 +130,5 @@ ORDER BY
 
 ## Further reading
 
-- [Custom expressions documentation](../expressions.md)
+- [Custom expressions documentation](../../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions)

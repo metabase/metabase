@@ -6,9 +6,9 @@ redirect_from:
 
 # Collection permissions
 
-![Collection detail](./images/collection-detail.png)
+![Collection detail](../images/collection-detail.png)
 
-You can use [collections](../exploration-and-organization/collections.md) to organize questions, dashboards, models, timelines, and other collections. You can set permissions on those collections to determine which groups of people can view and curate collections' items.
+You can use [collections](../../exploration-and-organization/collections.md) to organize questions, dashboards, models, timelines, and other collections. You can set permissions on those collections to determine which groups of people can view and curate collections' items.
 
 Metabase starts out with a default top-level collection which is called **Our analytics**, which every other collection is saved inside of.
 
@@ -32,11 +32,11 @@ There are three permission levels for collections:
 
 ### Curate access
 
-The group can view, edit, move, delete, and pin items saved in this collection, and can save or move new items into it. The group can also create new sub-collections within this collection. The group can also create and edit [events and timelines](../exploration-and-organization/events-and-timelines.md).
+The group can view, edit, move, delete, and pin items saved in this collection, and can save or move new items into it. The group can also create new sub-collections within this collection. The group can also create and edit [events and timelines](../../exploration-and-organization/events-and-timelines.md).
 
 ### View access
 
-The group can see all the questions, dashboards, and models in the collection, as well as [events and timelines](../exploration-and-organization/events-and-timelines.md).
+The group can see all the questions, dashboards, and models in the collection, as well as [events and timelines](../../exploration-and-organization/events-and-timelines.md).
 
 ### No access
 
@@ -44,27 +44,27 @@ The group won't see this collection listed, and they'll lack access to any of th
 
 ## Collection vs data permissions
 
-Collection permissions only apply to viewing and curating existing questions, models, and dashboards. Changing the query on an existing question, or creating a new question, requires that the group have [data permissions](./data.md) for the underlying data.
+Collection permissions only apply to viewing and curating existing questions, models, and dashboards. Changing the query on an existing question, or creating a new question, requires that the group have [data permissions](../data.md) for the underlying data.
 
-There is one, important exception: when a group has their data permission set to [Block](./data.md#blocked-view-data-permission) for a database or table, the group won't be able to view questions based on that data, even if they have curate access to the collection where those questions are saved.
+There is one, important exception: when a group has their data permission set to [Block](../data.md#blocked-view-data-permission) for a database or table, the group won't be able to view questions based on that data, even if they have curate access to the collection where those questions are saved.
 
 ## Dashboards with questions from multiple collections
 
 If a dashboard includes questions saved to other collections, the group will need view or curate access to all of those collections in order to view those questions. If not, Metabase will apologize and tell you that you lack permissions to see the cards saved to the other collections.
 
-![Dashboard with questions from multiple collections, where the person is not in a group with access to one of the collections](./images/dashboard-no-permissions.png)
+![Dashboard with questions from multiple collections, where the person is not in a group with access to one of the collections](../images/dashboard-no-permissions.png)
 
 In general, it's easier to manage permissions when keeping all of a dashboard's questions in the same collection.
 
 ## Setting permissions for collections
 
-You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](./introduction.md) can have either View, Curate, or No access to a collection:
+You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](../introduction.md) can have either View, Curate, or No access to a collection:
 
-![Permissions](./images/collection-permissions.png)
+![Permissions](../images/collection-permissions.png)
 
 If you want to see the bigger picture of what permissions your user groups have for all your collections, just click the link that says **See all collection permissions**, which takes you to the Admin Panel. You'll see a list of your collections down along the left, and clicking on any of those will bring up a list of each group's permission settings for that collection.
 
-![Collection Permissions](./images/admin-panel-collections.png)
+![Collection Permissions](../images/admin-panel-collections.png)
 
 Just like with data access permissions, collection permissions are _additive_, meaning that if a user belongs to more than one group, if one of their groups has a more restrictive setting for a collection than another one of their groups, they'll be given the _more permissive_ setting. This is especially important to remember when dealing with the All Users group: since all users are members of this group, if you give the All Users group Curate access to a collection, then _all_ users will be given Curate access for that collection, even if they also belong to a group with _less_ access than that.
 
@@ -74,11 +74,11 @@ A group can be given access to a collection located somewhere within one or more
 
 ## Deleting collections
 
-Users with curate permission for a collection can move collections to Trash, see [Delete and Restore](../exploration-and-organization/delete-and-restore.md).
+Users with curate permission for a collection can move collections to Trash, see [Delete and Restore](../../exploration-and-organization/delete-and-restore.md).
 
 ## Pinning items in collections
 
-![Pins](./images/pinned-items.png)
+![Pins](../images/pinned-items.png)
 
 People in groups with Curate access to a collection can pin items in the collection. Pinning an item in a collection turns the item into a handsome card at the top of the collection.
 
@@ -94,7 +94,7 @@ The "Our analytics" collection and individual personal collections are invincibl
 
 ### Usage analytics
 
-See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
+See [Usage analytics](../../usage-and-performance-tools/usage-analytics.md).
 
 ### Personal collections
 

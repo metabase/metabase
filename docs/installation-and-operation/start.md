@@ -6,19 +6,19 @@ title: "Installation and operation overview"
 
 The birth, care, and feeding of your Metabase.
 
-## [Installing Metabase](./installing-metabase.md)
+## [Installing Metabase](../installing-metabase.md)
 
 Options for installing Metabase.
 
-## [Migrating to a production database](./migrating-from-h2.md)
+## [Migrating to a production database](../migrating-from-h2.md)
 
 If you started using Metabase with the default, H2 application database, here's how to migrate your data to a production-ready database.
 
-## [Configuring the Metabase application database](./configuring-application-database.md)
+## [Configuring the Metabase application database](../configuring-application-database.md)
 
 Use environment variables to set up your application database.
 
-## [Backing up Metabase application data](./backing-up-metabase-application-data.md)
+## [Backing up Metabase application data](../backing-up-metabase-application-data.md)
 
 How to back up your Metabase data: questions, dashboards, and other application data.
 
@@ -26,27 +26,27 @@ How to back up your Metabase data: questions, dashboards, and other application 
 
 How to safely upgrade your Metabase.
 
-## [Serialization](./serialization.md)
+## [Serialization](../serialization.md)
 
 Export your questions, dashboards, and more as YAML files that you can check into version control.
 
-## [Monitoring your Metabase](./monitoring-metabase.md)
+## [Monitoring your Metabase](../monitoring-metabase.md)
 
 Monitor your Metabase with JMX.
 
-## [Observability with Prometheus](./observability-with-prometheus.md)
+## [Observability with Prometheus](../observability-with-prometheus.md)
 
 Export Metabase metrics for viewing with Prometheus.
 
-## [Supported browsers](./supported-browsers.md)
+## [Supported browsers](../supported-browsers.md)
 
 Rest in peace, Internet Explorer.
 
-## [About the anonymous usage data we collect](./information-collection.md).
+## [About the anonymous usage data we collect](../information-collection.md).
 
 We collect anonymous Metabase usage data to improve the product. We don't collect your data.
 
-## [Command line commands](./commands.md)
+## [Command line commands](../commands.md)
 
 Metabase's CLI.
 

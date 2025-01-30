@@ -28,8 +28,8 @@ export default function App() {
 You can also pass additional props to `MetabaseProvider`:
 
 - `authConfig` (Required). Defines how to authenticate with Metabase.
-- `theme` (Optional) See [Appearance](./appearance.md).
-- `pluginsConfig` (Optional). See [Plugins](./plugins.md).
+- `theme` (Optional) See [Appearance](../appearance.md).
+- `pluginsConfig` (Optional). See [Plugins](../plugins.md).
 - `eventHandlers` (Optional). See [Global event handlers](#global-event-handlers).
 - `className` (Optional). Classes to be added to the wrapper element.
 - `locale` (Optional). Defines the display language. Accepts an ISO language code such as `en` or `de`.

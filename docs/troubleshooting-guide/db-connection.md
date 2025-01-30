@@ -8,7 +8,7 @@ redirect_from:
 
 If you can't connect to your database, you'll need to figure out if the problem is happening with Metabase or your database server.
 
-If your database connection is successful, but the tables aren't showing up in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser), go to [Troubleshooting missing tables](./cant-see-tables.md).
+If your database connection is successful, but the tables aren't showing up in the [Data Browser](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/data-browser), go to [Troubleshooting missing tables](../cant-see-tables.md).
 
 ## Troubleshooting connections to Metabase
 
@@ -16,11 +16,11 @@ If your database connection is successful, but the tables aren't showing up in t
 
    - If Metabase hasn't started syncing with your database, click **Sync database schema now**.
 
-   - If Metabase is taking a long time to sync, go to [Troubleshooting syncs and scans](./sync-fingerprint-scan.md).
+   - If Metabase is taking a long time to sync, go to [Troubleshooting syncs and scans](../sync-fingerprint-scan.md).
 
 2. Go to **Admin** > **Troubleshooting** > **Logs** to check if Metabase failed to sync [due to an error](#common-database-connection-errors).
 
-   - If the logs feel overwhelming, check out [How to read the server logs](./server-logs.md).
+   - If the logs feel overwhelming, check out [How to read the server logs](../server-logs.md).
 
 If you don't have access to the Metabase Admin panel, you'll need to ask the person who set up your Metabase.
 
@@ -34,7 +34,7 @@ If you don't have access to the Metabase Admin panel, you'll need to ask the per
 
    - If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist).
 
-3. Make sure that Metabase is using a role with the necessary privileges to connect to your data warehouse. See [Granting database privileges](../databases/users-roles-privileges.md).
+3. Make sure that Metabase is using a role with the necessary privileges to connect to your data warehouse. See [Granting database privileges](../../databases/users-roles-privileges.md).
 
 The steps above will help you detect whether the problem is occurring outside of Metabase. To _fix_ problems with your database server, you'll need to refer to the docs for your database or cloud service. Remember to [test your database connection](#testing-the-connection-status) after you make changes.
 
@@ -42,17 +42,17 @@ If you don't have access to the data warehouse server, you’ll need to ask the 
 
 ## Troubleshooting BigQuery and Google Drive connections
 
-See [Troubleshooting BigQuery and Google Drive connections](./bigquery-drive.md)
+See [Troubleshooting BigQuery and Google Drive connections](../bigquery-drive.md)
 
 ## Common database connection errors
 
 ### Your question took too long
 
-If you see this error message in the Metabase interface, go to [Troubleshooting timeouts](./timeout.md).
+If you see this error message in the Metabase interface, go to [Troubleshooting timeouts](../timeout.md).
 
 ### Connections cannot be acquired from the underlying database
 
-If you see this error messages in the [logs](./server-logs.md) (**Admin** > **Troubleshooting** > **Logs**):
+If you see this error messages in the [logs](../server-logs.md) (**Admin** > **Troubleshooting** > **Logs**):
 
 1. Go to **Admin** > **Databases** and select your database.
 2. Go to **Advanced options** > **Additional JDBC connection string options** and add `trustServerCertificate=true`.
@@ -100,7 +100,7 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
 
 ### Testing the connection status
 
-1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
+1. Go to the Metabase [SQL editor](../../questions/native-editor/writing-sql.md).
 2. Test the connection to your database by running:
    ```sql
    SELECT 1
@@ -108,8 +108,8 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
 
 ## Related problems
 
-- [My connection or query is timing out](./timeout.md).
-- [My database is slow](./db-performance.md).
+- [My connection or query is timing out](../timeout.md).
+- [My database is slow](../db-performance.md).
 
 ## Are you still stuck?
 

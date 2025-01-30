@@ -31,4 +31,4 @@ This endpoints provides an image with the appropriate pins rendered given a MBQL
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

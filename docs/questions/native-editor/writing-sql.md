@@ -16,11 +16,11 @@ Even if you don't understand SQL or how to use it, it's worthwhile to get an ide
 
 ## Starting a new SQL query
 
-Select **+ New** in the main nav bar. If you have the [permissions](../../permissions/data.md) to use the SQL editor, you'll see an option to start a new **SQL query** next to a little console icon.
+Select **+ New** in the main nav bar. If you have the [permissions](../../../permissions/data.md) to use the SQL editor, you'll see an option to start a new **SQL query** next to a little console icon.
 
 After clicking **SQL query**, you'll see an editor where you can write and run queries in SQL (or your database's native querying language).
 
-![SQL editor](../images/SQLInterface.png)
+![SQL editor](../../images/SQLInterface.png)
 
 To try it out, make sure you've selected the [Sample Database][sample-database-gloss], then paste in this short SQL query:
 
@@ -56,7 +56,7 @@ You can format your SQL queries by clicking on the "document" icon in the editor
 
 | Before format                                                         | After format                                                        |
 | --------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| ![a SQL query before formatting](../images/before-sql-formatting.png) | ![a SQL query after formatting](../images/after-sql-formatting.png) |
+| ![a SQL query before formatting](../../images/before-sql-formatting.png) | ![a SQL query after formatting](../../images/after-sql-formatting.png) |
 
 The formatter works only for SQL queries, and isn’t available for SQLite and SQL Server.
 
@@ -64,9 +64,9 @@ The formatter works only for SQL queries, and isn’t available for SQLite and S
 
 If you or someone else wrote a SQL query that includes [variables][variable-gloss], that question might have filter widgets at the top of the screen above the editor. Filter widgets let you modify the SQL query before it's run, changing the results you might get.
 
-![SQL filter](../images/SQL-filter-widget.png)
+![SQL filter](../../images/SQL-filter-widget.png)
 
-Writing SQL queries that use variables or parameters can be very powerful, but it's also a bit more advanced, so that topic has its own page if you'd like to [learn more](./sql-parameters.md).
+Writing SQL queries that use variables or parameters can be very powerful, but it's also a bit more advanced, so that topic has its own page if you'd like to [learn more](../sql-parameters.md).
 
 ## SQL snippets
 
@@ -78,26 +78,26 @@ When you run a query from the SQL editor, Metabase sends the query to your datab
 
 ## Question version history
 
-For questions, [dashboards](../../dashboards/start.md), and [models](../../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
+For questions, [dashboards](../../../dashboards/start.md), and [models](../../../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
 
-See [History](../../exploration-and-organization/history.md).
+See [History](../../../exploration-and-organization/history.md).
 
 ## Explore SQL question results using the Query Builder
 
-On saved SQL questions without [parameters](./sql-parameters.md), you'll get the **Explore results** button. It will create a new Query Builder question that uses the SQL question results as a data source.
+On saved SQL questions without [parameters](../sql-parameters.md), you'll get the **Explore results** button. It will create a new Query Builder question that uses the SQL question results as a data source.
 
-![Explore results button](../images/explore-results.png)
+![Explore results button](../../images/explore-results.png)
 
 ## Drill-though in SQL questions
 
 Visualizations created with SQL have limited [drill-through][drill-through] capabilities:
 
-- You can filter results of SQL queries by clicking on data points, zoom in on time series or maps, and use some [column header actions](../sharing/visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
+- You can filter results of SQL queries by clicking on data points, zoom in on time series or maps, and use some [column header actions](../../sharing/visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
 - You won't be able to drill down to unaggregated records, change time granularity, or break out by categories or locations.
 
 ## Caching results
 
-See [Caching question policies](../../configuring-metabase/caching.md#question-caching-policy).
+See [Caching question policies](../../../configuring-metabase/caching.md#question-caching-policy).
 
 ## Learn more
 

@@ -15,4 +15,4 @@ Fetch info about the current Premium-Features premium features token including w
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

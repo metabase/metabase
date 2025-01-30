@@ -44,8 +44,8 @@ If you're seeing this "Out of memory" (OOM) error, you'll need to [allocate more
 
 You can use tools to view how Metabase uses the memory available to it over time. Check out:
 
-- [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md)
-- [Monitoring your Metabase](../installation-and-operation/monitoring-metabase.md)
+- [Observability with Prometheus](../../installation-and-operation/observability-with-prometheus.md)
+- [Monitoring your Metabase](../../installation-and-operation/monitoring-metabase.md)
 
 The specific Prometheus metric you need to check is jvm_memory_bytes_used{area="heap"}
 
@@ -81,7 +81,7 @@ The `-XX:HeapDumpPath` flag specifies where to put the dump---the current direct
 
 ## Metabase cannot read or write from a file or folder (IOError)
 
-If you see an error regarding file permissions, like Metabase being unable to read a SQLite database or a custom GeoJSON map file, check out the section "Metabase can't read to/from a file or directory" in our [Docker troubleshooting guide](./docker.md).
+If you see an error regarding file permissions, like Metabase being unable to read a SQLite database or a custom GeoJSON map file, check out the section "Metabase can't read to/from a file or directory" in our [Docker troubleshooting guide](../docker.md).
 
 ## WARNING: sun.reflect.Reflection.getCallerClass is not supported
 

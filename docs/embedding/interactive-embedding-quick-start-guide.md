@@ -13,7 +13,7 @@ You'll embed the full Metabase application in your app. Once logged in, people c
 ## Prerequisites
 
 - You have an app that you can embed Metabase in.
-- You have a Pro or Enterprise subscription of Metabase. If you're unsure where to start, sign up for a free trial for [Pro On-Prem](https://www.metabase.com/product/pro). If you have Docker Desktop installed, you can just search for "metabase-enterprise" to find the Docker image and run it. Alternatively, you can follow [these instructions](../installation-and-operation/running-metabase-on-docker.md#pro-or-enterprise-quick-start).
+- You have a Pro or Enterprise subscription of Metabase. If you're unsure where to start, sign up for a free trial for [Pro On-Prem](https://www.metabase.com/product/pro). If you have Docker Desktop installed, you can just search for "metabase-enterprise" to find the Docker image and run it. Alternatively, you can follow [these instructions](../../installation-and-operation/running-metabase-on-docker.md#pro-or-enterprise-quick-start).
 
 The code featured in this guide can be found in our [sample repo](https://github.com/metabase/metabase-nodejs-express-interactive-embedding-sample).
 
@@ -35,7 +35,7 @@ Click on the **Interactive embedding** card. Under **Authorized origins**, add t
 
 #### SameSite configuration
 
-If you're embedding Metabase in a different domain, you may need to [set the session cookie's SameSite value to `none`](./interactive-embedding.md#embedding-metabase-in-a-different-domain)
+If you're embedding Metabase in a different domain, you may need to [set the session cookie's SameSite value to `none`](../interactive-embedding.md#embedding-metabase-in-a-different-domain)
 
 #### Enable authentication with JWT
 
@@ -43,7 +43,7 @@ While still in the Admin panel's **Settings** section, click on **Authentication
 
 On the card that says **JWT**, click the **Setup** button (you may have to scroll down to view the JWT card).
 
-![Admin settings: Authentication > JTW setup.](./images/jwt-setup.png)
+![Admin settings: Authentication > JTW setup.](../images/jwt-setup.png)
 
 #### Set JWT Identity provider URI
 
@@ -210,7 +210,7 @@ In Metabase's admin section, go to **Settings** > **Authentication**. Scroll to 
 
 In the **Group schema** section, toggle on **Synchronize group memberships**. For each group you want to sync, add a group mapping. When you click **New mapping**, enter "Customer-Acme", the string that you included in the `groups` array in your JWT payload. You can then associate that group name with the Metabase group "Customer Acme" that we created earlier.
 
-![Mapping user attributes to groups.](./images/sync-groups.png)
+![Mapping user attributes to groups.](../images/sync-groups.png)
 
 Be sure to **Save changes**.
 
@@ -232,7 +232,7 @@ Metabase ships with two initial groups: "Admins" and "All Users". By default, Me
 
 To reset permissions for the All users group, click on the **gear** icon and go to **Admin settings** > **Permissions**. Under the **Data** tab, go to **Groups** and select **All Users**. For the **Sample Database** in the **View data** column, select "Blocked". Click **Save changes** and a modal will pop up summarizing what you're changing. Click **Yes**.
 
-![Resetting permissions of the All Users group to](./images/all-users.png)
+![Resetting permissions of the All Users group to](../images/all-users.png)
 
 ### Allow view access to the automatically generated dashboards collection
 
@@ -273,13 +273,13 @@ In Metabase, go to **Admin settings** > **Permissions**. Under the **Data** tab 
 
 Metabase will display a list of the tables in the database. Next, change **Data access** for the "Invoices" table to **Sandboxed**.
 
-![Sandboxing a table.](./images/sandboxed-invoices-table.png)
+![Sandboxing a table.](../images/sandboxed-invoices-table.png)
 
 Next, Metabase will prompt you with a modal to associate a column in that table with a user attribute.
 
 Leave the **Filter by a column in a table** option checked, and associate the "Account ID" column in the Invoices table with the user attribute `account_id`. (Note that Metabase will only display the user attributes if the user has signed in through SSO before.)
 
-![Mapping a column in the sandboxed table to a user attribute.](./images/map-user-attribute.png)
+![Mapping a column in the sandboxed table to a user attribute.](../images/map-user-attribute.png)
 
 Click **Save** to confirm your select. Then click the **Save changes** button in the upper right.
 
@@ -293,7 +293,7 @@ Log in to your app, navigate to `/analytics`. The dashboard will now present dif
 
 ## Hiding Metabase elements
 
-You can decide to [show or hide various Metabase elements](./interactive-embedding.md#showing-or-hiding-metabase-ui-components), like whether to show the nav bar, search or the **+New** button, and so on.
+You can decide to [show or hide various Metabase elements](../interactive-embedding.md#showing-or-hiding-metabase-ui-components), like whether to show the nav bar, search or the **+New** button, and so on.
 
 For example, to hide the logo and the top navigation bar of your embedded Metabase, you'd append the query string parameters `?logo=false&top_nav=false` to the `return_to` URL that you include in the SSO redirect.
 
@@ -312,4 +312,4 @@ Sign out and sign in to your app again and navigate to `/analytics`. Your embedd
 
 ## Next steps
 
-You can [customize how Metabase looks](../configuring-metabase/appearance.md) in your app: fonts, colors, and logos.
+You can [customize how Metabase looks](../../configuring-metabase/appearance.md) in your app: fonts, colors, and logos.

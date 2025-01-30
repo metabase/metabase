@@ -15,7 +15,7 @@ redirect_from:
 
 Appearance settings give admins the option to whitelabel Metabase to match your company’s branding.
 
-If you're looking for date, time, number, or currency formatting, see [Formatting defaults](../data-modeling/formatting.md).
+If you're looking for date, time, number, or currency formatting, see [Formatting defaults](../../data-modeling/formatting.md).
 
 ## Changing Metabase's appearance
 
@@ -46,7 +46,7 @@ You can customize colors in both the application UI and in the Metabase charts.
 
 ### User interface colors
 
-![User interface colors](./images/user-interface-colors.png)
+![User interface colors](../images/user-interface-colors.png)
 
 You can customize the colors that Metabase uses throughout the app:
 
@@ -56,17 +56,17 @@ You can customize the colors that Metabase uses throughout the app:
 
 ### Chart colors
 
-![Chart colors](./images/chart-colors.png)
+![Chart colors](../images/chart-colors.png)
 
 You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase will auto-generate colors to fill in the rest of the values. And don't bother ordering the colors here, as their order doesn't apply to the order of colors for series on charts. When building a chart, Metabase will select colors to make each series easy to distinguish.
 
 Custom colors are unavailable for:
 
-- [Number charts](../questions/sharing/visualizing-results.md#numbers)
-- [Trend charts](../questions/sharing/visualizing-results.md#trends)
-- [Funnel charts](../questions/sharing/visualizing-results.md#funnel-charts)
-- Conditional formatting ([tables](../questions/sharing/visualizing-results.md#tables) and [pivot tables](../questions/sharing/visualizing-results.md#pivot-tables))
-- [Maps](../questions/sharing/visualizing-results.md#maps)
+- [Number charts](../../questions/sharing/visualizing-results.md#numbers)
+- [Trend charts](../../questions/sharing/visualizing-results.md#trends)
+- [Funnel charts](../../questions/sharing/visualizing-results.md#funnel-charts)
+- Conditional formatting ([tables](../../questions/sharing/visualizing-results.md#tables) and [pivot tables](../../questions/sharing/visualizing-results.md#pivot-tables))
+- [Maps](../../questions/sharing/visualizing-results.md#maps)
 
 ## Logo
 
@@ -74,7 +74,7 @@ You can replace Metabase’s familiar, tasteful, inspired-yet-not-threateningly-
 
 ## Font
 
-This is the primary font used in charts and throughout the Metabase application (your "instance font"). See [Fonts](./fonts.md).
+This is the primary font used in charts and throughout the Metabase application (your "instance font"). See [Fonts](../fonts.md).
 
 ## Loading message
 
@@ -119,7 +119,7 @@ The Settings menu (the "gear" menu in the upper right of your Metabase) includes
 
 ## Metabase illustrations
 
-![Lighthouse illustration](./images/lighthouse-illustration.png)
+![Lighthouse illustration](../images/lighthouse-illustration.png)
 
 Customize each of the illustrations in Metabase.
 
@@ -127,11 +127,11 @@ Customize each of the illustrations in Metabase.
 
 Turn this guy on or off:
 
-![Metabot greeting](./images/metabot-greeting.png)
+![Metabot greeting](../images/metabot-greeting.png)
 
 ### Login and unsubscribe pages
 
-![Login page](./images/login-page.png)
+![Login page](../images/login-page.png)
 
 What people see when Metabase prompts them to log in.
 
@@ -149,7 +149,7 @@ The landing page is what people will see whenever they login. You can set the UR
 
 ### When calculations return no results
 
-![Sailboat](./images/sailboat.png)
+![Sailboat](../images/sailboat.png)
 
 Metabase will display this illustration when questions or dashboard cards contain no results.
 
@@ -168,5 +168,5 @@ Metabase will display this illustration when searches don't return any results.
 ## Further reading
 
 - [Customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding).
-- [Embedding introduction](../embedding/start.md).
+- [Embedding introduction](../../embedding/start.md).
 - [Brand your Metabase](https://www.metabase.com/learn/metabase-basics/embedding/brand).

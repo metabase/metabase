@@ -12,7 +12,7 @@ title: Isnull
 isnull(text column)
 ```
 
-You can use `isnull` in [custom filters](../expressions.md#filter-expressions-and-conditionals), or as the condition for conditional aggregations [`CountIf`](../expressions/countif.md) and [`SumIf`](../expressions/sumif.md). To create a custom column using `isnull`, you must combine `isnull` with another function that accepts boolean values, like [`case`](./case.md).
+You can use `isnull` in [custom filters](../../expressions.md#filter-expressions-and-conditionals), or as the condition for conditional aggregations [`CountIf`](../../expressions/countif.md) and [`SumIf`](../../expressions/sumif.md). To create a custom column using `isnull`, you must combine `isnull` with another function that accepts boolean values, like [`case`](../case.md).
 
 ## How Metabase handles nulls
 
@@ -32,7 +32,7 @@ The table below shows you examples of the output of `isnull`.
 ## Creating a boolean custom column
 
 To create a custom column using `isnull`, you must combine `isnull` with another function.
-For example, if you want to create a custom column that contains `true` when the `Discount` column is null, and `false` otherwise, you can use the [`case expression`](./case.md) :
+For example, if you want to create a custom column that contains `true` when the `Discount` column is null, and `false` otherwise, you can use the [`case expression`](../case.md) :
 
 ```
 case(isnull([Discount]), true, false)
@@ -40,7 +40,7 @@ case(isnull([Discount]), true, false)
 
 ## Replacing null values with another value
 
-Combine `isnull` with the [`case` expression](./case.md) to replace missing information with something more descriptive:
+Combine `isnull` with the [`case` expression](../case.md) to replace missing information with something more descriptive:
 
 For example, you can create a new custom column that will contain `"Unknown feedback"` when the original `[Feedback]` column is null, and the actual feedback value when `[Feedback]` is has a value. The custom expression to do it is:
 
@@ -67,8 +67,8 @@ case(isnull([Feedback]), "Unknown feedback.", [Feedback])
 ## Limitations
 
 - In Metabase, you must combine `isnull` with another expression that accepts boolean arguments (i.e., `true` or `false`).
-- `isnull` only accepts one value at a time. If you need to deal with blank cells across multiple columns, see the [coalesce expression](./coalesce.md).
-- If `isnull` doesn't seem to do anything to your blank cells, you might have empty strings. Try the [`isempty` expression](./isempty.md) instead.
+- `isnull` only accepts one value at a time. If you need to deal with blank cells across multiple columns, see the [coalesce expression](../coalesce.md).
+- If `isnull` doesn't seem to do anything to your blank cells, you might have empty strings. Try the [`isempty` expression](../isempty.md) instead.
 
 ## Related functions
 

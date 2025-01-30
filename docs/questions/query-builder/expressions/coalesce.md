@@ -99,7 +99,7 @@ All examples use the custom expression and sample data from the [Consolidating v
 
 ### Case
 
-The [Metabase `case` expression](./case.md)
+The [Metabase `case` expression](../case.md)
 
 ```
 case(ISBLANK([Notes]) = FALSE AND ISBLANK([Comments]) = FALSE, [Notes],

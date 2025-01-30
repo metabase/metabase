@@ -154,4 +154,4 @@ Update a Permission Group membership. Returns the updated record.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

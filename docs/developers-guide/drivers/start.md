@@ -10,14 +10,14 @@ So here's the scenario: you love Metabase. It's changed your life. But you have 
 
 Before you start building a driver from scratch, see if one already exists that you could contribute to:
 
-- [Officially supported drivers](../../databases/connecting.md#connecting-to-supported-databases)
-- [Partner and community drivers](../partner-and-community-drivers.md)
+- [Officially supported drivers](../../../databases/connecting.md#connecting-to-supported-databases)
+- [Partner and community drivers](../../partner-and-community-drivers.md)
 
 ## Setting up
 
-Before you start working on a driver, you'll need to set up your [development environment](../devenv.md).
+Before you start working on a driver, you'll need to set up your [development environment](../../devenv.md).
 
-Having an in-depth understanding of Clojure is less important when writing JDBC-based drivers because their implementation is simpler -- much of the work is already done for you -- but it would still be helpful to understand what things like [multimethods](https://clojure.org/reference/multimethods) are. See [Working with Clojure](../clojure.md).
+Having an in-depth understanding of Clojure is less important when writing JDBC-based drivers because their implementation is simpler -- much of the work is already done for you -- but it would still be helpful to understand what things like [multimethods](https://clojure.org/reference/multimethods) are. See [Working with Clojure](../../clojure.md).
 
 ## Writing a driver
 

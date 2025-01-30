@@ -8,13 +8,13 @@ Notes on writing docs for Metabase.
 
 ## Linting markdown links
 
-You can check for broken links in the [docs](../) directory by running:
+You can check for broken links in the [docs](../../) directory by running:
 
 ```
 yarn run docs-lint-links
 ```
 
-This command uses [Markdown link check](https://github.com/tcort/markdown-link-check) to vet links in all of the markdown files in the [docs](../) directory. We recommend writing the command's output to a file. E.links.,
+This command uses [Markdown link check](https://github.com/tcort/markdown-link-check) to vet links in all of the markdown files in the [docs](../../) directory. We recommend writing the command's output to a file. E.links.,
 
 ```
 touch ~/links-to-fix.txt && yarn run docs-lint-links > ~/links-to-fix.txt

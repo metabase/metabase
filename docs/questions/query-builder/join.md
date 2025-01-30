@@ -6,13 +6,13 @@ redirect_from:
 
 # Joining data
 
-![Joining](../images/join-step.png)
+![Joining](../../images/join-step.png)
 
 You can [join data][join] to combine your current data with another table, or even with a saved question.
 
 After you click on the Join Data button to add a join step, you'll need to pick the data (from the same database) that you want to join. You can only pick tables and saved questions that are from the same database as your starting data.
 
-![Picking the data to join](../images/join-pick-data.png)
+![Picking the data to join](../../images/join-pick-data.png)
 
 Next, you'll need to pick the columns you want to join on. This means you pick a column from the first table, and a column from the second table, and the join will stitch rows together where the value from the first column is equal to the value in the second column. A very common example is to join on an ID column in each table, so if you happened to pick a table to join on where there is a foreign key relationship between the tables, Metabase will automatically pick those corresponding ID columns for you. At the end of your join step, there's a `Columns` button you can click to choose which columns you want to include from the joined data.
 
@@ -31,19 +31,19 @@ Here are the basic types of joins:
 
 In many cases you might have tables A, B, and C, where A and B have a connection, and B and C have a connection, but A and C don't. If you want to join A to B to C, all you have to do is add multiple join steps. Click on Join Data, join table A to table B, then click the Join Data step below that completed join block to add a second join step, and join the results of your last join to table C.
 
-![An A to B to C join](../images/join-a-b-c.png)
+![An A to B to C join](../../images/join-a-b-c.png)
 
 ## Joining on multiple conditions
 
 Your joins can also include multiple conditions to refine your results. Metabase will combine multiple conditions using the `AND` operator.
 
-![Joining tables on multiple columns](../images/joining-on-multiple-columns.png)
+![Joining tables on multiple columns](../../images/joining-on-multiple-columns.png)
 
 ## Joining with different operators
 
 You can join tables on comparison conditions like `=`, `≠`, `>`, `≥`, `<`, or `≤`.
 
-![Join operators](../images/join-operator.png)
+![Join operators](../../images/join-operator.png)
 
 ## Further reading
 

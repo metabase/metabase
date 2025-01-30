@@ -7,11 +7,11 @@ redirect_from:
 
 # Running the Metabase OSS JAR file
 
-> We recommend running Metabase on [Metabase Cloud](https://www.metabase.com/cloud). If you need to self-host, you _can_ run Metabase as a standalone JAR, but [we recommend running Metabase in a Docker container](./running-metabase-on-docker.md).
+> We recommend running Metabase on [Metabase Cloud](https://www.metabase.com/cloud). If you need to self-host, you _can_ run Metabase as a standalone JAR, but [we recommend running Metabase in a Docker container](../running-metabase-on-docker.md).
 
 To run the free, Open Source version of Metabase via a JAR file, you will need to have a Java Runtime Environment (JRE) installed on your system.
 
-If you have a token for the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../installation-and-operation/activating-the-enterprise-edition.md).
+If you have a token for the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../../installation-and-operation/activating-the-enterprise-edition.md).
 
 ## Quick start
 
@@ -29,7 +29,7 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 
 Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit `http://localhost:3000/setup`.
 
-If you are using a Pro or Enterprise version, be sure to [activate your license](../installation-and-operation/activating-the-enterprise-edition.md).
+If you are using a Pro or Enterprise version, be sure to [activate your license](../../installation-and-operation/activating-the-enterprise-edition.md).
 
 ## Local installation
 
@@ -54,7 +54,7 @@ Download the JAR file:
 - [Metabase OSS](https://www.metabase.com/start/oss/jar)
 - [Metabase Enterprise/Pro edition](https://downloads.metabase.com/enterprise/latest/metabase.jar)
 
-If you want to install the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../installation-and-operation/activating-the-enterprise-edition.md).
+If you want to install the [Pro or Enterprise editions](https://www.metabase.com/pricing) of Metabase, see [Activating your Metabase commercial license](../../installation-and-operation/activating-the-enterprise-edition.md).
 
 ### 3. Create a new directory and move the Metabase JAR into it
 
@@ -103,9 +103,9 @@ Metabase will start using the default settings. You should see some log entries 
 
 At this point you're ready to go! You can access your new Metabase server on port 3000, most likely at `http://localhost:3000`.
 
-You can use another port than 3000 by setting the `MB_JETTY_PORT` [environment variable](../configuring-metabase/environment-variables.md) before running the jar.
+You can use another port than 3000 by setting the `MB_JETTY_PORT` [environment variable](../../configuring-metabase/environment-variables.md) before running the jar.
 
-If you are using a Pro or Enterprise version of Metabase, be sure to [activate your license](../installation-and-operation/activating-the-enterprise-edition.md).
+If you are using a Pro or Enterprise version of Metabase, be sure to [activate your license](../../installation-and-operation/activating-the-enterprise-edition.md).
 
 ## Production installation
 
@@ -149,7 +149,7 @@ If you need to run the JAR in production, you should run Metabase as a service. 
 - Make sure Metabase runs automatically (and stay running).
 - Allow you to run Metabase with an unprivileged user (which is good for security).
 
-The exact instructions for how to run Metabase as a service will differ depending on your operating system. For an example of how to set up Metabase as a service, check out [Running Metabase on Debian](./running-metabase-on-debian.md).
+The exact instructions for how to run Metabase as a service will differ depending on your operating system. For an example of how to set up Metabase as a service, check out [Running Metabase on Debian](../running-metabase-on-debian.md).
 
 ### Migrating to a production installation
 
@@ -157,7 +157,7 @@ If you've been running Metabase with the default H2 application database and you
 
 ## Troubleshooting
 
-If you run into any problems during installation, check out our [troubleshooting page](../troubleshooting-guide/running.md).
+If you run into any problems during installation, check out our [troubleshooting page](../../troubleshooting-guide/running.md).
 
 ## Upgrading Metabase
 
@@ -165,4 +165,4 @@ See [Upgrading Metabase](upgrading-metabase.md).
 
 ## Setting up Metabase
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../configuring-metabase/setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../../configuring-metabase/setting-up-metabase.md).

@@ -73,4 +73,4 @@ Update a GTAP entry. The only things you're allowed to update for a GTAP are the
 
 ---
 
-[<< Back to API index](../../api-documentation.md)
+[<< Back to API index](../../../api-documentation.md)
