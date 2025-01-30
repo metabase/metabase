@@ -464,8 +464,8 @@ H.describeEE("scenarios > embedding > full app", () => {
         "should select a table when there are multiple schemas",
         { tags: "@external" },
         () => {
-          H.resetTestTable({ type: "postgres", table: "multi_schema" });
           H.restore("postgres-writable");
+          H.resetTestTable({ type: "postgres", table: "multi_schema" });
           cy.signInAsAdmin();
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
           startNewEmbeddingQuestion();

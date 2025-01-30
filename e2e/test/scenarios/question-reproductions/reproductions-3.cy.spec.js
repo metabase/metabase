@@ -250,7 +250,6 @@ describe("issue 38354", { tags: "@external" }, () => {
   };
 
   beforeEach(() => {
-    H.restore();
     H.restore("postgres-12");
     cy.signInAsAdmin();
     H.createQuestion(QUESTION_DETAILS, { visitQuestion: true });

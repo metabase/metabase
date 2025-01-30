@@ -1239,8 +1239,8 @@ describe("issue 40622", () => {
 
 describe("45252", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.resetTestTable({ type: "postgres", table: "many_data_types" });
     H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_data_types" });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
     cy.intercept("POST", "/api/dataset").as("dataset");
