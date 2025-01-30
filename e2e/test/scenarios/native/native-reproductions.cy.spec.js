@@ -85,24 +85,20 @@ describe("issue 16886", () => {
     cy.signInAsAdmin();
   });
 
-  it(
-    "shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)",
-    { tags: "@flaky" },
-    () => {
-      H.startNewNativeQuestion().as("editor");
-      H.NativeEditor.type(ORIGINAL_QUERY);
-      cy.realPress("Home");
-      Cypress._.range(SELECTED_TEXT.length).forEach(() =>
-        cy.realPress(["Shift", "ArrowRight"]),
-      );
+  it("shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)", () => {
+    H.startNewNativeQuestion().as("editor");
+    H.NativeEditor.type(ORIGINAL_QUERY);
+    cy.realPress("Home");
+    Cypress._.range(SELECTED_TEXT.length).forEach(() =>
+      cy.realPress(["Shift", "ArrowRight"]),
+    );
 
-      cy.findByTestId("native-query-editor-container").icon("play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
-      cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
+    cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
 
-      cy.get("@editor").contains(ORIGINAL_QUERY);
-    },
-  );
+    cy.get("@editor").contains(ORIGINAL_QUERY);
+  });
 });
 
 describe("issue 16914", () => {
@@ -610,7 +606,7 @@ describe("issue 30680", () => {
   });
 });
 
-describe("issue 34330", { tags: "@flaky" }, () => {
+describe("issue 34330", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
