@@ -1805,6 +1805,7 @@ describe("issue 48878", () => {
       cy.button("Save").click();
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.modal()
       .last()
       .within(() => {

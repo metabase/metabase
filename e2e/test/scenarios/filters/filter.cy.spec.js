@@ -316,11 +316,13 @@ describe("scenarios > question > filter", () => {
 
     H.enterCustomColumnDetails({ formula: "[", blur: false });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Body");
 
     cy.get("@formula").type("p");
 
     // only "P" (of Products etc) should be highlighted, and not "Pr"
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -849,6 +851,7 @@ describe("scenarios > question > filter", () => {
       // See: https://github.com/metabase/metabase/pull/16209#discussion_r638129099
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Total/);
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.icon("add").last().click();
       H.popover().findByText(/^ID$/i).click();
       cy.findByPlaceholderText("Enter an ID").type("1");
@@ -879,6 +882,7 @@ describe("scenarios > question > filter", () => {
       });
 
       // cy.findByText(/^Total/);
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.icon("add").last().click();
       H.popover().findByText(/^ID$/i).click();
       cy.findByPlaceholderText("Enter an ID").type("1");

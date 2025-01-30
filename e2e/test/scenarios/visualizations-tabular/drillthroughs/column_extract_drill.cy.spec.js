@@ -311,6 +311,7 @@ function extractColumnAndCheck({
   H.popover().findByText(option).click();
   cy.wait(`@${requestAlias}`);
 
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByRole("columnheader")
     .last()
     .should("have.text", newColumn)
