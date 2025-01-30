@@ -57,14 +57,14 @@
   (OPTIONS "/api/*" [] {:status 200 :body ""})
 
   ;; ^/api/ -> All other API routes
-  (context "/api" [] (fn [& args]
+  (context "/api" [] (fn [request respond raise]
                        ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
                        ;;
                        ;; if Metabase is not finished initializing, return a generic error message rather than
                        ;; something potentially confusing like "DB is not set up"
                        (if-not (init-status/complete?)
-                         {:status 503, :body "Metabase is still initializing. Please sit tight..."}
-                         (apply api/routes args))))
+                         (respond {:status 503, :body "Metabase is still initializing. Please sit tight..."})
+                         (api/routes request respond raise))))
   ;; ^/app/ -> static files under frontend_client/app
   (context "/app" []
     (route/resources "/" {:root "frontend_client/app"})

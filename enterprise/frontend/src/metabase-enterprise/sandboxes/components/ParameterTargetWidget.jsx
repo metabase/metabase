@@ -1,12 +1,11 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component, createRef } from "react";
-import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
-
-import ParameterTargetList from "../components/ParameterTargetList";
+import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
+import { getMappingOptionByTarget } from "metabase/parameters/utils/mapping-options";
 
 export default class ParameterTargetWidget extends Component {
   constructor(props) {
@@ -24,11 +23,17 @@ export default class ParameterTargetWidget extends Component {
   };
 
   render() {
-    const { target, onChange, mappingOptions, placeholder, children } =
-      this.props;
+    const {
+      question,
+      target,
+      onChange,
+      mappingOptions,
+      placeholder,
+      children,
+    } = this.props;
 
     const disabled = mappingOptions.length === 0;
-    const selected = _.find(mappingOptions, o => _.isEqual(o.target, target));
+    const selected = getMappingOptionByTarget(mappingOptions, target, question);
 
     return (
       <PopoverWithTrigger
@@ -46,8 +51,8 @@ export default class ParameterTargetWidget extends Component {
             onChange(target);
             this.popover.current.close();
           }}
-          target={target}
           mappingOptions={mappingOptions}
+          selectedMappingOption={selected}
         />
       </PopoverWithTrigger>
     );
