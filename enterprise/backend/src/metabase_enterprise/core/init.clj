@@ -6,4 +6,5 @@
 
   See https://metaboat.slack.com/archives/CKZEMT1MJ/p1736556522733279 for rationale behind this pattern."
   (:require
-   [metabase-enterprise.enhancements.init]))
+   [metabase-enterprise.enhancements.init]
+   [metabase-enterprise.scim.init]))

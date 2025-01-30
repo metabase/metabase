@@ -340,6 +340,7 @@
                                      metabase.api.common.validation
                                      metabase.api.dataset
                                      metabase.api.macros
+                                     metabase.api.open-api
                                      metabase.api.permission-graph
                                      metabase.api.routes
                                      metabase.api.util.handlers}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
@@ -364,13 +365,14 @@
                                      metabase.db.query                                              ; TODO this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
                                      metabase.db.setup}                                             ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
     metabase.driver                :any                                                             ; TODO -- 19 namespaces!!!! CRY
-    metabase.eid-translation       #{metabase.eid-translation}
+    metabase.eid-translation       #{metabase.eid-translation.core}
     metabase.embed                 #{metabase.embed.settings}
     metabase.events                #{metabase.events metabase.events.init}
     metabase.formatter             #{metabase.formatter}
+    metabase.geojson               #{metabase.geojson.core
+                                     metabase.geojson.init}
     metabase.integrations          #{metabase.integrations.common
                                      metabase.integrations.google
-                                     metabase.integrations.ldap
                                      metabase.integrations.slack}                                   ; TODO -- consolidate these into a real API namespace.
     metabase.legacy-mbql           #{metabase.legacy-mbql.normalize
                                      metabase.legacy-mbql.predicates
@@ -384,7 +386,8 @@
     metabase.notification          #{metabase.notification.core
                                      metabase.notification.init
                                      metabase.notification.payload.core}
-    metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
+    metabase.permissions           #{metabase.permissions.init
+                                     metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
     metabase.plugins               #{metabase.plugins
                                      metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
     metabase.premium-features      #{metabase.premium-features.core}
@@ -421,8 +424,12 @@
                                      ;; this module but some things need to import it so
                                      ;; `metabase.server.streaming_response.StreamingReponse` comes into existence...
                                      metabase.server.streaming-response}
+    metabase.session               #{metabase.session.core
+                                     metabase.session.init}
     metabase.setup                 #{metabase.setup.api
                                      metabase.setup.core}
+    metabase.sso                   #{metabase.sso.core
+                                     metabase.sso.init}
     metabase.sync                  #{metabase.sync.api
                                      metabase.sync.core
                                      metabase.sync.init
@@ -465,9 +472,11 @@
     metabase.core                  :any
     metabase.db                    :any
     metabase.driver                :any
+    metabase.eid-translation       :any
     metabase.embed                 :any
     metabase.events                :any
     metabase.formatter             :any
+    metabase.geojson               :any
     metabase.integrations          :any
     metabase.legacy-mbql           :any
     metabase.lib                   :any
@@ -498,7 +507,9 @@
     metabase.sample-data           :any
     metabase.search                :any
     metabase.server                :any
+    metabase.session               :any
     metabase.setup                 :any
+    metabase.sso                   :any
     metabase.sync                  :any
     metabase.task                  :any
     metabase.types                 #{metabase.util}
@@ -587,8 +598,6 @@
     metabase.api.email                                            api.email
     metabase.api.embed                                            api.embed
     metabase.api.field                                            api.field
-    metabase.api.geojson                                          api.geojson
-    metabase.api.ldap                                             api.ldap
     metabase.api.logic-history                                    api.login-history
     metabase.api.macros                                           api.macros
     metabase.api.metric                                           api.metric
@@ -604,7 +613,6 @@
     metabase.api.revision                                         api.revision
     metabase.api.search                                           api.search
     metabase.api.segment                                          api.segment
-    metabase.api.session                                          api.session
     metabase.api.setting                                          api.setting
     metabase.api.setup                                            api.setup
     metabase.api.slack                                            api.slack
@@ -656,7 +664,7 @@
     metabase.driver.sql-jdbc.test-util                            sql-jdbc.tu
     metabase.driver.sql.parameters.substitute                     sql.params.substitute
     metabase.driver.sql.parameters.substitution                   sql.params.substitution
-    metabase.eid-translation                                      eid-translation
+    metabase.eid-translation.core                                 eid-translation
     metabase.formatter                                            formatter
     metabase.http-client                                          client
     metabase.legacy-mbql.normalize                                mbql.normalize
@@ -734,6 +742,7 @@
     metabase.search.in-place.scoring                              scoring
     metabase.server.core                                          server
     metabase.server.protocols                                     server.protocols
+    metabase.sso.core                                             sso
     metabase.sync.analyze.fingerprint                             sync.fingerprint
     metabase.sync.field-values                                    sync.field-values
     metabase.sync.interface                                       i
@@ -816,7 +825,7 @@
   metabase.driver.sql-jdbc.actions/with-jdbc-transaction                                clojure.core/let
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
-  metabase.integrations.ldap/with-ldap-connection                                       clojure.core/fn
+  metabase.sso.ldap/with-ldap-connection                                                clojure.core/fn
   metabase.models.collection-test/with-collection-in-location                           clojure.core/let
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.setting.multi-setting/define-multi-setting                            clojure.core/def

@@ -11,17 +11,16 @@
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.eid-translation :as eid-translation]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
    [metabase.models.resolution :as models.resolution]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -341,23 +340,6 @@
 
 ;; -------------------- Entity Id Translation Analytics --------------------
 
-(defsetting entity-id-translation-counter
-  (deferred-tru "A counter for tracking the number of entity_id -> id translations. Whenever we call [[model->entity-ids->ids]], we increment this counter by the number of translations.")
-  :encryption :no
-  :visibility :internal
-  :export?    false
-  :audit      :never
-  :type       :json
-  :default    eid-translation/default-counter
-  :doc false)
-
-(mu/defn update-translation-count!
-  "Update the entity-id translation counter with the results of a batch of entity-id translations."
-  [results :- [:sequential eid-translation/Status]]
-  (let [processed-result (frequencies results)]
-    (entity-id-translation-counter!
-     (merge-with + processed-result (entity-id-translation-counter)))))
-
 (mu/defn- entity-ids->id-for-model :- [:sequential [:tuple
                                                     ;; We want to pass incorrectly formatted entity-ids through here,
                                                     ;; but this is assumed to be an entity-id:
@@ -392,7 +374,7 @@
                  (mapcat
                   (fn [[model eids]] (entity-ids->id-for-model model eids))
                   model-key->entity-ids))
-    (update-translation-count! (map :status (vals <>)))))
+    (eid-translation/update-translation-count! (map :status (vals <>)))))
 
 (mu/defn ->id :- :int
   "Translates a single entity_id -> id. This reuses the batched version: [[model->entity-ids->ids]].
@@ -401,7 +383,7 @@
   (if (string? id)
     (let [model (->model api-name-or-model)
           [[_ {:keys [status] :as info}]] (entity-ids->id-for-model api-name-or-model [id])]
-      (update-translation-count! [status])
+      (eid-translation/update-translation-count! [status])
       (if-not (= :ok status)
         (throw (ex-info "problem looking up id from entity_id"
                         {:api-name-or-model api-name-or-model

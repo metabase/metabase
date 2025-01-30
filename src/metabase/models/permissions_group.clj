@@ -110,7 +110,7 @@
   [{id :id, :as group}]
   (check-not-magic-group group)
   ;; Remove from LDAP mappings
-  (classloader/require 'metabase.integrations.ldap)
+  (classloader/require 'metabase.sso.ldap)
   (setting/set-value-of-type!
    :json :ldap-group-mappings
    (when-let [mappings (setting/get-value-of-type :json :ldap-group-mappings)]

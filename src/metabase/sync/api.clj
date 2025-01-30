@@ -1,11 +1,8 @@
 (ns metabase.sync.api
   "REST API routes related to sync."
   (:require
-   [metabase.api.macros :as api.macros]
-   [metabase.sync.api.notify]))
-
-(comment metabase.sync.api.notify/keep-me)
+   [metabase.api.util.handlers :as handlers]))
 
 (def ^{:arglists '([request respond raise])} routes
   "/api/notify routes."
-  (api.macros/ns-handler 'metabase.sync.api.notify))
+  (handlers/lazy-ns-handler 'metabase.sync.api.notify))

@@ -28,6 +28,6 @@
 ;; TODO -- we need to feature-flag this based on the `:sso-` feature flags
 (def routes
   "Ring routes for auth (SAML) api endpoints. If enterprise is not present, will return a nicer message"
-  (if (and config/ee-available? (not *compile-files*))
-    (requiring-resolve 'metabase-enterprise.sso.api.routes/routes)
+  (if config/ee-available?
+    (handlers/lazy-handler 'metabase-enterprise.sso.api.routes/routes)
     ee-missing-routes))

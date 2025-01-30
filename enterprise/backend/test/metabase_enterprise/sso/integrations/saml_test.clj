@@ -5,11 +5,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.saml :as saml.mt]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.api.ldap]
    [metabase.http-client :as client]
    [metabase.premium-features.token-check :as token-check]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.sso.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -25,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.api.ldap/keep-me) ; for [[metabase.api.ldap/ldap-enabled]]
+(comment metabase.sso.settings/keep-me) ; for [[metabase.sso.settings/ldap-enabled]]
 
 (use-fixtures :once (fixtures/initialize :test-users :web-server))
 

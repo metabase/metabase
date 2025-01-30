@@ -1,6 +1,6 @@
 (ns metabase-enterprise.scim.auth
   (:require
-   [metabase-enterprise.scim.api :as scim]
+   [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
@@ -24,7 +24,7 @@
   (fn [request respond raise]
     (let [authorization-header (get-in request [:headers "authorization"])
           [_ api-key]          (re-matches #"Bearer (.*)" (or authorization-header ""))]
-      (if (and (scim/scim-enabled) (validate-scim-api-key api-key))
+      (if (and (scim.settings/scim-enabled) (validate-scim-api-key api-key))
         (handler request respond raise)
         (respond {:status 401
                   :body   {:schemas [error-schema-uri]

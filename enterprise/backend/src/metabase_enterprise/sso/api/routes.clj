@@ -1,12 +1,6 @@
 (ns metabase-enterprise.sso.api.routes
   (:require
-   [metabase-enterprise.sso.api.saml]
-   [metabase-enterprise.sso.api.sso]
-   [metabase.api.macros :as api.macros]
    [metabase.api.util.handlers :as handlers]))
-
-(comment metabase-enterprise.sso.api.saml/keep-me
-         metabase-enterprise.sso.api.sso/keep-me)
 
 ;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api.routes/routes]] !!!
 ;;
@@ -21,6 +15,6 @@
   "Ring routes for auth (SAML) API endpoints."
   (handlers/route-map-handler
    {"/auth" (handlers/route-map-handler
-             {"/sso" (api.macros/ns-handler 'metabase-enterprise.sso.api.sso)})
+             {"/sso" (handlers/lazy-ns-handler 'metabase-enterprise.sso.api.sso)})
     "/api"  (handlers/route-map-handler
-             {"/saml" (api.macros/ns-handler 'metabase-enterprise.sso.api.saml)})}))
+             {"/saml" (handlers/lazy-ns-handler 'metabase-enterprise.sso.api.saml)})}))

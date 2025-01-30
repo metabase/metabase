@@ -2,19 +2,13 @@
   "API routes that are only enabled if we have a premium token with the `:sandboxes` feature."
   (:require
    [metabase-enterprise.api.routes.common :as ee.api.common]
-   [metabase-enterprise.sandbox.api.gtap]
-   [metabase-enterprise.sandbox.api.table]
-   [metabase-enterprise.sandbox.api.user]
-   [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(comment metabase-enterprise.sandbox.api.table/keep-me)
-
 (def ^:private sandbox-route-map
-  {"/gtap" (+auth metabase-enterprise.sandbox.api.gtap/routes)
-   "/user" (+auth metabase-enterprise.sandbox.api.user/routes)})
+  {"/gtap" (+auth (handlers/lazy-handler 'metabase-enterprise.sandbox.api.gtap/routes))
+   "/user" (+auth (handlers/lazy-handler 'metabase-enterprise.sandbox.api.user/routes))})
 
 (def ^{:arglists '([request respond raise])} sandbox-routes
   "/api/mt routes.
@@ -32,6 +26,4 @@
   When sandboxing is enabled we *replace* GET /api/table/:id/query_metadata with a special EE version. If sandboxing
   is not enabled, this passes thru to the OSS implementation of the endpoint."
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (ee.api.common/+when-premium-feature
-   :sandboxes
-   (+auth (api.macros/ns-handler 'metabase-enterprise.sandbox.api.table))))
+  (ee.api.common/+when-premium-feature :sandboxes (+auth (handlers/lazy-ns-handler 'metabase-enterprise.sandbox.api.table))))

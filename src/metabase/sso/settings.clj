@@ -1,18 +1,11 @@
-(ns metabase.api.ldap
-  "/api/ldap endpoints"
+(ns metabase.sso.settings
   (:require
-   [clojure.set :as set]
-   [metabase.api.common :as api]
-   [metabase.api.macros :as api.macros]
-   [metabase.integrations.ldap :as ldap]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.sso.ldap :as ldap]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
-(set! *warn-on-reflection* true)
-
-(defn- humanize-error-messages
+(defn humanize-ldap-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."
   [{:keys [status message]}]
   (when (not= :SUCCESS status)
@@ -85,39 +78,7 @@
                     (let [result (ldap/test-current-ldap-details)]
                       (when-not (= :SUCCESS (:status result))
                         (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
-                                        (humanize-error-messages result))))))
+                                        (humanize-ldap-error-messages result))))))
                   (setting/set-value-of-type! :boolean :ldap-enabled new-value)))
   :default    false
   :audit      :getter)
-
-(defn- update-password-if-needed
-  "Do not update password if `new-password` is an obfuscated value of the current password."
-  [new-password]
-  (let [current-password (setting/get :ldap-password)]
-    (if (= (setting/obfuscate-value current-password) new-password)
-      current-password
-      new-password)))
-
-(api.macros/defendpoint :put "/settings"
-  "Update LDAP related settings. You must be a superuser to do this."
-  ;; TODO -- add `:ldap-port` and `:ldap-password` to the body schema and use Malli decoding for `:ldap-port`
-  [_route-params
-   _query-params
-   settings :- :map]
-  (api/check-superuser)
-  (let [ldap-settings (-> settings
-                          (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
-                                              (Long/parseLong ldap-port)))
-                          (update :ldap-password update-password-if-needed)
-                          (dissoc :ldap-enabled))
-        ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
-        results       (ldap/test-ldap-connection ldap-details)]
-    (if (= :SUCCESS (:status results))
-      (t2/with-transaction [_conn]
-       ;; We need to update the ldap settings before we update ldap-enabled, as the ldap-enabled setter tests the ldap
-       ;; settings
-        (setting/set-many! ldap-settings)
-        (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
-      ;; test failed, return result message
-      {:status 500
-       :body   (humanize-error-messages results)})))

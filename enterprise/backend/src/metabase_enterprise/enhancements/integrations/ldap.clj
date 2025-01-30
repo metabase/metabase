@@ -3,10 +3,10 @@
   (:require
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.integrations.common :as integrations.common]
-   [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.premium-features.core :refer [defenterprise-schema]]
+   [metabase.sso.ldap.default-implementation :as default-impl]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]

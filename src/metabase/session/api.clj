@@ -1,21 +1,21 @@
-(ns metabase.api.session
+(ns metabase.session.api
   "/api/session endpoints"
   (:require
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.api.ldap :as api.ldap]
    [metabase.api.macros :as api.macros]
-   [metabase.api.open-api :as handlers.protocols]
+   [metabase.api.open-api :as open-api]
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
    [metabase.events :as events]
    [metabase.integrations.google :as google]
-   [metabase.integrations.ldap :as ldap]
    [metabase.models.session :as session]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting :as setting]
    [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.session.settings :as session.settings]
+   [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -23,13 +23,11 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [throttle.core :as throttle]
-   [toucan2.core :as t2])
-  (:import
-   (com.unboundid.util LDAPSDKException)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-;;; ## API Endpoints
+;;; TODO -- these are duplicated with the ones in [[metabase.sso.login]], move them somewhere shared.
 
 (def ^:private login-throttlers
   {:username   (throttle/make-throttler :username)
@@ -45,29 +43,6 @@
 ;; Fake salt & hash used to run bcrypt hash if user doesn't exist, to avoid timing attacks (Metaboat #134)
 (def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
 (def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
-
-(mu/defn- ldap-login :- [:maybe [:map [:id uuid?]]]
-  "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
-  authenticated."
-  [username password device-info :- request/DeviceInfo]
-  (when (api.ldap/ldap-enabled)
-    (try
-      (when-let [user-info (ldap/find-user username)]
-        (when-not (ldap/verify-password user-info password)
-          ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly
-          ;; outdated password
-          (throw (ex-info (str password-fail-message)
-                          {:status-code 401
-                           :errors      {:password password-fail-snippet}})))
-        ;; password is ok, return new session if user is not deactivated
-        (let [user (ldap/fetch-or-create-user! user-info)]
-          (if (:is_active user)
-            (session/create-session! :sso user device-info)
-            (throw (ex-info (str disabled-account-message)
-                            {:status-code 401
-                             :errors      {:_error disabled-account-snippet}})))))
-      (catch LDAPSDKException e
-        (log/error e "Problem connecting to LDAP server, will fall back to local authentication")))))
 
 (mu/defn- email-login :- [:maybe [:map [:id uuid?]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
@@ -101,7 +76,7 @@
    password    :- ms/NonBlankString
    device-info :- request/DeviceInfo]
   ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
-  (or (ldap-login username password device-info)  ; First try LDAP if it's enabled
+  (or (sso/ldap-login username password device-info)  ; First try LDAP if it's enabled
       (email-login username password device-info) ; Then try local authentication
       ;; If nothing succeeded complain about it
       ;; Don't leak whether the account doesn't exist or the password was incorrect
@@ -196,17 +171,10 @@
   (forgot-password-impl email)
   api/generic-204-no-content)
 
-(defsetting reset-token-ttl-hours
-  (deferred-tru "Number of hours a password reset is considered valid.")
-  :visibility :internal
-  :type       :integer
-  :default    48
-  :audit      :getter)
-
 (defn reset-token-ttl-ms
   "number of milliseconds a password reset is considered valid."
   []
-  (* (reset-token-ttl-hours) 60 60 1000))
+  (* (session.settings/reset-token-ttl-hours) 60 60 1000))
 
 (defn- valid-reset-token->user
   "Check if a password reset token is valid. If so, return the `User` ID it corresponds to."
@@ -295,14 +263,14 @@
                              :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]
-  (handlers.protocols/handler-with-open-api-spec
+  (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (letfn [(raise' [e]
                (log/error e "Authentication endpoint error")
                (raise e))]
        (handler request respond raise')))
    (fn [prefix]
-     (handlers.protocols/open-api-spec handler prefix))))
+     (open-api/open-api-spec handler prefix))))
 
 (def ^{:arglists '([request respond raise])} routes
   "/api/session routes."
