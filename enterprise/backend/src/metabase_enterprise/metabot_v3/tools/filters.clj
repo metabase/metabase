@@ -152,7 +152,8 @@
           (let [mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
             [(metabot-v3.tools.u/table-field-id-prefix table_id)
              (lib/query mp (lib.metadata/table mp table_id))])
-          (throw (ex-info (str "No table found with table_id " table_id) {:data_source data-source}))))
+          (throw (ex-info (str "No table found with table_id " table_id) {:agent-error? true
+                                                                          :data_source data-source}))))
 
       (some? report_id)
       (if-let [card (api.card/get-card report_id)]
