@@ -216,10 +216,10 @@
    db-id
    (with-quoting driver
      (sql/format  {:update (keyword schema table-name)
-                     :set    {(keyword column-name) value}
-                     :where  [:= (keyword pk) pk-value]}
-                 :quoted true
-                 :dialect (sql.qp/quote-style driver)))))
+                   :set    {(keyword column-name) value}
+                   :where  [:= (keyword pk) pk-value]}
+                  :quoted true
+                  :dialect (sql.qp/quote-style driver)))))
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
