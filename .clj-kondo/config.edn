@@ -486,6 +486,7 @@
                                      metabase.premium-features
                                      metabase.request
                                      metabase.util}
+    metabase.pivot                 #{metabase.util}
     metabase.plugins               :any
     metabase.premium-features      :any
     metabase.public-settings       :any
