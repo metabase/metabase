@@ -141,7 +141,7 @@
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions 'metabase.api.embed)
    "/field"                (+auth 'metabase.api.field)
-   "/geojson"              (api.macros/ns-handler 'metabase.api.geojson)
+   "/geojson"              'metabase.api.geojson
    "/google"               (+auth 'metabase.api.google)
    "/ldap"                 (+auth 'metabase.api.ldap)
    "/login-history"        (+auth 'metabase.api.login-history)
@@ -159,7 +159,7 @@
    "/segment"              (+auth 'metabase.api.segment)
    "/session"              metabase.api.session/routes
    "/setting"              (+auth 'metabase.api.setting)
-   "/setup"                (api.macros/ns-handler 'metabase.setup.api)
+   "/setup"                'metabase.setup.api
    "/slack"                (+auth 'metabase.api.slack)
    "/table"                (+auth 'metabase.api.table)
    "/task"                 (+auth 'metabase.api.task)
