@@ -1,0 +1,115 @@
+:global {
+  :local(.editor) {
+    height: 100%;
+    width: 100%;
+    flex-shrink: 1;
+    flex-grow: 1;
+
+    &.ace_editor {
+      background-color: var(--mb-color-bg-light);
+      color: var(--mb-color-text-dark);
+    }
+
+    .ace_search {
+      font-family: var(--mb-default-font-family);
+      background-color: var(--mb-color-bg-light);
+      color: var(--mb-color-text-dark);
+      border-color: var(--mb-color-border);
+      padding-bottom: 2px;
+    }
+
+    .ace_search_field,
+    .ace_searchbtn,
+    .ace_button {
+      background-color: var(--mb-color-bg-white);
+      border-radius: 5px;
+      border: 1px solid var(--mb-color-border);
+    }
+
+    .ace_nomatch {
+      border-radius: 5px;
+      outline: 1px solid var(--mb-color-error);
+    }
+
+    .ace_searchbtn {
+      margin-left: 2px;
+    }
+
+    .ace_button {
+      padding: 2px 4px;
+    }
+
+    .ace_line {
+      .ace_keyword {
+        color: var(--mb-color-saturated-purple);
+      }
+
+      .ace_identifier,
+      .ace_function,
+      .ace_variable {
+        color: var(--mb-color-saturated-blue);
+      }
+
+      .ace_constant,
+      .ace_type {
+        color: var(--mb-color-saturated-red);
+      }
+
+      .ace_string {
+        color: var(--mb-color-saturated-green);
+      }
+
+      .ace_templateTag {
+        color: var(--mb-color-brand);
+      }
+    }
+
+    .ace_gutter {
+      background-color: var(--mb-color-bg-light);
+
+      .ace_gutter-cell {
+        padding-top: 2px;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--mb-color-text-light);
+        padding-left: 0;
+        padding-right: 7px;
+        display: block;
+        text-align: center;
+      }
+    }
+
+    &.read-only .ace_cursor {
+      display: none;
+    }
+
+    &.ace_autocomplete {
+      border: none;
+      box-shadow: 0 2px 3px 2px rgba(0, 0, 0, 0.08);
+      border-radius: 4px;
+      background-color: white;
+      color: var(--mb-color-text-dark);
+      width: 520px;
+
+      .ace_marker-layer .ace_active-line,
+      .ace_marker-layer .ace_line-hover {
+        background-color: var(--mb-color-brand-light);
+        border: none;
+        outline: none;
+      }
+
+      .ace_line {
+        font-weight: bold;
+        padding-left: 4px;
+      }
+
+      .ace_completion-meta {
+        font-weight: normal;
+      }
+
+      .ace_completion-highlight {
+        color: var(--mb-color-brand);
+      }
+    }
+  }
+}

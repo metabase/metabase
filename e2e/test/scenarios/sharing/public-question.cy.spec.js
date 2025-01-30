@@ -170,7 +170,9 @@ describe("scenarios > public > question", () => {
     }).then(({ body: { id } }) => {
       H.startNewNativeQuestion({ display: "table" }).as("editor");
 
-      H.NativeEditor.type(`select * from {{#${id}`);
+      cy.get("@editor")
+        .type("select * from {{#")
+        .type(`{leftarrow}{leftarrow}${id}`);
 
       H.saveQuestion(
         "test question",

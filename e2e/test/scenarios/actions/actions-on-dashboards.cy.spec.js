@@ -967,9 +967,9 @@ const MODEL_NAME = "Test Action Model";
           });
 
           actionEditorModal().within(() => {
-            H.NativeEditor.clear();
+            H.focusNativeEditor().type("{home}{shift+end}{backspace}");
             const TEST_COLUMNS_QUERY = `UPDATE ${TEST_COLUMNS_TABLE} SET timestamp = {{ Timestamp }} WHERE id = {{ ID }}`;
-            H.NativeEditor.focus().type(TEST_COLUMNS_QUERY, {
+            H.focusNativeEditor().type(TEST_COLUMNS_QUERY, {
               delay: 0,
               parseSpecialCharSequences: false,
             });

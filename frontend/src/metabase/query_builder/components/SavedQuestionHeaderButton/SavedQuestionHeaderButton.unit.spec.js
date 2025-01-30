@@ -42,22 +42,11 @@ describe("SavedQuestionHeaderButton", () => {
   it("calls onSave on input blur", async () => {
     const { onSave } = setup({ question });
 
-    const titleInput = screen.getByTestId("saved-question-header-title");
-    await userEvent.type(titleInput, "1");
-    titleInput.blur();
+    const title = screen.getByTestId("saved-question-header-title");
+    await userEvent.type(title, "1");
+    title.blur();
 
     expect(onSave).toHaveBeenCalled();
-  });
-
-  it("should prevent names with more than 254 characters", async () => {
-    const { onSave } = setup({ question });
-
-    const titleInput = screen.getByTestId("saved-question-header-title");
-    await userEvent.clear(titleInput);
-    await userEvent.paste("A".repeat(300));
-    titleInput.blur();
-
-    expect(onSave).toHaveBeenCalledWith("A".repeat(254));
   });
 
   describe("when the question does not have a latest moderation review", () => {

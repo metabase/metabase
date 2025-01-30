@@ -1,6 +1,7 @@
 import {
-  NativeEditor,
   filterWidget,
+  focusNativeEditor,
+  nativeEditor,
   selectDropdown,
 } from "e2e/support/helpers";
 
@@ -96,7 +97,9 @@ export function runQuery(xhrAlias = "dataset") {
  * @param {string} query
  */
 export function enterParameterizedQuery(query, options = {}) {
-  NativeEditor.focus().type(query, {
+  focusNativeEditor();
+  nativeEditor().type(query, {
+    parseSpecialCharSequences: false,
     ...options,
   });
 }

@@ -1799,7 +1799,7 @@ describe("issue 48878", () => {
     cy.findByTestId("model-actions-header").findByText("New action").click();
 
     H.modal().within(() => {
-      H.NativeEditor.focus().type("UPDATE orders SET plan = {{ plan ", {
+      H.focusNativeEditor().type("UPDATE orders SET plan = {{ plan ", {
         parseSpecialCharSequences: false,
       });
       cy.button("Save").click();
@@ -1846,7 +1846,7 @@ describe("issue 48878", () => {
       .findByText("Use a native query")
       .click();
 
-    H.NativeEditor.focus().type(query);
+    H.focusNativeEditor().type(query);
     cy.findByTestId("native-query-editor-sidebar")
       .findByTestId("run-button")
       .click();

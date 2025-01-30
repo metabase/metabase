@@ -14,7 +14,6 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { Button } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
@@ -22,25 +21,25 @@ import type { CollectionId } from "metabase-types/api";
 const QUESTION_SCHEMA = Yup.object({
   name: Yup.string()
     .required(Errors.required)
-    .max(QUESTION_NAME_MAX_LENGTH, Errors.maxLength)
+    .max(100, Errors.maxLength)
     .default(""),
   description: Yup.string().nullable().default(null),
   collection_id: Yup.number().nullable().default(null),
 });
 
-export type CopyQuestionProperties = {
+type CopyQuestionProperties = {
   name: string;
   description: string | null;
   collection_id: CollectionId | null;
 };
 
-type CopyQuestionFormProps = {
+interface CopyQuestionFormProps {
   initialValues: Partial<CopyQuestionProperties>;
   onCancel: () => void;
   onSubmit: (vals: CopyQuestionProperties) => Promise<Question>;
   onSaved: (newQuestion: Question) => void;
   model?: string;
-};
+}
 
 export const CopyQuestionForm = ({
   initialValues,

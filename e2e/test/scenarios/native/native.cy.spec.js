@@ -20,6 +20,10 @@ const ORDERS_SCALAR_METRIC = {
   display: "scalar",
 };
 
+// cy.realType does not have an option to not parse special characters
+const LEFT_BRACKET = "{{}";
+const DOUBLE_LEFT_BRACKET = `${LEFT_BRACKET}${LEFT_BRACKET}`;
+
 describe("scenarios > question > native", () => {
   beforeEach(() => {
     cy.intercept("POST", "api/card").as("card");
@@ -31,8 +35,7 @@ describe("scenarios > question > native", () => {
 
   it("lets you create and run a SQL question", () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type("select count(*) from orders");
-
+    cy.realType("select count(*) from orders");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("18,760");
@@ -42,7 +45,7 @@ describe("scenarios > question > native", () => {
     H.visitCollection(THIRD_COLLECTION_ID);
     H.startNewNativeQuestion({ collection_id: THIRD_COLLECTION_ID });
 
-    H.NativeEditor.type("select count(*) from orders");
+    cy.realType("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
@@ -68,7 +71,7 @@ describe("scenarios > question > native", () => {
     cy.visit("/");
 
     H.startNewNativeQuestion();
-    H.NativeEditor.type("select count(*) from orders");
+    cy.realType("select count(*) from orders");
 
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
@@ -85,8 +88,7 @@ describe("scenarios > question > native", () => {
 
   it("displays an error", { tags: "@flaky" }, () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from not_a_table");
-
+    cy.realType("select * from not_a_table");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "NOT_A_TABLE" not found');
@@ -94,8 +96,7 @@ describe("scenarios > question > native", () => {
 
   it("displays an error when running selected text", { tags: "@flaky" }, () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from orders");
-
+    cy.realType("select * from orders");
     // move left three
     Cypress._.range(3).forEach(() => cy.realPress("ArrowLeft"));
     // highlight back to the front
@@ -107,8 +108,9 @@ describe("scenarios > question > native", () => {
 
   it("should handle template tags", { tags: "@flaky" }, () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from PRODUCTS where RATING > {{Stars}}");
-
+    cy.realType(
+      `select * from PRODUCTS where RATING > ${DOUBLE_LEFT_BRACKET}Stars}}`,
+    );
     cy.get("input[placeholder*='Stars']").type("3");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -117,8 +119,9 @@ describe("scenarios > question > native", () => {
 
   it("should modify parameters accordingly when tags are modified", () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from PRODUCTS where CATEGORY = {{cat}}");
-
+    cy.realType(
+      `select * from PRODUCTS where CATEGORY = ${DOUBLE_LEFT_BRACKET}cat}}`,
+    );
     cy.findByTestId("sidebar-right")
       .findByText("Always require a value")
       .click();
@@ -146,7 +149,7 @@ describe("scenarios > question > native", () => {
 
   it("can save a question with no rows", { tags: "@flaky" }, () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from people where false");
+    cy.realType("select * from people where false");
     runQuery();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("No results!");
@@ -230,7 +233,7 @@ describe("scenarios > question > native", () => {
     { tags: "@flaky" },
     () => {
       H.startNewNativeQuestion({ display: "table" }).as("editor");
-      H.NativeEditor.type("select 1 as visible, 2 as hidden");
+      cy.realType("select 1 as visible, 2 as hidden");
       cy.findByTestId("native-query-editor-container")
         .icon("play")
         .as("runQuery")
@@ -244,7 +247,7 @@ describe("scenarios > question > native", () => {
             .icon("eye_outline")
             .click({ force: true });
         });
-      H.NativeEditor.type("{movetoend}, 3 as added");
+      cy.get("@editor").type("{movetoend}, 3 as added");
       cy.get("@runQuery").click();
       cy.get("@sidebar").contains(/added/i);
     },
@@ -252,8 +255,8 @@ describe("scenarios > question > native", () => {
 
   it("should recognize template tags and save them as parameters", () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type(
-      "select * from PRODUCTS where CATEGORY={{cat}} and RATING >= {{stars}}",
+    cy.realType(
+      `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}cat}} and RATING >= ${DOUBLE_LEFT_BRACKET}stars}}`,
     );
     cy.get("input[placeholder*='Cat']").type("Gizmo");
     cy.get("input[placeholder*='Stars']").type("3");
@@ -309,7 +312,9 @@ describe("scenarios > question > native", () => {
 
   it("should allow to preview a fully parameterized query", () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from PRODUCTS where CATEGORY={{category}}");
+    cy.realType(
+      `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}category}}`,
+    );
     cy.findByPlaceholderText("Category").type("Gadget");
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
@@ -320,61 +325,14 @@ describe("scenarios > question > native", () => {
 
   it("should show errors when previewing a query", () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from PRODUCTS where CATEGORY={{category}}");
+    cy.realType(
+      `select * from PRODUCTS where CATEGORY=${DOUBLE_LEFT_BRACKET}category}}`,
+    );
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/missing required parameters/).should("be.visible");
-  });
-
-  it("should run the query when pressing meta+enter", () => {
-    H.startNewNativeQuestion({
-      query: "SELECT COUNT(*) FROM ORDERS",
-    });
-    H.NativeEditor.focus();
-
-    const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
-    cy.realPress([metaKey, "Enter"]);
-
-    cy.wait("@dataset");
-
-    cy.findByTestId("query-visualization-root").should("contain", "18,760");
-
-    // make sure a new line was not inserted
-    cy.get(".cm-lineNumbers").should("contain", "1").should("not.contain", "2");
-  });
-
-  it("should add tab at the end of the query", () => {
-    H.startNewNativeQuestion({
-      query: "SELECT",
-    });
-
-    H.NativeEditor.focus();
-    cy.realPress(["Tab"]);
-
-    H.NativeEditor.get().should("have.text", "SELECT\t");
-  });
-
-  it("should indent the line when pressing tab while selected", () => {
-    H.startNewNativeQuestion({
-      query: "SELECT",
-    });
-
-    H.NativeEditor.focus().type("{selectall}");
-    cy.realPress(["Tab"]);
-
-    H.NativeEditor.get().should("have.text", "\tSELECT");
-  });
-
-  it("should indent the next line to the same level when entering newline", () => {
-    H.startNewNativeQuestion();
-
-    H.NativeEditor.focus()
-      .type("{tab}SELECT{enter}FOO")
-      .get()
-      .should("have.text", "\tSELECT\tFOO");
   });
 });
 
@@ -468,7 +426,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
       // Switch to SQL engine which is supported by the formatter
       H.popover().findByText("Sample Database").click();
 
-      H.NativeEditor.focus().type("select * from orders", {
+      H.focusNativeEditor().type("select * from orders", {
         parseSpecialCharSequences: false,
       });
 
@@ -479,7 +437,7 @@ describe("no native access", { tags: ["@external", "@quarantine"] }, () => {
 
       cy.wait("@sqlFormatter");
 
-      H.NativeEditor.get().should("be.visible").get(".ace_line").as("lines");
+      H.nativeEditor().should("be.visible").get(".ace_line").as("lines");
 
       cy.get("@lines").eq(0).should("have.text", "SELECT");
       cy.get("@lines").eq(1).should("have.text", "  *");

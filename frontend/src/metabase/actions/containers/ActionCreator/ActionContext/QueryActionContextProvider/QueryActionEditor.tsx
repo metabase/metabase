@@ -1,4 +1,5 @@
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import { ACE_ELEMENT_ID } from "metabase/query_builder/components/NativeQueryEditor/AceEditor/constants";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
@@ -29,6 +30,8 @@ function QueryActionEditor({
     />
   );
 }
+
+export { ACE_ELEMENT_ID };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QueryActionEditor;

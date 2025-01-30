@@ -1,6 +1,6 @@
 import { capitalize } from "inflection";
 
-import { NativeEditor } from "./e2e-native-editor-helpers";
+import { nativeEditor } from "./e2e-native-editor-helpers";
 
 export function setActionsEnabledForDB(dbId, enabled = true) {
   return cy.request("PUT", `/api/database/${dbId}`, {
@@ -11,7 +11,11 @@ export function setActionsEnabledForDB(dbId, enabled = true) {
 }
 
 export function fillActionQuery(query) {
-  NativeEditor.type(query);
+  // Without this wait, content tends to drop from the beginning of the string. TODO: Fix
+  nativeEditor().wait(500).type(query, {
+    parseSpecialCharSequences: false,
+    delay: 50,
+  });
 }
 /**
  *

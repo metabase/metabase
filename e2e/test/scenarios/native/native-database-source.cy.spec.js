@@ -334,7 +334,7 @@ describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   });
 
   it("can save a native MongoDB query", () => {
-    H.NativeEditor.focus().type('[ { $count: "Total" } ]', {
+    H.focusNativeEditor().type('[ { $count: "Total" } ]', {
       parseSpecialCharSequences: false,
     });
     cy.findByTestId("native-query-editor-container").icon("play").click();

@@ -8,10 +8,11 @@ import { getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
-import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
+import { Editor } from "metabase/query_builder/components/NativeQueryEditor/Editor";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
 import { createNativeQuestion } from "./utils";
 
@@ -44,7 +45,7 @@ export const NotebookNativePreview = (): JSX.Element => {
   const showEmptySidebar = !canRun;
 
   const newQuestion = createNativeQuestion(question, data);
-  const newQuery = newQuestion.query();
+  const newQuery = newQuestion.legacyQuery() as NativeQuery;
 
   const handleConvertClick = useCallback(() => {
     dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true, run: true }));
@@ -77,14 +78,8 @@ export const NotebookNativePreview = (): JSX.Element => {
       >
         {TITLE[engineType]}
       </Box>
-      <Flex
-        style={{
-          flex: 1,
-          borderTop: borderStyle,
-          borderBottom: borderStyle,
-          overflow: "auto",
-        }}
-        direction="column"
+      <Box
+        style={{ flex: 1, borderTop: borderStyle, borderBottom: borderStyle }}
       >
         {showLoader && <DelayedLoadingSpinner delay={1000} />}
         {showEmptySidebar}
@@ -95,8 +90,12 @@ export const NotebookNativePreview = (): JSX.Element => {
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
         )}
-        {showQuery && <Editor query={newQuery} readOnly />}
-      </Flex>
+        {showQuery && (
+          <div style={{ height: "100%", flex: 1 }}>
+            <Editor query={newQuery} readOnly />
+          </div>
+        )}
+      </Box>
       <Box ta="end" p="1.5rem">
         <Button
           variant="subtle"
