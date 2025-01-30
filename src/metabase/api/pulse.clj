@@ -389,4 +389,6 @@
   (metabase.api.routes.common/wrap-middleware-for-open-api-spec-generation
    (partial channel.render/style-tag-nonce-middleware "/api/pulse/preview_dashboard")))
 
-(api/define-routes style-nonce-middleware)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/pulse` endpoints."
+  (api.macros/ns-handler *ns* style-nonce-middleware))

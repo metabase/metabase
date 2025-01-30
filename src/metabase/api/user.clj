@@ -574,4 +574,4 @@
     (api/check-500 (pos? (t2/update! :model/User id {:type :personal} {k false}))))
   {:success true})
 
-(api/define-routes)
+

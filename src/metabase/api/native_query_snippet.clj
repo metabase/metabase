@@ -87,4 +87,4 @@
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (check-perms-and-update-snippet! id body))
 
-(api/define-routes)
+

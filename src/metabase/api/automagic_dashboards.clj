@@ -390,4 +390,4 @@
                                                   :query-filter       nil})]
     (xrays/comparison-dashboard dashboard left right {:left {:cell-query (decode-base64-json cell-query)}})))
 
-(api/define-routes)
+

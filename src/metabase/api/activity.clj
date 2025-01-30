@@ -241,4 +241,4 @@
   []
   {:popular_items (get-popular-items-model-and-id)})
 
-(api/define-routes)
+

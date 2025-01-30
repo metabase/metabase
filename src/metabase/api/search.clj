@@ -198,4 +198,6 @@
           (prometheus/inc! :metabase-search/response-error)))
       (throw e))))
 
-(api/define-routes +engine-cookie)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/search` routes."
+  (api.macros/ns-handler *ns* +engine-cookie))

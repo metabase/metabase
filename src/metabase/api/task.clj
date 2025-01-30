@@ -31,4 +31,4 @@
   (validation/check-has-application-permission :monitoring)
   (task/scheduler-info))
 
-(api/define-routes)
+

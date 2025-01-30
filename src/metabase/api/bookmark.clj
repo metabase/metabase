@@ -67,4 +67,4 @@
   (bookmark/save-ordering! api/*current-user-id* orderings)
   api/generic-204-no-content)
 
-(api/define-routes)
+

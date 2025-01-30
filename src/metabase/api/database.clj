@@ -1258,4 +1258,4 @@
                                      [:in :collection_id (api/check-404 (not-empty (t2/select-pks-set :model/Collection :name schema)))])])
          (map api.table/card->virtual-table))))
 
-(api/define-routes)
+

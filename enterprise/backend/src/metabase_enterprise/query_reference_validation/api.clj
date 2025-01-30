@@ -127,4 +127,6 @@
    (fn [prefix]
      (open-api/open-api-spec handler prefix))))
 
-(api/define-routes api/+check-superuser +auth +check-setting)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/query-reference-validation` routes."
+  (api.macros/ns-handler *ns* api/+check-superuser +auth +check-setting))

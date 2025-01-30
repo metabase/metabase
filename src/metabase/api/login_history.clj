@@ -22,4 +22,4 @@
   []
   (login-history api/*current-user-id*))
 
-(api/define-routes)
+

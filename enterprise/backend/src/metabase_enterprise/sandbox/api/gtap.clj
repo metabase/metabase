@@ -108,4 +108,6 @@
 ;; TODO - defining the `check-superuser` check *here* means the API documentation function won't pick up on the "this
 ;; requires a superuser" stuff since it parses the `defendpoint` body to look for a call to `check-superuser`. I
 ;; suppose this doesn't matter (much) body since this is an enterprise endpoint and won't go in the dox anyway.
-(api/define-routes api/+check-superuser +check-sandboxes-enabled)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/mt/gtap` routes."
+  (api.macros/ns-handler *ns* api/+check-superuser +check-sandboxes-enabled))

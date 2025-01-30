@@ -13,7 +13,7 @@
 ;;
 ;;  ; ...
 ;;
-;; (api/define-routes)
+;;
 ;; </code></pre>
 ;;
 ;; As you can see, the arguments are:
@@ -286,17 +286,6 @@
 (def generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
-
-(defmacro define-routes
-  "Create a `(defroutes routes ...)` form that automatically includes all functions created with `defendpoint` in the
-  current namespace. Optionally specify middleware that will apply to all of the endpoints in the current namespace.
-
-    (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
-  {:style/indent 0}
-  [& middleware]
-  `(def ~(vary-meta 'routes assoc :arglists ''([request respond raise]))
-     ~(format "Routes for %s" (ns-name *ns*))
-     (api.macros/ns-handler *ns* ~@middleware)))
 
 (defn +check-superuser
   "Wrap a Ring handler to make sure the current user is a superuser before handling any requests.

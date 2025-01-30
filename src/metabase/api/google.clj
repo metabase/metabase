@@ -23,4 +23,4 @@
                         :google-auth-auto-create-accounts-domain google-auth-auto-create-accounts-domain})
     (google/google-auth-enabled! google-auth-enabled)))
 
-(api/define-routes)
+

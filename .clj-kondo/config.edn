@@ -1007,7 +1007,6 @@
    metabase.api.card-test/with-ordered-items                                     macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy!                       macros.metabase.api.collection-test/with-collection-hierarchy!
    metabase.api.collection-test/with-some-children-of-collection!                macros.metabase.api.collection-test/with-some-children-of-collection!
-   metabase.api.common/define-routes                                             macros.metabase.api.common/define-routes
    metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing!     macros.metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing!
    metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing! macros.metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!
    metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing!      macros.metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing!

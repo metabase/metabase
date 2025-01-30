@@ -101,4 +101,4 @@
       (log/error e "Error handling SLO")
       (sso-error-page e :out))))
 
-(api/define-routes)
+

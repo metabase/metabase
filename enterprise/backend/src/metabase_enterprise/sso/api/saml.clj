@@ -30,4 +30,4 @@
       {:status 400
        :body   "Error finding private key in provided keystore and alias."})))
 
-(api/define-routes)
+

@@ -72,4 +72,4 @@
   (backfill-required-entity-ids!)
   (refresh-scim-api-key! api/*current-user-id*))
 
-(api/define-routes)
+

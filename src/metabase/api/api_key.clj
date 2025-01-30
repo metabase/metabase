@@ -163,4 +163,4 @@
                             :user-id api/*current-user-id*})
     api/generic-204-no-content))
 
-(api/define-routes)
+

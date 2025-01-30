@@ -304,4 +304,6 @@
    (fn [prefix]
      (open-api/open-api-spec handler prefix))))
 
-(api/define-routes +log-all-request-failures)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/session` routes."
+  (api.macros/ns-handler *ns* +log-all-request-failures))

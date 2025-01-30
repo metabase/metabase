@@ -286,4 +286,6 @@
     (finally
       (io/delete-file (:tempfile file)))))
 
-(api/define-routes +auth)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/serialization` routes."
+  (api.macros/ns-handler *ns* +auth))

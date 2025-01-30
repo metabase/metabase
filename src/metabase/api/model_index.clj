@@ -90,4 +90,4 @@
     (api/write-check :model/Card (:model_id model-index))
     (t2/delete! :model/ModelIndex id)))
 
-(api/define-routes)
+
