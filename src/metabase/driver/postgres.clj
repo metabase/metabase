@@ -840,9 +840,23 @@
    (keyword "timestamp with time zone")    :type/DateTimeWithLocalTZ
    (keyword "timestamp without time zone") :type/DateTime})
 
+;; add debug logging
+;; add catch blocks...
+(defn- check-for-enum-type
+  [database-type]
+  (when (and (qp.store/initialized?)
+             (seq (jdbc/query (-> (qp.store/metadata-provider)
+                                  lib.metadata/database
+                                  sql-jdbc.conn/db->pooled-connection-spec)
+                              [(str "SELECT NULL\n"
+                                    "FROM pg_type t\n"
+                                    "WHERE t.typname = ? AND t.typtype = 'e'")
+                               (name database-type)])))
+    :type/PostgresEnum))
+
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
   [_driver database-type]
-  (default-base-types database-type))
+  ((some-fn default-base-types check-for-enum-type) database-type))
 
 (defmethod sql-jdbc.sync/column->semantic-type :postgres
   [_driver database-type _column-name]
