@@ -33,6 +33,7 @@
    [metabase.api.public]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.api.pulse]
+   [metabase.api.pulse.unsubscribe]
    [metabase.api.revision]
    [metabase.api.routes.common :refer [+auth +message-only-exceptions +public-exceptions +static-apikey]]
    [metabase.api.search]
@@ -82,6 +83,7 @@
          metabase.api.persist/keep-me
          metabase.api.preview-embed/keep-me
          metabase.api.public/keep-me
+         metabase.api.pulse.unsubscribe/keep-me
          metabase.api.revision/keep-me
          metabase.api.segment/keep-me
          metabase.api.setting/keep-me
