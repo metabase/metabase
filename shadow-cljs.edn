@@ -24,6 +24,7 @@
                 metabase.lib.types.isa
                 metabase.models.dashboard.constants
                 metabase.models.params.shared
+                metabase.pivot.core
                 metabase.types
                 metabase.util.currency
                 metabase.util.devtools

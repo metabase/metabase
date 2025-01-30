@@ -2,6 +2,7 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import * as Pivot from "cljs/metabase.pivot.core";
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
@@ -42,7 +43,8 @@ export function multiLevelPivot(data, settings) {
       .filter(index => index !== -1),
   );
 
-  const { pivotData, columns } = splitPivotData(data);
+  const { pivotData, columns } = Pivot.split_pivot_data(data);
+
   const columnSettings = columns.map(column => settings.column(column));
   const allCollapsedSubtotals = settings[COLLAPSED_ROWS_SETTING].value;
   const collapsedSubtotals = filterCollapsedSubtotals(
@@ -100,17 +102,19 @@ export function multiLevelPivot(data, settings) {
   }
 
   // build objects to look up subtotal values
-  const subtotalValues = {};
+  const oldSubtotalValues = {};
   for (const [subtotalName, subtotal] of Object.entries(pivotData)) {
     const indexes = JSON.parse(subtotalName);
-    subtotalValues[subtotalName] = {};
+    oldSubtotalValues[subtotalName] = {};
     for (const row of subtotal) {
       const valueKey = JSON.stringify(indexes.map(index => row[index]));
-      subtotalValues[subtotalName][valueKey] = valueColumnIndexes.map(
+      oldSubtotalValues[subtotalName][valueKey] = valueColumnIndexes.map(
         index => row[index],
       );
     }
   }
+
+  const subtotalValues = Pivot.subtotal_values(pivotData, valueColumnIndexes);
 
   // pivot tables have a lot of repeated values, so we use memoized formatters for each column
   const [valueFormatters, topIndexFormatters, leftIndexFormatters] = [
@@ -220,34 +224,6 @@ export function multiLevelPivot(data, settings) {
     columnIndexes: columnColumnIndexes,
     valueIndexes: valueColumnIndexes,
   };
-}
-
-// This pulls apart the different aggregations that were packed into one result set.
-// There's a column indicating which breakouts were used to compute that row.
-// We use that column to split apart the data and convert the field refs to indexes.
-function splitPivotData(data) {
-  const groupIndex = data.cols.findIndex(isPivotGroupColumn);
-  const columns = data.cols.filter(col => !isPivotGroupColumn(col));
-  const breakouts = columns.filter(col => col.source === "breakout");
-
-  const pivotData = _.chain(data.rows)
-    .groupBy(row => row[groupIndex])
-    .pairs()
-    .map(([key, rows]) => {
-      key = parseInt(key);
-      const indexes = _.range(breakouts.length).filter(
-        index => !((1 << index) & key),
-      );
-      const keyAsIndexes = JSON.stringify(indexes);
-      const rowsWithoutColumn = rows.map(row =>
-        row.slice(0, groupIndex).concat(row.slice(groupIndex + 1)),
-      );
-
-      return [keyAsIndexes, rowsWithoutColumn];
-    })
-    .object()
-    .value();
-  return { pivotData, columns };
 }
 
 function addEmptyIndexItem(index) {
