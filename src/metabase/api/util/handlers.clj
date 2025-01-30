@@ -35,14 +35,6 @@
    (sorted-map)
    route-map))
 
-(defn route-map-handler
-  "Create a Ring handler from a map of route prefix => handler."
-  [route-map]
-  (open-api/handler-with-open-api-spec
-   (-route-map-handler route-map)
-   (fn [prefix]
-     (route-map->open-api-spec route-map prefix))))
-
 (mu/defn lazy-ns-handler :- ::api.macros/handler
   "Lazily create an [[ns-handler]] for the namespace named by [[ns-symb]]. Namespace is loaded the first time the
   handler is used. Use this in combination with [[route-map-handler]] to create a true lazy-loading API.
@@ -80,6 +72,24 @@
        (@dlay request respond raise))
      (fn [prefix]
        (open-api/open-api-spec @dlay prefix)))))
+
+(declare route-map-handler)
+
+(defn- prepare-route-map [route-map]
+  (update-vals route-map (fn [v]
+                           (cond-> v
+                             (map? v)              route-map-handler
+                             (simple-symbol? v)    lazy-ns-handler
+                             (qualified-symbol? v) lazy-handler))))
+
+(defn route-map-handler
+  "Create a Ring handler from a map of route prefix => handler."
+  [route-map]
+  (let [route-map (prepare-route-map route-map)]
+    (open-api/handler-with-open-api-spec
+     (-route-map-handler route-map)
+     (fn [prefix]
+       (route-map->open-api-spec route-map prefix)))))
 
 (defn- routes->open-api-spec [handlers prefix]
   (transduce

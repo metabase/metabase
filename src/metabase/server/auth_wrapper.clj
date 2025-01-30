@@ -15,10 +15,8 @@
   ;; follows the same form as [[metabase-enterprise.sso.api.routes]]. Compojure is a bit opaque so need to manually keep
   ;; them in sync.
   (handlers/route-map-handler
-   {"/auth" (handlers/route-map-handler
-             {"/sso" not-enabled})
-    "/api" (handlers/route-map-handler
-            {"/saml" not-enabled})}))
+   {"/auth" {"/sso" not-enabled}
+    "/api"  {"/saml" not-enabled}}))
 
 ;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api.routes/routes]] !!!
 ;;

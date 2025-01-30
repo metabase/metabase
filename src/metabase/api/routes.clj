@@ -1,7 +1,7 @@
 (ns metabase.api.routes
   (:require
    [compojure.route :as route]
-   [metabase.api.routes.common :refer [+auth +message-only-exceptions +public-exceptions +static-apikey]]
+   [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
    [metabase.api.util.handlers :as handlers]
    [metabase.config :as config]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -13,61 +13,71 @@
   (or (not config/is-prod?)
       (config/config-bool :mb-enable-test-endpoints)))
 
+(defn- ->handler [x]
+  (cond-> x
+    (simple-symbol? x)    handlers/lazy-ns-handler
+    (qualified-symbol? x) handlers/lazy-handler))
+
+(defn- +auth                    [handler] (routes.common/+auth                    (->handler handler)))
+(defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (->handler handler)))
+(defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (->handler handler)))
+
+(def ^:private ^{:arglists '([request respond raise])} pulse-routes
+  (handlers/routes
+   (handlers/route-map-handler
+    {"/unsubscribe" 'metabase.api.pulse.unsubscribe})
+   (+auth 'metabase.api.pulse/routes)))
+
 ;;; ↓↓↓ KEEP THIS SORTED OR ELSE! ↓↓↓
 (def ^:private route-map
-  {"/action"               (+auth (handlers/lazy-ns-handler 'metabase.api.action))
-   "/activity"             (+auth (handlers/lazy-ns-handler 'metabase.api.activity))
-   "/alert"                (+auth (handlers/lazy-ns-handler 'metabase.api.alert))
-   "/api-key"              (+auth (handlers/lazy-ns-handler 'metabase.api.api-key))
-   "/automagic-dashboards" (+auth (handlers/lazy-ns-handler 'metabase.api.automagic-dashboards))
-   "/bookmark"             (+auth (handlers/lazy-ns-handler 'metabase.api.bookmark))
-   "/cache"                (+auth (handlers/lazy-ns-handler 'metabase.api.cache))
-   "/card"                 (+auth (handlers/lazy-ns-handler 'metabase.api.card))
-   "/cards"                (+auth (handlers/lazy-ns-handler 'metabase.api.cards))
-   "/channel"              (+auth (handlers/lazy-handler 'metabase.channel.api/channel-routes))
-   "/cloud-migration"      (+auth (handlers/lazy-ns-handler 'metabase.api.cloud-migration))
-   "/collection"           (+auth (handlers/lazy-ns-handler 'metabase.api.collection))
-   "/dashboard"            (+auth (handlers/lazy-ns-handler 'metabase.api.dashboard))
-   "/database"             (+auth (handlers/lazy-ns-handler 'metabase.api.database))
-   "/dataset"              (handlers/lazy-ns-handler 'metabase.api.dataset)
-   "/docs"                 (handlers/lazy-handler 'metabase.api.docs/routes)
-   "/email"                (+auth (handlers/lazy-handler 'metabase.channel.api/email-routes))
-   "/embed"                (+message-only-exceptions (handlers/lazy-ns-handler 'metabase.api.embed))
-   "/field"                (+auth (handlers/lazy-ns-handler 'metabase.api.field))
-   "/geojson"              (handlers/lazy-ns-handler 'metabase.geojson.api)
-   "/google"               (+auth (handlers/lazy-ns-handler 'metabase.api.google))
-   "/ldap"                 (+auth (handlers/lazy-ns-handler 'metabase.sso.api.ldap))
-   "/login-history"        (+auth (handlers/lazy-ns-handler 'metabase.api.login-history))
-   "/model-index"          (+auth (handlers/lazy-ns-handler 'metabase.api.model-index))
-   "/native-query-snippet" (+auth (handlers/lazy-ns-handler 'metabase.api.native-query-snippet))
-   "/notify"               (+static-apikey (handlers/lazy-handler 'metabase.sync.api/routes))
-   "/permissions"          (+auth (handlers/lazy-ns-handler 'metabase.api.permissions))
-   "/persist"              (+auth (handlers/lazy-ns-handler 'metabase.api.persist))
-   "/premium-features"     (+auth (handlers/lazy-handler 'metabase.api.premium-features/routes))
-   "/preview_embed"        (+auth (handlers/lazy-ns-handler 'metabase.api.preview-embed))
-   "/public"               (+public-exceptions (handlers/lazy-ns-handler 'metabase.api.public))
-   "/pulse"                (handlers/routes
-                            (handlers/route-map-handler
-                             {"/unsubscribe" (handlers/lazy-ns-handler 'metabase.api.pulse.unsubscribe)})
-                            (+auth (handlers/lazy-handler 'metabase.api.pulse/routes)))
-   "/revision"             (+auth (handlers/lazy-ns-handler 'metabase.api.revision))
-   "/search"               (+auth (handlers/lazy-handler 'metabase.api.search/routes))
-   "/segment"              (+auth (handlers/lazy-ns-handler 'metabase.api.segment))
-   "/session"              (handlers/lazy-handler 'metabase.session.api/routes)
-   "/setting"              (+auth (handlers/lazy-ns-handler 'metabase.api.setting))
-   "/setup"                (handlers/lazy-ns-handler 'metabase.setup.api)
-   "/slack"                (+auth (handlers/lazy-ns-handler 'metabase.api.slack))
-   "/table"                (+auth (handlers/lazy-ns-handler 'metabase.api.table))
-   "/task"                 (+auth (handlers/lazy-ns-handler 'metabase.api.task))
-   "/testing"              (if enable-testing-routes?
-                             (handlers/lazy-ns-handler 'metabase.api.testing)
-                             pass-thru-handler)
-   "/tiles"                (+auth (handlers/lazy-ns-handler 'metabase.api.tiles))
-   "/timeline"             (+auth (handlers/lazy-ns-handler 'metabase.api.timeline))
-   "/timeline-event"       (+auth (handlers/lazy-ns-handler 'metabase.api.timeline-event))
-   "/user"                 (+auth (handlers/lazy-ns-handler 'metabase.api.user))
-   "/user-key-value"       (+auth (handlers/lazy-ns-handler 'metabase.api.user-key-value))
-   "/util"                 (handlers/lazy-ns-handler 'metabase.api.util)})
+  {"/action"               (+auth 'metabase.api.action)
+   "/activity"             (+auth 'metabase.api.activity)
+   "/alert"                (+auth 'metabase.api.alert)
+   "/api-key"              (+auth 'metabase.api.api-key)
+   "/automagic-dashboards" (+auth 'metabase.api.automagic-dashboards)
+   "/bookmark"             (+auth 'metabase.api.bookmark)
+   "/cache"                (+auth 'metabase.api.cache)
+   "/card"                 (+auth 'metabase.api.card)
+   "/cards"                (+auth 'metabase.api.cards)
+   "/channel"              (+auth 'metabase.channel.api/channel-routes)
+   "/cloud-migration"      (+auth 'metabase.api.cloud-migration)
+   "/collection"           (+auth 'metabase.api.collection)
+   "/dashboard"            (+auth 'metabase.api.dashboard)
+   "/database"             (+auth 'metabase.api.database)
+   "/dataset"              'metabase.api.dataset
+   "/docs"                 'metabase.api.docs/routes
+   "/email"                'metabase.channel.api/email-routes
+   "/embed"                (+message-only-exceptions 'metabase.api.embed)
+   "/field"                (+auth 'metabase.api.field)
+   "/geojson"              'metabase.api.geojson
+   "/google"               (+auth 'metabase.api.google)
+   "/ldap"                 (+auth 'metabase.api.ldap)
+   "/login-history"        (+auth 'metabase.api.login-history)
+   "/model-index"          (+auth 'metabase.api.model-index)
+   "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
+   "/notify"               (+static-apikey 'metabase.sync.api/routes)
+   "/permissions"          (+auth 'metabase.api.permissions)
+   "/persist"              (+auth 'metabase.api.persist)
+   "/premium-features"     (+auth 'metabase.api.premium-features/routes)
+   "/preview_embed"        (+auth 'metabase.api.preview-embed)
+   "/public"               (+public-exceptions 'metabase.api.public)
+   "/pulse"                pulse-routes
+   "/revision"             (+auth 'metabase.api.revision)
+   "/search"               (+auth 'metabase.api.search/routes)
+   "/segment"              (+auth 'metabase.api.segment)
+   "/session"              'metabase.api.session/routes
+   "/setting"              (+auth 'metabase.api.setting)
+   "/setup"                'metabase.setup.api
+   "/slack"                (+auth 'metabase.api.slack)
+   "/table"                (+auth 'metabase.api.table)
+   "/task"                 (+auth 'metabase.api.task)
+   "/testing"              (if enable-testing-routes? 'metabase.api.testing pass-thru-handler)
+   "/tiles"                (+auth 'metabase.api.tiles)
+   "/timeline"             (+auth 'metabase.api.timeline)
+   "/timeline-event"       (+auth 'metabase.api.timeline-event)
+   "/user"                 (+auth 'metabase.api.user)
+   "/user-key-value"       (+auth 'metabase.api.user-key-value)
+   "/util"                 'metabase.api.util})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^{:arglists '([request respond raise])} routes
