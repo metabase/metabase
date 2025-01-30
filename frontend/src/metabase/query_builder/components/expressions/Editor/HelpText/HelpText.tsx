@@ -6,6 +6,7 @@ import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { Box, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { MBQL_CLAUSES } from "metabase-lib/v1/expressions/config";
 import {
   getHelpDocsUrl,
   getHelpText,
@@ -56,6 +57,9 @@ export function HelpText({
       ? getHelpText(enclosingFunction.name, database, reportTimezone)
       : null;
 
+  const clause = helpText && MBQL_CLAUSES[helpText?.name];
+  const isSupported = clause && database?.hasFeature(clause?.requiresFeature);
+
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
     helpText ? getHelpDocsUrl(helpText) : "",
   );
@@ -68,7 +72,7 @@ export function HelpText({
     [],
   );
 
-  if (!helpText) {
+  if (!helpText || !clause || !isSupported) {
     return null;
   }
 
