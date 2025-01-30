@@ -1885,7 +1885,7 @@
 
   > **Code health:** Healthy"
   [a-query]
-  (clj->js (m/map-vals #(m/update-existing % :dimension ref->legacy-ref) (lib.core/template-tags a-query))
+  (clj->js (update-vals (lib.core/template-tags a-query) #(m/update-existing % :dimension ref->legacy-ref))
            :keyword-fn u/qualified-name))
 
 (defn ^:export required-native-extras
