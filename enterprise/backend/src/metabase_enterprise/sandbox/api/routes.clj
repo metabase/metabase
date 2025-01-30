@@ -13,25 +13,24 @@
 (comment metabase-enterprise.sandbox.api.table/keep-me)
 
 (def ^:private sandbox-route-map
-  {"/gtap" (+auth metabase-enterprise.sandbox.api.gtap/routes)
-   "/user" (+auth metabase-enterprise.sandbox.api.user/routes)})
+  {"/gtap" metabase-enterprise.sandbox.api.gtap/routes
+   "/user" metabase-enterprise.sandbox.api.user/routes})
 
 (def ^{:arglists '([request respond raise])} sandbox-routes
   "/api/mt routes.
 
   EE-only sandboxing routes live under `/mt` for historical reasons. `/mt` is for multi-tenant. TODO - We should
   change this to `/sandboxes` or something like that."
-  (ee.api.common/+require-premium-feature
-   :sandboxes
-   (deferred-tru "Sandboxes")
-   (handlers/route-map-handler sandbox-route-map)))
+  (->> (handlers/route-map-handler sandbox-route-map)
+       +auth
+       (ee.api.common/+require-premium-feature :sandboxes (deferred-tru "Sandboxes"))))
 
 (def ^{:arglists '([request respond raise])} sandbox-table-routes
   "/api/table overrides for sandboxing.
 
   When sandboxing is enabled we *replace* GET /api/table/:id/query_metadata with a special EE version. If sandboxing
   is not enabled, this passes thru to the OSS implementation of the endpoint."
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (ee.api.common/+when-premium-feature
-   :sandboxes
-   (+auth (api.macros/ns-handler 'metabase-enterprise.sandbox.api.table))))
+  (->> (api.macros/ns-handler 'metabase-enterprise.sandbox.api.table)
+       +auth
+       #_{:clj-kondo/ignore [:deprecated-var]}
+       (ee.api.common/+when-premium-feature :sandboxes)))

@@ -36,8 +36,10 @@
    :upload-management          (deferred-tru "Upload Management")})
 
 (defn- premium-handler [handler required-feature]
-  (->> handler
-       (ee.api.common/+require-premium-feature required-feature (required-feature->message required-feature))))
+  (let [handler (cond-> handler
+                  (simple-symbol? handler) api.macros/ns-handler)]
+    (->> handler
+         (ee.api.common/+require-premium-feature required-feature (required-feature->message required-feature)))))
 
 (def ^:private naughty-routes-map
   "The following routes are NAUGHTY and do not follow the naming convention (i.e., they do not start with
@@ -54,9 +56,9 @@
   routes here and follow the convention."
   {"/advanced-permissions"       (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
-   "/autodescribe"               (premium-handler (api.macros/ns-handler 'metabase-enterprise.llm.api) :llm-autodescription)
+   "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
-   "/logs"                       (premium-handler (api.macros/ns-handler 'metabase-enterprise.advanced-config.api.logs) :audit-app)
+   "/logs"                       (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
    "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/serialization"              (premium-handler metabase-enterprise.serialization.api/routes :serialization)
@@ -67,7 +69,7 @@
 (def ^:private routes-map
   (merge
    naughty-routes-map
-   {"/ee" (handlers/route-map-handler ee-routes-map)}))
+   {"/ee" ee-routes-map}))
 
 (def ^{:arglists '([request respond raise])} routes
   "API routes only available when running Metabase® Enterprise Edition™.

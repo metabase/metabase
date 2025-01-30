@@ -20,7 +20,5 @@
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for auth (SAML) API endpoints."
   (handlers/route-map-handler
-   {"/auth" (handlers/route-map-handler
-             {"/sso" (api.macros/ns-handler 'metabase-enterprise.sso.api.sso)})
-    "/api"  (handlers/route-map-handler
-             {"/saml" (api.macros/ns-handler 'metabase-enterprise.sso.api.saml)})}))
+   {"/auth" {"/sso"  'metabase-enterprise.sso.api.sso}
+    "/api"  {"/saml" 'metabase-enterprise.sso.api.saml}}))

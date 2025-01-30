@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [compojure.core :as compojure]
    [medley.core :as m]
+   [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]))
 
 (set! *warn-on-reflection* true)
@@ -31,13 +32,22 @@
    (sorted-map)
    route-map))
 
+(declare route-map-handler)
+
+(defn- prepare-route-map [route-map]
+  (update-vals route-map (fn [v]
+                           (cond-> v
+                             (map? v)           route-map-handler
+                             (simple-symbol? v) api.macros/ns-handler))))
+
 (defn route-map-handler
   "Create a Ring handler from a map of route prefix => handler."
   [route-map]
-  (open-api/handler-with-open-api-spec
-   (-route-map-handler route-map)
-   (fn [prefix]
-     (route-map->open-api-spec route-map prefix))))
+  (let [route-map (prepare-route-map route-map)]
+    (open-api/handler-with-open-api-spec
+     (-route-map-handler route-map)
+     (fn [prefix]
+       (route-map->open-api-spec route-map prefix)))))
 
 (defn- routes->open-api-spec [handlers prefix]
   (transduce
