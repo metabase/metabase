@@ -52,16 +52,16 @@
 (def ^:private ee-routes-map
   "/api/ee routes. The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new
   routes here and follow the convention."
-  {"/advanced-permissions"       (premium-handler 'metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
-   "/audit-app"                  (premium-handler 'metabase-enterprise.audit-app.api.routes/routes :audit-app)
+  {"/advanced-permissions"       (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
+   "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler (api.macros/ns-handler 'metabase-enterprise.llm.api) :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
    "/logs"                       (premium-handler (api.macros/ns-handler 'metabase-enterprise.advanced-config.api.logs) :audit-app)
-   "/query-reference-validation" (premium-handler 'metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
-   "/scim"                       (premium-handler 'metabase-enterprise.scim.routes/routes :scim)
-   "/serialization"              (premium-handler 'metabase-enterprise.serialization.api/routes :serialization)
-   "/stale"                      (premium-handler 'metabase-enterprise.stale.routes/routes :collection-cleanup)
-   "/upload-management"          (premium-handler 'metabase-enterprise.upload-management.api/routes :upload-management)})
+   "/query-reference-validation" (premium-handler metabase-enterprise.query-reference-validation.api/routes :query-reference-validation)
+   "/scim"                       (premium-handler metabase-enterprise.scim.routes/routes :scim)
+   "/serialization"              (premium-handler metabase-enterprise.serialization.api/routes :serialization)
+   "/stale"                      (premium-handler metabase-enterprise.stale.routes/routes :collection-cleanup)
+   "/upload-management"          (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

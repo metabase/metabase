@@ -6,6 +6,9 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]))
 
+(comment metabase-enterprise.advanced-permissions.api.application/keep-me
+         metabase-enterprise.advanced-permissions.api.impersonation/keep-me)
+
 (def ^:private route-map
   {"/application"   (+auth (api.macros/ns-handler 'metabase-enterprise.advanced-permissions.api.application))
    "/impersonation" (+auth (api.macros/ns-handler 'metabase-enterprise.advanced-permissions.api.impersonation))})
