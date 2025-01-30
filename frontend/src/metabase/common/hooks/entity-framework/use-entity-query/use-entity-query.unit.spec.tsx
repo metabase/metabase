@@ -9,7 +9,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import type Database from "metabase-lib/v1/metadata/Database";
