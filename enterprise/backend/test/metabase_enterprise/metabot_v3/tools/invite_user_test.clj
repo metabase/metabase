@@ -10,7 +10,7 @@
     (let [invoke-tool #(metabot-v3.tools.interface/*invoke-tool* :metabot.tool/invite-user {:email %} {})]
       (testing "The user has to have permission to invite users."
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-              (invoke-tool "user@example.com"))))
+                              (invoke-tool "user@example.com"))))
       (mt/with-current-user (mt/user->id :crowberto)
         (testing "User can be invited"
           (is (= {:output "user@example.com has been invited to Metabase."}
@@ -20,4 +20,4 @@
                  (invoke-tool "crowberto@metabase.com"))))
         (testing "Return an error message if email is invalid."
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input: .*"
-                 (invoke-tool "total garbage, not an email address"))))))))
+                                (invoke-tool "total garbage, not an email address"))))))))
