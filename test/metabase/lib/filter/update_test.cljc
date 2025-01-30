@@ -141,6 +141,33 @@
 
 (deftest ^:parallel update-temporal-filter-existing-breakout-change-unit-test
   (testing "Update an existing query with breakout and filter against this column; update the breakout unit"
+    (doseq [[table field field-type] [[:users    :last-login :type/DateTime]
+                                      [:products :created-at :type/DateTimeWithLocalTZ]]]
+      (testing (str field-type " column, specifically " table " " field)
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
+                        (lib/breakout (-> (meta/field-metadata table field)
+                                          (lib/with-temporal-bucket :day)))
+                        (lib/filter (lib/= (-> (meta/field-metadata table field)
+                                               (lib/with-temporal-bucket :day))
+                                           "2024-01-02T15:00")))]
+          (is (=? {:stages [{:breakout [[:field
+                                         ;; `:day` should have been changed to `:hour`, because there aren't enough days
+                                         ;; between `2024-01-02` and `2024-01-03`
+                                         {:temporal-unit :hour}
+                                         (meta/id table field)]]
+                             :filters  [[:between
+                                         {}
+                                         [:field {} (meta/id table field)]
+                                         "2024-01-02"
+                                         "2024-01-03"]]}]}
+                  (lib/update-temporal-filter query
+                                              (-> (meta/field-metadata table field)
+                                                  (lib/with-temporal-bucket :day))
+                                              "2024-01-01"
+                                              "2024-01-03"))))))))
+
+(deftest ^:parallel update-temporal-filter-existing-breakout-date-stop-drill-down
+  (testing "Update an existing query with breakout and filter against this column; update the breakout unit"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
                     (lib/breakout (-> (meta/field-metadata :checkins :date)
                                       (lib/with-temporal-bucket :day)))
@@ -148,9 +175,9 @@
                                            (lib/with-temporal-bucket :day))
                                        "2024-01-02T15:00")))]
       (is (=? {:stages [{:breakout [[:field
-                                     ;; `:day` should have been changed to `:hour`, because there aren't enough days
+                                     ;; `:day` should not change to `:hour` for `:type/Date`
                                      ;; between `2024-01-02` and `2024-01-03`
-                                     {:temporal-unit :hour}
+                                     {:temporal-unit :day}
                                      (meta/id :checkins :date)]]
                          :filters  [[:between
                                      {}

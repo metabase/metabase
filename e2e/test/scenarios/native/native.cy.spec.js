@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   SAMPLE_DB_ID,
   USER_GROUPS,

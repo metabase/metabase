@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import type { ScheduleComponentType } from "metabase/components/Schedule/constants";
 import type { CacheableModel } from "metabase-types/api";
 

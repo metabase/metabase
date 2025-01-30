@@ -1,6 +1,6 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
