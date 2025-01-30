@@ -199,34 +199,44 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     }
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: DashboardGridProps) {
-    const { dashboard, dashcardData, isEditing, selectedTabId } = nextProps;
+  componentDidUpdate(prevProps: DashboardGridProps) {
+    const { dashboard, dashcardData, isEditing, selectedTabId } = this.props;
 
-    const visibleCardIds = !isEditing
-      ? getVisibleCardIds(
-          dashboard.dashcards,
-          dashcardData,
-          this.state.visibleCardIds,
-        )
-      : new Set(dashboard.dashcards.map(card => card.id));
+    if (
+      prevProps.dashboard !== dashboard ||
+      prevProps.dashcardData !== dashcardData ||
+      prevProps.isEditing !== isEditing ||
+      prevProps.selectedTabId !== selectedTabId
+    ) {
+      const visibleCardIds = !isEditing
+        ? getVisibleCardIds(
+            dashboard.dashcards,
+            dashcardData,
+            this.state.visibleCardIds,
+          )
+        : new Set(dashboard.dashcards.map(card => card.id));
 
-    const cards = this.getVisibleCards(
-      dashboard.dashcards,
-      visibleCardIds,
-      isEditing,
-      selectedTabId,
-    );
+      const cards = this.getVisibleCards(
+        dashboard.dashcards,
+        visibleCardIds,
+        isEditing,
+        selectedTabId,
+      );
 
-    if (!isEditing || !_.isEqual(this.getVisibleCards(), cards)) {
-      this.setState({
-        initialCardSizes: this.getInitialCardSizes(cards),
-      });
+      const updates: Partial<DashboardGridState> = {
+        visibleCardIds,
+        layouts: this.getLayouts(cards),
+      };
+
+      if (
+        !isEditing ||
+        !_.isEqual(this.getVisibleCards(prevProps.dashboard.dashcards), cards)
+      ) {
+        updates.initialCardSizes = this.getInitialCardSizes(cards);
+      }
+
+      this.setState(updates);
     }
-
-    this.setState({
-      visibleCardIds,
-      layouts: this.getLayouts(cards),
-    });
   }
 
   getInitialCardSizes = (cards: BaseDashboardCard[]) => {
