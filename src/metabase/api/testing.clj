@@ -1,5 +1,7 @@
 (ns metabase.api.testing
   "Endpoints for testing."
+  ;; Allow direct access to search.ingestion here, as only our e2e tests need this coupling to our queue.
+  ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -120,7 +122,7 @@
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
-  (search.ingestion/clear-queue!)
+  (.clear @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
   (search/reindex!)
   nil)
