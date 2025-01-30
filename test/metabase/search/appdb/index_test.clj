@@ -30,7 +30,7 @@
   `(case (mdb/db-type)
      :postgres
      (do ~@body)
-     :h2
+     (:h2 :mysql)
      ;; Fulltext features not supported
      nil))
 
@@ -99,10 +99,10 @@
   (with-index
     (with-fulltext-filtering
       (testing "It does not match partial words"
-      ;; does not include revenue
+        ;; does not include revenue
         (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.index/search "venue")))))
 
-    ;; no longer works without using the english dictionary
+      ;; no longer works without using the english dictionary
       (testing "Unless their lexemes are matching"
         (doseq [[a b] [["revenue" "revenues"]
                        ["collect" "collection"]]]
@@ -401,7 +401,6 @@
                                                          :timestamp   two-days-ago
                                                          :most_recent true
                                                          :object      {}}]
-
         (is (=? (index-entity
                  {:model            "dashboard"
                   :model_id         (str dashboard-id)
