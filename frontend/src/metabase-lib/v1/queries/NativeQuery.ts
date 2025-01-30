@@ -201,7 +201,8 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   setQueryText(newQueryText: string): NativeQuery {
-    return this._setQuery(Lib.withNativeQuery(this._query(), newQueryText));
+    const newQuery = Lib.withNativeQuery(this._query(), newQueryText);
+    return this._setQuery(newQuery);
   }
 
   collection(): string | null | undefined {
@@ -210,9 +211,10 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   setCollectionName(newCollection: string) {
-    return this._setQuery(
-      Lib.withNativeExtras(this._query(), { collection: newCollection }),
-    );
+    const newQuery = Lib.withNativeExtras(this._query(), {
+      collection: newCollection,
+    });
+    return this._setQuery(newQuery);
   }
 
   setParameterIndex(id: string, newIndex: number) {
