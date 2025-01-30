@@ -402,7 +402,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("isempty([Reviewer])");
-    cy.get(".ace_text-input").clear().type("NOT IsEmpty([Reviewer])").blur();
+    H.CustomExpressionEditor.clear().type("NOT IsEmpty([Reviewer])").blur();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Done").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -430,8 +430,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("isnull([Rating])");
-    cy.get(".ace_text-input")
-      .clear()
+    H.CustomExpressionEditor.clear()
       .type("NOT IsNull([Rating])", { delay: 50 })
       .blur();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -488,10 +487,10 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
+    H.popover().findByText("Custom Expression").click();
+
     // Before we implement this feature, we can only assert that the input field for custom expression doesn't show at all
-    cy.get(".ace_text-input");
+    H.CustomExpressionEditor.focus().get().should("be.visible");
   });
 
   it("should be able to convert time interval filter to custom expression (metabase#12457)", () => {
@@ -630,37 +629,45 @@ describe("scenarios > question > filter", () => {
 
   it("custom expression filter should allow the use of parentheses in combination with logical operators (metabase#15754)", () => {
     H.openOrdersTable({ mode: "notebook" });
+
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-    cy.get(".ace_text-input")
+    H.popover().findByText("Custom Expression").click();
+
+    H.CustomExpressionEditor.focus()
       .type("([ID] > 2 OR [Subtotal] = 100) and [Tax] < 4")
       .blur();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^Expected closing parenthesis but found/).should(
-      "not.exist",
-    );
-    cy.button("Done").should("not.be.disabled");
+
+    H.expressionEditorWidget()
+      .findByText(/^Expected closing parenthesis but found/)
+      .should("not.exist");
+
+    H.expressionEditorWidget().button("Done").should("not.be.disabled");
   });
 
   it("custom expression filter should refuse to work with numeric value before an operator (metabase#15893)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
     H.openOrdersTable({ mode: "notebook" });
+
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-    cy.get(".ace_text-input").type("0 < [ID]").blur();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Expecting field but found 0");
+    H.popover().findByText("Custom Expression").click();
+
+    H.CustomExpressionEditor.focus().type("0 < [ID]").blur();
+
+    H.expressionEditorWidget()
+      .findByText("Expecting field but found 0")
+      .should("be.visible");
+
+    H.expressionEditorWidget().button("Done").should("be.disabled");
   });
 
   it("should allow switching focus with Tab", () => {
     H.openOrdersTable({ mode: "notebook" });
+
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-    cy.get(".ace_text-input").type("[Tax] > 0");
+    H.popover().findByText("Custom Expression").click();
+
+    H.CustomExpressionEditor.focus().type("[Tax] > 0");
 
     // Tab switches the focus to the "Cancel" button
     cy.realPress("Tab");
@@ -670,21 +677,23 @@ describe("scenarios > question > filter", () => {
 
   it("should allow choosing a suggestion with Tab", () => {
     H.openOrdersTable({ mode: "notebook" });
+
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
+    H.popover().findByText("Custom Expression").click();
 
     // Try to auto-complete Tax
-    cy.get(".ace_text-input").type("Ta");
+    H.CustomExpressionEditor.focus().type("Ta");
 
-    // Suggestion popover shows up and this select the first one ([Created At])
-    cy.realPress("Tab");
+    H.CustomExpressionEditor.completions().should("be.visible");
+
+    // Suggestion popover shows up and this select the first one ([Tax])
+    cy.realPress("Enter");
 
     // Focus remains on the expression editor
-    cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
+    cy.focused().should("have.attr", "class").and("eq", "cm-content");
 
     // Finish to complete a valid expression, i.e. [Tax] > 42
-    cy.get(".ace_text-input").type("> 42");
+    H.CustomExpressionEditor.type(" > 42");
 
     // Tab switches the focus to the "Cancel" button
     cy.realPress("Tab");
@@ -699,16 +708,14 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     // Try to auto-complete Tax
-    cy.get(".ace_text-input").type("Disc");
+    H.CustomExpressionEditor.focus().type("Disc");
 
-    // the text here is split up so we try and find the suffix
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("ount");
+    H.CustomExpressionEditor.completions().should("be.visible");
 
     // Esc closes the suggestion popover
-    cy.realPress("{esc}");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("ount").should("not.exist");
+    cy.realPress("Escape");
+
+    H.CustomExpressionEditor.completions().should("not.exist");
   });
 
   it("should work on twice summarized questions and preserve both summaries (metabase#15620)", () => {
@@ -845,7 +852,9 @@ describe("scenarios > question > filter", () => {
       H.filter({ mode: "notebook" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Custom Expression").click();
-      cy.get(".ace_text-input").type("[Total] < [Product → Price]").blur();
+      H.CustomExpressionEditor.type("[Total] < [Product → Price]", {
+        allowFastSet: true,
+      }).blur();
       cy.button("Done").click();
       // Filter currently says "Total is less than..." but it can change in https://github.com/metabase/metabase/pull/16174 to "Total < Price"
       // See: https://github.com/metabase/metabase/pull/16209#discussion_r638129099
@@ -877,7 +886,9 @@ describe("scenarios > question > filter", () => {
 
       H.popover().within(() => {
         cy.findByText("Custom Expression").click();
-        cy.get(".ace_text-input").type("[Total] < [Product → Price]").blur();
+        H.CustomExpressionEditor.type("[Total] < [Product → Price]", {
+          allowFastSet: true,
+        }).blur();
         cy.button("Done").click();
       });
 
