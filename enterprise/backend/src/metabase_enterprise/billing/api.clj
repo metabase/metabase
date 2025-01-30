@@ -1,4 +1,4 @@
-(ns metabase-enterprise.billing.billing
+(ns metabase-enterprise.billing.api
   "`/api/ee/billing/` endpoint(s)"
   (:require
    [clj-http.client :as http]
