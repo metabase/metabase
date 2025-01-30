@@ -13,9 +13,16 @@ import { glob } from "glob";
  * that doesn't exist in the release branch.
  */
 
-const shouldWhiteList = (_variable: string) => {
+const isMantineCssVariable = (variable: string) => {
+  return variable.startsWith("--mantine-");
+};
+
+const shouldWhiteList = (variable: string) => {
   // Use this for whitelisting some variables if we know they're defined by a 3rd party, such as mantine
   // Note: for be sure to not backport changes to this function that would whitelist variables not on the release branch
+  if (isMantineCssVariable(variable)) {
+    return true;
+  }
   return false;
 };
 
