@@ -4,7 +4,7 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { UpsellBetterSupport } from "metabase/admin/upsells/UpsellBetterSupport";
+import { UpsellBetterSupport } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
 import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
