@@ -48,7 +48,7 @@
 
 (deftest all-indexes->fields-ids-many-indexes-test
   (testing "no exception is thrown when there are very many indexes"
-    (mt/test-drivers (mt/normal-drivers-with-feature :describe-indexes)
+    (mt/test-drivers (mt/normal-drivers-with-feature :describe-indexes :index-info)
       (let [indexes (into [] (driver/describe-indexes driver/*driver* (mt/db)))
             many-indexes (into indexes (repeat 100000 {:table-schema "public",
                                                        :table-name "fake_table",
