@@ -31,7 +31,9 @@
   (open-api-spec [this prefix]
     (open-api-spec (var-get this) prefix)))
 
-(p/deftype+ HandlerWithOpenAPISpec [^clojure.lang.IFn handler spec-fn]
+(declare ->HandlerWithOpenAPISpec)
+
+(p/deftype+ HandlerWithOpenAPISpec [^clojure.lang.IFn handler spec-fn metadata]
   clojure.lang.IFn
   (invoke [_this request respond raise]
     (.invoke handler request respond raise))
@@ -39,6 +41,12 @@
   OpenAPISpec
   (open-api-spec [_this prefix]
     (spec-fn prefix))
+
+  clojure.lang.IObj
+  (meta [_this]
+    metadata)
+  (withMeta [_this new-metadata]
+    (->HandlerWithOpenAPISpec handler spec-fn new-metadata))
 
   Object
   (equals [_this another]
@@ -291,7 +299,7 @@
 
   to a Ring `handler`."
   [handler spec-fn]
-  (->HandlerWithOpenAPISpec handler spec-fn))
+  (->HandlerWithOpenAPISpec handler spec-fn (meta handler)))
 
 (mu/defn root-open-api-object :- ::spec
   "Generate base object for OpenAPI (/paths and /components/schemas)
