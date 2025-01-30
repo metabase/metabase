@@ -1,11 +1,19 @@
 import { c, t } from "ttag";
 
 import * as Lib from "metabase-lib";
+import type { Expression } from "metabase-types/api";
 
 import { adjustBooleans, parse } from "./recursive-parser";
 import { resolve } from "./resolver";
 
 import { parseDimension, parseMetric, parseSegment } from "./index";
+
+type ProcessedSource = {
+  source: string;
+  expression: Expression | null;
+  expressionClause: Lib.ExpressionClause | null;
+  compileError: unknown | null;
+};
 
 export function processSource(options: {
   source: string;
@@ -14,7 +22,7 @@ export function processSource(options: {
   expressionIndex: number | undefined;
   startRule: string;
   name?: string;
-}) {
+}): ProcessedSource {
   const resolveMBQLField = (kind: string, name: string) => {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
