@@ -1,0 +1,33 @@
+import { jt, t } from "ttag";
+
+import { getPlan } from "metabase/common/utils/plan";
+import { useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
+
+import { UpsellCard } from "./components";
+
+export const UpsellUploads = ({ source }: { source: string }) => {
+  const plan = useSelector(state =>
+    getPlan(getSetting(state, "token-features")),
+  );
+
+  const showUpsell = plan === "oss" || plan === "starter";
+
+  if (!showUpsell) {
+    return null;
+  }
+
+  return (
+    <UpsellCard
+      title={t`Manage your uploads`}
+      campaign="manage-uploads"
+      buttonText={t`Try for free`}
+      buttonLink="https://www.metabase.com/upgrade"
+      source={source}
+    >
+      {jt`${(
+        <strong key="upgrade">{t`Upgrade to Metabase Pro`}</strong>
+      )} to manage your uploaded files and available storage space.`}
+    </UpsellCard>
+  );
+};
