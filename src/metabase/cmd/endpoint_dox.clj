@@ -1,7 +1,7 @@
 (ns metabase.cmd.endpoint-dox
   "Generate OpenAPI + Scalar API documentation by running
 
-    clojure -M:ee:doc api-documentation-2"
+    clojure -M:ee:doc api-documentation"
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
