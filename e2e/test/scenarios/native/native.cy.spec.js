@@ -83,7 +83,7 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it("displays an error", { tags: "@flaky" }, () => {
+  it("displays an error", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from not_a_table");
 
@@ -92,7 +92,7 @@ describe("scenarios > question > native", () => {
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
-  it("displays an error when running selected text", { tags: "@flaky" }, () => {
+  it("displays an error when running selected text", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from orders");
 
@@ -105,7 +105,7 @@ describe("scenarios > question > native", () => {
     cy.contains('Table "ORD" not found');
   });
 
-  it("should handle template tags", { tags: "@flaky" }, () => {
+  it("should handle template tags", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from PRODUCTS where RATING > {{Stars}}");
 
@@ -144,7 +144,7 @@ describe("scenarios > question > native", () => {
     cy.findByText("Not now").click();
   });
 
-  it("can save a question with no rows", { tags: "@flaky" }, () => {
+  it("can save a question with no rows", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from people where false");
     runQuery();
@@ -225,30 +225,26 @@ describe("scenarios > question > native", () => {
     });
   });
 
-  it(
-    "should be able to add new columns after hiding some (metabase#15393)",
-    { tags: "@flaky" },
-    () => {
-      H.startNewNativeQuestion({ display: "table" }).as("editor");
-      H.NativeEditor.type("select 1 as visible, 2 as hidden");
-      cy.findByTestId("native-query-editor-container")
-        .icon("play")
-        .as("runQuery")
-        .click();
+  it("should be able to add new columns after hiding some (metabase#15393)", () => {
+    H.startNewNativeQuestion({ display: "table" }).as("editor");
+    H.NativeEditor.type("select 1 as visible, 2 as hidden");
+    cy.findByTestId("native-query-editor-container")
+      .icon("play")
+      .as("runQuery")
+      .click();
 
-      H.openVizSettingsSidebar();
-      cy.findByTestId("sidebar-left")
-        .as("sidebar")
-        .within(() => {
-          cy.findByTestId("draggable-item-HIDDEN")
-            .icon("eye_outline")
-            .click({ force: true });
-        });
-      H.NativeEditor.type("{movetoend}, 3 as added");
-      cy.get("@runQuery").click();
-      cy.get("@sidebar").contains(/added/i);
-    },
-  );
+    H.openVizSettingsSidebar();
+    cy.findByTestId("sidebar-left")
+      .as("sidebar")
+      .within(() => {
+        cy.findByTestId("draggable-item-HIDDEN")
+          .icon("eye_outline")
+          .click({ force: true });
+      });
+    H.NativeEditor.type("{movetoend}, 3 as added");
+    cy.get("@runQuery").click();
+    cy.get("@sidebar").contains(/added/i);
+  });
 
   it("should recognize template tags and save them as parameters", () => {
     H.startNewNativeQuestion();
