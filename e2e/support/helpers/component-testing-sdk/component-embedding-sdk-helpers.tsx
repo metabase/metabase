@@ -2,57 +2,19 @@ import {
   MetabaseProvider,
   type MetabaseProviderProps,
 } from "@metabase/embedding-sdk-react";
-import * as jose from "jose";
 import type { JSX } from "react";
 import React from "react";
 
-import { USERS } from "e2e/support/cypress_data";
+import {
+  AUTH_PROVIDER_URL,
+  METABASE_INSTANCE_URL,
+} from "e2e/support/constants/embedding-sdk";
 import { signInAsAdminAndEnableEmbeddingSdkForE2e } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { ThemeProvider } from "metabase/ui";
-
-export const METABASE_INSTANCE_URL = "http://localhost:4000";
-
-export const AUTH_PROVIDER_URL = "http://auth-provider/sso";
-
-export const JWT_SHARED_SECRET =
-  "0000000000000000000000000000000000000000000000000000000000000000";
 
 export const DEFAULT_SDK_AUTH_PROVIDER_CONFIG = {
   authProviderUri: AUTH_PROVIDER_URL,
   metabaseInstanceUrl: METABASE_INSTANCE_URL,
-};
-
-export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
-  cy.intercept("GET", AUTH_PROVIDER_URL, async req => {
-    try {
-      const secret = new TextEncoder().encode(JWT_SHARED_SECRET);
-      const token = await new jose.SignJWT({
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
-      })
-        .setProtectedHeader({ alg: "HS256" })
-
-        .sign(secret);
-
-      const ssoUrl = `${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=${token}`;
-
-      const response = await fetch(ssoUrl, { method: "GET" });
-      const session = await response.text();
-
-      req.reply({
-        statusCode: 200,
-        body: session,
-      });
-    } catch (error: any) {
-      console.warn("SDK auth error:", error);
-      req.reply({
-        statusCode: 500,
-        body: error.message,
-      });
-    }
-  }).as("jwtProvider");
 };
 
 export interface MountSdkContentOptions {

@@ -13,11 +13,13 @@ import {
   popover,
 } from "e2e/support/helpers";
 import {
-  mockAuthProviderAndJwtSignIn,
   mountSdkContent,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import {
+  getSdkRoot,
+  mockAuthProviderAndJwtSignIn,
+} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { Flex } from "metabase/ui";
 
 describe("scenarios > embedding-sdk > create-question", () => {

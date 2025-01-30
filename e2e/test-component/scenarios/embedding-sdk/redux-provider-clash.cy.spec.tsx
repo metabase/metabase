@@ -5,14 +5,16 @@ import {
 import { configureStore, createSlice } from "@reduxjs/toolkit";
 import { Provider, useDispatch, useSelector } from "react-redux";
 
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   AUTH_PROVIDER_URL,
   METABASE_INSTANCE_URL,
+} from "e2e/support/constants/embedding-sdk";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/component-testing-sdk";
+import {
+  getSdkRoot,
   mockAuthProviderAndJwtSignIn,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 describe("scenarios > embedding-sdk > the redux provider context should not clash with the host app", () => {
   beforeEach(() => {
