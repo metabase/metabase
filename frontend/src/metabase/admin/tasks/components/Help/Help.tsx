@@ -114,7 +114,6 @@ export const Help = () => {
       <Flex justify="space-between">
         <Box>
           <AdminHeader title={t`Help`} className={CS.mb2} />
-
           <HelpLinks>
             <ol>
               <HelpLink
