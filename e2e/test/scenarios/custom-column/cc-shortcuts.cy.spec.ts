@@ -139,10 +139,7 @@ describe("scenarios > question > custom column > expression shortcuts > extract"
         .click();
       H.popover().findAllByRole("button").contains(extraction.name).click();
 
-      cy.findByTestId("expression-editor-textfield").should(
-        "contain",
-        `${extraction.fn}(`,
-      );
+      H.CustomExpressionEditor.shouldContain(`${extraction.fn}(`);
 
       H.expressionEditorWidget()
         .findByTestId("expression-name")
@@ -268,8 +265,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
 
       cy.button("Done").click();
 
-      cy.findByTestId("expression-editor-textfield").should(
-        "contain",
+      H.CustomExpressionEditor.shouldContain(
         'concat([Total], "__", [Product → Rating])',
       );
       cy.findByTestId("expression-name").should(

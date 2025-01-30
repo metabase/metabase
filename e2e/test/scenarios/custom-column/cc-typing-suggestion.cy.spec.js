@@ -48,10 +48,7 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({ formula: "BET{enter}" });
 
-    cy.findByTestId("expression-editor-textfield").should(
-      "contain",
-      "between(",
-    );
+    cy.CustomExpressionEditor.shouldContain("between(");
   });
 
   it("should show expression function helper if a proper function is typed", () => {

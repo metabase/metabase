@@ -36,8 +36,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
 
       cy.button("Done").click();
 
-      cy.findByTestId("expression-editor-textfield").should(
-        "contain",
+      H.CustomExpressionEditor.shouldContain(
         'concat([Total], "__", [Product → Rating])',
       );
       cy.findByTestId("expression-name").should(

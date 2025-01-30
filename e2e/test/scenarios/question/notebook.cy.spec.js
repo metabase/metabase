@@ -165,7 +165,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     // In case it does exist, it usually is an error in expression (caused by not clearing
     // the input properly before typing), and this check helps to highlight that.
-    cy.findByTestId("expression-editor-textfield").should("not.exist");
+    H.CustomExpressionEditor.get().should("not.exist");
 
     H.getNotebookStep("filter")
       .contains("Price is greater than 1")
@@ -225,9 +225,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     H.popover().contains("Custom Expression").click();
 
-    cy.findByTestId("expression-editor-textfield").within(() => {
-      cy.get(".ace_text-input").focus().type("[");
-    });
+    H.CustomExpressionEditor.type("[");
 
     // hover over option in the suggestion list
     cy.findByTestId("expression-suggestions-list")
@@ -849,9 +847,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       H.getNotebookStep("summarize").contains("Revenue").click();
 
-      H.popover()
-        .findByTestId("expression-editor-textfield")
-        .contains("[Revenue]");
+      H.CustomExpressionEditor.shouldContain("[Revenue]");
     });
   });
 

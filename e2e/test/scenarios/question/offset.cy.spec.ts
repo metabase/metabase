@@ -522,7 +522,7 @@ describe("scenarios > question > offset", () => {
       addCustomAggregation({ formula, name, isFirst: true });
 
       cy.findAllByTestId("notebook-cell-item").findByText(name).click();
-      cy.findByTestId("expression-editor-textfield").should("contain", formula);
+      H.CustomExpressionEditor.shouldContain(formula);
 
       cy.on("uncaught:exception", error => {
         // this check is intended to catch possible normalization errors if BE or FE code changes
