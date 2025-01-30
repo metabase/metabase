@@ -128,9 +128,9 @@ describe("scenarios > notebook > data source", () => {
         const schemaName = "Wild";
         const tableName = "Animals";
 
+        H.restore(`${dialect}-writable`);
         H.resetTestTable({ type: dialect, table: testTable1 });
         H.resetTestTable({ type: dialect, table: testTable2 });
-        H.restore(`${dialect}-writable`);
 
         cy.signInAsAdmin();
 
@@ -384,8 +384,8 @@ describe("issue 28106", () => {
   beforeEach(() => {
     const dialect = "postgres";
 
-    H.resetTestTable({ type: dialect, table: "many_schemas" });
     H.restore(`${dialect}-writable`);
+    H.resetTestTable({ type: dialect, table: "many_schemas" });
     cy.signInAsAdmin();
 
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
@@ -412,7 +412,7 @@ describe("issue 28106", () => {
         scrollAllTheWayDown();
 
         // assert scrolling worked and the last item is visible
-        H.entityPickerModalItem(1, "Public").should("be.visible");
+        H.entityPickerModalItem(1, "Schema Z").should("be.visible");
 
         // simulate scrolling up using mouse wheel 3 times
         for (let i = 0; i < 3; ++i) {
@@ -421,7 +421,7 @@ describe("issue 28106", () => {
         }
 
         // assert first item does not exist - this means the list has not been scrolled to the top
-        cy.findByText("Domestic").should("not.exist");
+        cy.findByText("Schema A").should("not.exist");
         cy.get("@schemasList").should(([$element]) => {
           expect($element.scrollTop).to.be.greaterThan(0);
         });
