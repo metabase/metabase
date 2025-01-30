@@ -23,8 +23,27 @@ const shouldWhiteList = (variable: string) => {
   if (isMantineCssVariable(variable)) {
     return true;
   }
+
+  if (knownIssues.includes(variable)) {
+    return true;
+  }
+
   return false;
 };
+
+// These are variables that were found by the script but were temporarily allowed to get this script + mantine v7 merged
+const knownIssues = [
+  "--alert-color",
+  "--mb-bolor-text-error",
+  "--mb-bolor-text-medium",
+  "--mb-color-accent-3",
+  "--mb-spacing-xs",
+  "--mb-text-text-dark",
+  "--multiselect-pill-font-size",
+  "--right-section-end",
+  "--select-item-font-size",
+  "--select-item-line-height",
+];
 
 interface UsageMap {
   // variable : files
