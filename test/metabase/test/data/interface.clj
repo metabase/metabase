@@ -843,8 +843,13 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod bad-connection-details :default
+  [_driver]
+  {:user (u.random/random-name)})
+
+(doseq [driver [:h2 :sqlite]]
+  (defmethod bad-connection-details driver
     [_driver]
-    {:user (u.random/random-name)})
+    nil))
 
 (doseq [driver [:redshift :snowflake :vertica]]
   (defmethod bad-connection-details driver

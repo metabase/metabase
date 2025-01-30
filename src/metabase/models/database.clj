@@ -145,13 +145,13 @@
   "Checks database health off-thread, currently just checks connectivity."
   [{:keys [engine details] :as _database}]
   (sync.concurrent/submit-task!
-    (fn []
-      (try
-        (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
-          (prometheus/inc! :metabase-database/healthy {:driver engine})
-          (prometheus/inc! :metabase-database/unhealthy {:driver engine}))
-        (catch Throwable _
-          (prometheus/inc! :metabase-database/unhealthy {:driver engine}))))))
+   (fn []
+     (try
+       (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
+         (prometheus/inc! :metabase-database/healthy {:driver engine})
+         (prometheus/inc! :metabase-database/unhealthy {:driver engine}))
+       (catch Throwable _
+         (prometheus/inc! :metabase-database/unhealthy {:driver engine}))))))
 
 (defn check-health-and-schedule-tasks!
   "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."

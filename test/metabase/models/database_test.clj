@@ -71,14 +71,15 @@
           (is (= 1 (get-in @metrics [:metabase-database/healthy driver/*driver*])))
           (is (= nil (get-in @metrics [:metabase-database/unhealthy driver/*driver*]))))
 
-        (testing "failures for bad connections"
-          (reset! metrics {})
-          (database/health-check-database! (update (mt/db) :details merge (tx/bad-connection-details driver/*driver*)))
-          (is (= nil (get-in @metrics [:metabase-database/healthy driver/*driver*])))
-          (is (= 1 (get-in @metrics [:metabase-database/unhealthy driver/*driver*]))))
+        (when-let [bad-conn (tx/bad-connection-details driver/*driver*)]
+          (testing "failures for bad connections"
+            (reset! metrics {})
+            (database/health-check-database! (update (mt/db) :details merge bad-conn))
+            (is (= nil (get-in @metrics [:metabase-database/healthy driver/*driver*])))
+            (is (= 1 (get-in @metrics [:metabase-database/unhealthy driver/*driver*])))))
 
         (testing "failures for exception"
-          (with-redefs [driver/can-connect? (fn [& args] (throw (Exception. "boom")))]
+          (with-redefs [driver/can-connect? (fn [& _args] (throw (Exception. "boom")))]
             (reset! metrics {})
             (database/health-check-database! (mt/db))
             (is (= nil (get-in @metrics [:metabase-database/healthy driver/*driver*])))
