@@ -104,17 +104,6 @@ const initializeData = async ({
     dispatch(setErrorPage(result.payload));
     return;
   }
-
-  try {
-    if ((result.payload.dashboard?.tabs?.length || 0) === 0) {
-      await dispatch(
-        fetchDashboardCardData({ reload: false, clearCache: true }),
-      );
-    }
-  } catch (error) {
-    console.error(error);
-    dispatch(setErrorPage(error));
-  }
 };
 
 const PublicOrEmbeddedDashboardInner = ({
