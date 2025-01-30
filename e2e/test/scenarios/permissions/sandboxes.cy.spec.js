@@ -20,6 +20,8 @@ const {
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
+const VIEW_DATA_PERMISSION_INDEX = 0;
+
 H.describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
@@ -1174,6 +1176,47 @@ H.describeEE("formatting > sandboxes", () => {
         });
       },
     );
+
+    describe("sandbox target matching", () => {
+      function verifySandboxModal(target) {
+        cy.sandboxTable({
+          table_id: PRODUCTS_ID,
+          group_id: DATA_GROUP,
+          attribute_remappings: {
+            attr_cat: target,
+          },
+        });
+        cy.visit(
+          `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${PRODUCTS_ID}`,
+        );
+        H.selectPermissionRow("data", VIEW_DATA_PERMISSION_INDEX);
+        H.popover().findByText("Edit sandboxed access").click();
+        H.modal().findAllByTestId("select-button").contains("Category").click();
+        H.popover()
+          .findByLabelText("Category")
+          .should("have.attr", "aria-selected", "true");
+      }
+
+      it("should match targets without dimension of field ref options", () => {
+        verifySandboxModal(["dimension", ["field", PRODUCTS.CATEGORY, null]]);
+      });
+
+      it("should match targets with dimension options", () => {
+        verifySandboxModal([
+          "dimension",
+          ["field", PRODUCTS.CATEGORY, null],
+          { "stage-number": 0 },
+        ]);
+      });
+
+      it("should match targets with field ref options", () => {
+        verifySandboxModal([
+          "dimension",
+          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+          { "stage-number": 0 },
+        ]);
+      });
+    });
   });
 });
 
