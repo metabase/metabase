@@ -41,8 +41,9 @@ const hideLoadingCompleteFavicon = createAction(
   () => false,
 );
 
-const LOAD_COMPLETE_UI_CONTROLS = "metabase/qb/LOAD_COMPLETE_UI_CONTROLS";
 const LOAD_START_UI_CONTROLS = "metabase/qb/LOAD_START_UI_CONTROLS";
+const LOAD_COMPLETE_UI_CONTROLS = "metabase/qb/LOAD_COMPLETE_UI_CONTROLS";
+const LOAD_ERROR_UI_CONTROLS = "metabase/qb/LOAD_ERROR_UI_CONTROLS";
 export const SET_DOCUMENT_TITLE_TIMEOUT_ID =
   "metabase/qb/SET_DOCUMENT_TITLE_TIMEOUT_ID";
 const setDocumentTitleTimeoutId = createAction(SET_DOCUMENT_TITLE_TIMEOUT_ID);
@@ -71,6 +72,15 @@ const loadCompleteUIControls = createThunkAction(
         dispatch(hideLoadingCompleteFavicon());
       }, 3000);
     }
+  },
+);
+
+const loadErrorUIControls = createThunkAction(
+  LOAD_ERROR_UI_CONTROLS,
+  () => (dispatch, getState) => {
+    const timeoutId = getTimeoutId(getState());
+    clearTimeout(timeoutId);
+    dispatch(setDocumentTitle(""));
   },
 );
 
@@ -146,9 +156,7 @@ export const runQuestionQuery = ({
       ignoreCache: ignoreCache,
       isDirty: isQueryDirty,
     })
-      .then(queryResults => {
-        return dispatch(queryCompleted(question, queryResults));
-      })
+      .then(queryResults => dispatch(queryCompleted(question, queryResults)))
       .catch(error => dispatch(queryErrored(startTime, error)));
 
     dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
@@ -238,7 +246,8 @@ export const queryErrored = createThunkAction(
       if (error && error.isCancelled) {
         return null;
       } else {
-        dispatch(setDocumentTitle(""));
+        dispatch(loadErrorUIControls());
+
         return { error: error, duration: Date.now() - startTime };
       }
     };
