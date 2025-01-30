@@ -7,6 +7,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.database :as database]
@@ -67,7 +68,8 @@
       (with-redefs [sync.concurrent/submit-task! (fn [task] (task))
                     prometheus/inc! (fn [k {:keys [driver]}] (swap! metrics update-in [k driver] (fnil inc 0)))]
         (testing "successes"
-          (database/health-check-database! (mt/db))
+          (binding [h2/*allow-testing-h2-connections* true]
+            (database/health-check-database! (mt/db)))
           (is (= 1 (get-in @metrics [:metabase-database/healthy driver/*driver*])))
           (is (= nil (get-in @metrics [:metabase-database/unhealthy driver/*driver*]))))
 
