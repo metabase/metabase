@@ -103,6 +103,19 @@ export function navigationSidebar() {
   return cy.findByTestId("main-navbar-root");
 }
 
+export function assertNavigationSidebarItemSelected(name, value = "true") {
+  navigationSidebar()
+    .findByRole("treeitem", { name })
+    .should("have.attr", "aria-selected", value);
+}
+
+export function assertNavigationSidebarBookmarkSelected(name, value = "true") {
+  navigationSidebar()
+    .findByRole("tab", { name: "Bookmarks" })
+    .findByRole("listitem", { name })
+    .should("have.attr", "aria-selected", value);
+}
+
 export function appBar() {
   return cy.findByLabelText("Navigation bar");
 }

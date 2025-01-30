@@ -985,7 +985,7 @@ H.describeEE("scenarios > embedding > full app", () => {
           },
         ],
       };
-      cy.createDashboard(dashboardDetails).then(
+      H.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
           const textDashcard = H.getTextCardDetails({
             col: 0,

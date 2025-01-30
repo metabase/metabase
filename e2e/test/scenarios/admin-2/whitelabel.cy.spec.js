@@ -347,7 +347,7 @@ H.describeEE("formatting > whitelabel", () => {
           });
           H.undoToast().findByText("Changes saved").should("be.visible");
 
-          cy.createDashboardWithQuestions({
+          H.createDashboardWithQuestions({
             dashboardName: "No results dashboard",
             questions: [
               {

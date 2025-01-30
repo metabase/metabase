@@ -543,7 +543,7 @@ describe("scenarios > visualizations > line chart", () => {
             ],
           ],
         }).then(({ body: { id: question2Id } }) => {
-          cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+          H.createDashboard().then(({ body: { id: dashboardId } }) => {
             addBothSeriesToDashboard({
               dashboardId,
               firstCardId: question1Id,
@@ -586,7 +586,7 @@ describe("scenarios > visualizations > line chart", () => {
         name: "16249_Q3",
         aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
       }).then(({ body: { id: question1Id } }) => {
-        cy.createQuestion({
+        H.createQuestion({
           name: "16249_Q4",
           query: {
             "source-table": PRODUCTS_ID,
@@ -597,7 +597,7 @@ describe("scenarios > visualizations > line chart", () => {
           },
           display: "line",
         }).then(({ body: { id: question2Id } }) => {
-          cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+          H.createDashboard().then(({ body: { id: dashboardId } }) => {
             addBothSeriesToDashboard({
               dashboardId,
               firstCardId: question1Id,
@@ -665,7 +665,7 @@ describe("scenarios > visualizations > line chart", () => {
     }
 
     function createOrdersQuestionWithAggregation({ name, aggregation } = {}) {
-      return cy.createQuestion({
+      return H.createQuestion({
         name,
         query: {
           "source-table": ORDERS_ID,

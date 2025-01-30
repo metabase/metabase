@@ -36,7 +36,7 @@ H.describeEE("scenarios > embedding-sdk > static-dashboard", () => {
       },
     };
 
-    cy.createDashboard(
+    H.createDashboard(
       {
         name: "Embedding Sdk Test Dashboard",
         dashcards: [questionCard, textCard],

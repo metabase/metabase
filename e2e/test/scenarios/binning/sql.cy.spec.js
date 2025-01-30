@@ -16,7 +16,7 @@ describe("scenarios > binning > from a saved sql question", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, {
+    H.createNativeQuestion(questionDetails, {
       loadMetadata: true,
       wrapId: true,
     });

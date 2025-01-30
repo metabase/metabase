@@ -15,7 +15,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({
+    H.createQuestionAndDashboard({
       questionDetails: {
         query: { "source-table": ORDERS_ID, limit: 5 },
       },
