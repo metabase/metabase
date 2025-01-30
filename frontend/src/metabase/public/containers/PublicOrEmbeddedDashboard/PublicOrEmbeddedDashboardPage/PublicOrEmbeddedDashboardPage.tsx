@@ -70,6 +70,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         parameterQueryParams={parameterQueryParams}
         cardTitled={true}
         locale={canWhitelabel ? locale : undefined}
+        withFooter={true}
       />
     </>
   );
