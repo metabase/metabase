@@ -1,6 +1,6 @@
 import { onlyOn } from "@cypress/skip-test";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,

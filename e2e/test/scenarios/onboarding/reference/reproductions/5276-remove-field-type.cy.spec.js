@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 describe("issue 5276", () => {
   beforeEach(() => {

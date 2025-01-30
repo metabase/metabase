@@ -1,7 +1,7 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
