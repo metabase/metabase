@@ -78,6 +78,8 @@ export const ChartSettingFieldPicker = ({
     options.length === 0 ||
     (options.length === 1 && options[0].value === value);
 
+  const hasLeftSection = showDragHandle || (showColorPicker && seriesKey);
+
   return (
     <ChartSettingFieldPickerRoot
       className={className}
@@ -95,8 +97,8 @@ export const ChartSettingFieldPicker = ({
         value={value}
         onChange={onChange}
         leftSection={
-          showDragHandle || (showColorPicker && seriesKey) ? (
-            <Group noWrap spacing="sm" p="xs" ml="sm">
+          hasLeftSection ? (
+            <Group wrap="nowrap" gap="sm" p="xs" ml="sm">
               {showDragHandle && (
                 <GrabberHandle
                   name="grabber"
@@ -119,6 +121,7 @@ export const ChartSettingFieldPicker = ({
             </Group>
           ) : null
         }
+        leftSectionWidth={60}
         placeholderNoOptions={t`No valid fields`}
         placeholder={t`Select a field`}
         iconWidth="auto"
@@ -147,28 +150,36 @@ export const ChartSettingFieldPicker = ({
           </Group>
         }
         styles={{
+          root: {
+            overflow: "visible",
+            padding: "0px",
+          },
           wrapper: {
+            marginTop: "0px",
             display: "flex",
           },
-          icon: {
+          section: {
             position: "static",
-            width: "auto",
+            width: "60px",
+            pointerEvents: "none",
+            backgroundColor: "unset",
           },
           input: {
-            "&[data-with-icon]": {
-              paddingLeft: 0,
-            },
+            paddingLeft: hasLeftSection && 0,
+
             marginLeft: theme.spacing.xs,
             textOverflow: "ellipsis",
             fontWeight: "bold",
-            "&[data-disabled]": {
-              backgroundColor: "var(--mb-color-bg-white) !important",
-            },
+
+            backgroundColor: disabled
+              ? "var(--mb-color-bg-white) !important"
+              : "inherit",
+
             border: "none",
             width: "100%",
-          },
-          rightSection: {
-            pointerEvents: "none",
+            color: "var(--mb-color-text-primary)",
+            cursor: "inherit",
+            pointerEvents: "unset",
           },
         }}
       />

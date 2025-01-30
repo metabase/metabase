@@ -90,6 +90,7 @@ export const ItemList = <
         return (
           <div data-testid="picker-item" key={`${item.model}-${item.id}`}>
             <NavLink
+              w={"auto"}
               disabled={shouldDisableItem?.(item)}
               rightSection={
                 isFolder(item) ? <Icon name="chevronright" size={10} /> : null
