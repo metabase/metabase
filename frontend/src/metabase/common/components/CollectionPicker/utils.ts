@@ -124,7 +124,7 @@ export const getPathLevelForItem = (
   >,
   userPersonalCollectionId?: CollectionId,
 ): number => {
-  if (item.id === userPersonalCollectionId) {
+  if (item.model === "collection" && item.id === userPersonalCollectionId) {
     return 0;
   }
 

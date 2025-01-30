@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -37,6 +37,7 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
+          // eslint-disable-next-line no-unsafe-element-filtering
           const dashCard = cy
             .findAllByTestId("dashcard-container")
             .last()
@@ -64,6 +65,7 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
+          // eslint-disable-next-line no-unsafe-element-filtering
           const dashCard = cy
             .findAllByTestId("dashcard-container")
             .last()
@@ -148,7 +150,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   };
 
   function setupDashboard() {
-    cy.createDashboard(DASHBOARD_DETAILS).then(
+    H.createDashboard(DASHBOARD_DETAILS).then(
       ({ body: { id: dashboardId } }) => {
         cy.wrap(dashboardId).as("dashboardId");
       },
@@ -192,7 +194,7 @@ describe("Issue 32974", { tags: ["@external", "@actions"] }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.createQuestion(MODEL_DETAILS, {
+    H.createQuestion(MODEL_DETAILS, {
       wrapId: true,
       idAlias: "modelId",
     });
@@ -229,7 +231,7 @@ describe("issue 51020", () => {
     H.modal().findByLabelText("Name").type("Dash");
     H.modal().button("Create").click();
 
-    cy.button("Add a saved question").click();
+    cy.button("Add a chart").click();
     cy.findByTestId("add-card-sidebar").findByText(questionName).click();
 
     cy.findByLabelText("Add a filter or parameter").click();
