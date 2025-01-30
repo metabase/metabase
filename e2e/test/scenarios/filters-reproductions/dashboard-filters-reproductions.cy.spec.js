@@ -4241,6 +4241,7 @@ describe("issue 52918", () => {
       cy.findByText("Specific dates…").click();
       cy.findByText("Between").should("be.visible");
     });
+    cy.log("check that there is no overflow in the popover");
     H.popover().then(([element]) => {
       expect(element.offsetWidth).to.gte(element.scrollWidth);
     });
