@@ -1,34 +1,57 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   setupGsheetsGetFolderEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { reloadSettings } from "metabase/admin/settings/settings";
+import { useDispatch } from "metabase/lib/redux";
 import type { Settings } from "metabase-types/api";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { GsheetsSyncStatus } from "./GsheetsSyncStatus";
+
 type GsheetsStatus = Settings["gsheets"]["status"];
+
+function TestComponent() {
+  const dispatch = useDispatch();
+  return (
+    <>
+      <GsheetsSyncStatus />
+      <button onClick={() => dispatch(reloadSettings())}>Test Settings Update</button>
+    </>
+  );
+}
 
 const setup = ({
   settingStatus,
+  updatedSettingStatus,
   folderStatus,
   isAdmin = true,
+  errorCode,
 }: {
   settingStatus: GsheetsStatus;
+  updatedSettingStatus?: GsheetsStatus
   folderStatus: GsheetsStatus;
   isAdmin?: boolean;
+  errorCode?: number;
 }) => {
   const updatedSettings = createMockSettings({
-    gsheets: { status: settingStatus, folder_url: null },
+    gsheets: { status: updatedSettingStatus ?? settingStatus, folder_url: null },
   });
 
   setupPropertiesEndpoints(updatedSettings);
   setupSettingsEndpoints([]);
-  setupGsheetsGetFolderEndpoint(folderStatus);
 
-  return renderWithProviders(<GsheetsSyncStatus />, {
+  errorCode
+    ? setupGsheetsGetFolderEndpoint({ errorCode })
+    : setupGsheetsGetFolderEndpoint({ status: folderStatus });
+
+  return renderWithProviders(
+  <TestComponent />, {
     storeInitialState: {
       settings: createMockSettingsState({
         gsheets: {
@@ -49,6 +72,23 @@ describe("GsheetsSyncStatus", () => {
     });
 
     expect(screen.queryByText(/Google/i)).not.toBeInTheDocument();
+  });
+
+  it("should appear when status changes from not-connected to loading", async () => {
+    setup({
+      settingStatus: "not-connected",
+      updatedSettingStatus: "loading",
+      folderStatus: "loading",
+    });
+
+    // initial state
+    expect(screen.queryByText(/Google/i)).not.toBeInTheDocument();
+
+    // trigger settings update
+    userEvent.click(await screen.findByText("Test Settings Update"));
+
+    // loading state
+    expect(await screen.findByText("Importing Google Sheets...")).toBeInTheDocument();
   });
 
   it("should not render anything for non-admins", () => {
@@ -79,6 +119,18 @@ describe("GsheetsSyncStatus", () => {
     expect(screen.getByText("Importing Google Sheets...")).toBeInTheDocument();
   });
 
+  it("should close when the X is clicked", async () => {
+    setup({
+      settingStatus: "loading",
+      folderStatus: "loading",
+    });
+
+    expect(screen.getByText("Importing Google Sheets...")).toBeInTheDocument();
+
+    userEvent.click(await screen.findByLabelText("Dismiss"));
+    await waitFor(() => expect(screen.queryByText(/Google/i)).not.toBeInTheDocument());
+  });
+
   it("should render completed state after initial status is loading", async () => {
     setup({
       settingStatus: "loading",
@@ -97,7 +149,8 @@ describe("GsheetsSyncStatus", () => {
   it("should show errors", async () => {
     setup({
       settingStatus: "loading",
-      folderStatus: "error",
+      folderStatus: "loading",
+      errorCode: 500,
     });
 
     // initial loading state

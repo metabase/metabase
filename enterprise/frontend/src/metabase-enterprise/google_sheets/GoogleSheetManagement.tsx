@@ -243,6 +243,14 @@ function GoogleSheetsConnectModal({
   const onSave = async (event: FormEvent) => {
     event.preventDefault();
     setErrorMessage("");
+
+    const validationRegex =/(https|http)\:\/\/drive.google.com\/drive\/folders\/.+/;
+
+    if (!validationRegex.test(folderLink.trim())) {
+      setErrorMessage(t`Invalid Google Drive folder link`);
+      return;
+    }
+
     trackSheetImportClick();
     await saveFolderLink({
       url: folderLink.trim(),
@@ -279,7 +287,7 @@ function GoogleSheetsConnectModal({
         </Box>
         <Flex align="center" justify="space-between">
           <Text>
-            2. {jt`Enter: ${(<strong>{serviceAccountEmail}</strong>)}`}
+            2. {jt`Enter: ${(<strong>{serviceAccountEmail ?? t`Error fetching service account email`}</strong>)}`}
           </Text>
           <CopyButton value={serviceAccountEmail}></CopyButton>
         </Flex>
