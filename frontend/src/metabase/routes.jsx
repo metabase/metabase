@@ -149,11 +149,11 @@ export const getRoutes = store => {
           />
 
           <Route
-            path="collection/entity/:slug(**)"
+            path="collection/entity/:entity_id(**)"
             component={createEntityIdRedirect({
               parametersToTranslate: [
                 {
-                  name: "slug",
+                  name: "entity_id",
                   resourceType: "collection",
                   type: "param",
                 },
@@ -178,11 +178,11 @@ export const getRoutes = store => {
           </Route>
 
           <Route
-            path="dashboard/entity/:slug(**)"
+            path="dashboard/entity/:entity_id(**)"
             component={createEntityIdRedirect({
               parametersToTranslate: [
                 {
-                  name: "slug",
+                  name: "entity_id",
                   resourceType: "dashboard",
                   type: "param",
                 },
@@ -212,11 +212,11 @@ export const getRoutes = store => {
 
           <Route path="/question">
             <Route
-              path="/question/entity/:slug(**)"
+              path="/question/entity/:entity_id(**)"
               component={createEntityIdRedirect({
                 parametersToTranslate: [
                   {
-                    name: "slug",
+                    name: "entity_id",
                     resourceType: "card",
                     type: "param",
                   },
