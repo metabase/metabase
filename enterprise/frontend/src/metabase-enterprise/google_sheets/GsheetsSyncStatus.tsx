@@ -22,27 +22,35 @@ export const GsheetsSyncStatus = () => {
   const previousSettingStatus = usePrevious(settingStatus);
   const dispatch = useDispatch();
   const isAdmin = useSelector(getUserIsAdmin);
-  const [forceHide, setForceHide] = useState(!isAdmin || settingStatus !== "loading");
-  const syncError = useRef<{ error: boolean, message?: string }>({ error: false });
+  const [forceHide, setForceHide] = useState(
+    !isAdmin || settingStatus !== "loading",
+  );
+  const syncError = useRef<{ error: boolean; message?: string }>({
+    error: false,
+  });
 
-  const shouldPoll = isAdmin && !syncError.current.error && !forceHide;
+  const shouldPoll =
+    isAdmin && !syncError.current.error && settingStatus === "loading";
 
-  const { data: folderSync, error: folderSyncError} = useGetGsheetsFolderQuery(
+  const { data: folderSync, error: folderSyncError } = useGetGsheetsFolderQuery(
     shouldPoll ? undefined : skipToken,
     { pollingInterval: 3000 },
   );
 
   if (folderSyncError) {
     // if there is an error from the folder query, we want to stop polling and save the error
-    syncError.current = { error: true, message: (folderSyncError as ErrorPayload)?.data?.message };
+    syncError.current = {
+      error: true,
+      message: (folderSyncError as ErrorPayload)?.data?.message,
+    };
   }
 
   // if our polling endpoint changes away from loading, refresh the settings
   useEffect(() => {
-    if (folderSync?.status !== "loading") {
+    if (folderSync?.status !== "loading" || syncError.current.error) {
       dispatch(reloadSettings());
     }
-  }, [folderSync, dispatch, settingStatus]);
+  }, [folderSync, dispatch, settingStatus, syncError.current.error]);
 
   // if our setting changed to loading from something else, reset the force hide
   useEffect(() => {
@@ -70,17 +78,22 @@ export const GsheetsSyncStatus = () => {
     .with({ settingStatus: "loading" }, () => "loading")
     .otherwise(() => "loading");
 
-  return(
+  return (
     <GsheetsSyncStatusView
       status={displayStatus}
       db_id={folderSync?.db_id}
-      error={syncError.current.message ?? ''}
+      error={syncError.current.message ?? ""}
       onClose={() => setForceHide(true)}
     />
   );
 };
 
-function GsheetsSyncStatusView({ status, db_id, error, onClose }: {
+function GsheetsSyncStatusView({
+  status,
+  db_id,
+  error,
+  onClose,
+}: {
   status: GsheetsStatus;
   db_id?: DatabaseId;
   error?: string;
@@ -93,14 +106,11 @@ function GsheetsSyncStatusView({ status, db_id, error, onClose }: {
 
   const description = match(status)
     .with("complete", () => (
-      <Link
-        to={`browse/databases/${db_id}`}
-      >{t`Start Exploring`}</Link>
+      <Link to={`browse/databases/${db_id}`}>{t`Start Exploring`}</Link>
     ))
     .with(
       "error",
-      () =>
-        t`There was an error importing your Google Sheets. ${error}`,
+      () => t`There was an error importing your Google Sheets. ${error}`,
     )
     .otherwise(() => undefined);
 
