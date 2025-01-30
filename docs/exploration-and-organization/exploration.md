@@ -80,7 +80,7 @@ Collections have a list of any other items that are saved within them, and you c
 
 If you click on a part of a chart, such as a bar in a bar chart, or a dot on a line chart, you'll see the **Action menu**, with actions you can take to dive deeper into that result, branch off from it in a different direction, or see automatic insights to [X-ray](x-rays.md) the data.
 
-![Drill-through menu](images/automatic-insights.png)
+![Drill-through menu](../images/automatic-insights.png)
 
 In this example of orders by product category per month, clicking on a data point on this line chart gives us the ability to:
 
@@ -94,11 +94,11 @@ In this example of orders by product category per month, clicking on a data poin
 
 Clicking on a table cell will often allow you to filter the results using a comparison operator, like =, >, or <. For example, you can click on a table cell, and select the less than operator `<` to filter for values that are less than the selected value.
 
-![Comparison operator filters](images/comparison-operator-filters.png)
+![Comparison operator filters](../images/comparison-operator-filters.png)
 
 Lastly, clicking on the ID of an item in a table gives you the option to go to a detail view for that single record. For example, you can click on a customer's ID to see the profile view for that customer.
 
-![Detail view](images/detail-view.png)
+![Detail view](../images/detail-view.png)
 
 When you add questions to a dashboard, you can have even more control over what happens when people click on your chart. In addition to the default drill-through menu, you can add a [custom destination](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) or [update a filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/cross-filtering). Check out [interactive dashboards](../../dashboards/interactive.md).
 
@@ -122,6 +122,5 @@ Some things to remember with bookmarks:
 - Items that you bookmark will get a boost in your search results (but not the search results of other people).
 - To reorder bookmarks, simply drag and drop them in the sidebar.
 
-[collections]: ./collections.md
-[dashboards]: ../dashboards/start.md
-[models]: ../data-modeling/models.md
+[collections]: ../collections.md
+[dashboards]: ../../dashboards/start.md

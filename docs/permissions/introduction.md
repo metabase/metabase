@@ -44,7 +44,7 @@ If instead you're wondering about what data Metabase the company can see, check 
 
 ### Application permissions
 
-[Application permissions](application.md) (available on [Pro and Enterprise plans](https://www.metabase.com/pricing/)) dictate access to Metabase application-level features, including:
+[Application permissions](../application.md) (available on [Pro and Enterprise plans](https://www.metabase.com/pricing/)) dictate access to Metabase application-level features, including:
 
 - **Settings**: The Settings tab in the Admin panel.
 - **Monitoring access**: The Tools and Troubleshooting tabs in the Admin panel.
@@ -67,7 +67,7 @@ Whenever you change permissions for a group, make sure you:
 - [Permissions guide][permissions]
 - [Troubleshooting permissions][troubleshooting-permissions]
 
-[collections]: ../exploration-and-organization/collections.md
+[collections]: ../../exploration-and-organization/collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: ./data.md
 [data-sandboxing]: ./data-sandboxes.md
@@ -75,5 +75,5 @@ Whenever you change permissions for a group, make sure you:
 [sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
 [sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
 [slack-integration]: ../configuring-metabase/slack.md
-[sql-snippet-folders]: ../questions/native-editor/sql-snippets.md
-[troubleshooting-permissions]: ../troubleshooting-guide/permissions.md
+[sql-snippet-folders]: ../../questions/native-editor/sql-snippets.md
+[troubleshooting-permissions]: ../../troubleshooting-guide/permissions.md

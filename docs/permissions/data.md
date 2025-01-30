@@ -64,7 +64,7 @@ View data permission settings apply to different levels in your database:
 
 In the free, open-source version of Metabase, the **View data** setting defaults to "Can view". Since the setting's options aren't available in the OSS version, Metabase will only display this **View data** setting in the Pro/Enterprise version.
 
-For _which_ questions, models, and dashboards a group can view, instead see [collection permissions](collections.md).
+For _which_ questions, models, and dashboards a group can view, instead see [collection permissions](../collections.md).
 
 ### Can view data permission
 
@@ -183,10 +183,8 @@ See [Upload permissions](../../databases/uploads.md#add-people-to-a-group-with-d
 - [Advanced data sandboxing: limiting access to columns][sandbox-columns]
 - [Users, roles, and privileges](../../databases/users-roles-privileges.md)
 
-[collections]: ./collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
-[data-sandboxing]: ./data-sandboxes.md
-[permissions-overview]: ./introduction.md
+[permissions-overview]: ../introduction.md
 [sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions.html
 [sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions.html
-[sql-snippet-folders]: ../questions/native-editor/sql-snippets.md
+[sql-snippet-folders]: ../../questions/native-editor/sql-snippets.md

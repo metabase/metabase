@@ -108,7 +108,7 @@ If we want to specify which columns _and_ rows people can view, we can sandbox a
 
 1. **Create a SQL question with a variable**. We'll create a query that selects only some of the columns from the `Orders` table, and then add a `WHERE` clause with a variable that we can associate with Cloyd Beer's `user_id` user attribute.
 
-![Filtering question](images/advanced-example-2-filtering-question.png)
+![Filtering question](../images/advanced-example-2-filtering-question.png)
 
 And here's the code:
 
@@ -132,13 +132,13 @@ Save it to the "Admins collection" you created in the setup (or any collection t
 
 2. **Set up the sandbox**: Return to the **Permissions** tab. Select Cloyd Beer's Customer group, and set the **View data** access for the `Orders` table to **Sandboxed**. Select **Use a saved question to create a custom view for this table**. Open up the sandboxed access modal and select the second option and select my filtering question, we'll see an additional section which allows me to map the variable we defined in our question with a user attribute:
 
-![Sandboxing options](images/advanced-example-2-sandboxing-options.png)
+![Sandboxing options](../images/advanced-example-2-sandboxing-options.png)
 
 3. **Save your changes**. Or abandon all hope.
 
 4. **Verify the sandbox**: Now, when we log in as Mr. Beer and look at the `Orders` table, Mr. Beer will only see the columns we included in the filtering question, and the rows are filtered as specified by the variable in the question's `WHERE` clause:
 
-![Results](images/advanced-example-2-results.png)
+![Results](../images/advanced-example-2-results.png)
 
 ## Further reading
 
