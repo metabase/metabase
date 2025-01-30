@@ -240,5 +240,3 @@
   archived, deleted, etc it can usually still get 5. "
   []
   {:popular_items (get-popular-items-model-and-id)})
-
-

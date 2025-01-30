@@ -67,5 +67,3 @@
           (t2/update! :model/PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
       (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}})
       {:status :success :title (:name (models.pulse/retrieve-notification pulse-id :archived false))})))
-
-

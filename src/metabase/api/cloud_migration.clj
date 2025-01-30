@@ -45,5 +45,3 @@
   (api/check-superuser)
   (cloud-migration/read-only-mode! false)
   (t2/update! :model/CloudMigration {:state [:not-in cloud-migration/terminal-states]} {:state :cancelled}))
-
-

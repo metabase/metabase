@@ -168,5 +168,3 @@
      :data   (api/present-items present-model-items rows)
      :limit  (request/limit)
      :offset (request/offset)}))
-
-

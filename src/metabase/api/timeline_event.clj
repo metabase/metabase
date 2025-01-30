@@ -90,5 +90,3 @@
   (api/write-check :model/TimelineEvent id)
   (t2/delete! :model/TimelineEvent :id id)
   api/generic-204-no-content)
-
-

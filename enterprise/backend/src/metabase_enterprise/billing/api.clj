@@ -63,5 +63,3 @@
     (if (and token (str/starts-with? token "airgap_"))
       (billing-status)
       (fetch-billing-status* token email language))))
-
-

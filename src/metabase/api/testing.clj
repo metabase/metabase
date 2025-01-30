@@ -194,5 +194,3 @@
   []
   (stats/phone-home-stats!)
   {:success true})
-
-

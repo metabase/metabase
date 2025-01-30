@@ -134,5 +134,3 @@
    {:keys [entity_ids]} :- [:map
                             [:entity_ids :map]]]
   {:entity_ids (api.embed.common/model->entity-ids->ids entity_ids)})
-
-

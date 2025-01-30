@@ -1435,5 +1435,3 @@
                  (decode-graph {:revision revision :groups groups})
                  skip-graph
                  force))
-
-

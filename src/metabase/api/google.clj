@@ -22,5 +22,3 @@
     (setting/set-many! {:google-auth-client-id                   google-auth-client-id
                         :google-auth-auto-create-accounts-domain google-auth-auto-create-accounts-domain})
     (google/google-auth-enabled! google-auth-enabled)))
-
-
