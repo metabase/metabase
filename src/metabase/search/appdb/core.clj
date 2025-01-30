@@ -110,7 +110,6 @@
 
   (try
     (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
-      (throw (ex-info "testing" {}))
       ;; wait for a bit for the queue to be drained
       (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
         (when-not (u/poll {:thunk       pending-updates
