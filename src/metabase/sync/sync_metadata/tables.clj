@@ -89,8 +89,7 @@
   [table-name database]
   (let [all-crufty-table-patterns (if-let [more-patterns (-> database :settings :auto-cruft-tables)]
                                     (concat crufty-table-patterns
-                                            (map (comp re-pattern #(str "(?i)" %))
-                                                 more-patterns))
+                                            (map re-pattern more-patterns))
                                     crufty-table-patterns)]
     (some #(re-find % (u/lower-case-en table-name))
           all-crufty-table-patterns)))

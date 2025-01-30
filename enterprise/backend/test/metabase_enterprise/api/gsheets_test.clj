@@ -169,14 +169,15 @@
   (binding [token-check/*token-features* (constantly #{"etl-connections" "attached-dwh" "hosting"})]
     (with-redefs [hm.client/make-request (partial mock-make-request (happy-responses))]
       (with-sample-db-as-dwh
-        (is (= {:status "loading", :folder_url gdrive-link}
-               (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link})))))))
+        (is (partial=
+             {:status "loading", :folder_url gdrive-link}
+             (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link})))))))
 
 (deftest post-folder-syncing-test
   (binding [token-check/*token-features* (constantly #{"etl-connections" "attached-dwh" "hosting"})]
     (with-redefs [hm.client/make-request (partial mock-make-request (+syncing (happy-responses)))]
-      (is (= {:status "loading", :folder_url gdrive-link}
-             (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link}))))))
+      (is (partial= {:status "loading", :folder_url gdrive-link}
+                    (mt/user-http-request :crowberto :post 200 "ee/gsheets/folder" {:url gdrive-link}))))))
 
 (defn- do-sync-request! []
   (binding [token-check/*token-features* (constantly #{"etl-connections" "attached-dwh" "hosting"})]
@@ -189,19 +190,19 @@
     (do-sync-request!)
     (with-redefs [hm.client/make-request (partial mock-make-request (happy-responses))]
       ;; when the dwh has never been synced
-      (with-redefs [gsheets.api/get-last-dwh-sync-time (constantly nil)]
+      (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly nil)]
         (with-sample-db-as-dwh
           (is (partial= {:status "loading", :folder_url "<gdrive-link>" :db_id 1}
                         (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
           (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
       ;; when the local sync time is before the last gdrive connection sync time, we should be status=loading.
-      (with-redefs [gsheets.api/get-last-dwh-sync-time (constantly (t/instant "2000-01-01T00:00:00Z"))]
+      (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly (t/instant "2000-01-01T00:00:00Z"))]
         (with-sample-db-as-dwh
           (is (partial= {:status "loading", :folder_url "<gdrive-link>" :db_id 1}
                         (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
           (mt/user-http-request :crowberto :get 200 "ee/gsheets/folder")))
       ;; when the local sync time is after the last gdrive connection sync time, we should be status=complete.
-      (with-redefs [gsheets.api/get-last-dwh-sync-time (constantly (t/instant "2222-01-01T00:00:00Z"))]
+      (with-redefs [gsheets.api/get-last-mb-dwh-sync-time (constantly (t/instant "2222-01-01T00:00:00Z"))]
         (with-sample-db-as-dwh
           (is (partial= {:status "complete"
                          :folder_url "<gdrive-link>"
@@ -225,8 +226,8 @@
   (binding [token-check/*token-features* (constantly #{"etl-connections" "attached-dwh" "hosting"})]
     (with-redefs [hm.client/make-request (partial mock-make-request (+empty-conn-listing (happy-responses)))]
       (with-sample-db-as-dwh
-        (is (= "Unable to find google drive connection."
-               (:message (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder"))))))))
+        (is (= "There are no gdrive connections, please re-connect."
+               (:message (mt/user-http-request :crowberto :delete 404 "ee/gsheets/folder"))))))))
 
 (defn +failed-delete-response [responses]
   (assoc responses
@@ -238,7 +239,7 @@
     (with-redefs [hm.client/make-request (partial mock-make-request (+failed-delete-response (happy-responses)))]
       (with-sample-db-as-dwh
         (is (= "Unable to disconnect google service account"
-               (:message (mt/user-http-request :crowberto :delete 200 "ee/gsheets/folder"))))))))
+               (:message (mt/user-http-request :crowberto :delete 500 "ee/gsheets/folder"))))))))
 
 (def zdt-schema-with-gen
   [:time/zoned-date-time
@@ -256,6 +257,8 @@
                      x))
                  schema))
 
+(def ^:private status-sort-order ["active" "error" "syncing" "initializing"])
+
 (deftest sort-gdrive-conns-test
   (let [unsorted [{:status "initializing", :created-at #t "2023-01-01T05:31:13+02:00[EET]"}
                   {:status "active", :created-at #t "2019-01-01T08:28:46+01:00[Europe/Podgorica]"}
@@ -266,7 +269,7 @@
                   {:status "syncing", :created-at #t "2003-01-01T09:25:08-04:00[America/Virgin]"}
                   {:status "active", :created-at #t "2000-01-01T18:47:07+03:00[Europe/Simferopol]"}]
         sorted (#'gsheets.api/sort-gdrive-conns unsorted)]
-    (is (= ["active" "syncing" "initializing" "error"] (distinct (map :status sorted)))
+    (is (= status-sort-order (distinct (map :status sorted)))
         "Sorted by `status`")
     (doseq [[_status conns] (group-by :status sorted)
             [{t1 :created-at} {t2 :created-at}] (partition 2 1 conns)]
@@ -278,5 +281,5 @@
                                       [:sequential (mr/schema ::gsheets.api/gdrive-conn)]))]
     (let [sorted (#'gsheets.api/sort-gdrive-conns conns)
           existing-statuses (set (distinct (keep :status sorted)))]
-      (= (filter existing-statuses ["active" "syncing" "initializing" "error"])
+      (= (filter existing-statuses status-sort-order)
          (distinct (map :status sorted))))))
