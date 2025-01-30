@@ -1,6 +1,5 @@
 /* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import type { FieldInputProps, FieldMetaProps } from "formik";
 import { getIn } from "icepick";
 import PropTypes from "prop-types";
 import { memo } from "react";
@@ -11,45 +10,12 @@ import S from "metabase/components/List/List.module.css";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import * as MetabaseCore from "metabase/lib/core";
-import { Icon, type IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
-import type { Field as FieldType } from "metabase-types/api";
 
 import F from "./Field.module.css";
 
-type FormField<Value> = FieldMetaProps<Value | undefined> &
-  FieldInputProps<Value | undefined>;
-
-interface NestedFormField {
-  display_name: FormField<string>;
-  semantic_type: FormField<string>;
-  fk_target_field_id: FormField<string>;
-}
-
-interface Props {
-  field: FieldType;
-  formField: NestedFormField;
-  foreignKeys: Record<
-    string,
-    {
-      id: string;
-      name: string;
-      description: string;
-    }
-  >;
-  icon: IconName;
-  isEditing: boolean;
-  url: string;
-}
-
-const Field = ({
-  field,
-  foreignKeys,
-  url,
-  icon,
-  isEditing,
-  formField,
-}: Props) => (
+const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
   <div className={cx(S.item, CS.py1, CS.borderTop)}>
     <div
       className={cx(S.itemBody, CS.flexColumn)}
