@@ -4,6 +4,7 @@
    [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -88,13 +89,16 @@
 (defn- +check-sandboxes-enabled
   "Wrap the Ring handler to make sure sandboxes are enabled before allowing access to the API endpoints."
   [handler]
-  (fn [request respond raise]
-    (if-not (premium-features/enable-sandboxes?)
-      (raise (ex-info (str (tru "Error: sandboxing is not enabled for this instance.")
-                           " "
-                           (tru "Please check you have set a valid Enterprise token and try again."))
-                      {:status-code 403}))
-      (handler request respond raise))))
+  (open-api/handler-with-open-api-spec
+   (fn [request respond raise]
+     (if-not (premium-features/enable-sandboxes?)
+       (raise (ex-info (str (tru "Error: sandboxing is not enabled for this instance.")
+                            " "
+                            (tru "Please check you have set a valid Enterprise token and try again."))
+                       {:status-code 403}))
+       (handler request respond raise)))
+   (fn [prefix]
+     (open-api/open-api-spec handler prefix))))
 
 ;; All endpoints in this namespace require superuser perms to view
 ;;

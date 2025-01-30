@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.ldap :as api.ldap]
    [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.channel.email.messages :as messages]
    [metabase.config :as config]
    [metabase.events :as events]
@@ -294,12 +295,13 @@
                              :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]
-  (with-meta
+  (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (letfn [(raise' [e]
                (log/error e "Authentication endpoint error")
                (raise e))]
        (handler request respond raise')))
-   (meta handler)))
+   (fn [prefix]
+     (open-api/open-api-spec handler prefix))))
 
 (api/define-routes +log-all-request-failures)
