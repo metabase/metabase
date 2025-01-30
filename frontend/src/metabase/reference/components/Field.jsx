@@ -119,7 +119,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               <input
                 className={cx(F.fieldTextInput, CS.mb2, CS.mt1)}
                 type="text"
-                placeholder="Description"
+                placeholder={t`Description`}
                 {...formField.description}
                 defaultValue={field.description ?? ""}
               />
