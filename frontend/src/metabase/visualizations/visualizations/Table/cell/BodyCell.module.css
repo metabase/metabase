@@ -37,7 +37,7 @@
   border: 1px solid var(--mb-color-brand-light);
   background-color: var(--mb-color-brand-lighter);
   border-radius: 99px;
-  padding: 0.25em 0.65em;
+  padding: 2px 4px;
   width: auto;
   min-width: 35px;
   justify-content: center;

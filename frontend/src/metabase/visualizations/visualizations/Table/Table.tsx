@@ -23,7 +23,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
 import { connect } from "metabase/lib/redux";
@@ -36,13 +36,15 @@ import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
+  getTableHeaderClickedObject,
 } from "metabase/visualizations/lib/table";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 import { AddColumnButton } from "./AddColumnButton";
+import { SortableHeader } from "./SortableHeader";
 import styles from "./Table.module.css";
 import { HEADER_HEIGHT, INDEX_COLUMN_ID, ROW_HEIGHT } from "./constants";
 import { useTableCellsMeasure } from "./hooks/use-cell-measure";
@@ -61,6 +63,14 @@ interface TableProps extends VisualizationProps {
   question: Question;
 }
 
+const getColumnOrder = (cols: DatasetColumn[], hasIndexColumn: boolean) => {
+  const dataColumns = cols.map(col => col.name);
+  if (!hasIndexColumn) {
+    return dataColumns;
+  }
+  return [INDEX_COLUMN_ID, ...dataColumns];
+};
+
 export const _Table = ({
   data,
   series,
@@ -72,14 +82,18 @@ export const _Table = ({
   isPivoted = false,
   getColumnSortDirection,
   question,
+  clicked,
   hasMetadataPopovers = true,
 }: TableProps) => {
   const { rows, cols } = data;
   const bodyRef = useRef<HTMLDivElement>(null);
-  const [columnOrder, setColumnOrder] = useState<string[]>(() => [
-    INDEX_COLUMN_ID,
-    ...cols.map(col => col.name),
-  ]);
+  const [columnOrder, setColumnOrder] = useState<string[]>(() =>
+    getColumnOrder(cols, settings["table.row_index"]),
+  );
+
+  useEffect(() => {
+    setColumnOrder(getColumnOrder(cols, settings["table.row_index"]));
+  }, [cols, settings["table.row_index"]]);
 
   const {
     measureBodyCellDimensions,
@@ -156,7 +170,8 @@ export const _Table = ({
             tableColumn?.getSize(),
           );
           return cellDimensions.height;
-        }, ROW_HEIGHT),
+        }),
+        ROW_HEIGHT,
       );
 
       return height;
@@ -275,21 +290,22 @@ export const _Table = ({
   );
 
   const isAddColumnButtonSticky = table.getTotalSize() >= width;
-
+  const hasAddColumnButton = onVisualizationClick != null;
   const addColumnButton = useMemo(
-    () => (
-      <AddColumnButton
-        headerHeight={HEADER_HEIGHT}
-        isOverflowing={isAddColumnButtonSticky}
-        onClick={e =>
-          onVisualizationClick?.({
-            columnShortcuts: true,
-            element: e.currentTarget,
-          })
-        }
-      />
-    ),
-    [isAddColumnButtonSticky, onVisualizationClick],
+    () =>
+      hasAddColumnButton ? (
+        <AddColumnButton
+          headerHeight={HEADER_HEIGHT}
+          isOverflowing={isAddColumnButtonSticky}
+          onClick={e =>
+            onVisualizationClick?.({
+              columnShortcuts: true,
+              element: e.currentTarget,
+            })
+          }
+        />
+      ) : null,
+    [isAddColumnButtonSticky, onVisualizationClick, hasAddColumnButton],
   );
 
   const handleBodyCellClick = useCallback(
@@ -336,6 +352,21 @@ export const _Table = ({
     ],
   );
 
+  const handleHeaderCellClick = useCallback(
+    (
+      event: React.MouseEvent<HTMLDivElement, MouseEvent>,
+      columnName: string,
+    ) => {
+      const columnIndex = data.cols.findIndex(col => col.name === columnName);
+      if (columnIndex === -1) {
+        return;
+      }
+      const clicked = getTableHeaderClickedObject(data, columnIndex, isPivoted);
+      onVisualizationClick({ ...clicked, element: event.currentTarget });
+    },
+    [data, isPivoted, onVisualizationClick],
+  );
+
   if (width == null || height == null) {
     return null;
   }
@@ -349,7 +380,7 @@ export const _Table = ({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div style={{ height, width }} className={styles.table}>
+      <div style={{ height, width }} className={styles.table} tabIndex={-1}>
         <div
           ref={bodyRef}
           style={{
@@ -375,10 +406,15 @@ export const _Table = ({
                   >
                     {virtualColumns.map(virtualColumn => {
                       const header = headerGroup.headers[virtualColumn.index];
-                      const headerContent = flexRender(
+                      const datasetColumn =
+                        header.column.columnDef.meta?.column;
+                      const isDataColumn = datasetColumn != null;
+
+                      const headerCell = flexRender(
                         header.column.columnDef.header,
                         header.getContext(),
                       );
+
                       return (
                         <div
                           key={header.id}
@@ -387,7 +423,26 @@ export const _Table = ({
                             position: "relative",
                           }}
                         >
-                          {headerContent}
+                          {isDataColumn ? (
+                            <SortableHeader
+                              id={header.id}
+                              column={datasetColumn}
+                              data={data}
+                              question={question}
+                              canSort={!isPivoted}
+                              hasMetadataPopovers={
+                                hasMetadataPopovers && clicked == null
+                              }
+                              header={header}
+                              onClick={event =>
+                                handleHeaderCellClick(event, datasetColumn.name)
+                              }
+                            >
+                              {headerCell}
+                            </SortableHeader>
+                          ) : (
+                            headerCell
+                          )}
                         </div>
                       );
                     })}

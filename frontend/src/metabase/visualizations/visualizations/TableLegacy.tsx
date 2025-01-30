@@ -89,6 +89,13 @@ class Table extends Component<TableProps, TableState> {
 
   static settings = {
     ...columnSettings({ hidden: true }),
+    "table.row_index": {
+      section: t`Columns`,
+      title: t`Show row index`,
+      inline: true,
+      widget: "toggle",
+      default: true, // TODO: should be false by default
+    },
     "table.pivot": {
       section: t`Columns`,
       title: t`Pivot table`,
@@ -112,6 +119,7 @@ class Table extends Component<TableProps, TableState> {
         return getDefaultPivotColumn(data.cols, data.rows) != null;
       },
     },
+
     "table.pivot_column": {
       section: t`Columns`,
       title: t`Pivot column`,

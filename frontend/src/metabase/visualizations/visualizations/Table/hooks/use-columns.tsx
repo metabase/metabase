@@ -7,7 +7,6 @@ import { renderRoot } from "metabase/lib/react-compat";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 import { cachedFormatter } from "metabase/visualizations/echarts/cartesian/utils/formatter";
-import { getTableHeaderClickedObject } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
@@ -48,14 +47,8 @@ import {
 } from "@tanstack/react-table";
 import { INDEX_COLUMN_ID, MIN_COLUMN_WIDTH } from "../constants";
 
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-
-import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import styles from "../Table.module.css";
 import { IndexCell } from "../cell/IndexCell";
 import { IndexHeaderCell } from "../cell/IndexHeaderCell";
 
@@ -94,124 +87,6 @@ interface UseColumnsProps {
   question: Question;
   hasMetadataPopovers?: boolean;
 }
-
-interface TableHeaderProps {
-  id: string;
-  columnName: string | undefined;
-  align: "left" | "right" | undefined;
-  sortDirection: OrderByDirection | undefined;
-  isPivoted: boolean;
-  isTruncated: boolean;
-  columnWidth: number;
-  measuredColumnWidth: number;
-  onVisualizationClick?: VisualizationProps["onVisualizationClick"];
-  clicked: unknown;
-  col: DatasetColumn;
-  question: Question;
-  hasMetadataPopovers: boolean;
-  data: DatasetData;
-  resizeHandler: (e: React.MouseEvent | React.TouchEvent) => void;
-}
-
-const TableHeader = memo(function TableHeader({
-  id,
-  columnName,
-  align,
-  sortDirection,
-  isPivoted,
-  onVisualizationClick,
-  clicked,
-  col,
-  question,
-  hasMetadataPopovers,
-  data,
-  resizeHandler,
-}: TableHeaderProps) {
-  const { attributes, isDragging, listeners, setNodeRef, transform } =
-    useSortable({
-      id,
-      disabled: isPivoted,
-    });
-
-  const dragStartPosition = useRef<{ x: number; y: number } | null>(null);
-
-  const style: CSSProperties = {
-    opacity: isDragging ? 0.8 : 1,
-    position: "relative",
-    transform: isDragging ? CSS.Translate.toString(transform) : undefined,
-    transition: "width transform 0.2s ease-in-out",
-    whiteSpace: "nowrap",
-    zIndex: isDragging ? 2 : 0,
-    cursor: isPivoted ? "default" : "grab",
-    outline: "none",
-  };
-
-  const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    dragStartPosition.current = { x: e.clientX, y: e.clientY };
-  }, []);
-
-  const handleDragEnd = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (dragStartPosition.current) {
-        const dx = Math.abs(e.clientX - dragStartPosition.current.x);
-        const dy = Math.abs(e.clientY - dragStartPosition.current.y);
-
-        if (
-          dx + dy < HEADER_DRAG_THRESHOLD &&
-          onVisualizationClick &&
-          clicked
-        ) {
-          onVisualizationClick({ ...clicked, element: e.currentTarget });
-        }
-        dragStartPosition.current = null;
-      }
-    },
-    [clicked, onVisualizationClick],
-  );
-
-  const query = question?.query();
-  const stageIndex = -1;
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={styles.th}
-      style={style}
-      {...attributes}
-      {...listeners}
-    >
-      <QueryColumnInfoPopover
-        position="bottom-start"
-        query={query}
-        stageIndex={-1}
-        column={query && Lib.fromLegacyColumn(query, stageIndex, col)}
-        timezone={data.results_timezone}
-        disabled={!hasMetadataPopovers || isDragging}
-        openDelay={500}
-        showFingerprintInfo
-      >
-        <div
-          className={styles.headerWrapper}
-          onMouseDown={handleDragStart}
-          onMouseUp={handleDragEnd}
-        >
-          <HeaderCell name={columnName} align={align} sort={sortDirection} />
-        </div>
-      </QueryColumnInfoPopover>
-      <div
-        className={styles.resizer}
-        onMouseDown={e => {
-          e.stopPropagation();
-          resizeHandler(e);
-        }}
-        onTouchStart={e => {
-          e.stopPropagation();
-          resizeHandler(e);
-        }}
-      />
-    </div>
-  );
-});
 
 const columnHelper = createColumnHelper<RowValues>();
 
@@ -332,7 +207,7 @@ export const useColumns = ({
       size: 46,
       enableResizing: false,
       cell: props => {
-        return <IndexCell rowNumber={props.row.index} />;
+        return <IndexCell rowNumber={props.row.index + 1} />;
       },
       header: () => {
         return <IndexHeaderCell />;
@@ -352,32 +227,14 @@ export const useColumns = ({
       const wrap = Boolean(columnSettings["text_wrapping"]);
       const align = columnSettings["text_align"] ?? "left";
       const variant = getBodyCellVariant(col, columnSettings);
+      const sortDirection = getColumnSortDirection(index);
 
       const id = isPivoted ? `${index}:${col.name}` : col.name;
       return columnHelper.accessor(row => row[index], {
         id,
         header: memo(props => {
-          const sortDirection = getColumnSortDirection(index);
-          const clicked = getTableHeaderClickedObject(data, index, isPivoted);
-
           return (
-            <TableHeader
-              id={props.header.id}
-              columnName={columnName}
-              align={align}
-              sortDirection={sortDirection}
-              isPivoted={isPivoted}
-              isTruncated={isTruncated}
-              columnWidth={columnWidth}
-              measuredColumnWidth={measuredColumnWidth}
-              onVisualizationClick={onVisualizationClick}
-              clicked={clicked}
-              col={col}
-              question={question}
-              hasMetadataPopovers={hasMetadataPopovers}
-              data={data}
-              resizeHandler={props.header.getResizeHandler()}
-            />
+            <HeaderCell name={columnName} align={align} sort={sortDirection} />
           );
         }),
         cell: memo(
@@ -427,6 +284,9 @@ export const useColumns = ({
       });
     });
 
+    if (!settings["table.row_index"]) {
+      return dataColumns;
+    }
     return [indexColumn, ...dataColumns];
   }, [
     cols,
