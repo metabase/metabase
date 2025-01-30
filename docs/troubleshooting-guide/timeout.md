@@ -26,7 +26,7 @@ Fixes for timeout problems will depend on your specific setup. These resources m
 If you can’t solve your problem using the troubleshooting guides:
 
 - Search or ask the [Metabase community][discourse].
-- Search for [known bugs or limitations][known-issues].
+- Search for [known bugs or limitations][../known-issues].
 
 [app-engine-timeout]: https://cloud.google.com/appengine/articles/deadlineexceedederrors
 [configuring-jetty]: https://jetty.org/docs/jetty/12/operations-guide/protocols/index.html

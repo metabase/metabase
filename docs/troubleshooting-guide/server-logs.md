@@ -27,5 +27,5 @@ Let's unpack the log:
 - **Queries in flight:** `Queries in flight: 0 (0 queued)`. The number of active and queued queries across all database sources connected to Metabase. We recommend checking the **Database info** below for troubleshooting issues with the database related to the request.
 - **Database info**:`h2 DB 4 connections: 0/1 (0 threads blocked)`. Shows database type, database ID, connections active/pool (and queue). This info is specific to the database related to the request (in this case a `POST` request), and not to the overall queries in flight.
 
-[log-level]: ../configuring-metabase/log-configuration.md
+[log-level]: ../../configuring-metabase/log-configuration.md
 [scale]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-at-scale

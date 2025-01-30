@@ -161,7 +161,7 @@ The administrator can [create a new group][groups] to capture precisely who's al
 ## Do you have a different problem?
 
 - [I have a different permissions issue][troubleshooting-permissions].
-- [I can't see my tables][cant-see-tables].
+- [I can't see my tables][../cant-see-tables].
 
 [authenticating-with-saml]: ../../people-and-groups/authenticating-with-saml.md
 [cant-see-tables]: cant-see-tables.md
