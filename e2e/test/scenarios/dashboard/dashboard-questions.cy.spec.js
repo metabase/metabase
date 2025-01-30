@@ -392,7 +392,7 @@ describe("Dashboard > Dashboard Questions", () => {
         .should("exist");
     });
 
-    it("can save a native question to a dashboard", { tags: "@flaky" }, () => {
+    it("can save a native question to a dashboard", () => {
       H.startNewNativeQuestion({ query: "SELECT 123" });
 
       // this reduces the flakiness
