@@ -25,10 +25,9 @@ interface UsageMap {
 }
 
 const findFiles = (): string[] => {
-  // TODO: only frontend and /enterprise?
-  return glob.sync("**/*.{css,module.css,js,jsx,ts,tsx}", {
-    ignore: ["**/node_modules/**", "**/dist/**", "**/target/**", "bin/**"],
-  });
+  return glob.sync(
+    "{frontend,enterprise/frontend}/**/*.{css,module.css,js,jsx,ts,tsx}",
+  );
 };
 
 const extractVariableDefinitions = (filePath: string): Set<string> => {
