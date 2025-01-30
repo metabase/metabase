@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting guides
+redirect_from: /docs/latest/troubleshooting-guide/
 ---
 
 # Troubleshooting guides
