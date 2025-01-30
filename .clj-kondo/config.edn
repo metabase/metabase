@@ -473,6 +473,7 @@
     metabase.moderation            :any
     metabase.notification          :any
     metabase.permissions           :any
+    metabase.pivot                 #{metabase.util}
     metabase.plugins               :any
     metabase.premium-features      :any
     metabase.public-settings       :any
