@@ -5,7 +5,7 @@
    [metabase-enterprise.serialization.names :as names]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
-   [metabase.db.data-source :as mdb.data-source]
+   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.models.visualization-settings :as mb.viz]
@@ -13,6 +13,7 @@
    [metabase.test.data :as data]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [next.jdbc]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
 
@@ -68,14 +69,15 @@
          (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
            ~@body)))))
 
-(defn- do-with-in-memory-h2-db [db-name-prefix f]
-  (let [db-name           (str db-name-prefix "-" (mt/random-name))
-        connection-string (format "jdbc:h2:mem:%s" db-name)
-        data-source       (mdb.data-source/raw-connection-string->DataSource connection-string)]
-    ;; DB should stay open as long as `conn` is held open.
-    (with-open [_conn (.getConnection data-source)]
-      (with-db data-source (mdb/setup-db! :create-sample-content? false)) ; skip sample content for speedy tests. this doesn't reflect production
-      (f data-source))))
+(defn- do-with-in-memory-h2-db [f]
+  (schema-migrations-test.impl/do-with-temp-empty-app-db*
+   :h2
+   (fn [data-source]
+     ;; DB should stay open as long as `conn` is held open.
+     (with-open [_conn (.getConnection data-source)]
+       (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script)])
+       (with-db data-source (mdb/finish-db-setup))
+       (f data-source)))))
 
 (defn do-with-dbs
   "Given a function with the given arity, create an in-memory db for each argument and then call the fn with these dbs"
@@ -85,7 +87,6 @@
     (recur (dec arity)
            (fn [& args]
              (do-with-in-memory-h2-db
-              (str "db-" arity)
               (fn [data-source]
                 (apply f data-source args)))))))
 
