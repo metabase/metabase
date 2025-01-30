@@ -1,13 +1,14 @@
+// @ts-check
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
 /* eslint-disable import/order */
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
-const webpack = require("webpack");
+const rspack = require("@rspack/core");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
-const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
+const { TsCheckerRspackPlugin } = require("ts-checker-rspack-plugin");
 
-const mainConfig = require("./webpack.config");
+const mainConfig = require("./rspack.config");
 const { resolve } = require("path");
 const fs = require("fs");
 const path = require("path");
@@ -49,6 +50,7 @@ const CSS_CONFIG = {
 
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
+/** @type {import('@rspack/cli').Configuration} */
 module.exports = env => {
   const config = {
     ...mainConfig,
@@ -130,25 +132,25 @@ module.exports = env => {
       moduleIds: isDevMode ? "natural" : undefined,
 
       minimize: !isDevMode,
-      minimizer: mainConfig.optimization.minimizer,
+      minimizer: mainConfig.optimization?.minimizer,
     },
 
     plugins: [
-      new webpack.BannerPlugin({
+      new rspack.BannerPlugin({
         banner:
           "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
       }),
       new NodePolyfillPlugin(), // for crypto, among others
       // https://github.com/remarkjs/remark/discussions/903
-      new webpack.ProvidePlugin({
+      new rspack.ProvidePlugin({
         process: "process/browser.js",
       }),
-      new webpack.EnvironmentPlugin({
+      new rspack.EnvironmentPlugin({
         EMBEDDING_SDK_VERSION,
         IS_EMBEDDING_SDK: true,
       }),
       !skipDTS &&
-        new ForkTsCheckerWebpackPlugin({
+        new TsCheckerRspackPlugin({
           async: isDevMode,
           typescript: {
             configFile: resolve(__dirname, "./tsconfig.sdk.json"),
@@ -162,21 +164,16 @@ module.exports = env => {
           reportFilename: BUILD_PATH + "/dist/report.html",
         }),
     ].filter(Boolean),
-  };
 
-  config.resolve.alias = {
-    ...mainConfig.resolve.alias,
-    "ee-plugins": ENTERPRISE_SRC_PATH + "/plugins",
-    "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
+    resolve: {
+      ...mainConfig.resolve,
+      alias: {
+        ...mainConfig.resolve?.alias,
+        "ee-plugins": ENTERPRISE_SRC_PATH + "/plugins",
+        "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
+      },
+    },
   };
-
-  if (config.cache) {
-    config.cache.cacheDirectory = resolve(
-      __dirname,
-      "node_modules/.cache/",
-      "webpack-ee",
-    );
-  }
 
   return config;
 };

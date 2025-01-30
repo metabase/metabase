@@ -2511,6 +2511,26 @@
     "@jridgewell/resolve-uri" "^3.0.3"
     "@jridgewell/sourcemap-codec" "^1.4.10"
 
+"@jsonjoy.com/base64@^1.1.1":
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/@jsonjoy.com/base64/-/base64-1.1.2.tgz#cf8ea9dcb849b81c95f14fc0aaa151c6b54d2578"
+  integrity sha512-q6XAnWQDIMA3+FTiOYajoYqySkO+JSat0ytXGSuRdq9uXE7o92gzuQwQM14xaCRlBLGq3v5miDGC4vkVTn54xA==
+
+"@jsonjoy.com/json-pack@^1.0.3":
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/@jsonjoy.com/json-pack/-/json-pack-1.1.1.tgz#1f2db19ab1fd3304ccac259a1ef1dc6aff6df0ba"
+  integrity sha512-osjeBqMJ2lb/j/M8NCPjs1ylqWIcTRTycIhVB5pt6LgzgeRSb0YRZ7j9RfA8wIUrsr/medIuhVyonXRZWLyfdw==
+  dependencies:
+    "@jsonjoy.com/base64" "^1.1.1"
+    "@jsonjoy.com/util" "^1.1.2"
+    hyperdyperid "^1.2.0"
+    thingies "^1.20.0"
+
+"@jsonjoy.com/util@^1.1.2", "@jsonjoy.com/util@^1.3.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@jsonjoy.com/util/-/util-1.5.0.tgz#6008e35b9d9d8ee27bc4bfaa70c8cbf33a537b4c"
+  integrity sha512-ojoNsrIuPI9g6o8UxhraZQSyF2ByJanAY4cTFbc8Mf2AXEF4aQRGY1dJxyJpuyav8r9FGflEt/Ff3u5Nt6YMPA==
+
 "@juggle/resize-observer@^3.4.0":
   version "3.4.0"
   resolved "https://registry.yarnpkg.com/@juggle/resize-observer/-/resize-observer-3.4.0.tgz#08d6c5e20cf7e4cc02fd181c4b0c225cd31dbb60"
@@ -3121,7 +3141,7 @@
     webpack-dev-server "5.0.4"
     ws "^8.16.0"
 
-"@rspack/lite-tapable@1.0.1":
+"@rspack/lite-tapable@1.0.1", "@rspack/lite-tapable@^1.0.0":
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/@rspack/lite-tapable/-/lite-tapable-1.0.1.tgz#d4540a5d28bd6177164bc0ba0bee4bdec0458591"
   integrity sha512-VynGOEsVw2s8TAlLf/uESfrgfrq2+rcXB1muPJYBWbsm1Oa6r5qVQhjA5ggM6z/coYPrsVMgovl3Ff7Q7OCp1w==
@@ -11803,6 +11823,11 @@ husky@^8.0.2:
   resolved "https://registry.yarnpkg.com/husky/-/husky-8.0.2.tgz#5816a60db02650f1f22c8b69b928fd6bcd77a236"
   integrity sha512-Tkv80jtvbnkK3mYWxPZePGFpQ/tT3HNSs/sasF9P2YfkMezDl3ON37YN6jUUI4eTg5LcyVynlb6r4eyvOmspvg==
 
+hyperdyperid@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/hyperdyperid/-/hyperdyperid-1.2.0.tgz#59668d323ada92228d2a869d3e474d5a33b69e6b"
+  integrity sha512-Y93lCzHYgGWdrJ66yIktxiaGULYc6oGiABxhcO5AufBeOyoIdZF7bIfLaOrbM0iGIOXQQgxxRrFEnb+Y6w1n4A==
+
 hyphenate-style-name@^1.0.3:
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/hyphenate-style-name/-/hyphenate-style-name-1.0.4.tgz#691879af8e220aea5750e8827db4ef62a54e361d"
@@ -14247,6 +14272,16 @@ memfs@^3.4.1, memfs@^3.4.3:
   dependencies:
     fs-monkey "^1.0.4"
 
+memfs@^4.14.0:
+  version "4.17.0"
+  resolved "https://registry.yarnpkg.com/memfs/-/memfs-4.17.0.tgz#a3c4b5490b9b1e7df5d433adc163e08208ce7ca2"
+  integrity sha512-4eirfZ7thblFmqFjywlTmuWVSvccHAJbn1r8qQLzmTO11qcqpohOjmY2mFce6x7x7WtskzRqApPD0hv+Oa74jg==
+  dependencies:
+    "@jsonjoy.com/json-pack" "^1.0.3"
+    "@jsonjoy.com/util" "^1.3.0"
+    tree-dump "^1.0.1"
+    tslib "^2.0.0"
+
 memoize-one@^5.1.1:
   version "5.2.1"
   resolved "https://registry.yarnpkg.com/memoize-one/-/memoize-one-5.2.1.tgz#8337aa3c4335581839ec01c3d594090cebe8f00e"
@@ -14732,7 +14767,7 @@ minimatch@^3.0.4, minimatch@^3.1.1, minimatch@^3.1.2:
   dependencies:
     brace-expansion "^1.1.7"
 
-minimatch@^9.0.4:
+minimatch@^9.0.4, minimatch@^9.0.5:
   version "9.0.5"
   resolved "https://registry.yarnpkg.com/minimatch/-/minimatch-9.0.5.tgz#d74f9dd6b57d83d8e98cfb82133b03978bc929e5"
   integrity sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow==
@@ -19571,6 +19606,11 @@ text-table@^0.2.0:
   resolved "https://registry.yarnpkg.com/text-table/-/text-table-0.2.0.tgz#7f5ee823ae805207c00af2df4a84ec3fcfa570b4"
   integrity sha1-f17oI66AUgfACvLfSoTsP8+lcLQ=
 
+thingies@^1.20.0:
+  version "1.21.0"
+  resolved "https://registry.yarnpkg.com/thingies/-/thingies-1.21.0.tgz#e80fbe58fd6fdaaab8fad9b67bd0a5c943c445c1"
+  integrity sha512-hsqsJsFMsV+aD4s3CWKk85ep/3I9XzYV/IXaSouJMYIoDlgyi11cBhsqYe9/geRfB0YIikBQg6raRaM+nIMP9g==
+
 throttle-debounce@^3.0.1:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/throttle-debounce/-/throttle-debounce-3.0.1.tgz#32f94d84dfa894f786c9a1f290e7a645b6a19abb"
@@ -19794,6 +19834,11 @@ transliteration@^2.2.0:
   dependencies:
     yargs "^17.5.1"
 
+tree-dump@^1.0.1:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/tree-dump/-/tree-dump-1.0.2.tgz#c460d5921caeb197bde71d0e9a7b479848c5b8ac"
+  integrity sha512-dpev9ABuLWdEubk+cIaI9cHwRNNDjkBBLXTwI4UCUFdQ5xXKqNXoK4FEciw/vxf+NQ7Cb7sGUyeUtORvHIdRXQ==
+
 tree-kill@^1.2.2:
   version "1.2.2"
   resolved "https://registry.yarnpkg.com/tree-kill/-/tree-kill-1.2.2.tgz#4ca09a9092c88b73a7cdc5e8a01b507b0790a0cc"
@@ -19823,6 +19868,18 @@ ts-api-utils@^1.3.0:
   version "1.4.3"
   resolved "https://registry.yarnpkg.com/ts-api-utils/-/ts-api-utils-1.4.3.tgz#bfc2215fe6528fecab2b0fba570a2e8a4263b064"
   integrity sha512-i3eMG77UTMD0hZhgRS562pv83RC6ukSAC2GMNWc+9dieh/+jDM5u5YG+NHX6VNDRHQcHwmsTHctP9LhbC3WxVw==
+
+ts-checker-rspack-plugin@^1.1.1:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/ts-checker-rspack-plugin/-/ts-checker-rspack-plugin-1.1.1.tgz#0cefe8083e9d32980786d45b959e2d596bdee8a6"
+  integrity sha512-BlpPqnfAmV0TcDg58H+1qV8Zb57ilv0x+ajjnxrVQ6BWgC8HzAdc+TycqDOJ4sZZYIV+hywQGozZFGklzbCR6A==
+  dependencies:
+    "@babel/code-frame" "^7.16.7"
+    "@rspack/lite-tapable" "^1.0.0"
+    chokidar "^3.5.3"
+    memfs "^4.14.0"
+    minimatch "^9.0.5"
+    picocolors "^1.1.1"
 
 ts-dedent@^2.0.0, ts-dedent@^2.2.0:
   version "2.2.0"
