@@ -26,7 +26,7 @@ Generates a Markdown file with documentation and an example configuration file i
 
 ## `drop-entity-ids`
 
-Drop entity IDs for instances of serializable models. Useful for migrating from v1 serialization (x.46 and earlier) to v2 (x.47+).
+Drop Entity IDs for instances of serializable models. Useful for migrating from v1 serialization (x.46 and earlier) to v2 (x.47+).
 
 ## `dump path & options`
 
@@ -61,7 +61,7 @@ Serialize Metabase instance into directory at `path`.
 
 Options:
 
-- `-c, --collection ID` - Export only specified ID(s). Use commas to separate multiple IDs. You can pass entity ids with `eid:<...>` as a prefix
+- `-c, --collection ID` - Export only specified ID(s). Use commas to separate multiple IDs. You can pass Entity IDs with `eid:<...>` as a prefix
 - `-C, --no-collections` - Do not export any content in collections
 - `-S, --no-settings` - Do not export settings.yaml
 - `-D, --no-data-model` - Do not export any data model entities; useful for subsequent exports
@@ -122,7 +122,7 @@ Decrypts data in the metabase database. The MB_ENCRYPTION_SECRET_KEY environment
 
 ## `seed-entity-ids`
 
-Add entity IDs for instances of serializable models that don't already have them.
+Add Entity IDs for instances of serializable models that don't already have them.
 
 ## `version`
 
