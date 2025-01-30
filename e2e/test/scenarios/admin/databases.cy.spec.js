@@ -865,6 +865,7 @@ H.describeWithSnowplow("add database card", () => {
   it("should track the click on the card", () => {
     cy.visit("/browse/databases");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findByTestId("database-browser")
       .findAllByRole("link")
       .last()

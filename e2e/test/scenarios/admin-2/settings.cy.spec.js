@@ -287,6 +287,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       cy.findByTestId("admin-list-settings-items").within(() => {
         cy.findAllByTestId("settings-sidebar-link").as("settingsOptions");
         cy.get("@settingsOptions").first().contains("Setup");
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.get("@settingsOptions").last().contains(lastItem);
       });
     },
@@ -416,6 +417,7 @@ describe.skip(
     }
 
     function getCellText() {
+      // eslint-disable-next-line no-unsafe-element-filtering
       return cy.get("[data-testid=cell-data]").eq(-1).invoke("text");
     }
 
@@ -1021,7 +1023,9 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.wait(2000).findAllByText("Select…").first().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("NAME").click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText("Select…").last().click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText("NAME").last().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add map").click();

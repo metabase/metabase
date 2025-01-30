@@ -1743,6 +1743,7 @@ describe("scenarios > dashboard > entity id support", () => {
 });
 
 function validateIFrame(src, index = 0) {
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.getDashboardCards()
     .get("iframe")
     .eq(index)

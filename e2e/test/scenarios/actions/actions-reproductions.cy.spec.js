@@ -37,6 +37,7 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
+          // eslint-disable-next-line no-unsafe-element-filtering
           const dashCard = cy
             .findAllByTestId("dashcard-container")
             .last()
@@ -64,6 +65,7 @@ describe("metabase#31587", () => {
           const actionButtonContainer = cy.findByTestId(
             "action-button-full-container",
           );
+          // eslint-disable-next-line no-unsafe-element-filtering
           const dashCard = cy
             .findAllByTestId("dashcard-container")
             .last()

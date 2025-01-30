@@ -199,6 +199,7 @@ describe("scenarios > metrics > dashboard", () => {
       cy.findByText("Metrics").click();
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
     });
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.undoToastList()
       .last()
       .findByText("Question replaced")
@@ -213,6 +214,7 @@ describe("scenarios > metrics > dashboard", () => {
       cy.findByText("Questions").click();
       cy.findByText("Orders").click();
     });
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.undoToastList().last().findByText("Metric replaced").should("be.visible");
     H.getDashboardCard().findByText("Orders").should("be.visible");
   });

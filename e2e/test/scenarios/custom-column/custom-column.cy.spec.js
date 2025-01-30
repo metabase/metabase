@@ -213,6 +213,7 @@ describe("scenarios > question > custom column", () => {
 
     // TODO: There isn't a single unique parent that can be used to scope this icon within
     // (a good candidate would be `.NotebookCell`)
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.icon("add")
       .last() // This is brittle.
       .click();

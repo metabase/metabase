@@ -395,6 +395,7 @@ describe("scenarios > question > nested", () => {
     });
 
     it("Count of rows AND Sum of VAL by CAT (metabase#15725-1)", () => {
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.icon("add").last().click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Sum of/).click();

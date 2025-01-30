@@ -68,8 +68,8 @@ describe("issue 41765", { tags: ["@external", "@flaky"] }, () => {
   const COLUMN_DISPLAY_NAME = "Another Column";
 
   beforeEach(() => {
-    H.resetTestTable({ type: "postgres", table: TEST_TABLE });
     H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: TEST_TABLE });
     cy.signInAsAdmin();
 
     H.resyncDatabase({
@@ -209,6 +209,7 @@ describe("(metabase#46714)", () => {
     cy.findByLabelText("Filter operator")
       .should("have.text", "Between")
       .click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Less than").click();
     cy.findByLabelText("Filter operator").should("have.text", "Less than");
     H.popover().findByPlaceholderText("Enter a number").clear().type("1000");

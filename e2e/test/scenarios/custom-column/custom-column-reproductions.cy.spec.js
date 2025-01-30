@@ -71,6 +71,7 @@ describe("issue 13289", () => {
 
     H.popover().findByText(CC_NAME).click();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.icon("add").last().click();
 
     H.popover().within(() => {
@@ -938,6 +939,7 @@ describe("issue 42949", () => {
     cy.button("Add column").click();
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {
@@ -983,6 +985,7 @@ describe("issue 42949", () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("N").should("be.visible");
   });
 
@@ -1010,6 +1013,7 @@ describe("issue 42949", () => {
     H.popover().findByText("Extract part of column").should("not.exist");
     H.popover().findByText("Combine columns").click();
     H.popover().findAllByTestId("column-input").eq(0).click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("'abc'").should("be.visible");
   });
 });

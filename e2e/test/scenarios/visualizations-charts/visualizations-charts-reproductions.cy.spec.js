@@ -97,6 +97,7 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       assertOnTheYAxis();
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.cartesianChartCircle().eq(-2).trigger("mousemove");
 
       H.assertEChartsTooltip({
@@ -162,6 +163,7 @@ describe("issue 17524", () => {
 
       cy.get("polygon");
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.icon("play").last().click();
 
       cy.get("polygon");
@@ -725,6 +727,7 @@ describe("issue 25007", () => {
   };
 
   const clickLineDot = ({ index } = {}) => {
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.cartesianChartCircle().eq(index).click({ force: true });
   };
 
@@ -947,6 +950,7 @@ describe("issue 27427", () => {
 
 const addCountGreaterThan2Filter = () => {
   H.openNotebook();
+  // eslint-disable-next-line no-unsafe-element-filtering
   cy.findAllByTestId("action-buttons").last().button("Filter").click();
   H.popover().findByText("Count").click();
   H.selectFilterOperator("Greater than");

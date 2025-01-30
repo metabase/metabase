@@ -879,6 +879,7 @@ describe("issue 28193", () => {
 
   function assertOnColumns() {
     cy.findAllByText("2.07").should("be.visible").and("have.length", 2);
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell")
       .should("be.visible")
       .last()
@@ -1220,6 +1221,7 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
     cy.button("Get Answer").should("be.visible");
     H.saveMetadataChanges();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
 
     dragColumn(0, 100);
@@ -1663,6 +1665,7 @@ describe("issue 37009", () => {
       .button("Save")
       .should("be.enabled")
       .click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.modal()
       .last()
       .within(() => {
@@ -1885,5 +1888,58 @@ describe("cumulative count - issue 33330", () => {
       .should("have.length", "4")
       .and("not.be.empty");
     cy.findByTestId("question-row-count").should("have.text", "Showing 1 row");
+  });
+});
+
+describe("issue 45926", () => {
+  const questionDetails = {
+    name: "33330",
+    type: "model",
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should restore model correctly without refresh (metabase#45926)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.wait("@dataset");
+    H.openQuestionActions("Edit metadata");
+    H.sidebar().within(() => {
+      cy.findByDisplayValue("ID").type(" updated");
+    });
+
+    cy.button("Save changes").click();
+    cy.wait("@dataset");
+
+    cy.findByRole("columnheader", { name: "ID updated" }).should("be.visible");
+    H.openQuestionActions("Edit query definition");
+    cy.button("Sort").click();
+    H.popover().findByText("ID").click();
+    cy.button("Save changes").click();
+    cy.wait("@dataset");
+
+    H.questionInfoButton().click();
+    H.sidesheet().within(() => {
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.findByText(
+        "changed the visualization settings and edited the metadata.",
+      )
+        .closest("li")
+        .findByTestId("question-revert-button")
+        .click();
+    });
+
+    cy.wait("@dataset");
+
+    H.sidesheet().button("Close").click();
+
+    cy.findByRole("columnheader", { name: "ID updated" }).should("be.visible");
   });
 });

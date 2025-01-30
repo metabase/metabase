@@ -83,6 +83,7 @@ describe("issue 11480", () => {
 describe("issue 11580", () => {
   function assertVariablesOrder() {
     cy.get("@variableLabels").first().should("have.text", "foo");
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.get("@variableLabels").last().should("have.text", "bar");
   }
 
@@ -215,7 +216,6 @@ describe("issue 12581", () => {
       cy.findByText(/You created this/i);
 
       cy.findByTestId("question-revert-button").click(); // Revert to the first revision
-      cy.wait("@dataset");
 
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/You reverted to an earlier version/i);
@@ -1221,6 +1221,7 @@ describe("issue 49577", () => {
 
   it("should not show the values initially when using a single select search box (metabase#49577)", () => {
     H.startNewNativeQuestion().type("select * from {{param");
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar()
       .last()
       .within(() => {
@@ -1246,6 +1247,7 @@ describe("issue 49577", () => {
       cy.findByText("foo").should("be.visible");
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.sidebar().last().findByText("Dropdown list").click();
 
     H.filterWidget().click();

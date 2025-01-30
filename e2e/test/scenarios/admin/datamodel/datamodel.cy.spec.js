@@ -292,8 +292,8 @@ describe("Unfold JSON", { tags: "@external" }, () => {
   }
 
   beforeEach(() => {
-    H.resetTestTable({ type: "postgres", table: "many_data_types" });
     H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_data_types" });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
   });
@@ -934,6 +934,7 @@ describe("scenarios > admin > datamodel > segments", () => {
           .first()
           .should("contain", "You edited the description")
           .and("contain", "Foo");
+        // eslint-disable-next-line no-unsafe-element-filtering
         cy.get("@revisions")
           .last()
           .should("contain", `You created "${SEGMENT_NAME}"`)

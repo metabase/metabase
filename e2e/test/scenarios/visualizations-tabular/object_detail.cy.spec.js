@@ -302,6 +302,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     drillPK({ id: 2 });
     cy.url().should("contain", "objectId=2");
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findByTestId("object-detail")
       .findAllByText("Domenica Williamson")
       .last()
@@ -428,8 +429,8 @@ function changeSorting(columnName, direction) {
       const TEST_TABLE = "composite_pk_table";
 
       beforeEach(() => {
-        H.resetTestTable({ type: dialect, table: TEST_TABLE });
         H.restore(`${dialect}-writable`);
+        H.resetTestTable({ type: dialect, table: TEST_TABLE });
         cy.signInAsAdmin();
         H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
       });
@@ -481,8 +482,8 @@ function changeSorting(columnName, direction) {
       const TEST_TABLE = "no_pk_table";
 
       beforeEach(() => {
-        H.resetTestTable({ type: dialect, table: TEST_TABLE });
         H.restore(`${dialect}-writable`);
+        H.resetTestTable({ type: dialect, table: TEST_TABLE });
         cy.signInAsAdmin();
         H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
       });

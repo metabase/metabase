@@ -101,6 +101,7 @@ describe("scenarios > filters > bulk filtering", () => {
         .eq(1)
         .should("include.text", "Discount");
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId(/filter-column-/)
         .last()
         .should("include.text", "ID");

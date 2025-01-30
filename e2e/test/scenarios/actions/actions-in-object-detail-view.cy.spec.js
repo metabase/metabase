@@ -27,8 +27,8 @@ describe(
         "prefetchValues",
       );
 
-      H.resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
       H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
       asAdmin(() => {
         cy.updatePermissionsGraph({
           [ALL_USERS_GROUP]: {
@@ -301,6 +301,7 @@ function assertUpdatedScoreNotInTable() {
 
 function assertSuccessfullUpdateToast() {
   cy.log("it shows a toast informing the update was successful");
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.undoToastList()
     .last()
     .should("be.visible")
@@ -310,6 +311,7 @@ function assertSuccessfullUpdateToast() {
 
 function assertSuccessfullDeleteToast() {
   cy.log("it shows a toast informing the delete was successful");
+  // eslint-disable-next-line no-unsafe-element-filtering
   H.undoToastList()
     .last()
     .should("be.visible")

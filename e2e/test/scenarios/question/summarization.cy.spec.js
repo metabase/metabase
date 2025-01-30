@@ -203,6 +203,7 @@ describe("scenarios > question > summarize sidebar", () => {
       cy.findByLabelText("Temporal bucket").click();
     });
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
       .last()
       .within(() => {

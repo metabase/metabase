@@ -250,7 +250,6 @@ describe("issue 38354", { tags: "@external" }, () => {
   };
 
   beforeEach(() => {
-    H.restore();
     H.restore("postgres-12");
     cy.signInAsAdmin();
     H.createQuestion(QUESTION_DETAILS, { visitQuestion: true });
@@ -509,6 +508,7 @@ describe("issue 40435", () => {
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText("Product ID").click();
     H.queryBuilderHeader().findByText("Save").click();
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.modal().last().findByText("Save").click();
     cy.wait("@updateCard");
     H.visualize();
@@ -672,6 +672,7 @@ describe("issue 42244", () => {
       cy.findByText(COLUMN_NAME).realHover();
       cy.findByText("by month").should("be.visible").click();
     });
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Year").click();
     H.getNotebookStep("summarize")
       .findByText(`${COLUMN_NAME}: Year`)
@@ -1166,6 +1167,7 @@ describe("issue 31960", () => {
     );
 
     H.getDashboardCard().within(() => {
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.cartesianChartCircle().eq(dotIndex).realHover();
     });
     H.assertEChartsTooltip({
@@ -1175,6 +1177,7 @@ describe("issue 31960", () => {
       ],
     });
     H.getDashboardCard().within(() => {
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.cartesianChartCircle().eq(dotIndex).click({ force: true });
     });
 
@@ -1486,6 +1489,7 @@ describe("issue 44668", () => {
 
     H.openNotebook();
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().button("Custom column").click();
     H.enterCustomColumnDetails({
       formula: 'concat("abc_", [Count])',

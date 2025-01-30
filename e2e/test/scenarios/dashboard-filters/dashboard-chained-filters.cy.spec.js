@@ -111,6 +111,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       H.filterWidget().contains("AK").click();
 
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.popover()
         .last()
         .within(() => {
@@ -144,6 +145,7 @@ describe("scenarios > dashboard > chained filter", () => {
       }
 
       H.filterWidget().contains("GA").click();
+      // eslint-disable-next-line no-unsafe-element-filtering
       H.popover()
         .last()
         .within(() => {
@@ -178,8 +180,8 @@ describe("scenarios > dashboard > chained filter", () => {
       const dialect = "postgres";
       const TEST_TABLE = "many_data_types";
 
-      H.resetTestTable({ type: dialect, table: TEST_TABLE });
       H.restore(`${dialect}-writable`);
+      H.resetTestTable({ type: dialect, table: TEST_TABLE });
       cy.signInAsAdmin();
       H.resyncDatabase({ tableName: TEST_TABLE, tableAlias: "testTable" });
 

@@ -18,6 +18,7 @@ describe("scenarios > visualizations > table", () => {
   }
 
   function selectFromDropdown(option, clickOpts) {
+    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText(option).click(clickOpts);
   }
 
@@ -39,6 +40,7 @@ describe("scenarios > visualizations > table", () => {
       cy.findByText("Column title").click();
     });
     // click somewhere else to close the popover
+    // eslint-disable-next-line no-unsafe-element-filtering
     headerCells().last().click();
     headerCells().findAllByText("ID updated").should("have.length", 1);
   });
@@ -441,8 +443,8 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
 
   describe("operators", () => {
     beforeEach(() => {
-      H.resetTestTable({ type: "postgres", table: "many_data_types" });
       H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_data_types" });
       cy.signInAsAdmin();
       H.resyncDatabase({
         dbId: WRITABLE_DB_ID,
