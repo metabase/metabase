@@ -329,8 +329,8 @@ describe(
           "disableActionSharing",
         );
 
-        H.resetTestTable({ type: dialect, table: WRITABLE_TEST_TABLE });
         H.restore(`${dialect}-writable`);
+        H.resetTestTable({ type: dialect, table: WRITABLE_TEST_TABLE });
         cy.signInAsAdmin();
         H.resyncDatabase({
           dbId: WRITABLE_DB_ID,

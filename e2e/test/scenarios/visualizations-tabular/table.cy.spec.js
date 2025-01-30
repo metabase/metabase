@@ -443,8 +443,8 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
 
   describe("operators", () => {
     beforeEach(() => {
-      H.resetTestTable({ type: "postgres", table: "many_data_types" });
       H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_data_types" });
       cy.signInAsAdmin();
       H.resyncDatabase({
         dbId: WRITABLE_DB_ID,
