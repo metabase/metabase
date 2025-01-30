@@ -6,7 +6,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- map-keys [map-loc]
+(defn- find-map-keys [map-loc]
   (let [zloc (z/down map-loc)]
     (loop [ks [], zloc zloc]
       (if-not zloc
@@ -33,7 +33,7 @@
   (with-open [r (clojure.lang.LineNumberingPushbackReader. (java.io.FileReader. "src/metabase/api/routes.clj"))]
     (let [zloc        (z/of-node (rewrite-clj.parser/parse-all r))
           route-map   (find-route-map zloc)
-          actual-keys (map-keys route-map)]
+          actual-keys (find-map-keys route-map)]
       (is (= (sort actual-keys)
              actual-keys)))))
 
