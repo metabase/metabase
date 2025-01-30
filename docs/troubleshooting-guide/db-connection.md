@@ -120,4 +120,4 @@ If you can’t solve your problem using the troubleshooting guides:
 - Hire a [Metabase Expert](https://www.metabase.com/partners/){:target="\_blank"}.
 
 [discourse]: https://discourse.metabase.com/
-[known-issues]: ./known-issues.md
+[known-issues]: ../known-issues.md

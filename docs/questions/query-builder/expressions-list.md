@@ -868,4 +868,4 @@ If you're using or maintaining a third-party database driver, please [refer to t
 
 Check out our tutorial on [custom expressions in the query builder](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/custom-expressions) to learn more.
 
-[expressions]: ./expressions.md
+[expressions]: ../../expressions.md
