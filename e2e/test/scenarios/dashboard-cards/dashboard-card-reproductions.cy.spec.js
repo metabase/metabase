@@ -19,8 +19,8 @@ describe("issue 18067", () => {
     () => {
       const dialect = "mysql";
       const TEST_TABLE = "many_data_types";
-      H.resetTestTable({ type: dialect, table: TEST_TABLE });
       H.restore(`${dialect}-writable`);
+      H.resetTestTable({ type: dialect, table: TEST_TABLE });
       cy.signInAsAdmin();
       H.resyncDatabase({
         dbId: WRITABLE_DB_ID,
