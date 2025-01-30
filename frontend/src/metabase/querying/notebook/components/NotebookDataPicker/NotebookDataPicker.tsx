@@ -2,16 +2,15 @@ import { type MouseEvent, type Ref, forwardRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useGetCardQuery } from "metabase/api";
 import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/DataPicker";
+import { SimpleDataPicker } from "metabase/embedding-sdk/components/SimpleDataPicker";
 import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getIsEmbedded, getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -77,7 +76,6 @@ export function NotebookDataPicker({
         stageIndex={stageIndex}
         table={table}
         placeholder={placeholder}
-        hasMetrics={hasMetrics}
         isDisabled={isDisabled}
         onChange={handleChange}
       />
@@ -193,7 +191,6 @@ type LegacyDataPickerProps = {
   stageIndex: number;
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
   placeholder: string;
-  hasMetrics: boolean;
   isDisabled: boolean;
   onChange: (tableId: TableId) => void;
 };
@@ -203,29 +200,18 @@ function LegacyDataPicker({
   stageIndex,
   table,
   placeholder,
-  hasMetrics,
   isDisabled,
   onChange,
 }: LegacyDataPickerProps) {
-  const databaseId = Lib.databaseID(query);
   const tableInfo =
     table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
   const pickerInfo = table != null ? Lib.pickerInfo(query, table) : undefined;
-  const { data: card } = useGetCardQuery(
-    pickerInfo?.cardId != null ? { id: pickerInfo.cardId } : skipToken,
-  );
-  const context = useNotebookContext();
-  const modelList = getModelFilterList(context, hasMetrics);
 
   return (
-    <DataSourceSelector
+    <SimpleDataPicker
       key={pickerInfo?.tableId}
+      selectedEntity={pickerInfo?.tableId}
       isInitiallyOpen={!table}
-      selectedDatabaseId={databaseId}
-      selectedTableId={pickerInfo?.tableId}
-      selectedCollectionId={card?.collection_id}
-      databaseQuery={{ saved: true }}
-      canSelectMetric={modelList.includes("metric")}
       triggerElement={
         <DataPickerTarget
           tableInfo={tableInfo}

@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 
 import { Popover } from "metabase/ui";
 
-import { SimpleDataPicker } from "./SimpleDataPicker";
+import { SimpleDataPickerView } from "./SimpleDataPickerView";
 
 const SHORT_OPTIONS = createOptions([
   "Accounts",
@@ -57,17 +57,17 @@ const SUPER_LONG_OPTIONS = createOptions([
 function createOptions(optionNames: string[]): Option[] {
   return optionNames.map((name, index) => ({
     id: index + 1,
-    display_name: name,
+    name: name,
   }));
 }
 interface Option {
   id: number;
-  display_name: string;
+  name: string;
 }
 
-const meta: Meta<typeof SimpleDataPicker> = {
-  title: "embedding/SimpleDataPicker",
-  component: SimpleDataPicker,
+const meta: Meta<typeof SimpleDataPickerView> = {
+  title: "embedding/SimpleDataPickerView",
+  component: SimpleDataPickerView,
   args: {
     onClick: action("on-click"),
     options: SHORT_OPTIONS,
@@ -76,7 +76,7 @@ const meta: Meta<typeof SimpleDataPicker> = {
     return (
       <Popover opened trapFocus>
         <Popover.Dropdown>
-          <SimpleDataPicker {...args} />
+          <SimpleDataPickerView {...args} />
         </Popover.Dropdown>
       </Popover>
     );
@@ -85,10 +85,10 @@ const meta: Meta<typeof SimpleDataPicker> = {
 
 export default meta;
 
-type Story = StoryObj<typeof SimpleDataPicker>;
+type Story = StoryObj<typeof SimpleDataPickerView>;
 
 export const WithoutPopover: Story = {
-  render: args => <SimpleDataPicker {...args} />,
+  render: args => <SimpleDataPickerView {...args} />,
 };
 
 export const NoOptions: Story = {
