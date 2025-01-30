@@ -234,10 +234,11 @@ export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(
   QUERY_ERRORED,
   (startTime, error) => {
-    return async () => {
+    return async dispatch => {
       if (error && error.isCancelled) {
         return null;
       } else {
+        dispatch(setDocumentTitle(""));
         return { error: error, duration: Date.now() - startTime };
       }
     };
