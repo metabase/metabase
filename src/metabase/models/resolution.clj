@@ -118,4 +118,4 @@
           *table-name-resolved*)
     (next-method model)
     (binding [*table-name-resolved* true]
-      (t2.model/table-name (t2.model/resolve-model model)))))
+      (#'t2.model/table-name (t2.model/resolve-model model)))))
