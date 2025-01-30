@@ -3,14 +3,16 @@ import {
   StaticDashboard,
 } from "@metabase/embedding-sdk-react";
 
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   AUTH_PROVIDER_URL,
   METABASE_INSTANCE_URL,
+} from "e2e/support/constants/embedding-sdk";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/component-testing-sdk";
+import {
+  getSdkRoot,
   mockAuthProviderAndJwtSignIn,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+} from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 function setup({ locale }: { locale: string }) {
   cy.mount(

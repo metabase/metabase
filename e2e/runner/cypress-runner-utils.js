@@ -5,18 +5,17 @@ const chalk = require("chalk");
 const cypress = require("cypress");
 
 function printBold(message) {
-  console.log(`\n${chalk.bold(chalk.magenta(message))}\n`);
+  console.log(`\n${chalk.bold(chalk.magenta(message.trim()))}\n`);
 }
 
-const args = arg(
-  {
-    "--open": [Boolean], // Run Cypress in open mode or not? Doesn't accept additional arguments
-  },
-  { permissive: true }, // Passes all other flags and args to the Cypress parser
-);
-
-async function parseArguments(args) {
-  const cliArgs = args._;
+async function parseArguments() {
+  const rawArguments = arg(
+    {
+      "--open": [Boolean], // Run Cypress in open mode or not? Doesn't accept additional arguments
+    },
+    { permissive: true }, // Passes all other flags and args to the Cypress parser
+  );
+  const cliArgs = rawArguments._;
 
   // cypress.cli.parseArguments requires `cypress run` as the first two arguments
   if (cliArgs[0] !== "cypress") {
@@ -27,7 +26,9 @@ async function parseArguments(args) {
     cliArgs.splice(1, 0, "run");
   }
 
-  return await cypress.cli.parseRunArguments(cliArgs);
+  const parsedArguments = await cypress.cli.parseRunArguments(cliArgs);
+
+  return { rawArguments, parsedArguments };
 }
 
 function shell(command, { quiet = false } = {}) {
@@ -62,7 +63,6 @@ function unBooleanify(map) {
 }
 
 module.exports = {
-  args,
   booleanify,
   unBooleanify,
   parseArguments,

@@ -1,3 +1,4 @@
+import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
 import CypressBackend from "./cypress-runner-backend";
 import runCypress from "./cypress-runner-run-tests";
 import {
@@ -6,6 +7,7 @@ import {
   shell,
   unBooleanify,
 } from "./cypress-runner-utils";
+import { run as runSampleAppsForEmbeddingSdk } from "./run-sample-apps-for-embedding-sdk/run";
 
 // if you want to change these, set them as environment variables in your shell
 const userOptions = {
@@ -42,7 +44,7 @@ if (options.MB_EDITION === "ee" && !options.ENTERPRISE_TOKEN) {
   printBold(
     "⚠️ ENTERPRISE_TOKEN is not set. Either set it or run with MB_EDITION=oss",
   );
-  process.exit(1);
+  process.exit(FAILURE_EXIT_CODE);
 }
 
 printBold(`Running Cypress with options:
@@ -77,7 +79,7 @@ const init = async () => {
         "⚠️ Your backend is already running, you may want to kill pid " +
           isBackendRunning,
       );
-      process.exit(1);
+      process.exit(FAILURE_EXIT_CODE);
     }
 
     printBold("⏳ Starting backend");
@@ -106,11 +108,17 @@ const init = async () => {
     );
   }
 
+  switch (options.TEST_SUITE) {
+    case "sample-apps-embedding-sdk-e2e":
+      await runSampleAppsForEmbeddingSdk();
+      break;
+  }
+
   printBold("⏳ Starting Cypress");
   await runCypress(options.TEST_SUITE, cleanup);
 };
 
-const cleanup = async (exitCode: string | number = 0) => {
+const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
   if (options.BUILD_JAR) {
     printBold("⏳ Cleaning up...");
     await CypressBackend.stop();
@@ -121,15 +129,18 @@ const cleanup = async (exitCode: string | number = 0) => {
     shell("docker compose -f ./e2e/test/scenarios/docker-compose.yml down");
   }
 
-  typeof exitCode === "number" ? process.exit(exitCode) : process.exit(0);
+  typeof exitCode === "number"
+    ? process.exit(exitCode)
+    : process.exit(SUCCESS_EXIT_CODE);
 };
 
 init()
-  .then(() => cleanup(0))
+  .then(() => cleanup(SUCCESS_EXIT_CODE))
   .catch(e => {
     console.error(e);
-    cleanup(1);
+    cleanup(FAILURE_EXIT_CODE);
   });
 
+process.on("exit", cleanup);
 process.on("SIGTERM", cleanup);
 process.on("SIGINT", cleanup);
