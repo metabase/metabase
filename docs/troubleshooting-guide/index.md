@@ -89,8 +89,8 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [db-connection]: ../db-connection.md
 [db-performance]: ../db-performance.md
 [docker]: ../docker.md
-[error-message]: error-message.md
-[feature-request]: requesting-new-features.md
+[error-message]: ../error-message.md
+[feature-request]: ../requesting-new-features.md
 [filters]: ../filters.md
 [forum]: https://discourse.metabase.com/
 [incorrect-times]: ../timezones.md

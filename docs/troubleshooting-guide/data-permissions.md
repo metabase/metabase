@@ -107,7 +107,7 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search or ask the [Metabase community][discourse].
 - Search for [known bugs or limitations][known-issues].
 
-[admin-permissions]: ../..permissions/introduction.md
+[admin-permissions]: ../../permissions/introduction.md
 [block-data-permission]: ../../permissions/data.md#blocked-view-data-permission
 [cant-see-tables]: ../cant-see-tables.md
 [collection-permissions]: ../../permissions/collections.md
@@ -126,4 +126,4 @@ If you can’t solve your problem using the troubleshooting guides:
 [troubleshooting-data-sandboxing]: ../sandboxing.md
 [troubleshooting-permissions]: ../permissions.md
 [unrestricted]: ../../permissions/data.md#can-view-data-permission
-[view-edit]: ../cant-view-or-edit.md
+[view-edit]: ../../cant-view-or-edit.md
