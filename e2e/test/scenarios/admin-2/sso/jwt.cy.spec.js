@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
