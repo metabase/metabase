@@ -770,7 +770,7 @@ Syntax: `timeSpan(number, text)`.
 
 Example: `[Orders → Created At] + timeSpan(7, "day")` will return the date 7 days after the `Created At` date.
 
-### week
+### [week](./expressions/week.md)
 
 Takes a datetime and returns the week as an integer.
 
@@ -783,6 +783,8 @@ Example: `week("2021-03-25T12:52:37")` would return the week as an integer, `12`
   - ISO: (default) Week 1 starts on the Monday before the first Thursday of January.
   - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
   - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
+
+Note that summarizing by week of year in the query builder uses a different mode of determining the first week, see [Week of year](./expressions/week.md) for more information.
 
 ### weekday
 
