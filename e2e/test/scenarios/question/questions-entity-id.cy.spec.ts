@@ -26,4 +26,20 @@ describe("scenarios > questions > entity id support", () => {
 
     H.queryBuilderHeader().should("contain", "Orders");
   });
+
+  it("should not make requests to `/api/card/12` when the entity id starts with `12`", () => {
+    const entityId = "12".padEnd(21, "x");
+
+    // this is a request that could be made by mistake if some paths of the code think that the entity id is a slug of a question
+    cy.intercept("GET", "/api/card/12").as("wrongCardRequest");
+
+    cy.intercept("POST", "/api/util/entity_id").as("entityIdRequest");
+
+    cy.visit(`/question/entity/${entityId}`);
+
+    // await the entity id request to make sure the "wrong" request had its time to get fired
+    cy.wait("@entityIdRequest");
+
+    cy.get("@wrongCardRequest.all").should("have.length", 0);
+  });
 });
