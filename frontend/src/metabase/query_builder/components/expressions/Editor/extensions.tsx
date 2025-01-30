@@ -83,6 +83,9 @@ export function useExtensions(options: Options): Extension[] {
           if (view.state.doc.toString() === "") {
             startCompletion(view);
           }
+
+          const len = view.state.doc.length;
+          view.dispatch({ selection: { anchor: len, head: len } });
         },
       }),
       highlighting(),
