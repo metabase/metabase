@@ -71,15 +71,15 @@ Note that none of the three currently available modes match the first week algor
 
 - `week(column)` or `week(column, "ISO")`:
 
-  ![How the week numbers are calculated by ISO](../../images/week-ISO.png)
+  ![How the week numbers are calculated by ISO](../../images/week-iso.png)
 
 - `week(column, "US")`:
 
-  ![How the week numbers are calculated by US method](../../images/week-US.png)
+  ![How the week numbers are calculated by US method](../../images/week-us.png)
 
 - `week(column, "Instance")` if the instance's first day of the week is Monday:
 
-  ![How the week numbers are calculated by Instance method](../../images/week-US.png)
+  ![How the week numbers are calculated by Instance method](../../images/week-instance.png)
 
 ## SQL
 
