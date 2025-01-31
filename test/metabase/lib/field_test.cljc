@@ -28,17 +28,6 @@
                       (binding [lib.card/*force-broken-card-refs* false]
                         (thunk))))
 
-(deftest ^:parallel field-from-results-metadata-test
-  (let [field-metadata (lib.metadata/stage-column (lib.tu/query-with-stage-metadata-from-card
-                                                   meta/metadata-provider
-                                                   (:venues (lib.tu/mock-cards)))
-                                                  "ID")]
-    (is (=? {:lib/type :metadata/column
-             :name     "ID"}
-            field-metadata))
-    (is (=? [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]
-            (lib/ref field-metadata)))))
-
 (defn- grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
      (case field

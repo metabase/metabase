@@ -46,5 +46,3 @@
       :id          id
       :user-id     api/*current-user-id*
       :revision-id revision_id})))
-
-(api/define-routes)

@@ -25,7 +25,10 @@
   (open-api-spec [_nil _prefix] nil)
 
   Object
-  (open-api-spec [_nil _prefix] nil)
+  (open-api-spec [this _prefix]
+    (throw (ex-info (format "Handler does not implement OpenAPISpec: did you forget to wrap it in %s?"
+                            `handler-with-open-api-spec)
+                    {:handler this})))
 
   clojure.lang.Var
   (open-api-spec [this prefix]
