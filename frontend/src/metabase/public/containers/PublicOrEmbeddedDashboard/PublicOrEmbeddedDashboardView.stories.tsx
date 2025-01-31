@@ -185,6 +185,7 @@ const defaultArgs: Partial<
       id: PARAMETER_ID,
     }),
   ],
+  withFooter: true,
 };
 
 export const LightThemeDefault = {

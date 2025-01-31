@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -343,6 +343,7 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
 
       // multiple delete
       cy.findAllByRole("checkbox").first().click();
+      // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByRole("checkbox").last().click();
     });
 
@@ -421,6 +422,7 @@ function uploadToExisting({
 
     cy.wait(uploadEndpoints[uploadMode]);
 
+    // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByRole("status")
       .last()
       .findByText(/Data (added|replaced)/i, {

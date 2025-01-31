@@ -1,6 +1,6 @@
 import { produce } from "immer";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -48,7 +48,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
   });
 
   it("should apply default of the SQL field filter if the dashboard doesn't have a filter connected to it", () => {
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: dashboardCard }) => {
@@ -65,7 +65,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
   });
 
   it("should apply default of the SQL field filter if the dashboard filter is empty", () => {
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: dashboardCard }) => {
@@ -79,7 +79,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
           },
         ],
       };
-      cy.editDashboardCard(dashboardCard, mapFilterToCard);
+      H.editDashboardCard(dashboardCard, mapFilterToCard);
       H.visitDashboard(dashboard_id);
     });
 
@@ -92,7 +92,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
   });
 
   it("should respect default filter precedence (dashboard filter, then SQL field filters)", () => {
-    cy.createNativeQuestionAndDashboard({
+    H.createNativeQuestionAndDashboard({
       questionDetails: questionDetailsWithRequiredFilter,
       dashboardDetails,
     }).then(({ body: dashboardCard }) => {
@@ -106,7 +106,7 @@ describe("scenarios > dashboard > filters > SQL > field filter > required ", () 
           },
         ],
       };
-      cy.editDashboardCard(dashboardCard, mapFilterToCard);
+      H.editDashboardCard(dashboardCard, mapFilterToCard);
       H.visitDashboard(dashboard_id);
     });
 

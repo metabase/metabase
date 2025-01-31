@@ -74,6 +74,7 @@ export type EmbedFrameBaseProps = Partial<{
   children: ReactNode;
   dashboardTabs: ReactNode;
   downloadsEnabled: boolean;
+  withFooter: boolean;
 }>;
 
 type WithRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
@@ -103,6 +104,7 @@ export const EmbedFrame = ({
   theme,
   hide_parameters,
   downloadsEnabled = true,
+  withFooter = true,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
@@ -135,7 +137,8 @@ export const EmbedFrame = ({
     .filter(Boolean)
     .join(",");
 
-  const showFooter = hasEmbedBranding || downloadsEnabled || actionButtons;
+  const isFooterEnabled =
+    withFooter && (hasEmbedBranding || downloadsEnabled || actionButtons);
 
   const finalName = titled ? name : null;
 
@@ -252,9 +255,10 @@ export const EmbedFrame = ({
         )}
         <Body>{children}</Body>
       </ContentContainer>
-      {showFooter && (
+      {isFooterEnabled && (
         <Footer
-          className={cx(EmbedFrameS.EmbedFrameFooter)}
+          data-testid="embed-frame-footer"
+          className={EmbedFrameS.EmbedFrameFooter}
           variant={footerVariant}
         >
           {hasEmbedBranding && <LogoBadge dark={theme === "night"} />}
