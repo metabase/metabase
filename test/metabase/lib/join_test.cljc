@@ -136,7 +136,8 @@
           q2                          (lib.tu/query-with-stage-metadata-from-card meta/metadata-provider
                                                                                   (:venues (lib.tu/mock-cards)))
           venues-category-id-metadata (meta/field-metadata :venues :category-id)
-          categories-id-metadata      (lib.metadata/stage-column q2 "ID")]
+          categories-id-metadata      (m/find-first #(= (:id %) (meta/id :categories :id))
+                                                    (lib/visible-columns q2))]
 
       (let [clause (lib/join-clause q2 [(lib/= categories-id-metadata venues-category-id-metadata)])]
         (is (=? {:lib/type    :mbql/join
@@ -145,7 +146,10 @@
                                 :source-table (meta/id :venues)}]
                  :conditions  [[:=
                                 {:lib/uuid string?}
-                                [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]
+                                [:field {:base-type    :type/BigInteger
+                                         :lib/uuid     string?
+                                         :source-field (meta/id :venues :category-id)}
+                                 (meta/id :categories :id)]
                                 [:field {:lib/uuid string?} (meta/id :venues :category-id)]]]}
                 clause)))
       (is (=? {:database (meta/id)
@@ -160,7 +164,7 @@
                                                            {:base-type :type/BigInteger
                                                             :lib/uuid string?
                                                             :join-alias absent-key-marker}
-                                                           "ID"]
+                                                           (meta/id :categories :id)]
                                                           [:field
                                                            {:lib/uuid string?
                                                             :join-alias "Venues"}
