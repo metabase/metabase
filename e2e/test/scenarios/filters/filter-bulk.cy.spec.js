@@ -306,10 +306,11 @@ describe("scenarios > filters > bulk filtering", () => {
       H.visitQuestionAdhoc(rawQuestionDetails);
       H.filter();
 
+      // The entire H.modal().within(() => { ... }) block is the repro. The rest are regular tests.
+      cy.log(
+        "segment filter icon should be aligned with other filter icons (metabase#50734)",
+      );
       H.modal().within(() => {
-        cy.log(
-          "segment filter icon should be aligned with other filter icons (metabase#50734)",
-        );
         H.filterField("segments")
           .findByRole("img")
           .should("be.visible")
