@@ -13,6 +13,8 @@ interface PaymentBannerProps {
 }
 
 export const PaymentBanner = ({ tokenStatus }: PaymentBannerProps) => {
+  const href = getStoreUrl("account/manage/plans");
+
   return match(tokenStatus.status)
     .with("past-due", () => (
       <Banner
@@ -23,7 +25,7 @@ export const PaymentBanner = ({ tokenStatus }: PaymentBannerProps) => {
               <ExternalLink
                 key="payment-past-due"
                 className={CS.link}
-                href={getStoreUrl()}
+                href={href}
               >
                 {t`review your payment settings`}
               </ExternalLink>
@@ -37,11 +39,7 @@ export const PaymentBanner = ({ tokenStatus }: PaymentBannerProps) => {
         icon="warning"
         body={
           <Text>{jt`Pro features won't work right now due to lack of payment. ${(
-            <ExternalLink
-              key="payment-unpaid"
-              className={CS.link}
-              href={getStoreUrl()}
-            >
+            <ExternalLink key="payment-unpaid" className={CS.link} href={href}>
               {t`Review your payment settings`}
             </ExternalLink>
           )} to restore Pro functionality.`}</Text>
