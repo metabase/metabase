@@ -59,10 +59,10 @@
         (symb->external-usages)))
 
 (deftest ^:parallel things-not-used-elsewhere-should-be-private-test
-  (testing (str/join \newline ["This var is only used in the namespace it is declared in. Make it private, so is"
-                               "unused, and so we have an easier time refactoring it in the future (it's a lot"
-                               "easier to change something if you know it's not used outside of the current"
-                               "namespace.)"
+  (testing (str/join \newline ["This var is only used in the namespace it is declared in. Make it private, so"
+                               "Kondo can detect if it is unused, and so we have an easier time refactoring it"
+                               "in the future (it's a lot easier to change something if you know it's not used"
+                               "outside of the current namespace.)"
                                ""
                                "It also makes it easier for someone using this namespace to know what the"
                                "intended 'public API' of it is. You can always make private things public later"
