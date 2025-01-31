@@ -221,6 +221,8 @@ export default class NativeQuery extends AtomicQuery {
   setParameterIndex(id: string, newIndex: number) {
     // NOTE: currently all NativeQuery parameters are implicitly generated from
     // template tags, and the order is determined by the key order
+    // NOTE 2: currently cannot be ported to MBQL lib because maps with keys in
+    // different order are considered equal.
     return new NativeQuery(
       this._originalQuestion,
       updateIn(
