@@ -84,7 +84,7 @@ People in groups with Curate access to a collection can pin items in the collect
 
 To pin an item, select the **pin icon** next to the item's name.
 
-Note that collections themselves can't be pinned. If you're running on a [Pro or Enterprise plan](https://www.metabase.com/pricing), admins can designate [Official Collections][offical-collections].
+Note that collections themselves can't be pinned. If you're running on a [Pro or Enterprise plan](https://www.metabase.com/pricing), admins can designate [Official Collections][official-collections].
 
 ## Special collections
 
@@ -108,12 +108,11 @@ A personal collection works just like any other collection except that its permi
 
 - [Working with collection permissions][collection-permissions].
 
-[collections]: ../exploration-and-organization/collections.md
 [collection-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/collection-permissions
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: ./data.md
 [data-sandboxing]: ../permissions/data-sandboxes.md
-[offical-collections]: ../exploration-and-organization/collections.md
+[official-collections]: ../../exploration-and-organization/collections.md
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
 [sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
 [sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions

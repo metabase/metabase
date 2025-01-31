@@ -114,7 +114,7 @@ The steps are similar to those steps above with two important differences: if yo
 - Use a [production application database](#production-application-database) to store your Metabase application data.
 - Run [Metabase as a service](#running-the-metabase-jar-as-a-service).
 
-If you'd prefer to use Docker, check out [running Metabase on Docker](running-metabase-on-docker.md).
+If you'd prefer to use Docker, check out [running Metabase on Docker](../running-metabase-on-docker.md).
 
 ### Production application database
 
