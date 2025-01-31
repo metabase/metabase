@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { assocIn } from "icepick";
 import { P, isMatching } from "ts-pattern";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 import {
   FIRST_COLLECTION_ID,

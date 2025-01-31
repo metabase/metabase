@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 const questionDetails = {
   name: "Return input value",

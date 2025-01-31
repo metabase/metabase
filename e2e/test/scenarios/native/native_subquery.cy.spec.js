@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_QUESTION_ID,
