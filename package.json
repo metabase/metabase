@@ -359,7 +359,7 @@
     "build-embedding-sdk": "yarn && yarn build-release:cljs && yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-release:sdk && yarn build-embedding-sdk-cli && yarn embedding-sdk:fixup-types-imports",
     "build-embedding-sdk:pure": "WEBPACK_BUNDLE=development webpack --config webpack.embedding-sdk.config.js",
     "build-embedding-sdk:watch": "yarn embedding-sdk:generate-package && yarn embedding-sdk:generate-nextjs-compat && yarn build-embedding-sdk:pure --watch",
-    "build-embedding-sdk-cli": "webpack --config webpack.embedding-sdk-cli.config.js",
+    "build-embedding-sdk-cli": "rspack --config rspack.embedding-sdk-cli.config.js",
     "build-embedding-sdk-cli:watch": "yarn build-embedding-sdk-cli --watch",
     "build-hot": "rm -f target/cljs_dev/cljs.core.js && yarn concurrently -n 'cljs,js' -c 'yellow,green' 'yarn build-hot:cljs' 'yarn build-hot:js-wait'",
     "build-hot:cljs": "yarn && shadow-cljs watch app",

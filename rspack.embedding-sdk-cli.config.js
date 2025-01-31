@@ -1,6 +1,7 @@
+// @ts-check
+/* eslint-disable no-undef */
+const rspack = require("@rspack/core");
 const path = require("path");
-const webpack = require("webpack");
-const TerserPlugin = require("terser-webpack-plugin");
 
 const SDK_CLI_DIST_PATH = path.join(__dirname, "/resources/embedding-sdk/dist");
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
@@ -15,7 +16,8 @@ const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
 };
 
-module.exports = {
+/** @type {import('@rspack/cli').Configuration} */
+const config = {
   mode: "production",
   entry: `${SDK_CLI_PATH}/cli.ts`,
   target: "node",
@@ -42,15 +44,21 @@ module.exports = {
     ],
   },
   plugins: [
-    new webpack.BannerPlugin({ banner: "#!/usr/bin/env node", raw: true }),
+    new rspack.BannerPlugin({ banner: "#!/usr/bin/env node", raw: true }),
   ],
   optimization: {
     minimize: true,
     minimizer: [
-      new TerserPlugin({
-        terserOptions: { output: { comments: false } },
+      new rspack.SwcJsMinimizerRspackPlugin({
+        minimizerOptions: {
+          format: {
+            comments: false,
+          },
+        },
         extractComments: false,
       }),
     ],
   },
 };
+
+module.exports = config;
