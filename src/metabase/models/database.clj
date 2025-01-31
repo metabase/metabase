@@ -9,7 +9,6 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
    [metabase.models.audit-log :as audit-log]
@@ -144,14 +143,13 @@
 (defn health-check-database!
   "Checks database health off-thread, currently just checks connectivity."
   [{:keys [engine details] :as database}]
-  (when-not (:is_audit database)
+  (when-not (or (:is_audit database) (:is_sample database))
     (sync.concurrent/submit-task!
       (fn []
         (try
-          (binding [h2/*allow-testing-h2-connections* (:is_sample database)]
-            (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
-              (prometheus/inc! :metabase-database/healthy {:driver engine} 1)
-              (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))
+          (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
+            (prometheus/inc! :metabase-database/healthy {:driver engine} 1)
+            (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1))
           (catch Throwable _
             (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))))))
 
