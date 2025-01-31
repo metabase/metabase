@@ -94,6 +94,9 @@ describe("scenarios > alert", () => {
 
       cy.findByRole("button", { name: "Delete it" }).click();
       H.notificationList().findByText("The alert was successfully deleted.");
+
+      // delete modal should close
+      H.modal().should("not.exist");
     });
   });
 

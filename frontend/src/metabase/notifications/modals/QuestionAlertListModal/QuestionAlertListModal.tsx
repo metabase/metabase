@@ -83,6 +83,8 @@ export const QuestionAlertListModal = ({
     // if we have just unsubscribed from the last alert, close the popover
     if (alertCount <= 1) {
       onClose();
+    } else {
+      handleInternalModalClose();
     }
   };
 
