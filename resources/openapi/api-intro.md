@@ -16,3 +16,11 @@ For breaking changes, see the API [changelog](./developers-guide/api-changelog).
 ## View the API docs for your Metabase
 
 You can view the API docs for your Metabase by visiting `https://[your-metabase-url]/api/docs`.
+
+## Generating API docs
+
+You can generate these docs by running:
+
+```
+clojure -M:ee:doc api-documentation
+```
