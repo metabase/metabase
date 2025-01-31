@@ -63,9 +63,9 @@ Where:
 
 Note that none of the three currently available modes match the first week algorithm used in summarizing by week of the year in the query builder.
 
-### Compare how first and last week are calculated
+### Comparing how different algorithms calculate the first and last weeks
 
-- In the query builder when using **Group by Week of year**
+- In the query builder when using **Group by Week of year**:
 
   ![How the week numbers are calculated for Group by Week of year](../../images/group-by-week-of-year.png)
 
