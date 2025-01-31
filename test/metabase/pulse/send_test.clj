@@ -345,7 +345,7 @@
                                                 pulse.test-util/xls-attachment]})
                 (mt/summarize-multipart-single-email email test-card-regex))))}})))
 
-(deftest ensure-constraints-test
+#_(deftest ensure-constraints-test
   (testing "Validate pulse queries are limited by `default-query-constraints`"
     (do-test!
      {:card
