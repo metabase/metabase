@@ -376,7 +376,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByText(/Item 1 of/i).should("be.visible");
   });
 
-  it("should not call /api/action endpoint for ad-hoc questions (metabase#50266)", () => {
+  it("should not call GET /api/action endpoint for ad-hoc questions (metabase#50266)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/action", cy.spy().as("getActions"));
 
