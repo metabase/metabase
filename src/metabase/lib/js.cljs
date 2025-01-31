@@ -1875,8 +1875,7 @@
 
   > **Code health:** Healthy"
   [a-query]
-  (-> (lib.core/template-tags a-query)
-      template-tags-cljs->js))
+  (template-tags-cljs->js (lib.core/template-tags a-query)))
 
 (defn ^:export required-native-extras
   "Returns a JS array of the extra keys that are required for this database's native queries.
