@@ -60,6 +60,7 @@
   line-height: var(--mantine-line-height-lg);
   text-align: center;
   padding-bottom: 0;
+  box-sizing: border-box;
 }
 
 .pickerControl {
