@@ -4,6 +4,7 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
@@ -762,49 +763,58 @@
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
     (model-persistence/invalidate! {:card_id [:in model-ids]})))
 
+(defn- internal-allowlist [m]
+  (walk/postwalk
+   (fn [x]
+     (if (and (keyword? x) (= "metabase.upload" (namespace x)))
+       (keyword "metabase.upload.types" (name x))
+       x))
+   m))
+
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try
     (let [parse (infer-parser filename file)]
       (with-open [reader (->reader file)]
-        (let [timer              (u/start-timer)
-              driver             (driver.u/database->driver database)
-              auto-pk?           (auto-pk-column? driver database)
-              [header & rows]    (cond-> (parse reader)
+        (let [timer               (u/start-timer)
+              driver              (driver.u/database->driver database)
+              auto-pk?            (auto-pk-column? driver database)
+              [header & rows]     (cond-> (parse reader)
+                                    auto-pk?
+                                    without-auto-pk-columns)
+              name->field         (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
+              column-names        (for [h header] (normalize-column-name driver h))
+              display-names       (for [h header] (normalize-display-name h))
+              create-auto-pk?     (and
                                    auto-pk?
-                                   without-auto-pk-columns)
-              name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
-              column-names       (for [h header] (normalize-column-name driver h))
-              display-names      (for [h header] (normalize-display-name h))
-              create-auto-pk?    (and
-                                  auto-pk?
-                                  (driver/create-auto-pk-with-append-csv? driver)
-                                  (not (contains? name->field auto-pk-column-name)))
-              name->field        (cond-> name->field auto-pk? (dissoc auto-pk-column-name))
-              _                  (check-schema name->field column-names)
-              settings           (upload-parsing/get-settings)
-              old-types          (map (comp upload-types/base-type->upload-type :base_type name->field) column-names)
+                                   (driver/create-auto-pk-with-append-csv? driver)
+                                   (not (contains? name->field auto-pk-column-name)))
+              name->field         (cond-> name->field auto-pk? (dissoc auto-pk-column-name))
+              _                   (check-schema name->field column-names)
+              settings            (upload-parsing/get-settings)
+              old-types           (map (comp upload-types/base-type->upload-type :base_type name->field) column-names)
               ;; in the happy, and most common, case all the values will match the existing types
               ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
               ;; we can come back and optimize this to an optimistic-with-fallback approach later.
-              detected-types     (upload-types/column-types-from-rows settings old-types rows)
-              new-types          (map upload-types/new-type old-types detected-types)
+              detected-types      (upload-types/column-types-from-rows settings old-types rows)
+              promotion-allowlist (internal-allowlist (driver/upload-promotion-allowlist driver))
+              new-types           (map #(upload-types/new-type %1 %2 promotion-allowlist) old-types detected-types)
               ;; avoid any schema modification unless all the promotions required by the file are supported,
               ;; choosing to not promote means that we will defer failure until we hit the first value that cannot
               ;; be parsed as its existing type - there is scope to improve these error messages in the future.
-              modify-schema?     (and (not= old-types new-types) (= detected-types new-types))
-              _                  (when modify-schema?
-                                   (let [changes (field-changes column-names old-types new-types)
-                                         old-types (old-column-types driver column-names old-types)]
-                                     (add-columns! driver database table (:added changes))
-                                     (alter-columns! driver database table (:updated changes) :old-types old-types)))
+              modify-schema?      (and (not= old-types new-types) (= detected-types new-types))
+              _                   (when modify-schema?
+                                    (let [changes (field-changes column-names old-types new-types)
+                                          old-types (old-column-types driver column-names old-types)]
+                                      (add-columns! driver database table (:added changes))
+                                      (alter-columns! driver database table (:updated changes) :old-types old-types)))
               ;; this will fail if any of our required relaxations were rejected.
-              parsed-rows        (parse-rows settings new-types rows)
-              row-count          (count parsed-rows)
-              stats              {:num-rows          row-count
-                                  :num-columns       (count new-types)
-                                  :generated-columns (if create-auto-pk? 1 0)
-                                  :size-mb           (file-size-mb file)
-                                  :upload-seconds    (u/since-ms timer)}]
+              parsed-rows         (parse-rows settings new-types rows)
+              row-count           (count parsed-rows)
+              stats               {:num-rows          row-count
+                                   :num-columns       (count new-types)
+                                   :generated-columns (if create-auto-pk? 1 0)
+                                   :size-mb           (file-size-mb file)
+                                   :upload-seconds    (u/since-ms timer)}]
           (try
             (when replace-rows?
               (driver/truncate! driver (:id database) (table-identifier table)))

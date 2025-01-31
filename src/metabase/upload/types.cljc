@@ -80,14 +80,6 @@
   {::*boolean-int*  ::boolean
    ::*float-or-int* ::float})
 
-;; TODO: the set of allowed promotions should be driver-specific, because not all drivers support coercions between all
-;; types e.g. redshift does not allow coercions except between text types
-(def ^:private allowed-promotions
-  "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values.
-  If we require a relaxation which is not allowlisted here, we will reject the corresponding file."
-  {::int     #{::float}
-   ::boolean #{::int, ::float}})
-
 (def ^:private column-type->coercible-value-types
   "A mapping of which value types should be coerced to the given existing type, rather than triggering promotion."
   {::int #{::*float-or-int*}})
@@ -297,14 +289,14 @@
 
 (defn- promotable?
   "Are we allowed to promote a column's schema from `current-type` to `inferred-type`?"
-  [current-type inferred-type]
-  (when-let [allowed? (allowed-promotions current-type)]
+  [current-type inferred-type promotion-allowlist]
+  (when-let [allowed? (get promotion-allowlist current-type)]
     (allowed? inferred-type)))
 
 (defn new-type
   "Given the `current-type` of a column, and an `inferred-type` for new values to be added, return its new type.
   This assumes we have already coerced the new values down to the existing type, if possible."
-  [current-type inferred-type]
+  [current-type inferred-type promotion-allowlist]
   (cond
     ;; No restriction on new columns
     (nil? current-type) inferred-type
@@ -312,6 +304,6 @@
     (= current-type inferred-type) current-type
     :else
     ;; Keep the existing type unless a promotion is allowed.
-    (if (promotable? current-type inferred-type)
+    (if (promotable? current-type inferred-type promotion-allowlist)
       inferred-type
       current-type)))

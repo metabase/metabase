@@ -1006,6 +1006,12 @@
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
+(defmethod driver/upload-promotion-allowlist :postgres
+  [_driver]
+  {::upload/int     #{::upload/float}
+   ::upload/boolean #{::upload/int
+                      ::upload/float}})
+
 (defmethod driver/create-auto-pk-with-append-csv? :postgres
   [driver]
   (= driver :postgres))

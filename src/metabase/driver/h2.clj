@@ -603,3 +603,9 @@
   (let [f (get-method driver/alter-table-columns! :sql-jdbc)]
     (doseq [[k v] column-definitions]
       (apply f driver db-id table-name {k v} opts))))
+
+(defmethod driver/upload-promotion-allowlist :h2
+  [_driver]
+  {:metabase.upload/int     #{:metabase.upload/float}
+   :metabase.upload/boolean #{:metabase.upload/int
+                              :metabase.upload/float}})

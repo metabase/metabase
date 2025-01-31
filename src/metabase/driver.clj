@@ -1248,6 +1248,20 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti upload-promotion-allowlist
+  "Returns a mapping of which types a column can be implicitly relaxed to, based on the content of appended values.
+  In the context of uploads, this allowlist permits certain appends or replacements of an existing csv table
+  to change column types with `alter-table-columns!`.
+  e.g. an allowlist: `{:metabase.upload/int #{:metabase.upload/float}}` would allow int columns to be migrated to floats.
+  If we require a relaxation which is not allowlisted here, we will reject the corresponding file."
+  {:added "0.54.0", :arglists '([driver])}
+  dispatch-on-uninitialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod upload-promotion-allowlist ::driver [_]
+  ;; for compatibility with older drivers, in which this promotion was assumed
+  {:metabase.upload/int #{:metabase.upload/float}})
+
 (defmulti create-auto-pk-with-append-csv?
   "Returns true if the driver should create an auto-incrementing primary key column when appending CSV data to an existing
   upload table. This is because we want to add auto-pk columns for drivers that supported uploads before auto-pk columns
