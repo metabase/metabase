@@ -836,7 +836,7 @@
                        :sort-directions [:asc :desc]}]})))
 
 (deftest ^:parallel available-drill-thrus-no-column-drills-for-nil-dimension-values-test
-  (testing (str "column header drills should not be returned when dimensions have nil values (#49740, #51741)")
+  (testing "column header drills should not be returned when dimensions have nil values (#49740, #51741)"
     (lib.drill-thru.tu/test-available-drill-thrus
      {:click-type  :cell
       :query-type  :aggregated

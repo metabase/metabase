@@ -26,5 +26,3 @@
                      :status              status}]
     (api/check-404 (t2/exists? (get moderation/moderated-item-type->model moderated_item_type) moderated_item_id))
     (moderation-review/create-review! review-data)))
-
-(api/define-routes)

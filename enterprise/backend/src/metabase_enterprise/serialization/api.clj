@@ -179,9 +179,9 @@
                                               [:or
                                                ms/PositiveInt
                                                [:re {:error/message "if you are passing entity_id, it should be exactly 21 chars long"}
-                                                "^.{21}$"]
+                                                #"^.{21}$"]
                                                [:re {:error/message "value must be string with `eid:<...>` prefix"}
-                                                "^eid:.{21}$"]])]]
+                                                #"^eid:.{21}$"]])]]
        [:all_collections   {:default true}  (mu/with ms/BooleanValue {:description "Serialize all collections (`true` unless you specify `collection`)"})]
        [:settings          {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase settings"})]
        [:data_model        {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase data model"})]
@@ -286,4 +286,6 @@
     (finally
       (io/delete-file (:tempfile file)))))
 
-(api/define-routes +auth)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/serialization` routes."
+  (api.macros/ns-handler *ns* +auth))

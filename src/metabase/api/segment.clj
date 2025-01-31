@@ -125,5 +125,3 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (-> (t2/select-one :model/Segment :id id) api/read-check xrays/related))
-
-(api/define-routes)

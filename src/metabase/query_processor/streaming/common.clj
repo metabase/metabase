@@ -113,7 +113,7 @@
                            (if is-currency?
                              (merge-global-settings format-settings :type/Currency)
                              format-settings))
-          column-title    (or (when format-rows? (::mb.viz/column-title merged-settings))
+          column-title    (or (when format-rows? (not-empty (::mb.viz/column-title merged-settings)))
                               (:display_name col)
                               (:name col))]
       (if (and is-currency? (::mb.viz/currency-in-header merged-settings true))
