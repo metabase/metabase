@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_QUESTION_ID,
@@ -48,60 +48,56 @@ describe("scenarios > question > native subquery", () => {
     });
   });
 
-  it(
-    "autocomplete should complete question slugs inside template tags",
-    { tags: "@flaky" },
-    () => {
-      // Create a question and a model.
+  it("autocomplete should complete question slugs inside template tags", () => {
+    // Create a question and a model.
+    H.createNativeQuestion({
+      name: "A People Question",
+      native: {
+        query: "SELECT id FROM PEOPLE",
+      },
+    }).then(({ body: { id: questionId1 } }) => {
       H.createNativeQuestion({
-        name: "A People Question",
+        name: "A People Model",
         native: {
           query: "SELECT id FROM PEOPLE",
         },
-      }).then(({ body: { id: questionId1 } }) => {
-        H.createNativeQuestion({
-          name: "A People Model",
-          native: {
-            query: "SELECT id FROM PEOPLE",
-          },
-          type: "model",
-          collection_id: ADMIN_PERSONAL_COLLECTION_ID,
-        }).then(({ body: { id: questionId2 } }) => {
-          // Move question 2 to personal collection
-          cy.visit(`/question/${questionId2}`);
-          H.openQuestionActions();
-          cy.findByTestId("move-button").click();
-          H.entityPickerModal().within(() => {
-            cy.findByRole("tab", { name: /Collections/ }).click();
-            cy.findByText("Bobby Tables's Personal Collection").click();
-            cy.button("Move").click();
-          });
+        type: "model",
+        collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+      }).then(({ body: { id: questionId2 } }) => {
+        // Move question 2 to personal collection
+        cy.visit(`/question/${questionId2}`);
+        H.openQuestionActions();
+        cy.findByTestId("move-button").click();
+        H.entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Collections/ }).click();
+          cy.findByText("Bobby Tables's Personal Collection").click();
+          cy.button("Move").click();
+        });
 
-          H.startNewNativeQuestion();
-          cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
-          H.NativeEditor.focus();
+        H.startNewNativeQuestion();
+        cy.reload(); // Refresh the state, so previously created questions need to be loaded again.
+        H.NativeEditor.focus();
 
-          cy.wait(200); // This reduces flakiness
+        cy.wait(200); // This reduces flakiness
 
-          H.NativeEditor.focus().type(" {{#people");
+        H.NativeEditor.focus().type(" {{#people");
 
-          // Wait until another explicit autocomplete is triggered
-          // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
-          // See https://github.com/metabase/metabase/pull/20970
-          cy.wait(1000);
+        // Wait until another explicit autocomplete is triggered
+        // (slightly longer than AUTOCOMPLETE_DEBOUNCE_DURATION)
+        // See https://github.com/metabase/metabase/pull/20970
+        cy.wait(1000);
 
-          H.NativeEditor.completions().within(() => {
-            H.NativeEditor.completion(`${questionId2}-a-`)
-              .should("be.visible")
-              .should("contain", "Model in Bobby Tables's Personal Collection");
-            H.NativeEditor.completion(`${questionId1}-a-`)
-              .should("be.visible")
-              .should("contain", "Question in Our analytics");
-          });
+        H.NativeEditor.completions().within(() => {
+          H.NativeEditor.completion(`${questionId2}-a-`)
+            .should("be.visible")
+            .should("contain", "Model in Bobby Tables's Personal Collection");
+          H.NativeEditor.completion(`${questionId1}-a-`)
+            .should("be.visible")
+            .should("contain", "Question in Our analytics");
         });
       });
-    },
-  );
+    });
+  });
 
   it("autocomplete should work for columns from referenced questions", () => {
     // Create two saved questions, the first will be referenced in the query when it is opened, and the second will be added to the query after it is opened.

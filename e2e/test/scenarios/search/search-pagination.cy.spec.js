@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -25,7 +25,7 @@ describe("scenarios > search", () => {
     H.getSearchBar().type(" ");
   });
 
-  it("should allow users to paginate results", { tags: "@flaky" }, () => {
+  it("should allow users to paginate results", () => {
     generateQuestions(TOTAL_ITEMS);
 
     cy.visit("/");

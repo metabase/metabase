@@ -34,7 +34,7 @@
 (defonce ^:dynamic ^:private *index-version-id*
   (if config/is-prod?
     (:hash config/mb-version-info)
-    (str (random-uuid))))
+    (u/lower-case-en (u/generate-nano-id))))
 
 (defonce ^:private next-sync-at (atom nil))
 
@@ -79,7 +79,7 @@
 (defn gen-table-name
   "Generate a unique table name to use as a search index table."
   []
-  (keyword (str/replace (str "search_index__" (random-uuid)) #"-" "_")))
+  (keyword (str/replace (str "search_index__" (u/lower-case-en (u/generate-nano-id))) #"-" "_")))
 
 (defn- table-name [kw]
   (cond-> (name kw)

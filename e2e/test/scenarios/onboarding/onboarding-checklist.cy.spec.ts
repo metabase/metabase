@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import type { ChecklistItemValue } from "metabase/home/components/Onboarding/types";
 
 describe("Onboarding checklist page", () => {

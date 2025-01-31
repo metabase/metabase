@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
@@ -169,8 +169,13 @@ describe("issue 49454", () => {
     });
   });
 
-  it("should be possible to use metrics in native queries (metabase#49454)", () => {
+  it("should be possible to use metrics in native queries (metabase#49454, metabase#51035)", () => {
     H.startNewNativeQuestion();
+
+    cy.log("should not show empty tooltip (metabase#51035)");
+    cy.button("Save").realHover();
+    H.tooltip().should("not.exist");
+
     H.NativeEditor.type("select * from {{ #test");
 
     H.NativeEditor.completions().within(() => {
