@@ -1,10 +1,10 @@
-(ns metabase.api.ldap-test
+(ns metabase.sso.api.ldap-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.api.ldap :as api.ldap]
-   [metabase.integrations.ldap :as ldap]
    [metabase.models.setting :as setting]
+   [metabase.sso.core :as sso]
+   [metabase.sso.ldap :as ldap]
    [metabase.test :as mt]
    [metabase.test.integrations.ldap :as ldap.test]))
 
@@ -32,7 +32,7 @@
 
       (testing "Passing ldap-enabled=false will disable LDAP"
         (mt/user-http-request :crowberto :put 200 "ldap/settings" (ldap-test-details false))
-        (is (not (api.ldap/ldap-enabled))))
+        (is (not (sso/ldap-enabled))))
 
       (testing "Passing ldap-enabled=false still validates the LDAP settings"
         (mt/user-http-request :crowberto :put 500 "ldap/settings"
@@ -61,10 +61,10 @@
         (with-redefs [ldap/test-current-ldap-details (constantly {:status :ERROR :message "test error"})]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"Unable to connect to LDAP server"
-                                (api.ldap/ldap-enabled! true))))
+                                (sso/ldap-enabled! true))))
         (with-redefs [ldap/test-current-ldap-details (constantly {:status :SUCCESS})]
-          (api.ldap/ldap-enabled! true)
-          (is (api.ldap/ldap-enabled))
+          (sso/ldap-enabled! true)
+          (is (sso/ldap-enabled))
 
-          (api.ldap/ldap-enabled! false)
-          (is (not (api.ldap/ldap-enabled))))))))
+          (sso/ldap-enabled! false)
+          (is (not (sso/ldap-enabled))))))))

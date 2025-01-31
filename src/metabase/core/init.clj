@@ -10,11 +10,15 @@
    [metabase.config :as config]
    [metabase.driver.init]
    [metabase.events.init]
+   [metabase.geojson.init]
    [metabase.logger.init]
    [metabase.models.init]
    [metabase.notification.init]
+   [metabase.permissions.init]
    [metabase.query-analysis.init]
    [metabase.search.init]
+   [metabase.session.init]
+   [metabase.sso.init]
    [metabase.sync.init]
    [metabase.task.init]))
 

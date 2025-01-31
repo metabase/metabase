@@ -6,7 +6,6 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.ldap :as api.ldap]
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
    [metabase.events :as events]
@@ -15,14 +14,14 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.session :as session]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.permissions.util :as perms-util]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.sso.core :as sso]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -30,14 +29,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defsetting user-visibility
-  (deferred-tru "Note: Sandboxed users will never see suggestions.")
-  :visibility   :authenticated
-  :feature      :email-restrict-recipients
-  :type         :keyword
-  :default      :all
-  :audit        :raw-value)
 
 (defn check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -280,7 +271,7 @@
 
       ;; otherwise give them what the setting says on the tin
       :else
-      (case (user-visibility)
+      (case (public-settings/user-visibility)
         :none (just-me)
         :group (within-group)
         :all (all)))))
@@ -486,7 +477,7 @@
                ;; (see metabase#3323)
                :sso_source   (case (:sso_source existing-user)
                                :google (when (google/google-auth-enabled) :google)
-                               :ldap   (when (api.ldap/ldap-enabled) :ldap)
+                               :ldap   (when (sso/ldap-enabled) :ldap)
                                (:sso_source existing-user))})
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))

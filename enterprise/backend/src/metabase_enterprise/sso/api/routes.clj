@@ -1,11 +1,6 @@
 (ns metabase-enterprise.sso.api.routes
   (:require
-   [metabase-enterprise.sso.api.saml]
-   [metabase-enterprise.sso.api.sso]
    [metabase.api.util.handlers :as handlers]))
-
-(comment metabase-enterprise.sso.api.saml/keep-me
-         metabase-enterprise.sso.api.sso/keep-me)
 
 ;; This needs to be injected into [[metabase.server.routes/routes]] -- not [[metabase.api.routes/routes]] !!!
 ;;

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.stats
   (:require
    [metabase-enterprise.advanced-config.models.pulse-channel :as advanced-config.models.pulse-channel]
-   [metabase-enterprise.scim.api :as scim-api]
+   [metabase-enterprise.scim.settings :as scim.settings]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.driver :as driver]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -20,7 +20,7 @@
     :enabled   (sso-settings/saml-enabled)}
    {:name      :scim
     :available (premium-features/enable-scim?)
-    :enabled   (boolean (scim-api/scim-enabled))}
+    :enabled   (boolean (scim.settings/scim-enabled))}
    {:name      :sandboxes
     :available (and (premium-features/enable-official-collections?)
                     (t2/exists? :model/Database :engine [:in (descendants driver/hierarchy :sql)]))

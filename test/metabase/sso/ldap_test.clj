@@ -1,8 +1,8 @@
-(ns metabase.integrations.ldap-test
+(ns metabase.sso.ldap-test
   (:require
    [clojure.test :refer :all]
-   [metabase.integrations.ldap :as ldap]
-   [metabase.integrations.ldap.default-implementation :as default-impl]
+   [metabase.sso.ldap :as ldap]
+   [metabase.sso.ldap.default-implementation :as default-impl]
    [metabase.test :as mt]
    [metabase.test.integrations.ldap :as ldap.test]
    [toucan2.core :as t2])

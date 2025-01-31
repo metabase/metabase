@@ -1,10 +1,10 @@
-(ns metabase.integrations.ldap
+(ns metabase.sso.ldap
   (:require
    [clj-ldap.client :as ldap]
    [metabase.config :as config]
-   [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
+   [metabase.sso.ldap.default-implementation :as default-impl]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]

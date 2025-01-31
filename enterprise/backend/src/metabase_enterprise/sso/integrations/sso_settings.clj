@@ -3,7 +3,7 @@
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
-   [metabase-enterprise.scim.api :as scim]
+   [metabase-enterprise.scim.settings :as scim.settings]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
@@ -30,7 +30,7 @@ don''t have one.")
   :default true
   :feature :sso-saml
   :getter  (fn []
-             (if (scim/scim-enabled)
+             (if (scim.settings/scim-enabled)
                ;; Disable SAML provisioning automatically when SCIM is enabled
                false
                (setting/get-value-of-type :boolean :saml-user-provisioning-enabled?)))

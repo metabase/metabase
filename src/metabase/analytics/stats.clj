@@ -14,7 +14,7 @@
    [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
-   [metabase.eid-translation :as eid-translation]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.embed.settings :as embed.settings]
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
@@ -590,19 +590,6 @@
           :has_activation_signals_completed (completed-activation-signals?)})]
     (m->kv-vec instance-attributes)))
 
-(mu/defn- get-translation-count
-  :- [:map [:ok :int] [:not-found :int] [:invalid-format :int] [:total :int]]
-  "Get and clear the entity-id translation counter. This is meant to be called during the daily stats collection process."
-  []
-  (let [counter (setting/get-value-of-type :json :entity-id-translation-counter)]
-    (merge counter {:total (apply + (vals counter))})))
-
-(mu/defn- clear-translation-count!
-  "We want to reset the eid translation count on every stat ping, so we do it here."
-  []
-  (u/prog1 eid-translation/default-counter
-    (setting/set-value-of-type! :json :entity-id-translation-counter <>)))
-
 (defn- categorize-query-execution [{:keys [context embedding_client executor_id]}]
   (cond
     (= "embedding-sdk-react" embedding_client)                        "sdk_embed"
@@ -627,7 +614,7 @@
                             {"sdk_embed" 0 "interactive_embed" 0 "static_embed" 0 "public_link" 0 "internal" 0}
                             (-> (group-by categorize-query-execution qe-24h)
                                 (update-vals count)))
-     :eid-translations-24h (get-translation-count)}))
+     :eid-translations-24h (eid-translation/get-translation-count)}))
 
 (defn- deep-string-keywords
   "Snowplow data will not work if you pass in keywords, but this will let use use keywords all over."
@@ -664,7 +651,7 @@
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
   []
   (let [one-day-ago (->one-day-ago)
-        total-translation-count (:total (get-translation-count))]
+        total-translation-count (:total (eid-translation/get-translation-count))]
     {:models                          (t2/count :model/Card :type :model :archived false)
      :new_embedded_dashboards         (t2/count :model/Dashboard
                                                 :enable_embedding true
@@ -909,7 +896,7 @@
      :snowplow-stats (snowplow-anonymous-usage-stats stats)}))
 
 (defn- stats-post-cleanup []
-  (clear-translation-count!))
+  (eid-translation/clear-translation-count!))
 
 (defn phone-home-stats!
   "Collect usage stats and phone them home"

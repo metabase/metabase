@@ -1,4 +1,4 @@
-(ns metabase.integrations.ldap.default-implementation
+(ns metabase.sso.ldap.default-implementation
   "Default LDAP integration. This integration is used by OSS or for EE if enterprise features are not enabled."
   (:require
    [clj-ldap.client :as ldap]
@@ -27,7 +27,7 @@
 
 (def LDAPSettings
   "Options passed to LDAP integration implementations. These are just the various LDAP Settings from
-  `metabase.integrations.ldap`, packaged up as a single map so implementations don't need to fetch Setting values
+  `metabase.sso.ldap`, packaged up as a single map so implementations don't need to fetch Setting values
   directly."
   [:map
    [:first-name-attribute ms/NonBlankString]

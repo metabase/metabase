@@ -1,4 +1,5 @@
-(ns metabase.eid-translation)
+(ns metabase.eid-translation.stuff
+  "I had no idea what to name this -- Cam.")
 
 (def statuses
   "Possible statuses from an entity-id -> id translation:
