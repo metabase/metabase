@@ -15,22 +15,21 @@
           analysis
           output)))))
 
-(defonce ^:private ns->var-usages
-  (delay
-    (into {}
-          (map (fn [[file-url {:keys [var-usages]}]]
-                 ;; just source files for now; we can tell people to make private test vars private in the future as
-                 ;; well.
-                 (when (and (or (str/includes? file-url "/metabase/src/")
-                                (str/includes? file-url "/metabase-enterprise/src/"))
-                            (seq var-usages))
-                   [(:from (first var-usages))
-                    (into #{}
-                          (comp (filter #(some-> (:to %) (str/starts-with? "metabase")))
-                                (map #(-> (symbol (name (:to %)) (name (:name %)))
-                                          (with-meta {::analysis %}))))
-                          var-usages)])))
-          (analysis))))
+(defn- ns->var-usages []
+  (into {}
+        (map (fn [[file-url {:keys [var-usages]}]]
+               ;; just source files for now; we can tell people to make private test vars private in the future as
+               ;; well.
+               (when (and (or (str/includes? file-url "/metabase/src/")
+                              (str/includes? file-url "/metabase-enterprise/src/"))
+                          (seq var-usages))
+                 [(:from (first var-usages))
+                  (into #{}
+                        (comp (filter #(some-> (:to %) (str/starts-with? "metabase")))
+                              (map #(-> (symbol (name (:to %)) (name (:name %)))
+                                        (with-meta {::analysis %}))))
+                        var-usages)])))
+        (analysis)))
 
 (defn symb->usages
   []
@@ -42,7 +41,7 @@
       m
       ns-usages))
    {}
-   @ns->var-usages))
+   (ns->var-usages)))
 
 (defn symb->external-usages
   []
@@ -66,7 +65,7 @@
                                "namespace.)"
                                ""
                                "It also makes it easier for someone using this namespace to know what the"
-                               "intended 'public API' of it is. You can always make  public things private later"
+                               "intended 'public API' of it is. You can always make private things public later"
                                "if you need to."
                                ""
                                "For vars that are used in test namespaces, but not in normal source code, you can"
