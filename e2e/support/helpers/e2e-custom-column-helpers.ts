@@ -190,9 +190,7 @@ export const CustomExpressionEditor = {
     return cy.findByTestId("custom-expression-editor-suggestions");
   },
   completion(name: string) {
-    return CustomExpressionEditor.completions().within(() =>
-      cy.get("li[role='option']").contains(name),
-    );
+    return CustomExpressionEditor.completions().findByText(name);
   },
   helpText() {
     return cy.findByTestId("expression-helper");

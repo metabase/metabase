@@ -5,15 +5,17 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 function selectExtractColumn() {
-  cy.findByTestId("expression-suggestions-list").within(() => {
-    cy.findByText("Extract columns").click();
-  });
+  H.CustomExpressionEditor.focus();
+  H.CustomExpressionEditor.completions().should("be.visible");
+  cy.wait(100);
+  H.CustomExpressionEditor.completion("Extract columns").realClick();
 }
 
 function selectCombineColumns() {
-  cy.findByTestId("expression-suggestions-list").within(() => {
-    cy.findByText("Combine columns").click();
-  });
+  H.CustomExpressionEditor.focus();
+  H.CustomExpressionEditor.completions().should("be.visible");
+  cy.wait(100);
+  H.CustomExpressionEditor.completion("Combine columns").realClick();
 }
 
 function selectColumn(index: number, table: string, name?: string) {
@@ -239,6 +241,7 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   it("should be possible to select a combine columns shortcut", () => {
     H.openOrdersTable({ mode: "notebook", limit: 5 });
     H.addCustomColumn();
+
     selectCombineColumns();
 
     selectColumn(0, "Total");

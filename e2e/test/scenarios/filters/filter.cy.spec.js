@@ -278,37 +278,34 @@ describe("scenarios > question > filter", () => {
     openExpressionEditorFromFreshlyLoadedPage();
 
     H.enterCustomColumnDetails({ formula: "c", blur: false });
-    H.popover().contains(/case/i);
 
-    cy.get("@formula").type("a");
+    H.CustomExpressionEditor.completions().should("contain", "case");
+
+    H.CustomExpressionEditor.type("a");
 
     // "case" is still there after typing a bit
-    H.popover().contains(/case/i);
+    H.CustomExpressionEditor.completions().should("contain", "case");
   });
 
   it("should enable highlighting suggestions with keyboard up and down arrows (metabase#16210)", () => {
-    const transparent = "rgba(0, 0, 0, 0)";
-
     openExpressionEditorFromFreshlyLoadedPage();
 
     H.enterCustomColumnDetails({ formula: "c", blur: false });
 
-    cy.findAllByTestId("expression-suggestions-list-item")
-      .filter(":contains('case')")
-      .should("have.css", "background-color")
-      .and("not.eq", transparent);
+    H.CustomExpressionEditor.completion("case")
+      .parent()
+      .should("have.attr", "aria-selected", "true");
 
-    cy.get("@formula").type("{downarrow}");
+    cy.wait(100);
+    cy.realPress("ArrowDown");
 
-    cy.findAllByTestId("expression-suggestions-list-item")
-      .filter(":contains('case')")
-      .should("have.css", "background-color")
-      .and("eq", transparent);
+    H.CustomExpressionEditor.completion("case")
+      .parent()
+      .should("not.have.attr", "aria-selected");
 
-    cy.findAllByTestId("expression-suggestions-list-item")
-      .filter(":contains('ceil')")
-      .should("have.css", "background-color")
-      .and("not.eq", transparent);
+    H.CustomExpressionEditor.completion("ceil")
+      .parent()
+      .should("have.attr", "aria-selected", "true");
   });
 
   it("should highlight the correct matching for suggestions", () => {
@@ -319,7 +316,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unsafe-element-filtering
     H.popover().last().findByText("Body");
 
-    cy.get("@formula").type("p");
+    H.CustomExpressionEditor.type("p");
 
     // only "P" (of Products etc) should be highlighted, and not "Pr"
     // eslint-disable-next-line no-unsafe-element-filtering
@@ -348,9 +345,12 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     H.enterCustomColumnDetails({ formula: "su", blur: false });
-    H.popover().contains(/Sum of Total/i);
-    cy.get("@formula").type("m");
-    H.popover().contains(/Sum of Total/i);
+
+    H.CustomExpressionEditor.completion("Sum of Total").should("be.visible");
+
+    H.CustomExpressionEditor.type("m", { focus: false });
+
+    H.CustomExpressionEditor.completion("Sum of Total").should("be.visible");
   });
 
   it("should filter using IsNull() and IsEmpty()", () => {

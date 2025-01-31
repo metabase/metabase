@@ -170,12 +170,9 @@ describe("scenarios > question > summarize sidebar", () => {
       });
     });
 
-    H.popover().within(() => {
-      cy.get(".ace_text-layer").should(
-        "have.text",
-        "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
-      );
-    });
+    H.CustomExpressionEditor.shouldContain(
+      "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
+    );
   });
 
   it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
@@ -183,15 +180,13 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize({ mode: "notebook" });
     H.popover().contains("Custom Expression").click();
 
-    H.enterCustomColumnDetails({ formula: "Distinct([R" });
+    H.enterCustomColumnDetails({ formula: "Distinct([R", blur: false });
 
     cy.log(
       "**The point of failure for ANY non-numeric value reported in v0.36.4**",
     );
     // the default type for "Reviewer" is "No semantic type"
-    cy.findByTestId("expression-suggestions-list").within(() => {
-      cy.contains("Reviewer");
-    });
+    H.CustomExpressionEditor.completion("Reviewer").should("be.visible");
   });
 
   it("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {

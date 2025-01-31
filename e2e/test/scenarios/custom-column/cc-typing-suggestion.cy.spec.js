@@ -32,23 +32,22 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should correctly accept the chosen function suggestion", () => {
     addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "LTRIM([Title])", blur: false });
+    H.enterCustomColumnDetails({ formula: "le", blur: false });
 
-    // Place the cursor between "is" and "empty"
-    cy.get("@formula").type("{leftarrow}".repeat(13));
+    H.CustomExpressionEditor.completions().should("be.visible");
 
     // accept the first suggested function, i.e. "length"
-    cy.get("@formula").type("{enter}");
+    cy.realPress("Enter");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("length([Title])");
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "length([Comment])");
   });
 
-  it("should correctly insert function suggestion with the opening parenthesis", () => {
+  it("should correctly insert function suggestion with the template", () => {
     addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "BET{enter}" });
-
-    cy.CustomExpressionEditor.shouldContain("between(");
+    H.enterCustomColumnDetails({ formula: "bet{enter}" });
+    H.CustomExpressionEditor.shouldContain("between(column, start, end)");
   });
 
   it("should show expression function helper if a proper function is typed", () => {
@@ -56,22 +55,17 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.enterCustomColumnDetails({ formula: "lower(", blur: false });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("lower(text)");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Returns the string of text in all lower case.").should(
-      "be.visible",
-    );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("lower([Status])").should("be.visible");
-
-    cy.findByTestId("expression-helper-popover-arguments")
-      .findByText("text")
-      .realHover();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("The column with values to convert to lower case.").should(
-      "be.visible",
-    );
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "lower(⟨text⟩)")
+      .within(() => {
+        cy.findByText("Returns the string of text in all lower case.").should(
+          "be.visible",
+        );
+        cy.findByText(
+          "The column with values to convert to lower case.",
+        ).should("be.visible");
+      });
   });
 
   it("should not show suggestions for an unfocused field (metabase#31643)", () => {
@@ -79,30 +73,23 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.popover().findByText("Custom Expression").click();
     H.enterCustomColumnDetails({ formula: "Count{enter}" });
     H.popover().findByLabelText("Name").focus();
-    cy.findByTestId("expression-suggestions-list").should("not.exist");
+    H.CustomExpressionEditor.completions().should("not.exist");
   });
 
   it("should always show the help text popover on top of the custom expression widget (metabase#52711)", () => {
     addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "endsWith(", blur: false });
+    H.enterCustomColumnDetails({ formula: "concat", blur: false });
 
-    /* It seems like cypress considers that this popover and its contents are visible,
-     * even when it's under its parent popover because it is in a portal, so technically it's not being clipped by any element.
-     * Weirdly enough, it refuses to click `Learn more` because it's covered, but should("be.visible") passes.
-     *
-     * So, the (hacky) solution for now is to click all 5 elements of the popover, and we will check if the
-     * popover is still there at the end. Since the popover has onClickOutside behavior, the popover will
-     * close if the user clicks on anything outside it, so we can use that to our advantage.
-     * */
-    cy.findByTestId("expression-helper-popover").within(() => {
-      cy.findByTestId("expression-helper-popover-structure").click();
-      cy.findByTestId("expression-helper-popover-arguments").click();
-      cy.findByText("Example").click();
+    H.CustomExpressionEditor.helpText().within(() => {
+      cy.findByText(
+        "Combine two or more strings of text together.",
+      ).realClick();
+      cy.findByText("Example").realClick();
 
       // We want to trigger the "covered element" error if this is true without actually clicking the external link
       cy.findByText("Learn more").trigger("mousemove");
     });
-    cy.findByTestId("expression-helper-popover").should("exist");
+    H.CustomExpressionEditor.helpText().should("be.visible");
   });
 });
 

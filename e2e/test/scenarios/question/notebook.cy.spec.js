@@ -1144,8 +1144,7 @@ function assertTableRowCount(expectedCount) {
 }
 
 function addSimpleCustomColumn(name) {
-  H.enterCustomColumnDetails({ formula: "C", blur: false });
-  cy.findByText("ategory").click();
+  H.enterCustomColumnDetails({ formula: "[Category]", blur: true });
   cy.findByPlaceholderText("Something nice and descriptive").click().type(name);
   cy.button("Done").click();
 }
