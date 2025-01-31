@@ -27,8 +27,8 @@ describe(
         "prefetchValues",
       );
 
-      H.resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
       H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: WRITABLE_TEST_TABLE });
       asAdmin(() => {
         cy.updatePermissionsGraph({
           [ALL_USERS_GROUP]: {

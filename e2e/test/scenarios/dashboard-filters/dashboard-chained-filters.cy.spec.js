@@ -180,8 +180,8 @@ describe("scenarios > dashboard > chained filter", () => {
       const dialect = "postgres";
       const TEST_TABLE = "many_data_types";
 
-      H.resetTestTable({ type: dialect, table: TEST_TABLE });
       H.restore(`${dialect}-writable`);
+      H.resetTestTable({ type: dialect, table: TEST_TABLE });
       cy.signInAsAdmin();
       H.resyncDatabase({ tableName: TEST_TABLE, tableAlias: "testTable" });
 
