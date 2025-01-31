@@ -851,7 +851,12 @@
     [_driver]
     nil))
 
-(doseq [driver [:redshift :snowflake :vertica]]
+(doseq [driver [:bigquery-cloud-sdk]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:project-id (u.random/random-name)}))
+
+(doseq [driver [:redshift :snowflake :vertica :sparksql]]
   (defmethod bad-connection-details driver
     [_driver]
     {:db (u.random/random-name)}))
@@ -865,3 +870,8 @@
   (defmethod bad-connection-details driver
     [_driver]
     {:catalog (u.random/random-name)}))
+
+(doseq [driver [:athena]]
+  (defmethod bad-connection-details driver
+    [_driver]
+    {:access_key (u.random/random-name)}))
