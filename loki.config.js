@@ -4,7 +4,7 @@ module.exports = {
     "static-viz",
     "viz",
     "^visualizations/shared",
-    "^embed",
+    "^embed/",
     "^design system",
     "^Inputs/DatePicker Dates range",
     "^Parameters/DatePicker",
