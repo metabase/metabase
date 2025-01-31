@@ -89,37 +89,6 @@
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
 (comment lib.core/keep-me)
 
-(defn- convert-js-template-tags [tags]
-  (-> tags
-      js->clj
-      (update-vals #(-> %
-                        (update-keys keyword)
-                        (update :type keyword)))))
-
-(defn ^:export extract-template-tags
-  "Extract the template tags from a native query's text.
-
-  > **Code health:** Healthy
-
-  If the optional map of existing tags previously parsed is given, this will reuse the existing tags where
-  they match up with the new one (in particular, it will preserve the UUIDs).
-
-  Given the text of a native query, extract a possibly-empty set of template tag strings from it.
-
-  These look like mustache templates. For variables, we only allow alphanumeric characters, eg. `{{foo}}`.
-  For snippets they start with `snippet:`, eg. `{{ snippet: arbitrary text here }}`.
-  And for card references either `{{ #123 }}` or with the optional human label `{{ #123-card-title-slug }}`.
-
-  Invalid patterns are simply ignored, so something like `{{&foo!}}` is just disregarded.
-
-  Returns `::lib.schema.template-tags/template-tag-map`, a map of tag names (strings) to an object describing the tag,
-  converted to JS objects."
-  ([query-text] (extract-template-tags query-text {}))
-  ([query-text existing-tags]
-   (->> (convert-js-template-tags existing-tags)
-        (lib.core/extract-template-tags query-text)
-        clj->js)))
-
 (defn ^:export suggestedName
   "Return a nice description of a query.
 
@@ -1859,12 +1828,45 @@
   [a-query inner-query]
   (lib.core/with-native-query a-query inner-query))
 
+(defn- remove-undefined-properties
+  [obj]
+  (cond-> obj
+          (object? obj) (gobject/filter (fn [e _ _] (not (undefined? e))))))
+
+(defn- remove-undefined-properties
+  [obj]
+  (cond-> obj
+          (object? obj) (gobject/filter (fn [e _ _] (not (undefined? e))))))
+
+(defn- template-tags-js->cljs
+  [tags]
+  (-> tags
+      (gobject/map (fn [e _ _]
+                     (remove-undefined-properties e)))
+      js->clj
+      (update-vals (fn [tag]
+                     (-> tag
+                         (update-keys keyword)
+                         (update :type keyword)
+                         (m/update-existing :widget-type #(some-> % keyword))
+                         (m/update-existing :dimension #(some-> % legacy-ref->pMBQL)))))))
+
+(defn- template-tags-cljs->js
+  [tags]
+  (-> tags
+      (update-vals (fn [tag]
+                     (-> tag
+                         (update :type name)
+                         (m/update-existing :widget-type #(some-> % u/qualified-name))
+                         (m/update-existing :dimension #(some-> % ref->legacy-ref)))))
+      (clj->js :keyword-fn u/qualified-name)))
+
 (defn ^:export with-template-tags
   "Updates the native first stage of `a-query`'s template tags to the provided `tags`.
 
   > **Code health:** Healthy"
   [a-query tags]
-  (lib.core/with-template-tags a-query (convert-js-template-tags tags)))
+  (lib.core/with-template-tags a-query (template-tags-js->cljs tags)))
 
 (defn ^:export raw-native-query
   "Returns the native query string for the native first stage of `a-query`.
@@ -1878,8 +1880,8 @@
 
   > **Code health:** Healthy"
   [a-query]
-  (clj->js (update-vals (lib.core/template-tags a-query) (fn [tag] (update tag :dimension #(some-> % ref->legacy-ref))))
-           :keyword-fn u/qualified-name))
+  (-> (lib.core/template-tags a-query)
+      template-tags-cljs->js))
 
 (defn ^:export required-native-extras
   "Returns a JS array of the extra keys that are required for this database's native queries.

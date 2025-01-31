@@ -212,9 +212,7 @@
    query 0
    (fn [{existing-tags :template-tags :as stage}]
      (assert-native-query! stage)
-     (let [valid-tags (keys existing-tags)]
-       (assoc stage :template-tags
-              (m/deep-merge existing-tags (select-keys tags valid-tags)))))))
+     (assoc stage :template-tags tags))))
 
 (mu/defn raw-native-query :- ::common/non-blank-string
   "Returns the native query string"
