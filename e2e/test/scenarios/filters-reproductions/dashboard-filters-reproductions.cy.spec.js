@@ -4242,7 +4242,7 @@ describe("issue 52918", () => {
       cy.findByText("Between").should("be.visible");
     });
     cy.log("check that there is no overflow in the popover");
-    H.popover().then(([element]) => {
+    H.popover().should(([element]) => {
       expect(element.offsetWidth).to.gte(element.scrollWidth);
     });
   });
