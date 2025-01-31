@@ -568,17 +568,17 @@ describe("scenarios > filters > filter types", () => {
               cy.findByRole("tab", { name: offset }).click();
             });
 
-            H.relativeDatePicker.setValue({ value, unit }, clauseStepPopover);
+            H.relativeDatePicker.setValue({ value, unit }, H.clauseStepPopover);
 
             if (includeCurrent) {
-              H.relativeDatePicker.toggleCurrentInterval(clauseStepPopover);
+              H.relativeDatePicker.toggleCurrentInterval(H.clauseStepPopover);
             } else if (offsetUnit && offsetValue) {
               H.relativeDatePicker.addStartingFrom(
                 {
                   value: offsetValue,
                   unit: offsetUnit,
                 },
-                clauseStepPopover,
+                H.clauseStepPopover,
               );
             }
 
