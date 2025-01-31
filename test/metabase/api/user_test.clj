@@ -911,13 +911,17 @@
     (testing "Check that a non-superuser CANNOT update someone else's user details"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :trashbird))
-                                   {:email "toucan@metabase.com"}))))
+                                   {:email "toucan@metabase.com"}))))))
 
+(deftest update-permissions-test-2
+  (testing "PUT /api/user/:id"
     (testing "We should get a 404 when trying to access a disabled account"
       (is (= "Not found."
              (mt/user-http-request :crowberto :put 404 (str "user/" (mt/user->id :trashbird))
-                                   {:email "toucan@metabase.com"}))))
+                                   {:email "toucan@metabase.com"}))))))
 
+(deftest update-permissions-test-3
+  (testing "PUT /api/user/:id"
     (testing "Google auth users shouldn't be able to change their own password as we get that from Google"
       (mt/with-temp [:model/User user {:email       "anemail@metabase.com"
                                        :password    "def123"
@@ -926,8 +930,10 @@
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
                  (client/client creds :put 403 (format "user/%d" (u/the-id user))
-                                {:email "adifferentemail@metabase.com"}))))))
+                                {:email "adifferentemail@metabase.com"}))))))))
 
+(deftest update-permissions-test-4
+  (testing "PUT /api/user/:id"
     (testing (str "Similar to Google auth accounts, we should not allow LDAP users to change their own email address "
                   "as we get that from the LDAP server")
       (mt/with-temp [:model/User user {:email     "anemail@metabase.com"
@@ -1131,17 +1137,20 @@
                                :email      (:email user)})
         (is (= true
                (t2/select-one-fn :is_active :model/User :id (:id user)))
-            "the user should now be active")))
+            "the user should now be active")))))
 
+(deftest reactivate-user-test-2
+  (testing "PUT /api/user/:id/reactivate"
     (testing "error conditions"
       (testing "Attempting to reactivate a non-existant user should return a 404"
         (is (= "Not found."
                (mt/user-http-request :crowberto :put 404 (format "user/%s/reactivate" Integer/MAX_VALUE)))))
-
       (testing " Attempting to reactivate an already active user should fail"
         (is (=? {:message "Not able to reactivate an active user"}
-                (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))
+                (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))))
 
+(deftest reactivate-user-test-3
+  (testing "PUT /api/user/:id/reactivate"
     (testing (str "test that when disabling Google auth if a user gets disabled and re-enabled they are no longer "
                   "Google Auth (#3323)")
       (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
@@ -1172,11 +1181,9 @@
   (testing "PUT /api/user/:id/password"
     (testing "Test that we can reset our own password. If user is a"
       (testing "superuser"
-        (is (= true
-               (user-can-reset-password? :superuser))))
+        (is (user-can-reset-password? :superuser)))
       (testing "non-superuser"
-        (is (= true
-               (user-can-reset-password? (not :superuser))))))))
+        (is (user-can-reset-password? (not :superuser)))))))
 
 (deftest reset-password-permissions-test
   (testing "PUT /api/user/:id/password"
@@ -1206,8 +1213,10 @@
           (is (=? {:session_id string/valid-uuid?
                    :success    true}
                   (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
-                                                                                    :old_password "def"}))))))
+                                                                                    :old_password "def"}))))))))
 
+(deftest reset-password-session-test-2
+  (testing "PUT /api/user/:id/password"
     (testing "Test that we don't return a session if we are changing our someone else's password as a superuser"
       (mt/with-temp [:model/User user {:password "def", :is_superuser false}]
         (is (nil? (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
@@ -1225,7 +1234,7 @@
 
       (testing "User should still exist, but be inactive"
         (is (= {:is_active false}
-               (mt/derecordize (t2/select-one [:model/User :is_active] :id (:id user)))))))
+               (t2/select-one [:model/User :is_active] :id (:id user))))))
 
     (testing "Check that the last superuser cannot deactivate themselves"
       (mt/with-single-admin-user [{id :id}]

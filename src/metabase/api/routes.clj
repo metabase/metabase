@@ -2,7 +2,7 @@
   (:require
    [compojure.route :as route]
    [metabase.api.open-api :as open-api]
-   [metabase.api.routes.common :as routes.common :refer [+static-apikey]]
+   [metabase.api.routes.common :as routes.common]
    [metabase.api.util.handlers :as handlers]
    [metabase.config :as config]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -36,6 +36,7 @@
 (defn- +auth                    [handler] (routes.common/+auth                    (->handler handler)))
 (defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (->handler handler)))
 (defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (->handler handler)))
+(defn- +static-apikey           [handler] (routes.common/+static-apikey           (->handler handler)))
 
 (def ^:private ^{:arglists '([request respond raise])} pulse-routes
   (handlers/routes
@@ -70,7 +71,7 @@
    "/login-history"        (+auth 'metabase.api.login-history)
    "/model-index"          (+auth 'metabase.api.model-index)
    "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
-   "/notify"               (+static-apikey metabase.sync.api/notify-routes)
+   "/notify"               (+static-apikey 'metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.api.permissions)
    "/persist"              (+auth 'metabase.api.persist)
    "/premium-features"     (+auth 'metabase.api.premium-features/routes)
