@@ -1020,14 +1020,15 @@
   e.g. BOOLEAN to BIGINT, or BOOLEAN to FLOAT.
   This function therefore provides more options for alter-columns-sql to produce DDL that can 'just work' without
   extra input from the user."
-  [column new-type old-type]
-  (condp = [new-type old-type]
-    [[:bigint] [:boolean]]
+  [column old-type new-type]
+  (condp = [old-type new-type]
+
+    [[:boolean] [:bigint]]
     [:case
      (quote-identifier column) 1
      :else 0]
 
-    [[:float] [:boolean]]
+    [[:boolean] [:float]]
     [:case
      (quote-identifier column) 1.0
      :else 0.0]
@@ -1045,7 +1046,7 @@
                                            (if (string? column-type)
                                              [[:raw column-type]]
                                              column-type))]
-                           (if-some [using (alter-column-using-hsql-expr column column-type old-type)]
+                           (if-some [using (alter-column-using-hsql-expr column old-type column-type)]
                              (vec (concat base [:using using]))
                              (vec base))))}
         (sql/format
