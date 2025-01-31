@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import { updateIn } from "icepick";
 import slugg from "slugg";
 import { t } from "ttag";
 import _ from "underscore";
@@ -220,14 +221,21 @@ export default class NativeQuery extends AtomicQuery {
   setParameterIndex(id: string, newIndex: number) {
     // NOTE: currently all NativeQuery parameters are implicitly generated from
     // template tags, and the order is determined by the key order
-    const query = this._query();
-    const tags = Lib.templateTags(query);
-    const entries = Array.from(Object.entries(tags));
-    const oldIndex = _.findIndex(entries, entry => entry[1].id === id);
-    entries.splice(newIndex, 0, entries.splice(oldIndex, 1)[0]);
-    const newTags = _.object(entries);
-    const newQuery = Lib.withTemplateTags(query, newTags);
-    return this._setQuery(newQuery);
+    return new NativeQuery(
+      this._originalQuestion,
+      updateIn(
+        this._datasetQuery,
+        ["native", "template-tags"],
+        templateTags => {
+          const entries = Array.from(Object.entries(templateTags));
+
+          const oldIndex = _.findIndex(entries, entry => entry[1].id === id);
+
+          entries.splice(newIndex, 0, entries.splice(oldIndex, 1)[0]);
+          return _.object(entries);
+        },
+      ),
+    );
   }
 
   lineCount(): number {
