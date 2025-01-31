@@ -96,6 +96,8 @@ export function useExtensions(options: Options): Extension[] {
         name,
         expressionIndex,
       }),
+      expander(),
+
       Prec.high(
         keymap.of([
           {
@@ -170,4 +172,30 @@ function fonts() {
 
 function highlighting() {
   return syntaxHighlighting(highlightStyle);
+}
+
+/**
+ * Expands -> to → when the user is typing.
+ */
+function expander() {
+  return EditorView.updateListener.of(update => {
+    if (!update.docChanged) {
+      return;
+    }
+    const { state, view } = update;
+    const pos = state.selection.main.head;
+    const before = state.doc.sliceString(pos - 2, pos);
+
+    if (before !== "->") {
+      return;
+    }
+
+    view.dispatch({
+      changes: {
+        from: pos - 2,
+        to: pos,
+        insert: "→",
+      },
+    });
+  });
 }
