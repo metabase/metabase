@@ -840,18 +840,22 @@
    (keyword "timestamp with time zone")    :type/DateTimeWithLocalTZ
    (keyword "timestamp without time zone") :type/DateTime})
 
-;; add debug logging
-;; add catch blocks...
 (defn- check-for-enum-type
+  "Check wheter `database-type` is mapped to enum."
   [database-type]
-  (when (and (qp.store/initialized?)
-             (seq (jdbc/query (-> (qp.store/metadata-provider)
-                                  lib.metadata/database
-                                  sql-jdbc.conn/db->pooled-connection-spec)
-                              [(str "SELECT NULL\n"
-                                    "FROM pg_type t\n"
-                                    "WHERE t.typname = ? AND t.typtype = 'e'")
-                               (name database-type)])))
+  (when (try (and (qp.store/initialized?)
+                  (let [typname (-> database-type name (str/split #"\.") last (str/replace #"^\"|\"$" ""))]
+                    (seq (jdbc/query (-> (qp.store/metadata-provider)
+                                         lib.metadata/database
+                                         sql-jdbc.conn/db->pooled-connection-spec)
+                                     [(str "SELECT NULL\n"
+                                           "FROM pg_type t\n"
+                                           "WHERE t.typname = ? AND t.typtype = 'e'")
+                                      typname]))))
+             (catch Throwable t
+               (log/debug "Failed to check enum type")
+               (log/trace t)
+               nil))
     :type/PostgresEnum))
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
