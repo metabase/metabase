@@ -768,7 +768,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         job:
           - name: Redshift Upload Tests
