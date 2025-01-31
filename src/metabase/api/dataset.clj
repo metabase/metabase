@@ -253,5 +253,3 @@
                               [:parameter ms/Parameter]
                               [:field_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (parameter-values parameter field-ids query))
-
-(api/define-routes)

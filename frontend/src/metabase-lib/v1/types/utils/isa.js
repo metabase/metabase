@@ -154,7 +154,9 @@ export const isDateWithoutTime = field => {
 export const isNumber = field =>
   field &&
   isNumericBaseType(field) &&
-  (field.semantic_type == null || isa(field.semantic_type, TYPE.Number));
+  (field.semantic_type == null ||
+    isa(field.semantic_type, TYPE.Number) ||
+    isa(field.semantic_type, TYPE.Category));
 
 export const isTime = field => {
   if (!field) {

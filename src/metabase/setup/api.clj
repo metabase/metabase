@@ -323,5 +323,3 @@
     (api/check-404 config-token)
     (api/check-403 (= token config-token))
     (dissoc defaults :token)))
-
-(api/define-routes)
