@@ -2215,19 +2215,48 @@
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
               (doseq [{:keys [upload-type uncoerced coerced fail-msg] :as args}
-                      [(merge
-                        {:upload-type int-type, :uncoerced "2.1"}
-                        (if (= driver/*driver* :redshift)
-                          ;; TODO: redshift doesn't allow promotion of ints to floats
-                          {:fail-msg "There's a value with the wrong type \\('double precision'\\) in the 'test_column' column"}
-                          {:coerced 2.1})) ; column is promoted to float
-                       {:upload-type int-type,   :uncoerced "2.0",        :coerced 2} ; value is coerced to int
-                       {:upload-type float-type, :uncoerced "2",          :coerced 2.0} ; column is promoted to float
-                       {:upload-type bool-type,  :uncoerced "0",          :coerced false}
-                       {:upload-type bool-type,  :uncoerced "2",          :coerced 2} ; column is promoted to an int
-                       {:upload-type bool-type,  :uncoerced "2.0",        :coerced 2.0} ; column is promoted to a float
-                       {:upload-type bool-type,  :uncoerced "3.14",       :coerced 3.14} ; column is promoted to float
-                       {:upload-type int-type,   :uncoerced "01/01/2012", :fail-msg "'01/01/2012' is not a recognizable number"}]]
+                      [; column is promoted to a float
+                       {:upload-type     int-type
+                        :uncoerced      "2.1"
+                        :coerced         2.1
+                        ;; TODO redshift doesn't allow promotion
+                        :fail            (= :redshift driver/*driver*)
+                        :fail-msg        "There's a value with the wrong type \\('double precision'\\) in the 'test_column' column"}
+                       ;; column is promoted to an int
+                       {:upload-type     bool-type
+                        :uncoerced       "2"
+                        :coerced         2
+                        :fail            (= :redshift driver/*driver*)
+                        :fail-msg        "There's a value with the wrong type \\('bigint'\\) in the 'test_column' column"}
+                       ;; column is promoted to a float
+                       {:upload-type     bool-type
+                        :uncoerced       "2.0"
+                        :coerced         2.0
+                        :fail            (= :redshift driver/*driver*)
+                        :fail-msg        "There's a value with the wrong type \\('double precision'\\) in the 'test_column' column"}
+                       ;; column is promoted to a float
+                       {:upload-type     bool-type
+                        :uncoerced       "3.14"
+                        :coerced         3.14
+                        :fail            (= :redshift driver/*driver*)
+                        :fail-msg        "There's a value with the wrong type \\('double precision'\\) in the 'test_column' column"}
+                       ; value is coerced to an int
+                       {:upload-type     int-type
+                        :uncoerced       "2.0"
+                        :coerced         2}
+                       ; value is coerced to a float
+                       {:upload-type     float-type
+                        :uncoerced       "2"
+                        :coerced         2.0}
+                       ;; value is interpreted as a boolean
+                       {:upload-type     bool-type
+                        :uncoerced       "0"
+                        :coerced         false}
+                       ;; value is not an int
+                       {:upload-type     int-type
+                        :uncoerced       "01/01/2012"
+                        :fail            true
+                        :fail-msg        "'01/01/2012' is not a recognizable number"}]]
                 (with-upload-table!
                   [table (create-upload-table! {:col->upload-type (columns-with-auto-pk
                                                                    (ordered-map/ordered-map :test_column upload-type))
@@ -2236,7 +2265,13 @@
                         file     (csv-file-with csv-rows)
                         update!  (fn []
                                    (update-csv! action {:file file, :table-id (:id table)}))]
-                    (if (contains? args :coerced)
+                    (if (:fail args)
+                      (testing (format "\nUploading %s into a column of type %s should fail to coerce"
+                                       uncoerced (name upload-type))
+                        (is (thrown-with-msg?
+                             clojure.lang.ExceptionInfo
+                             (re-pattern (str "^" fail-msg "$"))
+                             (update!))))
                       (testing (format "\nUploading %s into a column of type %s should be coerced to %s"
                                        uncoerced (name upload-type) coerced)
                         (testing "\nAppend should succeed"
@@ -2245,13 +2280,7 @@
                         (is (= (rows-with-auto-pk [[coerced]])
                                ;; Clickhouse uses 32-bit floats, so we must account for that loss in precision.
                                ;; In this case, 2.1 ⇒ 2.0999999046325684
-                               (round-floats 6 (rows-for-table table)))))
-                      (testing (format "\nUploading %s into a column of type %s should fail to coerce"
-                                       uncoerced (name upload-type))
-                        (is (thrown-with-msg?
-                             clojure.lang.ExceptionInfo
-                             (re-pattern (str "^" fail-msg "$"))
-                             (update!)))))
+                               (round-floats 6 (rows-for-table table))))))
                     (io/delete-file file)))))))))))
 
 (deftest update-promotion-multiple-columns-test
@@ -2339,7 +2368,7 @@
               (io/delete-file file))))))))
 
 (deftest update-from-csv-int-and-boolean-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift) ; redshift does not support column promotion
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
         (testing "Append should handle int values being appended to a boolean column"
@@ -2356,6 +2385,27 @@
                                              [0]]
                                             [[1]
                                              [2]]))
+                     (set (rows-for-table table))))
+              (io/delete-file file))))))))
+
+(deftest update-from-csv-float-and-boolean-test
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift) ; redshift does not support column promotion
+    (doseq [action (actions-to-test driver/*driver*)]
+      (testing (action-testing-str action)
+        (testing "Append should handle float values being appended to a boolean column"
+          (with-upload-table! [table (create-upload-table!
+                                      :col->upload-type (columns-with-auto-pk {:col bool-type})
+                                      :rows [[1] [0]])]
+            (let [csv-rows ["col"
+                            "1.2"
+                            "2.3"]
+                  file     (csv-file-with csv-rows)]
+              (is (some? (update-csv! action {:file file, :table-id (:id table)})))
+              (is (= (set (updated-contents action
+                                            [[1.0]
+                                             [0.0]]
+                                            [[1.2]
+                                             [2.3]]))
                      (set (rows-for-table table))))
               (io/delete-file file))))))))
 
