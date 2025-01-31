@@ -165,7 +165,7 @@ export const ChartSettingFieldPicker = ({
               backgroundColor: "var(--mb-color-bg-white) !important",
             },
             border: "none",
-            width: "100%",
+            width: "auto",
           },
           rightSection: {
             pointerEvents: "none",
