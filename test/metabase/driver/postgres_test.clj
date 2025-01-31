@@ -1025,51 +1025,51 @@
 
 (deftest filtering-on-enum-from-source-test
   (mt/test-driver
-   :postgres
-   (do-with-enums-db!
-    (fn [enums-db]
-      (mt/with-db enums-db
-        (let [query {:database (mt/id)
-                     :type :native
-                     :native {:query "select * from birds"
-                              :parameters []}}]
-          (testing "results_metadata columns are correctly typed"
-            (is (=? [{:name "name"}
-                     {:name "status"
-                      :base_type :type/PostgresEnum
-                      :effective_type :type/PostgresEnum
-                      :database_type "bird_status"}
-                     {:name "other_status"
-                      :base_type :type/PostgresEnum
-                      :effective_type :type/PostgresEnum
-                      :database_type "\"bird_schema\".\"bird_status\""}
-                     {:name "type"
-                      :base_type :type/PostgresEnum
-                      :effective_type :type/PostgresEnum
-                      :database_type "bird type"}]
-                    (-> (qp/process-query query) :data :results_metadata :columns)))
-            (doseq [card-type [:question :model]]
-              (mt/with-temp
-                [:model/Card
-                 {id :id}
-                 (assoc {:dataset_query query
-                         :result_metadata (-> (qp/process-query query) :data :results_metadata :columns)
-                         :type :model}
-                        :type card-type)]
-                (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                      query (as-> (lib/query mp (lib.metadata/card mp id)) $
-                              (lib/filter $ (lib/= (m/find-first (comp #{"status"} :name)
-                                                                 (lib/filterable-columns $))
-                                                   "good bird"))
-                              (lib/filter $ (lib/= (m/find-first (comp #{"other_status"} :name)
-                                                                 (lib/filterable-columns $))
-                                                   "sad bird"))
-                              (lib/filter $ (lib/= (m/find-first (comp #{"type"} :name)
-                                                                 (lib/filterable-columns $))
-                                                   "toucan")))]
-                  (testing (format "Filtering on enums in `%s` based query works as expected (#27680)" card-type)
-                    (is (=? {:data {:rows [["Rasta" "good bird" "sad bird" "toucan"]]}}
-                            (qp/process-query query))))))))))))))
+    :postgres
+    (do-with-enums-db!
+     (fn [enums-db]
+       (mt/with-db enums-db
+         (let [query {:database (mt/id)
+                      :type :native
+                      :native {:query "select * from birds"
+                               :parameters []}}]
+           (testing "results_metadata columns are correctly typed"
+             (is (=? [{:name "name"}
+                      {:name "status"
+                       :base_type :type/PostgresEnum
+                       :effective_type :type/PostgresEnum
+                       :database_type "bird_status"}
+                      {:name "other_status"
+                       :base_type :type/PostgresEnum
+                       :effective_type :type/PostgresEnum
+                       :database_type "\"bird_schema\".\"bird_status\""}
+                      {:name "type"
+                       :base_type :type/PostgresEnum
+                       :effective_type :type/PostgresEnum
+                       :database_type "bird type"}]
+                     (-> (qp/process-query query) :data :results_metadata :columns)))
+             (doseq [card-type [:question :model]]
+               (mt/with-temp
+                 [:model/Card
+                  {id :id}
+                  (assoc {:dataset_query query
+                          :result_metadata (-> (qp/process-query query) :data :results_metadata :columns)
+                          :type :model}
+                         :type card-type)]
+                 (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                       query (as-> (lib/query mp (lib.metadata/card mp id)) $
+                               (lib/filter $ (lib/= (m/find-first (comp #{"status"} :name)
+                                                                  (lib/filterable-columns $))
+                                                    "good bird"))
+                               (lib/filter $ (lib/= (m/find-first (comp #{"other_status"} :name)
+                                                                  (lib/filterable-columns $))
+                                                    "sad bird"))
+                               (lib/filter $ (lib/= (m/find-first (comp #{"type"} :name)
+                                                                  (lib/filterable-columns $))
+                                                    "toucan")))]
+                   (testing (format "Filtering on enums in `%s` based query works as expected (#27680)" card-type)
+                     (is (=? {:data {:rows [["Rasta" "good bird" "sad bird" "toucan"]]}}
+                             (qp/process-query query))))))))))))))
 
 ;; API tests are in [[metabase.api.action-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
