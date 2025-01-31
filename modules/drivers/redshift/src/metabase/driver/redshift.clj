@@ -540,6 +540,7 @@
     (doseq [[k v] column-definitions]
       (f driver db-id table-name {k v} settings))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/alter-columns! :redshift
   [_driver _db-id _table-name column-definitions]
   ;; TODO: redshift doesn't allow promotion of ints to floats using ALTER TABLE.

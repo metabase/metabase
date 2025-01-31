@@ -1049,8 +1049,8 @@
                              (vec (concat base [:using using]))
                              (vec base))))}
         (sql/format
-          :quoted true
-          :dialect (sql.qp/quote-style driver))
+         :quoted  true
+         :dialect (sql.qp/quote-style driver))
         first)))
 
 (defmethod driver/table-name-length-limit :postgres

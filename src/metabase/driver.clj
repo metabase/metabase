@@ -1224,6 +1224,7 @@
 
 ;; used for compatibility with drivers only implementing alter-columns!
 ;; remove once alter-columns! is deleted (v0.57+)
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod alter-table-columns! :default
   [driver db-id table-name column-definitions & _opts]
   (alter-columns! driver db-id table-name column-definitions))
