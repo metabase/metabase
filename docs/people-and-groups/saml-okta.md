@@ -197,8 +197,8 @@ For common issues, go to [Troubleshooting SAML][troubleshooting-saml].
 [okta-saml-docs]: https://help.okta.com/oie/en-us/content/topics/apps/apps_app_integration_wizard_saml.htm
 [okta-create-attribute-statement]: https://support.okta.com/help/s/article/How-to-define-and-configure-a-custom-SAML-attribute-statement
 [saml-doc]: ./authenticating-with-saml.md
-[site-url]: ../configuring-metabase/settings.md#site-url
-[troubleshooting-saml]: ../troubleshooting-guide/saml.md
+[site-url]: ../../configuring-metabase/settings.md#site-url
+[troubleshooting-saml]: ../../troubleshooting-guide/saml.md
 
 ## Further reading
 

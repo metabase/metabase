@@ -62,10 +62,10 @@ FROM
 
 ## Further reading
 
-- [Models](../../../data-modeling/models.md)
+- [Models][model]
 - [SQL Snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-snippets)
 - [SQL Snippets vs Saved Questions vs. Views](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/organizing-sql)
 - [SQL troubleshooting guide](../../../troubleshooting-guide/sql.md).
 
 [cte]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-cte
-[model]: ../../data-modeling/models.md
+[model]: ../../../data-modeling/models.md
