@@ -384,7 +384,8 @@
     metabase.notification          #{metabase.notification.core
                                      metabase.notification.init
                                      metabase.notification.payload.core}
-    metabase.permissions           #{metabase.permissions.core}
+    metabase.permissions           #{metabase.permissions.api
+                                     metabase.permissions.core}
     metabase.plugins               #{metabase.plugins
                                      metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
     metabase.premium-features      #{metabase.premium-features.core}
