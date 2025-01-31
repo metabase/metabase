@@ -1831,7 +1831,7 @@
 (defn- remove-undefined-properties
   [obj]
   (cond-> obj
-          (object? obj) (gobject/filter (fn [e _ _] (not (undefined? e))))))
+    (object? obj) (gobject/filter (fn [e _ _] (not (undefined? e))))))
 
 (defn- template-tags-js->cljs
   [tags]
