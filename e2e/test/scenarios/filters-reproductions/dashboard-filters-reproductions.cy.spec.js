@@ -4225,3 +4225,25 @@ describe("issue 52627", () => {
     H.rightSidebar().findByText("Average of Total").should("be.visible");
   });
 });
+
+describe("issue 52918", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should re-position the parameter dropdown when its size changes (metabase#52918)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.setFilter("Date picker", "All Options");
+    H.sidebar().findByLabelText("No default").click();
+    H.popover().within(() => {
+      cy.findByText("Specific dates…").click();
+      cy.findByText("Between").should("be.visible");
+    });
+    cy.log("check that there is no overflow in the popover");
+    H.popover().should(([element]) => {
+      expect(element.offsetWidth).to.gte(element.scrollWidth);
+    });
+  });
+});

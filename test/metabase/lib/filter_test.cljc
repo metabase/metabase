@@ -8,7 +8,6 @@
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -29,7 +28,8 @@
         venues-name-metadata        (meta/field-metadata :venues :name)
         venues-latitude-metadata    (meta/field-metadata :venues :latitude)
         venues-longitude-metadata   (meta/field-metadata :venues :longitude)
-        categories-id-metadata      (lib.metadata/stage-column q2 -1 "ID")
+        categories-id-metadata      (m/find-first #(= (:id %) (meta/id :categories :id))
+                                                  (lib/visible-columns q2))
         checkins-date-metadata      (meta/field-metadata :checkins :date)]
     (testing "comparisons"
       (doseq [[op f] [[:=  lib/=]
@@ -42,7 +42,10 @@
          [op
           {:lib/uuid string?}
           [:field {:lib/uuid string?} (meta/id :venues :category-id)]
-          [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
+          [:field {:base-type    :type/BigInteger
+                   :lib/uuid     string?
+                   :source-field (meta/id :venues :category-id)}
+           (meta/id :categories :id)]]
          f
          venues-category-id-metadata
          categories-id-metadata)))
@@ -53,7 +56,10 @@
         {:lib/uuid string?}
         [:field {:lib/uuid string?} (meta/id :venues :category-id)]
         42
-        [:field {:base-type :type/BigInteger, :lib/uuid string?} "ID"]]
+        [:field {:base-type    :type/BigInteger
+                 :lib/uuid     string?
+                 :source-field (meta/id :venues :category-id)}
+         (meta/id :categories :id)]]
        lib/between
        venues-category-id-metadata
        42

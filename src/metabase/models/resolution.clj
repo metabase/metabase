@@ -118,4 +118,6 @@
           *table-name-resolved*)
     (next-method model)
     (binding [*table-name-resolved* true]
-      (t2.model/table-name (t2.model/resolve-model model)))))
+      ;; loading the model namespace by calling `resolve-model` can add a new implementation to `table-name`, and
+      ;; apparently we need to refer back to the var to pick up the updated multimethod.
+      (#'t2.model/table-name (t2.model/resolve-model model)))))
