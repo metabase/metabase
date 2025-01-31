@@ -2,7 +2,6 @@
   "Bulk endpoints for Cards"
   (:require
    [metabase.api.card :as api.card]
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
@@ -49,5 +48,3 @@
     (doseq [card-id card_ids]
       (api.card/update-card! card-id (select-keys body [:collection_id :dashboard_id]) true)))
   {:status :success})
-
-(api/define-routes)
