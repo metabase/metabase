@@ -329,7 +329,10 @@
   (snowplow/track-event! ::snowplow/simple_event {:event "sheets_disconnected"})
   (reset-gsheets-status))
 
-(api/define-routes)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/gsheets` routes."
+  ;; TODO add api/+check-superuser +auth and +check-setting
+  (api.macros/ns-handler *ns*))
 
 (comment ;; TEMP (gsheets)
 
