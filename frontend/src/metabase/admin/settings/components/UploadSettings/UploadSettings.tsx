@@ -7,12 +7,7 @@ import { UploadSettingsForm } from "./UploadSettingsForm";
 export const UploadSettings = () => {
   return (
     <>
-      <Flex
-        justify="space-between"
-        align="flex-start"
-        direction={{ base: "column-reverse", md: "row" }}
-        gap="md"
-      >
+      <Flex justify="space-between" align="flex-start" gap="md">
         <UploadSettingsForm />
         <UpsellUploads source="settings-uploads" />
       </Flex>
