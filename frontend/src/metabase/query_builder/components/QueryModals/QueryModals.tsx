@@ -19,6 +19,7 @@ import { PreviewQueryModal } from "metabase/query_builder/components/view/Previe
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
+import { AddRowModal } from "metabase/querying/filters/components/AddRowModal";
 import { FilterModal } from "metabase/querying/filters/components/FilterModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
@@ -368,6 +369,8 @@ export function QueryModals({
           <PreviewQueryModal onClose={onCloseModal} />
         </Modal>
       );
+    case MODAL_TYPES.ADD_ROW:
+      return <AddRowModal question={question} onClose={onCloseModal} />;
     default:
       return null;
   }

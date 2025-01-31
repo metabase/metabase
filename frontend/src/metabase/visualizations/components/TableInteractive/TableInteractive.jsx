@@ -542,12 +542,14 @@ class TableInteractive extends Component {
   }
 
   onVisualizationClick(clicked, element, cellProps) {
-    // const { onVisualizationClick } = this.props;
-    // if (this.visualizationIsClickable(clicked)) {
-    //   onVisualizationClick({ ...clicked, element });
-    // }
+    if (clicked.data) {
+      this.handleCellClickToEdit(clicked, element, cellProps);
+      return;
+    }
 
-    this.handleCellClickToEdit(clicked, element, cellProps);
+    if (this.visualizationIsClickable(clicked)) {
+      this.props.onVisualizationClick({ ...clicked, element });
+    }
   }
 
   getCellClickedObject(rowIndex, columnIndex) {

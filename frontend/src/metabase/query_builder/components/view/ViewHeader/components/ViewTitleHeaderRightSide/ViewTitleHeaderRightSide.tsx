@@ -7,6 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
+import { AddRowHeaderButton } from "metabase/query_builder/components/view/ViewHeader/components/AddRowHeaderButton";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -143,6 +144,7 @@ export function ViewTitleHeaderRightSide({
       className={ViewTitleHeaderS.ViewHeaderActionPanel}
       data-testid="qb-header-action-panel"
     >
+      <AddRowHeaderButton onOpenModal={onOpenModal} />
       {FilterHeaderButton.shouldRender({
         question,
         queryBuilderMode,
