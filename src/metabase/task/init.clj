@@ -11,7 +11,6 @@
    [metabase.task.email-remove-legacy-pulse]
    [metabase.task.follow-up-emails]
    [metabase.task.index-values]
-   [metabase.task.legacy-no-self-service-emails]
    [metabase.task.notification]
    [metabase.task.persist-refresh]
    [metabase.task.refresh-slack-channel-user-cache]
