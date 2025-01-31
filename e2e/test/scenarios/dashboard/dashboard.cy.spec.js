@@ -1698,24 +1698,24 @@ describe("scenarios > dashboard > entity id support", () => {
   });
 
   it("when loading `/dashboard/entity/${non existing entity id}`, it should show a 404 page", () => {
-    const invalidSlug = "x".repeat(21);
-    cy.visit(`/dashboard/entity/${invalidSlug}`);
+    const nonExistingEntityId = "x".repeat(21);
+    cy.visit(`/dashboard/entity/${nonExistingEntityId}`);
 
     H.main().findByText("We're a little lost...").should("be.visible");
   });
 
   it("when loading `/dashboard/entity/${non existing entity id}`, it should show a 404 page even if the entity id starts with a number", () => {
     const nonExistingEntityId = "12".padEnd(21, "x");
-    cy.visit(
-      `/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}?tab=${nonExistingEntityId}`,
-    );
+    cy.visit(`/dashboard/entity/${nonExistingEntityId}`);
 
     H.main().findByText("We're a little lost...").should("be.visible");
   });
 
-  it("when loading `/dashboard/entity/${existing entity id}?tab=${non existing tab entity id}`, it should show a 404 page even if the entity id starts with a number", () => {
-    const invalidSlug = "12".padEnd(21, "x");
-    cy.visit(`/dashboard/entity/${invalidSlug}`);
+  it("when loading `/dashboard/entity/${entity id}?tab=${non existing tab entity id}`, it should show a 404 page even if the entity id starts with a number", () => {
+    const nonExistingEntityId = "12".padEnd(21, "x");
+    cy.visit(
+      `/dashboard/entity/${ORDERS_DASHBOARD_ENTITY_ID}?tab=${nonExistingEntityId}`,
+    );
 
     H.main().findByText("We're a little lost...").should("be.visible");
   });
