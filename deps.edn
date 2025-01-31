@@ -237,32 +237,38 @@
   {:extra-deps
    {clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2024.11.14"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    clj-kondo/clj-kondo          {:mvn/version "2024.11.14"}                    ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
+
     com.clojure-goes-fast/clj-async-profiler
-    {:mvn/version "1.6.0"}                     ; Enables local profiling and heat map generation
+    {:mvn/version "1.6.0"}                                                      ; Enables local profiling and heat map generation
+
     com.clojure-goes-fast/clj-memory-meter
-    {:mvn/version "0.3.0"}                     ; Enables easy memory measurement
-    com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
-    criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
-    djblue/portal                {:mvn/version "0.58.3"}                    ; ui for inspecting values
-    hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
+    {:mvn/version "0.3.0"}                                                      ; Enables easy memory measurement
+
+    com.github.clojure-lsp/clojure-lsp                                          ; We all know what LSP does.
+    {:mvn/version "2025.01.22-23.28.23"}
+
+    com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                        ; generating strings from regexes (useful with malli)
+    criterium/criterium          {:mvn/version "0.4.6"}                         ; benchmarking library
+    djblue/portal                {:mvn/version "0.58.3"}                        ; ui for inspecting values
+    hashp/hashp                  {:mvn/version "0.2.2"}                         ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
     io.github.metabase/hawk      {:mvn/version "1.0.6"}
-    jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
+    jonase/eastwood              {:mvn/version "1.4.3"                          ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
-    lambdaisland/deep-diff2      {:mvn/version "2.11.216"}                  ; way better diffs
+    lambdaisland/deep-diff2      {:mvn/version "2.11.216"}                      ; way better diffs
     org.clojure/algo.generic     {:mvn/version "1.0.1"}
     peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
                                   :sha "db627c627db3b527a63caf472f0422e4cbfdf574"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
                                   :exclusions  [org.clojure/clojure
-                                                org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
-    rewrite-clj/rewrite-clj      {:mvn/version "1.1.49"}                    ; clojure source parsing and rewriting
-    ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
-    talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
+                                                org.clojure/clojurescript]}     ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
+    rewrite-clj/rewrite-clj      {:mvn/version "1.1.49"}                        ; clojure source parsing and rewriting
+    ring/ring-mock               {:mvn/version "0.4.0"}                         ; creating Ring request maps for testing purposes
+    talltale/talltale            {:mvn/version "0.5.14"}}                       ; generates fake data, useful for prototyping or load testing
 
    :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
    :jvm-opts    ["-Dmb.run.mode=dev"

@@ -10,7 +10,7 @@
          regex.
 
    TODO should be addressed during follow-up of monger removal."
-  {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}})
+  {:clj-kondo/config '{:linters {:missing-docstring {:level :off}, :clojure-lsp/unused-public-var {:level :off}}}})
 
 (def $gt "$gt")
 (def $gte "$gte")
