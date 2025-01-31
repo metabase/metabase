@@ -444,9 +444,11 @@
     [:or [:= namespace-keyword nil] [:= namespace-keyword "analytics"]]
     [:= namespace-keyword namespace-val]))
 
-(defn can-read-audit-helper
+;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
+(mu/defn can-read-audit-helper
   "Audit instances should only be readable if audit app is enabled."
-  [model instance]
+  [model    :- :keyword
+   instance :- :map]
   (if (and (not (premium-features/enable-audit-app?))
            (case model
              :model/Collection (audit/is-collection-id-audit? (:id instance))

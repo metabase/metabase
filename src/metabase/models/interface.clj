@@ -676,7 +676,7 @@
         (check-perms-with-fn fn-symb (perms-objects-set object read-or-write))))
 
   ([fn-symb   :- qualified-symbol?
-    perms-set :- [:set {:min 1} :string]]
+    perms-set :- [:set :string]]
    (let [f (requiring-resolve fn-symb)]
      (assert f)
      (u/prog1 (f (current-user-permissions-set) perms-set)

@@ -133,10 +133,10 @@
   ([_model pk]
    (mi/can-write? (t2/select-one :model/Collection pk))))
 
-(defmethod mi/can-read? :model/Collection
+(mu/defmethod mi/can-read? :model/Collection
   ([instance]
    (perms/can-read-audit-helper :model/Collection instance))
-  ([_ pk]
+  ([_model pk :- pos-int?]
    (mi/can-read? (t2/select-one :model/Collection :id pk))))
 
 (def AuthorityLevel
