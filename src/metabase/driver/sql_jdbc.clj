@@ -211,7 +211,7 @@
   [driver db-id table-name column-definitions]
   (qp.writeback/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
 
-(defmethod driver/alter-upload-columns! :sql-jdbc
+(defmethod driver/alter-table-columns! :sql-jdbc
   [driver db-id table-name column-definitions & opts]
   (let [deprecated-default-method (get-method driver/alter-columns! :sql-jdbc)
         deprecated-driver-method  (get-method driver/alter-columns! driver)
@@ -219,7 +219,7 @@
     ;; compatibility: continue to use the old method if it has been overridden
     (if deprecated-method-specialised
       (deprecated-driver-method driver db-id table-name column-definitions)
-      (->> (apply sql-jdbc.sync/alter-upload-columns-sql driver table-name column-definitions opts)
+      (->> (apply sql-jdbc.sync/alter-table-columns-sql driver table-name column-definitions opts)
            (qp.writeback/execute-write-sql! db-id)))))
 
 (defmethod driver/syncable-schemas :sql-jdbc

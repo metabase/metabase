@@ -597,9 +597,9 @@
     (doseq [[k v] column-definitions]
       (f driver db-id table-name {k v} settings))))
 
-(defmethod driver/alter-upload-columns! :h2
+(defmethod driver/alter-table-columns! :h2
   [driver db-id table-name column-definitions & opts]
   ;; H2 doesn't support altering multiple columns at a time, so we break it up into individual ALTER TABLE statements
-  (let [f (get-method driver/alter-upload-columns! :sql-jdbc)]
+  (let [f (get-method driver/alter-table-columns! :sql-jdbc)]
     (doseq [[k v] column-definitions]
       (apply f driver db-id table-name {k v} opts))))

@@ -724,7 +724,7 @@
 
 (defn- alter-columns! [driver database table field->new-type & args]
   (when (seq field->new-type)
-    (apply driver/alter-upload-columns! driver (:id database) (table-identifier table)
+    (apply driver/alter-table-columns! driver (:id database) (table-identifier table)
            (field->db-type driver field->new-type)
            args)))
 

@@ -16,7 +16,7 @@
  [sql-jdbc.sync.interface
   active-tables
   alter-columns-sql
-  alter-upload-columns-sql
+  alter-table-columns-sql
   column->semantic-type
   current-user-table-privileges
   database-type->base-type

@@ -139,8 +139,10 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti alter-upload-columns-sql
-  "Generate the query to be used with [[driver/alter-upload-columns!]]."
+(defmulti alter-table-columns-sql
+  "Generate the query to be used with [[driver/alter-table-columns!]].
+  Supersedes the deprecated [[alter-columns-sql]].
+  This version receives additional kw-args `opts` (as passed to [[driver/alter-table-columns!]])."
   {:added "0.54.0"
    :arglists '([driver table-name column-definitions & opts])}
   driver/dispatch-on-initialized-driver
@@ -148,15 +150,15 @@
 
 ;; used for compatibility with drivers only implementing alter-columns-sql
 ;; remove when alter-columns-sql is deleted (v0.57+)
-(defmethod alter-upload-columns-sql :default
+(defmethod alter-table-columns-sql :default
   [driver table-name column-definitions & _opts]
   (alter-columns-sql driver table-name column-definitions))
 
-;; default :sql-jdbc implementation kept here rather than on alter-upload-columns-sql
+;; default :sql-jdbc implementation kept here rather than on alter-table-columns-sql
 ;; to maximize compatibility:
 ;; a. get-method for superclass type calls still pick up this impl
-;; b. existing specialisation of sql-jdbc should remain preferred when alter-uploads-column-sql is called
-;; we can move this impl to alter-upload-columns-sql when alter-columns-sql is deleted (v0.57+)
+;; b. existing specialisation of sql-jdbc should remain preferred when alter-table-column-sql is called
+;; we can move this impl to alter-table-columns-sql when alter-columns-sql is deleted (v0.57+)
 (defmethod alter-columns-sql :sql-jdbc
   [driver table-name column-definitions]
   (with-quoting driver

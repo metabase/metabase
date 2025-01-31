@@ -1034,7 +1034,7 @@
 
     nil))
 
-(defmethod sql-jdbc.sync/alter-upload-columns-sql :postgres
+(defmethod sql-jdbc.sync/alter-table-columns-sql :postgres
   [driver table-name column-definitions & {:keys [old-types]}]
   (with-quoting driver
     (-> {:alter-table  (keyword table-name)

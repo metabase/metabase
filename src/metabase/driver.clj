@@ -1198,7 +1198,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti alter-upload-columns!
+(defmulti alter-table-columns!
   "Alter columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
   Currently, we do not currently support changing the primary key.
 
@@ -1224,7 +1224,7 @@
 
 ;; used for compatibility with drivers only implementing alter-columns!
 ;; remove once alter-columns! is deleted (v0.57+)
-(defmethod alter-upload-columns! :default
+(defmethod alter-table-columns! :default
   [driver db-id table-name column-definitions & _opts]
   (alter-columns! driver db-id table-name column-definitions))
 
