@@ -270,6 +270,9 @@
    clojure.pprint/pprint                              {:message "Use metabase.util.log instead of clojure.pprint/pprint"}
    clojure.string/lower-case                          {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case                          {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
+   compojure.core/context                             {:message "Use metabase.api.util.handlers/route-map-handler instead of compojure.core/context, it is much faster and supports OpenAPI spec generation"}
+   compojure.core/defroutes                           {:message "Use metabase.api.util.handlers/defroutes instead of compojure.core/routes, it supports OpenAPI spec generation."}
+   compojure.core/routes                              {:message "Use metabase.api.util.handlers/routes instead of compojure.core/routes, it supports OpenAPI spec generation."}
    fipp.edn/pprint                                    {:message "Use metabase.util.log instead of fipp.edn/pprint"}
    honeysql.core/call                                 {:message "Use hx/call instead because it is Honey SQL 2 friendly"}
    honeysql.core/raw                                  {:message "Use hx/raw instead because it is Honey SQL 2 friendly"}
@@ -337,8 +340,10 @@
                                      metabase.api.common.validation
                                      metabase.api.dataset
                                      metabase.api.macros
+                                     metabase.api.open-api
                                      metabase.api.permission-graph
-                                     metabase.api.routes}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
+                                     metabase.api.routes
+                                     metabase.api.util.handlers}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
     metabase.audit                 #{metabase.audit}
     metabase.auth-provider         #{metabase.auth-provider}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
@@ -586,6 +591,7 @@
     metabase.api.geojson                                          api.geojson
     metabase.api.ldap                                             api.ldap
     metabase.api.logic-history                                    api.login-history
+    metabase.api.macros                                           api.macros
     metabase.api.metric                                           api.metric
     metabase.api.native-query-snippet                             api.native-query-snippet
     metabase.api.permission-graph                                 api.permission-graph
@@ -1001,7 +1007,6 @@
    metabase.api.card-test/with-ordered-items                                     macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy!                       macros.metabase.api.collection-test/with-collection-hierarchy!
    metabase.api.collection-test/with-some-children-of-collection!                macros.metabase.api.collection-test/with-some-children-of-collection!
-   metabase.api.common/define-routes                                             macros.metabase.api.common/define-routes
    metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing!     macros.metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing!
    metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing! macros.metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!
    metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing!      macros.metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing!
