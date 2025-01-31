@@ -71,8 +71,6 @@ export const ChartSettingSelect = ({
       styles={{
         input: {
           fontWeight: "bold",
-
-          backgroundColor: "blue !important",
         },
       }}
       {...selectProps}

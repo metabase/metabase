@@ -23,5 +23,10 @@ export const datePickerOverrides = {
       calendarHeaderLevel: Styles.calendarHeaderLevel,
       calendarHeaderControl: Styles.calendarHeaderControl,
     },
+    styles: {
+      weekdaysRow: {
+        boxSizing: "border-box",
+      },
+    },
   }),
 };

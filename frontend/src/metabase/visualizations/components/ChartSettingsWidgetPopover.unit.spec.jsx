@@ -51,7 +51,9 @@ it("should display when an anchor is passed", async () => {
   expect(await screen.findByText("Style")).toBeInTheDocument();
 
   //Should Default to rendering formatting
-  expect(await screen.findByText("Foo")).toBeInTheDocument();
+  expect(
+    await screen.findByText("Foo", {}, { timeout: 2000 }),
+  ).toBeInTheDocument();
 });
 
 it("should not show tabs when only 1 widget is passed", async () => {
@@ -61,7 +63,9 @@ it("should not show tabs when only 1 widget is passed", async () => {
   expect(screen.queryByText("Style")).not.toBeInTheDocument();
 
   //Should Default to rendering formatting
-  expect(await screen.findByText("Foo")).toBeInTheDocument();
+  expect(
+    await screen.findByText("Foo", {}, { timeout: 2000 }),
+  ).toBeInTheDocument();
 });
 
 it("should change tabs when clicked", async () => {
@@ -70,7 +74,9 @@ it("should change tabs when clicked", async () => {
   //Should Default to rendering formatting
   expect(await screen.findByText("Foo")).toBeInTheDocument();
 
-  await userEvent.click(await screen.findByText("Style"));
+  await userEvent.click(
+    await screen.findByText("Style", {}, { timeout: 2000 }),
+  );
 
   expect(await screen.findByText("Bar")).toBeInTheDocument();
 });

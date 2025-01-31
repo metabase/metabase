@@ -98,7 +98,7 @@ export const ChartSettingFieldPicker = ({
         onChange={onChange}
         leftSection={
           hasLeftSection ? (
-            <Group wrap="nowrap" gap="sm" p="xs" ml="sm">
+            <Group wrap="nowrap" gap="sm" p="xs" ml="sm" align="start">
               {showDragHandle && (
                 <GrabberHandle
                   name="grabber"
@@ -121,11 +121,10 @@ export const ChartSettingFieldPicker = ({
             </Group>
           ) : null
         }
-        leftSectionWidth={60}
+        leftSectionWidth="auto"
         placeholderNoOptions={t`No valid fields`}
         placeholder={t`Select a field`}
-        iconWidth="auto"
-        rightSectionWidth={60}
+        rightSectionWidth="auto"
         rightSection={
           <Group wrap="nowrap" gap="sm" p="xs" mr="sm">
             {!disabled && (
@@ -156,17 +155,11 @@ export const ChartSettingFieldPicker = ({
           },
           wrapper: {
             marginTop: "0px",
-            display: "flex",
           },
           section: {
-            position: "static",
-            width: "60px",
-            pointerEvents: "none",
             backgroundColor: "unset",
           },
           input: {
-            paddingLeft: hasLeftSection && 0,
-
             marginLeft: theme.spacing.xs,
             textOverflow: "ellipsis",
             fontWeight: "bold",
