@@ -12,6 +12,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common]
    [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
    [metabase.config :as config]
@@ -296,9 +297,9 @@
 (api.macros/defendpoint :get "/preview_dashboard/:id"
   "Get HTML rendering of a Dashboard with `id`.
 
-  This endpoint relies on a custom middleware defined in [[metabase.channel.render.core/style-tag-nonce-middleware]]
-  to allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to
-  these routes at the bottom of this namespace using [[api.macros/ns-handler]]."
+  This endpoint relies on a custom middleware defined in `metabase.channel.render.core/style-tag-nonce-middleware` to
+  allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these
+  routes at the bottom of this namespace using `metabase.api.common/define-routes`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Dashboard id)
@@ -384,9 +385,10 @@
     (t2/delete! :model/PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
 
-(def ^:private style-nonce-middleware
-  (partial channel.render/style-tag-nonce-middleware "/api/pulse/preview_dashboard"))
+(def ^:private ^{:arglists '([handler])} style-nonce-middleware
+  (metabase.api.routes.common/wrap-middleware-for-open-api-spec-generation
+   (partial channel.render/style-tag-nonce-middleware "/api/pulse/preview_dashboard")))
 
 (def ^{:arglists '([request respond raise])} routes
-  "/api/pulse routes."
+  "`/api/pulse` endpoints."
   (api.macros/ns-handler *ns* style-nonce-middleware))

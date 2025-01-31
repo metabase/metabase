@@ -36,5 +36,5 @@
                              (tru "There was an error deleting the table"))}})))
 
 (def ^{:arglists '([request respond raise])} routes
-  "/api/ee/upload-management routes."
+  "`/api/ee/upload-management` routes."
   (api.macros/ns-handler *ns* +auth))

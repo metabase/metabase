@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [compojure.core :refer [GET]]
-   [metabase.api.common :as api]
+   [metabase.api.open-api :as open-api]
    [metabase.api.util.handlers :as handlers]
    [ring.middleware.content-type :as content-type]
    [ring.util.response :as response]))
@@ -33,7 +33,7 @@
   ([_request]
    {:status 200
     :body  (merge
-            (api/root-open-api-object (requiring-resolve 'metabase.api.routes/routes))
+            (open-api/root-open-api-object (requiring-resolve 'metabase.api.routes/routes))
             {:servers [{:url         ""
                         :description "Metabase API"}]})})
 
@@ -57,7 +57,11 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "/api/docs routes"
-  (handlers/routes
-   (GET "/" [] #'index-handler)
-   (GET "/openapi.json" [] #'json-handler)
-   #'redirect-handler))
+  (open-api/handler-with-open-api-spec
+   (handlers/routes
+    (GET "/" [] #'index-handler)
+    (GET "/openapi.json" [] #'json-handler)
+    #'redirect-handler)
+   ;; don't generate a spec for these routes
+   (fn [_prefix]
+     nil)))

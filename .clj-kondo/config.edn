@@ -340,6 +340,7 @@
                                      metabase.api.common.validation
                                      metabase.api.dataset
                                      metabase.api.macros
+                                     metabase.api.open-api
                                      metabase.api.permission-graph
                                      metabase.api.routes
                                      metabase.api.util.handlers}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.

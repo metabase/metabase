@@ -26,6 +26,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.model-index]
    [metabase.api.native-query-snippet]
+   [metabase.api.open-api :as open-api]
    [metabase.api.permissions]
    [metabase.api.persist]
    [metabase.api.premium-features]
@@ -99,8 +100,22 @@
          metabase.api.util/keep-me
          metabase.setup.api/keep-me)
 
-(defn- pass-thru-handler [_request respond _raise]
-  (respond nil))
+(def ^:private ^{:arglists '([request respond raise])} pass-thru-handler
+  "Always 'falls thru' to the next handler."
+  (open-api/handler-with-open-api-spec
+   (fn [_request respond _raise]
+     (respond nil))
+   ;; no OpenAPI spec for this handler.
+   (fn [_prefix]
+     nil)))
+
+(def ^:private ^{:arglists '([request respond raise])} not-found-handler
+  "Always returns a 404."
+  (open-api/handler-with-open-api-spec
+   (route/not-found (constantly {:status 404, :body (deferred-tru "API endpoint does not exist.")}))
+   ;; no OpenAPI spec for this handler.
+   (fn [_prefix]
+     nil)))
 
 (def ^:private enable-testing-routes?
   (or (not config/is-prod?)
@@ -147,7 +162,7 @@
    "/login-history"        (+auth 'metabase.api.login-history)
    "/model-index"          (+auth 'metabase.api.model-index)
    "/native-query-snippet" (+auth 'metabase.api.native-query-snippet)
-   "/notify"               (+static-apikey metabase.sync.api/routes)
+   "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/permissions"          (+auth 'metabase.api.permissions)
    "/persist"              (+auth 'metabase.api.persist)
    "/premium-features"     (+auth metabase.api.premium-features/routes)
@@ -181,4 +196,4 @@
      (requiring-resolve 'metabase-enterprise.api.routes/routes)
      pass-thru-handler)
    (handlers/route-map-handler route-map)
-   (route/not-found (constantly {:status 404, :body (deferred-tru "API endpoint does not exist.")}))))
+   not-found-handler))

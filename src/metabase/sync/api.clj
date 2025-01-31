@@ -6,6 +6,6 @@
 
 (comment metabase.sync.api.notify/keep-me)
 
-(def ^{:arglists '([request respond raise])} routes
+(def ^{:arglists '([request respond raise])} notify-routes
   "/api/notify routes."
   (api.macros/ns-handler 'metabase.sync.api.notify))

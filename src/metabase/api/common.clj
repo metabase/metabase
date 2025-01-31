@@ -13,7 +13,7 @@
 ;;
 ;;  ; ...
 ;;
-;; (api/define-routes)
+;;
 ;; </code></pre>
 ;;
 ;; As you can see, the arguments are:

@@ -1,5 +1,5 @@
 (ns metabase-enterprise.content-verification.api.moderation-review
-  "`/api/moderation-review` routes."
+  "`api/ee/moderation-review` routes."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]

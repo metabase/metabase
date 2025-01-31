@@ -3,11 +3,9 @@
   `resources/frontend_client/index_template.html`; when the frontend is built (e.g. via `./bin/build.sh frontend`)
   different versions that include the FE app are created as `index.html`, `public.html`, and `embed.html`."
   (:require
-   [clojure.core.cache]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [hiccup.util]
-   [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
@@ -16,18 +14,11 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [ring.util.response :as response]
-   [stencil.core :as stencil]
-   [stencil.loader])
+   [stencil.core :as stencil])
   (:import
    (java.io FileNotFoundException)))
 
 (set! *warn-on-reflection* true)
-
-;;; disable the Stencil cache in dev, so we pick up changes to files like `resources/frontend_client/index.html`.
-;;;
-;;; TODO -- we should probably do this somewhere more general, e.g. in a namespace that wraps the Stencil library.
-(when config/is-dev?
-  (stencil.loader/set-cache (clojure.core.cache/ttl-cache-factory {} :ttl 0)))
 
 (defn- base-href []
   (let [path (some-> (public-settings/site-url) io/as-url .getPath)]
