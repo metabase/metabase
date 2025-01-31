@@ -7,6 +7,7 @@ describe("extractVariableDefinitionsFromFileContent", () => {
   it("should extract standard CSS variable definitions", () => {
     const content = `
       .my-class {
+        color: var(--should-not-be-extracted);
         --color-brand: #509ee3;
         --color-text: #000;
       }
@@ -18,6 +19,7 @@ describe("extractVariableDefinitionsFromFileContent", () => {
   it("should extract CSS-in-JS variable definitions", () => {
     const content = `
       const MyContainer1 = styled.div\`
+        color: var(--should-not-be-extracted);
         --theme-primary: "blue",
       \`;
 
@@ -48,6 +50,7 @@ describe("extractVariableUsagesFromFileContent", () => {
   it("should extract usage from css syntax", () => {
     const content = `
       .button {
+        --should-not-be-extracted: blue;
         color: var(--color-brand);
         background: var(--color-background);
       }
@@ -59,6 +62,7 @@ describe("extractVariableUsagesFromFileContent", () => {
   it("should extract usage from css-in-js syntax", () => {
     const content = `
       const MyDiv1 = styled.div\`
+        --should-not-be-extracted: blue;
         color: var(--theme-color);
       \`;
 
