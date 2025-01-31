@@ -12,6 +12,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common]
    [metabase.channel.email :as email]
    [metabase.channel.render.core :as channel.render]
    [metabase.config :as config]
@@ -384,7 +385,10 @@
     (t2/delete! :model/PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
 
-(def ^:private style-nonce-middleware
-  (partial channel.render/style-tag-nonce-middleware "/api/pulse/preview_dashboard"))
+(def ^:private ^{:arglists '([handler])} style-nonce-middleware
+  (metabase.api.routes.common/wrap-middleware-for-open-api-spec-generation
+   (partial channel.render/style-tag-nonce-middleware "/api/pulse/preview_dashboard")))
 
-(api/define-routes style-nonce-middleware)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/pulse` endpoints."
+  (api.macros/ns-handler *ns* style-nonce-middleware))

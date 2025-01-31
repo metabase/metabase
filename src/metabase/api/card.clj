@@ -1016,5 +1016,3 @@
   (from-csv! {:collection-id collection-id
               :filename      (:filename file)
               :file          (:tempfile file)}))
-
-(api/define-routes)

@@ -157,5 +157,3 @@
            (public-settings/persisted-models-enabled! true)
            (throw e))))
   api/generic-204-no-content)
-
-(api/define-routes)
