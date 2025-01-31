@@ -58,7 +58,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [known-issues]: ../known-issues.md
 [learn-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
 [permission-denied]: ../data-permissions.md#getting-a-permission-denied-error-message
-[proxies]: ./proxies.md
+[proxies]: ../proxies.md
 [sandboxing]: ./sandboxing.md
 [setting-collection-permissions]: ../permissions/collections.md#setting-permissions-for-collections
 [sql-access]: ../data-permissions.md#a-user-group-cant-access-the-sql-editor

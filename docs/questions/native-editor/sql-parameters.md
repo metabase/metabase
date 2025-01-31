@@ -433,10 +433,10 @@ More on [Dashboard filters][dashboard-filters].
 - [Troubleshooting filters][troubleshooting-filters].
 - [Dashboard filters][dashboard-filters].
 
-[sql-editor]: ./writing-sql.md
-[dashboard-filters]: ../../dashboards/filters.md
+[sql-editor]: ../writing-sql.md
+[dashboard-filters]: ../../../dashboards/filters.md
 [field-filter]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/field-filters
 [sql-variables]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-variables
-[troubleshooting-filters]: ../../troubleshooting-guide/filters.md
-[troubleshooting-sql]: ../../troubleshooting-guide/sql.md
+[troubleshooting-filters]: ../../../troubleshooting-guide/filters.md
+[troubleshooting-sql]: ../../../troubleshooting-guide/sql.md
 [basic-input]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-variables

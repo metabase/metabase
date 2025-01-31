@@ -70,7 +70,7 @@ Writing SQL queries that use variables or parameters can be very powerful, but i
 
 ## SQL snippets
 
-You can use [SQL snippets](sql-snippets.md) to save, reuse, and share SQL code across multiple questions that are composed using the SQL editor.
+You can use [SQL snippets](../sql-snippets.md) to save, reuse, and share SQL code across multiple questions that are composed using the SQL editor.
 
 ## How Metabase executes SQL queries
 
@@ -104,11 +104,11 @@ See [Caching question policies](../../../configuring-metabase/caching.md#questio
 - [Best practices for writing SQL queries](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-best-practices)
 - [SQL troubleshooting guide][troubleshooting-sql].
 
-[asking-questions]: ../query-builder/introduction.md#creating-a-new-question-with-the-query-builder
+[asking-questions]: ../../query-builder/introduction.md#creating-a-new-question-with-the-query-builder
 [learn-sql]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql
-[ref-models]: ./referencing-saved-questions-in-queries.md
+[ref-models]: ../referencing-saved-questions-in-queries.md
 [sample-database-gloss]: https://www.metabase.com/glossary/sample_database
 [sql-gloss]: https://www.metabase.com/glossary/sql
-[troubleshooting-sql]: ../../troubleshooting-guide/sql.md
+[troubleshooting-sql]: ../../../troubleshooting-guide/sql.md
 [variable-gloss]: https://www.metabase.com/glossary/variable
 [drill-through]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through
