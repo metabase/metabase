@@ -211,6 +211,7 @@
   (qp.writeback/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
 
 (defn update-row-column!
+  "Update a single value in the given database row."
   [driver db-id schema table-name pk pk-value column-name value]
   (qp.writeback/execute-write-sql!
    db-id

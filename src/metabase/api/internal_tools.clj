@@ -3,6 +3,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -14,14 +16,14 @@
     (assert (not= :type/PK semantic_type) "Cannot modify PK")
     (assert (= 1 (count pks)) "Table must have a PK, and it cannot be compound")
 
-    (metabase.driver.sql-jdbc/update-row-column! driver
-                                                 db_id
-                                                 schema
-                                                 table
-                                                 (:name (first pks))
-                                                 row-pk
-                                                 column
-                                                 value)))
+    (driver.sql-jdbc/update-row-column! driver
+                                        db_id
+                                        schema
+                                        table
+                                        (:name (first pks))
+                                        row-pk
+                                        column
+                                        value)))
 
 (api.macros/defendpoint :put "/field/:field-id/:row-pk"
   "Update the given value in the underlying table."
@@ -37,5 +39,8 @@
 (comment
   (def table (t2/select-one :model/Table :name "PEOPLE"))
   (def field-id (t2/select-one-fn :id [:model/Field :id] :table_id (:id table) :name "NAME"))
-  (update-cell! field-id 1 "Dr Celery Celsius"))
+  (update-cell! field-id 1 "Dr Celery Celsius")
 
+  (t2/select-fn-vec (juxt :name :database_type) [:model/Field :database_type :name :table_id] :table_id (t2/select-one-pk :model/Table :name "PEOPLE"))
+  (u/index-by :database_type (juxt :table_id :name) (t2/select :model/Field))
+  (t2/select-one-fn :name :model/Table 219))
