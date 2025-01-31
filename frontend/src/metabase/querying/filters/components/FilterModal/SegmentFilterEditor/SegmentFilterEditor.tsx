@@ -3,6 +3,8 @@ import { t } from "ttag";
 import type { SegmentItem } from "metabase/querying/filters/types";
 import { Flex, Grid, Icon, MultiSelect, Text } from "metabase/ui";
 
+import S from "./SegmentFilterEditor.css";
+
 interface SegmentFilterEditorProps {
   segmentItems: SegmentItem[];
   onChange: (newSegmentItems: SegmentItem[]) => void;
@@ -31,8 +33,8 @@ export function SegmentFilterEditor({
   return (
     <Grid grow>
       <Grid.Col span="auto">
-        <Flex h="100%" align="center" gap="sm">
-          <Icon name="filter" />
+        <Flex h="100%" align="center" gap="sm" pl="md">
+          <Icon className={S.icon} name="filter" />
           <Text color="text-dark" weight="bold">
             {t`Filter down to a segment`}
           </Text>
