@@ -15,7 +15,7 @@ import { glob } from "glob";
 
 const shouldWhiteList = (variable: string) => {
   // Use this for whitelisting some variables if we know they're defined by a 3rd party, such as mantine
-  // Note: for be sure to not backport changes to this function that would whitelist variables not on the release branch
+  // Note: Be sure not to backport changes to this function that would whitelist variables not on the release branch
 
   if (knownIssues.includes(variable)) {
     return true;
