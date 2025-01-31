@@ -16,13 +16,15 @@ export function enterCustomColumnDetails({
   formula,
   name,
   blur = true,
+  allowFastSet = false,
 }: {
   formula: string;
   name?: string;
   blur?: boolean;
+  allowFastSet?: boolean;
 }) {
   CustomExpressionEditor.get().as("formula");
-  CustomExpressionEditor.clear().type(formula);
+  CustomExpressionEditor.clear().type(formula, { allowFastSet });
 
   if (blur) {
     CustomExpressionEditor.blur();
@@ -142,15 +144,19 @@ export const CustomExpressionEditor = {
         );
       }
 
+      // realType does not support → arrow, so we replace it with ->, which the editor
+      // expands into →
+      const unexpanded = part.replaceAll(/→/g, "->");
+
       const alphabet =
         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789[]()-,.;_!@#$%&*+=/<>\" ':;";
-      if (part.split("").some(char => !alphabet.includes(char))) {
+      if (unexpanded.split("").some(char => !alphabet.includes(char))) {
         throw new Error(
           `unknown character in CustomExpressionEditor.type in ${part}`,
         );
       }
 
-      cy.realType(part);
+      cy.realType(unexpanded);
     });
     return CustomExpressionEditor;
   },
