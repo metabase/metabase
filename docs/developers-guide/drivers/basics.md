@@ -63,7 +63,7 @@ Your driver's [manifest](../plugins.md#plugin-manifests) includes details about 
 
 ### `src/metabase/driver/sqlite.clj`
 
-This is the core file for your driver. We'll talk more about it in [Implementing multimethods](./multimethods.md).
+This is the core file for your driver. We'll talk more about it in [Implementing multimethods](../multimethods.md).
 
 ## Next Up
 

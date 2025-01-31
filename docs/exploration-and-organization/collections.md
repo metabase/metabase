@@ -89,7 +89,7 @@ On a collection page, click on the three-dot menu (**...**) and select **Clean t
 
 ## Events and timelines
 
-You can add events to collections, and organize those events into timelines. See [Events and timelines](events-and-timelines.md).
+You can add events to collections, and organize those events into timelines. See [Events and timelines](../events-and-timelines.md).
 
 ## Uploading data
 
@@ -101,4 +101,4 @@ You can upload data to collections. See [Uploading data](../uploads.md)]
 - [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env#one-collection-per-environment)
 
 [dashboards]: ../dashboards/introduction.md
-[models]: ../data-modeling/models.md
+[models]: ../../data-modeling/models.md
