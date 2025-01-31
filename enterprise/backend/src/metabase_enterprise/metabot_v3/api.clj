@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.api
   "`/api/ee/metabot-v3/` routes"
   (:require
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
@@ -9,18 +10,30 @@
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.handle-envelope :as metabot-v3.handle-envelope]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
+   [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(mr/def ::response
-  "Shape of the response for the backend agent endpoint."
-  [:map
-   [:reactions [:sequential ::metabot-v3.reactions/reaction]]
-   [:history   [:maybe ::metabot-v3.client.schema/messages]]])
+(defn- safe-case-updater
+  [f]
+  #(cond-> % (or (string? %) (keyword? %)) f))
+
+(def ^:private safe->kebab-case-en
+  (safe-case-updater u/->kebab-case-en))
+
+(def ^:private safe->snake_case_en
+  (safe-case-updater u/->snake_case_en))
+
+(defn- recursive-update-keys
+  [form f]
+  (walk/walk #(cond-> % (coll? %) (recursive-update-keys f))
+             #(cond-> % (map? %) (update-keys f))
+             form))
 
 (mu/defn ^:private encode-reactions [reactions :- [:sequential ::metabot-v3.reactions/reaction]]
   (mc/encode [:sequential ::metabot-v3.reactions/reaction]
@@ -60,6 +73,109 @@
            (request message context history session_id)
            :session_id session_id)
       (metabot-v3.context/log :llm.log/be->fe))))
+
+(mr/def ::existence-filter
+  [:map
+   [:field_id :string]
+   [:operation [:enum
+                "is-null"         "is-not-null"
+                "string-is-empty" "string-is-not-empty"
+                "is-true"         "is-false"]]])
+
+(mr/def ::temporal-extraction-filter
+  [:map
+   [:field_id :string]
+   [:operation [:enum
+                "year-equals"        "year-not-equals"
+                "quarter-equals"     "quarter-not-equals"
+                "month-equals"       "month-not-equals"
+                "day-of-week-equals" "day-of-week-not-equals"
+                "hour-equals"        "hour-not-equals"
+                "minute-equals"      "minute-not-equals"
+                "second-equals"      "second-not-equals"]]
+   [:value :int]])
+
+(mr/def ::temporal-filter
+  [:map
+   [:field_id :string]
+   [:operation [:enum
+                "date-equals" "date-not-equals"
+                "date-before" "date-on-or-before"
+                "date-after"  "date-on-or-after"]]
+   [:value :string]])
+
+(mr/def ::string-filter
+  [:map
+   [:field_id :string]
+   [:operation [:enum
+                "string-equals"      "string-not-equals"
+                "string-contains"    "string-not-contains"
+                "string-starts-with" "string-ends-with"]]
+   [:value :string]])
+
+(mr/def ::numeric-filter
+  [:map
+   [:field_id :string]
+   [:operation [:enum
+                "number-equals"       "number-not-equals"
+                "number-greater-than" "number-greater-than-or-equal"
+                "number-less-than"    "number-less-than-or-equal"]]
+   [:value [:or :int :double]]])
+
+(mr/def ::filter
+  [:or ::existence-filter ::temporal-extraction-filter ::temporal-filter ::string-filter ::numeric-filter])
+
+(mr/def ::group-by
+  [:map
+   [:field_id :string]
+   [:field_granularity {:optional true} [:maybe [:enum "day" "week" "month" "quarter" "year"]]]])
+
+(mr/def ::query-metric-arguments
+  [:map
+   {:encode/api-request #(update-keys % u/->kebab-case-en)
+    :encode/tool-api-request #(recursive-update-keys % safe->kebab-case-en)}
+   [:metric_id :int]
+   [:filters {:optional true} [:maybe [:sequential ::filter]]]
+   [:group_by {:optional true} [:maybe [:sequential ::group-by]]]])
+
+(mr/def ::result-column
+  [:map
+   [:field_id :string]
+   [:name :string]
+   [:type :string]
+   [:description {:optional true} :string]])
+
+(mr/def ::query-metric-result
+  [:or
+   [:map
+    {:decode/api-response #(update-keys % u/->snake_case_en)
+     :decode/tool-api-response #(recursive-update-keys % safe->snake_case_en)}
+    [:structured_output
+     [:map
+      [:type [:= :query]]
+      [:query_id :string]
+      [:query mbql.s/Query]
+      [:result_columns [:sequential ::result-column]]]]]
+   [:map
+    [:output :string]]])
+
+(mr/def ::tool-request [:map [:session_id ms/UUIDString]])
+
+(api.macros/defendpoint :post "/query-metric" :- [:merge ::query-metric-result ::tool-request]
+  "Construct a query from a metric."
+  [_route-params
+   _query-params
+   {:keys [arguments session_id] :as body} :- [:merge
+                                               [:map [:arguments ::query-metric-arguments]]
+                                               ::tool-request]]
+  (metabot-v3.context/log body :llm.log/llm->be)
+  (let [arguments (mc/encode ::query-metric-arguments
+                             arguments (mtx/transformer {:name :api-request}))]
+    (doto (-> (mc/decode ::query-metric-result
+                         (metabot-v3.tools.filters/query-metric arguments)
+                         (mtx/transformer {:name :api-response}))
+              (assoc :session_id session_id))
+      (metabot-v3.context/log :llm.log/be->llm))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."
