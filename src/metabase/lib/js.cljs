@@ -89,15 +89,8 @@
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
 (comment lib.core/keep-me)
 
-(defn- remove-undefined-properties
-  [obj]
-  (cond-> obj
-    (object? obj) (gobject/filter (fn [e _ _] (not (undefined? e))))))
-
 (defn- convert-js-template-tags [tags]
   (-> tags
-      (gobject/map (fn [e _ _]
-                     (remove-undefined-properties e)))
       js->clj
       (update-vals #(-> %
                         (update-keys keyword)
