@@ -163,10 +163,10 @@
   (json-out obj false))
 
 (defn- elide-data [obj]
-  (clojure.walk/postwalk (fn [x] (cond
-                                   (string? x) (string/elide x 250)
-                                   (and (sequential? x) (> (count x) 50)) (take 50 x)
-                                   :else x)) obj))
+  (walk/postwalk (fn [x] (cond
+                           (string? x) (string/elide x 250)
+                           (and (sequential? x) (> (count x) 50)) (take 50 x)
+                           :else x)) obj))
 
 (defn- json-in-with-eliding
   [obj]

@@ -1,7 +1,6 @@
 (ns metabase.util.string-test
   (:require
    [clojure.test :refer :all]
-   [metabase.util.string :as string]
    [metabase.util.string :as u.str]))
 
 (deftest mask-test
@@ -31,5 +30,5 @@
              (u.str/mask "abracadabra" 2 2))))))
 
 (deftest elide-test
-  (is (= "short" (string/elide "short" 5)))
-  (is (= "lo..." (string/elide "longer string" 5))))
+  (is (= "short" (u.str/elide "short" 5)))
+  (is (= "lo..." (u.str/elide "longer string" 5))))
