@@ -6,6 +6,7 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.audit :as audit]
    [metabase.db :as mdb]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting :refer [defsetting]]
    [metabase.plugins :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -223,9 +224,51 @@
     (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       (adjust-audit-db-to-host! audit-db))))
 
+(def ^:private audit-db-entity-id
+  "Hard-coded `:entity_id` for the audit DB. Used to compute any missing `:entity_id`s for existing audit DBs."
+  "audit__rP75CiURKZ-0pq")
+
+(defn- entity-id-for-table [table]
+  (-> [audit-db-entity-id (:schema table "(no schema)") (:name table)]
+      serdes/raw-hash
+      u/generate-nano-id))
+
+(defn- entity-id-for-field [table-eid field]
+  (-> [table-eid (:name field)]
+      serdes/raw-hash
+      u/generate-nano-id))
+
+(defn- backfill-entity-ids!
+  "Databases, Tables and Fields did not originally have `:entity_id` fields. Now that they do (Jan 2025), we need to
+  include `:entity_id`s on the exported audit DB checked into the Metabase repo and inlined in the (EE) JAR files.
+
+  If we add new tables and fields in the future, they'll get randomly generated `:entity_id`s that will be randomly
+  generated, exported and checked in.
+
+  But for existing audit DBs, we can't do that! Serdes will backfill the `:entity_id`s based on its
+  `serdes/hash-fields` mechanism, but `:engine` is part of the hash for Databases, since names can be duplicated
+  with different engines! That's a mess, but it has happened in the wild so we have to support it.
+
+  So we hard-code a NanoID for the audit Database, and then compute reproducible NanoIDs for all existing tables and
+  fields by *seeding* [[u/generate-nano-id]] with the table and field names."
+  []
+  (when-let [db (t2/select-one :model/Database :is_audit true)]
+    (t2/update! :model/Database (:id db) {:entity_id audit-db-entity-id})
+    (let [tables (t2/select :model/Table :db_id (:id db))
+          eids   (into {} (map (juxt :id (some-fn :entity_id entity-id-for-table))) tables)]
+      (doseq [table tables
+              :when (not (:entity_id table))]
+        (t2/update! :model/Table (:id table) {:entity_id (get eids (:id table))}))
+      (when (seq tables)
+        (doseq [field (t2/select :model/Field :table_id [:in (map :id tables)] :entity_id nil)]
+          (t2/update! :model/Field (:id field)
+                      {:entity_id (entity-id-for-field (get eids (:table_id field)) field)}))))))
+
 (defn- maybe-install-audit-db
   []
   (let [audit-db (t2/select-one :model/Database :is_audit true)]
+    (when audit-db
+      (backfill-entity-ids!))
     (cond
       (nil? audit-db)
       (u/prog1 ::installed
