@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as S from "e2e/support/cypress_sample_instance_data";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
@@ -392,7 +392,7 @@ describe("Dashboard > Dashboard Questions", () => {
         .should("exist");
     });
 
-    it("can save a native question to a dashboard", { tags: "@flaky" }, () => {
+    it("can save a native question to a dashboard", () => {
       H.startNewNativeQuestion({ query: "SELECT 123" });
 
       // this reduces the flakiness

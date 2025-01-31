@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -85,24 +85,20 @@ describe("issue 16886", () => {
     cy.signInAsAdmin();
   });
 
-  it(
-    "shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)",
-    { tags: "@flaky" },
-    () => {
-      H.startNewNativeQuestion().as("editor");
-      H.NativeEditor.type(ORIGINAL_QUERY);
-      cy.realPress("Home");
-      Cypress._.range(SELECTED_TEXT.length).forEach(() =>
-        cy.realPress(["Shift", "ArrowRight"]),
-      );
+  it("shouldn't remove parts of the query when choosing 'Run selected text' (metabase#16886)", () => {
+    H.startNewNativeQuestion().as("editor");
+    H.NativeEditor.type(ORIGINAL_QUERY);
+    cy.realPress("Home");
+    Cypress._.range(SELECTED_TEXT.length).forEach(() =>
+      cy.realPress(["Shift", "ArrowRight"]),
+    );
 
-      cy.findByTestId("native-query-editor-container").icon("play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
-      cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
+    cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
 
-      cy.get("@editor").contains(ORIGINAL_QUERY);
-    },
-  );
+    cy.get("@editor").contains(ORIGINAL_QUERY);
+  });
 });
 
 describe("issue 16914", () => {
@@ -610,24 +606,27 @@ describe("issue 30680", () => {
   });
 });
 
-describe("issue 34330", { tags: "@flaky" }, () => {
+describe("issue 34330", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("GET", "/api/database/*/autocomplete_suggestions**").as(
-      "autocomplete",
-    );
+    H.startNewNativeQuestion();
+
+    cy.intercept({
+      method: "GET",
+      pathname: `/api/database/${SAMPLE_DB_ID}/autocomplete_suggestions`,
+    }).as("autocomplete");
+
+    H.clearBrowserCache();
   });
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("USER", { delay: 10 });
+    H.NativeEditor.type("SEAT", { delay: 10 });
+    H.NativeEditor.completion("SEATS").should("be.visible");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
-      expect(url.searchParams.get("substring")).to.equal("USER", {
-        delay: 0,
-      });
+      expect(url.searchParams.get("substring")).to.equal("SEAT");
     });
 
     // only one call to the autocompleter should have been made
@@ -635,12 +634,12 @@ describe("issue 34330", { tags: "@flaky" }, () => {
   });
 
   it("should call the autocompleter eventually, even when only 1 character was typed (metabase#34330)", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("U");
+    H.NativeEditor.type("S", { delay: 10 });
+    H.NativeEditor.completion("SEATS").should("be.visible");
 
     cy.wait("@autocomplete").then(({ request }) => {
       const url = new URL(request.url);
-      expect(url.searchParams.get("substring")).to.equal("U");
+      expect(url.searchParams.get("substring")).to.equal("S");
     });
 
     // only one call to the autocompleter should have been made
@@ -648,12 +647,12 @@ describe("issue 34330", { tags: "@flaky" }, () => {
   });
 
   it("should call the autocompleter when backspacing to a 1-character prefix (metabase#34330)", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("SE{backspace}");
+    H.NativeEditor.type("SEAT{backspace}", { delay: 10 });
+    H.NativeEditor.completion("SEATS").should("be.visible");
 
-    cy.wait("@autocomplete").then(({ request }) => {
+    cy.wait("@autocomplete").should(({ request }) => {
       const url = new URL(request.url);
-      expect(url.searchParams.get("substring")).to.equal("S");
+      expect(url.searchParams.get("substring")).to.equal("SEA");
     });
 
     // only one call to the autocompleter should have been made

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -61,7 +61,7 @@ describe("scenarios > visualizations > waterfall", () => {
     verifyWaterfallRendering("X", "Y");
   });
 
-  it("should work with quantitative series", { tags: "@flaky" }, () => {
+  it("should work with quantitative series", () => {
     H.startNewNativeQuestion().type(
       "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
     );

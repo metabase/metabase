@@ -1,5 +1,7 @@
 (ns metabase.api.testing
   "Endpoints for testing."
+  ;; Allow direct access to search.ingestion here, as only our e2e tests need this coupling to our queue.
+  ^{:clj-kondo/ignore [:metabase/ns-module-checker]}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -11,6 +13,7 @@
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -19,6 +22,7 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
+   (java.util Queue)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -119,6 +123,7 @@
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
+  (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
   (search/reindex!)
   nil)
