@@ -516,13 +516,13 @@
 (defn replace-join-alias
   "Replaces the join alias of a join with a new alias or adds one if there is no alias"
   [a-join query stage-number]
-  (if-let [alias (:alias a-join)]
+  (if-let [old-alias (:alias a-join)]
     ;; when calculating the new alias, we need to remove references to the old alias
     ;; otherwise, the new alias will try to avoid duplicating the old alias's name and we end up
     ;; calling things blahblah_2 unnecessarily
     (let [stage (-> (lib.util/query-stage query stage-number)
                     (update :joins (fn [joins]
-                                     (mapv #(if (= (:alias %) alias)
+                                     (mapv #(if (= (:alias %) old-alias)
                                               (dissoc % :alias)
                                               %)
                                            joins))))
