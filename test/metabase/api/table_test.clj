@@ -755,6 +755,7 @@
                                          :display_name             "NAME"
                                          :base_type                "type/Text"
                                          :effective_type           "type/Text"
+                                         :database_type            "CHARACTER VARYING"
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field" "NAME" {:base-type "type/Text"}]
                                          :semantic_type            "type/Name"
@@ -766,6 +767,7 @@
                                          :display_name             "LAST_LOGIN"
                                          :base_type                "type/DateTime"
                                          :effective_type           "type/DateTime"
+                                         :database_type            "TIMESTAMP"
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
                                          :semantic_type            nil
