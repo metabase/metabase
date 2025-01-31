@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 describe("scenarios > question > native > suggestions", () => {
   beforeEach(() => {

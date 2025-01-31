@@ -3,6 +3,6 @@
   (:require
    [metabase.api.util.handlers :as handlers]))
 
-(def ^{:arglists '([request respond raise])} routes
+(def ^{:arglists '([request respond raise])} notify-routes
   "/api/notify routes."
   (handlers/lazy-ns-handler 'metabase.sync.api.notify))

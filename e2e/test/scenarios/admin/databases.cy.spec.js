@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   QA_MONGO_PORT,
   QA_MYSQL_PORT,

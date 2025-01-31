@@ -1,6 +1,7 @@
 (ns metabase-enterprise.api.routes.common
   "Shared stuff used by various EE-only API routes."
   (:require
+   [metabase.api.open-api :as open-api]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :as i18n]))
 
@@ -8,7 +9,7 @@
   "Wraps Ring `handler`. Check that we have a premium token with `feature` (a keyword; see
   [[metabase.premium-features.core]] for a list of current features) or return a 401 if it is not.
 
-    (compojure/context \"/whatever\" [] (+require-premium-feature :sandboxes (deferred-tru \"Sandboxes\") whatever/routes))
+    (context \"/whatever\" [] (+require-premium-feature :sandboxes (deferred-tru \"Sandboxes\") whatever/routes))
 
   Very important! Make sure you only wrap handlers inside [[compojure.core/context]] forms with this middleware (as in
   example above). Otherwise it can end up causing requests the handler would not have handled anyway to fail.
@@ -16,11 +17,12 @@
   if we do not."
   [feature feature-name handler]
   (assert (i18n/localized-string? feature-name), "`feature-name` must be i18ned")
-  (with-meta
+  (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (premium-features/assert-has-feature feature feature-name)
      (handler request respond raise))
-   (meta handler)))
+   (fn [prefix]
+     (open-api/open-api-spec handler prefix))))
 
 (defn ^:deprecated +when-premium-feature
   "Wraps Ring `handler`. Only applies handler if we have a premium token with `feature`; if not, passes thru to the next
@@ -37,7 +39,10 @@
   and it makes it hard for us to nicely structure our contexts in [[metabase-enterprise.api.routes/routes]]. So only
   do this if there's absolutely no other way (which is probably not the case)."
   [feature handler]
-  (fn [request respond raise]
-    (if-not (premium-features/has-feature? feature)
-      (respond nil)
-      (handler request respond raise))))
+  (open-api/handler-with-open-api-spec
+   (fn [request respond raise]
+     (if-not (premium-features/has-feature? feature)
+       (respond nil)
+       (handler request respond raise)))
+   (fn [prefix]
+     (open-api/open-api-spec handler prefix))))

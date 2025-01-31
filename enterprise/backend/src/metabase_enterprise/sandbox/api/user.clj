@@ -40,6 +40,6 @@
    ;; combine all the sets of attribute keys into a single set
    (reduce set/union #{})))
 
-(def ^{:arglistst '([request respond raise])} routes
-  "/api/mt/user routes."
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/mt/user` routes."
   (api.macros/ns-handler *ns* api/+check-superuser))

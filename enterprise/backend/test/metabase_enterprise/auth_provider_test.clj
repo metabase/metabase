@@ -20,7 +20,10 @@
     (testing "nothing happens if ensure-azure-managed-identity-client-id is missing"
       (let [props (Properties.)]
         (is (empty? (#'mdb.data-source/ensure-azure-managed-identity-password props)))
-        (is (empty? props))))
+        (is (empty? props))))))
+
+(deftest ^:parallel ensure-azure-managed-identity-password-test-2
+  (mt/with-premium-features #{:database-auth-providers}
     (testing "password is set if it's missing"
       (let [now 0
             expiry-secs 1000
@@ -36,7 +39,10 @@
         (is (= {"azure-managed-identity-client-id" "client ID"
                 "password" "access token"
                 "password-expiry-timestamp" expiry}
-               props))))
+               props))))))
+
+(deftest ^:parallel ensure-azure-managed-identity-password-test-3
+  (mt/with-premium-features #{:database-auth-providers}
     (testing "nothing happens if a fresh enough password is present"
       (let [now 0
             expiry-secs 1000
@@ -53,7 +59,10 @@
         (is (= {"azure-managed-identity-client-id" "client ID"
                 "password" "access token"
                 "password-expiry-timestamp" expiry}
-               props))))
+               props))))))
+
+(deftest ^:parallel ensure-azure-managed-identity-password-test-4
+  (mt/with-premium-features #{:database-auth-providers}
     (testing "a new password is set if the old one is stale"
       (let [now 0
             expiry-secs 1000
@@ -118,7 +127,10 @@
           (is (= (merge provider-details {:password "foobar"})
                  (driver.u/fetch-and-incorporate-auth-provider-details
                   (tx/driver)
-                  provider-details))))))
+                  provider-details))))))))
+
+(deftest ^:parallel azure-managed-identity-provider-tests-2
+  (mt/with-premium-features #{:database-auth-providers}
     (testing "existing password doesn't get overwritten if not using an auth provider"
       (let [client-id "client ID"
             provider-details {:use-auth-provider false

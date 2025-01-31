@@ -11,5 +11,5 @@
   (api/check-404 (premium-features/token-status)))
 
 (def ^{:arglists '([request respond raise])} routes
-  "/api/premium-features routes."
+  "`/api/premium-features` routes."
   (api.macros/ns-handler *ns* api/+check-superuser))

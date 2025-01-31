@@ -246,4 +246,34 @@ describe("InteractiveDashboard", () => {
     expect(onLoad).toHaveBeenCalledTimes(1);
     expect(onLoad).toHaveBeenLastCalledWith(dashboard);
   });
+
+  describe("withFooter", () => {
+    it("should hide the footer when withFooter=true", async () => {
+      await setup({
+        props: {
+          withFooter: true,
+        },
+      });
+
+      expect(screen.getByTestId("embed-frame-footer")).toBeInTheDocument();
+      expect(
+        screen.getAllByTestId("dashboard-header-row-button").length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("should hide the footer when withFooter=false", async () => {
+      await setup({
+        props: {
+          withFooter: false,
+        },
+      });
+
+      expect(
+        screen.queryByTestId("embed-frame-footer"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryAllByTestId("dashboard-header-row-button").length,
+      ).toBe(0);
+    });
+  });
 });

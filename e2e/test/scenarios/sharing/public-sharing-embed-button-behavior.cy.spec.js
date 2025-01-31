@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 ["dashboard", "question"].forEach(resource => {
   describe(`embed modal behavior for ${resource}s`, () => {
