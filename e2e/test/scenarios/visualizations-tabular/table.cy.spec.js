@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -443,8 +443,8 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
 
   describe("operators", () => {
     beforeEach(() => {
-      H.resetTestTable({ type: "postgres", table: "many_data_types" });
       H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "many_data_types" });
       cy.signInAsAdmin();
       H.resyncDatabase({
         dbId: WRITABLE_DB_ID,
@@ -524,7 +524,7 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
   });
 
   it("should work with time columns", { tags: ["@external"] }, () => {
-    cy.createNativeQuestion(
+    H.createNativeQuestion(
       {
         name: "11398",
         native: {

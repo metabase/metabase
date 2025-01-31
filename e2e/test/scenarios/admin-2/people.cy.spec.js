@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -530,7 +530,7 @@ H.describeEE("scenarios > admin > people", () => {
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {
     H.getCurrentUser().then(({ body: { id: user_id } }) => {
-      cy.createQuestionAndDashboard({
+      H.createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
       }).then(({ body: { card_id, dashboard_id } }) => {
         H.createAlert(getAlertDetails({ user_id, card_id }));

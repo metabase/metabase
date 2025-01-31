@@ -3,7 +3,6 @@
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
@@ -98,43 +97,6 @@
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     setting-key           :- [:or string? keyword?]]
    (lib.metadata.protocols/setting (->metadata-provider metadata-providerable) setting-key)))
-
-;;;; Stage metadata
-
-(mu/defn stage :- [:maybe ::lib.schema.metadata/stage]
-  "Get metadata associated with a particular `stage-number` of the query, if any. `stage-number` can be a negative
-  index.
-
-  Currently, only returns metadata if it is explicitly attached to a stage; in the future we will probably dynamically
-  calculate this stuff if possible based on DatabaseMetadata and previous stages. Stay tuned!"
-  [query        :- :map
-   stage-number :- :int]
-  (:lib/stage-metadata (lib.util/query-stage query stage-number)))
-
-(mu/defn stage-column :- [:maybe ::lib.schema.metadata/column]
-  "Metadata about a specific column returned by a specific stage of the query, e.g. perhaps the first stage of the
-  query has an expression `num_cans`, then
-
-    (lib.metadata/stage-column query stage \"num_cans\")
-
-  should return something like
-
-    {:name \"num_cans\", :base-type :type/Integer, ...}
-
-  This is currently a best-effort thing and will only return information about columns if stage metadata is attached
-  to a particular stage. In the near term future this should be better about calculating that metadata dynamically and
-  returning correct info here."
-  ([query       :- :map
-    column-name :- ::lib.schema.common/non-blank-string]
-   (stage-column query -1 column-name))
-
-  ([query        :- :map
-    stage-number :- :int
-    column-name  :- ::lib.schema.common/non-blank-string]
-   (some (fn [column]
-           (when (= (:name column) column-name)
-             column))
-         (:columns (stage query stage-number)))))
 
 (mu/defn card :- [:maybe ::lib.schema.metadata/card]
   "Get metadata for a Card, aka Saved Question, with `card-id`, if it can be found."

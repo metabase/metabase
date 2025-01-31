@@ -2,6 +2,7 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type { NativeQuestionDetails } from "e2e/support/helpers";
 import {
   createNativeQuestion,
+  createNativeQuestionAndDashboard,
   modal,
   visitDashboard,
   visitQuestion,
@@ -113,18 +114,16 @@ export const createNativeQuestionInDashboard = ({
   dashboardDetails: DashboardDetails;
   visitDashboard: boolean;
 }) =>
-  (cy as any)
-    .createNativeQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails,
-    })
-    .then(({ body }: { body: { dashboard_id: number } }) => {
-      const { dashboard_id } = body;
-      cy.wrap(dashboard_id).as("dashboardId");
-      if (shouldVisitDashboard) {
-        visitDashboard(dashboard_id);
-      }
-    });
+  createNativeQuestionAndDashboard({
+    questionDetails,
+    dashboardDetails,
+  }).then(({ body }) => {
+    const { dashboard_id } = body;
+    cy.wrap(dashboard_id).as("dashboardId");
+    if (shouldVisitDashboard) {
+      visitDashboard(dashboard_id);
+    }
+  });
 
 /** Sets the server clock, which then stops advancing automatically */
 export const freezeServerTime = ({

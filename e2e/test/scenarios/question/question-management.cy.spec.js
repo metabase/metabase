@@ -1,7 +1,7 @@
 import { onlyOn } from "@cypress/skip-test";
 import _ from "underscore";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
@@ -194,8 +194,8 @@ describe(
                   const dashboardInRoot = {
                     name: "Dashboard in root collection",
                   };
-                  cy.createCollection(collectionInRoot);
-                  cy.createDashboard(dashboardInRoot);
+                  H.createCollection(collectionInRoot);
+                  H.createDashboard(dashboardInRoot);
                   cy.log(
                     "reload the page so the new collection is in the state",
                   );

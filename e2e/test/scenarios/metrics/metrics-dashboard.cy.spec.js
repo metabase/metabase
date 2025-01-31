@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -144,7 +144,7 @@ describe("scenarios > metrics > dashboard", () => {
   );
 
   it("should be able to add a filter and drill thru", () => {
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       questions: [ORDERS_SCALAR_METRIC],
     }).then(({ dashboard }) => {
       H.visitDashboard(dashboard.id);
@@ -176,7 +176,7 @@ describe("scenarios > metrics > dashboard", () => {
   });
 
   it("should be able to add a filter and drill thru without the metric aggregation clause (metabase#42656)", () => {
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       questions: [ORDERS_TIMESERIES_METRIC],
     }).then(({ dashboard }) => {
       H.visitDashboard(dashboard.id);
@@ -231,7 +231,7 @@ describe("scenarios > metrics > dashboard", () => {
   });
 
   it("should be able to use click behaviors with metrics on a dashboard", () => {
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       questions: [ORDERS_TIMESERIES_METRIC],
     }).then(({ dashboard }) => {
       H.visitDashboard(dashboard.id);
@@ -261,7 +261,7 @@ describe("scenarios > metrics > dashboard", () => {
 
   it("should be able to view a model-based metric without data access", () => {
     cy.signInAsAdmin();
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       questions: [ORDERS_SCALAR_METRIC],
     }).then(({ dashboard }) => {
       cy.signIn("nodata");
@@ -281,7 +281,7 @@ describe("scenarios > metrics > dashboard", () => {
         [FIRST_COLLECTION_ID]: "read",
       },
     });
-    cy.createDashboardWithQuestions({
+    H.createDashboardWithQuestions({
       dashboardDetails: { collection_id: FIRST_COLLECTION_ID },
       questions: [
         {
@@ -301,7 +301,7 @@ describe("scenarios > metrics > dashboard", () => {
 });
 
 function combineAndVerifyMetrics(metric1, metric2) {
-  cy.createDashboardWithQuestions({ questions: [metric1] }).then(
+  H.createDashboardWithQuestions({ questions: [metric1] }).then(
     ({ dashboard }) => {
       H.createQuestion(metric2);
       H.visitDashboard(dashboard.id);
