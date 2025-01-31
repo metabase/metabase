@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import { LONGITUDE_OPTIONS } from "./shared/constants";
 

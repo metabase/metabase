@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";

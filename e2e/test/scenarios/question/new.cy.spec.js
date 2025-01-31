@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -536,7 +536,6 @@ describe("scenarios > question > new", () => {
 
       H.entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
-        H.entityPickerModalTab("Dashboards").click();
         cy.findByText(/bobby tables's personal collection/i).should(
           "be.visible",
         );

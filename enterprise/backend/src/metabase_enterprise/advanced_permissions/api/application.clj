@@ -49,5 +49,3 @@
   (if skip-graph?
     {:revision (a-perm-revision/latest-id)}
     (a-perms/graph)))
-
-(api/define-routes)

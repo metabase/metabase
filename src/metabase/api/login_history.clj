@@ -21,5 +21,3 @@
   "Fetch recent logins for the current user."
   []
   (login-history api/*current-user-id*))
-
-(api/define-routes)
