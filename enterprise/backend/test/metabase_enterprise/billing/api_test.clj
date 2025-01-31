@@ -1,7 +1,8 @@
-(ns metabase-enterprise.billing.billing-test
-  (:require [clj-http.client :as http]
-            [clojure.test :refer :all]
-            [metabase.test :as mt]))
+(ns metabase-enterprise.billing.api-test
+  (:require
+   [clj-http.client :as http]
+   [clojure.test :refer :all]
+   [metabase.test :as mt]))
 
 (deftest fetch-billing-status-test
   (testing "Passes through billing status fetched from server"

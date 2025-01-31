@@ -27,7 +27,12 @@
 (defn- route-map->open-api-spec [route-map prefix]
   (transduce
    (map (fn [[next-prefix handler]]
-          (open-api/open-api-spec handler (str prefix next-prefix))))
+          (try
+            (open-api/open-api-spec handler (str prefix next-prefix))
+            (catch Throwable e
+              (throw (ex-info (format "Error generating dox in %s: %s" (pr-str next-prefix) (ex-message e))
+                              {:prefix prefix, :next-prefix next-prefix}
+                              e))))))
    m/deep-merge
    (sorted-map)
    route-map))

@@ -5,6 +5,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.open-api :as open-api]
    [metabase.config :as config]
    [metabase.permissions.util :as perms-util]
    [metabase.public-settings :as public-settings]
@@ -37,7 +38,7 @@
                            :expires   (cookie-expiry)}))))
 
 (defn- +engine-cookie [handler]
-  (with-meta
+  (open-api/handler-with-open-api-spec
    (fn [request respond raise]
      (if-let [new-engine (get-in request [:params :search_engine])]
        (handler request (set-engine-cookie! respond new-engine) raise)
@@ -45,7 +46,8 @@
                      (assoc-in request [:params :search_engine]))
                 respond
                 raise)))
-   (meta handler)))
+   (fn [prefix]
+     (open-api/open-api-spec handler prefix))))
 
 (api.macros/defendpoint :post "/re-init"
   "This will blow away any search indexes, re-create, and re-populate them."
@@ -196,4 +198,6 @@
           (prometheus/inc! :metabase-search/response-error)))
       (throw e))))
 
-(api/define-routes +engine-cookie)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/search` routes."
+  (api.macros/ns-handler *ns* +engine-cookie))
