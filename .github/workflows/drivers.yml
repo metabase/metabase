@@ -794,7 +794,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Test ${{ matrix.job.name }}
-      if: ${{ matrix.job.skip != 'true' }}
+      if: ${{ !matrix.job.skip }}
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-redshift-ee'
