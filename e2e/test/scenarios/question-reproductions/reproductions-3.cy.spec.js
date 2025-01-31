@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -250,7 +250,6 @@ describe("issue 38354", { tags: "@external" }, () => {
   };
 
   beforeEach(() => {
-    H.restore();
     H.restore("postgres-12");
     cy.signInAsAdmin();
     H.createQuestion(QUESTION_DETAILS, { visitQuestion: true });
