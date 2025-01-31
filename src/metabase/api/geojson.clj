@@ -3,7 +3,6 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -204,5 +203,3 @@
       (read-url-and-respond decoded-url respond)
       (catch Throwable e
         (raise e)))))
-
-(api/define-routes)
