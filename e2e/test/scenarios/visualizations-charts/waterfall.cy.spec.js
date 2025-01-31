@@ -61,7 +61,7 @@ describe("scenarios > visualizations > waterfall", () => {
     verifyWaterfallRendering("X", "Y");
   });
 
-  it("should work with quantitative series", { tags: "@flaky" }, () => {
+  it("should work with quantitative series", () => {
     H.startNewNativeQuestion().type(
       "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
     );
