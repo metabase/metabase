@@ -6,6 +6,7 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.database :as database]
@@ -63,25 +64,38 @@
 (deftest health-check-database-test
   (mt/test-drivers (mt/normal-drivers)
     (with-redefs [sync.concurrent/submit-task! (fn [task] (task))]
-      (testing "successes"
-        (mt/with-prometheus-system! [_ system]
-          (database/health-check-database! (mt/db))
-          (is (== 1 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
-          (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))
-
-      (when-let [bad-conn (tx/bad-connection-details driver/*driver*)]
-        (testing "failures for bad connections"
-          (mt/with-prometheus-system! [_ system]
-            (database/health-check-database! (update (mt/db) :details merge bad-conn))
-            (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
-            (is (== 1 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))
-
-      (testing "failures for exception"
-        (with-redefs [driver/can-connect? (fn [& _args] (throw (Exception. "boom")))]
+      (binding [h2/*allow-testing-h2-connections* true]
+        (testing "successes"
           (mt/with-prometheus-system! [_ system]
             (database/health-check-database! (mt/db))
+            (is (== 1 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
+            (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))
+
+        (testing "skip audit"
+          (mt/with-prometheus-system! [_ system]
+            (database/health-check-database! (:is_audit (mt/db)))
             (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
-            (is (== 1 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))))))
+            (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))
+
+        (testing "skip sample"
+          (mt/with-prometheus-system! [_ system]
+            (database/health-check-database! (:is_sample (mt/db)))
+            (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
+            (is (== 0 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy")))
+
+        (testing "failures for bad connections"
+          (when-let [bad-conn (tx/bad-connection-details driver/*driver*)]
+            (mt/with-prometheus-system! [_ system]
+              (database/health-check-database! (update (mt/db) :details merge bad-conn))
+              (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
+              (is (== 1 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))
+
+        (testing "failures for exception"
+          (with-redefs [driver/can-connect? (fn [& _args] (throw (Exception. "boom")))]
+            (mt/with-prometheus-system! [_ system]
+              (database/health-check-database! (mt/db))
+              (is (== 0 (mt/metric-value system :metabase-database/healthy {:driver driver/*driver*})) "healthy")
+              (is (== 1 (mt/metric-value system :metabase-database/unhealthy {:driver driver/*driver*})) "unhealthy"))))))))
 
 (deftest can-read-database-setting-test
   (let [encode-decode (comp json/decode json/encode)
