@@ -103,5 +103,3 @@
                               [:type    ChannelType]
                               [:details :map]]]
   (test-channel-connection! type details))
-
-(api/define-routes)
