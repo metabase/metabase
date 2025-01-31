@@ -25,7 +25,7 @@ describe("scenarios > search", () => {
     H.getSearchBar().type(" ");
   });
 
-  it("should allow users to paginate results", () => {
+  it("should allow users to paginate results", { tags: "@flaky" }, () => {
     generateQuestions(TOTAL_ITEMS);
 
     cy.visit("/");
