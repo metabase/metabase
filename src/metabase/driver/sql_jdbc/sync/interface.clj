@@ -151,7 +151,7 @@
 ;; used for compatibility with drivers only implementing alter-columns-sql
 ;; remove when alter-columns-sql is deleted (v0.57+)
 #_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod alter-table-columns-sql :default
+(defmethod alter-table-columns-sql ::driver/driver
   [driver table-name column-definitions & _opts]
   (alter-columns-sql driver table-name column-definitions))
 
