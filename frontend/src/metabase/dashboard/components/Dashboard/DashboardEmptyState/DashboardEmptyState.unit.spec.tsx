@@ -1,5 +1,4 @@
-import { render, screen, fireEvent } from "__support__/ui";
-import { createMockDashboard } from "metabase-types/api/mocks";
+import { fireEvent, render, screen } from "__support__/ui";
 
 import {
   DashboardEmptyState,

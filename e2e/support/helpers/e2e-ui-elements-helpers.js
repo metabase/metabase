@@ -397,6 +397,7 @@ export function removeFieldValuesValue(index) {
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
+  // eslint-disable-next-line no-unsafe-element-filtering
   return cy
     .findAllByRole("combobox")
     .filter(filter)
