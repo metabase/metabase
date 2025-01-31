@@ -1,15 +1,15 @@
-(ns metabase.models.permissions
+(ns metabase.permissions.models.permissions
   "Low-level Metabase permissions system definition and utility functions.
 
   The Metabase permissions system is based around permissions *paths* that are granted to individual
-  [[metabase.models.permissions-group]]s.
+  [[metabase.permissions.models.permissions-group]]s.
 
   ### Core concepts
 
-  Permissions are granted to individual [[metabase.models.permissions-group]]s, and Users are members of one or more
+  Permissions are granted to individual [[metabase.permissions.models.permissions-group]]s, and Users are members of one or more
   Permissions Groups. Permissions Groups are like 'roles' in other permissions systems. There are a few 'magic'
-  Permissions Groups: the [[metabase.models.permissions-group/all-users]] Group, of which every User is a member and
-  cannot be removed; and the [[metabase.models.permissions-group/admin]] Group, of which every superuser (i.e., every
+  Permissions Groups: the [[metabase.permissions.models.permissions-group/all-users]] Group, of which every User is a member and
+  cannot be removed; and the [[metabase.permissions.models.permissions-group/admin]] Group, of which every superuser (i.e., every
   User with `is_superuser`) is a member.
 
   The permissions needed to perform an action are represented as slash-delimited path strings, for example
@@ -48,7 +48,7 @@
   permissions.
 
   * _root permissions_ -- permissions for `/`, i.e. full access for everything. Automatically granted to
-    the [[metabase.models.permissions-group/admin]] group that gets created on first launch. Because `/` is a prefix
+    the [[metabase.permissions.models.permissions-group/admin]] group that gets created on first launch. Because `/` is a prefix
     for every permissions path, admins have permissions to do everything.
 
   * _segmented permissions_ -- a special grant for a Table that applies sandboxing, a.k.a. row-level permissions,
@@ -172,7 +172,7 @@
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -327,11 +327,11 @@
                     {:metabase.models.collection.root/is-root? true
                      :namespace                                collection-namespace}))})))
 
-(doto ::use-parent-collection-perms
+(doto :perms/use-parent-collection-perms
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
-(defmethod mi/perms-objects-set ::use-parent-collection-perms
+(defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
   (perms-objects-set-for-parent-collection instance read-or-write))
 

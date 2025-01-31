@@ -1,4 +1,4 @@
-(ns metabase.api.permission-graph
+(ns metabase.permissions.api.permission-graph
   "Convert the permission graph's naive json conversion into the correct types.
 
   The strategy here is to use s/conform to tag every value that needs to be converted with the conversion strategy,
@@ -145,13 +145,13 @@
         :db-exeute      (s/map-of ::id ::execute
                                   :conform-keys true)))
 
-(s/def :metabase.api.permission-graph.execution/groups
+(s/def :metabase.permissions.api.permission-graph.execution/groups
   (s/map-of ::id
             ::execute-graph
             :conform-keys true))
 
 (s/def ::execution-permissions-graph
-  (s/keys :req-un [:metabase.api.permission-graph.execution/groups]))
+  (s/keys :req-un [:metabase.permissions.api.permission-graph.execution/groups]))
 
 (defn converted-json->graph
   "The permissions graph is received as JSON. That JSON is naively converted. This performs a further conversion to

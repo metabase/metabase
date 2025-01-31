@@ -8,8 +8,8 @@
    [metabase.events :as events]
    [metabase.events.view-log :as events.view-log]
    [metabase.http-client :as client]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

@@ -154,7 +154,7 @@
 
 (defn- ->v2-paths
   "Converts v1 data permission paths into v2 data and query permissions paths. This is similar to `->v2-path` in
-   metabase.models.permissions but somewhat simplified for the migration use case."
+   metabase.permissions.models.permissions but somewhat simplified for the migration use case."
   [v1-path]
   (if-let [base-path (second (re-find base-path-regex v1-path))]
     ;; For (almost) all v1 data paths, we simply extract the base path (e.g. "/db/1/schema/PUBLIC/table/1/")

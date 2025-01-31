@@ -1,8 +1,8 @@
 (ns metabase.task.legacy-no-self-service-emails-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.task.legacy-no-self-service-emails
     :as legacy-no-self-service-emails]
    [metabase.test :as mt]))

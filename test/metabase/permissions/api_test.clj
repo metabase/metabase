@@ -1,15 +1,15 @@
-(ns metabase.api.permissions-test
+(ns metabase.permissions.api-test
   "Tests for `/api/permissions` endpoints."
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.api.permissions :as api.permissions]
-   [metabase.api.permissions-test-util :as perm-test-util]
    [metabase.config :as config]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.api :as api.permissions]
+   [metabase.permissions.api-test-util :as perm-test-util]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

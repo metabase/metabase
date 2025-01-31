@@ -32,7 +32,7 @@
     :model/DashboardCard                     metabase.models.dashboard-card
     :model/DashboardCardSeries               metabase.models.dashboard-card-series
     :model/DashboardTab                      metabase.models.dashboard-tab
-    :model/DataPermissions                   metabase.models.data-permissions
+    :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.models.database
     :model/Dimension                         metabase.models.dimension
     :model/Field                             metabase.models.field
@@ -53,10 +53,10 @@
     :model/NotificationRecipient             metabase.models.notification
     :model/NotificationSubscription          metabase.models.notification
     :model/ParameterCard                     metabase.models.parameter-card
-    :model/Permissions                       metabase.models.permissions
-    :model/PermissionsGroup                  metabase.models.permissions-group
-    :model/PermissionsGroupMembership        metabase.models.permissions-group-membership
-    :model/PermissionsRevision               metabase.models.permissions-revision
+    :model/Permissions                       metabase.permissions.models.permissions
+    :model/PermissionsGroup                  metabase.permissions.models.permissions-group
+    :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
+    :model/PermissionsRevision               metabase.permissions.models.permissions-revision
     :model/PersistedInfo                     metabase.models.persisted-info
     :model/Pulse                             metabase.models.pulse
     :model/PulseCard                         metabase.models.pulse-card
