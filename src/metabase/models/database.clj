@@ -145,13 +145,13 @@
   [{:keys [engine details] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
     (sync.concurrent/submit-task!
-      (fn []
-        (try
-          (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
-            (prometheus/inc! :metabase-database/healthy {:driver engine} 1)
-            (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1))
-          (catch Throwable _
-            (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))))))
+     (fn []
+       (try
+         (if (driver.u/can-connect-with-details? engine (assoc details :engine engine))
+           (prometheus/inc! :metabase-database/healthy {:driver engine} 1)
+           (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1))
+         (catch Throwable _
+           (prometheus/inc! :metabase-database/unhealthy {:driver engine} 1)))))))
 
 (defn check-health-and-schedule-tasks!
   "(Re)schedule sync operation tasks for any database which is not yet being synced regularly."

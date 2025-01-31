@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]

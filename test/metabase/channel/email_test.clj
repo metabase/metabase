@@ -5,8 +5,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.email :as email]
+   [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]
@@ -14,8 +14,7 @@
    [metabase.util.retry-test :as rt]
    [postal.core :as postal]
    [postal.message :as message]
-   [throttle.core :as throttle]
-   [metabase.test.util :as mt])
+   [throttle.core :as throttle])
   (:import
    (java.io File)
    (javax.activation MimeType)))
@@ -276,10 +275,10 @@
       (mt/with-prometheus-system! [_ system]
         (with-fake-inbox
           (email/send-message!
-            :subject      "101 Reasons to use Metabase"
-            :recipients   ["test@test.com"]
-            :message-type :html
-            :message      "101. Metabase will make you a better person"))
+           :subject      "101 Reasons to use Metabase"
+           :recipients   ["test@test.com"]
+           :message-type :html
+           :message      "101. Metabase will make you a better person"))
         (is (= 1.0 (mt/metric-value system :metabase-email/messages)))
         (is (= 0.0 (mt/metric-value system :metabase-email/message-errors)))))
     (testing "error metrics collection"
@@ -291,10 +290,10 @@
           (with-redefs [retry/decorate    (rt/test-retry-decorate-fn test-retry)
                         email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
             (email/send-message!
-              :subject      "101 Reasons to use Metabase"
-              :recipients   ["test@test.com"]
-              :message-type :html
-              :message      "101. Metabase will make you a better person"))
+             :subject      "101 Reasons to use Metabase"
+             :recipients   ["test@test.com"]
+             :message-type :html
+             :message      "101. Metabase will make you a better person"))
           (is (= 1.0 (mt/metric-value system :metabase-email/messages)))
           (is (= 1.0 (mt/metric-value system :metabase-email/message-errors))))))
     (testing "basic sending without email-from-name"

@@ -6,8 +6,7 @@
    [metabase.analytics.sdk :as sdk]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [ring.mock.request :as ring.mock]
-   [iapetos.export :as export]))
+   [ring.mock.request :as ring.mock]))
 
 (defn- wonk-case [s]
   (str/join (for [char s]

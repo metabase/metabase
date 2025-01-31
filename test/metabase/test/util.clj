@@ -1593,7 +1593,7 @@
    (some-> system
            :registry
            (registry/get
-             {:name      (name metric)
-              :namespace (namespace metric)}
-             labels)
+            {:name      (name metric)
+             :namespace (namespace metric)}
+            labels)
            ops/read-value)))
