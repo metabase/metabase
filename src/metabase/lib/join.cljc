@@ -513,6 +513,13 @@
          joined-thing
          suggested-join-conditions)
 
+(defn replace-join-alias
+  "Replaces the join alias of a join with a new alias or adds one if there is no alias"
+  [a-join query stage-number]
+  (if (:alias a-join)
+    (with-join-alias a-join (default-alias query stage-number a-join))
+    (add-default-alias query stage-number a-join)))
+
 (mu/defn joins :- [:maybe ::lib.schema.join/joins]
   "Get all joins in a specific `stage` of a `query`. If `stage` is unspecified, returns joins in the final stage of the
   query."
