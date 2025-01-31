@@ -188,4 +188,7 @@ export const CustomExpressionEditor = {
   completions() {
     return cy.findByTestId("custom-expression-editor-suggestions");
   },
+  helpText() {
+    return cy.findByTestId("expression-helper");
+  },
 };

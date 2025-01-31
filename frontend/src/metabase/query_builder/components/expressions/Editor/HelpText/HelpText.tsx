@@ -80,7 +80,7 @@ export function HelpText({
   const argIndex = enclosingFunction?.arg?.index ?? -1;
 
   return (
-    <Box className={S.helpText}>
+    <Box className={S.helpText} data-testid="expression-helper">
       <Box
         className={S.usage}
         onMouseDown={handleMouseDown}
