@@ -540,7 +540,8 @@
                                 :limit        3}
                  :expressions  {:price_range [:-
                                               [:field "max" {:base-type :type/Number}]
-                                              [:field "min" {:base-type :type/Number}]]}})))))))
+                                              [:field "min" {:base-type :type/Number}]]}
+                 :order-by     [[:asc [:field "name" {:base-type :type/Text}]]]})))))))
 
 (deftest ^:parallel expression-with-duplicate-column-name
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
