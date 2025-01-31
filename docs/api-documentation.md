@@ -32,11 +32,11 @@ For breaking changes, see the API [changelog](../developers-guide/api-changelog.
 _* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing)._
 
 
-- [Action](/api/action.md)
-- [Activity](/api/activity.md)
-- [Advanced config logs*](/api/ee/advanced-config-logs.md)
-- [Advanced permissions application*](/api/ee/advanced-permissions-application.md)
-- [Advanced permissions impersonation*](/api/ee/advanced-permissions-impersonation.md)
+- [Action](../api/action.md)
+- [Activity](../api/activity.md)
+- [Advanced config logs*](../api/ee/advanced-config-logs.md)
+- [Advanced permissions application*](../api/ee/advanced-permissions-application.md)
+- [Advanced permissions impersonation*](../api/ee/advanced-permissions-impersonation.md)
 - [Alert](../api/alert.md)
 - [API key](../api/api-key.md)
 - [Audit app user*](../api/ee/audit-app-user.md)

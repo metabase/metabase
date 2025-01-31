@@ -71,4 +71,4 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 [default-log-config]: https://github.com/metabase/metabase/blob/master/resources/log4j2.xml
 [levels]: https://logging.apache.org/log4j/2.x/manual/customloglevels.html
 [log4j]: https://logging.apache.org/log4j/2.x/
-[read-logs]: ../troubleshooting-guide/server-logs.md
+[read-logs]: ../../troubleshooting-guide/server-logs.md
