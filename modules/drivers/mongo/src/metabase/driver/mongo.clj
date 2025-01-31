@@ -410,6 +410,7 @@
                               :set-timezone                    true
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false
+                              :identifiers-with-spaces         true
                               :index-info                      true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
