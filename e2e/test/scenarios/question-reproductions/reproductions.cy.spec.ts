@@ -284,3 +284,23 @@ describe("issue 47793", () => {
     },
   );
 });
+
+describe("issue 49270", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("document title should not indicate that loading takes place when query has errored (metabase#49270)", () => {
+    H.openOrdersTable();
+    cy.icon("sum").click();
+
+    cy.intercept("POST", "/api/dataset", request => {
+      request.reply({ statusCode: 500, delay: 1000 });
+    });
+
+    cy.button("Done").click();
+    cy.title().should("equal", "Doing science... · Metabase");
+    cy.title().should("equal", "Question · Metabase");
+  });
+});
