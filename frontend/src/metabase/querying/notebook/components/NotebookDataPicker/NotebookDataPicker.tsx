@@ -205,6 +205,12 @@ function LegacyDataPicker({
 }: LegacyDataPickerProps) {
   const tableInfo =
     table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
+  /**
+   * We try to blur the line between models and tables for embedding users.
+   * this property will change the way icons are displayed in the data picker trigger,
+   * so we need to remove it. Treating it as a table.
+   */
+  delete tableInfo?.isModel;
   const pickerInfo = table != null ? Lib.pickerInfo(query, table) : undefined;
 
   return (
