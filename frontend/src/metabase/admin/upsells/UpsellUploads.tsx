@@ -1,4 +1,4 @@
-import { jt, t } from "ttag";
+import { c, t } from "ttag";
 
 import { getPlan } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/lib/redux";
@@ -25,7 +25,7 @@ export const UpsellUploads = ({ source }: { source: string }) => {
       buttonLink="https://www.metabase.com/upgrade"
       source={source}
     >
-      {jt`${(
+      {c("{0} is the string 'Upgrade to Metabase Pro'").jt`${(
         <strong key="upgrade">{t`Upgrade to Metabase Pro`}</strong>
       )} to manage your uploaded files and available storage space.`}
     </UpsellCard>
