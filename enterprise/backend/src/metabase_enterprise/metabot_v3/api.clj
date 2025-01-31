@@ -9,8 +9,8 @@
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.handle-envelope :as metabot-v3.handle-envelope]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+auth]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -61,4 +61,6 @@
            :session_id session_id)
       (metabot-v3.context/log :llm.log/be->fe))))
 
-(api/define-routes)
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/metabot-v3` routes."
+  (api.macros/ns-handler *ns* +auth))
