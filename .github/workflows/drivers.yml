@@ -60,7 +60,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: athena
@@ -96,7 +96,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: bigquery-cloud-sdk
@@ -131,7 +131,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: druid
@@ -167,7 +167,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -202,7 +202,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: druid-jdbc
@@ -238,7 +238,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -365,7 +365,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -418,7 +418,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -486,7 +486,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -520,7 +520,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -592,7 +592,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -697,7 +697,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: presto-jdbc
@@ -766,7 +766,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -774,10 +774,12 @@ jobs:
           - name: Redshift Upload Tests
             test-args: >-
               :only-tags [:mb/upload-tests]
+              :fail-fast? true
           - name: Redshift (Excluding Upload Tests)
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/upload-tests]
+              :fail-fast? true
 
     env:
       CI: 'true'
@@ -811,7 +813,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: snowflake
@@ -851,7 +853,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: sparksql
@@ -885,7 +887,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: sqlite
@@ -914,7 +916,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-20.04
-    timeout-minutes: 90
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -965,7 +967,7 @@ jobs:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     env:
       CI: 'true'
       DRIVERS: vertica

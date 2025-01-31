@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 
 import {
   TEST_TABLE,
@@ -126,8 +126,8 @@ describe(
       beforeEach(() => {
         resetServerTime();
         interceptPerformanceRoutes();
-        H.resetTestTable({ type: "postgres", table: TEST_TABLE });
         H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: TEST_TABLE });
         cy.signInAsAdmin();
         H.setTokenFeatures("all");
       });
@@ -264,8 +264,8 @@ describe(
       beforeEach(() => {
         resetServerTime();
         interceptPerformanceRoutes();
-        H.resetTestTable({ type: "postgres", table: TEST_TABLE });
         H.restore("postgres-writable");
+        H.resetTestTable({ type: "postgres", table: TEST_TABLE });
         cy.signInAsAdmin();
         cy.visit("/admin/performance");
         cacheStrategyForm();
