@@ -6,7 +6,8 @@ import { isModel } from "metabase/browse/models/utils";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Box, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { TableId } from "metabase-types/api";
+import type { SearchResult, TableId } from "metabase-types/api";
+import { SortDirection } from "metabase-types/api/sorting";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
 
@@ -34,12 +35,17 @@ export function SimpleDataPicker({
       return [];
     }
 
-    return data.data.map(entity => {
-      return {
-        ...entity,
-        id: isModel(entity) ? getQuestionVirtualTableId(entity.id) : entity.id,
-      };
-    });
+    return sortEntities(
+      data.data.map(entity => {
+        return {
+          ...entity,
+          id: isModel(entity)
+            ? getQuestionVirtualTableId(entity.id)
+            : entity.id,
+        };
+      }),
+      { sort_column: "name", sort_direction: SortDirection.Asc },
+    );
   }, [data]);
 
   return (
@@ -63,3 +69,22 @@ export function SimpleDataPicker({
     </Popover>
   );
 }
+
+function sortEntities(
+  entities: SearchResult<TableId>[],
+  sort: { sort_column: keyof SearchResult; sort_direction: SortDirection },
+) {
+  const { sort_column, sort_direction } = sort;
+
+  return [...entities].sort((entityA, entityB) => {
+    const aValue = entityA[sort_column] ?? "";
+    const bValue = entityB[sort_column] ?? "";
+
+    const result = compareString(aValue, bValue);
+
+    // No need to check for 0 since -0 and 0 are equal
+    return sort_direction === SortDirection.Asc ? result : -result;
+  });
+}
+
+const compareString = (a: string, b: string) => a.localeCompare(b);
