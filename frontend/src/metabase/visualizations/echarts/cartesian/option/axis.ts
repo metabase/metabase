@@ -33,14 +33,14 @@ const getCustomAxisRange = (
   axisExtent: Extent,
   customMin: number | null,
   customMax: number | null,
-  settings: ComputedVisualizationSettings,
+  isNormalized: boolean | undefined,
 ) => {
   const [extentMin, extentMax] = axisExtent;
 
   // If this is a normalized range, respect custom min & max
   // This also accomodates non-normalized custom min & max values
   // Allows users to supply e.g. 10 for 10% min as opposed to 0.1
-  if (settings["stackable.stack_type"] === "normalized") {
+  if (isNormalized) {
     return {
       min: customMin != null ? customMin / 100 : undefined,
       max: customMax != null ? customMax / 100 : undefined,
@@ -72,7 +72,12 @@ export const getYAxisRange = (
     yAxisScaleTransforms,
   );
 
-  return getCustomAxisRange(axisModel.extent, customMin, customMax, settings);
+  return getCustomAxisRange(
+    axisModel.extent,
+    customMin,
+    customMax,
+    axisModel.isNormalized,
+  );
 };
 
 export const getAxisNameDefaultOption = (
