@@ -161,7 +161,7 @@ export const CustomExpressionEditor = {
     return CustomExpressionEditor;
   },
   focus() {
-    CustomExpressionEditor.get().click();
+    CustomExpressionEditor.get().click("right");
     return CustomExpressionEditor;
   },
   blur() {
@@ -180,13 +180,19 @@ export const CustomExpressionEditor = {
     return CustomExpressionEditor;
   },
   shouldContain(formula: string) {
-    return expressionEditorTextfield()
-      .get(".cm-content")
+    return CustomExpressionEditor.get()
+      .get("[role='textbox']")
+      .invoke("text")
       .should("contain", formula);
   },
 
   completions() {
     return cy.findByTestId("custom-expression-editor-suggestions");
+  },
+  completion(name: string) {
+    return CustomExpressionEditor.completions().within(() =>
+      cy.get("li[role='option']").contains(name),
+    );
   },
   helpText() {
     return cy.findByTestId("expression-helper");
