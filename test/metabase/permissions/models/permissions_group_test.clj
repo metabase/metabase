@@ -1,12 +1,12 @@
-(ns metabase.models.permissions-group-test
+(ns metabase.permissions.models.permissions-group-test
   (:require
    [clojure.test :refer :all]
-   [metabase.api.permissions-test-util :as perm-test-util]
    [metabase.config :as config]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.api-test-util :as perm-test-util]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

@@ -1,10 +1,10 @@
-(ns metabase.models.data-permissions-test
+(ns metabase.permissions.models.data-permissions-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import

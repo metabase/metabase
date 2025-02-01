@@ -3,10 +3,8 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-group-membership :as perms-group-membership]
-   [metabase.models.setting.multi-setting :refer [define-multi-setting
-                                                  define-multi-setting-impl]]
+   [metabase.models.setting.multi-setting :refer [define-multi-setting define-multi-setting-impl]]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -18,7 +16,7 @@
   only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only touches groups with mappings set."
   [user-or-id new-groups-or-ids mapped-groups-or-ids]
   (let [mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
-        excluded-group-ids #{(u/the-id (perms-group/all-users))}
+        excluded-group-ids #{(u/the-id (perms/all-users-group))}
         user-id            (u/the-id user-or-id)
         current-group-ids  (when (seq mapped-group-ids)
                              (t2/select-fn-set :group_id :model/PermissionsGroupMembership
@@ -38,9 +36,9 @@
         (t2/delete! :model/PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id)
         (catch clojure.lang.ExceptionInfo e
          ;; in case sync attempts to delete the last admin, the pre-delete hooks of
-         ;; [[metabase.models.permissions-group-membership/PermissionsGroupMembership]] will throw an exception.
+         ;; [[metabase.permissions.models.permissions-group-membership/PermissionsGroupMembership]] will throw an exception.
          ;; but we don't want to block user from logging-in, so catch this exception and log a warning
-          (if (= (ex-message e) (str perms-group-membership/fail-to-remove-last-admin-msg))
+          (if (= (ex-message e) (str perms/fail-to-remove-last-admin-msg))
             (log/warn "Attempted to remove the last admin during group sync!"
                       "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")
             (throw e)))))
