@@ -1,4 +1,4 @@
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 
 import { DataSelectorSection } from "../DataSelector.styled";
 import type { DataSelectorSectionHeaderProps } from "../DataSelectorSectionHeader";

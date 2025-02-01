@@ -2,7 +2,7 @@ import type { ChangeEventHandler } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
 import { Box, Switch } from "metabase/ui";
