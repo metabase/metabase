@@ -6,7 +6,7 @@ title: Embedded analytics SDK
 
 {% include beta-blockquote.html %}
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true enterprise-only=true %}
+{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
 With the Embedded analytics SDK, you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
 
@@ -21,7 +21,7 @@ To give you and idea of what's possible with the SDK, we've put together example
 ## Embedded analytics SDK prerequisites
 
 - React application. The SDK is tested to work with React 18, though it may work with earlier versions.
-- [Metabase Enterprise subscription or free trial](https://www.metabase.com/pricing/).
+- [Metabase Pro or Enterprise subscription or free trial](https://www.metabase.com/pricing/).
 - Metabase version 1.51 or higher.
 - [Node.js 20.x LTS](https://nodejs.org/en).
 

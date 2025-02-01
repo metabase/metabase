@@ -121,5 +121,3 @@
       ;; test failed, return result message
       {:status 500
        :body   (humanize-error-messages results)})))
-
-(api/define-routes)

@@ -3,7 +3,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.config :as config]
@@ -171,5 +170,3 @@
     (catch Exception e
       {:success false
        :error (.getMessage e)})))
-
-(api/define-routes)
