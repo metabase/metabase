@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.email.messages :as messages]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 

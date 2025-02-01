@@ -1,10 +1,10 @@
-(ns metabase.models.data-permissions.graph-test
+(ns metabase.permissions.models.data-permissions.graph-test
   (:require
    [clojure.test :refer :all]
    [metabase.audit :as audit]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as db]))
