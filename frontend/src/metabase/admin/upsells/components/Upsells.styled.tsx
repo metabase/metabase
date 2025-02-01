@@ -88,3 +88,10 @@ export const UpsellBannerComponent = styled.div`
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
 `;
+
+export const SecondaryCTALink = styled(ExternalLink)`
+  display: inline;
+  color: ${upsellColors.primary};
+  font-weight: 700;
+  margin-left: 0.25rem;
+`;
