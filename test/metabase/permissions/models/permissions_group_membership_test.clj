@@ -1,7 +1,7 @@
-(ns metabase.models.permissions-group-membership-test
+(ns metabase.permissions.models.permissions-group-membership-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]

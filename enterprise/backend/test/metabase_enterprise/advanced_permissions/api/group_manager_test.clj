@@ -4,8 +4,8 @@
    [clojure.set :refer [subset?]]
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

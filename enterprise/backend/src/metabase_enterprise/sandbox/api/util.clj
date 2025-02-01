@@ -4,8 +4,8 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id* *is-superuser?*]]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.user :as user]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
@@ -38,7 +38,7 @@
 
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is cached
-  for the duration of a request in [[metabase.models.data-permissions/*sandboxes-for-user*]].
+  for the duration of a request in [[metabase.permissions.models.data-permissions/*sandboxes-for-user*]].
 
   WARNING: This should NOT be used directly for sandboxing enforcement. Use `*sandboxes-for-user*` or
   `enforced-sandboxes-for-tables` below, so that the cache is used."
