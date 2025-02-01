@@ -132,10 +132,14 @@ export function multiLevelPivot(data, settings) {
     topIndexFormatters,
     topIndexColumns,
   );
-  if (
-    formattedColumnTreeWithoutValues.length > 1 &&
-    settings["pivot.show_row_totals"]
-  ) {
+  const condenseDuplicatedTotals = settings["pivot.condense_duplicate_totals"];
+
+  const shouldAddRowTotals =
+    settings["pivot.show_row_totals"] &&
+    formattedColumnTreeWithoutValues.length >
+      (condenseDuplicatedTotals ? 1 : 0);
+
+  if (shouldAddRowTotals) {
     // if there are multiple columns, we should add another for row totals
     formattedColumnTreeWithoutValues.push({
       value: t`Row totals`,
@@ -168,13 +172,19 @@ export function multiLevelPivot(data, settings) {
   );
 
   const formattedRowTree = settings["pivot.show_column_totals"]
-    ? addSubtotals(formattedRowTreeWithoutSubtotals, showSubtotalsByColumn)
+    ? addSubtotals(
+        formattedRowTreeWithoutSubtotals,
+        showSubtotalsByColumn,
+        settings["pivot.condense_duplicate_totals"],
+      )
     : formattedRowTreeWithoutSubtotals;
 
-  if (
-    formattedRowTreeWithoutSubtotals.length > 1 &&
-    settings["pivot.show_column_totals"]
-  ) {
+  const shouldAddColumnTotals =
+    settings["pivot.show_column_totals"] &&
+    formattedRowTreeWithoutSubtotals.length >
+      (condenseDuplicatedTotals ? 1 : 0);
+
+  if (shouldAddColumnTotals) {
     // if there are multiple columns, we should add another for row totals
     formattedRowTree.push({
       value: t`Grand totals`,
@@ -389,7 +399,11 @@ function addValueColumnNodes(nodes, valueColumns) {
 
 // This inserts nodes into the left header tree for subtotals.
 // We also mark nodes with `hasSubtotal` to display collapsing UI
-function addSubtotals(rowColumnTree, showSubtotalsByColumn) {
+function addSubtotals(
+  rowColumnTree,
+  showSubtotalsByColumn,
+  condenseDuplicatedTotals,
+) {
   // For top-level items we want to show subtotal even if they have only one child
   // Except the case when top-level items have flat structure
   // (meaning all of the items have just one child)
@@ -401,6 +415,7 @@ function addSubtotals(rowColumnTree, showSubtotalsByColumn) {
   return rowColumnTree.flatMap(item =>
     addSubtotal(item, showSubtotalsByColumn, {
       shouldShowSubtotal: notFlat || item.children.length > 1,
+      condenseDuplicatedTotals,
     }),
   );
 }
@@ -408,7 +423,7 @@ function addSubtotals(rowColumnTree, showSubtotalsByColumn) {
 function addSubtotal(
   item,
   [isSubtotalEnabled, ...showSubtotalsByColumn],
-  { shouldShowSubtotal = false } = {},
+  { shouldShowSubtotal = false, condenseDuplicatedTotals = true } = {},
 ) {
   const hasSubtotal = isSubtotalEnabled && shouldShowSubtotal;
   const subtotal = hasSubtotal
@@ -432,7 +447,10 @@ function addSubtotal(
       // add subtotals until the last level
       child.children.length > 0
         ? addSubtotal(child, showSubtotalsByColumn, {
-            shouldShowSubtotal: child.children.length > 0 || child.isCollapsed,
+            shouldShowSubtotal:
+              child.isCollapsed ||
+              child.children.length > (condenseDuplicatedTotals ? 1 : 0),
+            condenseDuplicatedTotals,
           })
         : child,
     ),
