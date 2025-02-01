@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import Markdown from "metabase/core/components/Markdown";
 import { color } from "metabase/lib/colors";
 import { isEmpty } from "metabase/lib/validate";
 import { Icon } from "metabase/ui";
@@ -28,7 +29,11 @@ export const EntityDisplay = ({
         <Icon
           name="info"
           color="var(--mb-color-text-light)"
-          tooltip={entity.description}
+          tooltip={
+            <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+              {entity.description}
+            </Markdown>
+          }
         />
       )}
     </EntityDisplayContainer>
