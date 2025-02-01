@@ -1,11 +1,11 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
