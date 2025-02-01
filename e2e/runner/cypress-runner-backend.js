@@ -8,7 +8,8 @@ const os = require("os");
 const path = require("path");
 
 const CypressBackend = {
-  createServer(port = 4000) {
+  server: null,
+  createServer(port = process.env.BACKEND_PORT) {
     const generateTempDbPath = () =>
       path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
@@ -18,24 +19,28 @@ const CypressBackend = {
       port,
     };
 
-    return server;
+    this.server = server;
   },
-  async start(server) {
-    if (!server.process) {
+  async start() {
+    if (!this.server) {
+      this.createServer();
+    }
+    if (!this.server.process) {
       const javaFlags = [
         "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
         "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
         "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
         "-Duser.timezone=US/Pacific",
-        // if you comment this line 👇 you can get (very noisy) backend console logs in the terminal for e2e tests
-        `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
+        process.env.SHOW_BACKEND_LOGS
+          ? ""
+          : `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
       ];
 
       const metabaseConfig = {
         MB_DB_TYPE: "h2",
-        MB_DB_FILE: server.dbFile,
+        MB_DB_FILE: this.server.dbFile,
         MB_JETTY_HOST: "0.0.0.0",
-        MB_JETTY_PORT: server.port,
+        MB_JETTY_PORT: this.server.port,
         MB_ENABLE_TEST_ENDPOINTS: "true",
         MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE: "true",
         MB_LAST_ANALYTICS_CHECKSUM: "-1",
@@ -65,7 +70,7 @@ const CypressBackend = {
         MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
       };
 
-      server.process = spawn(
+      this.server.process = spawn(
         "java",
         [...javaFlags, "-jar", "target/uberjar/metabase.jar"],
         {
@@ -85,11 +90,11 @@ const CypressBackend = {
       );
     }
 
-    if (!(await isReady(server.host))) {
+    if (!(await isReady(this.server.host))) {
       process.stdout.write(
-        `Waiting for backend (host=${server.host}, dbFile=${server.dbFile})`,
+        `Waiting for backend (host=${this.server.host}, dbFile=${this.server.dbFile})`,
       );
-      while (!(await isReady(server.host))) {
+      while (!(await isReady(this.server.host))) {
         if (!process.env["CI"]) {
           // disable for CI since it breaks CircleCI's no_output_timeout
           process.stdout.write(".");
@@ -99,10 +104,12 @@ const CypressBackend = {
       process.stdout.write("\n");
     }
 
-    console.log(`Backend ready host=${server.host}, dbFile=${server.dbFile}`);
+    console.log(
+      `Backend ready host=${this.server.host}, dbFile=${this.server.dbFile}`,
+    );
 
     if (process.env.CI) {
-      server.process.unref(); // detach console
+      this.server.process.unref(); // detach console
     }
 
     // Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
@@ -141,16 +148,16 @@ const CypressBackend = {
       return false;
     }
   },
-  async stop(server) {
-    if (server.process) {
-      server.process.kill("SIGKILL");
+  async stop() {
+    if (this?.server?.process) {
+      this.server.process.kill("SIGKILL");
       console.log(
-        `Stopped backend (host=${server.host}, dbFile=${server.dbFile})`,
+        `Stopped backend (host=${this.server.host}, dbFile=${this.server.dbFile})`,
       );
     }
     try {
-      if (server.dbFile) {
-        fs.unlinkSync(`${server.dbFile}.mv.db`);
+      if (this?.server?.dbFile) {
+        fs.unlinkSync(`${this.server.dbFile}.mv.db`);
       }
     } catch (e) {}
   },

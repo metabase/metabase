@@ -1,9 +1,11 @@
+const { execSync } = require("child_process");
+
 const arg = require("arg");
 const chalk = require("chalk");
 const cypress = require("cypress");
 
 function printBold(message) {
-  console.log(chalk.bold(message));
+  console.log(chalk.bold(chalk.magenta(message)));
 }
 
 const args = arg(
@@ -28,8 +30,13 @@ async function parseArguments(args) {
   return await cypress.cli.parseRunArguments(cliArgs);
 }
 
+function shell(command) {
+  return execSync(command, { stdio: "inherit" });
+}
+
 module.exports = {
   printBold,
   parseArguments,
   args,
+  shell,
 };
