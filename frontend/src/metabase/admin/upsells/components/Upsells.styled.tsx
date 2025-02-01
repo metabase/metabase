@@ -44,8 +44,6 @@ export const UpsellCTALink = styled(ExternalLink)`
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
   border-radius: 2rem;
-  margin-inline: 1rem;
-  margin-bottom: 1.5rem;
   color: ${upsellColors.primary};
   background-color: ${upsellColors.secondary};
   text-decoration: none;
