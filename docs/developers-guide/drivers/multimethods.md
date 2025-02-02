@@ -74,7 +74,7 @@ clojure -M:run driver-methods docs
 
 Many drivers share implementation details, and writing complete implementations for sync methods and the like would involve a lot of duplicate code. Thus **many high-level features are partially or fully implemented in shared "parent" drivers**, such as the most common parent, `:sql-jdbc`. A "parent" driver is analogous to a superclass in object-oriented programming.
 
-You can define a driver parent by listing the parent in the [plugin manifest](plugins.md).
+You can define a driver parent by listing the parent in the [plugin manifest](./plugins.md).
 
 Parents like `:sql-jdbc` are intended as a common abstract "base class" for drivers that can share much of their implementation; in the case of `:sql-jdbc`, it's intended for SQL-based drivers that use a JDBC driver under the hood.`:sql-jdbc` and other parents provide implementations for many of the methods needed to power the four main features of a Metabase driver. In fact, `:sql-jdbc` provides implementations of things like `driver/execute-prepared-statement!`, so a driver using it as a parent does not need to provide one itself. However, various parent drivers define their own multimethods to implement.
 

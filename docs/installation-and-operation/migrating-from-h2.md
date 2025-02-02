@@ -57,13 +57,13 @@ You don't want people creating new stuff in your Metabase while you're migrating
 
 ### 3. Back up your H2 application database
 
-Safety first! See [Backing up Metabase Application Data](backing-up-metabase-application-data.md).
+Safety first! See [Backing up Metabase Application Data](./backing-up-metabase-application-data.md).
 
 ### 4. Run the Metabase data migration command
 
 Run the migration command, `load-from-h2`, using the appropriate [environment variables](../configuring-metabase/environment-variables.md) for the target database you want to migrate to.
 
-You can find details about specifying databases at [Configuring the application database](configuring-application-database.md).
+You can find details about specifying databases at [Configuring the application database](./configuring-application-database.md).
 
 Here's an example command for migrating to a Postgres database:
 
@@ -115,7 +115,7 @@ You must be able to connect to the target application database in whatever envir
 
 ### 2. Back up your H2 application database
 
-Safety first! See [Backing up Metabase Application Data](backing-up-metabase-application-data.md).
+Safety first! See [Backing up Metabase Application Data](./backing-up-metabase-application-data.md).
 
 If you don't back up your H2 database, and you replace or delete your container, you'll lose all of your questions, dashboards, and other Metabase data, so be sure to back up before you migrate.
 
@@ -143,7 +143,7 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar load-from-h2 /
 
 Metabase will start up, perform the migration (meaning, it'll take the data from the H2 file and put it into your new app db, in this a Postgres db), and then exit.
 
-See [Configuring the application database](configuring-application-database.md).
+See [Configuring the application database](./configuring-application-database.md).
 
 ### 5. Start a new Docker container that uses the new app db
 

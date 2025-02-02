@@ -36,11 +36,11 @@ First you'll need to make sure things are configured correctly with your IdP. Ea
 
 We've written up some guides for the most common providers:
 
-- [Auth0](saml-auth0.md)
-- [Microsoft Entra ID](saml-azure.md)
-- [Google](saml-google.md)
-- [Keycloak](saml-keycloak.md)
-- [Okta](saml-okta.md)
+- [Auth0](./saml-auth0.md)
+- [Microsoft Entra ID](./saml-azure.md)
+- [Google](./saml-google.md)
+- [Keycloak](./saml-keycloak.md)
+- [Okta](./saml-okta.md)
 
 If you don't see your IdP listed here:
 
@@ -76,8 +76,8 @@ Different IdPs use different names for the redirect URL. Here are some common ex
 
 | Provider               | Name                     |
 | ---------------------- | ------------------------ |
-| [Auth0](saml-auth0.md) | Application Callback URL |
-| [Okta](saml-okta.md)   | Single Sign On URL       |
+| [Auth0](./saml-auth0.md) | Application Callback URL |
+| [Okta](./saml-okta.md)   | Single Sign On URL       |
 | OneLogin               | ACS (Consumer) URL       |
 
 ### User attributes
@@ -106,8 +106,8 @@ Different IdPs use different names for the Identity Provider URL. Here are some 
 
 | Provider               | Name                                 |
 | ---------------------- | ------------------------------------ |
-| [Auth0](saml-auth0.md) | Identity Provider Login URL          |
-| [Okta](saml-okta.md)   | Identity Provider Single-Sign On URL |
+| [Auth0](./saml-auth0.md) | Identity Provider Login URL          |
+| [Okta](./saml-okta.md)   | Identity Provider Single-Sign On URL |
 | OneLogin               | SAML 2.0 Endpoint (HTTP)             |
 
 ### SAML identity provider issuer
@@ -118,8 +118,8 @@ We recommend that you set this value to make your SAML configuration more secure
 
 | Provider               | Name                        |
 | ---------------------- | --------------------------- |
-| [Auth0](saml-auth0.md) | Identity Provider Login URL |
-| [Okta](saml-okta.md)   | Identity Provider Issuer    |
+| [Auth0](./saml-auth0.md) | Identity Provider Login URL |
+| [Okta](./saml-okta.md)   | Identity Provider Issuer    |
 | OneLogin               | Issuer URL                  |
 
 ### SAML identity provider certificate
@@ -132,8 +132,8 @@ Note that your certificate text may include header and footer comments that look
 
 | Provider               | Name                |
 | ---------------------- | ------------------- |
-| [Auth0](saml-auth0.md) | Signing Certificate |
-| [Okta](saml-okta.md)   | X.509 Certificate   |
+| [Auth0](./saml-auth0.md) | Signing Certificate |
+| [Okta](./saml-okta.md)   | X.509 Certificate   |
 | OneLogin               | X.509 Certificate   |
 
 ### Settings for signing SSO requests (optional)

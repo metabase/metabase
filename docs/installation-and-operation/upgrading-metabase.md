@@ -12,7 +12,7 @@ Instructions for upgrading to a new [Metabase release](https://github.com/metaba
 
 The application database keeps track of all of your people, dashboards, questions, collections, permissions: all the application data in Metabase (that is, everything but the data you've connected to Metabase). While it's unlikely you'll need to roll back to your current version, a backup will do wonders for your peace of mind.
 
-See [Backing up Metabase application data](backing-up-metabase-application-data.md).
+See [Backing up Metabase application data](./backing-up-metabase-application-data.md).
 
 ## Swapping in the new Metabase version
 
@@ -22,7 +22,7 @@ Steps differ depending on whether you're running the JAR or a Docker image.
 
 If you're running the JVM Jar file directly:
 
-1. [Back up your application database](backing-up-metabase-application-data.md).
+1. [Back up your application database](./backing-up-metabase-application-data.md).
 
 2. Download the latest version of the JAR file:
 
@@ -47,7 +47,7 @@ To upgrade, you'll need to stop the service, replace the JAR with the newer vers
 
 E.g., if you're running Metabase on Debian as a service using Nginx.
 
-1. [Back up your application database](backing-up-metabase-application-data.md).
+1. [Back up your application database](./backing-up-metabase-application-data.md).
 
 2. Download the latest version of the JAR file:
 
@@ -72,9 +72,9 @@ E.g., if you're running Metabase on Debian as a service using Nginx.
 
 If you're running Metabase in a Docker container:
 
-1. [Back up your application database](backing-up-metabase-application-data.md).
+1. [Back up your application database](./backing-up-metabase-application-data.md).
 
-   > WARNING: If you're not using a [production-ready database](migrating-from-h2.md), your application data (questions, dashboards, and so on) will have been stored in an H2 database _inside_ your container. Upgrading requires swapping out your existing container for a new image with the upgraded Metabase JAR, which will wipe out your application data. We recommend switching to a production-ready database before you upgrade.
+   > WARNING: If you're not using a [production-ready database](./migrating-from-h2.md), your application data (questions, dashboards, and so on) will have been stored in an H2 database _inside_ your container. Upgrading requires swapping out your existing container for a new image with the upgraded Metabase JAR, which will wipe out your application data. We recommend switching to a production-ready database before you upgrade.
 
 2. Stop the current Docker container.
 
@@ -134,7 +134,7 @@ Cloud customers can request an early upgrade by emailing support at help@metabas
 
 ## Upgrading Metabase on other platforms
 
-- [Upgrading Azure Web Apps deployments](running-metabase-on-azure.md#additional-configurations)
+- [Upgrading Azure Web Apps deployments](./running-metabase-on-azure.md#additional-configurations)
 
 ## Rolling back an upgrade
 

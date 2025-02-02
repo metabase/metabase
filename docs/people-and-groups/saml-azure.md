@@ -11,7 +11,7 @@ redirect_from:
 
 ## Enable SAML in Metabase
 
-First, follow our guide to [enable SAML authentication](authenticating-with-saml.md).
+First, follow our guide to [enable SAML authentication](./authenticating-with-saml.md).
 
 ## Add an Enterprise Application in Microsoft Entra ID
 

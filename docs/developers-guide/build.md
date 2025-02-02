@@ -4,7 +4,7 @@ title: Building Metabase
 
 # Building Metabase
 
-This doc will show you how you can build and run Metabase on your own computer so you can play around with it or test features in development. You can also run development branches of Metabase [using a pre-built Docker image](dev-branch-docker.md).
+This doc will show you how you can build and run Metabase on your own computer so you can play around with it or test features in development. You can also run development branches of Metabase [using a pre-built Docker image](./dev-branch-docker.md).
 
 ## Install the prerequisites
 
@@ -62,7 +62,7 @@ If you are developing on Windows, you should run Ubuntu on Windows Subsystem for
 
 ### Developing with VS Code in a remote container
 
-Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](visual-studio-code.md) and its remote container support.
+Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](./visual-studio-code.md) and its remote container support.
 
 ## Clone the Metabase repo
 

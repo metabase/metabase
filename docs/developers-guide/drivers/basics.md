@@ -19,7 +19,7 @@ A Metabase driver:
 
 Metabase drivers are organized into modules and packaged as plugins. Modules are the source code; plugins are the JARs built from that source code.
 
-A Metabase plugin is a JAR file that contains the compiled class files and a Metabase [plugin manifest](plugins.md) that lists details about the driver. In most cases, plugins are lazily loaded, which means that Metabase won't initialize the drivers until it connects to a database that would use the driver.
+A Metabase plugin is a JAR file that contains the compiled class files and a Metabase [plugin manifest](./plugins.md) that lists details about the driver. In most cases, plugins are lazily loaded, which means that Metabase won't initialize the drivers until it connects to a database that would use the driver.
 
 For Metabase to use your driver, all you need to do is put the driver JAR you built into the `/plugin` directory, which you'll find in the same directory where you run your metabase.jar. Something like this:
 
@@ -59,14 +59,14 @@ The `deps.edn` file specifies the driver's dependencies.
 
 ### `resources/metabase-plugin.yaml`
 
-Your driver's [manifest](plugins.md#plugin-manifests) includes details about your driver.
+Your driver's [manifest](./plugins.md#plugin-manifests) includes details about your driver.
 
 ### `src/metabase/driver/sqlite.clj`
 
-This is the core file for your driver. We'll talk more about it in [Implementing multimethods](multimethods.md).
+This is the core file for your driver. We'll talk more about it in [Implementing multimethods](./multimethods.md).
 
 ## Next Up
 
-We'll learn more about [plugin manifests](plugins.md).
+We'll learn more about [plugin manifests](./plugins.md).
 
 [env-var]: ../../configuring-metabase/environment-variables.md
