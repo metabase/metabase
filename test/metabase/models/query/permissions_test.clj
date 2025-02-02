@@ -8,8 +8,8 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))

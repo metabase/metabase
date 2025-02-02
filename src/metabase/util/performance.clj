@@ -1,7 +1,8 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing."
   (:refer-clojure :exclude [reduce mapv run! some concat])
-  (:import (clojure.lang LazilyPersistentVector RT)))
+  (:import (clojure.lang LazilyPersistentVector RT)
+           java.util.Iterator))
 
 (set! *warn-on-reflection* true)
 
@@ -176,3 +177,10 @@
      (reduce conj! res f)
      (reduce (fn [res l] (reduce conj! res l)) res more)
      (persistent! res))))
+
+(defn transpose
+  "Like `(apply mapv vector coll-of-colls)`, but more efficient."
+  [coll-of-colls]
+  (let [its (mapv #(.iterator ^Iterable %) coll-of-colls)]
+    (mapv (fn [_] (mapv #(.next ^Iterator %) its))
+          (first coll-of-colls))))

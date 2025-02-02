@@ -13,11 +13,10 @@
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.session :as session]
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
-   [metabase.permissions.util :as perms-util]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
@@ -82,7 +81,7 @@
     ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
     ;; agrees with is_superuser -- don't want to have ambiguous behavior
     (when (some? is-superuser?)
-      (api/checkp (= is-superuser? (contains? (set (map :id new-user-group-memberships)) (u/the-id (perms-group/admin))))
+      (api/checkp (= is-superuser? (contains? (set (map :id new-user-group-memberships)) (u/the-id (perms/admin-group))))
                   "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
     (if-let [f (and (premium-features/enable-advanced-permissions?)
                     config/ee-available?
@@ -154,18 +153,18 @@
   - with include_deactivated"
   [status query group_ids include_deactivated]
   (cond-> {}
-    true                                         (sql.helpers/where [:= :core_user.type "personal"])
-    true                                         (sql.helpers/where (status-clause status include_deactivated))
+    true                                    (sql.helpers/where [:= :core_user.type "personal"])
+    true                                    (sql.helpers/where (status-clause status include_deactivated))
     ;; don't send the internal user
-    (perms-util/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
-    (some? query)                                (sql.helpers/where (query-clause query))
-    (some? group_ids)                            (sql.helpers/right-join
-                                                  :permissions_group_membership
-                                                  [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_ids)                            (sql.helpers/where
-                                                  [:in :permissions_group_membership.group_id group_ids])
-    (some? (request/limit))                      (sql.helpers/limit (request/limit))
-    (some? (request/offset))                     (sql.helpers/offset (request/offset))))
+    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (some? query)                           (sql.helpers/where (query-clause query))
+    (some? group_ids)                       (sql.helpers/right-join
+                                             :permissions_group_membership
+                                             [:= :core_user.id :permissions_group_membership.user_id])
+    (some? group_ids)                       (sql.helpers/where
+                                             [:in :permissions_group_membership.group_id group_ids])
+    (some? (request/limit))                 (sql.helpers/limit (request/limit))
+    (some? (request/offset))                (sql.helpers/offset (request/offset))))
 
 (defn- filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."
@@ -241,7 +240,7 @@
                           {:select-distinct [:permissions_group_membership.group_id]
                            :from  [:permissions_group_membership]
                            :where [:and [:= :permissions_group_membership.user_id user-id]
-                                   [:not= :permissions_group_membership.group_id (:id (perms-group/all-users))]]}]})))
+                                   [:not= :permissions_group_membership.group_id (:id (perms/all-users-group))]]}]})))
 
 (api.macros/defendpoint :get "/recipients"
   "Fetch a list of `Users`. Returns only active users. Meant for non-admins unlike GET /api/user.
@@ -272,7 +271,7 @@
     (cond
       ;; if they're sandboxed OR if they're a superuser, ignore the setting and just give them nothing or everything,
       ;; respectively.
-      (perms-util/sandboxed-user?)
+      (perms/sandboxed-user?)
       (just-me)
 
       api/*is-superuser?*

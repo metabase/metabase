@@ -1,4 +1,4 @@
-(ns metabase.models.data-permissions.graph
+(ns metabase.permissions.models.data-permissions.graph
   "Code involving reading and writing the API-style data permission graph. This is the graph which we use to represent
   permissions when communicating with the frontend, which has different keys and a slightly different structure
   from the one returned by `metabase.models.data-permissions/data-permissions-graph`, which is based directly on the
@@ -9,11 +9,11 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.api.permission-graph :as api.permission-graph]
    [metabase.audit :as audit]
-   [metabase.models.data-permissions :as data-perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-revision :as perms-revision]
+   [metabase.permissions.api.permission-graph :as api.permission-graph]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-revision :as perms-revision]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]

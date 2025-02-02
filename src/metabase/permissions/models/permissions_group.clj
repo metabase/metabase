@@ -1,4 +1,4 @@
-(ns metabase.models.permissions-group
+(ns metabase.permissions.models.permissions-group
   "A `PermissionsGroup` is a group (or role) that can be assigned certain permissions. Users can be members of one or
   more of these groups.
 
@@ -6,13 +6,13 @@
   superusers. These groups are 'magic' in the sense that you cannot add users to them yourself, nor can you delete
   them; they are created automatically. You can, however, set permissions for them.
 
-  See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
+  See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [metabase.db :as mdb]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
