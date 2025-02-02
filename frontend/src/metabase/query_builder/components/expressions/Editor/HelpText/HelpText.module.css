@@ -3,6 +3,9 @@
   background-color: #fafafb;
   color: var(--mb-color-text-primary);
   font-family: var(--mb-default-font-family);
+  min-height: 36px;
+  overflow: hidden;
+  flex-shrink: 1;
 }
 
 .usage {
@@ -10,6 +13,8 @@
   color: var(--mb-color-text-secondary);
   cursor: pointer;
   font-family: var(--mb-default-monospace-font-family);
+  flex-shrink: 0;
+  min-height: 36px;
 }
 
 .arg {
@@ -23,8 +28,10 @@
 
 .info {
   padding: 8px;
-  max-height: 150px;
   overflow: auto;
+  flex-shrink: 10;
+  min-height: 0;
+  max-height: 150px;
   border-top: 1px solid var(--mb-color-border);
 }
 

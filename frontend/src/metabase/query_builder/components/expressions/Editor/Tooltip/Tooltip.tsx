@@ -10,7 +10,7 @@ import type { EditorView } from "@codemirror/view";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 
-import { Box, Icon } from "metabase/ui";
+import { Box, Icon, Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
@@ -58,22 +58,33 @@ export function Tooltip({
   );
 
   return (
-    <Box
-      className={S.tooltip}
-      data-testid="custom-expression-editor-suggestions"
+    <Popover
+      opened
+      position="bottom-start"
+      returnFocus
+      closeOnEscape
+      middlewares={{ shift: false, flip: false }}
     >
-      <HelpText
-        enclosingFunction={enclosingFn}
-        query={query}
-        metadata={metadata}
-        reportTimezone={reportTimezone}
-      />
-      <Completions
-        completions={options}
-        selectedCompletion={selectedOption}
-        onCompletionClick={handleCompletionClick}
-      />
-    </Box>
+      <Popover.Target>
+        <div />
+      </Popover.Target>
+      <Popover.Dropdown
+        className={S.tooltip}
+        data-testid="custom-expression-editor-suggestions"
+      >
+        <HelpText
+          enclosingFunction={enclosingFn}
+          query={query}
+          metadata={metadata}
+          reportTimezone={reportTimezone}
+        />
+        <Completions
+          completions={options}
+          selectedCompletion={selectedOption}
+          onCompletionClick={handleCompletionClick}
+        />
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 

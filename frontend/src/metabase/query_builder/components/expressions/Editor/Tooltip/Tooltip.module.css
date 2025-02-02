@@ -1,11 +1,11 @@
 .tooltip {
   background: var(--mb-color-background);
-  border: 1px solid var(--mb-color-border);
-  border-radius: 8px;
+  border: 1px solid var(--mb-color-border) !important;
   z-index: 1000;
   width: 400px;
-  overflow: hidden;
   box-shadow: rgba(0, 0, 0, 0.05) 0 4px 20px 0;
+  display: flex;
+  flex-direction: column;
 
   &:empty {
     display: none;
@@ -13,7 +13,8 @@
 }
 
 .listbox {
-  max-height: 250px;
+  flex-shrink: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
