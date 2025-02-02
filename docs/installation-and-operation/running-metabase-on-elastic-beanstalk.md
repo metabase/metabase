@@ -42,18 +42,18 @@ This procedure will generate downtime, so make sure to communicate to your users
 
 Identify the RDS endpoint that your Elastic Beanstalk is using by going to the configuration of the Environment and finding the endpoint value on the Database section.
 
-![RDS endpooint](images/EBDatabaseEndpoint.png)
+![RDS endpooint](./images/EBDatabaseEndpoint.png)
 
 - If Retention is "Create snapshot", you're good to go. You can delete the whole Elastic Beanstalk environment, because AWS will take a snapshot (backup) of the database before deleting the environment.
 - If Retention has a different value, visit your RDS instance and take a snapshot of the database used by the Elastic Beanstalk application.
 
-  ![RDS snapshot](images/RDSTakeSnapshot.png)
+  ![RDS snapshot](./images/RDSTakeSnapshot.png)
 
 ### Terminate your Elastic Beanstalk environment with snapshot
 
 Go to the Elastic Beanstalk Metabase application, select the running environment, and terminate it. Confirm that the database will be terminated **with snapshot**.
 
-![Terminate environment](images/EBTerminateEnvironment.png)
+![Terminate environment](./images/EBTerminateEnvironment.png)
 
 Terminating the environment can take around 20 minutes. If the deletion fails, you'll have to identify through CloudFormation which resources failed to be deleted and delete them yourself.
 
@@ -61,7 +61,7 @@ Terminating the environment can take around 20 minutes. If the deletion fails, y
 
 Return to RDS and select the **Snapshots** option on the left of the page. You should see a Manual Snapshot listed.
 
-![RDS Snapshots](images/RDSSnapshotsMenu.png)
+![RDS Snapshots](./images/RDSSnapshotsMenu.png)
 
 Select that snapshot and click on **Actions** > **Restore Snapshot**.
 

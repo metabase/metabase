@@ -15,7 +15,7 @@ To find the map settings:
 1. At the top right of the screen, click **gear** icon > **Admin settings** > **Settings**.
 2. Select `Maps` from the navigation on the left.
 
-![Map Settings](images/MapSettings.png)
+![Map Settings](./images/MapSettings.png)
 
 ## Map tile server
 

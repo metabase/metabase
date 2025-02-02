@@ -55,7 +55,7 @@ If you already have two or more saved questions you’d like to compare, and the
 
 If necessary, the X and Y axes will automatically update. Metabase will create a legend using the existing card titles to help you understand which question maps to which series on the chart. Repeat this process as many times as you need.
 
-![Edit modal with multi-series](images/edit_modal_multi-series.png)
+![Edit modal with multi-series](./images/edit_modal_multi-series.png)
 
 To remove a series, simply uncheck its box.
 

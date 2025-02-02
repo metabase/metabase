@@ -9,7 +9,7 @@ redirect_from:
 This guide will help you set up Metabase once you’ve gotten it installed. If you haven’t installed Metabase yet, you can [get Metabase here](https://metabase.com/start).
 
 Start Metabase up for the first time and you’ll see this screen:
-![Welcome Screen](images/WelcomeScreen.png)
+![Welcome Screen](./images/WelcomeScreen.png)
 
 Go ahead and click **Let’s get started**.
 
@@ -19,7 +19,7 @@ The first thing you’ll need to do is set up an admin account. The account you 
 
 For now, let's just create an account for ourselves to explore Metabase. Type in your info, and when you’re ready to continue, click the **Next** button.
 
-![Account Setup](images/AccountSetup.png)
+![Account Setup](./images/AccountSetup.png)
 
 ## What will you use Metabase for?
 
@@ -52,7 +52,7 @@ If you don't have this information handy, the person responsible for administeri
 
 Now that you have your database info you can connect to your database. Sweet, sweet data at last. Just go ahead and put your info into this form and click **Next**.
 
-![adddatabase](images/AddDatabaseInfo.png)
+![adddatabase](./images/AddDatabaseInfo.png)
 
 For more on connecting to databases, see [Adding and managing databases](../databases/connecting.md).
 
@@ -70,7 +70,7 @@ One last quick thing that you’ll have to decide is if it’s okay for us to co
 - All collection is completely anonymous.
 - Collection can be turned off at any point in your admin settings.
 
-![Usage data preferences](images/UsageData.png)
+![Usage data preferences](./images/UsageData.png)
 
 If you’re ready to start using Metabase, go ahead and click **Next**.
 
@@ -78,7 +78,7 @@ If you’re ready to start using Metabase, go ahead and click **Next**.
 
 At this point you are all set and ready to use Metabase. Since we like keeping in touch with our friends we made it easy to sign up for our newsletter (infrequent emails) with a single click!
 
-![Metabase Newsletter](images/NewsletterSignup.png)
+![Metabase Newsletter](./images/NewsletterSignup.png)
 
 Once you're done here simply follow the link to **Take me to Metabase**. And if you decided to skip the newsletter sign-up, it's cool, we still like you :)
 
