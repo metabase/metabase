@@ -6,6 +6,7 @@
   box-shadow: rgba(0, 0, 0, 0.05) 0 4px 20px 0;
   display: flex;
   flex-direction: column;
+  font-size: 14px;
 
   &:empty {
     display: none;
@@ -16,6 +17,7 @@
   flex-shrink: 1;
   min-height: 0;
   overflow-y: auto;
+  font-size: 14px;
 }
 
 .item {

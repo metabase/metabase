@@ -15,6 +15,7 @@
   font-family: var(--mb-default-monospace-font-family);
   flex-shrink: 0;
   min-height: 36px;
+  font-size: 12px;
 }
 
 .arg {
