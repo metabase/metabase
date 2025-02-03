@@ -1,26 +1,29 @@
 .helpText {
-  /* todo: use correct color */
-  background-color: #fafafb;
+  background-color: var(--mb-color-bg-light);
   color: var(--mb-color-text-primary);
   font-family: var(--mb-default-font-family);
-  min-height: 36px;
   overflow: hidden;
   flex-shrink: 1;
+  min-height: 2.5rem;
 }
 
 .usage {
-  padding: 8px;
+  padding: 0 0.5rem;
+  background-color: white;
   color: var(--mb-color-text-secondary);
   cursor: pointer;
   font-family: var(--mb-default-monospace-font-family);
   flex-shrink: 0;
-  min-height: 36px;
-  font-size: 12px;
+  font-size: 0.75rem;
+  min-height: 2.5rem;
+  line-height: 2.5rem;
+  box-sizing: border-box;
 }
 
 .arg {
   color: var(--mb-base-color-dubloon-50);
   font-family: var(--mb-default-monospace-font-family);
+  font-size: 0.75rem;
 
   &.active {
     background-color: var(--mb-base-color-dubloon-10);
@@ -38,22 +41,23 @@
 
 .title {
   color: var(--mb-color-text-secondary);
-  margin: 8px 0;
+  margin: 0.5rem 0;
 }
 
 .arguments {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(2, minmax(4rem, max-content));
-  margin: 16px 0;
+  margin: 1rem 0;
 }
 
 .example {
   background-color: var(--mb-color-bg-medium);
   color: var(--mb-color-text-primary);
   border-radius: 4px;
-  padding: 16px 8px;
+  padding: 1rem 0.5rem;
   overflow: auto;
+  font-size: 0.75rem;
 
   pre {
     margin: 0;
