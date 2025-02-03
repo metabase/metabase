@@ -10,6 +10,7 @@
    [metabase.models.setting :refer [defsetting]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -84,16 +85,6 @@
   :export? false
   :encryption :no)
 
-(mu/defn- is-crufty-table?
-  "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
-  [table-name database]
-  (let [all-crufty-table-patterns (if-let [more-patterns (-> database :settings :auto-cruft-tables)]
-                                    (concat crufty-table-patterns
-                                            (map re-pattern more-patterns))
-                                    crufty-table-patterns)]
-    (some #(re-find % (u/lower-case-en table-name))
-          all-crufty-table-patterns)))
-
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
 (mu/defn- update-database-metadata!
@@ -107,7 +98,8 @@
 
 (defn- cruft-dependent-columns [table-name database]
   ;; if this is a crufty table, mark initial sync as complete since we'll be skipping the subsequent sync steps
-  (let [is-crufty? (is-crufty-table? table-name database)]
+  (let [is-crufty? (crufty/name? table-name {:patterns crufty-table-patterns
+                                             :pattern-strings (some-> database :settings :auto-cruft-tables)})]
     {:initial_sync_status (if is-crufty? "complete" "incomplete")
      :visibility_type     (when is-crufty? :cruft)}))
 
@@ -221,7 +213,8 @@
 (mu/defn- db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
-  (set (t2/select [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count]
+  (set (t2/select [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count
+                   :visibility_type :initial_sync_status]
                   :db_id  (u/the-id database)
                   :active true)))
 

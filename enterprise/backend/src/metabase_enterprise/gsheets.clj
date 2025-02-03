@@ -1,7 +1,6 @@
 (ns metabase-enterprise.gsheets
   "/api/gsheets endpoints"
   (:require
-   [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.harbormaster.client :as hm.client]
@@ -13,7 +12,6 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -43,36 +41,37 @@
 ;;       - BE returns the gsheets shape: `{:status "syncing" :folder_url "the-url"}`
 ;;     - on exceptional status, BE returns a message like: "Unable to setup drive folder sync. Please check that the
 ;;       folder is shared with the proper service account email and sharing permissions."
+;;
+;; ## Polling
 ;; - FE polls :get "api/ee/gsheets/folder" until `body.status` == `complete`
-;;   - BE forwards requests to :get "/api/v2/mb/connections", filtering for the google drive connection
-;;     - If the connection doesn't exist: `{:error "google drive connection not found."}`
-;;     - If the connection exists and is NOT active, return loading state in the response
-;;     - If the connection exists and is active AND the latest sync of the attached datawarehouse is AFTER the sync time
-;;           on Harbormaster's gdrive connection, return `body.status` == "complete".
-;;   - FE sees status == "complete"
+;; - BE forwards requests to :get "/api/v2/mb/connection/<gdrive-conn-id>", filtering for the google drive connection
+;;   - If the connection doesn't exist: `{:error "google drive connection not found."}`
+;;   - If the connection exists and is NOT active, return loading state in the response
+;;   - If the connection exists and is active AND the latest sync of the attached datawarehouse is AFTER the sync time
+;;         on Harbormaster's gdrive connection, return `body.status` == "complete".
+;; - FE sees status == "complete"
+;;
+;; ### What if the sync takes too long or never ends?
+;; Upon the successful creation of a gdrive connection, we start a timer that will error out if the sync does not
+;; complete within [[*folder-setup-timeout-seconds*]] seconds. If the sync does not complete within this window, we
+;; reset the gsheets status to `{:status "not-connected"}` and return an error for the FE to show.
 ;;
 ;; ## Steps to disconnect a google drive folder
 ;; - FE sends request to :delete "/folder"
-;;   - MB checks that there _is_ one or more gdrive connections
-;;     - gdrive conn not found: `"Unable to find google drive connection."`, + resets gsheets
-;;     - gdrive conn exists: MB sends HM `:delete "/api/v2/mb/connections/<conn-id>"`
-;;       - on exceptional status: returns error w/ message: `"Unable to disconnect google service account"`
-;;         - FE shows error for delete action
-;;       - on OK: MB resets gsheets to `{:status "not-connected"}` (and the user can reconnect one from `Step 2.`)
-;;         - FE shows a confirmation for the delete + resets gsheets
+;;   - MB loops over all gdrive connection ids and deletes them
 ;;
 ;; ## Why do we need to sync the attached datawarehouse before considering it ready?
-;; - We need to sync the attached datawarehouse to make sure that the data from the Google Drive folder is available to
-;;   the user in Metabase. Once the gdrive connection's status is set to 'active' by HM, they will call MB's
-;;   `api/notify/db/attached_datawarehouse` endpoint to trigger a sync. The data from the Google Drive folder is already
-;;   availiable in the attached datawarehouse, and when MB finishes the sync (and puts an item into :model/TaskHistory
-;;   saying so), the user can start using their Google Sheets data in Metabase.
+;; We need to sync the attached datawarehouse to make sure that the data from the Google Drive folder is available to
+;; the user in Metabase. Once the gdrive connection's status is set to 'active' by HM, they will call MB's
+;; `api/notify/db/attached_datawarehouse` endpoint to trigger a sync. The data from the Google Drive folder is already
+;; availiable in the attached datawarehouse, and when MB finishes the sync (and puts an item into :model/TaskHistory
+;; saying so), the user can start using their Google Sheets data in Metabase.
 ;;
 ;; ## Why do we check for multiple gdrive connections in the delete endpoint?
-;; - We check for multiple gdrive connections in the delete endpoint to make sure that we are deleting all gdrive
-;;   connections. As of Milestone 2 there are supposed to be only one gdrive connection, but we saw multiple being
-;;   created and want the delete endpoint to basically reset us to a blank slate. If there are multiple gdrive
-;;   connections, we will delete all of them.
+;; We check for multiple gdrive connections in the delete endpoint to make sure that we are deleting all gdrive
+;; connections. As of Milestone 2 there are supposed to be only one gdrive connection, but we saw multiple being
+;; created and want the delete endpoint to basically reset us to a blank slate. If there are multiple gdrive
+;; connections, we will delete all of them.
 
 (set! *warn-on-reflection* true)
 
@@ -308,7 +307,8 @@
   ;; TODO add api/+check-superuser +auth and +check-setting
   (api.macros/ns-handler *ns*))
 
-(comment ;; TEMP (gsheets)
+(comment
+  (require '[metabase.util.json :as json]) ;; TEMP (gsheets)
 
   (def drive-folder-url
     "https://drive.google.com/drive/folders/1H2gz8_TUsCNyFpooFeQB8Y7FXRZA_esH?usp=drive_link")
@@ -325,5 +325,9 @@
 
   ;; need an "attached dwh" locally?
   (t2/update! :model/Database 1 {:is_attached_dwh true})
+
+
+  (t2/update! :model/Database 1 {:settings (json/encode {:auto-cruft-tables ["^feedback$"]
+                                                         :auto-cruft-columns ["^email$"]})})
 
   )
