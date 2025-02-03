@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
 
 (defn- user-group-memberships

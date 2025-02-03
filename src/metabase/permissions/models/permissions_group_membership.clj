@@ -1,7 +1,7 @@
-(ns metabase.models.permissions-group-membership
+(ns metabase.permissions.models.permissions-group-membership
   (:require
    [metabase.db.query :as mdb.query]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [methodical.core :as methodical]
@@ -15,10 +15,17 @@
   "Exception message when try to remove the last admin."
   (deferred-tru "You cannot remove the last member of the ''Admin'' group!"))
 
-(defonce ^:dynamic ^{:doc "Should we allow people to be added to or removed from the All Users permissions group? By
-  default, this is `false`, but enable it when adding or deleting users."}
-  *allow-changing-all-users-group-members*
+(def ^:dynamic *allow-changing-all-users-group-members*
+  "Should we allow people to be added to or removed from the All Users permissions group? By default, this is `false`,
+  but enable it when adding or deleting users."
   false)
+
+(defmacro allow-changing-all-users-group-members
+  "Allow people to be added to or removed from the All Users permissions group? By default, this is disallowed."
+  {:style/indent 0}
+  [& body]
+  `(binding [*allow-changing-all-users-group-members* true]
+     ~@body))
 
 (defn- check-not-all-users-group
   "Throw an Exception if we're trying to add or remove a user to the All Users group."

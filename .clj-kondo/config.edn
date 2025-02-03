@@ -341,9 +341,8 @@
                                      metabase.api.dataset
                                      metabase.api.macros
                                      metabase.api.open-api
-                                     metabase.api.permission-graph
                                      metabase.api.routes
-                                     metabase.api.util.handlers}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
+                                     metabase.api.util.handlers}                                    ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
     metabase.audit                 #{metabase.audit}
     metabase.auth-provider         #{metabase.auth-provider}
     metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
@@ -385,7 +384,8 @@
     metabase.notification          #{metabase.notification.core
                                      metabase.notification.init
                                      metabase.notification.payload.core}
-    metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
+    metabase.permissions           #{metabase.permissions.api
+                                     metabase.permissions.core}
     metabase.plugins               #{metabase.plugins
                                      metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
     metabase.premium-features      #{metabase.premium-features.core}
@@ -477,7 +477,15 @@
     metabase.models                :any
     metabase.moderation            :any
     metabase.notification          :any
-    metabase.permissions           :any
+    metabase.permissions           #{metabase.api
+                                     metabase.audit
+                                     metabase.config
+                                     metabase.db
+                                     metabase.models
+                                     metabase.plugins
+                                     metabase.premium-features
+                                     metabase.request
+                                     metabase.util}
     metabase.plugins               :any
     metabase.premium-features      :any
     metabase.public-settings       :any
@@ -494,6 +502,7 @@
     metabase.query-processor       :any
     metabase.request               #{metabase.config
                                      metabase.models
+                                     metabase.permissions
                                      metabase.public-settings
                                      metabase.util}
     metabase.sample-data           :any
@@ -594,9 +603,6 @@
     metabase.api.macros                                           api.macros
     metabase.api.metric                                           api.metric
     metabase.api.native-query-snippet                             api.native-query-snippet
-    metabase.api.permission-graph                                 api.permission-graph
-    metabase.api.permissions                                      api.permissions
-    metabase.api.permissions-test-util                            perm-test-util
     metabase.api.pivots                                           api.pivots
     metabase.api.premium-features                                 api.premium-features
     metabase.api.preview-embed                                    api.preview-embed
@@ -680,11 +686,6 @@
     metabase.models.native-query-snippet                          native-query-snippet
     metabase.models.notification                                  models.notification
     metabase.models.params                                        params
-    metabase.models.permissions                                   perms
-    metabase.models.permissions-group                             perms-group
-    metabase.models.permissions-group-membership                  perms-group-membership
-    metabase.models.permissions-revision                          perms-revision
-    metabase.models.permissions.parse                             perms-parse
     metabase.models.pulse                                         models.pulse
     metabase.models.pulse-channel                                 pulse-channel
     metabase.models.pulse-channel-recipient                       pulse-channel-recipient
@@ -694,6 +695,7 @@
     metabase.models.timeline-event                                timeline-event
     metabase.notification.core                                    notification
     metabase.notification.test-util                               notification.tu
+    metabase.permissions.core                                     perms
     metabase.plugins.initialize                                   plugins.init
     metabase.public-settings                                      public-settings
     metabase.premium-features.core                                premium-features
@@ -885,7 +887,6 @@
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
-   metabase.analytics.prometheus-test/with-prometheus-system!                                                                hooks.common/with-two-bindings
    metabase.api.alert-test/with-alert-in-collection!                                                                         hooks.common/with-four-bindings
    metabase.api.automagic-dashboards-test/with-indexed-model!                                                                hooks.metabase.api.automagic-dashboards-test/with-indexed-model!
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
@@ -933,6 +934,8 @@
    metabase.models.pulse-test/with-pulse-in-collection!                                                                      hooks.common/with-four-bindings
    metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/define-multi-setting
    metabase.models.setting/defsetting                                                                                        hooks.metabase.models.setting/defsetting
+   metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*
+   metabase.permissions.core/disable-perms-cache                                                                             hooks.common/do*
    metabase.premium-features.core/defenterprise                                                                              hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.premium-features.defenterprise/defenterprise                                                                     hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.pulse.test-util/checkins-query-card                                                                              hooks.metabase.test.data/$ids
@@ -957,6 +960,7 @@
    metabase.test.util/discard-setting-changes                                                                                hooks.common/with-ignored-first-arg
    metabase.test.util/with-column-remappings                                                                                 hooks.common/with-ignored-first-arg
    metabase.test.util/with-non-admin-groups-no-root-collection-perms                                                         hooks.common/do*
+   metabase.test.util/with-prometheus-system!                                                                                hooks.common/with-two-bindings
    metabase.test.util/with-temp-file                                                                                         hooks.metabase.test.util/with-temp-file
    metabase.test.util/with-temporary-setting-values                                                                          hooks.metabase.test.util/with-temporary-setting-values
    metabase.test/$ids                                                                                                        hooks.metabase.test.data/$ids
@@ -974,6 +978,7 @@
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
+   metabase.test/with-prometheus-system!                                                                                     hooks.common/with-two-bindings
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
    metabase.util.log.capture/with-log-messages-for-level                                                                     hooks.metabase.util.log.capture/with-log-messages-for-level
    metabase.util.log/debug                                                                                                   hooks.metabase.util.log/info

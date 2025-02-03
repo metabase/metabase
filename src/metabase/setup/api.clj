@@ -13,10 +13,10 @@
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.session :as session]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.user :as user]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
@@ -72,7 +72,7 @@
     (if-not (email/email-configured?)
       (log/error "Could not invite user because email is not configured.")
       (u/prog1 (user/insert-new-user! user)
-        (user/set-permissions-groups! <> [(perms-group/all-users) (perms-group/admin)])
+        (user/set-permissions-groups! <> [(perms/all-users-group) (perms/admin-group)])
         (events/publish-event! :event/user-invited
                                {:object
                                 (assoc <>
