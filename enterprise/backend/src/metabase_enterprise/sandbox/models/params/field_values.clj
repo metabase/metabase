@@ -34,7 +34,7 @@
     (when gtaps
       (row-level-restrictions/assert-one-gtap-per-table gtaps)
       ;; there shold be only one gtap per table and we only need one table here
-      ;; see docs in [[metabase.models.permissions]] for more info
+      ;; see docs in [[metabase.permissions.models.permissions]] for more info
       (t2/hydrate (first gtaps) :card))))
 
 (defn- field->gtap-attributes-for-current-user

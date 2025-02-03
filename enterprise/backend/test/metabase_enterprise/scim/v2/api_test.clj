@@ -4,7 +4,7 @@
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
    [metabase.http-client :as client]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [ring.util.codec :as codec]

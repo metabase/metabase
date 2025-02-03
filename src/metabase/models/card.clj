@@ -23,19 +23,18 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
-   [metabase.models.permissions :as perms]
    [metabase.models.pulse :as models.pulse]
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis.core :as query-analysis]
@@ -74,7 +73,7 @@
 (doto :model/Card
   (derive :metabase/model)
   ;; You can read/write a Card if you can read/write its parent Collection
-  (derive ::perms/use-parent-collection-perms)
+  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
@@ -244,7 +243,7 @@
    (fn [card]
      (assoc card
             :can_manage_db
-            (data-perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes (:database_id card))))
+            (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes (:database_id card))))
    cards))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
