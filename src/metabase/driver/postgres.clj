@@ -842,13 +842,14 @@
 
 (defmethod driver/dynamic-database-types-lookup :postgres
   [_driver database database-types]
-  (let [ts (enum-types database)]
-    (not-empty
-     (into {}
-           (comp
-            (filter ts)
-            (map #(vector % :type/PostgresEnum)))
-           database-types))))
+  (when (seq database-types)
+    (let [ts (enum-types database)]
+      (not-empty
+       (into {}
+             (comp
+              (filter ts)
+              (map #(vector % :type/PostgresEnum)))
+             database-types)))))
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
   [_driver database-type]
