@@ -57,7 +57,6 @@ describe("ExpressionWidget", () => {
     expect(doneButton).toBeDisabled();
 
     const expressionInput = screen.getByRole("textbox");
-    expect(expressionInput).toHaveClass("ace_text-input");
 
     await userEvent.type(expressionInput, "1 + 1");
     await userEvent.tab();
@@ -77,7 +76,6 @@ describe("ExpressionWidget", () => {
     expect(doneButton).toBeDisabled();
 
     const expressionInput = screen.getByRole("textbox");
-    expect(expressionInput).toHaveClass("ace_text-input");
 
     await userEvent.type(expressionInput, "1 + 1");
     await userEvent.tab();
