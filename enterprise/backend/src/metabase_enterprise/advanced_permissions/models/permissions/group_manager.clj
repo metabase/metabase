@@ -26,12 +26,11 @@
 (defn- complete-membership-info
   "Fill in missing :is_group_manager values to be based on existing values, or 'false' if not set"
   [new-user-info old-user-info]
-  (map (fn [x]
-         (if (nil? (:is_group_manager x))
-           (assoc x :is_group_manager
-                  (let [existing-value (:is_group_manager (old-user-info (:id x)))]
-                    (if (nil? existing-value) false existing-value)))
-           x)) new-user-info))
+  (map #(cond-> %
+          (nil? (:is_group_manager %))
+          (assoc :is_group_manager
+                 (boolean (-> % :id old-user-info :is_group_manager))))
+    new-user-info))
 
 (defn set-user-group-memberships!
   "Update Groups Memberships of a User when `advanced-permissions` is enabled.
