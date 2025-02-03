@@ -25,10 +25,28 @@
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/details
   map?)
 
+(defn- valid-regex-patterns? [patterns]
+  (every? (fn [pattern]
+            (try
+              #_{:clj-kondo/ignore [:unused-value]}
+              (re-pattern pattern) true
+              (catch Exception e (log/error e) false)))
+          patterns))
+
+(s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/settings
+  (s/and
+   map?
+   (fn cruft-patterns-are-valid? [settings]
+     (->> [(:auto-cruft-tables settings) (:auto-cruft-columns settings)]
+          (remove nil?)
+          (map valid-regex-patterns?)
+          (every? true?)))))
+
 (s/def ::config-file-spec
   (s/keys :req-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/engine
                    :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
-                   :metabase-enterprise.advanced-config.file.databases.config-file-spec/details]))
+                   :metabase-enterprise.advanced-config.file.databases.config-file-spec/details]
+          :opt-un [:metabase-enterprise.advanced-config.file.databases.config-file-spec/settings]))
 
 (defmethod advanced-config.file.i/section-spec :databases
   [_section]

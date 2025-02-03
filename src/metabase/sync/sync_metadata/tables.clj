@@ -106,7 +106,7 @@
                (assoc (:details database) :version (:version db-metadata))}))
 
 (defn- cruft-dependent-columns [table-name database]
-  ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
+  ;; if this is a crufty table, mark initial sync as complete since we'll be skipping the subsequent sync steps
   (let [is-crufty? (is-crufty-table? table-name database)]
     {:initial_sync_status (if is-crufty? "complete" "incomplete")
      :visibility_type     (when is-crufty? :cruft)}))
