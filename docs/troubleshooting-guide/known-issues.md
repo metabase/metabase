@@ -4,7 +4,7 @@ title: How to find a known bug or limitation
 
 # How to find a known bug or limitation
 
-If you can't find or solve your problem using the [troubleshooting guides](./index.md), you may be running into an issue that we're still working on.
+If you can't find or solve your problem using the [troubleshooting guides](./start.md), you may be running into an issue that we're still working on.
 
 ## How to find a known bug
 

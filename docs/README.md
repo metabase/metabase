@@ -212,7 +212,7 @@ Metabase's reference documentation.
 
 ### Troubleshooting
 
-- [Troubleshooting guides](./troubleshooting-guide/index.md)
+- [Troubleshooting guides](./troubleshooting-guide/start.md)
 
 ### Developer guide
 
@@ -222,7 +222,7 @@ Metabase's reference documentation.
 
 ### Troubleshooting
 
-- [Troubleshooting guides](troubleshooting-guide/index.md)
+- [Troubleshooting guides](troubleshooting-guide/start.md)
 - [Metabase forum](https://discourse.metabase.com/)
 - [Configuring logging](./configuring-metabase/log-configuration.md)
 
