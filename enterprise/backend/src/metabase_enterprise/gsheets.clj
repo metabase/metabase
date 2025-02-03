@@ -147,13 +147,13 @@
 (mu/defn- hm-get-gdrive-conns :- [:sequential ::gdrive-conn]
   "Get the harbormaster gdrive type connection.
 
-  If the response fails, returns an empty list.
-  If the response succeeds, returns a list of gdrive connections, sorted by status and created-at."
+  If the response fails:    return an empty list.
+  If the response succeeds: return a list of all gdrive-type connections."
   []
   (let [[status response] (hm.client/make-request :get "/api/v2/mb/connections")]
     (if (= status :ok)
       (mapv normalize-gdrive-conn
-           (filter is-gdrive? (or (some-> response :body) [])))
+            (filter is-gdrive? (or (some-> response :body) [])))
       [])))
 
 (mu/defn hm-get-gdrive-conn [id]
