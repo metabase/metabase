@@ -5,11 +5,11 @@ import {
 import type { ComponentProps } from "react";
 
 import {
-  type MountSdkOptions,
+  type MountSdkContentOptions,
   mountSdkContent,
 } from "./component-embedding-sdk-helpers";
 
-interface MountQuestionOptions extends MountSdkOptions {
+interface MountQuestionOptions extends MountSdkContentOptions {
   shouldAssertCardQuery?: boolean;
 }
 

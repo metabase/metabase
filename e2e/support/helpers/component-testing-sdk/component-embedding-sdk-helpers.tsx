@@ -54,14 +54,14 @@ export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
   }).as("jwtProvider");
 };
 
-export interface MountSdkOptions {
+export interface MountSdkContentOptions {
   sdkProviderProps?: Partial<MetabaseProviderProps>;
   strictMode?: boolean;
 }
 
 export function mountSdkContent(
   children: JSX.Element,
-  { sdkProviderProps, strictMode = false }: MountSdkOptions = {},
+  { sdkProviderProps, strictMode = false }: MountSdkContentOptions = {},
 ) {
   cy.intercept("GET", "/api/user/current").as("getUser");
 

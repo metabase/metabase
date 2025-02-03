@@ -23,6 +23,7 @@ import {
   mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   mountSdkContent,
+  mountSdkContentAndAssertNoKnownErrors,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -298,39 +299,14 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
   // NOTE: we will add more checks for other components to this test
   // once we fix lifecycle warnings for them to prevent regressions.
   it("should not show unsafe lifecycle warnings in Visualization (metabase#48497)", () => {
-    cy.window().then(win => {
-      // Monitor console errors, but don't log them in the Cypress runner UI.
-      cy.stub(win.console, "error").log(true).as("consoleError");
+    cy.get<number>("@questionId").then(questionId => {
+      mountSdkContentAndAssertNoKnownErrors(
+        <InteractiveQuestion questionId={questionId} />,
+      );
     });
-
-    // Enable strict mode to surface development-time console warnings
-    mountInteractiveQuestion({}, { strictMode: true });
 
     cy.wait("@cardQuery").then(({ response }) => {
       expect(response?.statusCode).to.equal(202);
-    });
-
-    // Wait until the <Visualization /> component is mounted
-    getSdkRoot().within(() => {
-      cy.findByText("Max of Quantity").should("be.visible");
-    });
-
-    cy.get<sinon.SinonStub>("@consoleError").should($console => {
-      const lifecycleErrors = $console.args.filter(args => {
-        const message = args.join(" ");
-
-        // Check that <Visualization /> is free of React lifecycle warnings
-        const visualizationHasUnsafeCycleWarning =
-          message.includes("Visualization") &&
-          message.includes("UNSAFE_component");
-
-        return visualizationHasUnsafeCycleWarning;
-      });
-
-      expect(lifecycleErrors.length).to.equal(
-        0,
-        "there must be no unsafe lifecycle warnings in Visualization",
-      );
     });
   });
 
