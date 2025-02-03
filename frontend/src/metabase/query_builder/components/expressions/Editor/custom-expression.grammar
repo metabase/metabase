@@ -71,8 +71,8 @@ Arg {
     '"' (stringContentDouble | Escape)* ('"' | "\n")
   | "'" (stringContentSingle | Escape)* ("'" | "\n")
   }
-}
 
+}
 
 @tokens {
   space { @whitespace+ }
@@ -90,7 +90,7 @@ Arg {
   stringContentDouble { ![\\\n"]+ }
 
   ColumnReference {
-    "[" ![\]]* "]"
+    "[" ![\]\n]* ("]" | "\n")?
   }
 
   Identifier {
