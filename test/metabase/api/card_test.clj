@@ -19,6 +19,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-metadata :as meta]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
@@ -1220,6 +1221,32 @@
               (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
                                     {:dataset_query (mbql-count-query (mt/id) (mt/id :checkins))}))))))
 
+(deftest cannot-join-question-with-itself
+  (doseq [card-type ["question" "metric"]]
+    (testing (str "Cannot join a " card-type " with itself.")
+      (let [query {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table (mt/id :orders)
+                              :aggregation [["count"]]
+                              :aggregation-idents {0 "B_02AJ4Jx2JLIg_KfILar"}
+                              :breakout [["field" (meta/id :orders :created-at) {:base-type "type/DateTime"
+                                                                                 :temporal-unit "month"
+                                                                                 :original-temporal-unit "month"}]]
+                              :breakout-idents {0 "7NnM4n9CZ5xrkfiStyM2U"}}}]
+        (mt/with-temp [:model/Card card {:dataset_query query :type card-type}]
+          (let [query-with-self-join (assoc-in (:dataset_query card)
+                                               [:query :joins]
+                                               [{:alias "A"
+                                                 :condition ["="
+                                                             ["field" (meta/id :orders :id) {"base-type" "type/BigInteger"}]
+                                                             ["field" (meta/id :orders :id) {"base-type" "type/bigInteger"
+                                                                                             "join-alias" "A"}]]
+                                                 :fields "all"
+                                                 :source_table (str "card__" (:id card))
+                                                 :stategy "left-join"}])]
+            (mt/user-http-request :crowberto :put 400 (str "card/" (:id card))
+                                  {:dataset_query query-with-self-join
+                                   :type card-type})))))))
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
