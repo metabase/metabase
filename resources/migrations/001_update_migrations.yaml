@@ -10509,6 +10509,74 @@ databaseChangeLog:
                   type: ${timestamp_type}
                   remarks: The timestamp at which a user was deactivated
 
+
+  - changeSet:
+      id: v53.2025-02-03T08:34:51
+      author: johnswanson
+      comment: Add `db_sandbox` table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: db_sandbox
+      changes:
+        - createTable:
+            tableName: db_sandbox
+            remarks: |
+              Configuration for Database Sandboxing. Currently just holds which user attribute each
+              configured database should use to choose a mirror database to route to.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: db_id
+                  type: int
+                  remarks: 'The ID of the database this is for.'
+                  constraints:
+                    unique: true
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_db_sandbox_db_id
+              - column:
+                  name: user_attribute
+                  type: varchar(254)
+                  remarks: 'The user attribute used to redirect users to a different database.'
+                  constraints:
+                    nullable: false
+
+
+
+  - changeSet:
+      id: v53.2025-02-03T08:58:24
+      author: johnswanson
+      comment: Add self-referential foreign key `primary_database_id` to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: primary_database_id
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: primary_database_id
+                  type: int
+                  remarks: The ID of the primary database for this mirror database.
+                  constraints:
+                    unique: false
+                    nullable: true
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabase_database_metabase_database_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
