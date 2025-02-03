@@ -2289,8 +2289,17 @@
                                (round-floats 6 (rows-for-table table))))))
                     (io/delete-file file)))))))))))
 
+(defn- col-promotion-drivers
+  "Returns the drivers that support the given column promotions
+  e.g. if you are going to test int -> float: (promo-drivers [int-type float-type])"
+  [& must-support]
+  (set/select (fn [driver]
+                (let [allowlist (driver/upload-promotion-allowlist driver)]
+                  (every? #(apply promo-allowed? allowlist %) must-support)))
+              (mt/normal-drivers-with-feature :uploads)))
+
 (deftest update-promotion-multiple-columns-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift) ; redshift doesn't support promotion
+  (mt/test-drivers (col-promotion-drivers [int-type float-type])
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
         (with-mysql-local-infile-on-and-off
@@ -2374,7 +2383,7 @@
               (io/delete-file file))))))))
 
 (deftest update-from-csv-int-and-boolean-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift) ; redshift does not support column promotion
+  (mt/test-drivers (col-promotion-drivers [int-type bool-type])
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
         (testing "Append should handle int values being appended to a boolean column"
@@ -2395,7 +2404,7 @@
               (io/delete-file file))))))))
 
 (deftest update-from-csv-float-and-boolean-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift) ; redshift does not support column promotion
+  (mt/test-drivers (col-promotion-drivers [bool-type float-type])
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
         (testing "Append should handle float values being appended to a boolean column"
