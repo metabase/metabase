@@ -154,10 +154,17 @@ function suggestFunctions({
       return null;
     }
 
+    // do not expand template if the next token is a (
+    const next = tokenAtPos(source, token.end + 1);
+    const options = matcher(token.text).map(option => ({
+      ...option,
+      apply: next?.op === "(" ? undefined : option.apply,
+    }));
+
     return {
       from: token.start,
       to: token.end,
-      options: matcher(token.text),
+      options,
       filter: false,
     };
   };
@@ -194,10 +201,18 @@ function suggestAggregations({
       // Cursor is inside a field reference tag
       return null;
     }
+
+    // do not expand template if the next token is a (
+    const next = tokenAtPos(source, token.end + 1);
+    const options = matcher(token.text).map(option => ({
+      ...option,
+      apply: next?.op === "(" ? undefined : option.apply,
+    }));
+
     return {
       from: token.start,
       to: token.end,
-      options: matcher(token.text),
+      options,
       filter: false,
     };
   };
