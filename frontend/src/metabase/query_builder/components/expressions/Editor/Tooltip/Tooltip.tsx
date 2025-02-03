@@ -36,6 +36,7 @@ export function Tooltip({
   state: EditorState;
   view: EditorView;
 }) {
+  const doc = state.doc.toString();
   const handleCompletionClick = useCallback(
     (index: number) => {
       if (!view) {
@@ -52,10 +53,7 @@ export function Tooltip({
 
   const { options, selectedOption } = useCompletions(state);
 
-  const enclosingFn = enclosingFunction(
-    state.doc.toString(),
-    state.selection.main.head,
-  );
+  const enclosingFn = enclosingFunction(doc, state.selection.main.head);
 
   return (
     <Popover
@@ -64,6 +62,7 @@ export function Tooltip({
       returnFocus
       closeOnEscape
       middlewares={{ shift: false, flip: false }}
+      positionDependencies={[doc, state.selection.main.head]}
     >
       <Popover.Target>
         <div />
