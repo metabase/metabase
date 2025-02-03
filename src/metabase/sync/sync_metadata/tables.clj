@@ -167,30 +167,29 @@
                               :active true}
                 {:active false})))
 
+(def ^:private keys-to-update
+  [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status])
+
 (mu/defn- update-table-metadata-if-needed!
   "Update the table metadata if it has changed."
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)
    metabase-database :- (ms/InstanceOf :model/Database)]
   (log/infof "Updating table metadata for %s" (sync-util/name-for-logging metabase-table))
-  (let [to-update-keys [:description :database_require_filter :estimated_row_count]
-        old-table      (select-keys metabase-table to-update-keys)
-        new-table      (select-keys (merge
-                                     (zipmap to-update-keys (repeat nil))
-                                     table-metadata)
-                                    to-update-keys)
-        [_ changes _]  (data/diff old-table new-table)
-        changes        (cond-> changes
-                         ;; we only update the description if the initial state is nil
-                         ;; because don't want to override the user edited description if it exists
-                         (some? (:description old-table))
-                         (dissoc changes :description)
+  (let [old-table               (select-keys metabase-table keys-to-update)
+        new-table               (-> (zipmap keys-to-update (repeat nil))
+                                    (merge table-metadata
+                                           (cruft-dependent-columns (:name table-metadata) metabase-database))
+                                    (select-keys keys-to-update))
+        [_ changes _]           (data/diff old-table new-table)
+        changes                 (cond-> changes
+                                  ;; we only update the description if the initial state is nil
+                                  ;; because don't want to override the user edited description if it exists:
+                                  (some? (:description old-table))
+                                  (dissoc changes :description)
 
-                         true
-                         (merge changes
-                                ;; `cruft-dependent-columns` will return the proper initial_sync_status and
-                                ;; visibility_type for crufty or un-crufty table names:
-                                (cruft-dependent-columns (:name table-metadata) metabase-database)))]
+                                  (= (:visibility_type new-table) (:visibility_type old-table))
+                                  (dissoc changes :visibility_type))]
     (doseq [[k v] changes]
       (log/infof "%s of %s changed from %s to %s"
                  k
