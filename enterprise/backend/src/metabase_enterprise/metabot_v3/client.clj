@@ -99,6 +99,9 @@
 (defn- find-outliers-endpoint-url []
   (str (ai-proxy-base-url) "/v1/find-outliers"))
 
+(defn- fix-sql-endpoint []
+  (str (ai-proxy-base-url) "/v1/sql/fix"))
+
 (defn- decode-response-body [response-body]
   (mc/decode ::metabot-v3.client.schema/ai-proxy.response
              response-body
@@ -175,10 +178,23 @@
                       {}
                       e)))))
 
-(defn- str->message [msg] {:role :user :content msg})
+(defn fix-sql
+  "Ask the AI service to propose fixes a SQL query and a given error."
+  [body]
+  (let [url (fix-sql-endpoint)
+        options (build-request-options body)
+        response (post! url options)]
+    (if (= (:status response) 200)
+      (:body response)
+      (throw (ex-info (format "Error in request to AI service: unexpected status code: %d %s"
+                              (:status response) (:reason-phrase response))
+                      {:request (assoc options :body body)
+                       :response response})))))
 
 ;;; Example flow. Copy this into the REPL to debug things
 (comment
+  (defn- str->message [msg] {:role :user :content msg})
+
   ;; request 1
   (let [session-id (str (random-uuid))
         message-1  "Send an email to Cam"
