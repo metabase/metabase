@@ -62,7 +62,7 @@
   }
 
   :global(.ace-tm .ace_string) {
-    color: var(--mb-color-syntax-parameters);
+    color: hsla(26, 84%, 70%, 1);
   }
 
   :global(.ace_cursor) {
