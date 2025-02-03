@@ -740,6 +740,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             formula: expression1,
             name: "Expression1",
             blur: true,
+            allowFastSet: true,
           });
           H.popover().button("Done").click();
 
@@ -749,6 +750,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             formula: expression2,
             name: "Expression2",
             blur: true,
+            allowFastSet: true,
           });
           H.popover().button("Done").click();
 
