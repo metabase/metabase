@@ -14,13 +14,13 @@ Metabase uses a single SQL database for all of its runtime application data, so 
 
 If you didn't specify an application database using environment variables when you launched Metabase, Metabase will have created an embedded H2 database in its directory.
 
-But if you're at the point where you have questions and dashboards that you want to keep, you should consider migrating to a [production-ready database](migrating-from-h2.md) before you upgrade.
+But if you're at the point where you have questions and dashboards that you want to keep, you should consider migrating to a [production-ready database](./migrating-from-h2.md) before you upgrade.
 
 If you're just using Metabase for personal use and want to keep your application data, here's what you'll need to do.
 
 ### If you're running the Metabase Docker image
 
-If you're running Docker, you should already have switched to a [production-ready database](migrating-from-h2.md).
+If you're running Docker, you should already have switched to a [production-ready database](./migrating-from-h2.md).
 
 Before migrating to a production application database, you should copy the H2 app db file out of the Docker container. For example, if the container is called metabase, you'd run:
 
@@ -28,7 +28,7 @@ Before migrating to a production application database, you should copy the H2 ap
 docker cp metabase:/metabase.db/metabase.db.mv.db ./
 ```
 
-The above command would copy the database file to the directory you ran the command from. You can also create a copy of this H2 file and use it to migrate the data to a production-ready database. See [Migrating from H2](migrating-from-h2.md).
+The above command would copy the database file to the directory you ran the command from. You can also create a copy of this H2 file and use it to migrate the data to a production-ready database. See [Migrating from H2](./migrating-from-h2.md).
 
 ### If you're running the Metabase JAR
 

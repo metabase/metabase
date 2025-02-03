@@ -15,7 +15,7 @@ This guide assumes that you have the VisualVM tool installed locally. VisualVM i
 
 If you have VisualVM installed on your Metabase server and are able to run VisualVM there, this is the easiest path as there is no need to setup remote communication with your metabase instance. In this scenario, start Metabase like you would normally and separately start VisualVM.
 
-![localprocess](images/LocalProcessVisualVM.png)
+![localprocess](./images/LocalProcessVisualVM.png)
 
 ## Connecting to a remote Metabase
 
@@ -52,23 +52,23 @@ docker run --env-file=metabase-vars.env -d -p 3000:3000 -p 1099:1099 -h <Metabas
 
 The addition `-p 1099:1099` opens the JMX port for monitoring and the `--env-file=metabase-vars.env` passes in the extra JMX related environment variables. With the instance started, VisualVM needs to know how to connect to the running instance. First add a new remote instance:
 
-![addremotehost](images/AddRemoteHost.png)
+![addremotehost](./images/AddRemoteHost.png)
 
 Then use the hostname you specified above:
 
-![sethostname](images/SetRemoteHostName.png)
+![sethostname](./images/SetRemoteHostName.png)
 
 Your local machine must to be able to refer to the hostname you specified (which might require a hosts entry):
 
-![addjmxhost](images/ClickAddJMXHost.png)
+![addjmxhost](./images/ClickAddJMXHost.png)
 
 If you're using Docker, the port specified for the JMX host needs to match the system property and the exposed port:
 
-![jmxport](images/EnterJMXPort.png)
+![jmxport](./images/EnterJMXPort.png)
 
 Next open the new remote JMX process:
 
-![jmxinstance](images/OpenRemoteInstance.png)
+![jmxinstance](./images/OpenRemoteInstance.png)
 
 ## Runtime information
 
@@ -78,13 +78,13 @@ Connecting to a running Metabase with VisualVM makes a lot of runtime informatio
 
 When running into memory-related issues, typically the first question to ask is: what is consuming extra memory? A heap dump will take a snapshot of everything in memory at that specific point of time. That memory snapshot can be analyzed later by tools like the [Eclipse Memory Analyzer Tool](https://www.eclipse.org/mat/). Create a heap dump from the "Monitor" tab:
 
-![heapdump](images/HeapDump.png)
+![heapdump](./images/HeapDump.png)
 
 ### Thread dump
 
 Another useful picture of a running Metabase system is a Thread Dump. In cases when Metabase appears stalled or extremely slow, a thread dump will indicate what each thread is executing (or blocked on) for that specific point in time Collect a thread dump via the "Threads" tab:
 
-![threaddump](images/ThreadDump.png)
+![threaddump](./images/ThreadDump.png)
 
 ## Further reading
 

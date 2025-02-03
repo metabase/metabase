@@ -114,11 +114,11 @@ The steps are similar to those steps above with two important differences: if yo
 - Use a [production application database](#production-application-database) to store your Metabase application data.
 - Run [Metabase as a service](#running-the-metabase-jar-as-a-service).
 
-If you'd prefer to use Docker, check out [running Metabase on Docker](running-metabase-on-docker.md).
+If you'd prefer to use Docker, check out [running Metabase on Docker](./running-metabase-on-docker.md).
 
 ### Production application database
 
-Here are some [databases we support](migrating-from-h2.md#supported-databases-for-storing-your-metabase-application-data).
+Here are some [databases we support](./migrating-from-h2.md#supported-databases-for-storing-your-metabase-application-data).
 
 For example, say you want to use [PostgreSQL](https://www.postgresql.org/). You would get a PostgreSQL service up and running and create an empty database:
 
@@ -153,7 +153,7 @@ The exact instructions for how to run Metabase as a service will differ dependin
 
 ### Migrating to a production installation
 
-If you've been running Metabase with the default H2 application database and your team has already created questions, dashboards, collections and so on, you'll want to migrate that data to a production application database. And the sooner you do, the better. See [Migrating from the H2 database](migrating-from-h2.md).
+If you've been running Metabase with the default H2 application database and your team has already created questions, dashboards, collections and so on, you'll want to migrate that data to a production application database. And the sooner you do, the better. See [Migrating from the H2 database](./migrating-from-h2.md).
 
 ## Troubleshooting
 
@@ -161,7 +161,7 @@ If you run into any problems during installation, check out our [troubleshooting
 
 ## Upgrading Metabase
 
-See [Upgrading Metabase](upgrading-metabase.md).
+See [Upgrading Metabase](./upgrading-metabase.md).
 
 ## Setting up Metabase
 

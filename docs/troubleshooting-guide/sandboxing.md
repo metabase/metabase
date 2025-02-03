@@ -164,7 +164,7 @@ The administrator can [create a new group][groups] to capture precisely who's al
 - [I can't see my tables][cant-see-tables].
 
 [authenticating-with-saml]: ../people-and-groups/authenticating-with-saml.md
-[cant-see-tables]: cant-see-tables.md
+[cant-see-tables]: ./cant-see-tables.md
 [column-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
 [data-model]: ../data-modeling/metadata-editing.md
 [data-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-permissions

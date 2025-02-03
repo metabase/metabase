@@ -20,7 +20,7 @@ Or
 
 Click on the **gear** icon > **Admin settings** > **People**. You'll see a list of all the people in your organization.
 
-![Admin menu](images/AdminBar.png)
+![Admin menu](./images/AdminBar.png)
 
 ## Creating an account
 
@@ -65,7 +65,7 @@ To deactivate someone's account, click on the three dots icon on the right of a 
 
 If you're using SSO, you should deactivate the account in Metabase as well as your IdP (that is, deactivation doesn't get applied from Metabase to your IdP, and vice versa).
 
-![Remove a user](images/RemoveUser.png)
+![Remove a user](./images/RemoveUser.png)
 
 To reactivate a deactivated account, click the **Deactivated** radio button at the top of the people list to see the list of deactivated accounts. Click on the icon on the far right to reactivate that account, allowing them to log in to Metabase again.
 
@@ -164,7 +164,7 @@ To determine [who has access to what](../permissions/start.md), you’ll need to
 
 To view and manage your groups, go to the **Admin Panel** > **People** tab, and then click on **Groups** from the side menu.
 
-![Groups](images/groups.png)
+![Groups](./images/groups.png)
 
 ### Special default groups
 

@@ -105,7 +105,7 @@ Keep in mind that Metabase will be connecting from _within_ your Podman containe
 
 ## Migrating to a production installation
 
-If you've already been running Metabase with the default application database (H2), and want to use a production-ready application database without losing your app data (your questions, dashboards, etc), see [Migrating from H2 to a production database](migrating-from-h2.md).
+If you've already been running Metabase with the default application database (H2), and want to use a production-ready application database without losing your app data (your questions, dashboards, etc), see [Migrating from H2 to a production database](./migrating-from-h2.md).
 
 ## Additional Podman maintenance and configuration
 

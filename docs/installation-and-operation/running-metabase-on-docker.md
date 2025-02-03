@@ -10,7 +10,7 @@ redirect_from:
 
 Metabase provides an official Docker image via Dockerhub that can be used for deployments on any system that is running Docker.
 
-If you're trying to upgrade your Metabase version on Docker, check out these [upgrading instructions](upgrading-metabase.md).
+If you're trying to upgrade your Metabase version on Docker, check out these [upgrading instructions](./upgrading-metabase.md).
 
 ## Open Source quick start
 
@@ -111,7 +111,7 @@ Keep in mind that Metabase will be connecting from _within_ your Docker containe
 
 ## Migrating to a production installation
 
-If you've already been running Metabase with the default application database (H2), and want to use a production-ready application database without losing your app data (your questions, dashboards, etc), see [Migrating from H2 to a production database](migrating-from-h2.md).
+If you've already been running Metabase with the default application database (H2), and want to use a production-ready application database without losing your app data (your questions, dashboards, etc), see [Migrating from H2 to a production database](./migrating-from-h2.md).
 
 ## Example Docker compose YAML file
 

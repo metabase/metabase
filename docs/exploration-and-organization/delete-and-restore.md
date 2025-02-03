@@ -115,9 +115,9 @@ To permanently delete an item:
 
 ## Deleting and restoring events and timelines
 
-Events and timelines can be archived and unarchived. See [Archiving Events and timelines](events-and-timelines.md#archiving-timelines).
+Events and timelines can be archived and unarchived. See [Archiving Events and timelines](./events-and-timelines.md#archiving-timelines).
 
-You won't see archived Events and Timelines in Trash. To see archived events and timelines, you need to [access them from the collection's page](events-and-timelines.md#view-archived-events-and-timelines).
+You won't see archived Events and Timelines in Trash. To see archived events and timelines, you need to [access them from the collection's page](./events-and-timelines.md#view-archived-events-and-timelines).
 
 ## Deleting and restoring SQL snippets
 
