@@ -92,12 +92,12 @@ class Visualization extends PureComponent {
 
   componentDidUpdate(prevProps, prevState) {
     if (
-      !isSameSeries(prevProps.rawSeries, this.props.rawSeries) ||
-      !equals(prevProps.settings, this.props.settings) ||
-      !equals(prevProps.timelineEvents, this.props.timelineEvents) ||
+      !isSameSeries(this.props.rawSeries, prevProps.rawSeries) ||
+      !equals(this.props.settings, prevProps.settings) ||
+      !equals(this.props.timelineEvents, prevProps.timelineEvents) ||
       !equals(
-        prevProps.selectedTimelineEventIds,
         this.props.selectedTimelineEventIds,
+        prevProps.selectedTimelineEventIds,
       )
     ) {
       this.setState(this.transformPropsToState(this.props));
