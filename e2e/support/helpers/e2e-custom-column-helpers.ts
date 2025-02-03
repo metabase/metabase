@@ -24,7 +24,9 @@ export function enterCustomColumnDetails({
   allowFastSet?: boolean;
 }) {
   CustomExpressionEditor.get().as("formula");
-  CustomExpressionEditor.clear().type(formula, { allowFastSet });
+  CustomExpressionEditor.clear();
+  cy.wait(100);
+  CustomExpressionEditor.type(formula, { allowFastSet });
 
   if (blur) {
     CustomExpressionEditor.blur();
@@ -190,7 +192,9 @@ export const CustomExpressionEditor = {
     return cy.findByTestId("custom-expression-editor-suggestions");
   },
   completion(name: string) {
-    return CustomExpressionEditor.completions().findByText(name);
+    return CustomExpressionEditor.completions()
+      .findByRole("option")
+      .contains(name);
   },
   helpText() {
     return cy.findByTestId("expression-helper");
