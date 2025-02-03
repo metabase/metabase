@@ -30,7 +30,7 @@ const formatArgs = (args: any[]): string[] => {
 const wrappedHelpers = Object.entries(OriginalHelpers).reduce<
   Record<string, any>
 >((acc, [key, helper]) => {
-  acc[key] = (...args: any[]) => {
+  acc[key] = function (...args: any[]) {
     return logGroup(
       cy,
       {
@@ -38,10 +38,22 @@ const wrappedHelpers = Object.entries(OriginalHelpers).reduce<
         displayName: `H.${key}`,
         message: formatArgs(args),
       },
-      () => helper(...args),
+      () => helper.apply(this, args),
     );
   };
   return acc;
 }, {});
 
-export const H = wrappedHelpers;
+const H = wrappedHelpers;
+
+type HelperTypes = typeof OriginalHelpers;
+
+declare global {
+  namespace Cypress {
+    interface Chainable extends HelperTypes {
+      H: typeof OriginalHelpers;
+    }
+  }
+}
+
+export { H };

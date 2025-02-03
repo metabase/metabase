@@ -40,53 +40,37 @@ export const logGroup = (
   userOptions: LogGroupConfig,
   fn: LogCallback,
 ) => {
-  const cmd = Cypress.Command.create({
+  const log = Cypress.log({
     name: userOptions.name || "",
-    type: "parent",
-    args: Array.isArray(userOptions.message)
+    displayName: userOptions.displayName || "",
+    message: Array.isArray(userOptions.message)
       ? userOptions.message
       : [userOptions.message || ""],
-    fn: () => {
-      const log = Cypress.log({
-        name: userOptions.name || "",
-        displayName: userOptions.displayName || "",
-        message: Array.isArray(userOptions.message)
-          ? userOptions.message
-          : [userOptions.message || ""],
-        type: "parent",
-        autoEnd: true,
-        groupStart: true,
-      });
-
-      cmd.log(log);
-
-      try {
-        const result = fn(log) as any;
-
-        if (result?.then) {
-          return result.then((value: any) => {
-            log.endGroup();
-            return value;
-          });
-        }
-
-        if (!result) {
-          return cy.wrap(true, { log: false }).then(() => {
-            log.endGroup();
-          });
-        }
-
-        log.endGroup();
-        return result;
-      } catch (e) {
-        log.endGroup();
-        throw e;
-      }
-    },
-  } as CommandOptions);
-
-  return cy.wrap(null, { log: false }).then(() => {
-    cy.queue.insert(cy.queue.index + 1, cmd);
-    return cmd;
+    type: "parent",
+    autoEnd: false,
+    groupStart: true,
   });
+
+  // Track command additions
+  const onCommand = (command: any) => {
+    if (command.get("logs")) {
+      command.get("logs").forEach((cmdLog: Cypress.Log) => {
+        // @ts-expect-error - Cypress internal API for grouping logs
+        log.set("group", cmdLog);
+      });
+    }
+  };
+
+  cy.on("command:start", onCommand);
+
+  // Execute the function
+  const result = fn(log);
+
+  // Clean up the listener and end the group
+  cy.then(() => {
+    cy.removeListener("command:start", onCommand);
+    log.endGroup();
+  });
+
+  return result;
 };
