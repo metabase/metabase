@@ -71,7 +71,6 @@ export function mountSdkContent(
       >
         {children}
       </MetabaseProvider>
-      ,
     </React.StrictMode>,
   );
 
