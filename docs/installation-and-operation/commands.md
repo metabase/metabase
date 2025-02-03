@@ -14,7 +14,7 @@ Metabase will print out the help text for available commands.
 
 ## `api-documentation`
 
-Generate a markdown file containing documentation for all API endpoints. This is written to a file called `docs/api-documentation.md`.
+Generate a markdown file containing documentation for all API endpoints. This is written to a file called `docs/api.html`.
 
 ## `driver-methods` | `driver-methods _docs`
 

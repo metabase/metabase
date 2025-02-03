@@ -1,6 +1,8 @@
 (ns metabase.sync.concurrent
   "Namespace with helpers for concurrent tasks in sync. Intended for quick, one-off tasks like re-syncing a table,
   fingerprinting a field, etc."
+  (:require
+   [metabase.plugins.classloader :as classloader])
   (:import
    (java.util.concurrent Callable Executors ExecutorService Future ThreadFactory)))
 
@@ -9,6 +11,8 @@
 (defonce ^:private thread-factory
   (reify ThreadFactory
     (newThread [_ r]
+      ;; Ensure that the classloader is in the current thread context so it gets passed on.
+      (classloader/the-classloader)
       (doto (Thread. r)
         (.setName "table sync worker")
         (.setDaemon true)))))

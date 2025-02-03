@@ -17,9 +17,8 @@
    [metabase.models.api-key :as api-key]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.util :as perms.u]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
@@ -134,10 +133,10 @@
   ([_model pk]
    (mi/can-write? (t2/select-one :model/Collection pk))))
 
-(defmethod mi/can-read? :model/Collection
+(mu/defmethod mi/can-read? :model/Collection
   ([instance]
    (perms/can-read-audit-helper :model/Collection instance))
-  ([_ pk]
+  ([_model pk :- pos-int?]
    (mi/can-read? (t2/select-one :model/Collection :id pk))))
 
 (def AuthorityLevel
@@ -953,7 +952,7 @@
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn perms-for-archiving :- [:set perms.u/PathSchema]
+(mu/defn perms-for-archiving :- [:set perms/PathSchema]
   "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
   *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('curate')
   permissions for the Collection itself and all its descendants, but not for its parent Collection.
@@ -985,7 +984,7 @@
                             (t2/select-pks-set :model/Collection :location [:like (str (children-location collection) "%")])))]
      (perms/collection-readwrite-path collection-or-id))))
 
-(mu/defn perms-for-moving :- [:set perms.u/PathSchema]
+(mu/defn perms-for-moving :- [:set perms/PathSchema]
   "Return the set of Permissions needed to move a `collection`. Like archiving, moving is recursive, so we require
   perms for both the Collection and its descendants; we additionally require permissions for its new parent Collection.
 
