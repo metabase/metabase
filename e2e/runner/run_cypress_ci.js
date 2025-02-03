@@ -1,5 +1,4 @@
 const CypressBackend = require("./cypress-runner-backend");
-const generateSnapshots = require("./cypress-runner-generate-snapshots");
 const runCypress = require("./cypress-runner-run-tests");
 const { printBold } = require("./cypress-runner-utils");
 const mode = process.argv[2];
@@ -11,12 +10,12 @@ const startServer = async () => {
 
 const snapshot = async () => {
   printBold("Generating snapshots");
-  await generateSnapshots();
+  await runCypress("snapshot");
 };
 
 const runTests = async () => {
   printBold("Running Cypress Tests");
-  await runCypress(exitCode => process.exit(exitCode));
+  await runCypress("test");
 };
 
 if (mode === "start") {

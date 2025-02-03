@@ -9,7 +9,7 @@ const path = require("path");
 
 const CypressBackend = {
   server: null,
-  createServer(port = process.env.BACKEND_PORT) {
+  createServer(port = process.env.BACKEND_PORT || 4000) {
     const generateTempDbPath = () =>
       path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
