@@ -674,7 +674,7 @@
                                                        (not= (:source-card new-join)
                                                              (:source-card %)))]
                                 (cond-> new-join
-                                  should-rename? (lib.join/replace-join-alias query stage-number)
+                                  should-rename? (assoc ::lib.join/replace-alias true)
                                   ;; TODO: Maybe join idents *should* change under the same conditions as aliases?
                                   ;; All the column idents are going to change anyway, so it doesn't matter that much.
                                   (:ident %)     (assoc :ident (:ident %))))
