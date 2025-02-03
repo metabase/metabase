@@ -2205,9 +2205,16 @@
   (let [round-if-float #(if (float? %) (u/round-to-decimals digits-precision %) %)]
     (mapv (partial mapv round-if-float) rows)))
 
+(defn- external-type [t]
+  (keyword "metabase.upload" (name t)))
+
+(defn- promo-allowed? [allowlist col-type new-type]
+  (get-in allowlist [(external-type col-type) (external-type new-type)]))
+
 (deftest update-type-coercion-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (doseq [action (actions-to-test driver/*driver*)]
+    (doseq [action (actions-to-test driver/*driver*)
+            :let [allowlist (driver/upload-promotion-allowlist driver/*driver*)]]
       (testing (action-testing-str action)
         (with-mysql-local-infile-on-and-off
           (testing "Append succeeds if the CSV file contains values that don't match the column types, but are coercible"
@@ -2219,27 +2226,26 @@
                        {:upload-type     int-type
                         :uncoerced      "2.1"
                         :coerced         2.1
-                        ;; TODO redshift doesn't allow promotion
-                        :fail            (= :redshift driver/*driver*)
-                        :fail-msg        "There's a value with the wrong type \\('double precision'\\) in the 'test_column' column"}
+                        :fail            (not (promo-allowed? allowlist int-type float-type))
+                        :fail-msg        "'2.1' is not an integer"}
                        ;; column is promoted to an int
                        {:upload-type     bool-type
                         :uncoerced       "2"
                         :coerced         2
-                        :fail            (= :redshift driver/*driver*)
-                        :fail-msg        "There's a value with the wrong type \\('bigint'\\) in the 'test_column' column"}
+                        :fail            (not (promo-allowed? allowlist bool-type int-type))
+                        :fail-msg        "'2' is not a recognizable boolean"}
                        ;; column is promoted to a float
                        {:upload-type     bool-type
                         :uncoerced       "2.0"
                         :coerced         2.0
-                        :fail            (= :redshift driver/*driver*)
-                        :fail-msg        "There's a value with the wrong type \\('double precision'\\) in the 'test_column' column"}
+                        :fail            (not (promo-allowed? allowlist bool-type float-type))
+                        :fail-msg        "'2.0' is not a recognizable boolean"}
                        ;; column is promoted to a float
                        {:upload-type     bool-type
                         :uncoerced       "3.14"
                         :coerced         3.14
-                        :fail            (= :redshift driver/*driver*)
-                        :fail-msg        "There's a value with the wrong type \\('double precision'\\) in the 'test_column' column"}
+                        :fail            (not (promo-allowed? allowlist bool-type float-type))
+                        :fail-msg        "'3.14' is not a recognizable boolean"}
                        ; value is coerced to an int
                        {:upload-type     int-type
                         :uncoerced       "2.0"
