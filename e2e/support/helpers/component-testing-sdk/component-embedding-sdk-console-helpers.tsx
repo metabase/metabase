@@ -17,7 +17,7 @@ export function mountSdkContentAndAssertNoKnownErrors(
 ) {
   // Monitor console errors, but don't log them in the Cypress runner UI.
   cy.window().then(win => {
-    cy.stub(win.console, "error").log(true).as("consoleError");
+    cy.stub(win.console, "error").log(false).as("consoleError");
   });
 
   // Mount the component with strict mode enabled to surface development-time warnings.

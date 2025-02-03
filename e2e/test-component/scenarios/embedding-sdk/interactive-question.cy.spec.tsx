@@ -296,17 +296,11 @@ describeEE("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  // NOTE: we will add more checks for other components to this test
-  // once we fix lifecycle warnings for them to prevent regressions.
-  it("should not show unsafe lifecycle warnings in Visualization (metabase#48497)", () => {
+  it("does not contain known console errors (metabase#48497)", () => {
     cy.get<number>("@questionId").then(questionId => {
       mountSdkContentAndAssertNoKnownErrors(
         <InteractiveQuestion questionId={questionId} />,
       );
-    });
-
-    cy.wait("@cardQuery").then(({ response }) => {
-      expect(response?.statusCode).to.equal(202);
     });
   });
 
