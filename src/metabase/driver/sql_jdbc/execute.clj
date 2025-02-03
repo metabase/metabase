@@ -648,19 +648,21 @@
 
 (defn- resolve-missing-base-types
   [driver metadatas]
-  (let [missing (keep (fn [{:keys [database_type base_type]}]
-                        (when-not base_type
-                          database_type))
-                      metadatas)
-        lookup (driver/dynamic-database-types-lookup
-                driver (lib.metadata/database (qp.store/metadata-provider)) missing)]
-    (if (seq lookup)
-      (mapv (fn [{:keys [database_type base_type] :as metadata}]
-              (if-not base_type
-                (m/assoc-some metadata :base_type (lookup database_type))
-                metadata))
-            metadatas)
-      metadatas)))
+  (if (qp.store/initialized?)
+    (let [missing (keep (fn [{:keys [database_type base_type]}]
+                          (when-not base_type
+                            database_type))
+                        metadatas)
+          lookup (driver/dynamic-database-types-lookup
+                  driver (lib.metadata/database (qp.store/metadata-provider)) missing)]
+      (if (seq lookup)
+        (mapv (fn [{:keys [database_type base_type] :as metadata}]
+                (if-not base_type
+                  (m/assoc-some metadata :base_type (lookup database_type))
+                  metadata))
+              metadatas)
+        metadatas))
+    metadatas))
 
 (defmethod column-metadata :sql-jdbc
   [driver ^ResultSetMetaData rsmeta]
