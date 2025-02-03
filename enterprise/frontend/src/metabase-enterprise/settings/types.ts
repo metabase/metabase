@@ -30,6 +30,7 @@ export interface EnterpriseSettings extends Settings {
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;
+  "show-sdk-embed-terms"?: boolean;
   /**
    * @deprecated
    */

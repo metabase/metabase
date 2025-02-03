@@ -67,11 +67,6 @@ export function EmbeddingSdkSettings({
   function handleChangeSdkOrigins(value: string | null) {
     updateSetting({ key: sdkOriginsSetting.key }, value);
   }
-
-  function handleToggleEmbeddingSdk(value: boolean) {
-    updateSetting({ key: "enable-embedding-sdk" }, value);
-  }
-
   const { url: switchMetabaseBinariesUrl } = useDocsUrl(
     "paid-features/activating-the-enterprise-edition",
     { utm: utmTags },
@@ -149,7 +144,7 @@ export function EmbeddingSdkSettings({
         />
         <EmbeddingSdkEnvVarSwitch
           label={t`Enable Embedded analytics SDK`}
-          onChange={handleToggleEmbeddingSdk}
+          updateSetting={updateSetting}
         />
 
         <Alert

@@ -133,3 +133,6 @@ export function getNoObjectIllustration(state: EnterpriseState): string | null {
 
 export const getApplicationColors = (settingValues: EnterpriseSettings) =>
   settingValues["application-colors"];
+
+export const shouldShowSdkLegalTerms = (settings: EnterpriseSettings) =>
+  settings["show-sdk-embed-terms"];

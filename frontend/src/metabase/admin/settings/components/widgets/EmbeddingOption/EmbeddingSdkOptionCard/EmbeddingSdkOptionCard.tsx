@@ -8,11 +8,10 @@ import { Flex, Group } from "metabase/ui";
 import { EmbeddingSdkEnvVarSwitch } from "../../../EmbeddingSettings/EmbeddingSdkEnvVarSwitch";
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
-import type { EmbeddingOptionCardProps } from "../types";
 
 import { SdkIcon } from "./SdkIcon";
 
-export function EmbeddingSdkOptionCard({ onToggle }: EmbeddingOptionCardProps) {
+export function EmbeddingSdkOptionCard({ updateSetting }) {
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
   const isEE = PLUGIN_EMBEDDING.isEnabled();
 
@@ -44,7 +43,7 @@ export function EmbeddingSdkOptionCard({ onToggle }: EmbeddingOptionCardProps) {
         <LinkButton to={"/admin/settings/embedding-in-other-applications/sdk"}>
           {!isEE ? t`Try it out` : t`Configure`}
         </LinkButton>
-        <EmbeddingSdkEnvVarSwitch onChange={onToggle} />
+        <EmbeddingSdkEnvVarSwitch updateSetting={updateSetting} />
       </Group>
     </EmbeddingOption>
   );
