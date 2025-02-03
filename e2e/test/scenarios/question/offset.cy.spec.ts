@@ -72,7 +72,7 @@ describe("scenarios > question > offset", () => {
       H.enterCustomColumnDetails({ formula: prefix });
 
       cy.log("does not suggest offset() in custom columns");
-      cy.findByTestId("expression-suggestions-list-item").should("not.exist");
+      H.CustomExpressionEditor.completions().should("not.exist");
 
       H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
@@ -220,7 +220,7 @@ describe("scenarios > question > offset", () => {
       H.enterCustomColumnDetails({ formula: prefix });
 
       cy.log("does not suggest offset() in filter expressions");
-      cy.findByTestId("expression-suggestions-list-item").should("not.exist");
+      H.CustomExpressionEditor.completions().should("not.exist");
 
       H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
@@ -254,6 +254,7 @@ describe("scenarios > question > offset", () => {
       H.enterCustomColumnDetails({ formula: prefix, blur: false });
 
       cy.log("suggests offset() in aggregation expressions");
+      H.CustomExpressionEditor.completions().should("be.visible");
       H.CustomExpressionEditor.completion("Offset").should("exist");
 
       H.enterCustomColumnDetails({ formula: expression, blur: false });

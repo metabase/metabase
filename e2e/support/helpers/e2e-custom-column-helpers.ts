@@ -6,6 +6,9 @@ export function expressionEditorTextfield() {
   return CustomExpressionEditor.get();
 }
 
+const isMac = Cypress.platform === "darwin";
+const metaKey = isMac ? "Meta" : "Control";
+
 /**
  * @param {Object} option
  * @param {string} option.formula
@@ -81,9 +84,6 @@ export const CustomExpressionEditor = {
       CustomExpressionEditor.get().findByRole("textbox").invoke("text", text);
       return CustomExpressionEditor;
     }
-
-    const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
 
     const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
@@ -173,7 +173,7 @@ export const CustomExpressionEditor = {
   },
   selectAll() {
     CustomExpressionEditor.focus();
-    cy.realPress(["Meta", "A"]);
+    cy.realPress([metaKey, "A"]);
     return CustomExpressionEditor;
   },
   clear() {
@@ -193,8 +193,9 @@ export const CustomExpressionEditor = {
   },
   completion(name: string) {
     return CustomExpressionEditor.completions()
-      .findByRole("option")
-      .contains(name);
+      .findAllByRole("option")
+      .contains(name)
+      .first();
   },
   helpText() {
     return cy.findByTestId("expression-helper");

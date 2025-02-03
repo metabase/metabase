@@ -226,7 +226,7 @@ H.describeWithSnowplow("extract action", () => {
         formula: "year([Created At]) + 2",
         blur: true,
       });
-      H.popover().button("Update").click();
+      H.popover().button("Update").should("not.be.disabled").click();
       H.visualize();
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
     });

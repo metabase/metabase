@@ -120,7 +120,7 @@ describe("issue 13751", { tags: "@external" }, () => {
       formula: 'regexextract([State], "^C[A-Z]")',
       name: CC_NAME,
     });
-    cy.button("Done").click();
+    cy.button("Done").should("not.be.disabled").click();
 
     H.getNotebookStep("filter")
       .findByText(/Add filter/)
@@ -1060,9 +1060,7 @@ describe("issue 49882", () => {
     H.CustomExpressionEditor.completions().should("be.visible");
     cy.realPress("Enter", { pressDelay: 10 });
 
-    H.CustomExpressionEditor.shouldContain(
-      'case([Total] > 200, [Total] , "X")',
-    );
+    H.CustomExpressionEditor.shouldContain('case([Total] > 200, [Total], "X")');
     H.popover()
       .findByText("Expecting a closing parenthesis")
       .should("not.exist");
@@ -1084,15 +1082,15 @@ describe("issue 49882", () => {
       .realPress(["Shift", "ArrowLeft"])
       .realPress(["Shift", "ArrowLeft"]);
 
-    H.CustomExpressionEditor.focus();
     cy.realPress(["Control", "X"]);
 
-    H.CustomExpressionEditor.type(moveCursorBefore2ndCase);
+    H.CustomExpressionEditor.type(moveCursorBefore2ndCase, { blur: false });
 
     cy.realPress(["Control", "V"]);
 
     H.CustomExpressionEditor.shouldContain(
       'case([Tax] > 1, [Tax] case([Total] > 200, [Total], "Nothing"), )',
+      // 'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax])',
     );
 
     H.popover()
@@ -1114,16 +1112,16 @@ describe("issue 49882", () => {
 
   it("should update currently selected suggestion when suggestions list is updated (metabase#49882-4)", () => {
     const selectProductVendor =
-      "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}{enter}";
+      "{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}";
     H.enterCustomColumnDetails({
       formula: `[Produ${selectProductVendor}`,
       blur: false,
     });
 
-    H.CustomExpressionEditor.completions().should(
-      "contain",
-      "Product → Vendor",
+    H.CustomExpressionEditor.completion("Product → Vendor").should(
+      "be.visible",
     );
+    cy.realPress("Tab");
 
     H.CustomExpressionEditor.shouldContain("[Product → Vendor]");
   });
@@ -1282,14 +1280,14 @@ describe("issue 50925", () => {
     H.getNotebookStep("expression").findByText("Custom").click();
 
     H.CustomExpressionEditor.focus()
-      .type("{leftarrow}".repeat(8))
+      .type("{leftarrow}".repeat(9))
       .type(" [Pr", { focus: false });
 
     H.CustomExpressionEditor.completions().should("be.visible");
     H.CustomExpressionEditor.get().realPress("Enter", { pressDelay: 10 });
 
     H.CustomExpressionEditor.blur().shouldContain(
-      "case([ID] = 1, [Price] * 1.21, [Price] [Price]))",
+      "case([ID] = 1, [Price] * 1.21, [Price] [Price])",
     );
   });
 });

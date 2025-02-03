@@ -292,26 +292,20 @@ describe("scenarios > question > filter", () => {
 
     H.enterCustomColumnDetails({ formula: "c", blur: false });
 
-    H.CustomExpressionEditor.completion("case").should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
+    H.CustomExpressionEditor.completion("concat")
+      .parent()
+      .should("have.attr", "aria-selected", "true");
 
     cy.wait(100);
     cy.realPress("ArrowDown");
 
-    H.CustomExpressionEditor.completion("ceil").should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
+    H.CustomExpressionEditor.completion("ceil")
+      .parent()
+      .should("have.attr", "aria-selected", "true");
 
-    H.CustomExpressionEditor.completion("case").should(
-      "have.attr",
-      "aria-selected",
-      "false",
-    );
+    H.CustomExpressionEditor.completion("concat")
+      .parent()
+      .should("have.attr", "aria-selected", "false");
   });
 
   it("should highlight the correct matching for suggestions", () => {
@@ -324,8 +318,12 @@ describe("scenarios > question > filter", () => {
     H.CustomExpressionEditor.type("{backspace}p", { focus: false });
 
     H.CustomExpressionEditor.completion("Product ID").should("be.visible");
-
-    // TODO: test highlighing
+    H.CustomExpressionEditor.completion("Product ID")
+      .findByText("P")
+      .should("be.visible");
+    H.CustomExpressionEditor.completion("Product ID")
+      .findByText("roduct ID")
+      .should("be.visible");
   });
 
   it("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
@@ -403,8 +401,8 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("isempty([Reviewer])");
     H.CustomExpressionEditor.clear().type("NOT IsEmpty([Reviewer])").blur();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
+
+    cy.button("Done").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 1,112 rows");
   });
@@ -433,8 +431,7 @@ describe("scenarios > question > filter", () => {
     H.CustomExpressionEditor.clear()
       .type("NOT IsNull([Rating])", { delay: 50 })
       .blur();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
+    cy.button("Done").should("not.be.disabled").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 1,112 rows");
   });

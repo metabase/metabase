@@ -760,7 +760,7 @@ describe("issue 40064", () => {
       name: "Tax3",
       blur: true,
     });
-    H.popover().button("Update").click();
+    H.popover().button("Update").should("not.be.disabled").click();
     H.getNotebookStep("expression").findByText("Tax3").click();
     H.enterCustomColumnDetails({
       formula: "[Tax3] * 3",

@@ -674,7 +674,7 @@ describe("scenarios > question > custom column", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
-    H.enterCustomColumnDetails({ formula: "Cre", blur: false });
+    H.enterCustomColumnDetails({ formula: "[Cre", blur: false });
 
     H.CustomExpressionEditor.completions().should("be.visible");
 
@@ -686,6 +686,7 @@ describe("scenarios > question > custom column", () => {
 
     // Tab to focus on the name box
     cy.realPress("Tab");
+
     cy.focused().should("have.attr", "value").and("eq", "");
     cy.focused()
       .should("have.attr", "placeholder")
@@ -793,7 +794,7 @@ describe("scenarios > question > custom column", () => {
         formula: 'notIn("Gadget", [Vendor], [Category])',
         name: "InColumn",
       });
-      cy.button("Update").click();
+      cy.button("Update").should("not.be.disabled").click();
     });
     H.visualize();
     H.assertQueryBuilderRowCount(147);
