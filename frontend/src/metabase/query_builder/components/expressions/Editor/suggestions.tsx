@@ -3,6 +3,7 @@ import {
   autocompletion,
   snippetCompletion,
 } from "@codemirror/autocomplete";
+import Fuse from "fuse.js";
 import _ from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -44,8 +45,6 @@ type SuggestOptions = Omit<
 };
 
 // TODO: tests
-// TODO: render better help texts
-// TODO: shortcuts
 // TODO: use namespaced suggestion for fk sparator (eg. products.|
 
 export function suggestions(options: SuggestOptions) {
@@ -55,11 +54,11 @@ export function suggestions(options: SuggestOptions) {
     activateOnTypingDelay: 0,
     override: [
       suggestLiterals(),
+      suggestFunctions(options),
+      suggestAggregations(options),
       suggestFields(options),
       suggestMetrics(options),
       suggestSegments(options),
-      suggestFunctions(options),
-      suggestAggregations(options),
       suggestPopular(options),
       suggestShortcuts(options),
     ].filter(isNotNull),
@@ -85,6 +84,8 @@ function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
     return null;
   }
 
+  const matcher = fuzzyMatcher(columns);
+
   return function (context: CompletionContext): CompletionResult | null {
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
@@ -93,10 +94,23 @@ function suggestFields({ query, stageIndex, expressionIndex }: SuggestOptions) {
       return null;
     }
 
+    const word = token.text.replace(/^\[/, "").replace(/\]$/, "");
+    if (word === "") {
+      return {
+        from: token.start,
+        to: token.end,
+        options: columns,
+        filter: false,
+      };
+    }
+
+    const options = matcher(word);
+
     return {
       from: token.start,
       to: token.end,
-      options: columns,
+      options,
+      filter: false,
     };
   };
 }
@@ -130,6 +144,8 @@ function suggestFunctions({
       }),
     );
 
+  const matcher = fuzzyMatcher(functions);
+
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
@@ -141,7 +157,8 @@ function suggestFunctions({
     return {
       from: token.start,
       to: token.end,
-      options: functions,
+      options: matcher(token.text),
+      filter: false,
     };
   };
 }
@@ -168,6 +185,8 @@ function suggestAggregations({
       }),
     );
 
+  const matcher = fuzzyMatcher(aggregations);
+
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
@@ -178,7 +197,8 @@ function suggestAggregations({
     return {
       from: token.start,
       to: token.end,
-      options: aggregations,
+      options: matcher(token.text),
+      filter: false,
     };
   };
 }
@@ -256,10 +276,12 @@ function suggestLiterals() {
         {
           label: "True",
           type: "literal",
+          icon: "boolean",
         },
         {
           label: "False",
           type: "literal",
+          icon: "boolean",
         },
       ],
     };
@@ -280,6 +302,8 @@ function suggestSegments({ query, stageIndex }: SuggestOptions) {
     return null;
   }
 
+  const matcher = fuzzyMatcher(segments);
+
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
@@ -290,8 +314,10 @@ function suggestSegments({ query, stageIndex }: SuggestOptions) {
     }
 
     return {
-      from: context.pos,
-      options: segments,
+      from: token.start,
+      to: token.end,
+      options: matcher(token.text),
+      filter: false,
     };
   };
 }
@@ -310,18 +336,21 @@ function suggestMetrics({ startRule, query, stageIndex }: SuggestOptions) {
     return null;
   }
 
+  const matcher = fuzzyMatcher(metrics);
+
   return function (context: CompletionContext) {
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
 
-    if (!token || !isIdentifier(token) || isFieldReference(token)) {
-      // Cursor is inside a field reference tag
+    if (!token) {
       return null;
     }
 
     return {
-      from: context.pos,
-      options: metrics,
+      from: token.start,
+      to: token.end,
+      options: matcher(token.text),
+      filter: false,
     };
   };
 }
@@ -351,10 +380,12 @@ function expressionClauseCompletion(
     type,
     database,
     reportTimezone,
+    matches,
   }: {
     type: string;
     database: Database | null;
     reportTimezone?: string;
+    matches?: [number, number][];
   },
 ): Completion {
   const helpText =
@@ -369,7 +400,7 @@ function expressionClauseCompletion(
       displayLabel: clause.displayName,
       detail: helpText.description,
     });
-    return { ...completion, icon: "function" };
+    return { ...completion, icon: "function", matches };
   }
 
   return {
@@ -377,6 +408,7 @@ function expressionClauseCompletion(
     label: suggestionText(clause),
     displayLabel: clause.displayName,
     icon: "function",
+    matches,
   };
 }
 
@@ -403,5 +435,26 @@ function suggestShortcuts(options: SuggestOptions) {
       from: context.pos,
       options: completions,
     };
+  };
+}
+
+function fuzzyMatcher(options: Completion[]) {
+  const keys = ["displayLabel"];
+
+  const fuse = new Fuse(options, {
+    keys,
+    includeScore: true,
+    includeMatches: true,
+  });
+
+  return function (word: string) {
+    return fuse
+      .search(word)
+      .filter(result => (result.score ?? 0) < 0.5)
+      .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
+      .map(result => ({
+        ...result.item,
+        matches: result.matches?.flatMap(match => match.indices) ?? [],
+      }));
   };
 }

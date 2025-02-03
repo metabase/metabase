@@ -7,6 +7,7 @@ import type { IconName } from "metabase/ui";
 
 export type Completion = CodeMirrorCompletion & {
   icon: IconName;
+  matches?: [number, number][];
 };
 
 export type CompletionResult = CodeMirrorCompletionResult & {
