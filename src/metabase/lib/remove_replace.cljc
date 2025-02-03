@@ -674,6 +674,7 @@
                                                        (not= (:source-card new-join)
                                                              (:source-card %)))]
                                 (cond-> new-join
+                                  ;; We need to tag the join so that add-default-alias knows to replace this alias
                                   should-rename? (assoc ::lib.join/replace-alias true)
                                   ;; TODO: Maybe join idents *should* change under the same conditions as aliases?
                                   ;; All the column idents are going to change anyway, so it doesn't matter that much.
