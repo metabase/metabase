@@ -20,7 +20,7 @@ export function getIsDarkThemeFromPalette(theme: MantineTheme) {
   const backgroundColor = theme.fn.themeColor("background");
   const foregroundColor = theme.fn.themeColor("text-dark");
 
-  // Dark foreground color indicates a dark theme.
+  // Dark background color indicates a dark theme.
   if (isColorDefined(backgroundColor)) {
     return isDark(backgroundColor);
   }
