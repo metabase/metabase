@@ -38,6 +38,7 @@ import type { NotebookStep } from "../../types";
 import { NotebookProvider } from "../Notebook/context";
 
 import { DataStep } from "./DataStep";
+import { createMockModelResult } from "metabase/browse/models/test-utils";
 
 const createQueryWithFields = (columnNames: string[]) => {
   const query = createQuery();
@@ -78,6 +79,19 @@ const setup = ({
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+
+  // In embedding SDK we call a different endpoint because we use a different data picker (metabase#52889)
+  if (isEmbeddingSdk) {
+    setupSearchEndpoints(
+      [
+        createMockModelResult({
+          id: 0,
+          name: "Products",
+        }),
+      ],
+      { overwriteRoutes: true },
+    );
+  }
 
   const storeInitialState = createMockState({
     embed: createMockEmbedState({ isEmbeddingSdk }),
