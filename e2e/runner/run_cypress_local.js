@@ -5,7 +5,7 @@ const { printBold, shell } = require("./cypress-runner-utils");
 // if you want to change these, set them as environment variables in your shell
 const options = {
   TEST_SUITE: "e2e", // e2e | component
-  MB_EDITION: "ee",
+  MB_EDITION: "ee", // ee | oss
   ENTERPRISE_TOKEN: null,
   START_CONTAINERS: true,
   STOP_CONTAINERS: false,

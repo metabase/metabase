@@ -20,7 +20,7 @@ Our custom Cypress runner builds its own backend and creates a temporary H2 app 
 
    b. If you want to run a local Metabase instance alongside Cypress, the easiest way to achieve this is by using `yarn dev` or `yarn dev-ee` (both rely on frontend hot reloading under the hood)
 
-2. In a separate terminal session (without killing the previous one) run `yarn test-cypress`. This will open a Cypress GUI that will let you choose which tests to run. Alternatively, take a look at more running options below.
+2. In a separate terminal session (without killing the previous one) run `yarn test-cypress`. This will open a Cypress GUI that will let you choose which tests to run. Alternatively, take a look at `run_cypress_local.js` and `e2e/test/scenarios/docker-compose.yml` for all possible options.
 
 ### Running Options
 
