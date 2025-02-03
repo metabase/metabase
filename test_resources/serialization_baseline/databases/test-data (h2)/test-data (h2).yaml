@@ -30,3 +30,4 @@ serdes/meta:
 uploads_enabled: false
 uploads_schema_name: null
 uploads_table_prefix: null
+primary_database_id: null
