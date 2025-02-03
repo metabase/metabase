@@ -1,20 +1,22 @@
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import EditableText from "metabase/core/components/EditableText";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { Flex } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 
 import { CollectionIcon } from "./CollectionIcon";
 import SavedQuestionHeaderButtonS from "./SavedQuestionHeaderButton.module.css";
 
-SavedQuestionHeaderButton.propTypes = {
-  className: PropTypes.string,
-  question: PropTypes.object.isRequired,
-  onSave: PropTypes.func,
-};
+interface SavedQuestionHeaderButtonProps {
+  question: Question;
+  onSave: (name: string) => void;
+}
 
-function SavedQuestionHeaderButton({ question, onSave }) {
+function SavedQuestionHeaderButton({
+  question,
+  onSave,
+}: SavedQuestionHeaderButtonProps) {
   return (
     <Flex align="center" gap="0.25rem">
       <EditableText
@@ -28,11 +30,11 @@ function SavedQuestionHeaderButton({ question, onSave }) {
       />
 
       <CollectionIcon
-        collection={question?._card?.collection}
+        collection={question.card().collection}
         question={question}
       />
     </Flex>
   );
 }
 
-export default SavedQuestionHeaderButton;
+export { SavedQuestionHeaderButton };

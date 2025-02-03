@@ -7,7 +7,7 @@ import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import type Question from "metabase-lib/v1/Question";
 
-import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
+import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 
 import { getQuestionIcon } from "./utils";
 

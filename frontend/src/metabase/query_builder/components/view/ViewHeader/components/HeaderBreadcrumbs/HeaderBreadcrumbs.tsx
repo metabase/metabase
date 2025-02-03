@@ -1,13 +1,20 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
-import { Fragment, isValidElement } from "react";
+import {
+  type ComponentProps,
+  Fragment,
+  type ReactElement,
+  type ReactNode,
+  isValidElement,
+} from "react";
 
 import { Badge } from "metabase/components/Badge";
 import { Box, Flex } from "metabase/ui";
 
+import type { DataSourcePart } from "../QuestionDataSource/utils";
+
 import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
 
-const HeaderBadge = props => (
+const HeaderBadge = (props: ComponentProps<typeof Badge>) => (
   <Badge
     classNames={{
       root: HeaderBreadcrumbsS.HeaderBadge,
@@ -17,40 +24,30 @@ const HeaderBadge = props => (
   />
 );
 
-HeaderBadge.propTypes = {
-  variant: PropTypes.oneOf(["head", "subhead"]),
-  children: PropTypes.node,
-  icon: PropTypes.string,
-  to: PropTypes.string,
-  inactiveColor: PropTypes.string,
-};
-
-const crumbShape = PropTypes.shape({
-  name: PropTypes.string.isRequired,
-  icon: PropTypes.string,
-  href: PropTypes.string,
-});
-
-const partPropType = PropTypes.oneOfType([crumbShape, PropTypes.node]);
-
-HeadBreadcrumbs.propTypes = {
-  variant: PropTypes.oneOf(["head", "subhead"]),
-  parts: PropTypes.arrayOf(partPropType).isRequired,
-  inactiveColor: PropTypes.string,
-  divider: PropTypes.oneOfType([PropTypes.string, PropTypes.node]),
-};
-
-function getBadgeInactiveColor({ variant, isLast }) {
+function getBadgeInactiveColor({
+  variant,
+  isLast,
+}: {
+  variant: "head" | "subhead";
+  isLast: boolean;
+}) {
   return isLast && variant === "head" ? "text-dark" : "text-light";
+}
+
+interface HeadBreadcrumbsProps {
+  variant?: "head" | "subhead";
+  parts: DataSourcePart[];
+  divider?: string | ReactNode;
+  inactiveColor?: string;
 }
 
 export function HeadBreadcrumbs({
   variant = "head",
   parts,
   divider,
-  inactiveColor = undefined,
+  inactiveColor,
   ...props
-}) {
+}: HeadBreadcrumbsProps) {
   return (
     <Flex
       align="center"
@@ -67,7 +64,7 @@ export function HeadBreadcrumbs({
           inactiveColor || getBadgeInactiveColor({ variant, isLast });
         return (
           <Fragment key={index}>
-            {isValidElement(part) ? (
+            {isDataSourceReactElement(part) ? (
               part
             ) : (
               <HeaderBadge
@@ -79,7 +76,11 @@ export function HeadBreadcrumbs({
               </HeaderBadge>
             )}
             {!isLast &&
-              (isValidElement(divider) ? divider : <Divider char={divider} />)}
+              (typeof divider === "string" ? (
+                <Divider char={divider} />
+              ) : (
+                divider
+              ))}
           </Fragment>
         );
       })}
@@ -87,16 +88,16 @@ export function HeadBreadcrumbs({
   );
 }
 
-Divider.propTypes = {
-  char: PropTypes.string,
-};
-
-function Divider({ char = "/" }) {
+function Divider({ char = "/" }: { char?: string }) {
   return (
     <Box component="span" className={HeaderBreadcrumbsS.HeaderBreadcrumbs}>
       {char}
     </Box>
   );
+}
+
+function isDataSourceReactElement(part: DataSourcePart): part is ReactElement {
+  return isValidElement(part);
 }
 
 HeadBreadcrumbs.Badge = HeaderBadge;

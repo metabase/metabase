@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import type Question from "metabase-lib/v1/Question";
 
-import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
+import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 
 import { getDataSourceParts } from "./utils";
 
