@@ -112,12 +112,20 @@ export function sourceTableOrCardId(query: Query): TableId | null {
   return ML.source_table_or_card_id(query);
 }
 
-export function canRun(query: Query, cardType: CardType): boolean {
-  return ML.can_run(query, cardType);
+export function canRun(
+  cardId: number,
+  query: Query,
+  cardType: CardType,
+): boolean {
+  return ML.can_run(cardId, query, cardType);
 }
 
-export function canSave(query: Query, cardType: CardType): boolean {
-  return ML.can_save(query, cardType);
+export function canSave(
+  cardId: number,
+  query: Query,
+  cardType: CardType,
+): boolean {
+  return ML.can_save(cardId, query, cardType);
 }
 
 export function asReturned(
@@ -129,10 +137,11 @@ export function asReturned(
 }
 
 export function previewQuery(
+  cardId: number,
   query: Query,
   stageIndex: number,
   clauseType: ClauseType,
   clauseIndex: number | null,
 ): Query | null {
-  return ML.preview_query(query, stageIndex, clauseType, clauseIndex);
+  return ML.preview_query(cardId, query, stageIndex, clauseType, clauseIndex);
 }

@@ -133,7 +133,11 @@ export function ViewTitleHeaderRightSide({
     return t`Clear cache and refresh`;
   }, [isRunning, cacheStrategyType]);
 
-  const canSave = Lib.canSave(question.query(), question.type());
+  const canSave = Lib.canSave(
+    question.originalCardId(),
+    question.query(),
+    question.type(),
+  );
   const isSaveDisabled = !canSave;
   const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
   const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);

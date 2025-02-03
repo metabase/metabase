@@ -215,6 +215,10 @@ class Question {
     return this;
   }
 
+  originalCardId(): number {
+    return this.card().original_card_id;
+  }
+
   datasetQuery(): DatasetQuery {
     return this.card().dataset_query;
   }
@@ -354,7 +358,7 @@ class Question {
     const { isNative } = Lib.queryDisplayInfo(this.query());
     return isNative
       ? this.legacyQuery().canRun()
-      : Lib.canRun(this.query(), this.type());
+      : Lib.canRun(this.originalCardId(), this.query(), this.type());
   }
 
   canWrite(): boolean {

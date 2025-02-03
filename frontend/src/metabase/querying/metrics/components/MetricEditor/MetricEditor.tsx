@@ -45,7 +45,11 @@ export function MetricEditor({
   onCancelQuery,
 }: MetricEditorProps) {
   const [modalType, setModalType] = useState<MetricModalType>();
-  const isRunnable = Lib.canRun(question.query(), "metric");
+  const isRunnable = Lib.canRun(
+    question.originalCardId(),
+    question.query(),
+    "metric",
+  );
 
   const handleCreate = (question: Question) => {
     return onCreate(question.setDefaultDisplay());

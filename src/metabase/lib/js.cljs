@@ -2488,13 +2488,13 @@
   - The native query is non-empty.
 
   > **Code health:** Healthy"
-  ([a-query]
-   (can-run a-query "question"))
-  ([a-query card-type]
+  ([card-id a-query]
+   (can-run card-id a-query "question"))
+  ([card-id a-query card-type]
    (lib.cache/side-channel-cache
     (keyword "can-run" card-type) a-query
     (fn [_]
-      (lib.core/can-run a-query (keyword card-type))))))
+      (lib.core/can-run card-id a-query (keyword card-type))))))
 
 (defn ^:export preview-query
   "*Truncates* a query for use in the Notebook editor's \"preview\" system.
@@ -2520,9 +2520,9 @@
   If the resulting query fails [[can-preview]], returns nil.
 
   > **Code health:** Healthy, Single use."
-  [a-query stage-number clause-type clause-index]
+  [card-id a-query stage-number clause-type clause-index]
   (let [truncated-query (lib.core/preview-query a-query stage-number (keyword clause-type) clause-index)]
-    (when (lib.core/can-preview truncated-query)
+    (when (lib.core/can-preview card-id truncated-query)
       truncated-query)))
 
 (defn ^:export can-save
@@ -2535,13 +2535,13 @@
   - For a native query, all its template tags either have a value provided, or a default.
 
   > **Code health:** Healthy"
-  ([a-query]
-   (can-save a-query "question"))
-  ([a-query card-type]
+  ([card-id a-query]
+   (can-save card-id a-query "question"))
+  ([card-id a-query card-type]
    (lib.cache/side-channel-cache
     (keyword "can-save" card-type) a-query
     (fn [_]
-      (lib.core/can-save a-query (keyword card-type))))))
+      (lib.core/can-save card-id a-query (keyword card-type))))))
 
 (defn ^:export ensure-filter-stage
   "Adds an empty stage to `query` if its last stage contains both breakouts and aggregations.

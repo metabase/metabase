@@ -34,7 +34,11 @@ export const NotebookNativePreview = (): JSX.Element => {
   const engineType = getEngineNativeType(engine);
 
   const sourceQuery = question.query();
-  const canRun = Lib.canRun(sourceQuery, question.type());
+  const canRun = Lib.canRun(
+    question.originalCardId(),
+    sourceQuery,
+    question.type(),
+  );
   const payload = Lib.toLegacyQuery(sourceQuery);
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
 

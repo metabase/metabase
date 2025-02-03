@@ -479,10 +479,10 @@
   (into [:enum {:decode/json keyword}] card/card-types))
 
 (defn- check-if-card-can-be-saved
-  [dataset-query card-type]
-  (when (and dataset-query (= card-type :metric))
-    (when-not (lib/can-save (dataset-query->query (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-                                                  dataset-query) card-type)
+  [card-id dataset-query card-type]
+  (when (and dataset-query (contains? #{:metric :question} card-type))
+    (when-not (lib/can-save card-id (dataset-query->query (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+                                                          dataset-query) card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (clojure.core/name card-type))
                       {:type        card-type
                        :status-code 400})))))
@@ -510,7 +510,7 @@
                             [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
                             [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
                             [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]]]
-  (check-if-card-can-be-saved query card-type)
+  (check-if-card-can-be-saved -1 query card-type)
   ;; check that we have permissions to run the query that we're trying to save
   (check-permissions-for-query query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
@@ -581,7 +581,7 @@
            result_metadata
            type] :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
-  (check-if-card-can-be-saved dataset_query type)
+  (check-if-card-can-be-saved id dataset_query type)
   (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
                                            [:moderation_reviews :moderator_details])
         card-updates           (api/updates-with-archived-directly card-before-update card-updates)

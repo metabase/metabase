@@ -21,7 +21,9 @@ export const QuestionResetButton = ({
     ? isSavedQuestionChanged(question, originalQuestion)
     : true;
 
-  const canSave = question && Lib.canSave(question.query(), question.type());
+  const canSave =
+    question &&
+    Lib.canSave(question.originalCardId(), question.query(), question.type());
 
   if (!canSave || !isQuestionChanged) {
     return null;

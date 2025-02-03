@@ -12,7 +12,9 @@ export const shouldShowSaveButton = ({
   question?: Question;
   originalQuestion?: Question;
 }) => {
-  const canSave = question && Lib.canSave(question.query(), question.type());
+  const canSave =
+    question &&
+    Lib.canSave(question.originalCardId(), question.query(), question.type());
   const isQuestionChanged = originalQuestion
     ? question && question.isQueryDirtyComparedTo(originalQuestion)
     : true;

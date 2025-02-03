@@ -309,6 +309,7 @@ function getStageSteps(
       // only include previewQuery if the section would be visible (i.e. excluding "openSteps")
       if (step.active) {
         step.previewQuery = Lib.previewQuery(
+          question.originalCardId(),
           query,
           stageIndex,
           step.clauseType,

@@ -440,7 +440,7 @@ function DatasetEditor(props) {
     isDirty &&
     (!isNative || !isResultDirty) &&
     fields.every(field => field.display_name) &&
-    Lib.canSave(question.query(), question.type());
+    Lib.canSave(question.originalCardId(), question.query(), question.type());
 
   const saveButtonTooltipLabel = useMemo(() => {
     if (

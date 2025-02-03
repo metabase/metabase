@@ -25,7 +25,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [weavejester.dependency :as dep]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
   [_query _stage-number _x]
@@ -83,13 +84,68 @@
                           (lib.temporal-bucket/with-temporal-bucket nil)
                           lib.types.isa/date-or-datetime?)))))))
 
+(declare query)
+
+(defn- stage-seq* [dataset-query]
+  (cond
+    (vector? dataset-query)
+    (mapcat stage-seq* dataset-query)
+
+    (map? dataset-query)
+    (concat (:stages dataset-query) (mapcat stage-seq* (vals dataset-query)))
+
+    :else
+    []))
+
+(defn- stage-seq [card-id dataset-query]
+  (map #(assoc % ::from-card card-id) (stage-seq* dataset-query)))
+
+(defn- expand-stage [metadata-provider stage]
+  (let [card-id (:source-card stage)
+        card (when card-id (lib.metadata/card metadata-provider card-id))
+        expanded-query (some-> card :dataset-query lib.convert/->pMBQL (->> (query metadata-provider)))]
+    (stage-seq card-id expanded-query)))
+
+(defn- add-stage-dep [graph stage]
+  (let [card-id  (:source-card  stage)
+        table-id (:source-table stage)
+        from-id  (::from-card   stage)]
+    (cond-> graph
+      card-id  (dep/depend [:card from-id] [:card  card-id])
+      table-id (dep/depend [:card from-id] [:table table-id]))))
+
+(defn- build-graph [graph source-id metadata-provider dataset-query]
+  (loop [graph graph
+         stages-visited 0
+         stages (stage-seq source-id dataset-query)]
+    (if (empty? stages)
+      graph
+      (let [[stage & stages] stages]
+        (recur (add-stage-dep graph stage)
+               (inc stages-visited)
+               (concat stages (expand-stage metadata-provider stage)))))))
+
+(defn- has-no-cycles?
+  [card-id dataset-query]
+  (try
+    ;; build a graph of dependencies from the stages
+    ;; throws ex-info if there's a cycle
+    (build-graph (dep/graph) card-id dataset-query dataset-query)
+    ;; no throw, so return true
+    true
+    (catch #?(:clj clojure.lang.ExceptionInfo
+              :cljs js/Error) _e
+      false)))
+
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."
-  [query :- ::lib.schema/query
+  [card-id :- :int
+   query :- ::lib.schema/query
    card-type :- ::lib.schema.metadata/card.type]
   (and (binding [lib.schema.expression/*suppress-expression-type-check?* true]
          (mr/validate ::lib.schema/query query))
        (:database query)
+       (has-no-cycles? card-id query)
        (boolean (can-run-method query card-type))))
 
 (defmulti can-save-method
@@ -104,18 +160,20 @@
 
 (mu/defn can-save :- :boolean
   "Returns whether `query` for a card of `card-type` can be saved."
-  [query :- ::lib.schema/query
+  [card-id :- :int
+   query :- ::lib.schema/query
    card-type :- ::lib.schema.metadata/card.type]
   (and (lib.metadata/editable? query)
-       (can-run query card-type)
+       (can-run card-id query card-type)
        (boolean (can-save-method query card-type))))
 
 (mu/defn can-preview :- :boolean
   "Returns whether the query can be previewed.
 
   See [[metabase.lib.js/can-preview]] for how this differs from [[can-run]]."
-  [query :- ::lib.schema/query]
-  (and (can-run query "question")
+  [card-id :- :int
+   query :- ::lib.schema/query]
+  (and (can-run card-id query "question")
        ;; Either it contains no expressions with `:offset`, or there is at least one order-by.
        (every? (fn [stage]
                  (boolean
