@@ -238,7 +238,7 @@
 (defn- reset-gsheets-status []
   (gsheets! not-connected)
   (doseq [{:keys [id]} (hm-get-gdrive-conns)]
-    (hm.client/make-request :delete (str "/api/v2/mb/connections/" id))))
+    (hm-delete-conn id)))
 
 (defn- handle-get-folder [attached-dwh]
   (let [[sstatus {conn :body}] (try (hm-get-gdrive-conn (:gdrive/conn-id (gsheets)))
@@ -313,25 +313,6 @@
   (def drive-folder-url
     "https://drive.google.com/drive/folders/1H2gz8_TUsCNyFpooFeQB8Y7FXRZA_esH?usp=drive_link")
 
-  (let [url drive-folder-url
-        [status _resp] (hm-create-gdrive-conn url)]
-    (if (= status :ok)
-      (u/prog1 {:status "loading"
-                :folder_url url
-                :folder-upload-time (seconds-from-epoch-now)} (gsheets! <>))
-      (throw (ex-info "[debug] uh o" {}))))
-
-  ;; see the connection:
-  (hm-get-gdrive-conns)
-
-  ;; a polling loop on:
-  (let [attached-dwh (t2/select-one :model/Database :is_attached_dwh true)]
-    (when-not (some? attached-dwh)
-      (snowplow/track-event! ::snowplow/simple_event {:event "sheets_connected" :event_detail "fail - no dwh"})
-      (throw (ex-info "No attached dwh found." {})))
-    (handle-get-folder attached-dwh))
-
-  ;; once the connection status is active, sync on mb:
   (do
     ;; This is what the notify endpoint calls:
     ;; Do a sync on the attached dwh:
@@ -342,17 +323,7 @@
 
   (gsheets)
 
-  ;; check the polling loop again ^
-  ;;  it should finish with: `{:status "complete"}`.
-
-  ;; now, let's delete the connection:
-  (reset-gsheets-status)
-
-  ;; trigger gdrive scan resync on HM
-  ;; (hm.client/make-request :put (format "/api/v2/mb/connections/%s/sync" (:id (get-gdrive-conn))))
-
-
-  ;; need an "attached dwh" locally:
+  ;; need an "attached dwh" locally?
   (t2/update! :model/Database 1 {:is_attached_dwh true})
 
   )
