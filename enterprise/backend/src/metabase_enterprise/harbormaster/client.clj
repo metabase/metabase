@@ -32,10 +32,10 @@
     (http/success? response)))
 
 (defn- ->config
-  "This config is needed to call [[hm.client/make-request]].
+  "The config needed to call [[make-request]].
 
-   `->config` either gets the store-api-url and api-key from settings or throws an exception when one or both are
-   unset or blank."
+  `->config` either gets the store-api-url and api-key from settings or throws an exception when either are unset or
+  blank."
   []
   (let [store-api-url (setting/get-value-of-type :string :store-api-url)
         _ (when (str/blank? store-api-url)
@@ -56,10 +56,7 @@
   "Makes a request to the store-api-url with the given method, path, and body.
 
   Returns a tuple of [:ok response] if the request was successful, or [:error response] if it failed."
-  [config :- [:map
-              [:store-api-url :string]
-              [:api-key :string]]
-   method :- [:enum :get :head :post :put :delete :options :copy :move :patch]
+  [method :- [:enum :get :head :post :put :delete :options :copy :move :patch]
    url :- :string
    & [body]]
   (let [{:keys [store-api-url
@@ -76,23 +73,23 @@
                               (log/errorf e "Error making request to %s" url)
                               {:ex-data (ex-data e)
                                :request request
-                               :url url}))
-        response          (if (some? (:ex-data unparsed-response)) ;; skip failed responses
+                               :url     url}))
+        response          (if (some? (:ex-data unparsed-response)) ;; skip decoding failed responses
                             unparsed-response
                             (try
                               (m/update-existing unparsed-response :body json/decode+kw)
                               (catch Exception e
                                 (log/errorf e "Error decoding response from %s, is it json?" url)
-                                {:ex-data (ex-data e)
+                                {:ex-data           (ex-data e)
                                  :unparsed-response unparsed-response
-                                 :request request
-                                 :url url})))
-        success? (try
-                   (get-safe-status response)
-                   (catch Exception e
-                     (log/errorf e "Error decoding response from %s, is it json?" url)
-                     {:response response
-                      :request request
-                      :url url
-                      :ex-data (ex-data e)}))]
+                                 :request           request
+                                 :url               url})))
+        success?          (try
+                            (get-safe-status response)
+                            (catch Exception e
+                              (log/errorf e "Error decoding response from %s, is it json?" url)
+                              {:response response
+                               :request  request
+                               :url      url
+                               :ex-data  (ex-data e)}))]
     [(if success? :ok :error) response]))
