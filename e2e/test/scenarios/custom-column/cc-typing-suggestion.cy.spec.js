@@ -54,7 +54,6 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({ formula: "lower(", blur: false });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     H.CustomExpressionEditor.helpText()
       .should("be.visible")
       .should("contain", "lower(⟨text⟩)")
