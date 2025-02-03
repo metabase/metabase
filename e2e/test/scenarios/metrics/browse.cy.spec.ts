@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -285,8 +285,12 @@ describe("scenarios > browse > metrics", () => {
         .should("be.visible");
 
       H.navigationSidebar().findByText("Trash").should("be.visible").click();
+      cy.intercept("/api/bookmark").as("bookmark"); // anti-flake guard
       cy.button("Actions").click();
       H.popover().findByText("Restore").should("be.visible").click();
+
+      H.main().findByText("Nothing here").should("be.visible");
+      cy.wait("@bookmark");
 
       H.navigationSidebar().findByText("Metrics").should("be.visible").click();
       metricsTable().findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");

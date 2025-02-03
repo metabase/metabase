@@ -4,9 +4,9 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.models.collection :as collection]
-   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.recent-views :as recent-views]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))

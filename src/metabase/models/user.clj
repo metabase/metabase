@@ -10,11 +10,9 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-group-membership :as perms-group-membership]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.permissions.core :as perms]
    [metabase.plugins.classloader :as classloader]
    [metabase.premium-features.core :as premium-features]
    [metabase.public-settings :as public-settings]
@@ -121,11 +119,11 @@
     (log/infof "Adding User %s to All Users permissions group..." user-id)
     (when superuser?
       (log/infof "Adding User %s to All Users permissions group..." user-id))
-    (let [groups (filter some? [(perms-group/all-users)
-                                (when superuser? (perms-group/admin))])]
-      (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
+    (let [groups (filter some? [(perms/all-users-group)
+                                (when superuser? (perms/admin-group))])]
+      (perms/allow-changing-all-users-group-members
         ;; do a 'simple' insert against the Table name so we don't trigger the after-insert behavior
-        ;; for [[metabase.models.permissions-group-membership]]... we don't want it recursively trying to update
+        ;; for [[metabase.permissions.models.permissions-group-membership]]... we don't want it recursively trying to update
         ;; the user
         (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
                     (for [group groups]
@@ -140,25 +138,25 @@
          active? :is_active
          :keys [email locale]}    (t2/changes user)
         in-admin-group?           (t2/exists? :model/PermissionsGroupMembership
-                                              :group_id (:id (perms-group/admin))
+                                              :group_id (:id (perms/admin-group))
                                               :user_id  id)]
     ;; Do not let the last admin archive themselves
     (when (and in-admin-group?
                (false? active?))
-      (perms-group-membership/throw-if-last-admin!))
+      (perms/throw-if-last-admin!))
     (when (some? superuser?)
       (cond
         (and superuser?
              (not in-admin-group?))
         (t2/insert! (t2/table-name :model/PermissionsGroupMembership)
-                    :group_id (u/the-id (perms-group/admin))
+                    :group_id (u/the-id (perms/admin-group))
                     :user_id  id)
         ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
              in-admin-group?)
         (t2/delete! (t2/table-name :model/PermissionsGroupMembership)
-                    :group_id (u/the-id (perms-group/admin))
+                    :group_id (u/the-id (perms/admin-group))
                     :user_id  id)))
     ;; make sure email and locale are valid if set
     (when email
@@ -411,6 +409,7 @@
   {:pre [(string? reset-token)]}
   (str (public-settings/site-url) "/auth/reset_password/" reset-token))
 
+;; TODO -- does this belong HERE, or in the `permissions` module?
 (defn set-permissions-groups!
   "Set the user's group memberships to equal the supplied group IDs. Returns `true` if updates were made, `nil`
   otherwise."

@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
@@ -83,7 +83,7 @@ describe("Recently Viewed > Entity Picker", () => {
   });
 
   it("shows recently created collection in entity picker", () => {
-    cy.createCollection({
+    H.createCollection({
       name: "My Fresh Collection",
     });
 

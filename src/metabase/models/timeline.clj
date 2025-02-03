@@ -1,7 +1,6 @@
 (ns metabase.models.timeline
   (:require
    [metabase.models.collection.root :as collection.root]
-   [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
    [metabase.models.timeline-event :as timeline-event]
    [methodical.core :as methodical]
@@ -11,7 +10,7 @@
 
 (doto :model/Timeline
   (derive :metabase/model)
-  (derive ::perms/use-parent-collection-perms)
+  (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 

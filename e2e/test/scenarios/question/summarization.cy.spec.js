@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -106,7 +106,7 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "14649_min",
         query: {
@@ -213,7 +213,7 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
-    cy.createQuestion(
+    H.createQuestion(
       {
         name: "12625",
         query: {

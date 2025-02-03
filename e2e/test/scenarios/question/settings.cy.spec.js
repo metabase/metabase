@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -357,7 +357,7 @@ describe("scenarios > question > settings", () => {
 
     it.skip("should allow hiding and showing aggregated columns with a post-aggregation custom column (metabase#22563)", () => {
       // products joined to orders with breakouts on 3 product columns followed by a custom column
-      cy.createQuestion(
+      H.createQuestion(
         {
           name: "repro 22563",
           query: {

@@ -669,5 +669,3 @@
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
                 :action   ::upload/replace}))
-
-(api/define-routes)

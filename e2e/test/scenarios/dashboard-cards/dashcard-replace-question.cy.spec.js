@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -109,10 +109,10 @@ H.describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
 
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    cy.createQuestion(MAPPED_QUESTION_CREATE_INFO).then(
+    H.createQuestion(MAPPED_QUESTION_CREATE_INFO).then(
       ({ body: { id: mappedQuestionId } }) => {
-        cy.createQuestion(NEXT_QUESTION_CREATE_INFO).then(() => {
-          cy.createDashboard(DASHBOARD_CREATE_INFO).then(
+        H.createQuestion(NEXT_QUESTION_CREATE_INFO).then(() => {
+          H.createDashboard(DASHBOARD_CREATE_INFO).then(
             ({ body: { id: dashboardId } }) => {
               cy.request("PUT", `/api/dashboard/${dashboardId}`, {
                 dashcards: getDashboardCards(mappedQuestionId),

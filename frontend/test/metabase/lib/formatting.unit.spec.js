@@ -122,6 +122,14 @@ describe("formatting", () => {
         expect(formatNumber(1111, { compact: true })).toEqual("1.1k");
       });
 
+      it("should format large numbers correctly with non-default number separator", () => {
+        const options = { compact: true, number_separators: ",." };
+        expect(formatNumber(10.1, options)).toEqual("10,1");
+        expect(formatNumber(99999999.9, options)).toEqual("100,0M");
+        expect(formatNumber(-10.1, options)).toEqual("−10,1");
+        expect(formatNumber(-99999999.9, options)).toEqual("-100,0M");
+      });
+
       it("should format percentages", () => {
         const options = { compact: true, number_style: "percent" };
         expect(formatNumber(0.867, { number_style: "percent" })).toEqual(

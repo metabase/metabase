@@ -1,4 +1,4 @@
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -21,9 +21,9 @@ describe("scenarios > question > view", () => {
       cy.findByText("Yes").click();
 
       // Native query saved in dasbhoard
-      cy.createDashboard({}, { wrapId: true });
+      H.createDashboard({}, { wrapId: true });
 
-      cy.createNativeQuestion(
+      H.createNativeQuestion(
         {
           name: "Question",
           native: {

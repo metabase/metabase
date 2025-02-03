@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import EditableText from "metabase/core/components/EditableText";
+import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { Flex } from "metabase/ui";
 
 import { CollectionIcon } from "./CollectionIcon";
@@ -21,6 +22,7 @@ function SavedQuestionHeaderButton({ question, onSave }) {
         isDisabled={!question.canWrite() || question.isArchived()}
         initialValue={question.displayName()}
         placeholder={t`Add title`}
+        maxLength={QUESTION_NAME_MAX_LENGTH}
         onChange={onSave}
         data-testid="saved-question-header-title"
       />

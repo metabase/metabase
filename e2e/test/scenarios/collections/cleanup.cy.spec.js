@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { assocIn } from "icepick";
 import { P, isMatching } from "ts-pattern";
 
-import { H } from "e2e/support";
+const { H } = cy;
 import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 import {
   FIRST_COLLECTION_ID,
@@ -414,35 +414,31 @@ const assertStaleItemCount = itemCount => {
 
 // seed data helpers
 const bulkCreateQuestions = (amount, options, results = []) => {
-  return cy
-    .createQuestion({
-      name: `Bulk question ${amount}`,
-      query: { "source-table": STATIC_ORDERS_ID },
-      type: "model",
-      ...options,
-    })
-    .then(req => {
-      results.push(req.body);
-      if (amount <= 1) {
-        return results;
-      }
-      return bulkCreateQuestions(amount - 1, options, results);
-    });
+  return H.createQuestion({
+    name: `Bulk question ${amount}`,
+    query: { "source-table": STATIC_ORDERS_ID },
+    type: "model",
+    ...options,
+  }).then(req => {
+    results.push(req.body);
+    if (amount <= 1) {
+      return results;
+    }
+    return bulkCreateQuestions(amount - 1, options, results);
+  });
 };
 
 const bulkCreateDashboards = (amount, options, results = []) => {
-  return cy
-    .createDashboard({
-      name: `Bulk dashboard ${amount}`,
-      ...options,
-    })
-    .then(req => {
-      results.push(req.body);
-      if (amount <= 1) {
-        return results;
-      }
-      return bulkCreateDashboards(amount - 1, options, results);
-    });
+  return H.createDashboard({
+    name: `Bulk dashboard ${amount}`,
+    ...options,
+  }).then(req => {
+    results.push(req.body);
+    if (amount <= 1) {
+      return results;
+    }
+    return bulkCreateDashboards(amount - 1, options, results);
+  });
 };
 
 function makeItemStale(

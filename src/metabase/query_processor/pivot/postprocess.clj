@@ -260,16 +260,19 @@
 (defn- build-column-headers
   "Build multi-level column headers."
   [{:keys [pivot-cols pivot-measures column-titles row-totals?]} col-combos col-formatters]
-  (concat
+  (perf/concat
    (if (= 1 (count pivot-measures))
-     (mapv (fn [col-combo] (mapv fmt col-formatters col-combo)) col-combos)
-     (for [col-combo col-combos
-           measure-key pivot-measures]
-       (conj
-        (mapv fmt col-formatters col-combo)
-        (get column-titles measure-key))))
+     (mapv (fn [col-combo] (perf/mapv fmt col-formatters col-combo)) col-combos)
+     (into [] (mapcat (fn [col-combo]
+                        (let [formatted (perf/mapv fmt col-formatters col-combo)
+                              it (.iterator ^Iterable pivot-measures)]
+                          (loop [acc (transient [])]
+                            (if (.hasNext it)
+                              (recur (conj! acc (conj formatted (get column-titles (.next it)))))
+                              (persistent! acc))))))
+           col-combos))
    (repeat (count pivot-measures)
-           (concat
+           (perf/concat
             (when (and row-totals? (> (count pivot-cols) 0)) ["Row totals"])
             (repeat (dec (count pivot-cols)) nil)
             (when (and (seq pivot-cols) (> (count pivot-measures) 1)) [nil])))))
@@ -277,45 +280,57 @@
 (defn- build-headers
   "Combine row keys with column headers."
   [column-headers {:keys [pivot-cols pivot-rows column-titles]}]
-  (some->> (not-empty (filter seq column-headers))
-           (apply mapv vector)
+  (some->> (not-empty (filterv seq column-headers))
+           perf/transpose
            (mapv (fn [h]
-                   (-> (mapv #(get column-titles %)
-                             (if (and (seq pivot-cols) (empty? pivot-rows))
-                               pivot-cols pivot-rows))
-                       (into h))))))
+                   (perf/concat
+                    (perf/mapv #(get column-titles %)
+                               (if (and (seq pivot-cols) (empty? pivot-rows))
+                                 pivot-cols pivot-rows))
+                    h)))))
 
 (defn- build-row
   "Build a single row of the pivot table."
   [row-combo col-combos pivot-measures data totals row-totals? ordered-formatters row-formatters config]
+  ;; This implementation is very unorthodox, but this function is incredibly hot, so it must avoid allocation at all
+  ;; readability costs. Any iterator-based iteration allocates, but also constructing an internal mapping lambda that
+  ;; encloses the outer value is so so expensive.
   (let [row-path       (vec row-combo)
         row-data       (get-in data row-path)
-        ;; Mutable ArrayList intentional because of the hotness of the function.
-        measure-values (ArrayList. (* (max 1 (count col-combos)) (count pivot-measures)))]
+        n (count col-combos)
+        m (count pivot-measures)
+        result (ArrayList. (* (max 1 n) m))]
+    (when-not (seq row-formatters)
+      (dotimes [_ (count pivot-measures)] (.add result nil)))
+    ;; We first add the pivot row values before the actual row values. It is intentional that we don't format pivot
+    ;; row values just yet, because they will be used as data later on during grouping.
+    (perf/run! #(.add result %) row-combo)
     (if (seq col-combos)
-      (run! (fn [col-combo]
-              ;; we need to lead with col-combo here so that each row will alternate between all of the measures, rather
-              ;; than have all measures of one kind bunched together. That is, if you have a table with `count` and
-              ;; `avg` the row must show count-val, avg-val, count-val, avg-val ... etc
-              (let [m (reduce get row-data col-combo)]
-                (run! (fn [measure-key]
-                        (let [formatter (get ordered-formatters measure-key)]
-                          (.add measure-values (fmt formatter (get m measure-key)))))
-                      pivot-measures)))
-            col-combos)
+      (loop [i 0, j -1, col-combo nil, vals nil]
+        ;; we need to lead with col-combo here so that each row will alternate between all of the measures, rather
+        ;; than have all measures of one kind bunched together. That is, if you have a table with `count` and
+        ;; `avg` the row must show count-val, avg-val, count-val, avg-val ... etc
+        (if (= j -1)
+          (when (< i n)
+            (let [col-combo (nth col-combos i)]
+              (recur i (inc j) col-combo (reduce get row-data col-combo))))
+          (if (< j m)
+            (let [measure-key (nth pivot-measures j)
+                  formatter (get ordered-formatters measure-key)
+                  formatted-val (fmt formatter (get vals measure-key))]
+              (.add result formatted-val)
+              (recur i (inc j) col-combo vals))
+            (recur (inc i) -1 nil nil))))
       ;; If there are no columns, we still fill in one column per measure value
       (run! (fn [measure-key]
               (let [formatter (get ordered-formatters measure-key)]
-                (.add measure-values (fmt formatter (get row-data measure-key)))))
+                (.add result (fmt formatter (get row-data measure-key)))))
             pivot-measures))
-    (perf/concat
-     (when-not (seq row-formatters) (repeat (count pivot-measures) nil))
-     row-combo
-     measure-values
-     (when (and row-totals? (> (count (:pivot-cols config)) 0))
-       (let [row-totals (get-in totals row-path)]
-         (mapv #(fmt (get ordered-formatters %) (get row-totals %))
-               pivot-measures))))))
+    (when (and row-totals? (> (count (:pivot-cols config)) 0))
+      (let [row-totals (get-in totals row-path)]
+        (run! #(.add result (fmt (get ordered-formatters %) (get row-totals %)))
+              pivot-measures)))
+    result))
 
 (defn- build-column-totals
   "Build column totals for a section."
@@ -351,10 +366,10 @@
                          pivot-cols pivot-rows)))
            nil)
    (when (and row-totals? (> (count pivot-cols) 0))
-     (for [col-combo col-combos
-           measure-key pivot-measures]
-       (fmt (get ordered-formatters measure-key)
-            (get-in totals (concat col-combo [measure-key])))))
+     (into [] (mapcat (fn [col-combo]
+                        (let [m (reduce get totals col-combo)]
+                          (perf/mapv #(fmt (get ordered-formatters %) (get m %)) pivot-measures))))
+           col-combos))
    (for [measure-key pivot-measures]
      (fmt (get ordered-formatters measure-key)
           (get-in totals [:grand-total measure-key])))))
@@ -435,10 +450,30 @@
   (letfn [(enumerate [prefix m]
             (if-not (associative? m)
               (mapv #(conj prefix %) m)
-              (mapcat (fn [[k v]]
-                        (enumerate (conj prefix k) v))
-                      m)))]
+              (into [] (mapcat (fn [[k v]]
+                                 (enumerate (conj prefix k) v))
+                               m))))]
     (enumerate [] m)))
+
+(defn- format-pivot-row-cells
+  "In the almost final row, the pivot row cells still contain unformatted values. We need to format them."
+  [row row-formatters pivot-rows-cnt]
+  (if (pos? pivot-rows-cnt)
+    (let [first-entry (first row)]
+      ;; Exclude rows that begin with "Totals ..."
+      (if (and (string? first-entry) (str/starts-with? first-entry "Totals"))
+        row
+        ;; This manual iterator-loop goes over the whole row but applies the formatting only to first
+        ;; `pivot-rows-cnt` values, and leaves the rest of the values unchanged (they are already formatted).
+        (let [it (.iterator ^Iterable row)]
+          (loop [res (transient []), i 0]
+            (if (.hasNext it)
+              (recur (conj! res (if (< i pivot-rows-cnt)
+                                  (fmt (nth row-formatters i) (.next it))
+                                  (.next it)))
+                     (unchecked-inc i))
+              (persistent! res))))))
+    row))
 
 (defn build-pivot-output
   "Arrange and format the aggregated `pivot` data."
@@ -472,12 +507,12 @@
       into []
       (let [sections-rows
             (mapv (fn [section-row-combos]
-                    (into []
-                          (keep (fn [row-combo]
-                                  (build-row row-combo sorted-col-combos pivot-measures data totals
-                                             row-totals? ordered-formatters row-formatters config)))
+                    (mapv (fn [row-combo]
+                            (build-row row-combo sorted-col-combos pivot-measures data totals
+                                       row-totals? ordered-formatters row-formatters config))
                           section-row-combos))
-                  (partition-by first sorted-row-combos))]
+                  (partition-by first sorted-row-combos))
+            pivot-rows-cnt (count pivot-rows)]
         (perf/mapv
          (fn [section-rows]
            (->>
@@ -489,15 +524,7 @@
                  rows)))
             ;; then, we apply the row-formatters to the pivot-rows portion of each row,
             ;; filtering out any rows that begin with "Totals ..."
-            (mapv
-             (fn [row]
-               (let [[row-part vals-part] (split-at (count pivot-rows) row)
-                     first-entry (first row-part)]
-                 (if (or
-                      (not (seq row-part))
-                      (and (string? first-entry) (str/starts-with? first-entry "Totals")))
-                   row
-                   (into (mapv fmt row-formatters row-part) vals-part)))))))
+            (mapv #(format-pivot-row-cells % row-formatters pivot-rows-cnt))))
          sections-rows)))
      (when col-totals?
        [(build-grand-totals config sorted-col-combos totals row-totals? ordered-formatters)]))))
