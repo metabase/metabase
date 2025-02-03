@@ -295,6 +295,7 @@ function suggestSegments({ query, stageIndex }: SuggestOptions) {
       type: "segment",
       displayLabel: displayInfo.longDisplayName,
       label: formatIdentifier(displayInfo.longDisplayName),
+      icon: "segment" as const,
     };
   });
 
@@ -329,6 +330,7 @@ function suggestMetrics({ startRule, query, stageIndex }: SuggestOptions) {
       type: "metric",
       displayLabel: displayInfo.longDisplayName,
       label: formatIdentifier(displayInfo.longDisplayName),
+      icon: "metric" as const,
     };
   });
 
