@@ -127,6 +127,7 @@ function TippyPopover({
     <TippyComponent
       className={cx("popover", ZIndex.Overlay, className)}
       theme="popover"
+      // Tippy's type definition does not support string z-index values
       zIndex={"var(--mb-overlay-z-index)" as unknown as number}
       arrow={false}
       offset={OFFSET}
