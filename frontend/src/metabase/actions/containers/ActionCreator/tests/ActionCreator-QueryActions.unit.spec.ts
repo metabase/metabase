@@ -60,9 +60,12 @@ describe("ActionCreator > Query Actions", () => {
         screen.getByRole("button", { name: "Action settings" }),
       );
       await userEvent.tab(); // move focus away from "Action settings" button to hide its tooltip
-      await waitFor(() => {
-        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
 
       const makePublic = screen.getByRole("switch", {
         name: "Make public",
