@@ -1,9 +1,11 @@
 import type { ComponentProps } from "react";
 
 import { ReduxProvider } from "__support__/storybook";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { Box } from "metabase/ui";
 
 import { _UpsellBanner } from "./UpsellBanner";
+import S from "./Upsells.module.css";
 
 const args = {
   children: "Discover the power of Metabase Enterprise.",
@@ -48,10 +50,18 @@ const DefaultTemplate = (args: UpsellBannerProps) => (
   </ReduxProvider>
 );
 
-const SecondaryTemplate = (args: UpsellBannerProps) => (
+const SecondaryTemplate = ({ children, ...args }: UpsellBannerProps) => (
   <ReduxProvider>
     <Box>
-      <_UpsellBanner secondaryLink="https://www.metabase.com/docs" {...args} />
+      <_UpsellBanner {...args}>
+        {children}
+        <ExternalLink
+          className={S.SecondaryCTALink}
+          href="https://www.metabase.com/docs"
+        >
+          Learn more
+        </ExternalLink>
+      </_UpsellBanner>
     </Box>
   </ReduxProvider>
 );

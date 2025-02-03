@@ -5,7 +5,8 @@ import { Box, Flex, Text, Title } from "metabase/ui";
 import S from "./UpsellCard.module.css";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
-import { UpsellBannerComponent, UpsellCTALink } from "./Upsells.styled";
+import C from "./Upsells.module.css";
+import { UpsellCTALink } from "./Upsells.styled";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
@@ -39,7 +40,11 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   });
 
   return (
-    <UpsellBannerComponent data-testid="upsell-banner" {...props}>
+    <Box
+      className={C.UpsellBannerComponent}
+      data-testid="upsell-banner"
+      {...props}
+    >
       <Flex align="center" gap="md" wrap="nowrap">
         <UpsellGem />
         <Box>
@@ -61,7 +66,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       >
         {buttonText}
       </Box>
-    </UpsellBannerComponent>
+    </Box>
   );
 };
 
