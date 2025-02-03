@@ -1,5 +1,5 @@
 .EditorButton:not([data-css-specificity-hack]) {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   background: var(--mb-color-background);
 
   &:hover {
