@@ -357,10 +357,9 @@ class Visualization extends PureComponent {
     const loading = this.isLoading(series);
 
     // don't try to load settings unless data is loaded
-    let settings = this.props.settings || {};
+    let settings = this.props.settings || this.state.computedSettings;
 
     if (!loading && !error) {
-      settings = this.props.settings || this.state.computedSettings;
       if (!visualization) {
         error = t`Could not find visualization`;
       } else {
