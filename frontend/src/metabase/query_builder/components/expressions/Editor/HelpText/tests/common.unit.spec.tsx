@@ -8,33 +8,27 @@ describe("HelpText (OSS)", () => {
   it("should render expression function info, example and documentation link", async () => {
     await setup({
       enclosingFunction: {
-        name: "datetime-diff",
+        name: "concat",
       },
     });
 
     expect(
-      screen.getByText('datetimeDiff([Created At], [Shipped At], "month")'),
+      screen.getByText('concat([Last Name], ", ", [First Name])'),
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(
-        getBrokenUpTextMatcher(
-          "datetimeDiff(⟨datetime1⟩, ⟨datetime2⟩, ⟨unit⟩)",
-        ),
-      ),
+      screen.getByText(getBrokenUpTextMatcher("concat(⟨value1⟩, ⟨value2⟩, …)")),
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(
-        "Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.",
-      ),
+      screen.getByText("Combine two or more strings of text together."),
     ).toBeInTheDocument();
 
     const link = screen.getByRole("link");
     expect(link).toBeInTheDocument();
     expect(link).toHaveProperty(
       "href",
-      "https://www.metabase.com/docs/latest/questions/query-builder/expressions/datetimediff.html",
+      "https://www.metabase.com/docs/latest/questions/query-builder/expressions/concat.html",
     );
   });
 

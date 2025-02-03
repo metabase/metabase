@@ -134,7 +134,10 @@ export function HelpText({
           {example && (
             <>
               <Box className={S.title}>{t`Example`}</Box>
-              <Box className={S.example}>
+              <Box
+                className={S.example}
+                data-testid="expression-helper-example"
+              >
                 <Highlight expression={example} />
               </Box>
             </>
