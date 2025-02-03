@@ -222,7 +222,10 @@ H.describeWithSnowplow("extract action", () => {
       });
       H.openNotebook();
       H.getNotebookStep("expression").findByText("Year").click();
-      H.enterCustomColumnDetails({ formula: "year([Created At]) + 2" });
+      H.enterCustomColumnDetails({
+        formula: "year([Created At]) + 2",
+        blur: true,
+      });
       H.popover().button("Update").click();
       H.visualize();
       cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");

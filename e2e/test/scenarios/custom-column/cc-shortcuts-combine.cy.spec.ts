@@ -158,9 +158,12 @@ H.describeWithSnowplow(
 );
 
 function selectCombineColumns() {
-  cy.findByTestId("expression-suggestions-list").within(() => {
-    cy.findByText("Combine columns").click();
-  });
+  H.CustomExpressionEditor.focus();
+  H.CustomExpressionEditor.completions().should("be.visible");
+  cy.wait(100);
+  H.CustomExpressionEditor.completion("Combine columns")
+    .should("be.visible")
+    .click();
 }
 
 function selectColumn(index: number, table: string, name?: string) {

@@ -93,6 +93,7 @@ describe("scenarios > metrics > question", () => {
     H.enterCustomColumnDetails({
       formula: `[${ORDERS_TIMESERIES_METRIC.name}] * 2`,
       name: "Expression",
+      blur: true,
     });
     H.popover().button("Update").click();
     H.echartsContainer().findByText("Expression").should("be.visible");

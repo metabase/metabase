@@ -77,7 +77,7 @@ describe("scenarios > question > offset", () => {
       H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      H.popover().within(() => {
+      H.expressionEditorWidget().within(() => {
         cy.button("Done").should("be.disabled");
         cy.findByText("OFFSET is not supported in custom columns").should(
           "exist",
@@ -225,7 +225,7 @@ describe("scenarios > question > offset", () => {
       H.enterCustomColumnDetails({ formula: expression });
       cy.realPress("Tab");
 
-      H.popover().within(() => {
+      H.expressionEditorWidget().within(() => {
         cy.button("Done").should("be.disabled");
         cy.findByText("OFFSET is not supported in custom filters").should(
           "exist",
@@ -254,14 +254,12 @@ describe("scenarios > question > offset", () => {
       H.enterCustomColumnDetails({ formula: prefix, blur: false });
 
       cy.log("suggests offset() in aggregation expressions");
-      cy.findByTestId("expression-suggestions-list-item")
-        .should("exist")
-        .and("have.text", "Offset");
+      H.CustomExpressionEditor.completion("Offset").should("exist");
 
       H.enterCustomColumnDetails({ formula: expression, blur: false });
       cy.realPress("Tab");
 
-      H.popover().within(() => {
+      H.expressionEditorWidget().within(() => {
         cy.button("Done").should("be.disabled");
 
         cy.findByPlaceholderText("Something nice and descriptive")
